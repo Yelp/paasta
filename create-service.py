@@ -2,28 +2,60 @@
 
 import optparse
 import os
-from os import path
+import os.path
 import sys
 
 from service_setup import config
+from service_setup import paths
 from service_setup import prompt
 from service_setup.autosuggest import suggest_port, suggest_vip
 from service_setup.template import Template
 
-class ServiceBuilder(object):
 
-    def __init__(self, srvname):
-        self.srvname = srvname
+class Service(object):
 
-    @property
-    def srvroot(self):
-        return path.join(config.PUPPET_SRV_ROOT, self.srvname)
+    @classmethod
+    def from_files(cls, srvname):
+        srv = cls(srvname)
+        for f in paths.ALL_FILES:
+            setattr(srv, f.replace('-','_').replace('.','_'),
+                    srv.io.read_file(f))
+        return srv
+
+    def __init__(self, name):
+        self.name = name
+        self.paths = paths.SrvPathBuilder(name)
+        self.io = SrvReaderWriter(self.paths)
+
+class SrvReaderWriter(object):
+
+    def __init__(self, path_builder):
+        self.paths = path_builder
+
+    def read_file(self, filename):
+        return self._read(self.paths.to_file(filename))
 
     def write_file(self, filename, contents, executable=False):
-        if not path.exists(self.srvroot):
-            os.makedirs(self.srvroot)
-        filename = path.join(self.srvroot, filename)
-        with open(filename, 'w') as f:
+        if not os.path.exists(self.paths.root_dir):
+            os.makedirs(self.paths.root_dir)
+        self._write(self.paths.to_file(filename),
+                    contents,
+                    executable=executable)
+
+    def read_healthcheck(self):
+        return self._read(self.paths.to_file)
+
+    def write_healthcheck(self, contents):
+        self._write(self.paths.healthcheck, contents, executable=True)
+
+    def _read(self, path):
+        if not os.path.exists(path):
+            return ''
+        with open(path, 'r') as f:
+            return f.read()
+
+    def _write(self, path, contents, executable=False):
+        with open(path, 'w') as f:
             if executable and not contents:
                 f.write('# Do nothing\n')
             else:
@@ -33,7 +65,7 @@ class ServiceBuilder(object):
                 if not contents.endswith('\n'):
                     f.write('\n')
         if executable:
-            os.chmod(filename, 0755)
+            os.chmod(path, 0755)
 
 def ask_file_survey():
     """Surveys the user about the various entries in files/services/$srvname"""
@@ -60,21 +92,6 @@ def ask_file_survey():
                                 Template('post_activate').substitute({'srvname': srvname}))
     return srvname, runas, runasgroup, port, status_port, vip, post_download, post_activate
 
-def main(opts, args):
-    setup_config_paths(args[0])
-
-    srvname, runas, runasgroup, port, status_port, vip, post_download, post_activate = ask_file_survey()
-    bldr = ServiceBuilder(srvname)
-    bldr.write_file('runas', runas)
-    bldr.write_file('runas_group', runasgroup)
-    bldr.write_file('port', port)
-    bldr.write_file('status_port', status_port)
-    bldr.write_file('post-download', post_download, executable=True)
-    bldr.write_file('post-activate', post_activate, executable=True)
-    if vip is not None:
-        bldr.write_file('vip', vip)
-        bldr.write_file('lb.yaml', '')
-
 def parse_args():
     parser = optparse.OptionParser(
         usage="%prog PUPPET_PATH"
@@ -86,12 +103,24 @@ def parse_args():
     return opts, args
 
 def setup_config_paths(puppet_root):
+    config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
     config.PUPPET_ROOT = puppet_root
-    config.PUPPET_SRV_ROOT = path.join(config.PUPPET_ROOT, 'files', 'services')
-    config.TEMPLATE_DIR = path.join(path.dirname(sys.argv[0]), 'templates')
-    config.HEALTHCHECK_DIR = path.join(
-        config.PUPPET_ROOT, 'files', 'healthcheck', 'nail',
-        'sys', 'healthcheck', '_healthcheck_services')
+
+
+def main(opts, args):
+    setup_config_paths(args[0])
+
+    srvname, runas, runasgroup, port, status_port, vip, post_download, post_activate = ask_file_survey()
+    srv = Service(srvname)
+    srv.io.write_file('runas', runas)
+    srv.io.write_file('runas_group', runasgroup)
+    srv.io.write_file('port', port)
+    srv.io.write_file('status_port', status_port)
+    srv.io.write_file('post-download', post_download, executable=True)
+    srv.io.write_file('post-activate', post_activate, executable=True)
+    if vip is not None:
+        srv.io.write_file('vip', vip)
+        srv.io.write_file('lb.yaml', '')
 
 if __name__ == '__main__':
     opts, args = parse_args()

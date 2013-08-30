@@ -1,4 +1,5 @@
 from os import path
+# TODO: Use pystache instead of string.Template?
 import string
 
 from service_setup import config
@@ -6,6 +7,11 @@ from service_setup import config
 class NoSuchTemplate(Exception): pass
 
 class Template(object):
+    """A small convenience wrapper for the python string Template library
+
+    The appropriate template will be loaded from the file of the same name
+    in config.TEMPLATE_DIR
+    """
 
     def __init__(self, name):
         self.name = name
