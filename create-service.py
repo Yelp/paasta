@@ -84,12 +84,14 @@ def ask_file_survey():
     status_port = prompt.ask('Status port?', str(int(port) + 1))
 
     if prompt.yes_no('Any post-download actions?'):
-        post_download = prompt.ask('Input post-download script',
-                                Template('post_download').substitute({'srvname': srvname}))
+        post_download = prompt.ask(
+            'Input post-download script',
+            Template('post_download').substitute({'srvname': srvname}))
 
     if prompt.yes_no('Any post-activate actions?'):
-        post_activate = prompt.ask('Input post-activate script',
-                                Template('post_activate').substitute({'srvname': srvname}))
+        post_activate = prompt.ask(
+            'Input post-activate script',
+            Template('post_activate').substitute({'srvname': srvname}))
     return srvname, runas, runasgroup, port, status_port, vip, post_download, post_activate
 
 def parse_args():
@@ -121,6 +123,9 @@ def main(opts, args):
     if vip is not None:
         srv.io.write_file('vip', vip)
         srv.io.write_file('lb.yaml', '')
+        srv.io.write_healthcheck(
+            Template('healthcheck').substitute(
+                {'srvname': srvname, 'port': port}))
 
 if __name__ == '__main__':
     opts, args = parse_args()
