@@ -95,13 +95,23 @@ def ask_file_survey():
     return srvname, runas, runasgroup, port, status_port, vip, post_download, post_activate
 
 def parse_args():
-    parser = optparse.OptionParser(
-        usage="%prog PUPPET_PATH"
-    )
+    parser = optparse.OptionParser()
+    parser.add_option("-n", "--nagios-root", dest="nagios_root", default=None, help="Path to root of Nagios checkout")
+    parser.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
+    parser.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
+    parser.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
     opts, args = parser.parse_args()
-    if len(args) != 1:
+
+    if opts.enable_puppet and not opts.puppet_root:
+        print "ERROR: Puppet is enabled but puppet_root is not set!"
         parser.print_usage()
         sys.exit(1)
+
+    if opts.enable_nagios and not opts.nagios_root:
+        print "ERROR: Nagios is enabled but nagios_root is not set!"
+        parser.print_usage()
+        sys.exit(1)
+
     return opts, args
 
 def setup_config_paths(puppet_root):
@@ -110,7 +120,7 @@ def setup_config_paths(puppet_root):
 
 
 def main(opts, args):
-    setup_config_paths(args[0])
+    setup_config_paths(opts.puppet_root)
 
     srvname, runas, runasgroup, port, status_port, vip, post_download, post_activate = ask_file_survey()
     srv = Service(srvname)
