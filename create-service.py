@@ -119,9 +119,7 @@ def setup_config_paths(puppet_root):
     config.PUPPET_ROOT = puppet_root
 
 
-def main(opts, args):
-    setup_config_paths(opts.puppet_root)
-
+def do_puppet_steps():
     srvname, runas, runasgroup, port, status_port, vip, post_download, post_activate = ask_file_survey()
     srv = Service(srvname)
     srv.io.write_file('runas', runas)
@@ -136,6 +134,14 @@ def main(opts, args):
         srv.io.write_healthcheck(
             Template('healthcheck').substitute(
                 {'srvname': srvname, 'port': port}))
+
+
+def main(opts, args):
+    setup_config_paths(opts.puppet_root)
+
+    if opts.enable_puppet:
+        do_puppet_steps()
+
 
 if __name__ == '__main__':
     opts, args = parse_args()
