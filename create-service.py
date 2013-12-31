@@ -135,12 +135,18 @@ def do_puppet_steps():
             Template('healthcheck').substitute(
                 {'srvname': srvname, 'port': port}))
 
+def do_nagios_steps():
+    pass
+
 
 def main(opts, args):
     setup_config_paths(opts.puppet_root)
 
     if opts.enable_puppet:
         do_puppet_steps()
+
+    if opts.enable_nagios:
+        do_nagios_steps()
 
 
 if __name__ == '__main__':
