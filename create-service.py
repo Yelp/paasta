@@ -67,13 +67,16 @@ class SrvReaderWriter(object):
         if executable:
             os.chmod(path, 0755)
 
-def ask_file_survey():
-    """Surveys the user about the various entries in files/services/$srvname"""
+def ask_srvname():
     srvname = None
-    post_download = None
-    post_activate = None
     while not srvname:
         srvname = raw_input('Service name? ')
+    return srvname
+
+def ask_file_survey(srvname):
+    """Surveys the user about the various entries in files/services/$srvname"""
+    post_download = None
+    post_activate = None
     runas = prompt.ask('Run as user?', 'batch')
     runasgroup = prompt.ask('Run as group?', runas)
     if prompt.yes_no('Load Balanced?'):
@@ -92,7 +95,7 @@ def ask_file_survey():
         post_activate = prompt.ask(
             'Input post-activate script',
             Template('post_activate').substitute({'srvname': srvname}))
-    return srvname, runas, runasgroup, port, status_port, vip, post_download, post_activate
+    return runas, runasgroup, port, status_port, vip, post_download, post_activate
 
 def parse_args():
     parser = optparse.OptionParser()
@@ -119,8 +122,8 @@ def setup_config_paths(puppet_root):
     config.PUPPET_ROOT = puppet_root
 
 
-def do_puppet_steps():
-    srvname, runas, runasgroup, port, status_port, vip, post_download, post_activate = ask_file_survey()
+def do_puppet_steps(srvname):
+    runas, runasgroup, port, status_port, vip, post_download, post_activate = ask_file_survey(srvname)
     srv = Service(srvname)
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runasgroup)
@@ -135,18 +138,21 @@ def do_puppet_steps():
             Template('healthcheck').substitute(
                 {'srvname': srvname, 'port': port}))
 
-def do_nagios_steps():
+def do_nagios_steps(srvname):
+    print "nagiosing for service %s" % srvname
     pass
 
 
 def main(opts, args):
     setup_config_paths(opts.puppet_root)
 
+    srvname = ask_srvname()
+
     if opts.enable_puppet:
-        do_puppet_steps()
+        do_puppet_steps(srvname)
 
     if opts.enable_nagios:
-        do_nagios_steps()
+        do_nagios_steps(srvname)
 
 
 if __name__ == '__main__':
