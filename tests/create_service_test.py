@@ -4,6 +4,15 @@ import testify as T
 import create_service
 
 
+class SrvReaderWriterTestCase(T.TestCase):
+    @T.setup
+    def init_service(self):
+        self.service = create_service.Service("fake_service")
+        self.srw = self.service.io
+
+    def test_append_raises_when_file_dne(self):
+        self.srw._append()
+
 class ValidateOptionsTestCase(T.TestCase):
     def test_enable_puppet_requires_puppet_root(self):
         parser = Mock()
