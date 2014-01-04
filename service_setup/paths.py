@@ -7,6 +7,7 @@ HEALTHCHECKS = os.path.join('files', 'healthcheck', 'nail', 'sys',
                             'healthcheck', '_healthcheck_services')
 SERVICEGROUPS = os.path.join('etc', 'shared', 'prod-and-stage', 'servicegroups')
 HOSTGROUPS = os.path.join('etc', 'datacenters')
+CHECKS = os.path.join('etc', 'shared', 'prod-and-stage', 'services')
 
 ALL_FILES = set([
     'runas', 'runas_group', 'port', 'status_port', 'lb.yaml', 'vip',
@@ -44,3 +45,9 @@ class SrvPathBuilder(object):
         """Path to the servicegroup for this service"""
         return os.path.join(
             config.NAGIOS_ROOT, HOSTGROUPS)
+
+    @property
+    def check(self):
+        """Path to the check for this service"""
+        return os.path.join(
+            config.NAGIOS_ROOT, CHECKS, self.srvname + '.cfg')

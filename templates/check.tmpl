@@ -1,0 +1,18 @@
+define service {
+    hostgroup_name              soa_$srvname
+    service_description         soa_$srvname
+    check_command               check_http_port!$port!/status!200 OK!0.5!3
+    use                         service_template_active_always_page
+    #contact_groups              team_international
+    #contacts                    +kmitton,striglia
+    contacts                    troscoe
+    servicegroups               soa,soa_$srvname
+}
+
+define service {
+    hostgroup_name              soa_$srvname
+    service_description         updown_$srvname
+    check_command               check_nrpe!check_updown!$srvname 1800 3600
+    use                         service_template_active_no_page_only_email
+    servicegroups               nrpe_services, updown_soa, soa_$srvname
+}
