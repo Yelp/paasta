@@ -105,6 +105,10 @@ def parse_args():
     parser.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
     opts, args = parser.parse_args()
 
+    validate_options(parser, opts)
+    return opts, args
+
+def validate_options(parser, opts):
     if opts.enable_puppet and not opts.puppet_root:
         print "ERROR: Puppet is enabled but puppet_root is not set!"
         parser.print_usage()
@@ -114,8 +118,6 @@ def parse_args():
         print "ERROR: Nagios is enabled but nagios_root is not set!"
         parser.print_usage()
         sys.exit(1)
-
-    return opts, args
 
 def setup_config_paths(puppet_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
