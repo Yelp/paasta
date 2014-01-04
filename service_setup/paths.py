@@ -5,6 +5,7 @@ from service_setup import config
 SERVICE_FILES = os.path.join('files', 'services')
 HEALTHCHECKS = os.path.join('files', 'healthcheck', 'nail', 'sys',
                             'healthcheck', '_healthcheck_services')
+SERVICEGROUPS = os.path.join('etc', 'shared', 'prod-and-stage', 'servicegroups')
 
 ALL_FILES = set([
     'runas', 'runas_group', 'port', 'status_port', 'lb.yaml', 'vip',
@@ -30,3 +31,9 @@ class SrvPathBuilder(object):
         """Path to the healthcheck for this service"""
         return os.path.join(
             config.PUPPET_ROOT, HEALTHCHECKS, self.srvname + '.py')
+
+    @property
+    def servicegroup(self):
+        """Path to the servicegroup for this service"""
+        return os.path.join(
+            config.NAGIOS_ROOT, SERVICEGROUPS, 'soa.cfg')
