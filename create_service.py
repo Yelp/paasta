@@ -115,6 +115,7 @@ def parse_args():
     parser.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
     parser.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
     parser.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
+    parser.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
     opts, args = parser.parse_args()
 
     validate_options(parser, opts)
@@ -160,7 +161,9 @@ def do_nagios_steps(srv):
 def main(opts, args):
     setup_config_paths(opts.puppet_root, opts.nagios_root)
 
-    srvname = ask_srvname()
+    srvname = opts.srvname
+    if not srvname:
+        srvname = ask_srvname()
     srv = Service(srvname)
 
     if opts.enable_puppet:
