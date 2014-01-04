@@ -7,8 +7,8 @@ import create_service
 class SrvReaderWriterTestCase(T.TestCase):
     @T.setup
     def init_service(self):
-        self.service = create_service.Service("fake_service")
-        self.srw = self.service.io
+        paths = create_service.paths.SrvPathBuilder("fake_srvpathbuilder")
+        self.srw = create_service.SrvReaderWriter(paths)
 
     def test_append_raises_when_file_dne(self):
         self.srw._append()
