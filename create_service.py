@@ -48,6 +48,9 @@ class SrvReaderWriter(object):
     def write_healthcheck(self, contents):
         self._write(self.paths.healthcheck, contents, executable=True)
 
+    def append_servicegroup(self, contents):
+        self._append(self.paths.servicegroup, contents)
+
     def _read(self, path):
         if not os.path.exists(path):
             return ''
@@ -66,6 +69,15 @@ class SrvReaderWriter(object):
                     f.write('\n')
         if executable:
             os.chmod(path, 0755)
+
+    def _append(self, path, contents):
+        """Note that this will raise IOError if 'path' does not exist."""
+        with open(path, 'a') as f:
+            contents = str(contents)
+            f.write(contents)
+            # Add trailing newline
+            if not contents.endswith('\n'):
+                f.write('\n')
 
 def ask_srvname():
     srvname = None
@@ -119,14 +131,14 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit(1)
 
-def setup_config_paths(puppet_root):
+def setup_config_paths(puppet_root, nagios_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
     config.PUPPET_ROOT = puppet_root
+    config.NAGIOS_ROOT = nagios_root
 
 
-def do_puppet_steps(srvname):
-    runas, runasgroup, port, status_port, vip, post_download, post_activate = ask_file_survey(srvname)
-    srv = Service(srvname)
+def do_puppet_steps(srv):
+    runas, runasgroup, port, status_port, vip, post_download, post_activate = ask_file_survey(srv.name)
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runasgroup)
     srv.io.write_file('port', port)
@@ -138,23 +150,24 @@ def do_puppet_steps(srvname):
         srv.io.write_file('lb.yaml', '')
         srv.io.write_healthcheck(
             Template('healthcheck').substitute(
-                {'srvname': srvname, 'port': port}))
+                {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srvname):
-    print "nagiosing for service %s" % srvname
-    pass
-
+def do_nagios_steps(srv):
+    servicegroup_contents = Template('servicegroup').substitute(
+        {'srvname': srv.name })
+    srv.io.append_servicegroup(servicegroup_contents)
 
 def main(opts, args):
-    setup_config_paths(opts.puppet_root)
+    setup_config_paths(opts.puppet_root, opts.nagios_root)
 
     srvname = ask_srvname()
+    srv = Service(srvname)
 
     if opts.enable_puppet:
-        do_puppet_steps(srvname)
+        do_puppet_steps(srv)
 
     if opts.enable_nagios:
-        do_nagios_steps(srvname)
+        do_nagios_steps(srv)
 
 
 if __name__ == '__main__':
