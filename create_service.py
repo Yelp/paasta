@@ -51,6 +51,11 @@ class SrvReaderWriter(object):
     def append_servicegroup(self, contents):
         self._append(self.paths.servicegroup, contents)
 
+    def append_hostgroups(self, contents):
+        for root, dirs, files in os.walk(self.paths.hostgroup):
+            if root.endswith('hostgroups') and 'soa.cfg' in files:
+                self._append(os.path.join(root, 'soa.cfg'), contents)
+
     def _read(self, path):
         if not os.path.exists(path):
             return ''
@@ -157,6 +162,10 @@ def do_nagios_steps(srv):
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
+
+    hostgroup_contents = Template('hostgroup').substitute(
+        {'srvname': srv.name })
+    srv.io.append_hostgroups(hostgroup_contents)
 
 def main(opts, args):
     setup_config_paths(opts.puppet_root, opts.nagios_root)
