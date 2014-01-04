@@ -56,6 +56,9 @@ class SrvReaderWriter(object):
             if root.endswith('hostgroups') and 'soa.cfg' in files:
                 self._append(os.path.join(root, 'soa.cfg'), contents)
 
+    def write_check(self, contents):
+        self._write(self.paths.check, contents)
+
     def _read(self, path):
         if not os.path.exists(path):
             return ''
@@ -90,7 +93,11 @@ def ask_srvname():
         srvname = raw_input('Service name? ')
     return srvname
 
-def ask_file_survey(srvname):
+def ask_port():
+    port = prompt.ask('Port?', str(suggest_port()))
+    return port
+
+def ask_file_survey(srvname, port):
     """Surveys the user about the various entries in files/services/$srvname"""
     post_download = None
     post_activate = None
@@ -100,7 +107,6 @@ def ask_file_survey(srvname):
         vip = prompt.ask('VIP?', suggest_vip())
     else:
         vip = None
-    port = prompt.ask('Port?', str(suggest_port()))
     status_port = prompt.ask('Status port?', str(int(port) + 1))
 
     if prompt.yes_no('Any post-download actions?'):
@@ -112,7 +118,7 @@ def ask_file_survey(srvname):
         post_activate = prompt.ask(
             'Input post-activate script',
             Template('post_activate').substitute({'srvname': srvname}))
-    return runas, runasgroup, port, status_port, vip, post_download, post_activate
+    return runas, runasgroup, status_port, vip, post_download, post_activate
 
 def parse_args():
     parser = optparse.OptionParser()
@@ -121,6 +127,8 @@ def parse_args():
     parser.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
     parser.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
     parser.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
+    parser.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
+    ###parser.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service")
     opts, args = parser.parse_args()
 
     validate_options(parser, opts)
@@ -128,14 +136,20 @@ def parse_args():
 
 def validate_options(parser, opts):
     if opts.enable_puppet and not opts.puppet_root:
-        print "ERROR: Puppet is enabled but puppet_root is not set!"
+        print "ERROR: Puppet is enabled but --puppet-root is not set!"
         parser.print_usage()
         sys.exit(1)
 
     if opts.enable_nagios and not opts.nagios_root:
-        print "ERROR: Nagios is enabled but nagios_root is not set!"
+        print "ERROR: Nagios is enabled but --nagios-root is not set!"
         parser.print_usage()
         sys.exit(1)
+
+    if not opts.puppet_root and not opts.port:
+        print "ERROR: Must provide either --puppet-root or --port!"
+        parser.print_usage()
+        sys.exit(1)
+
 
 def setup_config_paths(puppet_root, nagios_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
@@ -143,8 +157,8 @@ def setup_config_paths(puppet_root, nagios_root):
     config.NAGIOS_ROOT = nagios_root
 
 
-def do_puppet_steps(srv):
-    runas, runasgroup, port, status_port, vip, post_download, post_activate = ask_file_survey(srv.name)
+def do_puppet_steps(srv, port):
+    runas, runasgroup, status_port, vip, post_download, post_activate = ask_file_survey(srv.name, port)
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runasgroup)
     srv.io.write_file('port', port)
@@ -158,7 +172,7 @@ def do_puppet_steps(srv):
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srv):
+def do_nagios_steps(srv, port):
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
@@ -166,6 +180,14 @@ def do_nagios_steps(srv):
     hostgroup_contents = Template('hostgroup').substitute(
         {'srvname': srv.name })
     srv.io.append_hostgroups(hostgroup_contents)
+
+    ### vip hostgroup
+
+    ### contact_groups and/or contacts
+    ### replace ops or not (+)
+    check_contents = Template('check').substitute(
+        {'srvname': srv.name, 'port': port })
+    srv.io.write_check(check_contents)
 
 def main(opts, args):
     setup_config_paths(opts.puppet_root, opts.nagios_root)
@@ -175,11 +197,15 @@ def main(opts, args):
         srvname = ask_srvname()
     srv = Service(srvname)
 
+    port = opts.port
+    if not port:
+        port = ask_port()
+
     if opts.enable_puppet:
-        do_puppet_steps(srv)
+        do_puppet_steps(srv, port)
 
     if opts.enable_nagios:
-        do_nagios_steps(srv)
+        do_nagios_steps(srv, port)
 
 
 if __name__ == '__main__':
