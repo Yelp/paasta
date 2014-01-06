@@ -13,5 +13,5 @@ define service {
     service_description         updown_$srvname
     check_command               check_nrpe!check_updown!$srvname 1800 3600
     use                         service_template_active_no_page_only_email
-    servicegroups               nrpe_services, updown_soa, soa_$srvname
+    servicegroups               nrpe_services,updown_soa,soa_$srvname
 }
