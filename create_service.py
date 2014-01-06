@@ -79,7 +79,6 @@ class SrvReaderWriter(object):
             os.chmod(path, 0755)
 
     def _append(self, path, contents):
-        """Note that this will raise IOError if 'path' does not exist."""
         with open(path, 'a') as f:
             contents = str(contents)
             f.write(contents)
@@ -122,15 +121,20 @@ def ask_file_survey(srvname, port):
 
 def parse_args():
     parser = optparse.OptionParser()
-    parser.add_option("-n", "--nagios-root", dest="nagios_root", default=None, help="Path to root of Nagios checkout")
-    parser.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
-    parser.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
-    parser.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
-    parser.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
-    parser.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
-    ###parser.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service")
-    opts, args = parser.parse_args()
+    group = optparse.OptionGroup(parser, "Configuring this script")
+    group.add_option("-n", "--nagios-root", dest="nagios_root", default=None, help="Path to root of Nagios checkout")
+    group.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
+    group.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
+    group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
+    parser.add_option_group(group)
 
+    group = optparse.OptionGroup(parser, "Configuring the service being added")
+    group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
+    group.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
+    ###group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service")
+    parser.add_option_group(group)
+
+    opts, args = parser.parse_args()
     validate_options(parser, opts)
     return opts, args
 
