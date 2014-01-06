@@ -120,6 +120,11 @@ def ask_puppet_questions(srvname, port):
     return runas, runasgroup, status_port, vip, post_download, post_activate
 
 def ask_nagios_quetsions(contact_groups=None, contacts=None, include_ops=None):
+    if not contact_groups and not contacts:
+        contact_groups = prompt.ask('Nagios contact_groups (comma-separated list)?')
+        contacts = prompt.ask('Nagios contacts (individuals, comma-separated list)?')
+    if include_ops is None:
+        include_ops = prompt.yes_no('Nagios alerts ops?')
     return contact_groups, contacts, include_ops
 
 def parse_args():
@@ -138,7 +143,7 @@ def parse_args():
     group.add_option("-g", "--contact-groups", dest="contact_groups", default=None, help="Comma-separated list of Nagios groups to alert")
     group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If --contacts or --contact-groups specified, user will not be prompted for either option.")
     group.add_option("-i", "--include-ops", dest="include_ops", default=None, action="store_true", help="Operations on-call shall be alerted")
-    group.add_option("-I", "--exclude-ops", dest="include_ops", default=None, action="store_false", help="Operations on-call shall NOT be alerted. If neither --include-ops nor --exclude-ops specified, user will be prompted.")
+    group.add_option("-x", "--exclude-ops", dest="exclude_ops", default=None, action="store_true", help="Operations on-call shall NOT be alerted. If neither --include-ops nor --exclude-ops specified, user will be prompted.")
     parser.add_option_group(group)
 
     opts, args = parser.parse_args()
@@ -161,18 +166,18 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit(1)
 
-    if not opts.contact_groups and not opts.contacts and opts.include_ops is False:
-        print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
-        print "Must provide someone to be alerted!"
+    if opts.include_ops and opts.exclude_ops:
+        print "ERROR: Provide only one of --include-ops and --exclude-ops"
         parser.print_usage()
         sys.exit(1)
-
+    else:
+        if opts.exclude_ops:
+            opts.include_ops = False
 
 def setup_config_paths(puppet_root, nagios_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
-
 
 def do_puppet_steps(srv, port):
     runas, runasgroup, status_port, vip, post_download, post_activate = ask_puppet_questions(srv.name, port)
@@ -189,8 +194,12 @@ def do_puppet_steps(srv, port):
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srv, port, include_ops=None, contact_groups=None, contacts=None):
+def do_nagios_steps(srv, port, contact_groups=None, contacts=None, include_ops=None):
     contact_groups, contacts, include_ops = ask_nagios_quetsions(contact_groups, contacts, include_ops)
+    if not contact_groups and not contacts and not include_ops:
+        print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
+        print "Must provide someone to be alerted!"
+        sys.exit(2)
 
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
@@ -204,9 +213,12 @@ def do_nagios_steps(srv, port, include_ops=None, contact_groups=None, contacts=N
 
     ### contact_groups and/or contacts
     ### replace ops or not (+)
-    check_contents = Template('check').substitute(
-        {'srvname': srv.name, 'port': port })
+    check_contents = Template('check').substitute({
+        'srvname': srv.name,
+        'port': port,
+    })
     srv.io.write_check(check_contents)
+
 
 def main(opts, args):
     setup_config_paths(opts.puppet_root, opts.nagios_root)
