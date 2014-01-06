@@ -51,13 +51,19 @@ class SrvReaderWriter(object):
     def append_servicegroup(self, contents):
         self._append(self.paths.servicegroup, contents)
 
-    def append_hostgroups(self, contents):
+    def append_hostgroups(self, contents, vip=False):
+        filename = 'soa.cfg'
+        if vip:
+            filename = 'vips.cfg'
         for root, dirs, files in os.walk(self.paths.hostgroup):
-            if root.endswith('hostgroups') and 'soa.cfg' in files:
-                self._append(os.path.join(root, 'soa.cfg'), contents)
+            if root.endswith('hostgroups') and filename in files:
+                self._append(os.path.join(root, filename), contents)
 
     def write_check(self, contents):
         self._write(self.paths.check, contents)
+
+    def append_check(self, contents):
+        self._append(self.paths.check, contents)
 
     def _read(self, path):
         if not os.path.exists(path):
@@ -223,8 +229,6 @@ def do_nagios_steps(srv, port, vip, contact_groups=None, contacts=None, include_
         {'srvname': srv.name })
     srv.io.append_hostgroups(hostgroup_contents)
 
-    ### vip hostgroup
-
     check_contents = Template('check').substitute({
         'srvname': srv.name,
         'port': port,
@@ -233,6 +237,20 @@ def do_nagios_steps(srv, port, vip, contact_groups=None, contacts=None, include_
         'plus_if_include_ops': '+' if include_ops else '',
     })
     srv.io.write_check(check_contents)
+
+    if vip:
+        vip_hostgroup_contents = Template('vip_hostgroup').substitute(
+            {'srvname': srv.name })
+        srv.io.append_hostgroups(vip_hostgroup_contents, vip=True)
+
+        check_contents = Template('vip_check').substitute({
+            'srvname': srv.name,
+            'port': port,
+            'contact_groups': contact_groups or '',
+            'contacts': contacts or '',
+            'plus_if_include_ops': '+' if include_ops else '',
+        })
+        srv.io.append_check(check_contents)
 
 
 def main(opts, args):
