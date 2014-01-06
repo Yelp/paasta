@@ -96,7 +96,7 @@ def ask_port():
     port = prompt.ask('Port?', str(suggest_port()))
     return port
 
-def ask_file_survey(srvname, port):
+def ask_puppet_questions(srvname, port):
     """Surveys the user about the various entries in files/services/$srvname"""
     post_download = None
     post_activate = None
@@ -119,6 +119,9 @@ def ask_file_survey(srvname, port):
             Template('post_activate').substitute({'srvname': srvname}))
     return runas, runasgroup, status_port, vip, post_download, post_activate
 
+def ask_nagios_quetsions(contact_groups=None, contacts=None, include_ops=None):
+    return contact_groups, contacts, include_ops
+
 def parse_args():
     parser = optparse.OptionParser()
     group = optparse.OptionGroup(parser, "Configuring this script")
@@ -128,10 +131,14 @@ def parse_args():
     group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
     parser.add_option_group(group)
 
-    group = optparse.OptionGroup(parser, "Configuring the service being added")
+    group = optparse.OptionGroup(parser, "Configuring the service being added. User will be prompted for ")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
     ###group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service")
+    group.add_option("-g", "--contact-groups", dest="contact_groups", default=None, help="Comma-separated list of Nagios groups to alert")
+    group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If --contacts or --contact-groups specified, user will not be prompted for either option.")
+    group.add_option("-i", "--include-ops", dest="include_ops", default=None, action="store_true", help="Operations on-call shall be alerted")
+    group.add_option("-I", "--exclude-ops", dest="include_ops", default=None, action="store_false", help="Operations on-call shall NOT be alerted. If neither --include-ops nor --exclude-ops specified, user will be prompted.")
     parser.add_option_group(group)
 
     opts, args = parser.parse_args()
@@ -154,6 +161,12 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit(1)
 
+    if not opts.contact_groups and not opts.contacts and opts.include_ops is False:
+        print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
+        print "Must provide someone to be alerted!"
+        parser.print_usage()
+        sys.exit(1)
+
 
 def setup_config_paths(puppet_root, nagios_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
@@ -162,7 +175,7 @@ def setup_config_paths(puppet_root, nagios_root):
 
 
 def do_puppet_steps(srv, port):
-    runas, runasgroup, status_port, vip, post_download, post_activate = ask_file_survey(srv.name, port)
+    runas, runasgroup, status_port, vip, post_download, post_activate = ask_puppet_questions(srv.name, port)
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runasgroup)
     srv.io.write_file('port', port)
@@ -176,7 +189,9 @@ def do_puppet_steps(srv, port):
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srv, port):
+def do_nagios_steps(srv, port, include_ops=None, contact_groups=None, contacts=None):
+    contact_groups, contacts, include_ops = ask_nagios_quetsions(contact_groups, contacts, include_ops)
+
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
@@ -209,7 +224,7 @@ def main(opts, args):
         do_puppet_steps(srv, port)
 
     if opts.enable_nagios:
-        do_nagios_steps(srv, port)
+        do_nagios_steps(srv, port, opts.contact_groups, opts.contacts, opts.include_ops)
 
 
 if __name__ == '__main__':
