@@ -96,16 +96,19 @@ def ask_port():
     port = prompt.ask('Port?', str(suggest_port()))
     return port
 
+def ask_vip():
+    if prompt.yes_no('Load Balanced?'):
+        vip = prompt.ask('VIP?', suggest_vip())
+    else:
+        vip = None
+    return vip
+
 def ask_puppet_questions(srvname, port):
     """Surveys the user about the various entries in files/services/$srvname"""
     post_download = None
     post_activate = None
     runas = prompt.ask('Run as user?', 'batch')
     runasgroup = prompt.ask('Run as group?', runas)
-    if prompt.yes_no('Load Balanced?'):
-        vip = prompt.ask('VIP?', suggest_vip())
-    else:
-        vip = None
     status_port = prompt.ask('Status port?', str(int(port) + 1))
 
     if prompt.yes_no('Any post-download actions?'):
@@ -117,7 +120,7 @@ def ask_puppet_questions(srvname, port):
         post_activate = prompt.ask(
             'Input post-activate script',
             Template('post_activate').substitute({'srvname': srvname}))
-    return runas, runasgroup, status_port, vip, post_download, post_activate
+    return runas, runasgroup, status_port, post_download, post_activate
 
 def ask_nagios_quetsions(contact_groups=None, contacts=None, include_ops=None):
     if not contact_groups and not contacts:
@@ -139,6 +142,7 @@ def parse_args():
     group = optparse.OptionGroup(parser, "Configuring the service being added. User will be prompted for ")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
+    group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1')")
     ###group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service")
     group.add_option("-g", "--contact-groups", dest="contact_groups", default=None, help="Comma-separated list of Nagios groups to alert")
     group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If --contacts or --contact-groups specified, user will not be prompted for either option.")
@@ -166,6 +170,16 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit(1)
 
+    if not opts.puppet_root and not opts.vip:
+        print "ERROR: Must provide either --puppet-root or --vip!"
+        parser.print_usage()
+        sys.exit(1)
+
+    if opts.vip and not opts.vip.startswith("vip"):
+        print "ERROR: --vip must start with 'vip'!"
+        parser.print_usage()
+        sys.exit(1)
+
     if opts.include_ops and opts.exclude_ops:
         print "ERROR: Provide only one of --include-ops and --exclude-ops"
         parser.print_usage()
@@ -179,8 +193,8 @@ def setup_config_paths(puppet_root, nagios_root):
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
 
-def do_puppet_steps(srv, port):
-    runas, runasgroup, status_port, vip, post_download, post_activate = ask_puppet_questions(srv.name, port)
+def do_puppet_steps(srv, port, vip):
+    runas, runasgroup, status_port, post_download, post_activate = ask_puppet_questions(srv.name, port)
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runasgroup)
     srv.io.write_file('port', port)
@@ -194,7 +208,7 @@ def do_puppet_steps(srv, port):
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srv, port, contact_groups=None, contacts=None, include_ops=None):
+def do_nagios_steps(srv, port, vip, contact_groups=None, contacts=None, include_ops=None):
     contact_groups, contacts, include_ops = ask_nagios_quetsions(contact_groups, contacts, include_ops)
     if not contact_groups and not contacts and not include_ops:
         print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
@@ -233,11 +247,15 @@ def main(opts, args):
     if not port:
         port = ask_port()
 
+    vip = opts.vip
+    if not vip:
+        vip = ask_vip()
+
     if opts.enable_puppet:
-        do_puppet_steps(srv, port)
+        do_puppet_steps(srv, port, vip)
 
     if opts.enable_nagios:
-        do_nagios_steps(srv, port, opts.contact_groups, opts.contacts, opts.include_ops)
+        do_nagios_steps(srv, port, vip, opts.contact_groups, opts.contacts, opts.include_ops)
 
 
 if __name__ == '__main__':
