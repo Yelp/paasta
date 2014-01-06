@@ -211,11 +211,12 @@ def do_nagios_steps(srv, port, contact_groups=None, contacts=None, include_ops=N
 
     ### vip hostgroup
 
-    ### contact_groups and/or contacts
-    ### replace ops or not (+)
     check_contents = Template('check').substitute({
         'srvname': srv.name,
         'port': port,
+        'contact_groups': contact_groups or '',
+        'contacts': contacts or '',
+        'plus_if_include_ops': '+' if include_ops else '',
     })
     srv.io.write_check(check_contents)
 
