@@ -145,7 +145,7 @@ def parse_args():
     group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
     parser.add_option_group(group)
 
-    group = optparse.OptionGroup(parser, "Configuring the service being added. User will be prompted for ")
+    group = optparse.OptionGroup(parser, "Configuring the service being added. User will be prompted for anything left unspecified")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
     group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1')")
@@ -154,6 +154,10 @@ def parse_args():
     group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If --contacts or --contact-groups specified, user will not be prompted for either option.")
     group.add_option("-i", "--include-ops", dest="include_ops", default=None, action="store_true", help="Operations on-call shall be alerted")
     group.add_option("-x", "--exclude-ops", dest="exclude_ops", default=None, action="store_true", help="Operations on-call shall NOT be alerted. If neither --include-ops nor --exclude-ops specified, user will be prompted.")
+    parser.add_option_group(group)
+
+    group = optparse.OptionGroup(parser, "Other subcommands (by default, configure everything I can)")
+    group.add_option("-Z", "--suggest-port", dest="command_suggest_port", default=None, action="store_true", help="Print next unused port and exit.")
     parser.add_option_group(group)
 
     opts, args = parser.parse_args()
@@ -279,3 +283,5 @@ def main(opts, args):
 if __name__ == '__main__':
     opts, args = parse_args()
     main(opts, args)
+
+# vim: set expandtab tabstop=4 sts=4 shiftwidth=4:
