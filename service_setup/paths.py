@@ -2,7 +2,7 @@ import os.path
 
 from service_setup import config
 
-SERVICE_FILES = os.path.join('files', 'services')
+SERVICE_FILES = os.path.join('modules', 'yelp_soa', 'files', 'services')
 HEALTHCHECKS = os.path.join('files', 'healthcheck', 'nail', 'sys',
                             'healthcheck', '_healthcheck_services')
 SERVICEGROUPS = os.path.join('etc', 'shared', 'prod-and-stage', 'servicegroups')
