@@ -7,3 +7,13 @@ define service {
     contacts                    ${plus_if_include_ops}${contacts}
     servicegroups               soa,soavips,soa_$srvname
 }
+
+define service {
+    hostgroup_name              soa_$srvname
+    service_description         updown_$srvname
+    check_command               check_nrpe!check_updown!$srvname 1800 3600
+    use                         service_template_active_no_page_only_email
+    contact_groups              +${contact_groups}
+    contacts                    +${contacts}
+    servicegroups               nrpe_services,updown_soa,soa_$srvname
+}
