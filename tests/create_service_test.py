@@ -54,22 +54,22 @@ class AutosuggestTestCase(T.TestCase):
         mock_walk = mock.Mock(return_value=walk_return)
 
         # See http://www.voidspace.org.uk/python/mock/examples.html#multiple-calls-with-different-effects
-        get_port_from_port_file_returns = [
+        get_port_from_file_returns = [
             13001,
             13002,
             55555, # bogus out-of-range value
         ]
-        def get_port_from_port_file_side_effect(*args):
-            return get_port_from_port_file_returns.pop(0)
-        mock_get_port_from_port_file = mock.Mock(side_effect=get_port_from_port_file_side_effect)
+        def get_port_from_file_side_effect(*args):
+            return get_port_from_file_returns.pop(0)
+        mock_get_port_from_file = mock.Mock(side_effect=get_port_from_file_side_effect)
         with nested(
             mock.patch("os.walk", mock_walk),
-            mock.patch("service_setup.autosuggest._get_port_from_port_file", mock_get_port_from_port_file),
+            mock.patch("service_setup.autosuggest._get_port_from_file", mock_get_port_from_file),
         ):
             actual = autosuggest.suggest_port()
         # Sanity check: our mock was called once for each legit port file in
         # walk_return
-        T.assert_equal(mock_get_port_from_port_file.call_count, 3)
+        T.assert_equal(mock_get_port_from_file.call_count, 3)
 
         # What we came here for: the actual output of the function under test
         T.assert_equal(actual, 13002 + 1) # highest port + 1
