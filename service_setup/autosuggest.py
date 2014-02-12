@@ -19,7 +19,7 @@ def suggest_vip():
     return least_vip[0]
 
 def _get_port_from_port_file(root, portfile):
-    """Given a root and portfile (as from os.walk), attempts to return a port
+    """Given a root and portfile (as from os.walk), attempt to return a port
     number (int) from that portfile. Returns 0 if file is empty."""
     with open(os.path.join(root, portfile)) as f:
         port = f.read().strip()
@@ -31,9 +31,9 @@ def suggest_port():
     max_port = 0
     for root, dirs, files in os.walk(
             os.path.join(config.PUPPET_ROOT, paths.SERVICE_FILES)):
-        for portfile in ('port','status_port', 'admin_port'):
-            if portfile in files:
-                port = _get_port_from_port_file(root, portfile)
+        for f in files:
+            if f.endswith("port"):
+                port = _get_port_from_port_file(root, f)
                 if not 14000 > port > 13000:
                     port = 0
                 max_port = max(port, max_port)
