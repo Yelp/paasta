@@ -5,13 +5,12 @@ import create_service
 
 
 class SrvReaderWriterTestCase(T.TestCase):
+    """I bailed out of this test, but I'll leave this here for now as an
+    example of how to interact with the Srv* classes."""
     @T.setup
     def init_service(self):
         paths = create_service.paths.SrvPathBuilder("fake_srvpathbuilder")
         self.srw = create_service.SrvReaderWriter(paths)
-
-    def test_append_raises_when_file_dne(self):
-        self.srw._append()
 
 class ValidateOptionsTestCase(T.TestCase):
     def test_enable_puppet_requires_puppet_root(self):
