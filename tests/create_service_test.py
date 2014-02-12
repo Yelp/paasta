@@ -48,7 +48,7 @@ class AutosuggestTestCase(T.TestCase):
                 "repl_delay_reporter.yaml", # contains 'port' but ignored
                 "port",
                 "status_port",
-                "admin_port", # has bogus out-of-range value
+                "weird_port", # has bogus out-of-range value
             ]
         )]
         mock_walk = mock.Mock(return_value=walk_return)
