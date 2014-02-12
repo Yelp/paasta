@@ -23,7 +23,7 @@ def suggest_port():
     max_port = 0
     for root, dirs, files in os.walk(
             os.path.join(config.PUPPET_ROOT, paths.SERVICE_FILES)):
-        for portfile in ('port','status_port'):
+        for portfile in ('port','status_port', 'admin_port'):
             if portfile in files:
                 with open(os.path.join(root, portfile)) as f:
                     port = f.read().strip()
