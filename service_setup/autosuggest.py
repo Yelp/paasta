@@ -31,6 +31,6 @@ def suggest_port():
                     if not 14000 > port > 13000:
                         port = 0
                     max_port = max(port, max_port)
-    return max_port
+    return max_port + 1
 
 # vim: expandtab tabstop=4 sts=4 shiftwidth=4:
