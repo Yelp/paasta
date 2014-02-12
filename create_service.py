@@ -165,6 +165,18 @@ def parse_args():
     return opts, args
 
 def validate_options(parser, opts):
+    """Does sys.exit() if an invalid combination of options is specified.
+    Otherwise returns None (implicitly)."""
+
+    if opts.command_suggest_port:
+        if not opts.puppet_root:
+            print "ERROR: --suggest-port requires --puppet-root"
+            parser.print_usage()
+            sys.exit(1)
+        # This effectively disables some checks below which we don't care about
+        # for --suggest-port mode.
+        opts.enable_nagios = False
+
     if opts.enable_puppet and not opts.puppet_root:
         print "ERROR: Puppet is enabled but --puppet-root is not set!"
         parser.print_usage()
@@ -259,6 +271,10 @@ def do_nagios_steps(srv, port, vip, contact_groups=None, contacts=None, include_
 
 def main(opts, args):
     setup_config_paths(opts.puppet_root, opts.nagios_root)
+
+    if opts.command_suggest_port:
+        print suggest_port()
+        return
 
     srvname = opts.srvname
     if not srvname:
