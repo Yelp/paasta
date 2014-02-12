@@ -102,6 +102,10 @@ def ask_port():
     port = prompt.ask('Port?', str(suggest_port()))
     return port
 
+def ask_status_port(port):
+    status_port = prompt.ask('Status port?', str(int(port) + 1))
+    return status_port
+
 def ask_vip():
     if prompt.yes_no('Load Balanced?'):
         vip = prompt.ask('VIP?', suggest_vip())
@@ -115,7 +119,6 @@ def ask_puppet_questions(srvname, port):
     post_activate = None
     runas = prompt.ask('Run as user?', 'batch')
     runasgroup = prompt.ask('Run as group?', runas)
-    status_port = prompt.ask('Status port?', str(int(port) + 1))
 
     if prompt.yes_no('Any post-download actions?'):
         post_download = prompt.ask(
@@ -126,7 +129,7 @@ def ask_puppet_questions(srvname, port):
         post_activate = prompt.ask(
             'Input post-activate script',
             Template('post_activate').substitute({'srvname': srvname}))
-    return runas, runasgroup, status_port, post_download, post_activate
+    return runas, runasgroup, post_download, post_activate
 
 def ask_nagios_quetsions(contact_groups=None, contacts=None, include_ops=None):
     if not contact_groups and not contacts:
@@ -148,10 +151,10 @@ def parse_args():
     group = optparse.OptionGroup(parser, "Configuring the service being added. User will be prompted for anything left unspecified")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
+    group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service")
     group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1')")
-    ###group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service")
     group.add_option("-g", "--contact-groups", dest="contact_groups", default=None, help="Comma-separated list of Nagios groups to alert")
-    group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If --contacts or --contact-groups specified, user will not be prompted for either option.")
+    group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If either --contacts or --contact-groups specified, user will not be prompted for either option.")
     group.add_option("-i", "--include-ops", dest="include_ops", default=None, action="store_true", help="Operations on-call shall be alerted")
     group.add_option("-x", "--exclude-ops", dest="exclude_ops", default=None, action="store_true", help="Operations on-call shall NOT be alerted. If neither --include-ops nor --exclude-ops specified, user will be prompted.")
     parser.add_option_group(group)
@@ -215,8 +218,8 @@ def setup_config_paths(puppet_root, nagios_root):
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
 
-def do_puppet_steps(srv, port, vip):
-    runas, runasgroup, status_port, post_download, post_activate = ask_puppet_questions(srv.name, port)
+def do_puppet_steps(srv, port, status_port, vip):
+    runas, runasgroup, post_download, post_activate = ask_puppet_questions(srv.name, port)
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runasgroup)
     srv.io.write_file('port', port)
@@ -285,12 +288,16 @@ def main(opts, args):
     if not port:
         port = ask_port()
 
+    status_port = opts.status_port
+    if not status_port:
+        status_port = ask_status_port(port)
+
     vip = opts.vip
     if not vip:
         vip = ask_vip()
 
     if opts.enable_puppet:
-        do_puppet_steps(srv, port, vip)
+        do_puppet_steps(srv, port, status_port, vip)
 
     if opts.enable_nagios:
         do_nagios_steps(srv, port, vip, opts.contact_groups, opts.contacts, opts.include_ops)
