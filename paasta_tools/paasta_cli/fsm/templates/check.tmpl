@@ -1,0 +1,9 @@
+define service {
+    hostgroup_name              soa_$srvname
+    service_description         soa_$srvname
+    check_command               check_http_port!$port!/status!200 OK!0.5!3
+    use                         service_template_active_always_page
+    contact_groups              ${plus_if_include_ops}${contact_groups}
+    contacts                    ${plus_if_include_ops}${contacts}
+    servicegroups               soa,soa_$srvname
+}
