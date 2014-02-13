@@ -32,3 +32,5 @@ def suggest_port():
                         port = 0
                     max_port = max(port, max_port)
     return max_port
+
+# vim: expandtab tabstop=4 sts=4 shiftwidth=4:
