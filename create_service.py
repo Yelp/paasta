@@ -145,7 +145,7 @@ def parse_args():
     group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
     parser.add_option_group(group)
 
-    group = optparse.OptionGroup(parser, "Configuring the service being added. User will be prompted for ")
+    group = optparse.OptionGroup(parser, "Configuring the service being added. User will be prompted for anything left unspecified")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
     group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1')")
@@ -156,11 +156,27 @@ def parse_args():
     group.add_option("-x", "--exclude-ops", dest="exclude_ops", default=None, action="store_true", help="Operations on-call shall NOT be alerted. If neither --include-ops nor --exclude-ops specified, user will be prompted.")
     parser.add_option_group(group)
 
+    group = optparse.OptionGroup(parser, "Other subcommands (by default, configure everything I can)")
+    group.add_option("-Z", "--suggest-port", dest="command_suggest_port", default=None, action="store_true", help="Print next unused port and exit.")
+    parser.add_option_group(group)
+
     opts, args = parser.parse_args()
     validate_options(parser, opts)
     return opts, args
 
 def validate_options(parser, opts):
+    """Does sys.exit() if an invalid combination of options is specified.
+    Otherwise returns None (implicitly)."""
+
+    if opts.command_suggest_port:
+        if not opts.puppet_root:
+            print "ERROR: --suggest-port requires --puppet-root"
+            parser.print_usage()
+            sys.exit(1)
+        # This effectively disables some checks below which we don't care about
+        # for --suggest-port mode.
+        opts.enable_nagios = False
+
     if opts.enable_puppet and not opts.puppet_root:
         print "ERROR: Puppet is enabled but --puppet-root is not set!"
         parser.print_usage()
@@ -256,6 +272,10 @@ def do_nagios_steps(srv, port, vip, contact_groups=None, contacts=None, include_
 def main(opts, args):
     setup_config_paths(opts.puppet_root, opts.nagios_root)
 
+    if opts.command_suggest_port:
+        print suggest_port()
+        return
+
     srvname = opts.srvname
     if not srvname:
         srvname = ask_srvname()
@@ -279,3 +299,5 @@ def main(opts, args):
 if __name__ == '__main__':
     opts, args = parse_args()
     main(opts, args)
+
+# vim: set expandtab tabstop=4 sts=4 shiftwidth=4:
