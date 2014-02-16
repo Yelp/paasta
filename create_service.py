@@ -192,13 +192,14 @@ def parse_args():
     group.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
     group.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
     group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
+    group.add_option("-A", "--auto", dest="auto", default=False, action="store_true", help="Use defaults instead of prompting when default value is available")
     parser.add_option_group(group)
 
     group = optparse.OptionGroup(parser, "General configuration for the service being added. User will be prompted for anything left unspecified")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
-    group.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
-    group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service")
-    group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1')")
+    group.add_option("-o", "--port", dest="port", default=None, help="Port used by service. If AUTO, use default")
+    group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service. If AUTO, use default")
+    group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1'). If AUTO, use default")
     parser.add_option_group(group)
 
     group = optparse.OptionGroup(parser, "Nagios configuration for the service being added. User will be prompted for anything left unspecified")
@@ -327,6 +328,15 @@ def main(opts, args):
     if opts.command_suggest_port:
         print suggest_port()
         return
+
+    if opts.auto:
+        opts.port = "AUTO"
+        opts.status_port = "AUTO"
+        opts.vip = "AUTO"
+        opts.runas = "AUTO"
+        opts.runas_group = "AUTO"
+        opts.post_download = "AUTO"
+        opts.post_activate = "AUTO"
 
     srvname = ask_srvname(opts.srvname)
     srv = Service(srvname)
