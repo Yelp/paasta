@@ -1,6 +1,6 @@
 import os.path
 
-from service_setup import config
+from service_wizard import config
 
 SERVICE_FILES = os.path.join('modules', 'yelp_soa', 'files', 'services')
 HEALTHCHECKS = os.path.join('files', 'healthcheck', 'nail', 'sys',
