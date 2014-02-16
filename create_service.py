@@ -118,23 +118,41 @@ def ask_vip():
 ###     CAN CALL ASK_* DIRECTLY FROM PARSER.ADD_GROUP? PROBABLY NOT.
 def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None):
     """Surveys the user about the various entries in files/services/$srvname"""
+    default_runas = "batch"
+    if runas == "AUTO":
+        runas = default_runas
     if runas is None:
-        runas = prompt.ask('Run as user?', 'batch')
+        runas = prompt.ask('Run as user?', default_runas)
 
+    default_runas_group = runas
+    if runas_group == "AUTO":
+        runas_group = default_runas_group
     if runas_group is None:
-        runas_group = prompt.ask('Run as group?', runas)
+        runas_group = prompt.ask('Run as group?', default_runas_group)
 
-    if post_download is None:
+    default_post_download = Template('post_download').substitute({'srvname': srvname})
+    if post_download == "NONE":
+        post_download = ""
+    elif post_download == "AUTO":
+        post_download = default_post_download
+    elif post_download is None:
         if prompt.yes_no('Any post-download actions?'):
             post_download = prompt.ask(
                 'Input post-download script',
-                Template('post_download').substitute({'srvname': srvname}))
+                default_post_download,
+            )
 
+    default_post_activate = Template('post_activate').substitute({'srvname': srvname})
+    if post_activate == "NONE":
+        post_activate = ""
+    elif post_activate == "AUTO":
+        post_activate = default_post_activate
     if post_activate is None:
         if prompt.yes_no('Any post-activate actions?'):
             post_activate = prompt.ask(
                 'Input post-activate script',
-                Template('post_activate').substitute({'srvname': srvname}))
+                default_post_activate,
+            )
 
     return runas, runas_group, post_download, post_activate
 
@@ -176,8 +194,8 @@ def parse_args():
     parser.add_option_group(group)
 
     group = optparse.OptionGroup(parser, "Puppet configuration for the service being added. User will be prompted for anything left unspecified")
-    group.add_option("-r", "--runas", dest="runas", default=None, help="UNIX user which will run service")
-    group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service")
+    group.add_option("-r", "--runas", dest="runas", default=None, help="UNIX user which will run service. If AUTO, use default")
+    group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default")
     group.add_option("-d", "--post-download", dest="post_download", default=None, help="Script executed after service is downloaded by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
     group.add_option("-a", "--post-activate", dest="post_activate", default=None, help="Script executed after service is activated by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
     parser.add_option_group(group)
