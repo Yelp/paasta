@@ -153,15 +153,25 @@ def validate_options(parser, opts):
         # for --suggest-port mode.
         opts.enable_nagios = False
 
-    if opts.enable_puppet and not opts.puppet_root:
-        print "ERROR: Puppet is enabled but --puppet-root is not set!"
-        parser.print_usage()
-        sys.exit(1)
+    if opts.enable_puppet:
+        if not opts.puppet_root:
+            print "ERROR: Puppet is enabled but --puppet-root is not set!"
+            parser.print_usage()
+            sys.exit(1)
+        if not os.path.exists(opts.puppet_root):
+            print "ERROR: --puppet-root %s does not exist!" % opts.puppet_root
+            parser.print_usage()
+            sys.exit(1)
 
-    if opts.enable_nagios and not opts.nagios_root:
-        print "ERROR: Nagios is enabled but --nagios-root is not set!"
-        parser.print_usage()
-        sys.exit(1)
+    if opts.enable_nagios:
+        if not opts.nagios_root:
+            print "ERROR: Nagios is enabled but --nagios-root is not set!"
+            parser.print_usage()
+            sys.exit(1)
+        if not os.path.exists(opts.nagios_root):
+            print "ERROR: --nagios-root %s does not exist!" % opts.nagios_root
+            parser.print_usage()
+            sys.exit(1)
 
     if not opts.puppet_root and not opts.port:
         print "ERROR: Must provide either --puppet-root or --port!"
@@ -188,6 +198,7 @@ def validate_options(parser, opts):
 
 def setup_config_paths(puppet_root, nagios_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
+    assert os.path.exists(config.TEMPLATE_DIR)
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
 
@@ -246,13 +257,13 @@ def main(opts, args):
         return
 
     if opts.auto:
-        opts.port = "AUTO"
-        opts.status_port = "AUTO"
-        opts.vip = "AUTO"
-        opts.runas = "AUTO"
-        opts.runas_group = "AUTO"
-        opts.post_download = "AUTO"
-        opts.post_activate = "AUTO"
+        opts.port = opts.port or "AUTO"
+        opts.status_port = opts.status_port or "AUTO"
+        opts.vip = opts.vip or "AUTO"
+        opts.runas = opts.runas or "AUTO"
+        opts.runas_group = opts.runas_group or "AUTO"
+        opts.post_download = opts.post_download or "AUTO"
+        opts.post_activate = opts.post_activate or "AUTO"
 
     srvname = ask_srvname(opts.srvname)
     srv = Service(srvname)

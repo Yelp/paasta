@@ -22,6 +22,7 @@ class ValidateOptionsTestCase(T.TestCase):
         options = mock.Mock()
         options.enable_puppet = True
         options.puppet_root = None
+        options.enable_nagios = False # Disable checks we don't care about
         with T.assert_raises(SystemExit):
             wizard.validate_options(parser, options)
 
@@ -30,6 +31,7 @@ class ValidateOptionsTestCase(T.TestCase):
         options = mock.Mock()
         options.enable_nagios = True
         options.nagios_root = None
+        options.enable_puppet = False # Disable checks we don't care about
         with T.assert_raises(SystemExit):
             wizard.validate_options(parser, options)
 
