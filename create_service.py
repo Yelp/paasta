@@ -144,6 +144,12 @@ def ask_nagios_quetsions(contact_groups=None, contacts=None, include_ops=None):
         contacts = prompt.ask('Nagios contacts (individuals, comma-separated list)?')
     if include_ops is None:
         include_ops = prompt.yes_no('Nagios alerts ops?')
+
+    if not contact_groups and not contacts and not include_ops:
+        print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
+        print "Must provide someone to be alerted!"
+        sys.exit(2)
+
     return contact_groups, contacts, include_ops
 
 def parse_args():
@@ -252,10 +258,6 @@ def do_puppet_steps(srv, port, status_port, vip, runas=None, runas_group=None, p
 
 def do_nagios_steps(srv, port, vip, contact_groups=None, contacts=None, include_ops=None):
     contact_groups, contacts, include_ops = ask_nagios_quetsions(contact_groups, contacts, include_ops)
-    if not contact_groups and not contacts and not include_ops:
-        print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
-        print "Must provide someone to be alerted!"
-        sys.exit(2)
 
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
