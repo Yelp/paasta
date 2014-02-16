@@ -92,25 +92,40 @@ class SrvReaderWriter(object):
             if not contents.endswith('\n'):
                 f.write('\n')
 
-def ask_srvname():
-    srvname = None
-    while not srvname:
-        srvname = raw_input('Service name? ')
+def ask_srvname(srvname=None):
+    if srvname is None:
+        while not srvname:
+            srvname = raw_input('Service name? ')
     return srvname
 
-def ask_port():
-    port = prompt.ask('Port?', str(suggest_port()))
+def ask_port(port=None):
+    default = str(suggest_port())
+    if port == "AUTO":
+        port = default
+    elif port is None:
+        while not port:
+            port = prompt.ask('Port?', default)
     return port
 
-def ask_status_port(port):
-    status_port = prompt.ask('Status port?', str(int(port) + 1))
+def ask_status_port(port, status_port=None):
+    default = str(int(port) + 1)
+    if status_port == "AUTO":
+        status_port = default
+    elif status_port is None:
+        while not status_port:
+            status_port = prompt.ask('Status port?', default)
     return status_port
 
-def ask_vip():
-    if prompt.yes_no('Load Balanced?'):
-        vip = prompt.ask('VIP?', suggest_vip())
-    else:
-        vip = None
+def ask_vip(vip=None):
+    default = suggest_vip()
+    if vip == "AUTO":
+        vip = default
+    elif vip is None:
+        if prompt.yes_no('Load Balanced?'):
+            while not vip:
+                vip = prompt.ask('VIP?', default)
+        else:
+            vip = None
     return vip
 
 ### PROVIDE MECHANISM TO GET DECORATED EMPTY POST_* SCRIPTS --post-download '' / --post-download NONE
@@ -241,7 +256,7 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit(1)
 
-    if opts.vip and not opts.vip.startswith("vip"):
+    if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
         print "ERROR: --vip must start with 'vip'!"
         parser.print_usage()
         sys.exit(1)
@@ -313,22 +328,12 @@ def main(opts, args):
         print suggest_port()
         return
 
-    srvname = opts.srvname
-    if not srvname:
-        srvname = ask_srvname()
+    srvname = ask_srvname(opts.srvname)
     srv = Service(srvname)
 
-    port = opts.port
-    if not port:
-        port = ask_port()
-
-    status_port = opts.status_port
-    if not status_port:
-        status_port = ask_status_port(port)
-
-    vip = opts.vip
-    if not vip:
-        vip = ask_vip()
+    port = ask_port(opts.port)
+    status_port = ask_status_port(port, status_port=opts.status_port)
+    vip = ask_vip(opts.vip)
 
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
     if opts.enable_puppet:
