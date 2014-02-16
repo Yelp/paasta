@@ -128,9 +128,6 @@ def ask_vip(vip=None):
             vip = None
     return vip
 
-### PROVIDE MECHANISM TO GET DECORATED EMPTY POST_* SCRIPTS --post-download '' / --post-download NONE
-### --use-defaults WHICH WILL REQUIRE --post-download DEFAULT / --default-post-download(??)
-###     CAN CALL ASK_* DIRECTLY FROM PARSER.ADD_GROUP? PROBABLY NOT.
 def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None):
     """Surveys the user about the various entries in files/services/$srvname"""
     default_runas = "batch"
