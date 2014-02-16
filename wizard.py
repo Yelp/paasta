@@ -87,7 +87,7 @@ def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_downl
 
     return runas, runas_group, post_download, post_activate
 
-def ask_nagios_quetsions(contact_groups=None, contacts=None, include_ops=None):
+def ask_nagios_questions(contact_groups=None, contacts=None, include_ops=None):
     if not contact_groups and not contacts:
         contact_groups = prompt.ask('Nagios contact_groups (comma-separated list)?')
         contacts = prompt.ask('Nagios contacts (individuals, comma-separated list)?')
@@ -265,7 +265,7 @@ def main(opts, args):
     if opts.enable_puppet:
         runas, runas_group, post_download, post_activate = ask_puppet_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate)
     if opts.enable_nagios:
-        contact_groups, contacts, include_ops = ask_nagios_quetsions(opts.contact_groups, opts.contacts, opts.include_ops)
+        contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
 
     if opts.enable_puppet:
         do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate)
