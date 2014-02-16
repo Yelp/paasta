@@ -172,8 +172,8 @@ def parse_args():
     group = optparse.OptionGroup(parser, "Puppet configuration for the service being added. User will be prompted for anything left unspecified")
     group.add_option("-r", "--runas", dest="runas", default=None, help="UNIX user which will run service")
     group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service")
-    group.add_option("-d", "--post-download", dest="post_download", default=None, help="Script executed after service is downloaded by target machine. (Probably easier to do this by hand if the script is complex.)")
-    group.add_option("-a", "--post-activate", dest="post_activate", default=None, help="Script executed after service is activated by target machine. (Probably easier to do this by hand if the script is complex.)")
+    group.add_option("-d", "--post-download", dest="post_download", default=None, help="Script executed after service is downloaded by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
+    group.add_option("-a", "--post-activate", dest="post_activate", default=None, help="Script executed after service is activated by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
     parser.add_option_group(group)
 
     group = optparse.OptionGroup(parser, "Other subcommands (by default, configure everything I can)")
