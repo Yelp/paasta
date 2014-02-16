@@ -327,13 +327,13 @@ def main(opts, args):
         return
 
     if opts.auto:
-        opts.port = "AUTO"
-        opts.status_port = "AUTO"
-        opts.vip = "AUTO"
-        opts.runas = "AUTO"
-        opts.runas_group = "AUTO"
-        opts.post_download = "AUTO"
-        opts.post_activate = "AUTO"
+        opts.port = opts.port or "AUTO"
+        opts.status_port = opts.status_port or "AUTO"
+        opts.vip = opts.vip or "AUTO"
+        opts.runas = opts.runas or "AUTO"
+        opts.runas_group = opts.runas_group or "AUTO"
+        opts.post_download = opts.post_download or "AUTO"
+        opts.post_activate = opts.post_activate or "AUTO"
 
     srvname = ask_srvname(opts.srvname)
     srv = Service(srvname)
