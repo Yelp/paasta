@@ -241,8 +241,7 @@ def setup_config_paths(puppet_root, nagios_root):
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
 
-def do_puppet_steps(srv, port, status_port, vip, runas=None, runas_group=None, post_download=None, post_activate=None):
-    runas, runas_group, post_download, post_activate = ask_puppet_questions(srv.name, port, runas, runas_group, post_download, post_activate)
+def do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate):
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runas_group)
     srv.io.write_file('port', port)
@@ -256,9 +255,7 @@ def do_puppet_steps(srv, port, status_port, vip, runas=None, runas_group=None, p
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srv, port, vip, contact_groups=None, contacts=None, include_ops=None):
-    contact_groups, contacts, include_ops = ask_nagios_quetsions(contact_groups, contacts, include_ops)
-
+def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops):
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
@@ -315,11 +312,16 @@ def main(opts, args):
     if not vip:
         vip = ask_vip()
 
+    # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
     if opts.enable_puppet:
-        do_puppet_steps(srv, port, status_port, vip, opts.runas, opts.runas_group, opts.post_download, opts.post_activate)
-
+        runas, runas_group, post_download, post_activate = ask_puppet_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate)
     if opts.enable_nagios:
-        do_nagios_steps(srv, port, vip, opts.contact_groups, opts.contacts, opts.include_ops)
+        contact_groups, contacts, include_ops = ask_nagios_quetsions(opts.contact_groups, opts.contacts, opts.include_ops)
+
+    if opts.enable_puppet:
+        do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate)
+    if opts.enable_nagios:
+        do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops)
 
 
 if __name__ == '__main__':
