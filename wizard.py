@@ -5,11 +5,11 @@ import os
 import os.path
 import sys
 
-from service_setup import config
-from service_setup import paths
-from service_setup import prompt
-from service_setup.autosuggest import suggest_port, suggest_vip
-from service_setup.template import Template
+from service_wizard import config
+from service_wizard import paths
+from service_wizard import prompt
+from service_wizard.autosuggest import suggest_port, suggest_vip
+from service_wizard.template import Template
 
 
 class Service(object):
