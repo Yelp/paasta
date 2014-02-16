@@ -47,7 +47,7 @@ def ask_vip(vip=None):
             vip = None
     return vip
 
-def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None):
+def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
     """Surveys the user about the various entries in files/services/$srvname"""
     default_runas = "batch"
     if runas == "AUTO":
@@ -85,7 +85,21 @@ def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_downl
                 default_post_activate,
             )
 
-    return runas, runas_group, post_download, post_activate
+    default_runs_on = ''
+    if runs_on is None:
+        runs_on = prompt.ask(
+            'Machines to run on (comma-separated short hostnames)?',
+            default_runs_on,
+        )
+
+    default_deploys_on = ''
+    if deploys_on is None:
+        deploys_on = prompt.ask(
+            'Machines to deploy on (comma-separated short hostnames)?',
+            default_deploys_on,
+        )
+
+    return runas, runas_group, post_download, post_activate, runs_on, deploys_on
 
 def ask_nagios_questions(contact_groups=None, contacts=None, include_ops=None):
     if not contact_groups and not contacts:
@@ -130,6 +144,8 @@ def parse_args():
     group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default")
     group.add_option("-d", "--post-download", dest="post_download", default=None, help="Script executed after service is downloaded by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
     group.add_option("-a", "--post-activate", dest="post_activate", default=None, help="Script executed after service is activated by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
+    group.add_option("-S", "--runs-on", dest="runs_on", default=None, help="Comma-separated list of machines where the service runs. Use shortnames appropriate for Nagios; I will translated to FQDN as needed.")
+    group.add_option("-D", "--deploys-on", dest="deploys_on", default=None, help="Comma-separated list of machines where the service runs. Use shortnames appropriate for Nagios; I will translated to FQDN as needed.")
     parser.add_option_group(group)
 
     group = optparse.OptionGroup(parser, "Other subcommands (by default, configure everything I can)")
@@ -202,7 +218,7 @@ def setup_config_paths(puppet_root, nagios_root):
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
 
-def do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate):
+def do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on):
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runas_group)
     srv.io.write_file('port', port)
@@ -274,12 +290,12 @@ def main(opts, args):
 
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
     if opts.enable_puppet:
-        runas, runas_group, post_download, post_activate = ask_puppet_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate)
+        runas, runas_group, post_download, post_activate, runs_on, deploys_on = ask_puppet_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.runs_on, opts.deploys_on)
     if opts.enable_nagios:
         contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
 
     if opts.enable_puppet:
-        do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate)
+        do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on)
     if opts.enable_nagios:
         do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops)
 
