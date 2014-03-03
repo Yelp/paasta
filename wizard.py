@@ -225,6 +225,8 @@ def do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_downlo
     srv.io.write_file('status_port', status_port)
     srv.io.write_file('post-download', post_download, executable=True)
     srv.io.write_file('post-activate', post_activate, executable=True)
+    ### write runs_on
+    ### write deploys_on
     if vip is not None:
         srv.io.write_file('vip', vip)
         srv.io.write_file('lb.yaml', '')
