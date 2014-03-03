@@ -2,7 +2,7 @@ from os import path
 # TODO: Use pystache instead of string.Template?
 import string
 
-from service_setup import config
+from service_wizard import config
 
 class NoSuchTemplate(Exception): pass
 
