@@ -2,8 +2,8 @@ import operator
 import os
 import os.path
 
-from service_setup import config
-from service_setup import paths
+from service_wizard import config
+from service_wizard import paths
 
 def suggest_vip():
     """Suggest the most under-utilized vip"""

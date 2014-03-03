@@ -3,9 +3,9 @@ from contextlib import nested
 import mock
 import testify as T
 
-import create_service
-from service_setup import autosuggest
-from service_setup import config
+import wizard
+from service_wizard import autosuggest
+from service_wizard import config
 
 
 class SrvReaderWriterTestCase(T.TestCase):
@@ -13,8 +13,8 @@ class SrvReaderWriterTestCase(T.TestCase):
     example of how to interact with the Srv* classes."""
     @T.setup
     def init_service(self):
-        paths = create_service.paths.SrvPathBuilder("fake_srvpathbuilder")
-        self.srw = create_service.SrvReaderWriter(paths)
+        paths = wizard.paths.SrvPathBuilder("fake_srvpathbuilder")
+        self.srw = wizard.SrvReaderWriter(paths)
 
 class ValidateOptionsTestCase(T.TestCase):
     def test_enable_puppet_requires_puppet_root(self):
@@ -24,7 +24,7 @@ class ValidateOptionsTestCase(T.TestCase):
         options.puppet_root = None
         options.enable_nagios = False # Disable checks we don't care about
         with T.assert_raises(SystemExit):
-            create_service.validate_options(parser, options)
+            wizard.validate_options(parser, options)
 
     def test_enable_nagios_requires_nagios_root(self):
         parser = mock.Mock()
@@ -33,7 +33,7 @@ class ValidateOptionsTestCase(T.TestCase):
         options.nagios_root = None
         options.enable_puppet = False # Disable checks we don't care about
         with T.assert_raises(SystemExit):
-            create_service.validate_options(parser, options)
+            wizard.validate_options(parser, options)
 
 class AutosuggestTestCase(T.TestCase):
     def test_suggest_port(self):
@@ -66,7 +66,7 @@ class AutosuggestTestCase(T.TestCase):
         mock_get_port_from_file = mock.Mock(side_effect=get_port_from_file_side_effect)
         with nested(
             mock.patch("os.walk", mock_walk),
-            mock.patch("service_setup.autosuggest._get_port_from_file", mock_get_port_from_file),
+            mock.patch("service_wizard.autosuggest._get_port_from_file", mock_get_port_from_file),
         ):
             actual = autosuggest.suggest_port()
         # Sanity check: our mock was called once for each legit port file in

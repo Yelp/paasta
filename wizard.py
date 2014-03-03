@@ -2,95 +2,14 @@
 
 import optparse
 import os
-import os.path
 import sys
 
-from service_setup import config
-from service_setup import paths
-from service_setup import prompt
-from service_setup.autosuggest import suggest_port, suggest_vip
-from service_setup.template import Template
+from service_wizard import config
+from service_wizard import prompt
+from service_wizard.autosuggest import suggest_port, suggest_vip
+from service_wizard.service import Service
+from service_wizard.template import Template
 
-
-class Service(object):
-
-    @classmethod
-    def from_files(cls, srvname):
-        srv = cls(srvname)
-        for f in paths.ALL_FILES:
-            setattr(srv, f.replace('-','_').replace('.','_'),
-                    srv.io.read_file(f))
-        return srv
-
-    def __init__(self, name):
-        self.name = name
-        self.paths = paths.SrvPathBuilder(name)
-        self.io = SrvReaderWriter(self.paths)
-
-class SrvReaderWriter(object):
-
-    def __init__(self, path_builder):
-        self.paths = path_builder
-
-    def read_file(self, filename):
-        return self._read(self.paths.to_file(filename))
-
-    def write_file(self, filename, contents, executable=False):
-        if not os.path.exists(self.paths.root_dir):
-            os.makedirs(self.paths.root_dir)
-        self._write(self.paths.to_file(filename),
-                    contents,
-                    executable=executable)
-
-    def read_healthcheck(self):
-        return self._read(self.paths.to_file)
-
-    def write_healthcheck(self, contents):
-        self._write(self.paths.healthcheck, contents, executable=True)
-
-    def append_servicegroup(self, contents):
-        self._append(self.paths.servicegroup, contents)
-
-    def append_hostgroups(self, contents, vip=False):
-        filename = 'soa.cfg'
-        if vip:
-            filename = 'vips.cfg'
-        for root, dirs, files in os.walk(self.paths.hostgroup):
-            if root.endswith('hostgroups') and filename in files:
-                self._append(os.path.join(root, filename), contents)
-
-    def write_check(self, contents):
-        self._write(self.paths.check, contents)
-
-    def append_check(self, contents):
-        self._append(self.paths.check, contents)
-
-    def _read(self, path):
-        if not os.path.exists(path):
-            return ''
-        with open(path, 'r') as f:
-            return f.read()
-
-    def _write(self, path, contents, executable=False):
-        with open(path, 'w') as f:
-            if executable and not contents:
-                f.write('# Do nothing\n')
-            else:
-                contents = str(contents)
-                f.write(contents)
-                # Add trailing newline
-                if not contents.endswith('\n'):
-                    f.write('\n')
-        if executable:
-            os.chmod(path, 0755)
-
-    def _append(self, path, contents):
-        with open(path, 'a') as f:
-            contents = str(contents)
-            f.write(contents)
-            # Add trailing newline
-            if not contents.endswith('\n'):
-                f.write('\n')
 
 def ask_srvname(srvname=None):
     if srvname is None:
@@ -168,7 +87,7 @@ def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_downl
 
     return runas, runas_group, post_download, post_activate
 
-def ask_nagios_quetsions(contact_groups=None, contacts=None, include_ops=None):
+def ask_nagios_questions(contact_groups=None, contacts=None, include_ops=None):
     if not contact_groups and not contacts:
         contact_groups = prompt.ask('Nagios contact_groups (comma-separated list)?')
         contacts = prompt.ask('Nagios contacts (individuals, comma-separated list)?')
@@ -357,7 +276,7 @@ def main(opts, args):
     if opts.enable_puppet:
         runas, runas_group, post_download, post_activate = ask_puppet_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate)
     if opts.enable_nagios:
-        contact_groups, contacts, include_ops = ask_nagios_quetsions(opts.contact_groups, opts.contacts, opts.include_ops)
+        contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
 
     if opts.enable_puppet:
         do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate)
