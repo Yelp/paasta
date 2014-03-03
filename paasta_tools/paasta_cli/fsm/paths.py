@@ -10,8 +10,17 @@ HOSTGROUPS = os.path.join('etc', 'datacenters')
 CHECKS = os.path.join('etc', 'shared', 'prod-and-stage', 'services')
 
 ALL_FILES = set([
-    'runas', 'runas_group', 'port', 'status_port', 'lb.yaml', 'vip',
-    'post-download', 'post-activate'])
+    'runas',
+    'runas_group',
+    'port',
+    'status_port',
+    'lb.yaml',
+    'vip'
+    'post-download',
+    'post-activate',
+    # service.yaml is a lie until #67413 is complete
+    'service.yaml',
+])
 
 
 class SrvPathBuilder(object):
