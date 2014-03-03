@@ -92,41 +92,81 @@ class SrvReaderWriter(object):
             if not contents.endswith('\n'):
                 f.write('\n')
 
-def ask_srvname():
-    srvname = None
-    while not srvname:
-        srvname = raw_input('Service name? ')
+def ask_srvname(srvname=None):
+    if srvname is None:
+        while not srvname:
+            srvname = raw_input('Service name? ')
     return srvname
 
-def ask_port():
-    port = prompt.ask('Port?', str(suggest_port()))
+def ask_port(port=None):
+    default = str(suggest_port())
+    if port == "AUTO":
+        port = default
+    elif port is None:
+        while not port:
+            port = prompt.ask('Port?', default)
     return port
 
-def ask_vip():
-    if prompt.yes_no('Load Balanced?'):
-        vip = prompt.ask('VIP?', suggest_vip())
-    else:
-        vip = None
+def ask_status_port(port, status_port=None):
+    default = str(int(port) + 1)
+    if status_port == "AUTO":
+        status_port = default
+    elif status_port is None:
+        while not status_port:
+            status_port = prompt.ask('Status port?', default)
+    return status_port
+
+def ask_vip(vip=None):
+    default = suggest_vip()
+    if vip == "AUTO":
+        vip = default
+    elif vip is None:
+        if prompt.yes_no('Load Balanced?'):
+            while not vip:
+                vip = prompt.ask('VIP?', default)
+        else:
+            vip = None
     return vip
 
-def ask_puppet_questions(srvname, port):
+def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None):
     """Surveys the user about the various entries in files/services/$srvname"""
-    post_download = None
-    post_activate = None
-    runas = prompt.ask('Run as user?', 'batch')
-    runasgroup = prompt.ask('Run as group?', runas)
-    status_port = prompt.ask('Status port?', str(int(port) + 1))
+    default_runas = "batch"
+    if runas == "AUTO":
+        runas = default_runas
+    if runas is None:
+        runas = prompt.ask('Run as user?', default_runas)
 
-    if prompt.yes_no('Any post-download actions?'):
-        post_download = prompt.ask(
-            'Input post-download script',
-            Template('post_download').substitute({'srvname': srvname}))
+    default_runas_group = runas
+    if runas_group == "AUTO":
+        runas_group = default_runas_group
+    if runas_group is None:
+        runas_group = prompt.ask('Run as group?', default_runas_group)
 
-    if prompt.yes_no('Any post-activate actions?'):
-        post_activate = prompt.ask(
-            'Input post-activate script',
-            Template('post_activate').substitute({'srvname': srvname}))
-    return runas, runasgroup, status_port, post_download, post_activate
+    default_post_download = Template('post_download').substitute({'srvname': srvname})
+    if post_download == "NONE":
+        post_download = ""
+    elif post_download == "AUTO":
+        post_download = default_post_download
+    elif post_download is None:
+        if prompt.yes_no('Any post-download actions?'):
+            post_download = prompt.ask(
+                'Input post-download script',
+                default_post_download,
+            )
+
+    default_post_activate = Template('post_activate').substitute({'srvname': srvname})
+    if post_activate == "NONE":
+        post_activate = ""
+    elif post_activate == "AUTO":
+        post_activate = default_post_activate
+    if post_activate is None:
+        if prompt.yes_no('Any post-activate actions?'):
+            post_activate = prompt.ask(
+                'Input post-activate script',
+                default_post_activate,
+            )
+
+    return runas, runas_group, post_download, post_activate
 
 def ask_nagios_quetsions(contact_groups=None, contacts=None, include_ops=None):
     if not contact_groups and not contacts:
@@ -134,6 +174,12 @@ def ask_nagios_quetsions(contact_groups=None, contacts=None, include_ops=None):
         contacts = prompt.ask('Nagios contacts (individuals, comma-separated list)?')
     if include_ops is None:
         include_ops = prompt.yes_no('Nagios alerts ops?')
+
+    if not contact_groups and not contacts and not include_ops:
+        print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
+        print "Must provide someone to be alerted!"
+        sys.exit(2)
+
     return contact_groups, contacts, include_ops
 
 def parse_args():
@@ -143,17 +189,28 @@ def parse_args():
     group.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
     group.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
     group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
+    group.add_option("-A", "--auto", dest="auto", default=False, action="store_true", help="Use defaults instead of prompting when default value is available")
     parser.add_option_group(group)
 
-    group = optparse.OptionGroup(parser, "Configuring the service being added. User will be prompted for anything left unspecified")
+    group = optparse.OptionGroup(parser, "General configuration for the service being added. User will be prompted for anything left unspecified")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
-    group.add_option("-o", "--port", dest="port", default=None, help="Port used by service")
-    group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1')")
-    ###group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service")
-    group.add_option("-g", "--contact-groups", dest="contact_groups", default=None, help="Comma-separated list of Nagios groups to alert")
-    group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If --contacts or --contact-groups specified, user will not be prompted for either option.")
+    group.add_option("-o", "--port", dest="port", default=None, help="Port used by service. If AUTO, use default")
+    group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service. If AUTO, use default")
+    group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1'). If AUTO, use default")
+    parser.add_option_group(group)
+
+    group = optparse.OptionGroup(parser, "Nagios configuration for the service being added. User will be prompted for anything left unspecified")
+    group.add_option("-C", "--contact-groups", dest="contact_groups", default=None, help="Comma-separated list of Nagios groups to alert")
+    group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If either --contacts or --contact-groups specified, user will not be prompted for either option.")
     group.add_option("-i", "--include-ops", dest="include_ops", default=None, action="store_true", help="Operations on-call shall be alerted")
     group.add_option("-x", "--exclude-ops", dest="exclude_ops", default=None, action="store_true", help="Operations on-call shall NOT be alerted. If neither --include-ops nor --exclude-ops specified, user will be prompted.")
+    parser.add_option_group(group)
+
+    group = optparse.OptionGroup(parser, "Puppet configuration for the service being added. User will be prompted for anything left unspecified")
+    group.add_option("-r", "--runas", dest="runas", default=None, help="UNIX user which will run service. If AUTO, use default")
+    group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default")
+    group.add_option("-d", "--post-download", dest="post_download", default=None, help="Script executed after service is downloaded by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
+    group.add_option("-a", "--post-activate", dest="post_activate", default=None, help="Script executed after service is activated by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
     parser.add_option_group(group)
 
     group = optparse.OptionGroup(parser, "Other subcommands (by default, configure everything I can)")
@@ -177,15 +234,25 @@ def validate_options(parser, opts):
         # for --suggest-port mode.
         opts.enable_nagios = False
 
-    if opts.enable_puppet and not opts.puppet_root:
-        print "ERROR: Puppet is enabled but --puppet-root is not set!"
-        parser.print_usage()
-        sys.exit(1)
+    if opts.enable_puppet:
+        if not opts.puppet_root:
+            print "ERROR: Puppet is enabled but --puppet-root is not set!"
+            parser.print_usage()
+            sys.exit(1)
+        if not os.path.exists(opts.puppet_root):
+            print "ERROR: --puppet-root %s does not exist!" % opts.puppet_root
+            parser.print_usage()
+            sys.exit(1)
 
-    if opts.enable_nagios and not opts.nagios_root:
-        print "ERROR: Nagios is enabled but --nagios-root is not set!"
-        parser.print_usage()
-        sys.exit(1)
+    if opts.enable_nagios:
+        if not opts.nagios_root:
+            print "ERROR: Nagios is enabled but --nagios-root is not set!"
+            parser.print_usage()
+            sys.exit(1)
+        if not os.path.exists(opts.nagios_root):
+            print "ERROR: --nagios-root %s does not exist!" % opts.nagios_root
+            parser.print_usage()
+            sys.exit(1)
 
     if not opts.puppet_root and not opts.port:
         print "ERROR: Must provide either --puppet-root or --port!"
@@ -197,7 +264,7 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit(1)
 
-    if opts.vip and not opts.vip.startswith("vip"):
+    if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
         print "ERROR: --vip must start with 'vip'!"
         parser.print_usage()
         sys.exit(1)
@@ -212,13 +279,13 @@ def validate_options(parser, opts):
 
 def setup_config_paths(puppet_root, nagios_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
+    assert os.path.exists(config.TEMPLATE_DIR)
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
 
-def do_puppet_steps(srv, port, vip):
-    runas, runasgroup, status_port, post_download, post_activate = ask_puppet_questions(srv.name, port)
+def do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate):
     srv.io.write_file('runas', runas)
-    srv.io.write_file('runas_group', runasgroup)
+    srv.io.write_file('runas_group', runas_group)
     srv.io.write_file('port', port)
     srv.io.write_file('status_port', status_port)
     srv.io.write_file('post-download', post_download, executable=True)
@@ -230,13 +297,7 @@ def do_puppet_steps(srv, port, vip):
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srv, port, vip, contact_groups=None, contacts=None, include_ops=None):
-    contact_groups, contacts, include_ops = ask_nagios_quetsions(contact_groups, contacts, include_ops)
-    if not contact_groups and not contacts and not include_ops:
-        print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
-        print "Must provide someone to be alerted!"
-        sys.exit(2)
-
+def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops):
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
@@ -276,24 +337,32 @@ def main(opts, args):
         print suggest_port()
         return
 
-    srvname = opts.srvname
-    if not srvname:
-        srvname = ask_srvname()
+    if opts.auto:
+        opts.port = opts.port or "AUTO"
+        opts.status_port = opts.status_port or "AUTO"
+        opts.vip = opts.vip or "AUTO"
+        opts.runas = opts.runas or "AUTO"
+        opts.runas_group = opts.runas_group or "AUTO"
+        opts.post_download = opts.post_download or "AUTO"
+        opts.post_activate = opts.post_activate or "AUTO"
+
+    srvname = ask_srvname(opts.srvname)
     srv = Service(srvname)
 
-    port = opts.port
-    if not port:
-        port = ask_port()
+    port = ask_port(opts.port)
+    status_port = ask_status_port(port, status_port=opts.status_port)
+    vip = ask_vip(opts.vip)
 
-    vip = opts.vip
-    if not vip:
-        vip = ask_vip()
+    # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
+    if opts.enable_puppet:
+        runas, runas_group, post_download, post_activate = ask_puppet_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate)
+    if opts.enable_nagios:
+        contact_groups, contacts, include_ops = ask_nagios_quetsions(opts.contact_groups, opts.contacts, opts.include_ops)
 
     if opts.enable_puppet:
-        do_puppet_steps(srv, port, vip)
-
+        do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate)
     if opts.enable_nagios:
-        do_nagios_steps(srv, port, vip, opts.contact_groups, opts.contacts, opts.include_ops)
+        do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops)
 
 
 if __name__ == '__main__':
