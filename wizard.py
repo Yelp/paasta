@@ -20,6 +20,10 @@ def ask_srvname(srvname=None):
     return srvname
 
 def ask_port(port=None):
+    # Bail out immediately if port provided
+    if port:
+        return port
+
     default = str(suggest_port())
     if port == "AUTO":
         port = default
@@ -56,8 +60,10 @@ def get_service_yaml_contents(runs_on, deploys_on):
     }
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
-def ask_yelpsoa_config_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
+def ask_yelpsoa_config_questions(srvname, port, status_port, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
     """Surveys the user about the various entries in files/services/$srvname"""
+    status_port = ask_status_port(port, status_port)
+
     default_runas = "batch"
     if runas == "AUTO":
         runas = default_runas
@@ -108,7 +114,7 @@ def ask_yelpsoa_config_questions(srvname, port, runas=None, runas_group=None, po
             default_deploys_on,
         )
 
-    return runas, runas_group, post_download, post_activate, runs_on, deploys_on
+    return status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on
 
 def ask_nagios_questions(contact_groups=None, contacts=None, include_ops=None):
     if not contact_groups and not contacts:
@@ -202,13 +208,13 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit(1)
 
-    if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
-        print "ERROR: --vip must start with 'vip'!"
+    if not opts.yelpsoa_config_root and not opts.vip:
+        print "ERROR: Must provide either --yelpsoa-config-root or --vip!"
         parser.print_usage()
         sys.exit(1)
 
-    if opts.enable_nagios and not opts.yelpsoa_config_root and not opts.vip:
-        print "ERROR: Must provide either --yelpsoa-config-root or --vip!"
+    if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
+        print "ERROR: --vip must start with 'vip'!"
         parser.print_usage()
         sys.exit(1)
 
@@ -295,12 +301,11 @@ def main(opts, args):
     srv = Service(srvname)
 
     port = ask_port(opts.port)
-    status_port = ask_status_port(port, status_port=opts.status_port)
     vip = ask_vip(opts.vip)
 
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
     if opts.enable_yelpsoa_config:
-        runas, runas_group, post_download, post_activate, runs_on, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.runs_on, opts.deploys_on)
+        status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.runs_on, opts.deploys_on)
     if opts.enable_nagios:
         contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
 
