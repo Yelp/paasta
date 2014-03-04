@@ -20,7 +20,8 @@ def ask_srvname(srvname=None):
     return srvname
 
 def ask_port(port=None):
-    # Bail out immediately if port provided
+    # Bail out immediately if port provided to prevent an unneeded and
+    # potentially explosive call to suggest_port()
     if port:
         return port
 
