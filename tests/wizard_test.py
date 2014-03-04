@@ -17,11 +17,22 @@ class SrvReaderWriterTestCase(T.TestCase):
         self.srw = wizard.SrvReaderWriter(paths)
 
 class ValidateOptionsTestCase(T.TestCase):
+    def test_enable_yelpsoa_config_requires_yelpsoa_config_root(self):
+        parser = mock.Mock()
+        options = mock.Mock()
+        options.enable_yelpsoa_config = True
+        options.yelpsoa_config_root = None
+        options.enable_puppet = False # Disable checks we don't care about
+        options.enable_nagios = False # Disable checks we don't care about
+        with T.assert_raises(SystemExit):
+            wizard.validate_options(parser, options)
+
     def test_enable_puppet_requires_puppet_root(self):
         parser = mock.Mock()
         options = mock.Mock()
         options.enable_puppet = True
         options.puppet_root = None
+        options.enable_yelpsoa_config = False # Disable checks we don't care about
         options.enable_nagios = False # Disable checks we don't care about
         with T.assert_raises(SystemExit):
             wizard.validate_options(parser, options)
@@ -31,6 +42,7 @@ class ValidateOptionsTestCase(T.TestCase):
         options = mock.Mock()
         options.enable_nagios = True
         options.nagios_root = None
+        options.enable_yelpsoa_config = False # Disable checks we don't care about
         options.enable_puppet = False # Disable checks we don't care about
         with T.assert_raises(SystemExit):
             wizard.validate_options(parser, options)
@@ -40,7 +52,7 @@ class AutosuggestTestCase(T.TestCase):
         # mock.patch was very confused by the config module, so I'm doing it
         # this way. One more reason to disapprove of this global config module
         # scheme.
-        config.PUPPET_ROOT = "fake_puppet_root"
+        config.YELPSOA_CONFIG_ROOT = "fake_puppet_root"
 
         walk_return = [(
             "fake_root",

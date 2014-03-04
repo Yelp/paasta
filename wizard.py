@@ -56,7 +56,7 @@ def get_service_yaml_contents(runs_on, deploys_on):
     }
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
-def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
+def ask_yelpsoa_config_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
     """Surveys the user about the various entries in files/services/$srvname"""
     default_runas = "batch"
     if runas == "AUTO":
@@ -131,6 +131,8 @@ def parse_args():
     group.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
     group.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
     group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
+    group.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout")
+    group.add_option("-Y", "--disable-yelpsoa-config", dest="enable_yelpsoa_config", default=True, action="store_false", help="Don't run steps related to yelpsoa-configs")
     group.add_option("-A", "--auto", dest="auto", default=False, action="store_true", help="Use defaults instead of prompting when default value is available")
     parser.add_option_group(group)
 
@@ -157,10 +159,6 @@ def parse_args():
     group.add_option("-D", "--deploys-on", dest="deploys_on", default=None, help="Comma-separated list of machines where the service runs. Use shortnames appropriate for Nagios; I will translated to FQDN as needed.")
     parser.add_option_group(group)
 
-    group = optparse.OptionGroup(parser, "Other subcommands (by default, configure everything I can)")
-    group.add_option("-Z", "--suggest-port", dest="command_suggest_port", default=None, action="store_true", help="Print next unused port and exit.")
-    parser.add_option_group(group)
-
     opts, args = parser.parse_args()
     validate_options(parser, opts)
     return opts, args
@@ -169,14 +167,15 @@ def validate_options(parser, opts):
     """Does sys.exit() if an invalid combination of options is specified.
     Otherwise returns None (implicitly)."""
 
-    if opts.command_suggest_port:
-        if not opts.puppet_root:
-            print "ERROR: --suggest-port requires --puppet-root"
+    if opts.enable_yelpsoa_config:
+        if not opts.yelpsoa_config_root:
+            print "ERROR: yelpsoa-configs is enabled but --yelpsoa-config-root is not set!"
             parser.print_usage()
             sys.exit(1)
-        # This effectively disables some checks below which we don't care about
-        # for --suggest-port mode.
-        opts.enable_nagios = False
+        if not os.path.exists(opts.yelpsoa_config_root):
+            print "ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root
+            parser.print_usage()
+            sys.exit(1)
 
     if opts.enable_puppet:
         if not opts.puppet_root:
@@ -198,18 +197,18 @@ def validate_options(parser, opts):
             parser.print_usage()
             sys.exit(1)
 
-    if not opts.puppet_root and not opts.port:
-        print "ERROR: Must provide either --puppet-root or --port!"
-        parser.print_usage()
-        sys.exit(1)
-
-    if not opts.puppet_root and not opts.vip:
-        print "ERROR: Must provide either --puppet-root or --vip!"
+    if not opts.yelpsoa_config_root and not opts.port:
+        print "ERROR: Must provide either --yelpsoa-config-root or --port!"
         parser.print_usage()
         sys.exit(1)
 
     if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
         print "ERROR: --vip must start with 'vip'!"
+        parser.print_usage()
+        sys.exit(1)
+
+    if opts.enable_nagios and not opts.yelpsoa_config_root and not opts.vip:
+        print "ERROR: Must provide either --yelpsoa-config-root or --vip!"
         parser.print_usage()
         sys.exit(1)
 
@@ -221,13 +220,14 @@ def validate_options(parser, opts):
         if opts.exclude_ops:
             opts.include_ops = False
 
-def setup_config_paths(puppet_root, nagios_root):
+def setup_config_paths(yelpsoa_config_root, puppet_root, nagios_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
     assert os.path.exists(config.TEMPLATE_DIR)
+    config.YELPSOA_CONFIG_ROOT = yelpsoa_config_root
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
 
-def do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on):
+def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on):
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runas_group)
     srv.io.write_file('port', port)
@@ -239,6 +239,9 @@ def do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_downlo
     if vip is not None:
         srv.io.write_file('vip', vip)
         srv.io.write_file('lb.yaml', '')
+
+def do_puppet_steps(srv, port, vip):
+    if vip is not None:
         srv.io.write_healthcheck(
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
@@ -277,11 +280,7 @@ def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops):
 
 
 def main(opts, args):
-    setup_config_paths(opts.puppet_root, opts.nagios_root)
-
-    if opts.command_suggest_port:
-        print suggest_port()
-        return
+    setup_config_paths(opts.yelpsoa_config_root, opts.puppet_root, opts.nagios_root)
 
     if opts.auto:
         opts.port = opts.port or "AUTO"
@@ -300,13 +299,15 @@ def main(opts, args):
     vip = ask_vip(opts.vip)
 
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
-    if opts.enable_puppet:
-        runas, runas_group, post_download, post_activate, runs_on, deploys_on = ask_puppet_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.runs_on, opts.deploys_on)
+    if opts.enable_yelpsoa_config:
+        runas, runas_group, post_download, post_activate, runs_on, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.runs_on, opts.deploys_on)
     if opts.enable_nagios:
         contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
 
+    if opts.enable_yelpsoa_config:
+        do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on)
     if opts.enable_puppet:
-        do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on)
+        do_puppet_steps(srv, port, vip)
     if opts.enable_nagios:
         do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops)
 
