@@ -4,6 +4,8 @@ import optparse
 import os
 import sys
 
+import yaml
+
 from service_wizard import config
 from service_wizard import prompt
 from service_wizard.autosuggest import suggest_port, suggest_vip
@@ -46,6 +48,13 @@ def ask_vip(vip=None):
         else:
             vip = None
     return vip
+
+def get_service_yaml_contents(runs_on, deploys_on):
+    contents = {
+        "runs_on": runs_on.split(","),
+        "deployed_to": deploys_on.split(","),
+    }
+    return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
 def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
     """Surveys the user about the various entries in files/services/$srvname"""
@@ -225,7 +234,8 @@ def do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_downlo
     srv.io.write_file('status_port', status_port)
     srv.io.write_file('post-download', post_download, executable=True)
     srv.io.write_file('post-activate', post_activate, executable=True)
-    srv.io.write_file('service.yaml', "runs_on: %s. deploys_on: %s." % (runs_on, deploys_on))
+    service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on)
+    srv.io.write_file('service.yaml', service_yaml_contents)
     if vip is not None:
         srv.io.write_file('vip', vip)
         srv.io.write_file('lb.yaml', '')

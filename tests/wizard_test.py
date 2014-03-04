@@ -76,6 +76,36 @@ class AutosuggestTestCase(T.TestCase):
         # What we came here for: the actual output of the function under test
         T.assert_equal(actual, 13002 + 1) # highest port + 1
 
+class GetServiceYamlContentsTestCase(T.TestCase):
+    def test_empty(self):
+        runs_on = ""
+        deploys_on = ""
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+
+        # Verify entire lines, e.g. to make sure that '---' appears as its own
+        # line and not as part of 'crazy---service----name'.
+        T.assert_in("---\n", actual)
+        # I think a blank line would be better but I can't figure out how to
+        # get pyyaml to emit that.
+        T.assert_in("runs_on:\n- ''", actual)
+        T.assert_in("deployed_to:\n- ''", actual)
+
+    def test_one_runs_on(self):
+        runs_on = "runs_on1"
+        deploys_on = ""
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+
+        expected = "runs_on:\n- %s" % runs_on
+        T.assert_in(expected, actual)
+
+    def test_two_runs_on(self):
+        runs_on = "runs_on1,runs_on2"
+        deploys_on = ""
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+
+        expected = "runs_on:\n- %s\n- %s" % tuple(runs_on.split(","))
+        T.assert_in(expected, actual)
+
 
 if __name__ == "__main__":
     T.run()
