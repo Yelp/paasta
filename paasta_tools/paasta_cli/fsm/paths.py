@@ -2,7 +2,6 @@ import os.path
 
 from service_wizard import config
 
-SERVICE_FILES = os.path.join('modules', 'yelp_soa', 'files', 'services')
 HEALTHCHECKS = os.path.join('files', 'healthcheck', 'nail', 'sys',
                             'healthcheck', '_healthcheck_services')
 SERVICEGROUPS = os.path.join('etc', 'shared', 'prod-and-stage', 'servicegroups')
@@ -31,7 +30,7 @@ class SrvPathBuilder(object):
 
     @property
     def root_dir(self):
-        return os.path.join(config.PUPPET_ROOT, SERVICE_FILES, self.srvname)
+        return os.path.join(config.YELPSOA_CONFIG_ROOT, self.srvname)
 
     def to_file(self, filename):
         """Return a filename under this service's directory"""
