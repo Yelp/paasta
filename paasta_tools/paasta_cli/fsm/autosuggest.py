@@ -5,6 +5,11 @@ import os.path
 from service_wizard import config
 from service_wizard import paths
 
+
+class NoVipError(Exception):
+    pass
+
+
 def suggest_vip():
     """Suggest the most under-utilized vip"""
     vip_counts = {}
@@ -15,6 +20,8 @@ def suggest_vip():
                 vip = f.read().strip()
                 if vip:
                     vip_counts[vip] = vip_counts.get(vip, 0) + 1
+    if not vip_counts:
+        raise NoVipError("Could not find any vips. Bad PUPPET_ROOT %s?" % config.PUPPET_ROOT)
     least_vip = min(vip_counts.items(), key=operator.itemgetter(1))
     return least_vip[0]
 
