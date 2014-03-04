@@ -35,6 +35,9 @@ class SrvPathBuilder(object):
 
     def to_file(self, filename):
         """Return a filename under this service's directory"""
+        # Hack until #67413 is complete
+        if filename == "service.yaml":
+            filename = self.srvname + '.yaml'
         return os.path.join(self.root_dir, filename)
 
     @property
@@ -60,3 +63,9 @@ class SrvPathBuilder(object):
         """Path to the check for this service"""
         return os.path.join(
             config.NAGIOS_ROOT, CHECKS, self.srvname + '.cfg')
+
+    @property
+    def service_yaml(self):
+        """Path to the service.yaml for this service"""
+        return os.path.join(
+            self.root_dir, self.srvname + '.yaml')
