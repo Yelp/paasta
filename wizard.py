@@ -60,7 +60,7 @@ def get_service_yaml_contents(runs_on, deploys_on):
     }
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
-def ask_yelpsoa_config_questions(srvname, port, status_port, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
+def ask_yelpsoa_config_questions(srvname, port, status_port=None, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
     """Surveys the user about the various entries in files/services/$srvname"""
     status_port = ask_status_port(port, status_port)
 
