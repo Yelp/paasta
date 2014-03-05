@@ -55,9 +55,12 @@ def ask_vip(vip=None):
     return vip
 
 def get_service_yaml_contents(runs_on, deploys_on):
+    ### get fqdn
+    runs_on_short_hostnames = [h.strip() for h in runs_on.split(",")]
+    deploys_on_short_hostnames = [h.strip() for h in deploys_on.split(",")]
     contents = {
-        "runs_on": runs_on.split(","),
-        "deployed_to": deploys_on.split(","),
+        "runs_on": runs_on_short_hostnames,
+        "deployed_to": deploys_on_short_hostnames,
     }
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 

@@ -115,7 +115,15 @@ class GetServiceYamlContentsTestCase(T.TestCase):
         deploys_on = ""
         actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
 
-        expected = "runs_on:\n- %s\n- %s" % tuple(runs_on.split(","))
+        expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
+        T.assert_in(expected, actual)
+
+    def test_two_runs_on_with_space(self):
+        runs_on = "runs_on1, runs_on2"
+        deploys_on = ""
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+
+        expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
         T.assert_in(expected, actual)
 
 
