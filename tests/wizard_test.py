@@ -89,6 +89,17 @@ class AutosuggestTestCase(T.TestCase):
         T.assert_equal(actual, 13002 + 1) # highest port + 1
 
 class GetServiceYamlContentsTestCase(T.TestCase):
+    @T.setup_teardown
+    def mock_get_fqdn(self):
+        """This test case only cares about the logic in
+        get_service_yaml_contents(), so patch get_fqdn() to just return what we
+        give it.
+        """
+        def fake_get_fqdn(hostname):
+            return hostname
+        with mock.patch("wizard.get_fqdn", new=fake_get_fqdn):
+            yield
+
     def test_empty(self):
         runs_on = ""
         deploys_on = ""

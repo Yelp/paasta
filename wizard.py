@@ -2,6 +2,7 @@
 
 import optparse
 import os
+import socket
 import sys
 
 import yaml
@@ -54,14 +55,21 @@ def ask_vip(vip=None):
             vip = None
     return vip
 
+def get_fqdn(hostname):
+    fqdn = socket.getfqdn(hostname)
+    if fqdn == hostname:
+        print "WARNING: getfqdn returned %s for itself, which implies a DNS miss *unless* it's already an fqdn. Typo?" % hostname
+    return fqdn
+
 def get_service_yaml_contents(runs_on, deploys_on):
-    ### get fqdn
-    runs_on_short_hostnames = [h.strip() for h in runs_on.split(",")]
-    deploys_on_short_hostnames = [h.strip() for h in deploys_on.split(",")]
-    contents = {
-        "runs_on": runs_on_short_hostnames,
-        "deployed_to": deploys_on_short_hostnames,
-    }
+    contents = {}
+    for (content_key, hostnames_string) in (
+        ("runs_on", runs_on),
+        ("deployed_to", deploys_on),
+    ):
+        short_hostnames = [h.strip() for h in hostnames_string.split(",")]
+        long_hostnames = [get_fqdn(h) for h in short_hostnames]
+        contents[content_key] = long_hostnames
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
 def ask_yelpsoa_config_questions(srvname, port, status_port=None, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
