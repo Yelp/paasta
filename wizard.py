@@ -67,9 +67,9 @@ def get_service_yaml_contents(runs_on, deploys_on):
         ("runs_on", runs_on),
         ("deployed_to", deploys_on),
     ):
-        short_hostnames = [h.strip() for h in hostnames_string.split(",")]
-        long_hostnames = [get_fqdn(h) for h in short_hostnames]
-        contents[content_key] = long_hostnames
+        orig_hostnames = [h.strip() for h in hostnames_string.split(",")]
+        fqdn_hostnames = [get_fqdn(h) for h in orig_hostnames]
+        contents[content_key] = fqdn_hostnames
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
 def ask_yelpsoa_config_questions(srvname, port, status_port=None, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
