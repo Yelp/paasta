@@ -261,6 +261,8 @@ def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops):
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
 
+    ### pass in list of machines
+    ### somehow get them in correct per-ecosystem files
     hostgroup_contents = Template('hostgroup').substitute(
         {'srvname': srv.name })
     srv.io.append_hostgroups(hostgroup_contents)
