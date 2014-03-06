@@ -88,11 +88,11 @@ class AutosuggestTestCase(T.TestCase):
         # What we came here for: the actual output of the function under test
         T.assert_equal(actual, 13002 + 1) # highest port + 1
 
-class GetServiceYamlContentsTestCase(T.TestCase):
+class ParseHostnamesStringTestCase(T.TestCase):
     @T.setup_teardown
     def mock_get_fqdn(self):
         """This test case only cares about the logic in
-        get_service_yaml_contents(), so patch get_fqdn() to just return what we
+        parse_hostnames_string(), so patch get_fqdn() to just return what we
         give it.
         """
         def fake_get_fqdn(hostname):
@@ -100,38 +100,68 @@ class GetServiceYamlContentsTestCase(T.TestCase):
         with mock.patch("wizard.get_fqdn", new=fake_get_fqdn):
             yield
 
+###    def test_empty(self):
+###        runs_on = ""
+###        deploys_on = ""
+###        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+###
+###        # Verify entire lines, e.g. to make sure that '---' appears as its own
+###        # line and not as part of 'crazy---service----name'.
+###        T.assert_in("---\n", actual)
+###        # I think a blank line would be better but I can't figure out how to
+###        # get pyyaml to emit that.
+###        T.assert_in("runs_on:\n- ''", actual)
+###        T.assert_in("deployed_to:\n- ''", actual)
+###
+###    def test_one_runs_on(self):
+###        runs_on = "runs_on1"
+###        deploys_on = ""
+###        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+###
+###        expected = "runs_on:\n- %s" % runs_on
+###        T.assert_in(expected, actual)
+###
+###    def test_two_runs_on(self):
+###        runs_on = "runs_on1,runs_on2"
+###        deploys_on = ""
+###        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+###
+###        expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
+###        T.assert_in(expected, actual)
+###
+###    def test_two_runs_on_with_space(self):
+###        runs_on = "runs_on1, runs_on2"
+###        deploys_on = ""
+###        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+###
+###        expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
+###        T.assert_in(expected, actual)
+
+class GetServiceYamlContentsTestCase(T.TestCase):
     def test_empty(self):
-        runs_on = ""
-        deploys_on = ""
+        runs_on = []
+        deploys_on = []
         actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
 
-        # Verify entire lines, e.g. to make sure that '---' appears as its own
+        # Verify entire lines to make sure that e.g. '---' appears as its own
         # line and not as part of 'crazy---service----name'.
         T.assert_in("---\n", actual)
         # I think a blank line would be better but I can't figure out how to
         # get pyyaml to emit that.
-        T.assert_in("runs_on:\n- ''", actual)
-        T.assert_in("deployed_to:\n- ''", actual)
+        T.assert_in("runs_on: []", actual)
+        T.assert_in("deployed_to: []", actual)
 
     def test_one_runs_on(self):
-        runs_on = "runs_on1"
-        deploys_on = ""
+        runs_on = ["runs_on1"]
+        deploys_on = []
         actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
 
-        expected = "runs_on:\n- %s" % runs_on
+        expected = "runs_on:\n- %s" % "runs_on1"
         T.assert_in(expected, actual)
 
     def test_two_runs_on(self):
-        runs_on = "runs_on1,runs_on2"
-        deploys_on = ""
-        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
-
-        expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
-        T.assert_in(expected, actual)
-
-    def test_two_runs_on_with_space(self):
-        runs_on = "runs_on1, runs_on2"
-        deploys_on = ""
+        runs_on = ["runs_on1", "runs_on2"]
+        deploys_on = []
         actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
 
         expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")

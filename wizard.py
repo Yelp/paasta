@@ -43,6 +43,16 @@ def ask_status_port(port, status_port=None):
             status_port = prompt.ask('Status port?', default)
     return status_port
 
+def ask_runs_on(runs_on=None):
+    default_runs_on = ''
+    if runs_on is None:
+        runs_on = prompt.ask(
+            'Machines to run on (comma-separated short hostnames)?',
+            default_runs_on,
+        )
+    parsed_runs_on = parse_hostnames_string(runs_on)
+    return parsed_runs_on
+
 def ask_vip(vip=None):
     default = suggest_vip()
     if vip == "AUTO":
@@ -67,16 +77,16 @@ def parse_hostnames_string(hostnames_string):
     return fqdn_hostnames
 
 def get_service_yaml_contents(runs_on, deploys_on):
-    contents = {}
-    for (content_key, hostnames_string) in (
-        ("runs_on", runs_on),
-        ("deployed_to", deploys_on),
-    ):
-        fqdn_hostnames = parse_hostnames_string(hostnames_string)
-        contents[content_key] = fqdn_hostnames
+    """Given lists 'runs_on' and 'deploys_on', return yaml appropriate for
+    writing into service.yaml.
+    """
+    contents = {
+        "runs_on": runs_on,
+        "deployed_to": deploys_on,
+    }
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
-def ask_yelpsoa_config_questions(srvname, port, status_port=None, runas=None, runas_group=None, post_download=None, post_activate=None, runs_on=None, deploys_on=None):
+def ask_yelpsoa_config_questions(srvname, port, status_port=None, runas=None, runas_group=None, post_download=None, post_activate=None, deploys_on=None):
     """Surveys the user about the various entries in files/services/$srvname"""
     status_port = ask_status_port(port, status_port)
 
@@ -116,21 +126,15 @@ def ask_yelpsoa_config_questions(srvname, port, status_port=None, runas=None, ru
                 default_post_activate,
             )
 
-    default_runs_on = ''
-    if runs_on is None:
-        runs_on = prompt.ask(
-            'Machines to run on (comma-separated short hostnames)?',
-            default_runs_on,
-        )
-
     default_deploys_on = ''
     if deploys_on is None:
         deploys_on = prompt.ask(
             'Machines to deploy on (comma-separated short hostnames)?',
             default_deploys_on,
         )
+    parsed_deploys_on = parse_hostnames_string(deploys_on)
 
-    return status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on
+    return status_port, runas, runas_group, post_download, post_activate, parsed_deploys_on
 
 def ask_nagios_questions(contact_groups=None, contacts=None, include_ops=None):
     if not contact_groups and not contacts:
@@ -320,10 +324,11 @@ def main(opts, args):
 
     port = ask_port(opts.port)
     vip = ask_vip(opts.vip)
+    runs_on = ask_runs_on(opts.runs_on)
 
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
     if opts.enable_yelpsoa_config:
-        status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.runs_on, opts.deploys_on)
+        status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
     if opts.enable_nagios:
         contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
 
