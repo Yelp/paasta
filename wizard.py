@@ -61,14 +61,18 @@ def get_fqdn(hostname):
         print "WARNING: getfqdn returned %s for itself, which implies a DNS miss *unless* it's already an fqdn. Typo?" % hostname
     return fqdn
 
+def parse_hostnames_string(hostnames_string):
+    orig_hostnames = [h.strip() for h in hostnames_string.split(",")]
+    fqdn_hostnames = [get_fqdn(h) for h in orig_hostnames]
+    return fqdn_hostnames
+
 def get_service_yaml_contents(runs_on, deploys_on):
     contents = {}
     for (content_key, hostnames_string) in (
         ("runs_on", runs_on),
         ("deployed_to", deploys_on),
     ):
-        orig_hostnames = [h.strip() for h in hostnames_string.split(",")]
-        fqdn_hostnames = [get_fqdn(h) for h in orig_hostnames]
+        fqdn_hostnames = parse_hostnames_string(hostnames_string)
         contents[content_key] = fqdn_hostnames
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
