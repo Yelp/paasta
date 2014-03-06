@@ -9,9 +9,6 @@ class Service(object):
     def from_files(cls, srvname):
         srv = cls(srvname)
         for f in paths.ALL_FILES:
-            # The actual file that gets written (SERVICE_NAME.yaml) is not
-            # available through this mechanism. This will be better when the
-            # file of record is named service.yaml -- see #67413.
             setattr(srv, f.replace('-','_').replace('.','_'),
                     srv.io.read_file(f))
         return srv
