@@ -17,7 +17,6 @@ ALL_FILES = set([
     'vip'
     'post-download',
     'post-activate',
-    # service.yaml is a lie until #67413 is complete
     'service.yaml',
 ])
 
@@ -34,9 +33,6 @@ class SrvPathBuilder(object):
 
     def to_file(self, filename):
         """Return a filename under this service's directory"""
-        # Hack until #67413 is complete
-        if filename == "service.yaml":
-            filename = self.srvname + '.yaml'
         return os.path.join(self.root_dir, filename)
 
     @property
