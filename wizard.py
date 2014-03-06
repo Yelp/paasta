@@ -49,7 +49,11 @@ def ask_runs_on(runs_on=None):
     hostname.
     """
     default_runs_on = ''
-    if runs_on is None:
+    if runs_on == "AUTO":
+        print "AUTO not yet supported for runs_on!"
+        ### suggest_stage_hosts()
+        ### suggest_prod_hosts()
+    elif runs_on is None:
         runs_on = prompt.ask(
             'Machines to run on (comma-separated short hostnames)?',
             default_runs_on,
@@ -135,7 +139,9 @@ def ask_yelpsoa_config_questions(srvname, port, status_port=None, runas=None, ru
             )
 
     default_deploys_on = ''
-    if deploys_on is None:
+    if deploys_on == "AUTO":
+        deploys_on = ""
+    elif deploys_on is None:
         deploys_on = prompt.ask(
             'Machines to deploy on (comma-separated short hostnames)?',
             default_deploys_on,
@@ -326,6 +332,8 @@ def main(opts, args):
         opts.runas_group = opts.runas_group or "AUTO"
         opts.post_download = opts.post_download or "AUTO"
         opts.post_activate = opts.post_activate or "AUTO"
+        opts.runs_on = opts.runs_on or "AUTO"
+        opts.deploys_on = opts.deploys_on or "AUTO"
 
     srvname = ask_srvname(opts.srvname)
     srv = Service(srvname)
