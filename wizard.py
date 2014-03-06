@@ -44,6 +44,10 @@ def ask_status_port(port, status_port=None):
     return status_port
 
 def ask_runs_on(runs_on=None):
+    """Given a comma-separated list of hostnames (either passed in or received
+    by prompting the user), return a list containing the FQDN for each
+    hostname.
+    """
     default_runs_on = ''
     if runs_on is None:
         runs_on = prompt.ask(
