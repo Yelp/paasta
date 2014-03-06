@@ -66,6 +66,10 @@ def ask_vip(vip=None):
     return vip
 
 def get_fqdn(hostname):
+    # socket.getfqdn on an empty string returns localhost, which is not what we
+    # want. Just give it back and let the caller worry about it.
+    if not hostname:
+        return hostname
     fqdn = socket.getfqdn(hostname)
     if fqdn == hostname:
         print "WARNING: getfqdn returned %s for itself, which implies a DNS miss *unless* it's already an fqdn. Typo?" % hostname

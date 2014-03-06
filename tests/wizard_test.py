@@ -100,42 +100,29 @@ class ParseHostnamesStringTestCase(T.TestCase):
         with mock.patch("wizard.get_fqdn", new=fake_get_fqdn):
             yield
 
-###    def test_empty(self):
-###        runs_on = ""
-###        deploys_on = ""
-###        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
-###
-###        # Verify entire lines, e.g. to make sure that '---' appears as its own
-###        # line and not as part of 'crazy---service----name'.
-###        T.assert_in("---\n", actual)
-###        # I think a blank line would be better but I can't figure out how to
-###        # get pyyaml to emit that.
-###        T.assert_in("runs_on:\n- ''", actual)
-###        T.assert_in("deployed_to:\n- ''", actual)
-###
-###    def test_one_runs_on(self):
-###        runs_on = "runs_on1"
-###        deploys_on = ""
-###        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
-###
-###        expected = "runs_on:\n- %s" % runs_on
-###        T.assert_in(expected, actual)
-###
-###    def test_two_runs_on(self):
-###        runs_on = "runs_on1,runs_on2"
-###        deploys_on = ""
-###        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
-###
-###        expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
-###        T.assert_in(expected, actual)
-###
-###    def test_two_runs_on_with_space(self):
-###        runs_on = "runs_on1, runs_on2"
-###        deploys_on = ""
-###        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
-###
-###        expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
-###        T.assert_in(expected, actual)
+    def test_empty(self):
+        runs_on = ""
+        expected = [runs_on]
+        actual = wizard.parse_hostnames_string(runs_on)
+        T.assert_equal(expected, actual)
+
+    def test_one_runs_on(self):
+        runs_on = "runs_on1"
+        expected = [runs_on]
+        actual = wizard.parse_hostnames_string(runs_on)
+        T.assert_equal(expected, actual)
+
+    def test_two_runs_on(self):
+        runs_on = "runs_on1,runs_on2"
+        expected = ["runs_on1", "runs_on2"]
+        actual = wizard.parse_hostnames_string(runs_on)
+        T.assert_equal(expected, actual)
+
+    def test_two_runs_on_with_space(self):
+        runs_on = "runs_on1, runs_on2"
+        expected = ["runs_on1", "runs_on2"]
+        actual = wizard.parse_hostnames_string(runs_on)
+        T.assert_equal(expected, actual)
 
 class GetServiceYamlContentsTestCase(T.TestCase):
     def test_empty(self):
