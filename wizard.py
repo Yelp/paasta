@@ -337,13 +337,18 @@ def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
 
+    ### need to collate by ecosystem!!!
+    ### Warning: Duplicate definition found for hostgroup 'soa_qwer' (config file 'nagios3/etc/datacenters/sfo1/hostgroups/soa.cfg', starting on line 207)
+    ### need to write empty ones too!!!
+    ### Error: Could not find any hostgroup matching 'soa_qwer' (config file 'nagios3/etc/shared/prod-and-stage/services/qwer.cfg', starting on line 20)
     for fqdn in runs_on:
         ecosystem = get_ecosystem_from_fqdn(fqdn)
         if not ecosystem:
             print "WARNING: Not writing hostgroup for ecosystem-less host %s" % fqdn
         else:
+            host = fqdn.split(".")[0]
             hostgroup_contents = Template('hostgroup').substitute(
-                {'srvname': srv.name })
+                {'srvname': srv.name, 'host': host})
             srv.io.append_hostgroups(hostgroup_contents, ecosystem=ecosystem)
 
     check_contents = Template('check').substitute({
