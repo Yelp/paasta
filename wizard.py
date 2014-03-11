@@ -102,7 +102,9 @@ def get_service_yaml_contents(runs_on, deploys_on):
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
 def get_ecosystem_from_fqdn(fqdn):
-    ### implment me!
+    """Tries to calculate an ecosystem given a fully qualified domain name.
+    Returns None and prints a warning if it can't guess an ecosystem.
+    """
     pass
 
 
@@ -299,12 +301,14 @@ def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
 
-    ### this doesn't actually work yet but it's the basic idea.
     for fqdn in runs_on:
         ecosystem = get_ecosystem_from_fqdn(fqdn)
-        hostgroup_contents = Template('hostgroup').substitute(
-            {'srvname': srv.name })
-        srv.io.append_hostgroups(hostgroup_contents, ecosystem=ecosystem)
+        if not ecosystem:
+            print "WARNING: Not writing hostgroup for ecosystem-less host %s" % fqdn
+        else:
+            hostgroup_contents = Template('hostgroup').substitute(
+                {'srvname': srv.name })
+            srv.io.append_hostgroups(hostgroup_contents, ecosystem=ecosystem)
 
     check_contents = Template('check').substitute({
         'srvname': srv.name,

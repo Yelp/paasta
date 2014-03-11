@@ -48,9 +48,9 @@ class SrvReaderWriter(object):
             filename = 'vips.cfg'
         for root, dirs, files in os.walk(self.paths.hostgroup):
             if root.endswith('hostgroups') and filename in files:
-                # If 'ecosystem' was not specified, append to all files. If
-                # 'ecosystem' was specified, only append to files in that
-                # ecosystem.
+                # If 'ecosystem' is None (was not specified), append to all
+                # files. If 'ecosystem' was specified, only append to files in
+                # that ecosystem.
                 print ecosystem, root
                 if ecosystem is None or ("/%s/" % ecosystem) in root:
                     self._append(os.path.join(root, filename), contents)
