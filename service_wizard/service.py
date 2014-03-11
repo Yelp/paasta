@@ -51,7 +51,6 @@ class SrvReaderWriter(object):
                 # If 'ecosystem' is None (was not specified), append to all
                 # files. If 'ecosystem' was specified, only append to files in
                 # that ecosystem.
-                print ecosystem, root
                 if ecosystem is None or ("/%s/" % ecosystem) in root:
                     self._append(os.path.join(root, filename), contents)
 

@@ -154,6 +154,76 @@ class GetServiceYamlContentsTestCase(T.TestCase):
         expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
         T.assert_in(expected, actual)
 
+class GetEcosystemFromFqdnTestCase(T.TestCase):
+    def test_unknown(self):
+        fqdn = "unknownhost.unknownsubdomain.yelpcorp.com"
+        expected = None
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_hostname_only(self):
+        """Exercises the case where the fqdn doesn't match our expectations to
+        make sure it doesn't blow up *and* that it returns a miss.
+        """
+        fqdn = "short-host-only"
+        expected = None
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_stagea(self):
+        fqdn = "stageaservices1.sldev.yelpcorp.com"
+        expected = "stagea"
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_stagespam_is_unknown(self):
+        fqdn = "stagespam1sv.sldev.yelpcorp.com"
+        expected = None
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_devb(self):
+        fqdn = "srv2-devb.dev.yelpcorp.com"
+        expected = "devb"
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_sfo1(self):
+        fqdn = "srv3-r1-sfo1.prod.yelpcorp.com"
+        expected = "sfo1"
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_iad1(self):
+        fqdn = "srv4-r4-iad1.prod.yelpcorp.com"
+        expected = "iad1"
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_365(self):
+        fqdn = "srv1.365.yelpcorp.com"
+        expected = "sfo1"
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_sldev(self):
+        fqdn = "devsearch2sv.sldev.yelpcorp.com"
+        expected = "sldev"
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_slwdc(self):
+        fqdn = "app3sw.slwdc.yelpcorp.com"
+        expected = "slwdc"
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
+    def test_sj(self):
+        fqdn = "devsearch2sj.sjc.yelpcorp.com"
+        expected = "sjc"
+        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
 
 if __name__ == "__main__":
     T.run()

@@ -2,6 +2,7 @@
 
 import optparse
 import os
+import re
 import socket
 import sys
 
@@ -101,11 +102,46 @@ def get_service_yaml_contents(runs_on, deploys_on):
     }
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
+# Capture names like stagea and stagez but not stagespam, which is different.
+PROD_RE = re.compile(r"-(sfo\d|iad\d)$")
+STAGE_RE = re.compile(r"^(stage[a-z])(?!pam)")
+DEV_RE = re.compile(r"-(dev[a-z])$")
 def get_ecosystem_from_fqdn(fqdn):
     """Tries to calculate an ecosystem given a fully qualified domain name.
     Returns None and prints a warning if it can't guess an ecosystem.
     """
-    pass
+    try:
+        (hostname, subdomain, _yelpcorp, _com) = fqdn.split(".")
+    except ValueError:
+        print "WARNING: %s doesn't appear to be a well-formed fqdn (host.subdomain.yelpcorp.com)." % fqdn
+        return None
+
+    m = PROD_RE.search(hostname)
+    if m:
+        return m.group(1)
+
+    m = STAGE_RE.search(hostname)
+    if m:
+        return m.group(1)
+
+    m = DEV_RE.search(hostname)
+    if m:
+        return m.group(1)
+
+    if subdomain == "365":
+        return "sfo1"
+
+    if hostname.endswith("sv") and subdomain == "sldev":
+        return subdomain
+
+    if hostname.endswith("sw") and subdomain == "slwdc":
+        return subdomain
+
+    if hostname.endswith("sj") and subdomain == "sjc":
+        return subdomain
+
+    print "WARNING: Could not find ecosystem for fqdn %s" % fqdn
+    return None
 
 
 def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group, post_download, post_activate, deploys_on):
