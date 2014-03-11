@@ -42,13 +42,18 @@ class SrvReaderWriter(object):
     def append_servicegroup(self, contents):
         self._append(self.paths.servicegroup, contents)
 
-    def append_hostgroups(self, contents, vip=False):
+    def append_hostgroups(self, contents, ecosystem=None, vip=False):
         filename = 'soa.cfg'
         if vip:
             filename = 'vips.cfg'
         for root, dirs, files in os.walk(self.paths.hostgroup):
             if root.endswith('hostgroups') and filename in files:
-                self._append(os.path.join(root, filename), contents)
+                # If 'ecosystem' was not specified, append to all files. If
+                # 'ecosystem' was specified, only append to files in that
+                # ecosystem.
+                print ecosystem, root
+                if ecosystem is None or ("/%s/" % ecosystem) in root:
+                    self._append(os.path.join(root, filename), contents)
 
     def write_check(self, contents):
         self._write(self.paths.check, contents)

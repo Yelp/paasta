@@ -101,7 +101,12 @@ def get_service_yaml_contents(runs_on, deploys_on):
     }
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
-def ask_yelpsoa_config_questions(srvname, port, status_port=None, runas=None, runas_group=None, post_download=None, post_activate=None, deploys_on=None):
+def get_ecosystem_from_fqdn(fqdn):
+    ### implment me!
+    pass
+
+
+def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group, post_download, post_activate, deploys_on):
     """Surveys the user about the various entries in files/services/$srvname"""
     status_port = ask_status_port(port, status_port)
 
@@ -289,16 +294,17 @@ def do_puppet_steps(srv, port, vip):
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops):
+def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_on):
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
 
-    ### pass in list of machines
-    ### somehow get them in correct per-ecosystem files
-    hostgroup_contents = Template('hostgroup').substitute(
-        {'srvname': srv.name })
-    srv.io.append_hostgroups(hostgroup_contents)
+    ### this doesn't actually work yet but it's the basic idea.
+    for fqdn in runs_on:
+        ecosystem = get_ecosystem_from_fqdn(fqdn)
+        hostgroup_contents = Template('hostgroup').substitute(
+            {'srvname': srv.name })
+        srv.io.append_hostgroups(hostgroup_contents, ecosystem=ecosystem)
 
     check_contents = Template('check').substitute({
         'srvname': srv.name,
@@ -356,7 +362,7 @@ def main(opts, args):
     if opts.enable_puppet:
         do_puppet_steps(srv, port, vip)
     if opts.enable_nagios:
-        do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops)
+        do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_on)
 
 
 if __name__ == '__main__':
