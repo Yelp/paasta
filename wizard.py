@@ -21,9 +21,9 @@ def ask_srvname(srvname=None):
     return srvname
 
 def ask_port(port=None):
-    # Bail out immediately if port provided to prevent an unneeded and
+    # If a port was provided, bail out immediately to prevent an unneeded and
     # potentially explosive call to suggest_port()
-    if port:
+    if port and port != "AUTO":
         return port
 
     default = str(suggest_port())
@@ -51,9 +51,12 @@ def ask_runs_on(runs_on=None):
     default_runs_on = ''
     if runs_on == "AUTO":
         print "AUTO not yet supported for runs_on!"
+        runs_on = None
+        ###### suggest_dev_hosts()
         ### suggest_stage_hosts()
         ### suggest_prod_hosts()
-    elif runs_on is None:
+    # This can go back to being an 'elif' after AUTO is supported
+    if runs_on is None:
         runs_on = prompt.ask(
             'Machines to run on (comma-separated short hostnames)?',
             default_runs_on,
