@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from collections import defaultdict
 import optparse
 import os
 import re
@@ -143,6 +144,31 @@ def get_ecosystem_from_fqdn(fqdn):
     print "WARNING: Could not find ecosystem for fqdn %s" % fqdn
     return None
 
+def collate_hosts_by_ecosystem(fqdns):
+    """Given a list of fqdns, return a dictionary where the value is the short
+    hostname of the fqdn and the key is the ecosystem calculated from the fqdn.
+
+    If an ecosystem cannot be calculated for an fqdn, that fqdn is dropped from
+    the returned dictionary.
+    """
+    host_by_ecosystem = defaultdict(list)
+    for fqdn in fqdns:
+        host = fqdn.split(".")[0]
+        ecosystem = get_ecosystem_from_fqdn(fqdn)
+        if not ecosystem:
+            print "WARNING: Dropping hostgroup for ecosystem-less host %s" % fqdn
+        else:
+            host_by_ecosystem[ecosystem].append(host)
+    return host_by_ecosystem
+
+def get_ecosystem_overrides(host_by_ecosystem, srvname):
+    ecosystem_overrides = {}
+    for (ecosystem, members_list) in host_by_ecosystem.items():
+        members_string = ",".join(sorted(members_list))
+        contents = Template('hostgroup_with_members').substitute(
+                {'srvname': srvname, 'members': members_string})
+        ecosystem_overrides[ecosystem] = contents
+    return ecosystem_overrides
 
 def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group, post_download, post_activate, deploys_on):
     """Surveys the user about the various entries in files/services/$srvname"""
@@ -337,19 +363,11 @@ def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
 
-    ### need to collate by ecosystem!!!
-    ### Warning: Duplicate definition found for hostgroup 'soa_qwer' (config file 'nagios3/etc/datacenters/sfo1/hostgroups/soa.cfg', starting on line 207)
-    ### need to write empty ones too!!!
-    ### Error: Could not find any hostgroup matching 'soa_qwer' (config file 'nagios3/etc/shared/prod-and-stage/services/qwer.cfg', starting on line 20)
-    for fqdn in runs_on:
-        ecosystem = get_ecosystem_from_fqdn(fqdn)
-        if not ecosystem:
-            print "WARNING: Not writing hostgroup for ecosystem-less host %s" % fqdn
-        else:
-            host = fqdn.split(".")[0]
-            hostgroup_contents = Template('hostgroup').substitute(
-                {'srvname': srv.name, 'host': host})
-            srv.io.append_hostgroups(hostgroup_contents, ecosystem=ecosystem)
+    default_contents = Template('hostgroup_empty_members').substitute(
+                {'srvname': srv.name})
+    host_by_ecosystem = collate_hosts_by_ecosystem(runs_on)
+    ecosystem_overrides = get_ecosystem_overrides(host_by_ecosystem, srv.name)
+    srv.io.append_hostgroups(default_contents, ecosystem_overrides=ecosystem_overrides)
 
     check_contents = Template('check').substitute({
         'srvname': srv.name,

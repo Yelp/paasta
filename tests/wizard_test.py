@@ -1,3 +1,4 @@
+from contextlib import contextmanager
 from contextlib import nested
 
 import mock
@@ -226,6 +227,82 @@ class GetEcosystemFromFqdnTestCase(T.TestCase):
         expected = "sjc"
         actual = wizard.get_ecosystem_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
+
+
+class CollateHostsByEcosystem(T.TestCase):
+    @contextmanager
+    def patch_get_ecosystem_from_fqdn(self, return_value=None):
+        def fake_get_ecosystem_from_fqdn(fqdn):
+            return return_value or "%s-ecosystem" % fqdn
+        with mock.patch("wizard.get_ecosystem_from_fqdn", fake_get_ecosystem_from_fqdn):
+            yield
+
+    def test_no_fqdns(self):
+        expected = {}
+        fqdns = []
+        actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        T.assert_equal(expected, actual)
+
+    def test_bad_fqdn_is_dropped(self):
+        expected = {}
+        fqdns = ["bad_fqdn"]
+        actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        T.assert_equal(expected, actual)
+
+    def test_one_good_fqdn(self):
+        fqdn = "fakehost1.fakeecosystem.yelpcorp.com"
+        expected = {"%s-ecosystem" % fqdn: ["fakehost1"]}
+        fqdns = [fqdn]
+        with self.patch_get_ecosystem_from_fqdn():
+            actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        T.assert_equal(expected, actual)
+
+    def test_two_good_fqdns_different_ecosystem(self):
+        fqdn1 = "fakehost1.fakeecosystem.yelpcorp.com"
+        fqdn2 = "fakehost2.fakeecosystem.yelpcorp.com"
+        expected = {
+            "%s-ecosystem" % fqdn1: ["fakehost1"],
+            "%s-ecosystem" % fqdn2: ["fakehost2"],
+        }
+        fqdns = [fqdn1, fqdn2]
+        with self.patch_get_ecosystem_from_fqdn():
+            actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        T.assert_equal(expected, actual)
+
+    def test_two_good_fqdns_same_ecosystem(self):
+        fqdn1 = "fakehost1.sameecosystem.yelpcorp.com"
+        fqdn2 = "fakehost2.sameecosystem.yelpcorp.com"
+        ecosystem = "sameecosystem"
+        expected = {ecosystem: ["fakehost1", "fakehost2"]}
+        fqdns = [fqdn1, fqdn2]
+        with self.patch_get_ecosystem_from_fqdn(ecosystem):
+            actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        T.assert_equal(expected, actual)
+
+
+#class GetEcosystemOverrides(T.TestCase):
+#    @T.setup_teardown
+#    def patch_template(self):
+#        with mock.patch("wizard.Template") as self.mock_template:
+#            with mock.patch.object(self.mock_template, "substitute") as self.mock_substitute:
+#                yield
+#
+#    def test_empty(self):
+#        srvname = "fake_srvname"
+#        host_by_ecosystem = {}
+#        expected = {}
+#        actual = wizard.get_ecosystem_overrides(host_by_ecosystem, srvname)
+#        T.assert_equal(expected, actual)
+#
+#    def test_good_host_by_ecosystem(self):
+#        srvname = "fake_srvname"
+#        host_by_ecosystem = {"fake_ecosystem": ["fakehost1", "fakehost2"]}
+#        wizard.get_ecosystem_overrides(host_by_ecosystem, srvname)
+#
+#        import ipdb; ipdb.set_trace()
+#        assert self.mock_substitute.called
+#        template_dict = self.mock_substitute.call_args[1]
+#        print template_dict
 
 
 if __name__ == "__main__":
