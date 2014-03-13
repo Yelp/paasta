@@ -42,7 +42,6 @@ class SrvReaderWriter(object):
     def append_servicegroup(self, contents):
         self._append(self.paths.servicegroup, contents)
 
-    @staticmethod
     def append_hostgroups(self, default_contents, ecosystem_overrides=None, vip=False):
         """Append a provided Nagios stanza to relevant hostgroups files.
 

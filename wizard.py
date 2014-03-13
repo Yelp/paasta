@@ -156,7 +156,7 @@ def collate_hosts_by_ecosystem(fqdns):
         host = fqdn.split(".")[0]
         ecosystem = get_ecosystem_from_fqdn(fqdn)
         if not ecosystem:
-            print "WARNING: Dropping hostgroup for ecosystem-less host %s" % fqdn
+            print "WARNING: Not writing ecosystemless host %s into Nagios hostgroups" % fqdn
         else:
             host_by_ecosystem[ecosystem].append(host)
     return host_by_ecosystem
