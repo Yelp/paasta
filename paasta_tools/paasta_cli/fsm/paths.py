@@ -2,7 +2,6 @@ import os.path
 
 from service_wizard import config
 
-SERVICE_FILES = os.path.join('modules', 'yelp_soa', 'files', 'services')
 HEALTHCHECKS = os.path.join('files', 'healthcheck', 'nail', 'sys',
                             'healthcheck', '_healthcheck_services')
 SERVICEGROUPS = os.path.join('etc', 'shared', 'prod-and-stage', 'servicegroups')
@@ -10,8 +9,16 @@ HOSTGROUPS = os.path.join('etc', 'datacenters')
 CHECKS = os.path.join('etc', 'shared', 'prod-and-stage', 'services')
 
 ALL_FILES = set([
-    'runas', 'runas_group', 'port', 'status_port', 'lb.yaml', 'vip',
-    'post-download', 'post-activate'])
+    'runas',
+    'runas_group',
+    'port',
+    'status_port',
+    'lb.yaml',
+    'vip'
+    'post-download',
+    'post-activate',
+    'service.yaml',
+])
 
 
 class SrvPathBuilder(object):
@@ -22,7 +29,7 @@ class SrvPathBuilder(object):
 
     @property
     def root_dir(self):
-        return os.path.join(config.PUPPET_ROOT, SERVICE_FILES, self.srvname)
+        return os.path.join(config.YELPSOA_CONFIG_ROOT, self.srvname)
 
     def to_file(self, filename):
         """Return a filename under this service's directory"""
@@ -51,3 +58,9 @@ class SrvPathBuilder(object):
         """Path to the check for this service"""
         return os.path.join(
             config.NAGIOS_ROOT, CHECKS, self.srvname + '.cfg')
+
+    @property
+    def service_yaml(self):
+        """Path to the service.yaml for this service"""
+        return os.path.join(
+            self.root_dir, self.srvname + '.yaml')
