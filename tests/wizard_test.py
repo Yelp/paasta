@@ -176,11 +176,14 @@ class GetEcosystemFromFqdnTestCase(T.TestCase):
         actual = wizard.get_ecosystem_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
-    def test_stagespam_is_unknown(self):
+    def test_stagespam_is_not_stage(self):
+        """I'm not sure what to do with stagespam yet (I think it gets its own
+        Nagios file) but the point of this test is to make sure STAGE_RE
+        doesn't match stagespam so we'll only assert about that fact.
+        """
         fqdn = "stagespam1sv.sldev.yelpcorp.com"
-        expected = None
         actual = wizard.get_ecosystem_from_fqdn(fqdn)
-        T.assert_equal(expected, actual)
+        T.assert_not_equal("stage", actual)
 
     def test_devb(self):
         fqdn = "srv2-devb.dev.yelpcorp.com"
