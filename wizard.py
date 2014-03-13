@@ -1,8 +1,13 @@
 #!/usr/bin/python
 
+from collections import defaultdict
 import optparse
 import os
+import re
+import socket
 import sys
+
+import yaml
 
 from service_wizard import config
 from service_wizard import prompt
@@ -18,6 +23,11 @@ def ask_srvname(srvname=None):
     return srvname
 
 def ask_port(port=None):
+    # If a port was provided, bail out immediately to prevent an unneeded and
+    # potentially explosive call to suggest_port()
+    if port and port != "AUTO":
+        return port
+
     default = str(suggest_port())
     if port == "AUTO":
         port = default
@@ -35,6 +45,27 @@ def ask_status_port(port, status_port=None):
             status_port = prompt.ask('Status port?', default)
     return status_port
 
+def ask_runs_on(runs_on=None):
+    """Given a comma-separated list of hostnames (either passed in or received
+    by prompting the user), return a list containing the FQDN for each
+    hostname.
+    """
+    default_runs_on = ''
+    if runs_on == "AUTO":
+        print "AUTO not yet supported for runs_on!"
+        runs_on = None
+        ###### suggest_dev_hosts()
+        ### suggest_stage_hosts()
+        ### suggest_prod_hosts()
+    # This can go back to being an 'elif' after AUTO is supported
+    if runs_on is None:
+        runs_on = prompt.ask(
+            'Machines to run on (comma-separated short hostnames)?',
+            default_runs_on,
+        )
+    parsed_runs_on = parse_hostnames_string(runs_on)
+    return parsed_runs_on
+
 def ask_vip(vip=None):
     default = suggest_vip()
     if vip == "AUTO":
@@ -47,8 +78,102 @@ def ask_vip(vip=None):
             vip = None
     return vip
 
-def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_download=None, post_activate=None):
+def get_fqdn(hostname):
+    # socket.getfqdn on an empty string returns localhost, which is not what we
+    # want. Just give it back and let the caller worry about it.
+    if not hostname:
+        return hostname
+    fqdn = socket.getfqdn(hostname)
+    if fqdn == hostname:
+        print "WARNING: getfqdn returned %s for itself, which implies a DNS miss *unless* it's already an fqdn. Typo?" % hostname
+    return fqdn
+
+def parse_hostnames_string(hostnames_string):
+    orig_hostnames = [h.strip() for h in hostnames_string.split(",")]
+    fqdn_hostnames = [get_fqdn(h) for h in orig_hostnames]
+    return fqdn_hostnames
+
+def get_service_yaml_contents(runs_on, deploys_on):
+    """Given lists 'runs_on' and 'deploys_on', return yaml appropriate for
+    writing into service.yaml.
+    """
+    contents = {
+        "runs_on": runs_on,
+        "deployed_to": deploys_on,
+    }
+    return yaml.dump(contents, explicit_start=True, default_flow_style=False)
+
+# Capture names like stagea and stagez but not stagespam, which is different.
+PROD_RE = re.compile(r"-(sfo\d|iad\d)$")
+STAGE_RE = re.compile(r"^(stage[a-z])(?!pam)")
+DEV_RE = re.compile(r"-(dev[a-z])$")
+def get_ecosystem_from_fqdn(fqdn):
+    """Tries to calculate an ecosystem given a fully qualified domain name.
+    Returns None and prints a warning if it can't guess an ecosystem.
+    """
+    try:
+        (hostname, subdomain, _yelpcorp, _com) = fqdn.split(".")
+    except ValueError:
+        print "WARNING: %s doesn't appear to be a well-formed fqdn (host.subdomain.yelpcorp.com)." % fqdn
+        return None
+
+    m = PROD_RE.search(hostname)
+    if m:
+        return m.group(1)
+
+    m = STAGE_RE.search(hostname)
+    if m:
+        return m.group(1)
+
+    m = DEV_RE.search(hostname)
+    if m:
+        return m.group(1)
+
+    if subdomain == "365":
+        return "sfo1"
+
+    if hostname.endswith("sv") and subdomain == "sldev":
+        return subdomain
+
+    if hostname.endswith("sw") and subdomain == "slwdc":
+        return subdomain
+
+    if hostname.endswith("sj") and subdomain == "sjc":
+        return subdomain
+
+    print "WARNING: Could not find ecosystem for fqdn %s" % fqdn
+    return None
+
+def collate_hosts_by_ecosystem(fqdns):
+    """Given a list of fqdns, return a dictionary where the value is the short
+    hostname of the fqdn and the key is the ecosystem calculated from the fqdn.
+
+    If an ecosystem cannot be calculated for an fqdn, that fqdn is dropped from
+    the returned dictionary.
+    """
+    host_by_ecosystem = defaultdict(list)
+    for fqdn in fqdns:
+        host = fqdn.split(".")[0]
+        ecosystem = get_ecosystem_from_fqdn(fqdn)
+        if not ecosystem:
+            print "WARNING: Not writing ecosystemless host %s into Nagios hostgroups" % fqdn
+        else:
+            host_by_ecosystem[ecosystem].append(host)
+    return host_by_ecosystem
+
+def get_ecosystem_overrides(host_by_ecosystem, srvname):
+    ecosystem_overrides = {}
+    for (ecosystem, members_list) in host_by_ecosystem.items():
+        members_string = ",".join(sorted(members_list))
+        contents = Template('hostgroup_with_members').substitute(
+                {'srvname': srvname, 'members': members_string})
+        ecosystem_overrides[ecosystem] = contents
+    return ecosystem_overrides
+
+def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group, post_download, post_activate, deploys_on):
     """Surveys the user about the various entries in files/services/$srvname"""
+    status_port = ask_status_port(port, status_port)
+
     default_runas = "batch"
     if runas == "AUTO":
         runas = default_runas
@@ -85,7 +210,17 @@ def ask_puppet_questions(srvname, port, runas=None, runas_group=None, post_downl
                 default_post_activate,
             )
 
-    return runas, runas_group, post_download, post_activate
+    default_deploys_on = ''
+    if deploys_on == "AUTO":
+        deploys_on = ""
+    elif deploys_on is None:
+        deploys_on = prompt.ask(
+            'Machines to deploy on (comma-separated short hostnames)?',
+            default_deploys_on,
+        )
+    parsed_deploys_on = parse_hostnames_string(deploys_on)
+
+    return status_port, runas, runas_group, post_download, post_activate, parsed_deploys_on
 
 def ask_nagios_questions(contact_groups=None, contacts=None, include_ops=None):
     if not contact_groups and not contacts:
@@ -108,6 +243,8 @@ def parse_args():
     group.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
     group.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
     group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
+    group.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout")
+    group.add_option("-Y", "--disable-yelpsoa-config", dest="enable_yelpsoa_config", default=True, action="store_false", help="Don't run steps related to yelpsoa-configs")
     group.add_option("-A", "--auto", dest="auto", default=False, action="store_true", help="Use defaults instead of prompting when default value is available")
     parser.add_option_group(group)
 
@@ -130,10 +267,8 @@ def parse_args():
     group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default")
     group.add_option("-d", "--post-download", dest="post_download", default=None, help="Script executed after service is downloaded by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
     group.add_option("-a", "--post-activate", dest="post_activate", default=None, help="Script executed after service is activated by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
-    parser.add_option_group(group)
-
-    group = optparse.OptionGroup(parser, "Other subcommands (by default, configure everything I can)")
-    group.add_option("-Z", "--suggest-port", dest="command_suggest_port", default=None, action="store_true", help="Print next unused port and exit.")
+    group.add_option("-S", "--runs-on", dest="runs_on", default=None, help="Comma-separated list of machines where the service runs. Use shortnames appropriate for Nagios; I will translated to FQDN as needed.")
+    group.add_option("-D", "--deploys-on", dest="deploys_on", default=None, help="Comma-separated list of machines where the service runs. Use shortnames appropriate for Nagios; I will translated to FQDN as needed.")
     parser.add_option_group(group)
 
     opts, args = parser.parse_args()
@@ -144,14 +279,15 @@ def validate_options(parser, opts):
     """Does sys.exit() if an invalid combination of options is specified.
     Otherwise returns None (implicitly)."""
 
-    if opts.command_suggest_port:
-        if not opts.puppet_root:
-            print "ERROR: --suggest-port requires --puppet-root"
+    if opts.enable_yelpsoa_config:
+        if not opts.yelpsoa_config_root:
+            print "ERROR: yelpsoa-configs is enabled but --yelpsoa-config-root is not set!"
             parser.print_usage()
             sys.exit(1)
-        # This effectively disables some checks below which we don't care about
-        # for --suggest-port mode.
-        opts.enable_nagios = False
+        if not os.path.exists(opts.yelpsoa_config_root):
+            print "ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root
+            parser.print_usage()
+            sys.exit(1)
 
     if opts.enable_puppet:
         if not opts.puppet_root:
@@ -173,13 +309,13 @@ def validate_options(parser, opts):
             parser.print_usage()
             sys.exit(1)
 
-    if not opts.puppet_root and not opts.port:
-        print "ERROR: Must provide either --puppet-root or --port!"
+    if not opts.yelpsoa_config_root and not opts.port:
+        print "ERROR: Must provide either --yelpsoa-config-root or --port!"
         parser.print_usage()
         sys.exit(1)
 
-    if not opts.puppet_root and not opts.vip:
-        print "ERROR: Must provide either --puppet-root or --vip!"
+    if not opts.yelpsoa_config_root and not opts.vip:
+        print "ERROR: Must provide either --yelpsoa-config-root or --vip!"
         parser.print_usage()
         sys.exit(1)
 
@@ -196,34 +332,42 @@ def validate_options(parser, opts):
         if opts.exclude_ops:
             opts.include_ops = False
 
-def setup_config_paths(puppet_root, nagios_root):
+def setup_config_paths(yelpsoa_config_root, puppet_root, nagios_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
     assert os.path.exists(config.TEMPLATE_DIR)
+    config.YELPSOA_CONFIG_ROOT = yelpsoa_config_root
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
 
-def do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate):
+def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on):
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runas_group)
     srv.io.write_file('port', port)
     srv.io.write_file('status_port', status_port)
     srv.io.write_file('post-download', post_download, executable=True)
     srv.io.write_file('post-activate', post_activate, executable=True)
+    service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on)
+    srv.io.write_file('service.yaml', service_yaml_contents)
     if vip is not None:
         srv.io.write_file('vip', vip)
         srv.io.write_file('lb.yaml', '')
+
+def do_puppet_steps(srv, port, vip):
+    if vip is not None:
         srv.io.write_healthcheck(
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops):
+def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_on):
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
 
-    hostgroup_contents = Template('hostgroup').substitute(
-        {'srvname': srv.name })
-    srv.io.append_hostgroups(hostgroup_contents)
+    default_contents = Template('hostgroup_empty_members').substitute(
+                {'srvname': srv.name})
+    host_by_ecosystem = collate_hosts_by_ecosystem(runs_on)
+    ecosystem_overrides = get_ecosystem_overrides(host_by_ecosystem, srv.name)
+    srv.io.append_hostgroups(default_contents, ecosystem_overrides=ecosystem_overrides)
 
     check_contents = Template('check').substitute({
         'srvname': srv.name,
@@ -250,11 +394,7 @@ def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops):
 
 
 def main(opts, args):
-    setup_config_paths(opts.puppet_root, opts.nagios_root)
-
-    if opts.command_suggest_port:
-        print suggest_port()
-        return
+    setup_config_paths(opts.yelpsoa_config_root, opts.puppet_root, opts.nagios_root)
 
     if opts.auto:
         opts.port = opts.port or "AUTO"
@@ -264,24 +404,28 @@ def main(opts, args):
         opts.runas_group = opts.runas_group or "AUTO"
         opts.post_download = opts.post_download or "AUTO"
         opts.post_activate = opts.post_activate or "AUTO"
+        opts.runs_on = opts.runs_on or "AUTO"
+        opts.deploys_on = opts.deploys_on or "AUTO"
 
     srvname = ask_srvname(opts.srvname)
     srv = Service(srvname)
 
     port = ask_port(opts.port)
-    status_port = ask_status_port(port, status_port=opts.status_port)
     vip = ask_vip(opts.vip)
+    runs_on = ask_runs_on(opts.runs_on)
 
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
-    if opts.enable_puppet:
-        runas, runas_group, post_download, post_activate = ask_puppet_questions(srv.name, port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate)
+    if opts.enable_yelpsoa_config:
+        status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
     if opts.enable_nagios:
         contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
 
+    if opts.enable_yelpsoa_config:
+        do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on)
     if opts.enable_puppet:
-        do_puppet_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate)
+        do_puppet_steps(srv, port, vip)
     if opts.enable_nagios:
-        do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops)
+        do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_on)
 
 
 if __name__ == '__main__':
