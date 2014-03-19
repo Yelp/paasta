@@ -42,35 +42,35 @@ class SrvReaderWriter(object):
     def append_servicegroup(self, contents):
         self._append(self.paths.servicegroup, contents)
 
-    def append_hostgroups(self, default_contents, ecosystem_overrides=None, vip=False):
+    def append_hostgroups(self, default_contents, habitat_overrides=None, vip=False):
         """Append a provided Nagios stanza to relevant hostgroups files.
 
         If 'vip' is provided and truthy, append to vips.cfg instead of soa.cfg.
 
-        If 'ecosystem' is not provided, 'default_contents' will be appended to
-        the appropriate hostgroups file. If 'ecosystem' is provided, it is a
-        dictionary where the key is an ecosystem and the value is the contents
-        to be written into the hostgroups file for that ecosystem.
+        If 'habitat' is not provided, 'default_contents' will be appended to
+        the appropriate hostgroups file. If 'habitat' is provided, it is a
+        dictionary where the key is a habitat and the value is the contents
+        to be written into the hostgroups file for that habitat.
 
         Example: append_hostgroups("foo") -> append "foo" to all hostgroups files
         Example: append_hostgroups("foo", {"stagea": bar}) ->
                  append "bar" to the stagea hostgroups file and append "foo" to
                  all other hostgroups files
         """
-        if ecosystem_overrides is None:
-            ecosystem_overrides = {}
+        if habitat_overrides is None:
+            habitat_overrides = {}
 
         filename = 'soa.cfg'
         if vip:
             filename = 'vips.cfg'
 
-        for ecosystem in os.listdir(self.paths.hostgroup):
-            for root, dirs, files in os.walk(os.path.join(self.paths.hostgroup, ecosystem)):
+        for habitat in os.listdir(self.paths.hostgroup):
+            for root, dirs, files in os.walk(os.path.join(self.paths.hostgroup, habitat)):
                 if root.endswith('hostgroups') and filename in files:
                     # We found a file we want to modify. Let's figure out which
                     # contents to put in it.
-                    if ecosystem in ecosystem_overrides.keys():
-                        contents = ecosystem_overrides[ecosystem]
+                    if habitat in habitat_overrides.keys():
+                        contents = habitat_overrides[habitat]
                     else:
                         contents = default_contents
                     self._append(os.path.join(root, filename), contents)
