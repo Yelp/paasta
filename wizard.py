@@ -107,9 +107,9 @@ def get_service_yaml_contents(runs_on, deploys_on):
 PROD_RE = re.compile(r"-(sfo\d|iad\d)$")
 STAGE_RE = re.compile(r"^(stage[a-z])(?!pam)")
 DEV_RE = re.compile(r"-(dev[a-z])$")
-def get_ecosystem_from_fqdn(fqdn):
-    """Tries to calculate an ecosystem given a fully qualified domain name.
-    Returns None and prints a warning if it can't guess an ecosystem.
+def get_habitat_from_fqdn(fqdn):
+    """Tries to calculate a habitat given a fully qualified domain name.
+    Returns None and prints a warning if it can't guess a habitat.
     """
     try:
         (hostname, subdomain, _yelpcorp, _com) = fqdn.split(".")
@@ -141,34 +141,34 @@ def get_ecosystem_from_fqdn(fqdn):
     if hostname.endswith("sj") and subdomain == "sjc":
         return subdomain
 
-    print "WARNING: Could not find ecosystem for fqdn %s" % fqdn
+    print "WARNING: Could not find habitat for fqdn %s" % fqdn
     return None
 
-def collate_hosts_by_ecosystem(fqdns):
+def collate_hosts_by_habitat(fqdns):
     """Given a list of fqdns, return a dictionary where the value is the short
-    hostname of the fqdn and the key is the ecosystem calculated from the fqdn.
+    hostname of the fqdn and the key is the habitat calculated from the fqdn.
 
-    If an ecosystem cannot be calculated for an fqdn, that fqdn is dropped from
+    If a habitat cannot be calculated for an fqdn, that fqdn is dropped from
     the returned dictionary.
     """
-    host_by_ecosystem = defaultdict(list)
+    host_by_habitat = defaultdict(list)
     for fqdn in fqdns:
         host = fqdn.split(".")[0]
-        ecosystem = get_ecosystem_from_fqdn(fqdn)
-        if not ecosystem:
-            print "WARNING: Not writing ecosystemless host %s into Nagios hostgroups" % fqdn
+        habitat = get_habitat_from_fqdn(fqdn)
+        if not habitat:
+            print "WARNING: Not writing habitatless host %s into Nagios hostgroups" % fqdn
         else:
-            host_by_ecosystem[ecosystem].append(host)
-    return host_by_ecosystem
+            host_by_habitat[habitat].append(host)
+    return host_by_habitat
 
-def get_ecosystem_overrides(host_by_ecosystem, srvname):
-    ecosystem_overrides = {}
-    for (ecosystem, members_list) in host_by_ecosystem.items():
+def get_habitat_overrides(host_by_habitat, srvname):
+    habitat_overrides = {}
+    for (habitat, members_list) in host_by_habitat.items():
         members_string = ",".join(sorted(members_list))
         contents = Template('hostgroup_with_members').substitute(
                 {'srvname': srvname, 'members': members_string})
-        ecosystem_overrides[ecosystem] = contents
-    return ecosystem_overrides
+        habitat_overrides[habitat] = contents
+    return habitat_overrides
 
 def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group, post_download, post_activate, deploys_on):
     """Surveys the user about the various entries in files/services/$srvname"""
@@ -365,9 +365,9 @@ def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_
 
     default_contents = Template('hostgroup_empty_members').substitute(
                 {'srvname': srv.name})
-    host_by_ecosystem = collate_hosts_by_ecosystem(runs_on)
-    ecosystem_overrides = get_ecosystem_overrides(host_by_ecosystem, srv.name)
-    srv.io.append_hostgroups(default_contents, ecosystem_overrides=ecosystem_overrides)
+    host_by_habitat = collate_hosts_by_habitat(runs_on)
+    habitat_overrides = get_habitat_overrides(host_by_habitat, srv.name)
+    srv.io.append_hostgroups(default_contents, habitat_overrides=habitat_overrides)
 
     check_contents = Template('check').substitute({
         'srvname': srv.name,

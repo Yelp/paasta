@@ -155,11 +155,11 @@ class GetServiceYamlContentsTestCase(T.TestCase):
         expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
         T.assert_in(expected, actual)
 
-class GetEcosystemFromFqdnTestCase(T.TestCase):
+class GetHabitatFromFqdnTestCase(T.TestCase):
     def test_unknown(self):
         fqdn = "unknownhost.unknownsubdomain.yelpcorp.com"
         expected = None
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_hostname_only(self):
@@ -168,13 +168,13 @@ class GetEcosystemFromFqdnTestCase(T.TestCase):
         """
         fqdn = "short-host-only"
         expected = None
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_stagea(self):
         fqdn = "stageaservices1.sldev.yelpcorp.com"
         expected = "stagea"
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_stagespam_is_not_stage(self):
@@ -183,104 +183,104 @@ class GetEcosystemFromFqdnTestCase(T.TestCase):
         doesn't match stagespam so we'll only assert about that fact.
         """
         fqdn = "stagespam1sv.sldev.yelpcorp.com"
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_not_equal("stage", actual)
 
     def test_devb(self):
         fqdn = "srv2-devb.dev.yelpcorp.com"
         expected = "devb"
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_sfo1(self):
         fqdn = "srv3-r1-sfo1.prod.yelpcorp.com"
         expected = "sfo1"
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_iad1(self):
         fqdn = "srv4-r4-iad1.prod.yelpcorp.com"
         expected = "iad1"
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_365(self):
         fqdn = "srv1.365.yelpcorp.com"
         expected = "sfo1"
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_sldev(self):
         fqdn = "devsearch2sv.sldev.yelpcorp.com"
         expected = "sldev"
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_slwdc(self):
         fqdn = "app3sw.slwdc.yelpcorp.com"
         expected = "slwdc"
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_sj(self):
         fqdn = "devsearch2sj.sjc.yelpcorp.com"
         expected = "sjc"
-        actual = wizard.get_ecosystem_from_fqdn(fqdn)
+        actual = wizard.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
 
-class CollateHostsByEcosystem(T.TestCase):
+class CollateHostsByHabitat(T.TestCase):
     @contextmanager
-    def patch_get_ecosystem_from_fqdn(self, return_value=None):
-        def fake_get_ecosystem_from_fqdn(fqdn):
-            return return_value or "%s-ecosystem" % fqdn
-        with mock.patch("wizard.get_ecosystem_from_fqdn", fake_get_ecosystem_from_fqdn):
+    def patch_get_habitat_from_fqdn(self, return_value=None):
+        def fake_get_habitat_from_fqdn(fqdn):
+            return return_value or "%s-habitat" % fqdn
+        with mock.patch("wizard.get_habitat_from_fqdn", fake_get_habitat_from_fqdn):
             yield
 
     def test_no_fqdns(self):
         expected = {}
         fqdns = []
-        actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        actual = wizard.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
     def test_bad_fqdn_is_dropped(self):
         expected = {}
         fqdns = ["bad_fqdn"]
-        actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        actual = wizard.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
     def test_one_good_fqdn(self):
-        fqdn = "fakehost1.fakeecosystem.yelpcorp.com"
-        expected = {"%s-ecosystem" % fqdn: ["fakehost1"]}
+        fqdn = "fakehost1.fakehabitat.yelpcorp.com"
+        expected = {"%s-habitat" % fqdn: ["fakehost1"]}
         fqdns = [fqdn]
-        with self.patch_get_ecosystem_from_fqdn():
-            actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        with self.patch_get_habitat_from_fqdn():
+            actual = wizard.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
-    def test_two_good_fqdns_different_ecosystem(self):
-        fqdn1 = "fakehost1.fakeecosystem.yelpcorp.com"
-        fqdn2 = "fakehost2.fakeecosystem.yelpcorp.com"
+    def test_two_good_fqdns_different_habitat(self):
+        fqdn1 = "fakehost1.fakehabitat.yelpcorp.com"
+        fqdn2 = "fakehost2.fakehabitat.yelpcorp.com"
         expected = {
-            "%s-ecosystem" % fqdn1: ["fakehost1"],
-            "%s-ecosystem" % fqdn2: ["fakehost2"],
+            "%s-habitat" % fqdn1: ["fakehost1"],
+            "%s-habitat" % fqdn2: ["fakehost2"],
         }
         fqdns = [fqdn1, fqdn2]
-        with self.patch_get_ecosystem_from_fqdn():
-            actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        with self.patch_get_habitat_from_fqdn():
+            actual = wizard.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
-    def test_two_good_fqdns_same_ecosystem(self):
-        fqdn1 = "fakehost1.sameecosystem.yelpcorp.com"
-        fqdn2 = "fakehost2.sameecosystem.yelpcorp.com"
-        ecosystem = "sameecosystem"
-        expected = {ecosystem: ["fakehost1", "fakehost2"]}
+    def test_two_good_fqdns_same_habitat(self):
+        fqdn1 = "fakehost1.samehabitat.yelpcorp.com"
+        fqdn2 = "fakehost2.samehabitat.yelpcorp.com"
+        habitat = "samehabitat"
+        expected = {habitat: ["fakehost1", "fakehost2"]}
         fqdns = [fqdn1, fqdn2]
-        with self.patch_get_ecosystem_from_fqdn(ecosystem):
-            actual = wizard.collate_hosts_by_ecosystem(fqdns)
+        with self.patch_get_habitat_from_fqdn(habitat):
+            actual = wizard.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
 
-#class GetEcosystemOverrides(T.TestCase):
+#class GetHabitatOverrides(T.TestCase):
 #    @T.setup_teardown
 #    def patch_template(self):
 #        with mock.patch("wizard.Template") as self.mock_template:
@@ -289,15 +289,15 @@ class CollateHostsByEcosystem(T.TestCase):
 #
 #    def test_empty(self):
 #        srvname = "fake_srvname"
-#        host_by_ecosystem = {}
+#        host_by_habitat = {}
 #        expected = {}
-#        actual = wizard.get_ecosystem_overrides(host_by_ecosystem, srvname)
+#        actual = wizard.get_habitat_overrides(host_by_habitat, srvname)
 #        T.assert_equal(expected, actual)
 #
-#    def test_good_host_by_ecosystem(self):
+#    def test_good_host_by_habitat(self):
 #        srvname = "fake_srvname"
-#        host_by_ecosystem = {"fake_ecosystem": ["fakehost1", "fakehost2"]}
-#        wizard.get_ecosystem_overrides(host_by_ecosystem, srvname)
+#        host_by_habitat = {"fake_habitat": ["fakehost1", "fakehost2"]}
+#        wizard.get_habitat_overrides(host_by_habitat, srvname)
 #
 #        import ipdb; ipdb.set_trace()
 #        assert self.mock_substitute.called
