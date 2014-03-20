@@ -53,7 +53,7 @@ class AutosuggestTestCase(T.TestCase):
         # mock.patch was very confused by the config module, so I'm doing it
         # this way. One more reason to disapprove of this global config module
         # scheme.
-        config.YELPSOA_CONFIG_ROOT = "fake_puppet_root"
+        config.YELPSOA_CONFIG_ROOT = "fake_yelpsoa_config_root"
 
         walk_return = [(
             "fake_root",
@@ -88,6 +88,16 @@ class AutosuggestTestCase(T.TestCase):
 
         # What we came here for: the actual output of the function under test
         T.assert_equal(actual, 13002 + 1) # highest port + 1
+
+    def test_suggest_runs_on_raises_when_puppet_root_invalid(self):
+        config.PUPPET_ROOT = "fake_puppet_root"
+        with T.assert_raises(ImportError):
+            autosuggest.suggest_runs_on()
+
+    def test_suggest_runs_on_returns_none_when_puppet_root_not_set(self):
+        config.PUPPET_ROOT = None
+        T.assert_equal(None, autosuggest.suggest_runs_on())
+
 
 class ParseHostnamesStringTestCase(T.TestCase):
     @T.setup_teardown

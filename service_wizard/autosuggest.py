@@ -1,6 +1,7 @@
 import operator
 import os
 import os.path
+import sys
 
 from service_wizard import config
 
@@ -42,5 +43,27 @@ def suggest_port():
                     port = 0
                 max_port = max(port, max_port)
     return max_port + 1
+
+def suggest_runs_on():
+    # This is down here because we only need this (slightly complicated) import
+    # logic if we're asked to suggest runs_on.
+    if not config.PUPPET_ROOT:
+        print "INFO: Can't suggest runs_on because --puppet-root is not set."
+        return None
+    sys.path.append(
+        os.path.join(
+            config.PUPPET_ROOT, "modules", "deployment", "files",
+            "services", "nail", "sys", "srv-deploy", "lib"))
+    try:
+        import service_configuration_lib
+    except ImportError:
+        print "ERROR: You did not provide 'runs_on' so I have to calculate it."
+        print "But I can't import service_configuration_lib, so I can't do that."
+        print "Bad PUPPET_ROOT %s?" % config.PUPPET_ROOT
+        raise
+    print dir(service_configuration_lib)
+
+
+
 
 # vim: expandtab tabstop=4 sts=4 shiftwidth=4:

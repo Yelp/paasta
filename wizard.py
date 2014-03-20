@@ -11,7 +11,9 @@ import yaml
 
 from service_wizard import config
 from service_wizard import prompt
-from service_wizard.autosuggest import suggest_port, suggest_vip
+from service_wizard.autosuggest import suggest_port
+from service_wizard.autosuggest import suggest_runs_on
+from service_wizard.autosuggest import suggest_vip
 from service_wizard.service import Service
 from service_wizard.template import Template
 
@@ -52,17 +54,19 @@ def ask_runs_on(runs_on=None):
     """
     default_runs_on = ''
     if runs_on == "AUTO":
-        print "WARNING: AUTO not yet supported for runs_on!"
-        runs_on = None
+        if not config.PUPPET_ROOT:
+            print "INFO: Can't suggest runs_on because --puppet-root is not set."
+        runs_on = suggest_runs_on()
         ###### suggest_dev_hosts()
         ### suggest_stage_hosts()
         ### suggest_prod_hosts()
-    # This can go back to being an 'elif' after AUTO is supported
+
     if runs_on is None:
         runs_on = prompt.ask(
             'Machines to run on (comma-separated short hostnames)?',
             default_runs_on,
         )
+
     parsed_runs_on = parse_hostnames_string(runs_on)
     return parsed_runs_on
 
@@ -267,8 +271,8 @@ def parse_args():
     group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default")
     group.add_option("-d", "--post-download", dest="post_download", default=None, help="Script executed after service is downloaded by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
     group.add_option("-a", "--post-activate", dest="post_activate", default=None, help="Script executed after service is activated by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
-    group.add_option("-S", "--runs-on", dest="runs_on", default=None, help="Comma-separated list of machines where the service runs. Use shortnames appropriate for Nagios; I will translated to FQDN as needed.")
-    group.add_option("-D", "--deploys-on", dest="deploys_on", default=None, help="Comma-separated list of machines where the service runs. Use shortnames appropriate for Nagios; I will translated to FQDN as needed.")
+    group.add_option("-S", "--runs-on", dest="runs_on", default=None, help="Comma-separated list of machines where the service runs. You can use shortnames appropriate and I will translated to FQDN as needed. Can be empty string ('') for no machines; or AUTO for the default set. AUTO requires --puppet-root.")
+    group.add_option("-D", "--deploys-on", dest="deploys_on", default=None, help="Comma-separated list of machines where the service runs. You can use shortnames appropriate and I will translated to FQDN as needed. Can be empty string ('') for no machines; or AUTO for the default set.")
     parser.add_option_group(group)
 
     opts, args = parser.parse_args()
