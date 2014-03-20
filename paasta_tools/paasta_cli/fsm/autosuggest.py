@@ -44,12 +44,15 @@ def suggest_port():
                 max_port = max(port, max_port)
     return max_port + 1
 
-def suggest_runs_on():
-    # This is down here because we only need this (slightly complicated) import
-    # logic if we're asked to suggest runs_on.
-    if not config.PUPPET_ROOT:
-        print "INFO: Can't suggest runs_on because --puppet-root is not set."
-        return None
+def _get_all_service_yamls():
+    """Walks config.YELPSOA_CONFIG_ROOT looking for service.yaml files. Returns
+    a list of dicts representing the contents of those files.
+
+    Requires service_configuration_lib from config.PUPPET_ROOT. Raises
+    ImportError if that doesn't work out. This happens down here because we
+    only need this (slightly complicated) import logic if we're asked to
+    suggest runs_on.
+    """
     sys.path.append(
         os.path.join(
             config.PUPPET_ROOT, "modules", "deployment", "files",
@@ -57,13 +60,28 @@ def suggest_runs_on():
     try:
         import service_configuration_lib
     except ImportError:
-        print "ERROR: You did not provide 'runs_on' so I have to calculate it."
-        print "But I can't import service_configuration_lib, so I can't do that."
-        print "Bad PUPPET_ROOT %s?" % config.PUPPET_ROOT
+        print "ERROR: You asked me to calculate 'runs_on' but I couldn't import"
+        print "service_configuration_lib. Bad PUPPET_ROOT %s?" % config.PUPPET_ROOT
         raise
-    print dir(service_configuration_lib)
 
+    all_service_yamls = []
+    for root, dirs, files in os.walk(config.YELPSOA_CONFIG_ROOT):
+        if "service.yaml" in files:
+            all_service_yamls.append(
+                service_configuration_lib.read_service_information(
+                    os.path.join(root, "service.yaml")))
+    return all_service_yamls
 
+def suggest_runs_on():
+    if not config.PUPPET_ROOT:
+        print "INFO: Can't suggest runs_on because --puppet-root is not set."
+        return None
+
+    all_service_yamls = _get_all_service_yamls()
+    print all_service_yamls
+
+    ### tmp
+    return ""
 
 
 # vim: expandtab tabstop=4 sts=4 shiftwidth=4:
