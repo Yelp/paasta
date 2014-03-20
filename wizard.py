@@ -52,16 +52,13 @@ def ask_runs_on(runs_on=None):
     by prompting the user), return a list containing the FQDN for each
     hostname.
     """
-    default_runs_on = ''
+    default_runs_on = suggest_runs_on()
     if runs_on == "AUTO":
-        if not config.PUPPET_ROOT:
-            print "INFO: Can't suggest runs_on because --puppet-root is not set."
-        runs_on = suggest_runs_on()
+        runs_on = default_runs_on
         ###### suggest_dev_hosts()
         ### suggest_stage_hosts()
         ### suggest_prod_hosts()
-
-    if runs_on is None:
+    elif runs_on is None:
         runs_on = prompt.ask(
             'Machines to run on (comma-separated short hostnames)?',
             default_runs_on,
