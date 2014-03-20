@@ -103,8 +103,8 @@ def get_service_yaml_contents(runs_on, deploys_on):
     }
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
-# Capture names like stagea and stagez but not stagespam, which is different.
 PROD_RE = re.compile(r"-(sfo\d|iad\d)$")
+# Capture names like stagea and stagez but not stagespam, which is different.
 STAGE_RE = re.compile(r"^(stage[a-z])(?!pam)")
 DEV_RE = re.compile(r"-(dev[a-z])$")
 def get_habitat_from_fqdn(fqdn):
