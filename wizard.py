@@ -52,7 +52,7 @@ def ask_runs_on(runs_on=None):
     """
     default_runs_on = ''
     if runs_on == "AUTO":
-        print "AUTO not yet supported for runs_on!"
+        print "WARNING: AUTO not yet supported for runs_on!"
         runs_on = None
         ###### suggest_dev_hosts()
         ### suggest_stage_hosts()
@@ -212,7 +212,7 @@ def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group,
 
     default_deploys_on = ''
     if deploys_on == "AUTO":
-        deploys_on = ""
+        deploys_on = default_deploys_on
     elif deploys_on is None:
         deploys_on = prompt.ask(
             'Machines to deploy on (comma-separated short hostnames)?',
