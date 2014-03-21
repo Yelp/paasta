@@ -7,6 +7,7 @@ import testify as T
 import wizard
 from service_wizard import autosuggest
 from service_wizard import config
+from service_wizard import service_configuration
 
 
 class SrvReaderWriterTestCase(T.TestCase):
@@ -169,7 +170,7 @@ class GetHabitatFromFqdnTestCase(T.TestCase):
     def test_unknown(self):
         fqdn = "unknownhost.unknownsubdomain.yelpcorp.com"
         expected = None
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_hostname_only(self):
@@ -178,13 +179,13 @@ class GetHabitatFromFqdnTestCase(T.TestCase):
         """
         fqdn = "short-host-only"
         expected = None
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_stagea(self):
         fqdn = "stageaservices1.sldev.yelpcorp.com"
         expected = "stagea"
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_stagespam_is_not_stage(self):
@@ -193,49 +194,49 @@ class GetHabitatFromFqdnTestCase(T.TestCase):
         doesn't match stagespam so we'll only assert about that fact.
         """
         fqdn = "stagespam1sv.sldev.yelpcorp.com"
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_not_equal("stage", actual)
 
     def test_devb(self):
         fqdn = "srv2-devb.dev.yelpcorp.com"
         expected = "devb"
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_sfo1(self):
         fqdn = "srv3-r1-sfo1.prod.yelpcorp.com"
         expected = "sfo1"
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_iad1(self):
         fqdn = "srv4-r4-iad1.prod.yelpcorp.com"
         expected = "iad1"
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_365(self):
         fqdn = "srv1.365.yelpcorp.com"
         expected = "sfo1"
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_sldev(self):
         fqdn = "devsearch2sv.sldev.yelpcorp.com"
         expected = "sldev"
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_slwdc(self):
         fqdn = "app3sw.slwdc.yelpcorp.com"
         expected = "slwdc"
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
     def test_sj(self):
         fqdn = "devsearch2sj.sjc.yelpcorp.com"
         expected = "sjc"
-        actual = wizard.get_habitat_from_fqdn(fqdn)
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
 
@@ -244,7 +245,7 @@ class CollateHostsByHabitat(T.TestCase):
     def patch_get_habitat_from_fqdn(self, return_value=None):
         def fake_get_habitat_from_fqdn(fqdn):
             return return_value or "%s-habitat" % fqdn
-        with mock.patch("wizard.get_habitat_from_fqdn", fake_get_habitat_from_fqdn):
+        with mock.patch("service_wizard.service_configuration.get_habitat_from_fqdn", fake_get_habitat_from_fqdn):
             yield
 
     def test_no_fqdns(self):
@@ -264,7 +265,7 @@ class CollateHostsByHabitat(T.TestCase):
         expected = {"%s-habitat" % fqdn: ["fakehost1"]}
         fqdns = [fqdn]
         with self.patch_get_habitat_from_fqdn():
-            actual = wizard.collate_hosts_by_habitat(fqdns)
+            actual = service_configuration.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
     def test_two_good_fqdns_different_habitat(self):
@@ -276,7 +277,7 @@ class CollateHostsByHabitat(T.TestCase):
         }
         fqdns = [fqdn1, fqdn2]
         with self.patch_get_habitat_from_fqdn():
-            actual = wizard.collate_hosts_by_habitat(fqdns)
+            actual = service_configuration.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
     def test_two_good_fqdns_same_habitat(self):
@@ -286,7 +287,7 @@ class CollateHostsByHabitat(T.TestCase):
         expected = {habitat: ["fakehost1", "fakehost2"]}
         fqdns = [fqdn1, fqdn2]
         with self.patch_get_habitat_from_fqdn(habitat):
-            actual = wizard.collate_hosts_by_habitat(fqdns)
+            actual = service_configuration.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
 
