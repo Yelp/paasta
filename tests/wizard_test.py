@@ -91,14 +91,29 @@ class SuggestPortTestCase(T.TestCase):
         T.assert_equal(actual, 13002 + 1) # highest port + 1
 
 class SuggestRunsOnTestCase(T.TestCase):
-    def test_suggest_runs_on_raises_when_puppet_root_invalid(self):
-        config.PUPPET_ROOT = "fake_puppet_root"
-        with T.assert_raises(ImportError):
-            autosuggest.suggest_runs_on()
+    @T.setup_teardown
+    def mock_get_habitat_from_fqdn(self):
+        with mock.patch("service_wizard.service_configuration.load_service_yamls"):
+            with mock.patch("service_wizard.service_configuration.collate_service_yamls"):
+                yield
 
     def test_suggest_runs_on_returns_empty_string_when_puppet_root_not_set(self):
         config.PUPPET_ROOT = None
         T.assert_equal("", autosuggest.suggest_runs_on())
+
+class LoadServiceYamls(T.TestCase):
+    """load_service_yamls() is mostly just a wrapper around python fundamentals
+    (import, os.walk) and service_configuration_lib.read_service_information
+    (tested elsewhere). Hence, there aren't a lot of tests here.
+
+    However the import logic used by suggest_runs_on() is a little weird so I
+    wrote a test for it. That test no longer works in SuggestRunsOnTestCase
+    because of mocking, so I extracted it.
+    """
+    def test_load_service_yamls_raises_when_puppet_root_invalid(self):
+        config.PUPPET_ROOT = "fake_puppet_root"
+        with T.assert_raises(ImportError):
+            service_configuration.load_service_yamls()
 
 class CollateServiceYamlsTestCase(T.TestCase):
     @T.setup_teardown
