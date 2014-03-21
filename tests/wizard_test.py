@@ -114,9 +114,38 @@ class SuggestRunsOnTestCase(T.TestCase):
         config.PUPPET_ROOT = None
         T.assert_equal("", autosuggest.suggest_runs_on())
 
-    def test_collate_service_yamls_returns_empty_dict_given_none(self):
+    def test_collate_service_yamls_returns_empty_dict_given_empty_list(self):
         expected = {}
         all_service_yamls = []
+        actual = service_configuration.collate_service_yamls(all_service_yamls)
+        T.assert_equal(expected, actual)
+
+    def test_collate_service_yamls_returns_empty_dict_given_list_of_none(self):
+        """This happes with yaml like this:
+        runs_on:
+         -
+        deploys_on:
+         - somebatch.sfo1
+         """
+        expected = {}
+        all_service_yamls = [
+            {
+                "runs_on": [None],
+            }
+        ]
+        actual = service_configuration.collate_service_yamls(all_service_yamls)
+        T.assert_equal(expected, actual)
+
+    def test_collate_service_yamls_returns_empty_dict_given_yaml_without_runs_on(self):
+        """This happes with yaml like this:
+         needs_puppet_help: true
+         """
+        expected = {}
+        all_service_yamls = [
+            {
+                "needs_puppet_help": True,
+            }
+        ]
         actual = service_configuration.collate_service_yamls(all_service_yamls)
         T.assert_equal(expected, actual)
 

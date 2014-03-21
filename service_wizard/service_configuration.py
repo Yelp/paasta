@@ -61,6 +61,10 @@ def collate_hosts_by_habitat(fqdns):
     """
     host_by_habitat = defaultdict(list)
     for fqdn in fqdns:
+        # Some service.yamls have a line " - " which gets loaded as [None].
+        # We'll just throw these lines out.
+        if fqdn is None:
+            continue
         host = fqdn.split(".")[0]
         habitat = get_habitat_from_fqdn(fqdn)
         if not habitat:
@@ -100,6 +104,8 @@ def load_service_yamls():
 def collate_service_yamls(all_service_yamls):
     all_hosts_by_habitat = {}
     for service_yaml in all_service_yamls:
-        hosts_by_habitat =  collate_hosts_by_habitat(service_yaml["runs_on"])
+        hosts = service_yaml.get("runs_on", [])
+        hosts_by_habitat =  collate_hosts_by_habitat(hosts)
+        ### update isn't right
         all_hosts_by_habitat.update(hosts_by_habitat)
     return all_hosts_by_habitat
