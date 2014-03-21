@@ -21,7 +21,7 @@ def get_habitat_from_fqdn(fqdn):
     """
     try:
         (hostname, subdomain, _yelpcorp, _com) = fqdn.split(".")
-    except ValueError:
+    except (AttributeError, ValueError):
         print "WARNING: %s doesn't appear to be a well-formed fqdn (host.subdomain.yelpcorp.com)." % fqdn
         return None
 
@@ -102,10 +102,36 @@ def load_service_yamls():
     return all_service_yamls
 
 def collate_service_yamls(all_service_yamls):
+    """Given a list containing dictionaries representing the contents of
+    service.yaml files, return a dict-of-dicts. The outer dict has habitats for
+    keys and dictionaries for values. The inner dict has hostnames for keys and
+    the number of time this hostname has been seen (i.e. the number of services
+    running on this host) for values. Example:
+
+    {
+        'sfo1': {
+            'app1.365.yelpcorp.com': 2,
+            'app2.365.yelpcorp.com': 2,
+        },
+        'stageb': {
+            'stagebmon1.sjc.yelpcorp.com': 7,
+            'stagebmon2.sjc.yelpcorp.com': 3,
+            'stagebservices1.sjc.yelpcorp.com': 24,
+            'stagebservices2.sjc.yelpcorp.com': 21,
+            'stagebservices3.sjc.yelpcorp.com': 7,
+        },
+    }
+    """
     all_hosts_by_habitat = {}
     for service_yaml in all_service_yamls:
-        hosts = service_yaml.get("runs_on", [])
-        hosts_by_habitat =  collate_hosts_by_habitat(hosts)
-        ### update isn't right
-        all_hosts_by_habitat.update(hosts_by_habitat)
+        fqdns = service_yaml.get("runs_on", [])
+        for fqdn in fqdns:
+            habitat = get_habitat_from_fqdn(fqdn)
+            if not habitat:
+                continue
+            current_hosts = all_hosts_by_habitat.get(habitat, {})
+            current_num_services_assigned = current_hosts.get(fqdn, 0)
+            current_num_services_assigned = current_num_services_assigned + 1
+            all_hosts_by_habitat[habitat] = current_hosts
+            all_hosts_by_habitat[habitat][fqdn] = current_num_services_assigned
     return all_hosts_by_habitat

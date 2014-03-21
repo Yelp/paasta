@@ -50,10 +50,11 @@ def suggest_runs_on():
         return ""
 
     all_service_yamls = service_configuration.load_service_yamls()
-    host_by_habitat = service_configuration.collate_service_yamls(all_service_yamls)
-    print host_by_habitat
+    collated_service_yamls = service_configuration.collate_service_yamls(all_service_yamls)
 
-    ### tmp
+    ### tmp until this returns something usable by our caller
+    from pprint import pprint
+    pprint(collated_service_yamls)
     return ""
 
 
