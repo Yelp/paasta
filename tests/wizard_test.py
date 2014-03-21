@@ -91,6 +91,16 @@ class SuggestPortTestCase(T.TestCase):
         T.assert_equal(actual, 13002 + 1) # highest port + 1
 
 class SuggestRunsOnTestCase(T.TestCase):
+    def test_suggest_runs_on_raises_when_puppet_root_invalid(self):
+        config.PUPPET_ROOT = "fake_puppet_root"
+        with T.assert_raises(ImportError):
+            autosuggest.suggest_runs_on()
+
+    def test_suggest_runs_on_returns_empty_string_when_puppet_root_not_set(self):
+        config.PUPPET_ROOT = None
+        T.assert_equal("", autosuggest.suggest_runs_on())
+
+class CollateServiceYamlsTestCase(T.TestCase):
     @T.setup_teardown
     def mock_get_habitat_from_fqdn(self):
         """This test case only cares about the logic in
@@ -108,15 +118,6 @@ class SuggestRunsOnTestCase(T.TestCase):
             return habitat
         with mock.patch("service_wizard.service_configuration.get_habitat_from_fqdn", new=fake_get_habitat_from_fqdn):
             yield
-
-    def test_suggest_runs_on_raises_when_puppet_root_invalid(self):
-        config.PUPPET_ROOT = "fake_puppet_root"
-        with T.assert_raises(ImportError):
-            autosuggest.suggest_runs_on()
-
-    def test_suggest_runs_on_returns_empty_string_when_puppet_root_not_set(self):
-        config.PUPPET_ROOT = None
-        T.assert_equal("", autosuggest.suggest_runs_on())
 
     def test_collate_service_yamls_returns_empty_dict_given_empty_list(self):
         expected = {}
