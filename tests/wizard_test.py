@@ -98,10 +98,14 @@ class SuggestRunsOnTestCase(T.TestCase):
         give it.
         """
         def fake_get_habitat_from_fqdn(hostname):
-            if hostname.endswith("1"):
-                return "fake_habitat1"
-            else:
-                return "fake_habitat2"
+            if hostname is None:
+                return hostname
+            habitat = None
+            try:
+                hostname, habitat = hostname.split(".")
+            except ValueError:
+                pass
+            return habitat
         with mock.patch("service_wizard.service_configuration.get_habitat_from_fqdn", new=fake_get_habitat_from_fqdn):
             yield
 
@@ -117,6 +121,16 @@ class SuggestRunsOnTestCase(T.TestCase):
     def test_collate_service_yamls_returns_empty_dict_given_empty_list(self):
         expected = {}
         all_service_yamls = []
+        actual = service_configuration.collate_service_yamls(all_service_yamls)
+        T.assert_equal(expected, actual)
+
+    def test_collate_service_yamls_returns_empty_dict_given_one_invalid_host(self):
+        expected = {}
+        all_service_yamls = [
+            {
+                "runs_on": ["host_with_no_habitat"],
+            }
+        ]
         actual = service_configuration.collate_service_yamls(all_service_yamls)
         T.assert_equal(expected, actual)
 
@@ -150,8 +164,11 @@ class SuggestRunsOnTestCase(T.TestCase):
         T.assert_equal(expected, actual)
 
     def test_collate_service_yamls_one_service_one_habitat(self):
-        hosts = ["host1", "anotherhost1"]
-        expected = {"fake_habitat1": hosts}
+        hosts = ["host1.habitat1", "anotherhost1.habitat1"]
+        expected = { "habitat1": {
+            hosts[0]: 1,
+            hosts[1]: 1,
+        }}
         all_service_yamls = [
             {
                 "runs_on": hosts,
@@ -163,8 +180,11 @@ class SuggestRunsOnTestCase(T.TestCase):
         T.assert_equal(expected, actual)
 
     def test_collate_service_yamls_one_service_two_habitats(self):
-        hosts = ["host1", "host2"]
-        expected = {"fake_habitat1": ["host1"], "fake_habitat2": ["host2"]}
+        hosts = ["host1.habitat1", "host2.habitat2"]
+        expected = {
+            "habitat1": { hosts[0]: 1 },
+            "habitat2": { hosts[1]: 1 },
+        }
         all_service_yamls = [
             {
                 "runs_on": hosts,
@@ -176,8 +196,11 @@ class SuggestRunsOnTestCase(T.TestCase):
         T.assert_equal(expected, actual)
 
     def test_collate_service_yamls_two_services_one_habitat(self):
-        hosts = ["host1", "anotherhost1"]
-        expected = {"fake_habitat1": hosts}
+        hosts = ["host1.habitat1", "anotherhost1.habitat1"]
+        expected = { "habitat1": {
+                hosts[0]: 1,
+                hosts[1]: 1,
+        }}
         all_service_yamls = [
             {
                 "runs_on": [hosts[0]],
@@ -260,6 +283,12 @@ class GetServiceYamlContentsTestCase(T.TestCase):
         T.assert_in(expected, actual)
 
 class GetHabitatFromFqdnTestCase(T.TestCase):
+    def test_none(self):
+        fqdn = None
+        expected = None
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
     def test_unknown(self):
         fqdn = "unknownhost.unknownsubdomain.yelpcorp.com"
         expected = None
