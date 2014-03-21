@@ -175,6 +175,24 @@ class SuggestRunsOnTestCase(T.TestCase):
         actual = service_configuration.collate_service_yamls(all_service_yamls)
         T.assert_equal(expected, actual)
 
+    def test_collate_service_yamls_two_services_one_habitat(self):
+        hosts = ["host1", "anotherhost1"]
+        expected = {"fake_habitat1": hosts}
+        all_service_yamls = [
+            {
+                "runs_on": [hosts[0]],
+                "deployed_to": [""],
+                "unused_key": ["car"],
+            },
+            {
+                "runs_on": [hosts[1]],
+                "deployed_to": [""],
+                "unused_key": ["car"],
+            },
+        ]
+        actual = service_configuration.collate_service_yamls(all_service_yamls)
+        T.assert_equal(expected, actual)
+
 class ParseHostnamesStringTestCase(T.TestCase):
     @T.setup_teardown
     def mock_get_fqdn(self):
