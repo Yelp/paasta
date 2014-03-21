@@ -251,13 +251,13 @@ class CollateHostsByHabitat(T.TestCase):
     def test_no_fqdns(self):
         expected = {}
         fqdns = []
-        actual = wizard.collate_hosts_by_habitat(fqdns)
+        actual = service_configuration.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
     def test_bad_fqdn_is_dropped(self):
         expected = {}
         fqdns = ["bad_fqdn"]
-        actual = wizard.collate_hosts_by_habitat(fqdns)
+        actual = service_configuration.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
     def test_one_good_fqdn(self):
