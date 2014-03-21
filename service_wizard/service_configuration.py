@@ -98,5 +98,8 @@ def load_service_yamls():
     return all_service_yamls
 
 def collate_service_yamls(all_service_yamls):
+    all_hosts_by_habitat = {}
     for service_yaml in all_service_yamls:
-        return collate_hosts_by_habitat(service_yaml["runs_on"])
+        hosts_by_habitat =  collate_hosts_by_habitat(service_yaml["runs_on"])
+        all_hosts_by_habitat.update(hosts_by_habitat)
+    return all_hosts_by_habitat

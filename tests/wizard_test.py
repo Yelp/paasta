@@ -49,7 +49,7 @@ class ValidateOptionsTestCase(T.TestCase):
         with T.assert_raises(SystemExit):
             wizard.validate_options(parser, options)
 
-class AutosuggestTestCase(T.TestCase):
+class SuggestPortTestCase(T.TestCase):
     def test_suggest_port(self):
         # mock.patch was very confused by the config module, so I'm doing it
         # this way. One more reason to disapprove of this global config module
@@ -90,15 +90,48 @@ class AutosuggestTestCase(T.TestCase):
         # What we came here for: the actual output of the function under test
         T.assert_equal(actual, 13002 + 1) # highest port + 1
 
+class SuggestRunsOnTestCase(T.TestCase):
+    @T.setup_teardown
+    def mock_get_habitat_from_fqdn(self):
+        """This test case only cares about the logic in
+        parse_hostnames_string(), so patch get_fqdn() to just return what we
+        give it.
+        """
+        def fake_get_habitat_from_fqdn(hostname):
+            if hostname.endswith("1"):
+                return "fake_habitat1"
+            else:
+                return "fake_habitat2"
+        with mock.patch("service_wizard.service_configuration.get_habitat_from_fqdn", new=fake_get_habitat_from_fqdn):
+            yield
+
     def test_suggest_runs_on_raises_when_puppet_root_invalid(self):
         config.PUPPET_ROOT = "fake_puppet_root"
         with T.assert_raises(ImportError):
             autosuggest.suggest_runs_on()
 
-    def test_suggest_runs_on_returns_none_when_puppet_root_not_set(self):
+    def test_suggest_runs_on_returns_empty_string_when_puppet_root_not_set(self):
         config.PUPPET_ROOT = None
-        T.assert_equal(None, autosuggest.suggest_runs_on())
+        T.assert_equal("", autosuggest.suggest_runs_on())
 
+    def test_collate_service_yamls_returns_empty_dict_given_none(self):
+        expected = {}
+        all_service_yamls = []
+        actual = service_configuration.collate_service_yamls(all_service_yamls)
+        T.assert_equal(expected, actual)
+
+    def test_collate_service_yamls_one_service_one_habitat(self):
+        hosts = ["host1", "anotherhost1"]
+        expected = {"fake_habitat1": hosts}
+        all_service_yamls = [
+            {
+                "runs_on": hosts,
+                "deployed_to": [""],
+                "unused_key": ["car"],
+            },
+        ]
+        actual = service_configuration.collate_service_yamls(all_service_yamls)
+        T.assert_equal(expected, actual)
 
 class ParseHostnamesStringTestCase(T.TestCase):
     @T.setup_teardown
