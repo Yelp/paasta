@@ -4,6 +4,7 @@ import os.path
 import sys
 
 from service_wizard import config
+from service_wizard import service_configuration
 
 
 class NoVipError(Exception):
