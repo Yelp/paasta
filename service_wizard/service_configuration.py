@@ -129,9 +129,9 @@ def collate_service_yamls(all_service_yamls):
             habitat = get_habitat_from_fqdn(fqdn)
             if not habitat:
                 continue
-            current_hosts = all_hosts_by_habitat.get(habitat, {})
-            current_num_services_assigned = current_hosts.get(fqdn, 0)
-            current_num_services_assigned = current_num_services_assigned + 1
-            all_hosts_by_habitat[habitat] = current_hosts
-            all_hosts_by_habitat[habitat][fqdn] = current_num_services_assigned
+            previously_seen_hosts = all_hosts_by_habitat.get(habitat, {})
+            num_services_previously_assigned = previously_seen_hosts.get(fqdn, 0)
+            num_services_previously_assigned += 1
+            all_hosts_by_habitat[habitat] = previously_seen_hosts
+            all_hosts_by_habitat[habitat][fqdn] = num_services_previously_assigned
     return all_hosts_by_habitat
