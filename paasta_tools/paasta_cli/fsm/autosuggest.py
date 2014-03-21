@@ -47,10 +47,11 @@ def suggest_port():
 def suggest_runs_on():
     if not config.PUPPET_ROOT:
         print "INFO: Can't suggest runs_on because --puppet-root is not set."
-        return None
+        return ""
 
-    all_service_yamls = _get_all_service_yamls()
-    print all_service_yamls
+    all_service_yamls = service_configuration.load_service_yamls()
+    host_by_habitat = service_configuration.collate_service_yamls(all_service_yamls)
+    print host_by_habitat
 
     ### tmp
     return ""
