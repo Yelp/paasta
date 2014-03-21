@@ -97,9 +97,17 @@ class SuggestRunsOnTestCase(T.TestCase):
             with mock.patch("service_wizard.service_configuration.collate_service_yamls"):
                 yield
 
+    @T.setup
+    def set_puppet_root(self):
+        config.PUPPET_ROOT = "non_empty_unused_puppet_root"
+
     def test_suggest_runs_on_returns_empty_string_when_puppet_root_not_set(self):
         config.PUPPET_ROOT = None
         T.assert_equal("", autosuggest.suggest_runs_on())
+
+    def test_suggest_runs_on_default(self):
+        actual = autosuggest.suggest_runs_on()
+        print actual
 
 class LoadServiceYamls(T.TestCase):
     """load_service_yamls() is mostly just a wrapper around python fundamentals
