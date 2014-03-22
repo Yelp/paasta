@@ -46,10 +46,6 @@ def ask_status_port(port, status_port=None):
     return status_port
 
 def ask_runs_on(runs_on=None):
-    """Given a comma-separated list of hostnames (either passed in or received
-    by prompting the user), return a list containing the FQDN for each
-    hostname.
-    """
     # Don't bother calculating (doing so is non-trivial) if we don't have to.
     if runs_on and runs_on != "AUTO":
         return runs_on
@@ -92,6 +88,10 @@ def get_fqdn(hostname):
     return fqdn
 
 def parse_hostnames_string(hostnames_string):
+    """Given a comma-separated list of hostnames (either passed in or received
+    by prompting the user), return a list containing the FQDN for each
+    hostname.
+    """
     orig_hostnames = [h.strip() for h in hostnames_string.split(",")]
     fqdn_hostnames = [get_fqdn(h) for h in orig_hostnames]
     return fqdn_hostnames
