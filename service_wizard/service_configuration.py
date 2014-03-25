@@ -84,11 +84,11 @@ def load_service_yamls():
     """
     if not config.YELPSOA_CONFIG_ROOT:
         print "INFO: Can't suggest runs_on because --yelpsoa-config-root is not set."
-        return ""
+        return []
 
     if not config.PUPPET_ROOT:
         print "INFO: Can't suggest runs_on because --puppet-root is not set."
-        return ""
+        return []
 
     sys.path.append(
         os.path.join(

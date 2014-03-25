@@ -97,28 +97,25 @@ class SuggestRunsOnTestCase(T.TestCase):
             with mock.patch("service_wizard.service_configuration.collate_service_yamls"):
                 yield
 
-    @T.setup
-    def setup_config(self):
-        config.YELPSOA_CONFIG_ROOT = "non_empty_unused_yelpsoa_config_root"
-        config.PUPPET_ROOT = "non_empty_unused_puppet_root"
-
-    def test_returns_empty_string_when_yelpsoa_config_root_not_set(self):
-        config.YELPSOA_CONFIG_ROOT = None
-        T.assert_equal("", autosuggest.suggest_runs_on())
-
-    def test_returns_empty_string_when_puppet_root_not_set(self):
-        config.PUPPET_ROOT = None
-        T.assert_equal("", autosuggest.suggest_runs_on())
-
     def test_returns_original_if_no_munging_occurred(self):
         expected = "things,not,needing,munging"
         actual = autosuggest.suggest_runs_on(expected)
         T.assert_equal(expected, actual)
 
     def test_does_not_load_yamls_if_no_munging_occurred(self):
-        expected = "things,not,needing,munging"
-        autosuggest.suggest_runs_on(expected)
+        runs_on = "things,not,needing,munging"
+        autosuggest.suggest_runs_on(runs_on)
         T.assert_equal(0, self.mock_load_service_yamls.call_count)
+
+    def test_loads_yamls_if_auto(self):
+        runs_on = "AUTO"
+        autosuggest.suggest_runs_on(runs_on)
+        T.assert_equal(1, self.mock_load_service_yamls.call_count)
+
+    def test_loads_yamls_if_HABITAT(self):
+        runs_on = "FAKE_HABITAT1"
+        autosuggest.suggest_runs_on(runs_on)
+        T.assert_equal(1, self.mock_load_service_yamls.call_count)
 
 ###    def test_default(self):
 ###        actual = autosuggest.suggest_runs_on()
@@ -133,9 +130,20 @@ class LoadServiceYamls(T.TestCase):
     wrote a test for it. That test no longer works in SuggestRunsOnTestCase
     because of mocking, so I extracted it.
     """
-    def test_load_service_yamls_raises_when_puppet_root_invalid(self):
-        config.YELPSOA_CONFIG_ROOT = "anything"
-        config.PUPPET_ROOT = "fake_puppet_root"
+    @T.setup
+    def setup_config(self):
+        config.YELPSOA_CONFIG_ROOT = "non_empty_unused_yelpsoa_config_root"
+        config.PUPPET_ROOT = "non_empty_unused_puppet_root"
+
+    def test_returns_empty_list_when_yelpsoa_config_root_not_set(self):
+        config.YELPSOA_CONFIG_ROOT = None
+        T.assert_equal([], service_configuration.load_service_yamls())
+
+    def test_returns_empty_list_when_puppet_root_not_set(self):
+        config.PUPPET_ROOT = None
+        T.assert_equal([], service_configuration.load_service_yamls())
+
+    def test_raises_when_puppet_root_invalid(self):
         with T.assert_raises(ImportError):
             service_configuration.load_service_yamls()
 
