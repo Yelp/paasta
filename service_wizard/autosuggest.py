@@ -44,8 +44,39 @@ def suggest_port():
                 max_port = max(port, max_port)
     return max_port + 1
 
+def is_stage_habitat(habitat):
+    return habitat.startswith("stage")
+
+def is_dev_habitat(habitat):
+    return habitat.startswith("dev")
+
+def discover_habitats(collated_service_yamls):
+    """Given a dictionary as returned by collate_service_yamls(), return a list
+    of default habitats (in ALL CAPS as if passed in via command line) in which
+    hosts should be assigned by default.
+    """
+    habitats = []
+
+    # stage
+    stages = [habitat.upper() for habitat in collated_service_yamls.keys() if is_stage_habitat(habitat)]
+    habitats.extend(stages)
+
+    # prod
+    habitats.append("SFO1")
+    habitats.append("SFO2")
+    habitats.append("IAD1")
+
+    # dev
+    devs = [habitat.upper() for habitat in collated_service_yamls.keys() if is_dev_habitat(habitat)]
+    habitats.extend(devs)
+
+    return habitats
+
 def suggest_all_hosts(collated_service_yamls):
-    return "all_hosts"
+    suggested_hosts = []
+    for habitat in discover_habitats(collated_service_yamls):
+        suggested_hosts.append(suggest_hosts_for_habitat(collated_service_yamls, habitat))
+    return ",".join(suggested_hosts)
 
 def suggest_hosts_for_habitat(collated_service_yamls, habitat):
     return "srv.%s" % habitat

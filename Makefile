@@ -1,4 +1,4 @@
 test:
-	testify -v tests
+	testify -v tests --summary
 
 tests: test
