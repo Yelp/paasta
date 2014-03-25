@@ -72,14 +72,14 @@ def discover_habitats(collated_service_yamls):
 
     return habitats
 
+def suggest_hosts_for_habitat(collated_service_yamls, habitat):
+    return "srv.%s" % habitat
+
 def suggest_all_hosts(collated_service_yamls):
     suggested_hosts = []
     for habitat in discover_habitats(collated_service_yamls):
         suggested_hosts.append(suggest_hosts_for_habitat(collated_service_yamls, habitat))
     return ",".join(suggested_hosts)
-
-def suggest_hosts_for_habitat(collated_service_yamls, habitat):
-    return "srv.%s" % habitat
 
 def suggest_runs_on(runs_on=None):
     """Suggest a set of machines for the service to run on.

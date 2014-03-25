@@ -121,20 +121,6 @@ class SuggestRunsOnTestCase(T.TestCase):
 ###        actual = autosuggest.suggest_runs_on()
 ###        print actual
 
-class SuggestAllHostsTestCase(T.TestCase):
-    @T.setup_teardown
-    def mock_suggest_hosts_for_habitat(self):
-        with mock.patch(
-            "service_wizard.autosuggest.suggest_hosts_for_habitat",
-            return_value="fake_list_of_hosts",
-        ) as self.mock_suggest_hosts_for_habitat:
-            yield
-
-    def test_calls_suggest_hosts_for_habitat(self):
-        autosuggest.suggest_all_hosts({"unused": "dict"})
-        # Make sure we try to suggest at least one habitat.
-        T.assert_gt(self.mock_suggest_hosts_for_habitat.call_count, 0)
-
 class DiscoverHabitatsTestCase(T.TestCase):
     def test_stage(self):
         collated_service_yamls = {
@@ -168,6 +154,28 @@ class DiscoverHabitatsTestCase(T.TestCase):
         habitats = autosuggest.discover_habitats(collated_service_yamls)
         T.assert_in("DEVX", habitats)
         T.assert_not_in("XDEV", habitats)
+
+class SuggestHostsForHabitat(T.TestCase):
+    def test_stage_or_dev(self):
+        """stage and dev have the same workflow, so ony test one."""
+        pass
+
+    def test_prod(self):
+        pass
+
+class SuggestAllHostsTestCase(T.TestCase):
+    @T.setup_teardown
+    def mock_suggest_hosts_for_habitat(self):
+        with mock.patch(
+            "service_wizard.autosuggest.suggest_hosts_for_habitat",
+            return_value="fake_list_of_hosts",
+        ) as self.mock_suggest_hosts_for_habitat:
+            yield
+
+    def test_calls_suggest_hosts_for_habitat(self):
+        autosuggest.suggest_all_hosts({"unused": "dict"})
+        # Make sure we try to suggest at least one habitat.
+        T.assert_gt(self.mock_suggest_hosts_for_habitat.call_count, 0)
 
 class LoadServiceYamls(T.TestCase):
     """load_service_yamls() is mostly just a wrapper around python fundamentals
