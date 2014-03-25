@@ -47,27 +47,32 @@ def suggest_port():
 def is_stage_habitat(habitat):
     return habitat.startswith("stage")
 
+PROD_HABITATS = (
+    "sfo1",
+    "iad1",
+    "sfo2",
+)
+def is_prod_habitat(habitat):
+    return habitat in PROD_HABITATS
+
 def is_dev_habitat(habitat):
     return habitat.startswith("dev")
 
 def discover_habitats(collated_service_yamls):
     """Given a dictionary as returned by collate_service_yamls(), return a list
-    of default habitats (in ALL CAPS as if passed in via command line) in which
-    hosts should be assigned by default.
+    of default habitats from the ones in use.
     """
     habitats = []
 
     # stage
-    stages = [habitat.upper() for habitat in collated_service_yamls.keys() if is_stage_habitat(habitat)]
+    stages = [habitat for habitat in collated_service_yamls.keys() if is_stage_habitat(habitat)]
     habitats.extend(stages)
 
     # prod
-    habitats.append("SFO1")
-    habitats.append("SFO2")
-    habitats.append("IAD1")
+    habitats.extend(PROD_HABITATS)
 
     # dev
-    devs = [habitat.upper() for habitat in collated_service_yamls.keys() if is_dev_habitat(habitat)]
+    devs = [habitat for habitat in collated_service_yamls.keys() if is_dev_habitat(habitat)]
     habitats.extend(devs)
 
     return habitats
@@ -117,7 +122,7 @@ def suggest_runs_on(runs_on=None):
             munged_runs_on.append(suggest_all_hosts(collated_service_yamls))
         elif thing == thing.upper():
             collated_service_yamls = _get(collated_service_yamls)
-            munged_runs_on.append(suggest_hosts_for_habitat(collated_service_yamls, thing))
+            munged_runs_on.append(suggest_hosts_for_habitat(collated_service_yamls, thing.lower()))
         else:
             munged_runs_on.append(thing)
 

@@ -132,15 +132,15 @@ class DiscoverHabitatsTestCase(T.TestCase):
             },
         }
         habitats = autosuggest.discover_habitats(collated_service_yamls)
-        T.assert_in("STAGEX", habitats)
-        T.assert_not_in("XSTAGE", habitats)
+        T.assert_in("stagex", habitats)
+        T.assert_not_in("xstage", habitats)
 
     def test_prod(self):
         # Prod values are hardcoded, so even with no discovered habitats they
         # should appear.
         collated_service_yamls = {}
         habitats = autosuggest.discover_habitats(collated_service_yamls)
-        T.assert_in("IAD1", habitats)
+        T.assert_in("iad1", habitats)
 
     def test_dev(self):
         collated_service_yamls = {
@@ -152,8 +152,8 @@ class DiscoverHabitatsTestCase(T.TestCase):
             },
         }
         habitats = autosuggest.discover_habitats(collated_service_yamls)
-        T.assert_in("DEVX", habitats)
-        T.assert_not_in("XDEV", habitats)
+        T.assert_in("devx", habitats)
+        T.assert_not_in("xdev", habitats)
 
 class SuggestHostsForHabitat(T.TestCase):
     def test_stage_or_dev(self):
