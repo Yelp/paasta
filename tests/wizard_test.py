@@ -92,24 +92,35 @@ class SuggestPortTestCase(T.TestCase):
 
 class SuggestRunsOnTestCase(T.TestCase):
     @T.setup_teardown
-    def mock_get_habitat_from_fqdn(self):
-        with mock.patch("service_wizard.service_configuration.load_service_yamls"):
+    def mock_service_configuration_lookups(self):
+        with mock.patch("service_wizard.service_configuration.load_service_yamls") as self.mock_load_service_yamls:
             with mock.patch("service_wizard.service_configuration.collate_service_yamls"):
                 yield
 
     @T.setup
-    def set_puppet_root(self):
+    def setup_config(self):
+        config.YELPSOA_CONFIG_ROOT = "non_empty_unused_yelpsoa_config_root"
         config.PUPPET_ROOT = "non_empty_unused_puppet_root"
 
-    def test_suggest_runs_on_returns_empty_string_when_yelpsoa_config_root_not_set(self):
+    def test_returns_empty_string_when_yelpsoa_config_root_not_set(self):
         config.YELPSOA_CONFIG_ROOT = None
         T.assert_equal("", autosuggest.suggest_runs_on())
 
-    def test_suggest_runs_on_returns_empty_string_when_puppet_root_not_set(self):
+    def test_returns_empty_string_when_puppet_root_not_set(self):
         config.PUPPET_ROOT = None
         T.assert_equal("", autosuggest.suggest_runs_on())
 
-###    def test_suggest_runs_on_default(self):
+    def test_returns_original_if_no_munging_occurred(self):
+        expected = "things,not,needing,munging"
+        actual = autosuggest.suggest_runs_on(expected)
+        T.assert_equal(expected, actual)
+
+    def test_does_not_load_yamls_if_no_munging_occurred(self):
+        expected = "things,not,needing,munging"
+        autosuggest.suggest_runs_on(expected)
+        T.assert_equal(0, self.mock_load_service_yamls.call_count)
+
+###    def test_default(self):
 ###        actual = autosuggest.suggest_runs_on()
 ###        print actual
 
