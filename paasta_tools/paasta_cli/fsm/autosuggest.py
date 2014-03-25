@@ -44,12 +44,11 @@ def suggest_port():
                 max_port = max(port, max_port)
     return max_port + 1
 
-def runs_on_needs_massaging(runs_on):
-    # or any upper-case habitats in runs
-    if runs_on is None or \
-        runs_on == "AUTO":
-        return True
-    return False
+def suggest_all_hosts(collated_service_yamls):
+    return "all_hosts"
+
+def suggest_hosts_for_habitat(collated_service_yamls, habitat):
+    return "srv.%s" % habitat
 
 def suggest_runs_on(runs_on=None):
     """Suggest a set of machines for the service to run on.
@@ -69,16 +68,29 @@ def suggest_runs_on(runs_on=None):
     Returns the (possibly munged) 'runs_on' as a string of comma-separated
     hostnames.
     """
-    if not runs_on_needs_massaging(runs_on):
-        return runs_on
+    if runs_on is None:
+        runs_on = "AUTO"
 
-    all_service_yamls = service_configuration.load_service_yamls()
-    collated_service_yamls = service_configuration.collate_service_yamls(all_service_yamls)
+    collated_service_yamls = None
+    def _get(collated_service_yamls):
+        """A silly method to implement a memoized singleton."""
+        if collated_service_yamls is None:
+            all_service_yamls = service_configuration.load_service_yamls()
+            return service_configuration.collate_service_yamls(all_service_yamls)
+        return collated_service_yamls
 
-    ### tmp until this returns something usable by our caller
-    from pprint import pprint
-    pprint(collated_service_yamls)
-    return ""
+    munged_runs_on = []
+    for thing in runs_on.split(","):
+        if thing == "AUTO":
+            collated_service_yamls = _get(collated_service_yamls)
+            munged_runs_on.append(suggest_all_hosts(collated_service_yamls))
+        elif thing == thing.upper():
+            collated_service_yamls = _get(collated_service_yamls)
+            munged_runs_on.append(suggest_hosts_for_habitat(collated_service_yamls, thing))
+        else:
+            munged_runs_on.append(thing)
+
+    return ",".join(munged_runs_on)
 
 
 # vim: expandtab tabstop=4 sts=4 shiftwidth=4:
