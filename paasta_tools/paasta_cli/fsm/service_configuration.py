@@ -82,6 +82,14 @@ def load_service_yamls():
     only need this (slightly complicated) import logic if we're asked to
     suggest runs_on.
     """
+    if not config.YELPSOA_CONFIG_ROOT:
+        print "INFO: Can't suggest runs_on because --yelpsoa-config-root is not set."
+        return ""
+
+    if not config.PUPPET_ROOT:
+        print "INFO: Can't suggest runs_on because --puppet-root is not set."
+        return ""
+
     sys.path.append(
         os.path.join(
             config.PUPPET_ROOT, "modules", "deployment", "files",
