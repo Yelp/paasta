@@ -101,13 +101,17 @@ class SuggestRunsOnTestCase(T.TestCase):
     def set_puppet_root(self):
         config.PUPPET_ROOT = "non_empty_unused_puppet_root"
 
+    def test_suggest_runs_on_returns_empty_string_when_yelpsoa_config_root_not_set(self):
+        config.YELPSOA_CONFIG_ROOT = None
+        T.assert_equal("", autosuggest.suggest_runs_on())
+
     def test_suggest_runs_on_returns_empty_string_when_puppet_root_not_set(self):
         config.PUPPET_ROOT = None
         T.assert_equal("", autosuggest.suggest_runs_on())
 
-    def test_suggest_runs_on_default(self):
-        actual = autosuggest.suggest_runs_on()
-        print actual
+###    def test_suggest_runs_on_default(self):
+###        actual = autosuggest.suggest_runs_on()
+###        print actual
 
 class LoadServiceYamls(T.TestCase):
     """load_service_yamls() is mostly just a wrapper around python fundamentals
@@ -119,6 +123,7 @@ class LoadServiceYamls(T.TestCase):
     because of mocking, so I extracted it.
     """
     def test_load_service_yamls_raises_when_puppet_root_invalid(self):
+        config.YELPSOA_CONFIG_ROOT = "anything"
         config.PUPPET_ROOT = "fake_puppet_root"
         with T.assert_raises(ImportError):
             service_configuration.load_service_yamls()

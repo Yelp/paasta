@@ -46,21 +46,14 @@ def ask_status_port(port, status_port=None):
     return status_port
 
 def ask_runs_on(runs_on=None):
-    # Don't bother calculating (doing so is non-trivial) if we don't have to.
-    if runs_on and runs_on != "AUTO":
-        return runs_on
-
-    default_runs_on = suggest_runs_on()
-    if runs_on == "AUTO":
-        runs_on = default_runs_on
-        ###### suggest_dev_hosts()
-        ### suggest_stage_hosts()
-        ### suggest_prod_hosts()
-    elif runs_on is None:
+    suggested_runs_on = suggest_runs_on(runs_on)
+    if runs_on is None:
         runs_on = prompt.ask(
             'Machines to run on (comma-separated short hostnames)?',
-            default_runs_on,
+            suggested_runs_on,
         )
+    else:
+        runs_on = suggested_runs_on
 
     parsed_runs_on = parse_hostnames_string(runs_on)
     return parsed_runs_on

@@ -44,10 +44,33 @@ def suggest_port():
                 max_port = max(port, max_port)
     return max_port + 1
 
-def suggest_runs_on():
-    if not config.PUPPET_ROOT:
-        print "INFO: Can't suggest runs_on because --puppet-root is not set."
-        return ""
+def runs_on_needs_massaging(runs_on):
+    # or any upper-case habitats in runs
+    if runs_on is None or \
+        runs_on == "AUTO":
+        return True
+    return False
+
+def suggest_runs_on(runs_on=None):
+    """Suggest a set of machines for the service to run on.
+
+    'runs_on' is any existing --runs-on value provided by the user. This could
+    be a comma-separated list of ready-to-go hostnames, an all-caps HABITAT
+    to transform into appropriate defaults for that habitat, or the string
+    'AUTO' to transform into appropriate defaults for the default set of
+    habitats.
+
+    While doing all of that, try not to go read a bunch of yaml off disk if we
+    don't have to. We don't want the dependencies or the overhead (user warned
+    about --puppet-root even though it isn't actually needed; loading hundreds
+    of yaml files just to throw them away because the user provided a list of
+    hosts).
+
+    Returns the (possibly munged) 'runs_on' as a string of comma-separated
+    hostnames.
+    """
+    if not runs_on_needs_massaging(runs_on):
+        return runs_on
 
     all_service_yamls = service_configuration.load_service_yamls()
     collated_service_yamls = service_configuration.collate_service_yamls(all_service_yamls)
