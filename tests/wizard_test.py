@@ -358,6 +358,7 @@ class GetHabitatFromFqdnTestCase(T.TestCase):
         actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
+    ###### decide what to do with spam habitats
     def test_stagespam_is_not_stage(self):
         """I'm not sure what to do with stagespam yet (I think it gets its own
         Nagios file) but the point of this test is to make sure STAGE_RE
@@ -408,6 +409,10 @@ class GetHabitatFromFqdnTestCase(T.TestCase):
         expected = "sjc"
         actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
+
+    ###### decide what to do with testopia
+    ###### def test_relengsrv1_devc_testopia(self):
+    ######     pass
 
 
 class CollateHostsByHabitat(T.TestCase):
