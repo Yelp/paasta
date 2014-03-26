@@ -77,12 +77,36 @@ def discover_habitats(collated_service_yamls):
 
     return habitats
 
+def is_srv_machine(host, habitat):
+    """Returns True if 'host' is eligible to run services in 'habitat'. If
+    'habitat' is not known, return True (i.e. any machine is valid by default).
+    """
+    if is_stage_habitat(habitat):
+        if host.startswith("%sservices" % habitat):
+            return True
+        return False
+    elif is_prod_habitat(habitat):
+        if host.startswith("srv"):
+            return True
+        return False
+    elif is_dev_habitat(habitat):
+        if host.startswith("srv") or host.startswith("devservices"):
+            return True
+        return False
+    else:
+        return True
+
 def get_prod_srv_hosts(host_histogram):
     hosts = [host for host in host_histogram.keys() if host.startswith("srv")]
     return ",".join(hosts)
 
-def get_least_used_host(host_histogram):
-    least_used_host = min(host_histogram.items(), key=operator.itemgetter(1))
+def get_least_used_host(host_histogram, habitat=None):
+    """'habitat' is used to determine an eligible host, e.g. service machines
+    in stage are called stageXservicesN. We need this so we don't suggest
+    running on a random search or dsu box.
+    """
+    eligible_host_histogram = dict((host, count) for host, count in host_histogram.iteritems() if is_srv_machine(host, habitat))
+    least_used_host = min(eligible_host_histogram.items(), key=operator.itemgetter(1))
     return least_used_host[0]
 
 def suggest_hosts_for_habitat(collated_service_yamls, habitat):
@@ -95,9 +119,7 @@ def suggest_hosts_for_habitat(collated_service_yamls, habitat):
     if is_prod_habitat(habitat):
         return get_prod_srv_hosts(host_histogram)
     else:
-        return get_least_used_host(host_histogram)
-
-    return "srv.%s" % habitat
+        return get_least_used_host(host_histogram, habitat)
 
 def suggest_all_hosts(collated_service_yamls):
     suggested_hosts = []
