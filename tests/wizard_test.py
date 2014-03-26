@@ -166,8 +166,9 @@ class SuggestHostsForHabitat(T.TestCase):
         expected = "stagexservices1"
         collated_service_yamls = {
             "stagex": {
-                expected: 1,
-                "stagexservices2": 2,
+                expected: 5,
+                "stagexservices2": 10,
+                "stagex-ineligibile-non-services-box3": 1,
             },
         }
         actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "stagex")
