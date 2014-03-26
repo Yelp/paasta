@@ -93,8 +93,12 @@ class SuggestPortTestCase(T.TestCase):
 class SuggestRunsOnTestCase(T.TestCase):
     @T.setup_teardown
     def mock_service_configuration_lookups(self):
-        with mock.patch("service_wizard.service_configuration.load_service_yamls") as self.mock_load_service_yamls:
-            with mock.patch("service_wizard.service_configuration.collate_service_yamls"):
+        with nested(
+            mock.patch("service_wizard.service_configuration.load_service_yamls"),
+            mock.patch("service_wizard.service_configuration.collate_service_yamls"),
+            mock.patch("service_wizard.autosuggest.suggest_all_hosts", return_value=""),
+            mock.patch("service_wizard.autosuggest.suggest_hosts_for_habitat", return_value=""),
+        ) as (self.mock_load_service_yamls, _, _, _):
                 yield
 
     def test_returns_original_if_no_munging_occurred(self):
@@ -116,10 +120,6 @@ class SuggestRunsOnTestCase(T.TestCase):
         runs_on = "FAKE_HABITAT1"
         autosuggest.suggest_runs_on(runs_on)
         T.assert_equal(1, self.mock_load_service_yamls.call_count)
-
-###    def test_default(self):
-###        actual = autosuggest.suggest_runs_on()
-###        print actual
 
 class DiscoverHabitatsTestCase(T.TestCase):
     def test_stage(self):
@@ -156,12 +156,35 @@ class DiscoverHabitatsTestCase(T.TestCase):
         T.assert_not_in("xdev", habitats)
 
 class SuggestHostsForHabitat(T.TestCase):
-    def test_stage_or_dev(self):
-        """stage and dev have the same workflow, so ony test one."""
-        pass
+    def test_habitat_not_in_collated_service_yamls(self):
+        collated_service_yamls = {}
+        actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "nonexistent")
+        T.assert_equal("", actual)
+
+    def test_not_prod(self):
+        """All non-prod habitats have the same workflow, so just test one."""
+        expected = "stagexservices1"
+        collated_service_yamls = {
+            "stagex": {
+                expected: 1,
+                "stagexservices2": 2,
+            },
+        }
+        actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "stagex")
+        T.assert_equal(expected, actual)
 
     def test_prod(self):
-        pass
+        expected = "srv1,srv1-r1-iad1"
+        collated_service_yamls = {
+            "sfo1": {
+                "srv1": 99,
+                "srv1-r1-iad1": 99,
+                "mon1": 1,
+                "search1": 1,
+            },
+        }
+        actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "sfo1")
+        T.assert_equal(expected, actual)
 
 class SuggestAllHostsTestCase(T.TestCase):
     @T.setup_teardown

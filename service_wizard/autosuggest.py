@@ -77,7 +77,26 @@ def discover_habitats(collated_service_yamls):
 
     return habitats
 
+def get_prod_srv_hosts(host_histogram):
+    hosts = [host for host in host_histogram.keys() if host.startswith("srv")]
+    return ",".join(hosts)
+
+def get_least_used_host(host_histogram):
+    least_used_host = min(host_histogram.items(), key=operator.itemgetter(1))
+    return least_used_host[0]
+
 def suggest_hosts_for_habitat(collated_service_yamls, habitat):
+    host_histogram = collated_service_yamls.get(habitat)
+    if host_histogram is None:
+        print "WARNING: Habitat %s not in collated_service_yamls. Typo?" % habitat
+        print "Not suggesting hosts for this habitat."
+        return ""
+
+    if is_prod_habitat(habitat):
+        return get_prod_srv_hosts(host_histogram)
+    else:
+        return get_least_used_host(host_histogram)
+
     return "srv.%s" % habitat
 
 def suggest_all_hosts(collated_service_yamls):
