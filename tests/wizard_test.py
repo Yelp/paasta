@@ -490,9 +490,11 @@ class GetHabitatFromFqdnTestCase(T.TestCase):
         actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
-    ###### decide what to do with testopia
-    ###### def test_relengsrv1_devc_testopia(self):
-    ######     pass
+    def test_relengsrv1_devc_testopia(self):
+        fqdn = "relengsrv1-sjc.dev.yelpcorp.com"
+        expected = "testopia"
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
 
 
 class CollateHostsByHabitat(T.TestCase):

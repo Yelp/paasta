@@ -25,6 +25,11 @@ def get_habitat_from_fqdn(fqdn):
         print "WARNING: %s doesn't appear to be a well-formed fqdn (host.subdomain.yelpcorp.com)." % fqdn
         return None
 
+    # Handle any special cases up front to avoid early exit due to a false
+    # positive match.
+    if fqdn == "relengsrv1-sjc.dev.yelpcorp.com":
+        return "testopia"
+
     m = PROD_RE.search(hostname)
     if m:
         return m.group(1)
