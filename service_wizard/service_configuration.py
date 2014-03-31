@@ -26,7 +26,9 @@ def get_habitat_from_fqdn(fqdn):
         return None
 
     # Handle any special cases up front to avoid early exit due to a false
-    # positive match.
+    # positive match (e.g. snowflake-devc.dev.yelpcorp.com is in the
+    # 'snowflake' habitat by special exception, not the 'devc' habitat as its
+    # name would otherwise imply.
     if fqdn == "relengsrv1-sjc.dev.yelpcorp.com":
         return "testopia"
 
