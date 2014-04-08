@@ -36,6 +36,11 @@ def get_habitat_from_fqdn(fqdn):
     if m:
         return m.group(1)
 
+    # Some sfo1 hostnames are not compliant with the standard naming convention
+    # If we come accross such a host, guess that it is in sfo1
+    if subdomain == "365" or subdomain == "prod":
+        return "sfo1"
+
     m = STAGE_RE.search(hostname)
     if m:
         return m.group(1)
@@ -43,10 +48,6 @@ def get_habitat_from_fqdn(fqdn):
     m = DEV_RE.search(hostname)
     if m:
         return m.group(1)
-
-    if subdomain == "365":
-        return "sfo1"
-
     if hostname.endswith("sv") and subdomain == "sldev":
         return subdomain
 

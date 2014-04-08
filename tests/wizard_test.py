@@ -454,6 +454,15 @@ class GetHabitatFromFqdnTestCase(T.TestCase):
         actual = service_configuration.get_habitat_from_fqdn(fqdn)
         T.assert_equal(expected, actual)
 
+    def test_old_sfo1(self):
+        """Some sfo1 hosts do not conform to the standard habitat naming
+        convention, in particular not having any habitat. These are limited
+        to sfo1."""
+        fqdn = "search26.prod.yelpcorp.com"
+        expected = "sfo1"
+        actual = service_configuration.get_habitat_from_fqdn(fqdn)
+        T.assert_equal(expected, actual)
+
     def test_sfo1(self):
         fqdn = "srv3-r1-sfo1.prod.yelpcorp.com"
         expected = "sfo1"
