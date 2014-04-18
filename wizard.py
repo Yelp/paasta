@@ -99,12 +99,30 @@ def get_service_yaml_contents(runs_on, deploys_on):
     }
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
-def get_habitat_overrides(host_by_habitat, srvname):
+def get_habitat_overrides(host_by_habitat, srvname, vip=False, vip_number=None):
+    """
+    Given a host_by_habitat dict, calculate appropriate hostgroup file contents
+    (soa.cfg by default; vips.cfg if vip is truthy). The contents will contain
+    a members line if the service runs in that hostgroup file's habitat;
+    otherwise it will not include the members line.
+
+    If 'vip' is truthy, 'vip_number' must also be provided since the vip
+    hostgroup template needs it.
+
+    Returns a dict where the keys are habitats and the values are the template
+    contents.
+    """
+    if vip and not vip_number:
+        raise ValueError("vip is truthy so vip_number is required." % vip)
     habitat_overrides = {}
     for (habitat, members_list) in host_by_habitat.items():
         members_string = ",".join(sorted(members_list))
-        contents = Template('hostgroup_with_members').substitute(
-                {'srvname': srvname, 'members': members_string})
+        if vip:
+            contents = Template('vip_hostgroup_with_members').substitute(
+                    {'srvname': srvname, 'vip_number': vip_number})
+        else:
+            contents = Template('hostgroup_with_members').substitute(
+                    {'srvname': srvname, 'members': members_string})
         habitat_overrides[habitat] = contents
     return habitat_overrides
 
@@ -297,13 +315,14 @@ def do_puppet_steps(srv, port, vip):
                 {'srvname': srv.name, 'port': port}))
 
 def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_on):
+    host_by_habitat = collate_hosts_by_habitat(runs_on)
+
     servicegroup_contents = Template('servicegroup').substitute(
         {'srvname': srv.name })
     srv.io.append_servicegroup(servicegroup_contents)
 
     default_contents = Template('hostgroup_empty_members').substitute(
                 {'srvname': srv.name})
-    host_by_habitat = collate_hosts_by_habitat(runs_on)
     habitat_overrides = get_habitat_overrides(host_by_habitat, srv.name)
     srv.io.append_hostgroups(default_contents, habitat_overrides=habitat_overrides)
 
@@ -317,9 +336,14 @@ def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_
     srv.io.write_check(check_contents)
 
     if vip:
-        vip_hostgroup_contents = Template('vip_hostgroup').substitute(
-            {'srvname': srv.name })
-        srv.io.append_hostgroups(vip_hostgroup_contents, vip=True)
+        # Strip off 'vip' from vip
+        vip_number = vip[3:]
+        default_contents = Template('vip_hostgroup_empty_members').substitute({
+            'srvname': srv.name,
+            'vip_number': vip_number,
+        })
+        habitat_overrides = get_habitat_overrides(host_by_habitat, srv.name, vip=True, vip_number=vip_number)
+        srv.io.append_hostgroups(default_contents, habitat_overrides=habitat_overrides, vip=True)
 
         check_contents = Template('vip_check').substitute({
             'srvname': srv.name,
