@@ -9,6 +9,7 @@ import yaml
 
 from service_wizard import config
 from service_wizard import prompt
+from service_wizard.autosuggest import is_stage_habitat
 from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
 from service_wizard.autosuggest import suggest_vip
@@ -100,11 +101,10 @@ def get_service_yaml_contents(runs_on, deploys_on):
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
 def get_habitat_overrides(host_by_habitat, srvname, vip=False, vip_number=None):
-    """
-    Given a host_by_habitat dict, calculate appropriate hostgroup file contents
-    (soa.cfg by default; vips.cfg if vip is truthy). The contents will contain
-    a members line if the service runs in that hostgroup file's habitat;
-    otherwise it will not include the members line.
+    """Given a host_by_habitat dict, calculate appropriate hostgroup file
+    contents (soa.cfg by default; vips.cfg if vip is truthy). The contents will
+    contain a members line if the service runs in that hostgroup file's
+    habitat; otherwise it will not include the members line.
 
     If 'vip' is truthy, 'vip_number' must also be provided since the vip
     hostgroup template needs it.
@@ -118,6 +118,10 @@ def get_habitat_overrides(host_by_habitat, srvname, vip=False, vip_number=None):
     for (habitat, members_list) in host_by_habitat.items():
         members_string = ",".join(sorted(members_list))
         if vip:
+            # Load balancers in stage are kind of new so we either don't have
+            # VIPs at all or haven't decided to set them up in Nagios.
+            if is_stage_habitat(habitat):
+                continue
             contents = Template('vip_hostgroup_with_members').substitute(
                     {'srvname': srvname, 'vip_number': vip_number})
         else:
