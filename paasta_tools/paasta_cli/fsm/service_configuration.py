@@ -19,6 +19,8 @@ def get_habitat_from_fqdn(fqdn):
     """Tries to calculate a habitat given a fully qualified domain name.
     Returns None and prints a warning if it can't guess a habitat.
     """
+    if fqdn is None:
+        return None
     try:
         (hostname, subdomain, _yelpcorp, _com) = fqdn.split(".")
     except (AttributeError, ValueError):
