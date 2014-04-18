@@ -76,7 +76,7 @@ def get_fqdn(hostname):
     if not hostname:
         return hostname
     fqdn = socket.getfqdn(hostname)
-    if fqdn == hostname:
+    if fqdn == hostname and not hostname.endswith(".com"): # It's dot com.
         print "WARNING: getfqdn returned %s for itself, which implies a DNS miss *unless* it's already an fqdn. Typo?" % hostname
     return fqdn
 
