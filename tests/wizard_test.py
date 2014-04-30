@@ -358,7 +358,7 @@ class ParseHostnamesStringTestCase(T.TestCase):
 
     def test_empty(self):
         runs_on = ""
-        expected = [runs_on]
+        expected = []
         actual = wizard.parse_hostnames_string(runs_on)
         T.assert_equal(expected, actual)
 

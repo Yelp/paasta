@@ -87,7 +87,8 @@ def parse_hostnames_string(hostnames_string):
     hostname.
     """
     orig_hostnames = [h.strip() for h in hostnames_string.split(",")]
-    fqdn_hostnames = [get_fqdn(h) for h in orig_hostnames]
+    non_blank_hostnames = [h for h in orig_hostnames if len(h) > 0]
+    fqdn_hostnames = [get_fqdn(h) for h in non_blank_hostnames]
     return fqdn_hostnames
 
 def get_service_yaml_contents(runs_on, deploys_on):
