@@ -12,6 +12,7 @@ from service_wizard import prompt
 from service_wizard.autosuggest import is_stage_habitat
 from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
+from service_wizard.autosuggest import suggest_smartstack_proxy_port
 from service_wizard.autosuggest import suggest_vip
 from service_wizard.service import Service
 from service_wizard.service_configuration import collate_hosts_by_habitat
@@ -71,6 +72,11 @@ def ask_vip(vip=None):
             vip = None
     return vip
 
+def get_smartstack():
+    proxy_port = suggest_smartstack_proxy_port()
+    smartstack = { 'proxy_port': proxy_port }
+    return smartstack
+
 def get_fqdn(hostname):
     # socket.getfqdn on an empty string returns localhost, which is not what we
     # want. Just give it back and let the caller worry about it.
@@ -91,14 +97,16 @@ def parse_hostnames_string(hostnames_string):
     fqdn_hostnames = [get_fqdn(h) for h in non_blank_hostnames]
     return fqdn_hostnames
 
-def get_service_yaml_contents(runs_on, deploys_on):
-    """Given lists 'runs_on' and 'deploys_on', return yaml appropriate for
-    writing into service.yaml.
+def get_service_yaml_contents(runs_on, deploys_on, smartstack):
+    """Given 'runs_on' and 'deploys_on' lists, and a 'smartstack' dictionary,
+    return yaml appropriate for writing into service.yaml.
     """
     contents = {
         "runs_on": runs_on,
         "deployed_to": deploys_on,
     }
+    if smartstack is not None:
+        contents["smartstack"] = smartstack
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
 def get_habitat_overrides(host_by_habitat, srvname, vip=False, vip_number=None):
@@ -300,14 +308,14 @@ def setup_config_paths(yelpsoa_config_root, puppet_root, nagios_root):
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
 
-def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on):
+def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack):
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runas_group)
     srv.io.write_file('port', port)
     srv.io.write_file('status_port', status_port)
     srv.io.write_file('post-download', post_download, executable=True)
     srv.io.write_file('post-activate', post_activate, executable=True)
-    service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on)
+    service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on, smartstack)
     srv.io.write_file('service.yaml', service_yaml_contents)
     if vip is not None:
         srv.io.write_file('vip', vip)
@@ -381,6 +389,9 @@ def main(opts, args):
     vip = ask_vip(opts.vip)
     runs_on = ask_runs_on(opts.runs_on)
 
+    # Add smartstack section iff load balanced
+    smartstack = get_smartstack() if vip else None
+
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
     if opts.enable_yelpsoa_config:
         status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
@@ -388,7 +399,7 @@ def main(opts, args):
         contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
 
     if opts.enable_yelpsoa_config:
-        do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on)
+        do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack)
     if opts.enable_puppet:
         do_puppet_steps(srv, port, vip)
     if opts.enable_nagios:

@@ -2,6 +2,8 @@ import operator
 import os
 import os.path
 
+import yaml
+
 from service_wizard import config
 from service_wizard import service_configuration
 
@@ -43,6 +45,31 @@ def suggest_port():
                     port = 0
                 max_port = max(port, max_port)
     return max_port + 1
+
+def _get_smartstack_proxy_port_from_file(root, file):
+    """Given a root and file (as from os.walk), attempt to return a smartstack
+    proxy port number (int) from that file. Returns 0 if there is no smartstack
+    proxy_port."""
+    with open(os.path.join(root, file)) as f:
+        data = yaml.load(f)
+        if not 'smartstack' in data:
+            port = 0
+        else:
+            port = data['smartstack'].get('proxy_port', 0)
+            port = int(port)
+    return port
+
+def suggest_smartstack_proxy_port():
+    """Pick the next highest smartstack proxy port from the 20000-21000 block"""
+    max_proxy_port = 0
+    for root, dirs, files in os.walk(config.YELPSOA_CONFIG_ROOT):
+        for f in files:
+            if f.endswith('service.yaml'):
+                proxy_port = _get_smartstack_proxy_port_from_file(root, f)
+                if not 20000 < proxy_port < 21000:
+                    proxy_port = 0
+                max_proxy_port = max(proxy_port, max_proxy_port)
+    return max_proxy_port + 1
 
 def is_stage_habitat(habitat):
     return habitat.startswith("stage")

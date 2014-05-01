@@ -90,6 +90,43 @@ class SuggestPortTestCase(T.TestCase):
         # What we came here for: the actual output of the function under test
         T.assert_equal(actual, 13002 + 1) # highest port + 1
 
+# Shamelessly copied from SuggestPortTestCase
+class SuggestSmartstackProxyPortTestCase(T.TestCase):
+    def test_suggest_smartstack_proxy_port(self):
+        # mock.patch was very confused by the config module, so I'm doing it
+        # this way. One more reason to disapprove of this global config module
+        # scheme.
+        config.YELPSOA_CONFIG_ROOT = "fake_yelpsoa_config_root"
+
+        walk_return = [
+            ("fake_root1", "fake_dir1", [ "service.yaml" ]),
+            ("fake_root2", "fake_dir2", [ "service.yaml" ]),
+            ("fake_root3", "fake_dir3", [ "service.yaml" ]),
+        ]
+        mock_walk = mock.Mock(return_value=walk_return)
+
+        # See http://www.voidspace.org.uk/python/mock/examples.html#multiple-calls-with-different-effects
+        get_smartstack_proxy_port_from_file_returns = [
+            20001,
+            20002,
+            55555, # bogus out-of-range value
+        ]
+        def get_smarstack_proxy_port_from_file_side_effect(*args):
+            return get_smartstack_proxy_port_from_file_returns.pop(0)
+        mock_get_smartstack_proxy_port_from_file = mock.Mock(side_effect=get_smarstack_proxy_port_from_file_side_effect)
+        with nested(
+            mock.patch("os.walk", mock_walk),
+            mock.patch("service_wizard.autosuggest._get_smartstack_proxy_port_from_file",
+                       mock_get_smartstack_proxy_port_from_file),
+        ):
+            actual = autosuggest.suggest_smartstack_proxy_port()
+        # Sanity check: our mock was called once for each legit port file in
+        # walk_return
+        T.assert_equal(mock_get_smartstack_proxy_port_from_file.call_count, 3)
+
+        # What we came here for: the actual output of the function under test
+        T.assert_equal(actual, 20002 + 1) # highest port + 1
+
 class SuggestRunsOnTestCase(T.TestCase):
     @T.setup_teardown
     def mock_service_configuration_lookups(self):
@@ -384,7 +421,8 @@ class GetServiceYamlContentsTestCase(T.TestCase):
     def test_empty(self):
         runs_on = []
         deploys_on = []
-        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+        smartstack = None
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
 
         # Verify entire lines to make sure that e.g. '---' appears as its own
         # line and not as part of 'crazy---service----name'.
@@ -397,7 +435,8 @@ class GetServiceYamlContentsTestCase(T.TestCase):
     def test_one_runs_on(self):
         runs_on = ["runs_on1"]
         deploys_on = []
-        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+        smartstack = None
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
 
         expected = "runs_on:\n- %s" % "runs_on1"
         T.assert_in(expected, actual)
@@ -405,10 +444,21 @@ class GetServiceYamlContentsTestCase(T.TestCase):
     def test_two_runs_on(self):
         runs_on = ["runs_on1", "runs_on2"]
         deploys_on = []
-        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
+        smartstack = None
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
 
         expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
         T.assert_in(expected, actual)
+
+    def test_smartstack(self):
+        runs_on = []
+        deploys_on = []
+        smartstack = {"proxy_port": 1234}
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
+
+        expected = "smartstack:\n  proxy_port: 1234\n"
+        T.assert_in(expected, actual)
+
 
 class GetHabitatFromFqdnTestCase(T.TestCase):
     def test_none(self):
