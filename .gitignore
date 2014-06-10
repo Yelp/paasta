@@ -1,0 +1,17 @@
+.*.swp
+*.py?
+build/
+dist/
+.venv
+*.egg-info/
+.tox
+
+
+python-repotools/debian/python-repotools.debhelper.log
+python-repotools/debian/python-repotools/
+python-repotools/debian/files
+python-repotools_*.dsc
+python-repotools_*.tar.gz
+python-repotools_*.changes
+python-repotools_*.deb
+

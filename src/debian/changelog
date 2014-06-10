@@ -1,0 +1,5 @@
+service-deployment-tools (0.0.1-yelp1) lucid; urgency=low
+
+  * Initial release. (Closes: MESOS-23)
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 10 Jun 2014 15:01:07 -0700

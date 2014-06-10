@@ -1,0 +1,11 @@
+Source: service-deployment-tools
+Section: python
+Priority: optional
+Maintainer: Kyle Anderson <kwa@yelp.com>
+Build-Depends: debhelper (>= 7), python (>= 2.6), dh-virtualenv
+Standards-Version: 3.8.3
+
+Package: service-deployment-tools
+Architecture: any
+Depends: ${shlibs:Depends}, ${misc:Depends}
+Description: CLI tools for Yelp's Mesos based SOA infrastructure

@@ -1,0 +1,1 @@
+usr/share/python/service_deployment_tools/bin/purge_old_marathon_jobs usr/bin/purge_old_marathon_jobs
