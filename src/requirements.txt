@@ -1,1 +1,2 @@
-service_configuration_lib == 0.1
+service_configuration_lib == 0.2.0
+marathon == 0.2.3
