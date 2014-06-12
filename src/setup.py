@@ -17,6 +17,7 @@ setup(
     install_requires = [
     ],
     scripts = [
+        'service_deployment_tools/setup_marathon_job.py'
     ]
 )
 
