@@ -13,6 +13,7 @@ def get_marathon_config():
         'user': 'admin',
         'pass': '***REMOVED***',
         'docker_registry': 'docker-dev.yelpcorp.com',
+        'docker_options': ['-v', '/nail/etc/:/nail/etc/:ro'],
     }
     return config
 
@@ -55,7 +56,10 @@ def main():
         id=service_name,
         cmd=docker_url,
         constraints=service_marathon_config['constraints'],
-        container=None,
+        container={
+            'image': docker_url,
+            'options': marathon_config['docker_options'],
+        },
         cpus=service_marathon_config['cpus'],
         env=service_marathon_config['env'],
         executor='/var/lib/mesos/executors/docker',
