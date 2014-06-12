@@ -6,7 +6,7 @@ import testify as T
 
 class ServiceDeploymentToolsTestCase(T.TestCase):
     fake_service_config = {
-        'port': 42,
+        'port': 42
     }
     fake_docker_image = 'test_docker:1.0'
     fake_marathon_job_config = {
@@ -36,11 +36,11 @@ class ServiceDeploymentToolsTestCase(T.TestCase):
         T.assert_equal(actual, expected)
 
     def test_get_docker_registry(self):
-        actual = setup_marathon_job.get_docker_registry(fake_marathon_configuration)
-        expected = fake_docker_registry
+        actual = setup_marathon_job.get_docker_registry(self.fake_marathon_configuration)
+        expected = self.fake_docker_registry
         T.assert_equal(actual, expected)
 
     def test_get_docker_image(self):
-        actual = setup_marathon_job.get_docker_image(fake_marathon_job_config)
-        expected = fake_docker_docker_image
+        actual = setup_marathon_job.get_docker_image(self.fake_marathon_job_config)
+        expected = self.fake_docker_image
         T.assert_equal(actual, expected)

@@ -6,7 +6,7 @@ from marathon import MarathonClient
 
 
 def get_marathon_config():
-    #TODO read from a config file
+    # TODO read from a config file
     config = {
         'cluster': 'devc',
         'url': 'http://dev5-devc.dev.yelpcorp.com:5052',
