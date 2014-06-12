@@ -9,10 +9,10 @@ else
   exit 1
 fi
 
-if fab_repo; then
+if setup_marathon_job -h; then
   echo "Looks like it ran ok!"
 else
-  echo "fab_repo returned $?"
+  echo "setup_marathon_job returned $?"
   exit 1
 fi
 
