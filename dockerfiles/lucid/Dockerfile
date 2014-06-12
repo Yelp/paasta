@@ -14,8 +14,9 @@ RUN apt-get -y install dh-virtualenv=0.6-yelp2
 # Grrrr
 RUN ln -s /usr/bin/python /usr/local/bin/python
 
-
 RUN apt-get -y install python-yaml
+RUN apt-get -y install python-pytest
+RUN apt-get -y install pyflakes
 
 ENV HOME /work
 ENV PWD /work

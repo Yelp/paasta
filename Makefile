@@ -13,7 +13,9 @@ package_lucid: test_lucid
 	$(DOCKER_RUN) chown -R $(UID):$(GID) /work
 
 test_lucid: build_lucid_docker
-	$(DOCKER_RUN) bash -c "cd src && tox"
+	find . -name "*.pyc" -exec rm -rf {} \;
+	cd src && tox
+#	$(DOCKER_RUN) bash -c "cd src && tox"
 	$(DOCKER_RUN) chown -R $(UID):$(GID) /work
 
 build_lucid_docker:
