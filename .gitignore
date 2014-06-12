@@ -6,12 +6,13 @@ dist/
 *.egg-info/
 .tox
 
+src/debian/files
 
-python-repotools/debian/python-repotools.debhelper.log
-python-repotools/debian/python-repotools/
-python-repotools/debian/files
-python-repotools_*.dsc
-python-repotools_*.tar.gz
-python-repotools_*.changes
-python-repotools_*.deb
+service-deployment-tools_*.dsc
+service-deployment-tools_*.tar.gz
+service-deployment-tools_*_amd64.changes
+service-deployment-tools_*_amd64.deb
+src/debian/service-deployment-tools.debhelper.log
+src/debian/service-deployment-tools.substvars
+src/debian/service-deployment-tools/
 
