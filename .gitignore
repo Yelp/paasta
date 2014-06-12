@@ -5,6 +5,7 @@ dist/
 .venv
 *.egg-info/
 .tox
+.bash_history
 
 src/debian/files
 
