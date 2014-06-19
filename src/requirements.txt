@@ -1,4 +1,4 @@
 isodate == 0.5.0
-service_configuration_lib == 0.2.1
+service_configuration_lib == 0.3.1
 marathon == 0.2.3
 argparse
