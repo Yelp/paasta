@@ -1,1 +1,1 @@
-usr/share/python/service-deployment-tools/bin/setup_marathon_job.py usr/bin/setup_marathon_job
+usr/share/python/service-deployment-tools/bin/setup_marathon_jobs.py usr/bin/setup_marathon_jobs

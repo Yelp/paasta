@@ -2,6 +2,7 @@
 UID:=`id -u`
 GID:=`id -g`
 DOCKER_RUN:=docker run -t -v  $(CURDIR):/work:rw soatools_lucid_container
+DOCKER_RUN_CHRONOS:=docker run -t -i --link=chronos_itest_chronos:chronos -v  $(CURDIR):/work:rw chronos_itest/itest
 
 all:
 
@@ -26,3 +27,31 @@ clean:
 	rm -rf dist/
 	rm -rf .tox
 
+test_chronos: build_chronos_itest
+	docker run -d --name=chronos_itest_zk chronos_itest/zookeeper
+	docker run -d --name=chronos_itest_mesos --link chronos_itest_zk:zookeeper chronos_itest/mesos
+	docker run -d --name=chronos_itest_chronos --link=chronos_itest_mesos:mesos --link=chronos_itest_zk:zookeeper chronos_itest/chronos
+	$(DOCKER_RUN_CHRONOS) /work/itest/chronos.sh
+	docker run --link=chronos_itest_chronos:chronos chronos_itest/itest
+	docker kill chronos_itest_zk
+	docker kill chronos_itest_mesos
+	docker kill chronos_itest_chronos
+	docker rm chronos_itest_zk
+	docker rm chronos_itest_mesos
+	docker rm chronos_itest_chronos
+
+
+
+build_chronos_itest: build_chronos_itest_zookeeper_docker build_chronos_itest_mesos_docker build_chronos_itest_chronos_docker build_chronos_itest_itest_docker
+
+build_chronos_itest_zookeeper_docker:
+	cd dockerfiles/chronos_itest/zookeeper/ && docker build -t "chronos_itest/zookeeper" .
+
+build_chronos_itest_mesos_docker:
+	cd dockerfiles/chronos_itest/mesos/ && docker build -t "chronos_itest/mesos" .
+
+build_chronos_itest_chronos_docker:
+	cd dockerfiles/chronos_itest/chronos/ && docker build -t "chronos_itest/chronos" .
+
+build_chronos_itest_itest_docker:
+	cd dockerfiles/chronos_itest/itest/ && docker build -t "chronos_itest/itest" .
