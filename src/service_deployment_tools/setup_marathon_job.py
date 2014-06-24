@@ -5,19 +5,6 @@ import service_configuration_lib
 from marathon import MarathonClient
 
 
-def get_marathon_config():
-    # TODO read from a config file
-    config = {
-        'cluster': 'devc',
-        'url': 'http://dev5-devc.dev.yelpcorp.com:5052',
-        'user': 'admin',
-        'pass': '***REMOVED***',
-        'docker_registry': 'docker-dev.yelpcorp.com',
-        'docker_options': ['-v', '/nail/etc/:/nail/etc/:ro'],
-    }
-    return config
-
-
 def parse_args():
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
     parser.add_argument('service_name',
@@ -42,7 +29,7 @@ def main():
     args = parse_args()
     service_name = args.service_name
 
-    marathon_config = get_marathon_config()
+    marathon_config = marathon.get_config()
 
     service_general_config = service_configuration_lib.read_service_configuration(service_name)
     service_marathon_config = service_configuration_lib.get_service_dict(service_name,
