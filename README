@@ -1,1 +1,5 @@
-This is some quick and dirty scripting using templates in an attempt to ease the burden of configuring a service from scratch in syssvn.
+service_wizard is a script to assist Operations and Friends of Operations with
+the chores of configuration for deployment and monitoring of Yelp SOA services.
+
+Many more details are in the New Service Setup Runbook
+https://docs.google.com/a/yelp.com/document/d/10VSZvnIcxspUbLVFXoEHP-kAedxIiqsoYPUk93EoWkM/edit#
