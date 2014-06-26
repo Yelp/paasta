@@ -6,7 +6,8 @@ service_configuration_lib and /nail/etc/services/*/service.yaml.
 from collections import defaultdict
 import os.path
 import re
-import sys
+
+import service_configuration_lib
 
 from service_wizard import config
 
@@ -86,11 +87,6 @@ def collate_hosts_by_habitat(fqdns):
 def load_service_yamls():
     """Walks config.YELPSOA_CONFIG_ROOT looking for service.yaml files. Returns
     a list of dicts representing the contents of those files.
-
-    Requires service_configuration_lib from config.PUPPET_ROOT. Raises
-    ImportError if that doesn't work out. This happens down here because we
-    only need this (slightly complicated) import logic if we're asked to
-    suggest runs_on.
     """
     if not config.YELPSOA_CONFIG_ROOT:
         print "INFO: Can't suggest runs_on because --yelpsoa-config-root is not set."
@@ -99,17 +95,6 @@ def load_service_yamls():
     if not config.PUPPET_ROOT:
         print "INFO: Can't suggest runs_on because --puppet-root is not set."
         return []
-
-    sys.path.append(
-        os.path.join(
-            config.PUPPET_ROOT, "modules", "deployment", "files",
-            "services", "nail", "sys", "srv-deploy", "lib"))
-    try:
-        import service_configuration_lib
-    except ImportError:
-        print "ERROR: You asked me to calculate 'runs_on' but I couldn't import"
-        print "service_configuration_lib. Bad PUPPET_ROOT %s?" % config.PUPPET_ROOT
-        raise
 
     all_service_yamls = []
     for root, dirs, files in os.walk(config.YELPSOA_CONFIG_ROOT):
