@@ -92,10 +92,9 @@ def load_service_yamls():
         print "INFO: Can't suggest runs_on because --yelpsoa-config-root is not set."
         return []
 
-    if not config.PUPPET_ROOT:
-        print "INFO: Can't suggest runs_on because --puppet-root is not set."
-        return []
+    return _load_service_yamls_from_disk()
 
+def _load_service_yamls_from_disk():
     all_service_yamls = []
     for root, dirs, files in os.walk(config.YELPSOA_CONFIG_ROOT):
         if "service.yaml" in files:
