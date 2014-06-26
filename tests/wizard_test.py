@@ -242,10 +242,6 @@ class LoadServiceYamls(T.TestCase):
     """load_service_yamls() is mostly just a wrapper around python fundamentals
     (import, os.walk) and service_configuration_lib.read_service_information
     (tested elsewhere). Hence, there aren't a lot of tests here.
-
-    However the import logic used by suggest_runs_on() is a little weird so I
-    wrote a test for it. That test no longer works in SuggestRunsOnTestCase
-    because of mocking, so I extracted it.
     """
     @T.setup
     def setup_config(self):
@@ -259,10 +255,6 @@ class LoadServiceYamls(T.TestCase):
     def test_returns_empty_list_when_puppet_root_not_set(self):
         config.PUPPET_ROOT = None
         T.assert_equal([], service_configuration.load_service_yamls())
-
-    def test_raises_when_puppet_root_invalid(self):
-        with T.assert_raises(ImportError):
-            service_configuration.load_service_yamls()
 
 class CollateServiceYamlsTestCase(T.TestCase):
     @T.setup_teardown
