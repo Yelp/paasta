@@ -243,18 +243,27 @@ class LoadServiceYamls(T.TestCase):
     (import, os.walk) and service_configuration_lib.read_service_information
     (tested elsewhere). Hence, there aren't a lot of tests here.
     """
-    @T.setup
+    @T.setup_teardown
     def setup_config(self):
         config.YELPSOA_CONFIG_ROOT = "non_empty_unused_yelpsoa_config_root"
         config.PUPPET_ROOT = "non_empty_unused_puppet_root"
+        # The method under test short circuits and returns [] if something goes wrong. If
+        # we get past that point, hit mocks rather than acutally reading things
+        # off disk.
+        self.fake_load_service_yamls_from_disk = ["fake", "service", "information"]
+        with mock.patch(
+            "service_wizard.service_configuration._load_service_yamls_from_disk",
+            return_value=self.fake_load_service_yamls_from_disk
+        ):
+            yield
 
     def test_returns_empty_list_when_yelpsoa_config_root_not_set(self):
         config.YELPSOA_CONFIG_ROOT = None
         T.assert_equal([], service_configuration.load_service_yamls())
 
-    def test_returns_empty_list_when_puppet_root_not_set(self):
+    def test_returns_something_when_puppet_root_not_set(self):
         config.PUPPET_ROOT = None
-        T.assert_equal([], service_configuration.load_service_yamls())
+        T.assert_equal(self.fake_load_service_yamls_from_disk, service_configuration.load_service_yamls())
 
 class CollateServiceYamlsTestCase(T.TestCase):
     @T.setup_teardown
