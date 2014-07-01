@@ -66,7 +66,7 @@ def get_mem(service_config):
     mem = service_config.get('mem')
     if not mem:
         log.warning("'mem' not specified in config. Using default: 100")
-    return int(mem) if mem else '100'
+    return int(mem) if mem else 100
 
 def get_cpus(service_config):
     """Gets the number of cpus required from the service's marathon configuration.
@@ -182,7 +182,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
         log.warning("App id %s already exists. Skipping configuration and exiting.", full_id)
         # I wanted to compare the configs with a call to get_app, but Marathon doesn't
         # return the 'container' key via its REST API, which makes comparing not
-        # really viable (especially since the container keys extremely likely to
+        # really viable (especially since the container keys are extremely likely to
         # get bumped when a service is updated) -jrm
         return True
     except KeyError:
@@ -210,26 +210,16 @@ def main():
     client = get_marathon_client(marathon_config['url'], marathon_config['user'],
                                  marathon_config['pass'])
 
-    log.info("Reading service configuration files from dir %s/ in %s", service_name, soa_dir)
-    log.info("Reading general service configuration file: service.yaml")
-    service_general_config = service_configuration_lib.read_extra_service_information(
-                                    service_name,
-                                    "service.yaml",
-                                    soa_dir=soa_dir)
-    marathon_conf_file = "marathon-" + marathon_config['cluster']
-    log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
-    service_instance_configs = service_configuration_lib.read_extra_service_information(
-                                    service_name,
-                                    marathon_conf_file,
-                                    soa_dir=soa_dir)
-    if instance_name in service_instance_configs:
+    service_instance_config = marathon_tools.read_srv_config(service_name, instance_name,
+                                                             marathon_config['cluster'], soa_dir)
+
+    if service_instance_config:
         if setup_service(service_name, instance_name, client, marathon_config,
-                         service_instance_configs[instance_name]):
+                         service_instance_config):
             sys.exit(0)
         else:
             sys.exit(1)
     else:
-        log.error("%s not found in config file %s.yaml. Exiting", instance_name, marathon_conf_file)
         sys.exit(1)
 
 

@@ -1,6 +1,26 @@
 import logging
+import service_configuration_lib
 
 log = logging.getLogger("__main__")
+
+def read_srv_config(name, instance, cluster, soa_dir):
+    log.info("Reading service configuration files from dir %s/ in %s", name, soa_dir)
+    log.info("Reading general configuration file: service.yaml")
+    general_config = service_configuration_lib.read_extra_service_information(
+                            name,
+                            "service.yaml",
+                            soa_dir=soa_dir)
+    marathon_conf_file = "marathon-" + cluster
+    log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
+    instance_configs = service_configuration_lib.read_extra_service_information(
+                            name,
+                            marathon_conf_file,
+                            soa_dir=soa_dir)
+    if instance in instance_configs:
+        return dict(general_config.items() + instance_configs[instance].items())
+    else:
+        log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
+        return {}
 
 def brutal_bounce(old_ids, new_config, client):
     """Brutally bounce the service by killing all old instances first.
