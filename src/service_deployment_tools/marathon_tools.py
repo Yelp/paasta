@@ -8,7 +8,7 @@ def read_srv_config(name, instance, cluster, soa_dir):
     log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_extra_service_information(
                             name,
-                            "service.yaml",
+                            "service",
                             soa_dir=soa_dir)
     marathon_conf_file = "marathon-" + cluster
     log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)

@@ -7,7 +7,6 @@ import sys
 
 class TestSetupMarathonJob:
 
-
     fake_docker_image = 'test_docker:1.0'
     fake_marathon_job_config = {
         'instances': 3,
