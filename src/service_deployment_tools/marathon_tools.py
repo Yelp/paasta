@@ -1,7 +1,8 @@
 import logging
 import service_configuration_lib
 
-log = logging.getLogger("__main__")
+log = logging.getLogger(__name__)
+
 
 def read_srv_config(name, instance, cluster, soa_dir):
     log.info("Reading service configuration files from dir %s/ in %s", name, soa_dir)
@@ -10,17 +11,19 @@ def read_srv_config(name, instance, cluster, soa_dir):
                             name,
                             "service",
                             soa_dir=soa_dir)
-    marathon_conf_file = "marathon-" + cluster
+    marathon_conf_file = "marathon-%s" % cluster
     log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
     instance_configs = service_configuration_lib.read_extra_service_information(
                             name,
                             marathon_conf_file,
                             soa_dir=soa_dir)
     if instance in instance_configs:
-        return dict(general_config.items() + instance_configs[instance].items())
+        general_config.update(instance_configs[instance])
+        return general_config
     else:
         log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
         return {}
+
 
 def brutal_bounce(old_ids, new_config, client):
     """Brutally bounce the service by killing all old instances first.
@@ -33,6 +36,7 @@ def brutal_bounce(old_ids, new_config, client):
         client.delete_app(app)
     log.info("Creating %s", new_config['id'])
     client.create_app(**new_config)
+
 
 def get_config():
     # Required keys (need defaults for some):
@@ -56,11 +60,6 @@ def get_config():
     return config
 
 
-
 def is_leader(marathon_config):
-    return true
+    return True
     #http://dev15-devc:5052/v1/debug/leaderUrl
-
-
-
-

@@ -3,7 +3,6 @@
 import sys
 import logging
 import argparse
-import datetime
 import service_configuration_lib
 import marathon_tools
 from marathon import MarathonClient
@@ -11,8 +10,9 @@ from marathon import MarathonClient
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
-ID_TKN = '__'
+ID_SPACER = '.'
 log = logging.getLogger(__name__)
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
@@ -28,11 +28,24 @@ def parse_args():
     args = parser.parse_args()
     return args
 
+
+def compose_job_id(name, instance, iteration=None):
+    composed = '%s%s%s' % (name, ID_SPACER, instance)
+    if iteration:
+        composed = '%s%s%s' % (composed, ID_SPACER, iteration)
+    return composed
+
+
+def remove_iteration_from_job_id(name):
+    return '%s%s%s' % (name.split(ID_SPACER)[0], ID_SPACER, name.split(ID_SPACER)[1])
+
+
 def get_main_marathon_config():
     log.debug("Reading marathon configuration")
     marathon_config = marathon_tools.get_config()
     log.info("Marathon config is: %s", marathon_config)
     return marathon_config
+
 
 def get_docker_url(registry_uri, docker_image):
     """Compose the docker url.
@@ -41,9 +54,10 @@ def get_docker_url(registry_uri, docker_image):
     and the docker_image value from a service config to make a Docker URL.
     The URL is prepended with docker:/// per the deimos docs, at
     https://github.com/mesosphere/deimos"""
-    docker_url = str('docker:///' + registry_uri + '/' + docker_image)
+    docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
     log.info("Docker URL: %s", docker_url)
     return docker_url
+
 
 def get_ports(service_config):
     """Gets the number of ports required from the service's marathon configuration.
@@ -59,6 +73,7 @@ def get_ports(service_config):
         log.warning("'num_ports' not specified in config. One port will be used.")
         return [0]
 
+
 def get_mem(service_config):
     """Gets the memory required from the service's marathon configuration.
 
@@ -67,6 +82,7 @@ def get_mem(service_config):
     if not mem:
         log.warning("'mem' not specified in config. Using default: 100")
     return int(mem) if mem else 100
+
 
 def get_cpus(service_config):
     """Gets the number of cpus required from the service's marathon configuration.
@@ -77,11 +93,13 @@ def get_cpus(service_config):
         log.warning("'cpus' not specified in config. Using default: 1")
     return int(cpus) if cpus else 1
 
+
 def get_constraints(service_config):
     """Gets the constraints specified in the service's marathon configuration.
 
     Defaults to no constraints if none given."""
     return service_config.get('constraints')
+
 
 def get_instances(service_config):
     """Get the number of instances specified in the service's marathon configuration.
@@ -92,6 +110,7 @@ def get_instances(service_config):
         log.warning("'instances' not specified in config. Using default: 1")
     return int(instances) if instances else 1
 
+
 def get_bounce_method(service_config):
     """Get the bounce method specified in the service's marathon configuration.
 
@@ -101,6 +120,7 @@ def get_bounce_method(service_config):
         log.warning("'bounce_method' not specified in config. Using default: brutal")
     return bounce_method if bounce_method else 'brutal'
 
+
 def get_marathon_client(url, user, passwd):
     """Get a new marathon client connection in the form of a MarathonClient object.
 
@@ -108,6 +128,7 @@ def get_marathon_client(url, user, passwd):
     by 'user' and 'pass', all from the marathon config."""
     log.info("Connecting to Marathon server at: %s", url)
     return MarathonClient(url, user, passwd)
+
 
 def create_complete_config(name, url, docker_options, executor, service_marathon_config):
     """Create the configuration that will be passed to the Marathon REST API.
@@ -125,41 +146,37 @@ def create_complete_config(name, url, docker_options, executor, service_marathon
       constraints: the constraints on the Marathon job.
       instances: the number of instances required."""
     complete_config = {'id': name,
-                       'cmd': '/bin/true',
                        'container': {'image': url, 'options': docker_options},
-                       'executor': executor,
-                       'uris': [] }
+                       'uris': []}
     complete_config['ports'] = get_ports(service_marathon_config)
     complete_config['mem'] = get_mem(service_marathon_config)
     complete_config['cpus'] = get_cpus(service_marathon_config)
     complete_config['constraints'] = get_constraints(service_marathon_config)
     complete_config['instances'] = get_instances(service_marathon_config)
-    app_kwargs = {}
-    for key in complete_config:
-        if complete_config[key]:
-            app_kwargs[key] = complete_config[key]
-    log.info("Complete configuration for instance is: %s", app_kwargs)
-    return app_kwargs
+    log.info("Complete configuration for instance is: %s", complete_config)
+    return complete_config
+
 
 def deploy_service(name, config, client, bounce_method):
     """Deploy the service with the given name, config, and bounce_method."""
     log.info("Deploying service instance %s with bounce_method %s", name, bounce_method)
     log.debug("Searching for old service instance iterations")
-    filter_name = name.split(ID_TKN)[0] + ID_TKN + name.split(ID_TKN)[1]
+    filter_name = remove_iteration_from_job_id(name)
     app_list = client.list_apps()
     old_app_ids = [app.id for app in app_list if filter_name in app.id]
-    if old_app_ids: # there's a previous iteration; bounce
+    if old_app_ids:  # there's a previous iteration; bounce
         log.info("Old service instance iterations found: %s", old_app_ids)
         if bounce_method == "brutal":
             marathon_tools.brutal_bounce(old_app_ids, config, client)
         else:
             log.error("bounce_method not recognized: %s. Exiting", bounce_method)
             return False
-    else: # there wasn't actually a previous iteration; just deploy it
+    else:  # there wasn't actually a previous iteration; just deploy it
         log.info("No old instances found. Deploying instance %s", name)
         client.create_app(**config)
     log.info("%s deployed. Exiting", name)
     return True
+
 
 def setup_service(service_name, instance_name, client, marathon_config,
                   service_marathon_config):
@@ -168,8 +185,8 @@ def setup_service(service_name, instance_name, client, marathon_config,
     The full id of the service instance is service_name__instance_name__iteration.
     Doesn't do anything if the full id is already in Marathon.
     If it's not, attempt to find old instances of the service and bounce them."""
-    full_id = service_name + ID_TKN + instance_name + ID_TKN + service_marathon_config['iteration']
-    log.info("Setting up service instance for: %s", service_name + ID_TKN + instance_name)
+    full_id = compose_job_id(service_name, instance_name, service_marathon_config['iteration'])
+    log.info("Setting up service instance for: %s", remove_iteration_from_job_id(full_id))
     log.info("Desired Marathon instance id: %s", full_id)
     docker_url = get_docker_url(marathon_config['docker_registry'],
                                 service_marathon_config['docker_image'])
@@ -188,6 +205,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
     except KeyError:
         return deploy_service(full_id, complete_config, client,
                               bounce_method=get_bounce_method(service_marathon_config))
+
 
 def main():
     """Deploy a service instance to Marathon from a configuration file.
@@ -221,7 +239,6 @@ def main():
             sys.exit(1)
     else:
         sys.exit(1)
-
 
 
 if __name__ == "__main__":
