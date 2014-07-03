@@ -10,6 +10,8 @@ from marathon import MarathonClient
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
+# DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
+# OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
 ID_SPACER = '.'
 log = logging.getLogger(__name__)
 

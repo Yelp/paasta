@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 
 setup(
-    name           = 'service_deployment_tools',
+    name           = 'service-deployment-tools',
     version        = '0.0.1',
     provides       = ["service_deployment_tools"],
     author         = 'Kyle Anderson',
@@ -15,6 +15,10 @@ setup(
     setup_requires = ['setuptools'],
     include_package_data=True,
     install_requires = [
+        'isodate',
+        'service-configuration-lib >= 0.5.0',
+        'marathon',
+        'argparse'
     ],
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',
