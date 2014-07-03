@@ -1,4 +1,5 @@
 import marathon_tools
+import contextlib
 import mock
 
 
@@ -49,3 +50,18 @@ class TestMarathonTools:
             fake_client.delete_app.assert_any_call(oid)
         assert fake_client.delete_app.call_count == len(old_ids)
         fake_client.create_app.assert_called_once_with(**new_config)
+
+    def test_get_config(self):
+        expected = 'end_of_the_line'
+        file_mock = mock.MagicMock(spec=file)
+        with contextlib.nested(
+            mock.patch('marathon_tools.open', create=True, return_value=file_mock),
+            mock.patch('json.loads', return_value=expected)
+        ) as (
+            open_file_patch,
+            json_patch
+        ):
+            assert marathon_tools.get_config() == expected
+            open_file_patch.assert_called_once_with('/etc/service_deployment_tools.json')
+            file_mock.read.assert_called_once_with()
+            json_patch.assert_called_once_with(file_mock.read())

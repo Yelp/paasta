@@ -1,4 +1,5 @@
 import logging
+import json
 import service_configuration_lib
 
 log = logging.getLogger(__name__)
@@ -39,25 +40,7 @@ def brutal_bounce(old_ids, new_config, client):
 
 
 def get_config():
-    # Required keys (need defaults for some):
-    #   docker_registry
-    #   docker_image
-    #   url
-    #   user
-    #   pass
-    #   cluster
-    #   executor
-    # TODO read from a config file
-    config = {
-        'cluster': 'devc',
-        'url': 'http://dev5-devc.dev.yelpcorp.com:5052',
-        'user': 'admin',
-        'pass': '***REMOVED***',
-        'docker_registry': 'docker-dev.yelpcorp.com',
-        'docker_options': ['-v', '/nail/etc/:/nail/etc/:ro'],
-        'executor': '/usr/bin/deimos',
-    }
-    return config
+    return json.loads(open('/etc/service_deployment_tools.json').read())
 
 
 def is_leader(marathon_config):
