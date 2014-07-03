@@ -62,4 +62,4 @@ def get_config():
 
 def is_leader(marathon_config):
     return True
-    #http://dev15-devc:5052/v1/debug/leaderUrl
+    # http://dev15-devc:5052/v1/debug/leaderUrl
