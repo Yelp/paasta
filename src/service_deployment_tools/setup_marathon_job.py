@@ -12,6 +12,7 @@ from marathon import MarathonClient
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
+# It's used to compose a job's full ID from its name, instance, and iteration.
 ID_SPACER = '.'
 log = logging.getLogger(__name__)
 

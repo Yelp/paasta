@@ -26,6 +26,20 @@ def read_srv_config(name, instance, cluster, soa_dir):
         return {}
 
 
+def get_srv_instance_list(name, cluster, soa_dir):
+    marathon_conf_file = "marathon-%s" % cluster
+    log.info("Enumerating all instances for config file: %s/%s.yaml", soa_dir, marathon_conf_file)
+    instances = service_configuration_lib.read_extra_service_information(
+                    name,
+                    marathon_conf_file,
+                    soa_dir=soa_dir)
+    instance_list = []
+    for instance in instances:
+        instance_list.append((name, instance))
+    log.debug("Enumerated the following instances: %s", instance_list)
+    return instance_list
+
+
 def brutal_bounce(old_ids, new_config, client):
     """Brutally bounce the service by killing all old instances first.
 

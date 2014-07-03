@@ -41,6 +41,22 @@ class TestMarathonTools:
             read_extra_info_patch.assert_any_call(fake_name, "marathon-amnesia", soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 2
 
+    def test_get_srv_instance_list(self):
+        fake_name = 'hint'
+        fake_instance_1 = 'unsweet'
+        fake_instance_2 = 'water'
+        fake_cluster = '16floz'
+        fake_dir = '/nail/home/hipster'
+        fake_job_config = {fake_instance_1: self.fake_marathon_job_config,
+                           fake_instance_2: self.fake_marathon_job_config}
+        expected = [(fake_name, fake_instance_1), (fake_name, fake_instance_2)]
+        with mock.patch('service_configuration_lib.read_extra_service_information',
+                        return_value=fake_job_config) as read_extra_info_patch:
+            actual = marathon_tools.get_srv_instance_list(fake_name, fake_cluster, fake_dir)
+            for element in actual:
+                assert element in expected
+            read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
+
     def test_brutal_bounce(self):
         old_ids = ["bbounce", "the_best_bounce_method"]
         new_config = {"now_featuring": "no_gracefuls", "guaranteed": "or_your_money_back", 'id': 'none'}
