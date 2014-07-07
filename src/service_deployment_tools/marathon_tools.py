@@ -56,7 +56,8 @@ def brutal_bounce(old_ids, new_config, client):
 def get_config():
     return json.loads(open('/etc/service_deployment_tools.json').read())
 
-
-def is_leader(marathon_config):
-    return True
+# Not actually needed; marathon is smart enough now that any instance can
+# deploy something into zookeeper/mesos
+# def is_leader(marathon_config):
+#     return True
     # http://dev15-devc:5052/v1/debug/leaderUrl
