@@ -1,6 +1,7 @@
 import marathon_tools
 import contextlib
 import mock
+import pycurl
 
 
 class TestMarathonTools:
@@ -49,11 +50,11 @@ class TestMarathonTools:
         fake_dir = '/nail/home/hipster'
         fake_job_config = {fake_instance_1: self.fake_marathon_job_config,
                            fake_instance_2: self.fake_marathon_job_config}
-        expected = [(fake_name, fake_instance_1), (fake_name, fake_instance_2)]
+        expected = [(fake_name, fake_instance_2), (fake_name, fake_instance_1)]
         with mock.patch('service_configuration_lib.read_extra_service_information',
                         return_value=fake_job_config) as read_extra_info_patch:
             actual = marathon_tools.get_srv_instance_list(fake_name, fake_cluster, fake_dir)
-            assert not cmp(expected, actual) # cmp == 0 iff expected == actual (w/o ordering)
+            assert not cmp(expected, actual)  # cmp == 0 iff expected == actual (w/o ordering)
             read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
 
     def test_brutal_bounce(self):
@@ -80,3 +81,17 @@ class TestMarathonTools:
             open_file_patch.assert_called_once_with('/etc/service_deployment_tools.json')
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(file_mock.read())
+
+    def test_get_mesos_leader(self):
+        expected = 'mesos.master.yelpcorp.com'
+        fake_master = 'false.authority.yelpcorp.com'
+        fake_curl = mock.Mock(setopt=mock.Mock(), perform=mock.Mock(),
+                              getinfo=mock.Mock(return_value='http://%s:999' % expected))
+        with mock.patch('pycurl.Curl', return_value=fake_curl) as curl_patch:
+            assert marathon_tools.get_mesos_leader(fake_master) == expected
+            curl_patch.assert_called_once_with()
+            fake_curl.setopt.assert_any_call(pycurl.URL, 'http://%s:5050/redirect' % fake_master)
+            fake_curl.setopt.assert_any_call(pycurl.HEADER, True)
+            assert fake_curl.setopt.call_count == 2
+            fake_curl.perform.assert_called_once_with()
+            fake_curl.getinfo.assert_called_once_with(pycurl.REDIRECT_URL)

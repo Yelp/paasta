@@ -17,5 +17,6 @@ RUN apt-get -y install dh-virtualenv=0.6-yelp2
 RUN ln -s /usr/bin/python /usr/local/bin/python
 
 RUN apt-get -y install python-yaml
+RUN apt-get -y install python-pycurl
 RUN apt-get -y install python-pytest
 RUN apt-get -y install pyflakes

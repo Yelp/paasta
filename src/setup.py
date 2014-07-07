@@ -18,7 +18,8 @@ setup(
         'isodate',
         'service-configuration-lib >= 0.5.0',
         'marathon',
-        'argparse'
+        'argparse',
+        'pycurl',
     ],
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',

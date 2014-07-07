@@ -1,3 +1,9 @@
+service-deployment-tools (0.0.2-yelp1) lucid; urgency=low
+
+  * Adding functions to retrieve marathon service config info
+
+ -- James McGuinness <jrm@yelp.com>  Mon, 07 Jul 2014 15:11:35 -0700
+
 service-deployment-tools (0.0.1-yelp1) lucid; urgency=low
 
   * Initial release. (Closes: MESOS-23)

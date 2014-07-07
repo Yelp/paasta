@@ -1,5 +1,8 @@
 import logging
+import re
+
 import json
+import pycurl
 import service_configuration_lib
 
 log = logging.getLogger(__name__)
@@ -56,8 +59,14 @@ def brutal_bounce(old_ids, new_config, client):
 def get_config():
     return json.loads(open('/etc/service_deployment_tools.json').read())
 
-# Not actually needed; marathon is smart enough now that any instance can
-# deploy something into zookeeper/mesos
-# def is_leader(marathon_config):
-#     return True
-    # http://dev15-devc:5052/v1/debug/leaderUrl
+
+def get_mesos_leader(hostname):
+    """Get the current mesos-master leader's hostname.
+
+    Requires a hostname to actually query mesos-master on.
+    The returned URL is http://<leader_hostname>:5050"""
+    curl = pycurl.Curl()
+    curl.setopt(pycurl.URL, 'http://%s:5050/redirect' % hostname)
+    curl.setopt(pycurl.HEADER, True)
+    curl.perform()
+    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', curl.getinfo(pycurl.REDIRECT_URL)).group(0)
