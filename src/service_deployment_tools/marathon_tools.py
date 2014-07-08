@@ -1,5 +1,6 @@
 import logging
 import re
+import socket
 
 import json
 import pycurl
@@ -68,15 +69,9 @@ def get_mesos_leader(hostname='localhost'):
     curl = pycurl.Curl()
     curl.setopt(pycurl.URL, 'http://%s:5050/redirect' % hostname)
     curl.setopt(pycurl.HEADER, True)
-    try:
-        curl.perform()
-        return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', curl.getinfo(pycurl.REDIRECT_URL)).group(0)
-    except pycurl.error as e:
-        if e[0] == 7:  # Error 7: couldn't connect to host, but it did resolve/was valid
-            return None
-        else:
-            raise e
+    curl.perform()
+    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', curl.getinfo(pycurl.REDIRECT_URL)).group(0)
 
 
-def is_leader(hostname='localhost'):
+def is_mesos_leader(hostname=socket.getfqdn()):
     return hostname in get_mesos_leader(hostname)
