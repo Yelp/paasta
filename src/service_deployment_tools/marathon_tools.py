@@ -60,7 +60,7 @@ def get_config():
     return json.loads(open('/etc/service_deployment_tools.json').read())
 
 
-def get_mesos_leader(hostname):
+def get_mesos_leader(hostname='localhost'):
     """Get the current mesos-master leader's hostname.
 
     Requires a hostname to actually query mesos-master on.
@@ -68,5 +68,15 @@ def get_mesos_leader(hostname):
     curl = pycurl.Curl()
     curl.setopt(pycurl.URL, 'http://%s:5050/redirect' % hostname)
     curl.setopt(pycurl.HEADER, True)
-    curl.perform()
-    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', curl.getinfo(pycurl.REDIRECT_URL)).group(0)
+    try:
+        curl.perform()
+        return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', curl.getinfo(pycurl.REDIRECT_URL)).group(0)
+    except pycurl.error as e:
+        if e[0] == 7:  # Error 7: couldn't connect to host, but it did resolve/was valid
+            return None
+        else:
+            raise e
+
+
+def is_leader(hostname='localhost'):
+    return hostname in get_mesos_leader(hostname)

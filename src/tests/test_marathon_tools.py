@@ -54,7 +54,7 @@ class TestMarathonTools:
         with mock.patch('service_configuration_lib.read_extra_service_information',
                         return_value=fake_job_config) as read_extra_info_patch:
             actual = marathon_tools.get_srv_instance_list(fake_name, fake_cluster, fake_dir)
-            assert not cmp(expected, actual)  # cmp == 0 iff expected == actual (w/o ordering)
+            assert cmp(expected, actual) == 0
             read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
 
     def test_brutal_bounce(self):
