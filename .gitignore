@@ -1,7 +1,7 @@
 .*.swp
 *.py?
-build/
-dist/
+/build/
+/dist/
 .venv
 *.egg-info/
 .tox

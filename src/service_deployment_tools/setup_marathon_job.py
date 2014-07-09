@@ -13,7 +13,7 @@ from marathon import MarathonClient
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
 # It's used to compose a job's full ID from its name, instance, and iteration.
-ID_SPACER = '.'
+ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger(__name__)
 
 
@@ -231,8 +231,8 @@ def main():
     client = get_marathon_client(marathon_config['url'], marathon_config['user'],
                                  marathon_config['pass'])
 
-    service_instance_config = marathon_tools.read_srv_config(service_name, instance_name,
-                                                             marathon_config['cluster'], soa_dir)
+    service_instance_config = marathon_tools.read_service_config(service_name, instance_name,
+                                                                 marathon_config['cluster'], soa_dir)
 
     if service_instance_config:
         if setup_service(service_name, instance_name, client, marathon_config,

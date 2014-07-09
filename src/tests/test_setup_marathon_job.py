@@ -38,7 +38,7 @@ class TestSetupMarathonJob:
             mock.patch('setup_marathon_job.parse_args', return_value=self.fake_args),
             mock.patch('setup_marathon_job.get_main_marathon_config', return_value=self.fake_marathon_config),
             mock.patch('setup_marathon_job.get_marathon_client', return_value=fake_client),
-            mock.patch('marathon_tools.read_srv_config', return_value=self.fake_marathon_job_config),
+            mock.patch('marathon_tools.read_service_config', return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=True),
             mock.patch('sys.exit'),
         ) as (
@@ -75,7 +75,7 @@ class TestSetupMarathonJob:
             mock.patch('setup_marathon_job.parse_args', return_value=self.fake_args),
             mock.patch('setup_marathon_job.get_main_marathon_config', return_value=self.fake_marathon_config),
             mock.patch('setup_marathon_job.get_marathon_client', return_value=fake_client),
-            mock.patch('marathon_tools.read_srv_config', return_value=self.fake_marathon_job_config),
+            mock.patch('marathon_tools.read_service_config', return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=False),
             mock.patch('sys.exit'),
         ) as (

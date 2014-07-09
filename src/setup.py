@@ -11,7 +11,7 @@ setup(
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
     description    = 'Tools for Yelps SOA infrastructure',
-    packages       = find_packages(exclude=["tests"]),
+    packages       = find_packages(exclude=["tests", "scripts"]),
     setup_requires = ['setuptools'],
     include_package_data=True,
     install_requires = [
@@ -24,6 +24,7 @@ setup(
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',
         'service_deployment_tools/setup_chronos_jobs.py',
+	'scripts/am_i_mesos_leader.py',
     ]
 )
 
