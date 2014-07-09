@@ -24,7 +24,7 @@ setup(
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',
         'service_deployment_tools/setup_chronos_jobs.py',
-	'scripts/am_i_mesos_leader.py',
+	'service_deployment_tools/am_i_mesos_leader.py',
     ]
 )
 
