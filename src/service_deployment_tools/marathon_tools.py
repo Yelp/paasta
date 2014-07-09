@@ -10,16 +10,34 @@ import service_configuration_lib
 
 ID_SPACER = '.'
 MY_HOSTNAME = socket.getfqdn()
-MY_CLUSTER = None
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = 5051
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger(__name__)
 
 
+class MarathonConfig:
+    # A simple borg DP class to keep the config from being loaded tons of times.
+    # http://code.activestate.com/recipes/66531/
+    __shared_state = {'config': None}
+
+    def __init__(self):
+        self.__dict__ = self.__shared_state
+        if not self.config:
+            self.config = json.loads(open('/etc/service_deployment_tools/marathon_config.json').read())
+
+    def get(self):
+        return self.config
+
+
 def get_config():
+    """Get the general marathon configuration information, or load
+    a default configuration if the config file isn't deployed here.
+
+    The configuration file is managed by puppet, and is called
+    /etc/service_deployment_tools/marathon_config.json."""
     try:
-        return json.loads(open('/etc/service_deployment_tools.json').read())
+        return MarathonConfig().get()
     except:  # Couldn't load config, fall back to default
         return {
             'cluster': 'devc',
@@ -32,14 +50,12 @@ def get_config():
 
 
 def get_cluster():
-    # A simplistic singleton pattern to not load the config over and over and over
-    global MY_CLUSTER
-    if not MY_CLUSTER:
-        MY_CLUSTER = get_config()['cluster']
-    return MY_CLUSTER
+    """Get the cluster defined in this host's marathon config file."""
+    return get_config()['cluster']
 
 
 def read_service_config(name, instance, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+    """Read a service instance's marathon configuration."""
     log.info("Reading service configuration files from dir %s/ in %s", name, soa_dir)
     log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_extra_service_information(
@@ -61,6 +77,7 @@ def read_service_config(name, instance, cluster=get_cluster(), soa_dir=DEFAULT_S
 
 
 def get_service_instance_list(name, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+    """Enumerate the marathon instances defined for a service as a list of tuples."""
     marathon_conf_file = "marathon-%s" % cluster
     log.info("Enumerating all instances for config file: %s/%s.yaml", soa_dir, marathon_conf_file)
     instances = service_configuration_lib.read_extra_service_information(
@@ -75,6 +92,9 @@ def get_service_instance_list(name, cluster=get_cluster(), soa_dir=DEFAULT_SOA_D
 
 
 def get_marathon_services_for_cluster(cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+    """Retrieve all marathon services and instances defined to run in a cluster.
+
+    Returns a list of tuples of (service_name, instance_name)."""
     rootdir = os.path.abspath(soa_dir)
     log.info("Retrieving all service instance names from soa_dir %s", rootdir)
     instance_list = []
@@ -95,8 +115,8 @@ def brutal_bounce(old_ids, new_config, client):
     client.create_app(**new_config)
 
 
-def read_service_instance_namespace(name, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
-    """Retreive a service instance's namespace from its configuration file.
+def read_namespace_for_service_instance(name, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
+    """Retreive a service instance's nerve namespace from its configuration file.
     If one is not defined in the config file, returns instance instead."""
     srv_info = service_configuration_lib.read_extra_service_information(
                     name, "marathon-%s" % cluster, soa_dir)[instance]
@@ -119,7 +139,7 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
         ns_dict = {}
         # We can't really use .get, as we don't want the key to be in the returned
         # dict at all if it doesn't exist in the config file.
-        # We also can't just copy the whole dict, as we only care about 2 keys
+        # We also can't just copy the whole dict, as we only care about some keys
         # and there's other things that appear in the smartstack section in
         # several cases.
         if 'healthcheck_uri' in ns_config:
@@ -141,9 +161,7 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
     """See what services are being run by a mesos-slave via marathon on
     the host hostname, where port is the port the mesos-slave is running on.
 
-    Returns a list of tuples, where the tuples are (service_name, instance_name, port).
-
-    """
+    Returns a list of tuples, where the tuples are (service_name, instance_name, port)."""
     req = pycurl.Curl()
     req.setopt(pycurl.TIMEOUT, timeout_s)
     req.setopt(pycurl.URL, 'http://%s:%s/state.json' % (hostname, port))
@@ -162,10 +180,11 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
 
 
 def marathon_services_running_here(port=MESOS_SLAVE_PORT, timeout_s=30):
+    """See what marathon services are being run by a mesos-slave on this host."""
     return marathon_services_running_on(port=port, timeout_s=timeout_s)
 
 
-def get_services_running_here_for_nerve(cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+def marathon_services_running_here_for_nerve(cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
     """Get a list of services running in marathon on this box, with returned information
     needed for nerve. Returns a list of tuples of the form (service_name, conf_dict).
 
@@ -182,7 +201,7 @@ def get_services_running_here_for_nerve(cluster=get_cluster(), soa_dir=DEFAULT_S
     services = marathon_services_running_here()
     nerve_list = []
     for name, instance, port in services:
-        namespace = read_service_instance_namespace(name, instance, cluster, soa_dir)
+        namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
         nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
         nerve_dict['port'] = port
         nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
@@ -194,7 +213,7 @@ def get_mesos_leader(hostname=MY_HOSTNAME):
     """Get the current mesos-master leader's hostname.
 
     Requires a hostname to actually query mesos-master on,
-    but defaults to localhost if none is given."""
+    but defaults to the local hostname if none is given."""
     curl = pycurl.Curl()
     curl.setopt(pycurl.URL, 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT))
     curl.setopt(pycurl.HEADER, True)
@@ -205,5 +224,5 @@ def get_mesos_leader(hostname=MY_HOSTNAME):
 def is_mesos_leader(hostname=MY_HOSTNAME):
     """Check if a hostname is the current mesos leader.
 
-    Defaults to localhost."""
+    Defaults to the local hostname."""
     return hostname in get_mesos_leader(hostname)

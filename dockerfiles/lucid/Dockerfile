@@ -10,10 +10,6 @@ RUN apt-get -y install python-dev debhelper
 # Per dnephin we need https://github.com/spotify/dh-virtualenv/pull/20
 # Which at this time is in this package
 RUN apt-get -y install dh-virtualenv=0.6-yelp2
-
-# Grrrr
-RUN ln -s /usr/bin/python /usr/local/bin/python
-
 RUN apt-get -y install python-yaml
 RUN apt-get -y install python-pycurl
 RUN apt-get -y install python-pytest

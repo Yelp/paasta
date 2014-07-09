@@ -78,7 +78,7 @@ class TestMarathonTools:
             json_patch
         ):
             assert marathon_tools.get_config() == expected
-            open_file_patch.assert_called_once_with('/etc/service_deployment_tools.json')
+            open_file_patch.assert_called_once_with('/etc/service_deployment_tools/marathon_config.json')
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(file_mock.read())
 
@@ -138,25 +138,25 @@ class TestMarathonTools:
             read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
 
     @mock.patch('service_configuration_lib.read_extra_service_information')
-    def test_read_service_instance_namespace_has_value(self, read_info_patch):
+    def test_read_namespace_for_service_instance_has_value(self, read_info_patch):
         name = 'dont_worry'
         instance = 'im_a_professional'
         cluster = 'andromeda'
         namespace = 'spacename'
         soa_dir = 'dirdirdir'
         read_info_patch.return_value = {instance: {'nerve_ns': namespace}}
-        actual = marathon_tools.read_service_instance_namespace(name, instance, cluster, soa_dir)
+        actual = marathon_tools.read_namespace_for_service_instance(name, instance, cluster, soa_dir)
         assert actual == namespace
         read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
 
     @mock.patch('service_configuration_lib.read_extra_service_information')
-    def test_read_service_instance_namespace_no_value(self, read_info_patch):
+    def test_read_namespace_for_service_instance_no_value(self, read_info_patch):
         name = 'wall_light'
         instance = 'ceiling_light'
         cluster = 'no_light'
         soa_dir = 'warehouse_light'
         read_info_patch.return_value = {instance: {'aaaaaaaa': ['bbbbbbbb']}}
-        actual = marathon_tools.read_service_instance_namespace(name, instance, cluster, soa_dir)
+        actual = marathon_tools.read_namespace_for_service_instance(name, instance, cluster, soa_dir)
         assert actual == instance
         read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
 
@@ -207,7 +207,7 @@ class TestMarathonTools:
         assert marathon_tools.marathon_services_running_here(port, timeout) == 'chipotle'
         mesos_on_patch.assert_called_once_with(port=port, timeout_s=timeout)
 
-    def test_get_services_running_here_for_nerve(self):
+    def test_marathon_services_running_here_for_nerve(self):
         cluster = 'edelweiss'
         soa_dir = 'the_sound_of_music'
         fake_services = [('no_test', 'left_behind', 1111), ('no_docstrings', 'forever_abandoned', 2222)]
@@ -217,7 +217,7 @@ class TestMarathonTools:
                     ('no_docstrings.dos', {'binary': 1, 'port': 2222})]
         with contextlib.nested(
             mock.patch('marathon_tools.marathon_services_running_here', return_value=fake_services),
-            mock.patch('marathon_tools.read_service_instance_namespace',
+            mock.patch('marathon_tools.read_namespace_for_service_instance',
                        side_effect=lambda a, b, c, d: namespaces.pop()),
             mock.patch('marathon_tools.read_service_namespace_config',
                        side_effect=lambda a, b, c: nerve_dicts.pop()),
@@ -226,7 +226,7 @@ class TestMarathonTools:
             get_namespace_patch,
             read_ns_config_patch,
         ):
-            actual = marathon_tools.get_services_running_here_for_nerve(cluster, soa_dir)
+            actual = marathon_tools.marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert expected == actual
             srvs_here_patch.assert_called_once_with()
             get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
