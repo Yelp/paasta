@@ -103,6 +103,16 @@ def get_marathon_services_for_cluster(cluster=get_cluster(), soa_dir=DEFAULT_SOA
     return instance_list
 
 
+def get_proxy_port_for_instance(name, instance, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+    """Get the proxy_port defined in the namespace configuration for a service instance.
+
+    Attempts to load two configuration files- marathon-%s.yaml % (cluster)
+    and smartstack.yaml, both from the soa_dir/name/ directory."""
+    namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
+    nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
+    return nerve_dict.get('proxy_port')
+
+
 def brutal_bounce(old_ids, new_config, client):
     """Brutally bounce the service by killing all old instances first.
 
@@ -184,9 +194,12 @@ def marathon_services_running_here(port=MESOS_SLAVE_PORT, timeout_s=30):
     return marathon_services_running_on(port=port, timeout_s=timeout_s)
 
 
-def marathon_services_running_here_for_nerve(cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
-    """Get a list of services running in marathon on this box, with returned information
+def get_services_running_here_for_nerve(cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+    """Get a list of ALL services running on this box, with returned information
     needed for nerve. Returns a list of tuples of the form (service_name, conf_dict).
+
+    ALL services means services that have a service.yaml with an entry for this host in
+    runs_on, AND services that are currently deployed in a mesos-slave here via marathon.
 
     service_name is NAME.NAMESPACE, where NAME is the service/dir name and NAMESPACE
     is the nerve_ns associated with a service instance.
@@ -198,14 +211,26 @@ def marathon_services_running_here_for_nerve(cluster=get_cluster(), soa_dir=DEFA
       healthcheck_timeout_s: healthcheck timeout in seconds
       routes: a list of tuples of (source, destination)
     Some or none of these keys may not be present on a per-service basis."""
-    services = marathon_services_running_here()
+    marathon_services = marathon_services_running_here()
+    regular_services = service_configuration_lib.services_that_run_here()
     nerve_list = []
-    for name, instance, port in services:
+    for name, instance, port in marathon_services:
         namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
         nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
         nerve_dict['port'] = port
         nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
         nerve_list.append((nerve_name, nerve_dict))
+    for name in regular_services:
+        nerve_dict = read_service_namespace_config(name, 'main', soa_dir)
+        port_file = os.path.join(soa_dir, name, 'port')
+        nerve_dict['port'] = service_configuration_lib.read_port(port_file)
+        nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
+        nerve_list.append((nerve_name, nerve_dict))
+        # Kill this line when we've migrated over- this is the 'old'
+        # way of naming services. We have namespaces now, which we should
+        # be using in the future, but synapse isn't really namespace
+        # compatible at the moment. Once it is, we won't need the old way.
+        nerve_list.append((name, nerve_dict))
     return nerve_list
 
 
