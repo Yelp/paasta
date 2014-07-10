@@ -126,6 +126,7 @@ def get_all_namespaces_for_service(name, soa_dir=DEFAULT_SOA_DIR):
 
 def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     """Get all the nerve namespaces across all services.
+    This is mostly so synapse can get everything it needs in one call.
 
     Returns a list of triples of the form (service_name.namespace, config)
     where config is a dict of the config vars defined in that namespace."""
