@@ -1,3 +1,5 @@
+from contextlib import contextmanager
+import fcntl
 import logging
 import os
 import re
@@ -76,7 +78,8 @@ def read_service_config(name, instance, cluster=get_cluster(), soa_dir=DEFAULT_S
         return {}
 
 
-def get_service_instance_list(name, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+def get_service_instance_list(name, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR,
+                              include_iteration=False):
     """Enumerate the marathon instances defined for a service as a list of tuples."""
     marathon_conf_file = "marathon-%s" % cluster
     log.info("Enumerating all instances for config file: %s/%s.yaml", soa_dir, marathon_conf_file)
@@ -86,21 +89,51 @@ def get_service_instance_list(name, cluster=get_cluster(), soa_dir=DEFAULT_SOA_D
                     soa_dir=soa_dir)
     instance_list = []
     for instance in instances:
-        instance_list.append((name, instance))
+        if include_iteration:
+            instance_list.append((name, instance, instances[instance]['iteration']))
+        else:
+            instance_list.append((name, instance))
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
 
 
-def get_marathon_services_for_cluster(cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+def get_marathon_services_for_cluster(cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR,
+                                      include_iteration=False):
     """Retrieve all marathon services and instances defined to run in a cluster.
 
-    Returns a list of tuples of (service_name, instance_name)."""
+    Returns a list of tuples of (service_name, instance_name) if include_iteration
+    is false, otherwise is a triple of (service_name, instance_name, iteration)."""
     rootdir = os.path.abspath(soa_dir)
-    log.info("Retrieving all service instance names from soa_dir %s", rootdir)
+    log.info("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
     instance_list = []
     for srv_dir in os.listdir(rootdir):
-        instance_list += get_service_instance_list(srv_dir, cluster, soa_dir)
+        instance_list += get_service_instance_list(srv_dir, cluster, soa_dir, include_iteration)
     return instance_list
+
+
+def get_all_namespaces_for_service(name, soa_dir=DEFAULT_SOA_DIR):
+    """Get all the nerve namespaces listed for a given service name.
+
+    Returns a list of tuples of the form (service_name.namespace, config)."""
+    namespace_list = []
+    smartstack = service_configuration_lib.read_extra_service_information(
+                    name, 'smartstack', soa_dir)
+    for namespace in smartstack:
+        full_name = '%s%s%s' % (name, ID_SPACER, namespace)
+        namespace_list.append((full_name, smartstack[namespace]))
+    return namespace_list
+
+
+def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
+    """Get all the nerve namespaces across all services.
+
+    Returns a list of triples of the form (service_name.namespace, config)
+    where config is a dict of the config vars defined in that namespace."""
+    rootdir = os.path.abspath(soa_dir)
+    namespace_list = []
+    for srv_dir in os.listdir(rootdir):
+        namespace_list += get_all_namespaces_for_service(srv_dir, soa_dir)
+    return namespace_list
 
 
 def get_proxy_port_for_instance(name, instance, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
@@ -111,6 +144,23 @@ def get_proxy_port_for_instance(name, instance, cluster=get_cluster(), soa_dir=D
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
+
+
+@contextmanager
+def bounce_lock(name):
+    """Acquire a bounce lockfile for the name given. The name should generally
+    be the service instance being bounced."""
+    lockfile = '/var/lock/%s.lock' % name
+    fd = open(lockfile, 'w').write('1')
+    try:
+        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except IOError:
+        raise IOError("Service %s is already being bounced!" % name)
+    try:
+        yield
+    finally:
+        fd.close()
+        os.remove(lockfile)
 
 
 def brutal_bounce(old_ids, new_config, client):

@@ -1,2 +1,3 @@
 usr/share/python/service-deployment-tools/bin/setup_marathon_jobs.py usr/bin/setup_marathon_jobs
 usr/share/python/service-deployment-tools/bin/am_i_mesos_leader.py usr/bin/am_i_mesos_leader
+usr/share/python/service-deployment-tools/bin/synapse_srv_namespaces_fact.py usr/bin/synapse_srv_namespaces_fact

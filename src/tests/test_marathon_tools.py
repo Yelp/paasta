@@ -82,6 +82,19 @@ class TestMarathonTools:
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(file_mock.read())
 
+    def test_get_all_namespaces_for_service(self):
+        name = 'vvvvvv'
+        soa_dir = '^_^'
+        t1_dict = {'hollo': 'werld', 'smark': 'stact'}
+        t2_dict = {'vataman': 'witir', 'sin': 'chaps'}
+        fake_smartstack = {'t1': t1_dict, 't2': t2_dict}
+        expected = [('vvvvvv.t2', t2_dict), ('vvvvvv.t1', t1_dict)]
+        with mock.patch('service_configuration_lib.read_extra_service_information',
+                        return_value=fake_smartstack) as read_extra_patch:
+            actual = marathon_tools.get_all_namespaces_for_service(name, soa_dir)
+            assert expected == actual
+            read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
+
     def test_get_marathon_services_for_cluster(self):
         cluster = 'honey_bunches_of_oats'
         soa_dir = 'completely_wholesome'
@@ -91,7 +104,7 @@ class TestMarathonTools:
             mock.patch('os.path.abspath', return_value='chex_mix'),
             mock.patch('os.listdir', return_value=['dir1', 'dir2']),
             mock.patch('marathon_tools.get_service_instance_list',
-                       side_effect=lambda a, b, c: instances.pop())
+                       side_effect=lambda a, b, c, d: instances.pop())
         ) as (
             abspath_patch,
             listdir_patch,
@@ -101,9 +114,33 @@ class TestMarathonTools:
             assert expected == actual
             abspath_patch.assert_called_once_with(soa_dir)
             listdir_patch.assert_called_once_with('chex_mix')
-            get_instances_patch.assert_any_call('dir1', cluster, soa_dir)
-            get_instances_patch.assert_any_call('dir2', cluster, soa_dir)
+            get_instances_patch.assert_any_call('dir1', cluster, soa_dir, False)
+            get_instances_patch.assert_any_call('dir2', cluster, soa_dir, False)
             assert get_instances_patch.call_count == 2
+
+    def test_get_all_namespaces(self):
+        soa_dir = 'carbon'
+        namespaces = [[('aluminum', {'hydrogen': 1}), ('potassium', {'helium': 2})],
+                      [('uranium', {'lithium': 3}), ('gold', {'boron': 5})]]
+        expected = [('uranium', {'lithium': 3}), ('gold', {'boron': 5}),
+                    ('aluminum', {'hydrogen': 1}), ('potassium', {'helium': 2})]
+        with contextlib.nested(
+            mock.patch('os.path.abspath', return_value='oxygen'),
+            mock.patch('os.listdir', return_value=['rid1', 'rid2']),
+            mock.patch('marathon_tools.get_all_namespaces_for_service',
+                       side_effect=lambda a, b: namespaces.pop())
+        ) as (
+            abspath_patch,
+            listdir_patch,
+            get_namespaces_patch,
+        ):
+            actual = marathon_tools.get_all_namespaces(soa_dir)
+            assert expected == actual
+            abspath_patch.assert_called_once_with(soa_dir)
+            listdir_patch.assert_called_once_with('oxygen')
+            get_namespaces_patch.assert_any_call('rid1', soa_dir)
+            get_namespaces_patch.assert_any_call('rid2', soa_dir)
+            assert get_namespaces_patch.call_count == 2
 
     def test_get_proxy_port_for_instance(self):
         name = 'thats_no_moon'
