@@ -3,3 +3,5 @@ service-configuration-lib >= 0.5.0
 marathon == 0.2.3
 argparse
 pycurl
+sensu_plugin==0.1.0
+pysensu-yelp
