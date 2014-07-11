@@ -57,15 +57,39 @@ class TestMarathonTools:
             assert cmp(expected, actual) == 0
             read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
 
+    def test_bounce_lock(self):
+        import fcntl
+        lock_name = 'the_internet'
+        lock_file = '/var/lock/%s.lock' % lock_name
+        fake_fd = mock.MagicMock(spec=file)
+        with contextlib.nested(
+            mock.patch('marathon_tools.open', create=True, return_value=fake_fd),
+            mock.patch('fcntl.lockf'),
+            mock.patch('os.remove')
+        ) as (
+            open_patch,
+            lockf_patch,
+            remove_patch
+        ):
+            with marathon_tools.bounce_lock(lock_name):
+                pass
+            open_patch.assert_called_once_with(lock_file, 'w')
+            lockf_patch.assert_called_once_with(fake_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+            fake_fd.close.assert_called_once_with()
+            remove_patch.assert_called_once_with(lock_file)
+
     def test_brutal_bounce(self):
         old_ids = ["bbounce", "the_best_bounce_method"]
         new_config = {"now_featuring": "no_gracefuls", "guaranteed": "or_your_money_back", 'id': 'none'}
         fake_client = mock.MagicMock(delete_app=mock.Mock(), create_app=mock.Mock())
-        marathon_tools.brutal_bounce(old_ids, new_config, fake_client)
-        for oid in old_ids:
-            fake_client.delete_app.assert_any_call(oid)
-        assert fake_client.delete_app.call_count == len(old_ids)
-        fake_client.create_app.assert_called_once_with(**new_config)
+        from contextlib import contextmanager
+        with mock.patch('marathon_tools.bounce_lock', spec=contextmanager) as lock_patch:
+            marathon_tools.brutal_bounce(old_ids, new_config, fake_client)
+            lock_patch.assert_called_once_with('none')
+            for oid in old_ids:
+                fake_client.delete_app.assert_any_call(oid)
+            assert fake_client.delete_app.call_count == len(old_ids)
+            fake_client.create_app.assert_called_once_with(**new_config)
 
     def test_get_config(self):
         expected = 'end_of_the_line'
@@ -333,3 +357,11 @@ class TestMarathonTools:
         with mock.patch('marathon_tools.get_mesos_leader', return_value=fake_host) as get_leader_patch:
             assert marathon_tools.is_mesos_leader(fake_host)
             get_leader_patch.assert_called_once_with(fake_host)
+
+    def test_compose_job_id_full(self):
+        fake_name = 'someone_scheduled_docker_image'
+        fake_id = 'docker_isnt_deployed'
+        fake_instance = 'then_who_was_job'
+        spacer = marathon_tools.ID_SPACER
+        expected = '%s%s%s%s%s' % (fake_name, spacer, fake_id, spacer, fake_instance)
+        assert marathon_tools.compose_job_id(fake_name, fake_id, fake_instance) == expected

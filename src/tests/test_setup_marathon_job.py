@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import setup_marathon_job
+import marathon_tools
 import mock
 import contextlib
 
@@ -112,12 +113,12 @@ class TestSetupMarathonJob:
         fake_client = mock.MagicMock(get_app=mock.Mock(return_value=True))
         fake_complete = {'seven': 'full', 'eight': 'frightened', 'nine': 'eaten'}
         fake_url = 'docker:///what_is_a_test'
-        full_id = setup_marathon_job.compose_job_id(fake_name, fake_instance,
-                                                    self.fake_marathon_job_config['iteration'])
+        full_id = marathon_tools.compose_job_id(fake_name, fake_instance,
+                                                self.fake_marathon_job_config['iteration'])
         with contextlib.nested(
             mock.patch('setup_marathon_job.get_docker_url', return_value=fake_url),
             mock.patch('setup_marathon_job.create_complete_config', return_value=fake_complete),
-            mock.patch('setup_marathon_job.compose_job_id', return_value=full_id),
+            mock.patch('marathon_tools.compose_job_id', return_value=full_id),
         ) as (
             docker_url_patch,
             create_config_patch,
@@ -142,14 +143,14 @@ class TestSetupMarathonJob:
         fake_complete = {'do': 'you', 'even': 'dota'}
         fake_url = 'docker:///a_miserable_pile_of_mocks'
         fake_bounce = 'trampoline'
-        full_id = setup_marathon_job.compose_job_id(fake_name, fake_instance,
-                                                    self.fake_marathon_job_config['iteration'])
+        full_id = marathon_tools.compose_job_id(fake_name, fake_instance,
+                                                self.fake_marathon_job_config['iteration'])
         with contextlib.nested(
             mock.patch('setup_marathon_job.get_docker_url', return_value=fake_url),
             mock.patch('setup_marathon_job.create_complete_config', return_value=fake_complete),
             mock.patch('setup_marathon_job.deploy_service', return_value=False),
             mock.patch('setup_marathon_job.get_bounce_method', return_value=fake_bounce),
-            mock.patch('setup_marathon_job.compose_job_id', return_value=full_id),
+            mock.patch('marathon_tools.compose_job_id', return_value=full_id),
         ) as (
             docker_url_patch,
             create_config_patch,
@@ -176,7 +177,7 @@ class TestSetupMarathonJob:
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
-        fake_id = setup_marathon_job.compose_job_id(fake_name, fake_instance)
+        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         assert not setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
@@ -188,7 +189,7 @@ class TestSetupMarathonJob:
         fake_bounce = 'brutal'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
-        fake_id = setup_marathon_job.compose_job_id(fake_name, fake_instance)
+        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         with mock.patch('marathon_tools.brutal_bounce', return_value=True) as brutal_bounce_patch:
@@ -204,7 +205,7 @@ class TestSetupMarathonJob:
         fake_bounce = 'trogdor'
         fake_name = '20x6'
         fake_instance = 'hsr_forever'
-        fake_id = setup_marathon_job.compose_job_id(fake_name, fake_instance)
+        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id='fake_id'), mock.Mock(id='ahahahahaahahahaha')]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         assert setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
@@ -213,7 +214,7 @@ class TestSetupMarathonJob:
         fake_client.create_app.assert_called_once_with(**self.fake_marathon_job_config)
 
     def test_create_complete_config(self):
-        fake_id = setup_marathon_job.compose_job_id('can_you_dig_it', 'yes_i_can')
+        fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'docker:///dockervania_from_konami'
         fake_options = self.fake_marathon_config['docker_options']
         executor = 'exeggcute'
@@ -313,11 +314,3 @@ class TestSetupMarathonJob:
         with mock.patch('marathon_tools.get_config', return_value=fake_conf) as get_conf_patch:
             assert setup_marathon_job.get_main_marathon_config() == fake_conf
             get_conf_patch.assert_called_once_with()
-
-    def test_compose_job_id_full(self):
-        fake_name = 'someone_scheduled_docker_image'
-        fake_id = 'docker_isnt_deployed'
-        fake_instance = 'then_who_was_job'
-        spacer = setup_marathon_job.ID_SPACER
-        expected = '%s%s%s%s%s' % (fake_name, spacer, fake_id, spacer, fake_instance)
-        assert setup_marathon_job.compose_job_id(fake_name, fake_id, fake_instance) == expected

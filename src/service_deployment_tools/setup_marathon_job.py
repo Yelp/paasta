@@ -32,17 +32,6 @@ def parse_args():
     return args
 
 
-def compose_job_id(name, instance, iteration=None):
-    composed = '%s%s%s' % (name, ID_SPACER, instance)
-    if iteration:
-        composed = '%s%s%s' % (composed, ID_SPACER, iteration)
-    return composed
-
-
-def remove_iteration_from_job_id(name):
-    return '%s%s%s' % (name.split(ID_SPACER)[0], ID_SPACER, name.split(ID_SPACER)[1])
-
-
 def get_main_marathon_config():
     log.debug("Reading marathon configuration")
     marathon_config = marathon_tools.get_config()
@@ -164,7 +153,7 @@ def deploy_service(name, config, client, bounce_method):
     """Deploy the service with the given name, config, and bounce_method."""
     log.info("Deploying service instance %s with bounce_method %s", name, bounce_method)
     log.debug("Searching for old service instance iterations")
-    filter_name = remove_iteration_from_job_id(name)
+    filter_name = marathon_tools.remove_iteration_from_job_id(name)
     app_list = client.list_apps()
     old_app_ids = [app.id for app in app_list if filter_name in app.id]
     if old_app_ids:  # there's a previous iteration; bounce
@@ -188,8 +177,8 @@ def setup_service(service_name, instance_name, client, marathon_config,
     The full id of the service instance is service_name__instance_name__iteration.
     Doesn't do anything if the full id is already in Marathon.
     If it's not, attempt to find old instances of the service and bounce them."""
-    full_id = compose_job_id(service_name, instance_name, service_marathon_config['iteration'])
-    log.info("Setting up service instance for: %s", remove_iteration_from_job_id(full_id))
+    full_id = marathon_tools.compose_job_id(service_name, instance_name, service_marathon_config['iteration'])
+    log.info("Setting up service instance for: %s", marathon_tools.remove_iteration_from_job_id(full_id))
     log.info("Desired Marathon instance id: %s", full_id)
     docker_url = get_docker_url(marathon_config['docker_registry'],
                                 service_marathon_config['docker_image'])

@@ -78,6 +78,17 @@ def read_service_config(name, instance, cluster=get_cluster(), soa_dir=DEFAULT_S
         return {}
 
 
+def compose_job_id(name, instance, iteration=None):
+    composed = '%s%s%s' % (name, ID_SPACER, instance)
+    if iteration:
+        composed = '%s%s%s' % (composed, ID_SPACER, iteration)
+    return composed
+
+
+def remove_iteration_from_job_id(name):
+    return '%s%s%s' % (name.split(ID_SPACER)[0], ID_SPACER, name.split(ID_SPACER)[1])
+
+
 def get_service_instance_list(name, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR,
                               include_iteration=False):
     """Enumerate the marathon instances defined for a service as a list of tuples."""
@@ -152,7 +163,7 @@ def bounce_lock(name):
     """Acquire a bounce lockfile for the name given. The name should generally
     be the service instance being bounced."""
     lockfile = '/var/lock/%s.lock' % name
-    fd = open(lockfile, 'w').write('1')
+    fd = open(lockfile, 'w')
     try:
         fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
     except IOError:
@@ -169,11 +180,12 @@ def brutal_bounce(old_ids, new_config, client):
 
     Kills all old_ids then spawns a new app with the new_config via a
     Marathon client."""
-    for app in old_ids:
-        log.info("Killing %s", app)
-        client.delete_app(app)
-    log.info("Creating %s", new_config['id'])
-    client.create_app(**new_config)
+    with bounce_lock(new_config['id']):
+        for app in old_ids:
+            log.info("Killing %s", app)
+            client.delete_app(app)
+        log.info("Creating %s", new_config['id'])
+        client.create_app(**new_config)
 
 
 def read_namespace_for_service_instance(name, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
