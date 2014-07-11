@@ -17,7 +17,7 @@ setup(
     install_requires = [
         'isodate',
         'service-configuration-lib >= 0.5.0',
-        'marathon',
+        'marathon == 0.2.5',
         'argparse',
         'pycurl',
         'sensu-plugin',
