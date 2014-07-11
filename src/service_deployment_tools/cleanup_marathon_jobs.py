@@ -3,7 +3,7 @@ import logging
 # import os
 
 import service_configuration_lib
-import marathon_tools
+from service_deployment_tools import marathon_tools
 from marathon import MarathonClient
 
 

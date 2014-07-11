@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 import sys
-import marathon_tools
+from service_deployment_tools import marathon_tools
 
 
 def main():

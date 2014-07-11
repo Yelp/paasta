@@ -4,7 +4,7 @@ import sys
 import logging
 import argparse
 import service_configuration_lib
-import marathon_tools
+from service_deployment_tools import marathon_tools
 from marathon import MarathonClient
 
 # Marathon REST API:

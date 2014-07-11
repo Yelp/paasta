@@ -1,7 +1,7 @@
 #!/usr/bin/env python
 
 import setup_marathon_job
-import marathon_tools
+from service_deployment_tools import marathon_tools
 import mock
 import contextlib
 
@@ -39,7 +39,8 @@ class TestSetupMarathonJob:
             mock.patch('setup_marathon_job.parse_args', return_value=self.fake_args),
             mock.patch('setup_marathon_job.get_main_marathon_config', return_value=self.fake_marathon_config),
             mock.patch('setup_marathon_job.get_marathon_client', return_value=fake_client),
-            mock.patch('marathon_tools.read_service_config', return_value=self.fake_marathon_job_config),
+            mock.patch('service_deployment_tools.marathon_tools.read_service_config',
+                       return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=True),
             mock.patch('sys.exit'),
         ) as (
@@ -76,7 +77,8 @@ class TestSetupMarathonJob:
             mock.patch('setup_marathon_job.parse_args', return_value=self.fake_args),
             mock.patch('setup_marathon_job.get_main_marathon_config', return_value=self.fake_marathon_config),
             mock.patch('setup_marathon_job.get_marathon_client', return_value=fake_client),
-            mock.patch('marathon_tools.read_service_config', return_value=self.fake_marathon_job_config),
+            mock.patch('service_deployment_tools.marathon_tools.read_service_config',
+                       return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=False),
             mock.patch('sys.exit'),
         ) as (
@@ -118,7 +120,7 @@ class TestSetupMarathonJob:
         with contextlib.nested(
             mock.patch('setup_marathon_job.get_docker_url', return_value=fake_url),
             mock.patch('setup_marathon_job.create_complete_config', return_value=fake_complete),
-            mock.patch('marathon_tools.compose_job_id', return_value=full_id),
+            mock.patch('service_deployment_tools.marathon_tools.compose_job_id', return_value=full_id),
         ) as (
             docker_url_patch,
             create_config_patch,
@@ -150,7 +152,7 @@ class TestSetupMarathonJob:
             mock.patch('setup_marathon_job.create_complete_config', return_value=fake_complete),
             mock.patch('setup_marathon_job.deploy_service', return_value=False),
             mock.patch('setup_marathon_job.get_bounce_method', return_value=fake_bounce),
-            mock.patch('marathon_tools.compose_job_id', return_value=full_id),
+            mock.patch('service_deployment_tools.marathon_tools.compose_job_id', return_value=full_id),
         ) as (
             docker_url_patch,
             create_config_patch,
@@ -192,7 +194,7 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
-        with mock.patch('marathon_tools.brutal_bounce', return_value=True) as brutal_bounce_patch:
+        with mock.patch('service_deployment_tools.marathon_tools.brutal_bounce', return_value=True) as brutal_bounce_patch:
             assert setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
                                                      fake_client, fake_bounce)
             fake_client.list_apps.assert_called_once_with()
@@ -311,6 +313,6 @@ class TestSetupMarathonJob:
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}
-        with mock.patch('marathon_tools.get_config', return_value=fake_conf) as get_conf_patch:
+        with mock.patch('service_deployment_tools.marathon_tools.get_config', return_value=fake_conf) as get_conf_patch:
             assert setup_marathon_job.get_main_marathon_config() == fake_conf
             get_conf_patch.assert_called_once_with()

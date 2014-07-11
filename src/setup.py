@@ -26,8 +26,9 @@ setup(
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',
         'service_deployment_tools/setup_chronos_jobs.py',
-	'service_deployment_tools/am_i_mesos_leader.py',
-	'service_deployment_tools/synapse_srv_namespaces_fact.py'
+	    'service_deployment_tools/am_i_mesos_leader.py',
+	    'service_deployment_tools/synapse_srv_namespaces_fact.py',
+        'service_deployment_tools/cleanup_marathon_jobs.py',
     ]
 )
 

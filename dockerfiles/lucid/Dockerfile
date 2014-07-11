@@ -1,7 +1,7 @@
 FROM docker-dev.yelpcorp.com/lucid_yelp
 MAINTAINER Kyle Anderson <kwa@yelp.com>
 
-RUN apt-get update
+RUN apt-get update && apt-get update
 
 RUN apt-get -y install dpkg-dev python-tox python-setuptools
 RUN apt-get -y install python-dev debhelper
