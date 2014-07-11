@@ -20,6 +20,8 @@ setup(
         'marathon',
         'argparse',
         'pycurl',
+        'sensu-plugin',
+        'pysensu-yelp',
     ],
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',
