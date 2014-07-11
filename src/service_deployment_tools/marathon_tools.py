@@ -56,8 +56,10 @@ def get_cluster():
     return get_config()['cluster']
 
 
-def read_service_config(name, instance, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's marathon configuration."""
+    if not cluster:
+        cluster = get_cluster()
     log.info("Reading service configuration files from dir %s/ in %s", name, soa_dir)
     log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_extra_service_information(
@@ -89,9 +91,11 @@ def remove_iteration_from_job_id(name):
     return '%s%s%s' % (name.split(ID_SPACER)[0], ID_SPACER, name.split(ID_SPACER)[1])
 
 
-def get_service_instance_list(name, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR,
+def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR,
                               include_iteration=False):
     """Enumerate the marathon instances defined for a service as a list of tuples."""
+    if not cluster:
+        cluster = get_cluster()
     marathon_conf_file = "marathon-%s" % cluster
     log.info("Enumerating all instances for config file: %s/%s.yaml", soa_dir, marathon_conf_file)
     instances = service_configuration_lib.read_extra_service_information(
@@ -108,12 +112,14 @@ def get_service_instance_list(name, cluster=get_cluster(), soa_dir=DEFAULT_SOA_D
     return instance_list
 
 
-def get_marathon_services_for_cluster(cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR,
+def get_marathon_services_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR,
                                       include_iteration=False):
     """Retrieve all marathon services and instances defined to run in a cluster.
 
     Returns a list of tuples of (service_name, instance_name) if include_iteration
     is false, otherwise is a triple of (service_name, instance_name, iteration)."""
+    if not cluster:
+        cluster = get_cluster()
     rootdir = os.path.abspath(soa_dir)
     log.info("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
     instance_list = []
@@ -148,11 +154,13 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     return namespace_list
 
 
-def get_proxy_port_for_instance(name, instance, cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get the proxy_port defined in the namespace configuration for a service instance.
 
     Attempts to load two configuration files- marathon-%s.yaml % (cluster)
     and smartstack.yaml, both from the soa_dir/name/ directory."""
+    if not cluster:
+        cluster = get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
@@ -257,7 +265,7 @@ def marathon_services_running_here(port=MESOS_SLAVE_PORT, timeout_s=30):
     return marathon_services_running_on(port=port, timeout_s=timeout_s)
 
 
-def get_services_running_here_for_nerve(cluster=get_cluster(), soa_dir=DEFAULT_SOA_DIR):
+def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get a list of ALL services running on this box, with returned information
     needed for nerve. Returns a list of tuples of the form (service_name, conf_dict).
 
@@ -274,6 +282,8 @@ def get_services_running_here_for_nerve(cluster=get_cluster(), soa_dir=DEFAULT_S
       healthcheck_timeout_s: healthcheck timeout in seconds
       routes: a list of tuples of (source, destination)
     Some or none of these keys may not be present on a per-service basis."""
+    if not cluster:
+        cluster = get_cluster()
     marathon_services = marathon_services_running_here()
     regular_services = service_configuration_lib.services_that_run_here()
     nerve_list = []
