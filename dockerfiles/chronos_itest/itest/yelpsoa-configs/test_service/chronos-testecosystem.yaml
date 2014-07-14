@@ -1,4 +1,10 @@
-- name: test_job
+- name: test_job_1
   command: /bin/true
-  failure_contact_email: failure@example.com
+  cpus: 0.5
+  failure_contact_email: failure1@example.com
   schedule: R/2014-07-11T18:10:00Z/P1D
+- name: test_job_2
+  cpus: 1
+  command: /bin/false
+  failure_contact_email: failure@example.com
+  schedule: R/2014-01-01T01:00:00Z/P3D

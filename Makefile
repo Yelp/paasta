@@ -27,7 +27,7 @@ clean:
 	rm -rf dist/
 	rm -rf .tox
 
-test_chronos: setup_chronos_itest
+test_chronos: package_lucid setup_chronos_itest
 	$(DOCKER_RUN_CHRONOS) /work/itest/chronos.sh
 	make cleanup_chronos_itest
 

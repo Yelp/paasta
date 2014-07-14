@@ -12,7 +12,7 @@ DEFAULT_EXECUTOR_FLAGS = 'flags that will be determined'
 DEFAULT_EPSILON = 'PT60S'
 DEFAULT_RETRIES = 2
 DEFAULT_CPUS = 0.1
-DEFAULT_MEMORY = 100
+DEFAULT_MEM = 100
 DEFAULT_DISK = 100
 DEFAULT_URIS = []
 
@@ -23,19 +23,48 @@ class InvalidChronosException(Exception):
 
 def main():
     args = parse_args()
-
     write_chronos_configs(args.soa_dir, args.chronos_dir, args.ecosystem)
 
 
 def write_chronos_configs(soa_dir, chronos_dir, ecosystem):
     services = service_configuration_lib.read_services_configuration(soa_dir)
-    for service_name, service_configuration in services.iteritems():
-        chronos_jobs = service_configuration_lib.read_extra_service_information(service_name, 'chronos-%s' % ecosystem, soa_dir=soa_dir)
-        for job in chronos_jobs:
-            job_config = parse_job_config(job['name'], job)
-            with open(os.path.join(chronos_dir, 'scheduled', '%s_%s.yaml' % (service_name, job['name'])), 'w') as f:
-                print 'Writing config for %s/%s' % (service_name, job['name'])
-                f.write(yaml.dump(job_config))
+
+    chronos_jobs = extract_chronos_jobs(services, ecosystem, soa_dir)
+    generated_jobs = map(parse_job_config, chronos_jobs)
+    write_chronos_yaml_files(generated_jobs, chronos_dir)
+
+
+def extract_chronos_jobs(services, ecosystem, soa_dir):
+    jobs = []
+    for service_name in services.iterkeys():
+        jobs = jobs + read_chronos_soa_configs(service_name, ecosystem, soa_dir)
+
+    return jobs
+
+
+def read_chronos_soa_configs(service_name, ecosystem, soa_dir):
+    service_chronos_config = service_configuration_lib.read_extra_service_information(service_name, 'chronos-%s' % ecosystem, soa_dir=soa_dir)
+
+    # keeps the function returning lists when the yaml file is empty
+    if service_chronos_config == {}:
+        service_chronos_config = []
+
+    return service_chronos_config
+
+
+def write_chronos_yaml_files(chronos_jobs, chronos_dir):
+    for job in chronos_jobs:
+        with open(get_job_output_file_path(chronos_dir, job)) as f:
+            f.write(yaml.dump(job))
+
+
+def get_job_output_file_path(chronos_dir, job):
+    """The chronos-sync.rb directory structure is made of two dirs:
+    'scheduled', with a yaml file for each job (whose name corresponds to the name field),
+    and dependent (same), with each dir respectively containing those types of jobs."""
+
+    job_dir = 'scheduled'  # TODO this is silly to hardcode - we just haven't implemented dependent jobs yet
+    return os.path.join(chronos_dir, job_dir, '%s.yaml' % job['name'])
 
 
 def parse_args():
@@ -51,9 +80,9 @@ def parse_args():
     return args
 
 
-def parse_job_config(service_name, job_config):
+def parse_job_config(job_config):
     return {
-        'name': get_name(service_name),
+        'name': get_name(job_config),
         'command': get_command(job_config),
         'epsilon': get_epsilon(job_config),
         'executor': get_executor(),
@@ -62,7 +91,7 @@ def parse_job_config(service_name, job_config):
         'owner': get_owner(job_config),
         'async': get_async(),
         'cpus': get_cpus(job_config),
-        'memory': get_memory(job_config),
+        'mem': get_mem(job_config),
         'disk': get_disk(job_config),
         'disabled': get_disabled(),
         'uris': get_uris(),
@@ -70,8 +99,8 @@ def parse_job_config(service_name, job_config):
     }
 
 
-def get_name(service_name):
-    return service_name
+def get_name(job_config):
+    return job_config['name']
 
 
 def get_epsilon(job_config):
@@ -108,15 +137,18 @@ def get_async():
 
 
 def get_cpus(job_config):
-    return float(job_config.get('mesos_cpus', DEFAULT_CPUS))
+    """Python likes to output floats with as much precision as possible.
+    The chronos API seems to round, so be aware that some difference may
+    occur"""
+    return float(job_config.get('cpus', DEFAULT_CPUS))
 
 
-def get_memory(job_config):
-    return int(job_config.get('mesos_memory', DEFAULT_MEMORY))
+def get_mem(job_config):
+    return int(job_config.get('mem', DEFAULT_MEM))
 
 
 def get_disk(job_config):
-    return int(job_config.get('mesos_disk', DEFAULT_DISK))
+    return int(job_config.get('disk', DEFAULT_DISK))
 
 
 def get_disabled():
@@ -129,7 +161,7 @@ def get_uris():
 
 def get_schedule(job_config):
     schedule = job_config['schedule']
-    # TODO isodate does not have intervals
+    # TODO isodate does not have intervals, so we can't currently validate these
     return schedule
 
 if __name__ == '__main__':
