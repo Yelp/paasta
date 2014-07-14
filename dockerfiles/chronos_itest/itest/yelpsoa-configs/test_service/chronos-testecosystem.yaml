@@ -1,0 +1,4 @@
+- name: test_job
+  command: /bin/true
+  failure_contact_email: failure@example.com
+  schedule: R/2014-07-11T18:10:00Z/P1D

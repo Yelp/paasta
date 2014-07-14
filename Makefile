@@ -27,12 +27,16 @@ clean:
 	rm -rf dist/
 	rm -rf .tox
 
-test_chronos: build_chronos_itest
+test_chronos: setup_chronos_itest
+	$(DOCKER_RUN_CHRONOS) /work/itest/chronos.sh
+	make cleanup_chronos_itest
+
+setup_chronos_itest: build_chronos_itest
 	docker run -d --name=chronos_itest_zk chronos_itest/zookeeper
 	docker run -d --name=chronos_itest_mesos --link chronos_itest_zk:zookeeper chronos_itest/mesos
 	docker run -d --name=chronos_itest_chronos --link=chronos_itest_mesos:mesos --link=chronos_itest_zk:zookeeper chronos_itest/chronos
-	$(DOCKER_RUN_CHRONOS) /work/itest/chronos.sh
-	docker run --link=chronos_itest_chronos:chronos chronos_itest/itest
+
+cleanup_chronos_itest:
 	docker kill chronos_itest_zk
 	docker kill chronos_itest_mesos
 	docker kill chronos_itest_chronos

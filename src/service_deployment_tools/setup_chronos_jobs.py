@@ -1,7 +1,10 @@
 #!/usr/bin/env python
 
+import argparse
 import isodate
+import os
 import service_configuration_lib
+import yaml
 
 
 DEFAULT_EXECUTOR = 'some sort of default - look in to this'
@@ -19,8 +22,33 @@ class InvalidChronosException(Exception):
 
 
 def main():
-    for service in service_configuration_lib.read_services_configuration():
-        print 'hello'
+    args = parse_args()
+
+    write_chronos_configs(args.soa_dir, args.chronos_dir, args.ecosystem)
+
+
+def write_chronos_configs(soa_dir, chronos_dir, ecosystem):
+    services = service_configuration_lib.read_services_configuration(soa_dir)
+    for service_name, service_configuration in services.iteritems():
+        chronos_jobs = service_configuration_lib.read_extra_service_information(service_name, 'chronos-%s' % ecosystem, soa_dir=soa_dir)
+        for job in chronos_jobs:
+            job_config = parse_job_config(job['name'], job)
+            with open(os.path.join(chronos_dir, 'scheduled', '%s_%s.yaml' % (service_name, job['name'])), 'w') as f:
+                print 'Writing config for %s/%s' % (service_name, job['name'])
+                f.write(yaml.dump(job_config))
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Creates chronos configurations from yelpsoa-configs')
+    parser.add_argument('--chronos-dir', dest='chronos_dir', metavar='CHRONOS_DIR',
+                        help='chronos configuration directory')
+    parser.add_argument('--ecosystem', dest='ecosystem', metavar='ECOSYSTEM',
+                        help='ecosystem to generate configuration for')
+    parser.add_argument('-d', '--soa-dir', dest='soa_dir', metavar='SOA_DIR',
+                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        help="define a different soa config directory")
+    args = parser.parse_args()
+    return args
 
 
 def parse_job_config(service_name, job_config):
@@ -103,3 +131,6 @@ def get_schedule(job_config):
     schedule = job_config['schedule']
     # TODO isodate does not have intervals
     return schedule
+
+if __name__ == '__main__':
+    main()

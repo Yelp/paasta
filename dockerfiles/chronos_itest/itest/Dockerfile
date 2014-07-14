@@ -16,3 +16,8 @@ RUN apt-get -y install python-yaml
 RUN apt-get -y install python-pycurl
 RUN apt-get -y install python-pytest
 RUN apt-get -y install pyflakes
+
+RUN mkdir -p /chronos-config/dependent
+RUN mkdir -p /chronos-config/scheduled
+
+ADD yelpsoa-configs /yelpsoa-configs
