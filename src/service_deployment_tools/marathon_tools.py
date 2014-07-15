@@ -41,14 +41,7 @@ def get_config():
     try:
         return MarathonConfig().get()
     except:  # Couldn't load config, fall back to default
-        return {
-            'cluster': 'devc',
-            'url': 'http://localhost:5052',
-            'user': 'admin',
-            'pass': '***REMOVED***',
-            'docker_registry': 'docker-dev.yelpcorp.com',
-            'docker_options': ["-v", "/nail/etc/:/nail/etc/:ro"]
-        }
+        return {'cluster': None}
 
 
 def get_cluster():
@@ -265,7 +258,7 @@ def marathon_services_running_here(port=MESOS_SLAVE_PORT, timeout_s=30):
     return marathon_services_running_on(port=port, timeout_s=timeout_s)
 
 
-def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
+def get_services_running_here_for_nerve(cluster='UNDEFINED_CLUSTER', soa_dir=DEFAULT_SOA_DIR):
     """Get a list of ALL services running on this box, with returned information
     needed for nerve. Returns a list of tuples of the form (service_name, conf_dict).
 
@@ -282,17 +275,20 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
       healthcheck_timeout_s: healthcheck timeout in seconds
       routes: a list of tuples of (source, destination)
     Some or none of these keys may not be present on a per-service basis."""
-    if not cluster:
+    if cluster == 'UNDEFINED_CLUSTER':
         cluster = get_cluster()
-    marathon_services = marathon_services_running_here()
-    regular_services = service_configuration_lib.services_that_run_here()
-    nerve_list = []
-    for name, instance, port in marathon_services:
-        namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-        nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
-        nerve_dict['port'] = port
-        nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
-        nerve_list.append((nerve_name, nerve_dict))
+    if cluster:
+        # When a cluster is defined in mesos, lets iterate through marathon services
+        marathon_services = marathon_services_running_here()
+        regular_services = service_configuration_lib.services_that_run_here()
+        nerve_list = []
+        for name, instance, port in marathon_services:
+            namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
+            nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
+            nerve_dict['port'] = port
+            nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
+            nerve_list.append((nerve_name, nerve_dict))
+    # All Legacy yelpsoa services are also announced
     for name in regular_services:
         nerve_dict = read_service_namespace_config(name, 'main', soa_dir)
         port_file = os.path.join(soa_dir, name, 'port')
