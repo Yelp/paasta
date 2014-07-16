@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'service-deployment-tools',
-    version        = '0.1.2',
+    version        = '0.1.3',
     provides       = ["service_deployment_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -26,9 +26,11 @@ setup(
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',
         'service_deployment_tools/setup_chronos_jobs.py',
-	    'service_deployment_tools/am_i_mesos_leader.py',
-	    'service_deployment_tools/synapse_srv_namespaces_fact.py',
+	'service_deployment_tools/am_i_mesos_leader.py',
+	'service_deployment_tools/synapse_srv_namespaces_fact.py',
         'service_deployment_tools/cleanup_marathon_jobs.py',
+        'service_deployment_tools/cleanup_marathon_jobs.py',
+        'service_deployment_tools/check_marathon_services_portopen.py',
     ]
 )
 

@@ -24,18 +24,20 @@ def send_event(service_name, instance_name, check_name, status, output):
     """Take the raw results and emit a valid hash to the sensu library"""
     # This function assumes the input is a string like "mumble.main"
     framework = 'marathon'
+    team = monitoring_tools.get_team(framework, service_name, instance_name)
     result_dict = {
         'name': check_name,
         'status': status,
         'output': output,
-        'team': monitoring_tools.get_team(framework, service_name, instance_name),
+        'team': team,
         'runbook': monitoring_tools.get_runbook(framework, service_name, instance_name),
         'tip': monitoring_tools.get_tip(framework, service_name, instance_name),
         'notification_email': monitoring_tools.get_notification_email(framework, service_name, instance_name),
         'page': monitoring_tools.get_page(framework, service_name, instance_name),
         'alert_after': monitoring_tools.get_alert_after(framework, service_name, instance_name),
     }
-    pysensu_yelp.send_event(**result_dict)
+    if team is not None:
+        pysensu_yelp.send_event(**result_dict)
 
 
 def build_check_tcp_command(port):
@@ -49,6 +51,7 @@ def check_service_instance(service_name, instance_name):
     output, status = check_tcp(port)
     check_name = "soa_%s.%s_portopen" % (service_name, instance_name)
     send_event(service_name, instance_name, check_name, status, output)
+    return output
 
 
 class MarathonServicesPortOpen(SensuPluginCheck):
@@ -75,7 +78,9 @@ class MarathonServicesPortOpen(SensuPluginCheck):
         all_checked_services = []
         for service_name, instance_name in marathon_tools.get_marathon_services_for_cluster():
             all_checked_services.append("%s.%s" % (service_name, instance_name))
-            check_service_instance(service_name, instance_name)
+            self.log.debug("Checking %s.%s" % (service_name, instance_name))
+            output = check_service_instance(service_name, instance_name)
+            self.log.debug("Got output: %s" % output)
 
         # If we got here, it is ok to return OK
         # Otherwise an exception would blow us up earlier.
