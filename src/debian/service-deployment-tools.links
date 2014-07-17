@@ -3,3 +3,4 @@ usr/share/python/service-deployment-tools/bin/am_i_mesos_leader.py usr/bin/am_i_
 usr/share/python/service-deployment-tools/bin/synapse_srv_namespaces_fact.py usr/bin/synapse_srv_namespaces_fact
 usr/share/python/service-deployment-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
 usr/share/python/service-deployment-tools/bin/check_marathon_services_portopen.py usr/bin/check_marathon_services_portopen
+usr/share/python/service-deployment-tools/bin/setup_chronos_jobs.py usr/bin/setup_chronos_jobs
