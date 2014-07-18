@@ -1,3 +1,11 @@
+service-deployment-tools (0.1.5-yelp1) lucid; urgency=low
+
+  * Fix bug with file open mode
+  * Also, note that 0.1.4 was me and not kwa, I just did a bad job
+  * of copy-pasting :(
+
+ -- Sophie Haskins <shaskisn@yelp.com>  Thurs, 18 Jul 2014 15:09:00 -0400
+
 service-deployment-tools (0.1.4-yelp1) lucid; urgency=low
 
   * Small tweaks to make running setup_chronos_jobs.py easier
