@@ -54,7 +54,7 @@ def read_chronos_soa_configs(service_name, ecosystem, soa_dir):
 
 def write_chronos_yaml_files(chronos_jobs, chronos_dir):
     for job in chronos_jobs:
-        with open(get_job_output_file_path(chronos_dir, job)) as f:
+        with open(get_job_output_file_path(chronos_dir, job), 'w') as f:
             f.write(yaml.dump(job))
 
 
