@@ -1,3 +1,11 @@
+service-deployment-tools (0.1.6-yelp1) lucid; urgency=low
+
+  * Adding a monitoring check for synapse replication
+  * Exposed the monitoring as libraries so that an eventual sensu
+    check can be written to monitor all the services
+
+ -- Joseph Lynch <jlynch@yelp.com>  Mon, 21 Jul 2014 15:13:55 -0700
+
 service-deployment-tools (0.1.5-yelp1) lucid; urgency=low
 
   * Fix bug with file open mode

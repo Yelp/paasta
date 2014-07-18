@@ -1,0 +1,118 @@
+import sys
+
+import argparse
+
+from service_deployment_tools.monitoring.replication_utils import get_replication_for_services
+
+
+def check_replication(service_name, service_replication,
+                      warn_range, crit_range):
+    """Check for sufficient replication of a service
+
+    :param service_name: A string representing the name of the service
+                         this replication check is relevant to.
+    :param service_replication: An int representing the number of available
+                                service instances
+    :param warn_range: A two tuple of integers representing the minimum and
+                       maximum allowed replication before entering the WARNING
+                       state.
+    :param crit_range: A two tuple of integers representing the minimum and
+                       maximum allowed replication before entering the CRITICAL
+                       state.
+
+    Note that all ranges are closed interval. If the replication is outside the
+    closed interval for the relevant level (e.g. warning, critical), then
+    the error code will change appropriately.
+
+    :returns check_result: A tuple of error code and a human readable error
+        message. The error codes conform to the nagios plugin api.
+
+        e.g. for an OK service
+        (0,
+         "OK lucy has 1 instance(s)")
+
+        e.g. for a CRITICAL service
+        (2,
+         "CRITICAL lucy has 0 instance(s), expected value in [1, 1e18])
+    """
+    code, status, interval = 0, 'OK', None
+    if not (crit_range[0] <= service_replication <= crit_range[1]):
+        code, status, interval = 2, 'CRITICAL', crit_range
+    elif not (warn_range[0] <= service_replication <= warn_range[1]):
+        code, status, interval = 1, 'WARNING', warn_range
+
+    expected_message = ""
+    if interval is not None:
+        expected_message = ", expected value in {0}".format(interval)
+
+    message = "{0} {1} has {2} instance(s){3}".format(
+        status, service_name, service_replication, expected_message
+    )
+
+    return code, message
+
+
+def parse_range(str_range):
+    int_range = str_range.split(":")
+    if len(int_range) != 2:
+        fail('Incorrect range, see --help', 2)
+    if int_range[0] == '':
+        int_range[0] = 0
+    if int_range[1] == '':
+        int_range[1] = sys.maxint
+    return map(float, int_range)
+
+
+def parse_synapse_check_options():
+    epilog = "RANGEs are specified 'min:max' or 'min:' or ':max'"
+    parser = argparse.ArgumentParser(epilog=epilog)
+
+    parser.add_argument(dest='services', nargs='+', type=str,
+                        help="A series of service names to check.\n"
+                        "e.g. lucy_east_0 lucy_east_1 ...")
+    parser.add_argument('-s', '--synapse-host-port',
+                        dest='synapse_host_port', type=str,
+                        help='The host and port to check',
+                        default='localhost:3212')
+    parser.add_argument('-w', '--warn', dest='warn', type=str,
+                        metavar='RANGE',
+                        help="Generate warning state if number of "
+                        "service instances is outside this range")
+    parser.add_argument('-c', '--critcal', dest='crit', type=str,
+                        metavar='RANGE',
+                        help="Generate critical state if number of "
+                        "service instances is outside this range")
+    options = parser.parse_args()
+
+    options.crit = parse_range(options.crit)
+    options.warn = parse_range(options.warn)
+
+    return options
+
+
+def fail(message, code):
+    print message
+    sys.exit(code)
+
+
+def run_synapse_check():
+    options = parse_synapse_check_options()
+    try:
+        service_replications = get_replication_for_services(
+            options.synapse_host_port,
+            options.services
+        )
+
+        all_codes = []
+        for name, replication in service_replications.iteritems():
+            code, message = check_replication(name, replication,
+                                              options.warn, options.crit)
+            all_codes.append(code)
+            print message
+        sys.exit(max(all_codes))
+    except Exception, e:
+        fail('UNKNOWN: {0}'.format(e), 3)
+
+
+if __name__ == "__main__":
+    run_synapse_check()

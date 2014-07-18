@@ -5,3 +5,4 @@ usr/share/python/service-deployment-tools/bin/cleanup_marathon_jobs.py usr/bin/c
 usr/share/python/service-deployment-tools/bin/check_marathon_services_http_frontends.py usr/bin/check_marathon_services_http_frontends
 usr/share/python/service-deployment-tools/bin/setup_chronos_jobs.py usr/bin/setup_chronos_jobs
 usr/share/python/service-deployment-tools/bin/list_marathon_service_instances.py usr/bin/list_marathon_service_instances
+usr/share/python/service-deployment-tools/bin/monitoring/check_synapse_replication.py usr/bin/check_synapse_replication
