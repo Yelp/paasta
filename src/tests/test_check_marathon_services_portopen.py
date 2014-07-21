@@ -72,7 +72,8 @@ def test_check_service_instance():
     fake_port = 666
     expected_check_name = 'soa_fake_service.fake_instance_portopen'
     with contextlib.nested(
-         mock.patch("marathon_tools.get_proxy_port_for_instance", return_value=fake_port),
+         mock.patch("service_deployment_tools.marathon_tools.get_proxy_port_for_instance",
+                    return_value=fake_port),
          mock.patch("check_marathon_services_portopen.send_event"),
          mock.patch("check_marathon_services_portopen.check_tcp", return_value=(fake_output, fake_status))
     ) as (
@@ -93,7 +94,8 @@ def test_MarathonServicesPortOpen_run():
     with contextlib.nested(
          mock.patch("check_marathon_services_portopen.MarathonServicesPortOpen.__init__", return_value=None),
          mock.patch("check_marathon_services_portopen.MarathonServicesPortOpen.setup_logging", return_value=None),
-         mock.patch("marathon_tools.get_marathon_services_for_cluster", return_value=fake_service_list),
+         mock.patch("service_deployment_tools.marathon_tools.get_marathon_services_for_cluster",
+                    return_value=fake_service_list),
          mock.patch("check_marathon_services_portopen.check_service_instance"),
     ) as (
          MarathonServicesPortOpen_patch,
