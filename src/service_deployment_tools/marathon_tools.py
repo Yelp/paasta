@@ -38,10 +38,7 @@ def get_config():
 
     The configuration file is managed by puppet, and is called
     /etc/service_deployment_tools/marathon_config.json."""
-    try:
-        return MarathonConfig().get()
-    except:  # Couldn't load config, fall back to default
-        return {'cluster': None}
+    return MarathonConfig().get()
 
 
 def get_cluster():
@@ -258,7 +255,43 @@ def marathon_services_running_here(port=MESOS_SLAVE_PORT, timeout_s=30):
     return marathon_services_running_on(port=port, timeout_s=timeout_s)
 
 
-def get_services_running_here_for_nerve(cluster='UNDEFINED_CLUSTER', soa_dir=DEFAULT_SOA_DIR):
+def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
+    if not cluster:
+        try:
+            cluster = get_cluster()
+        except:
+            return []
+    # When a cluster is defined in mesos, lets iterate through marathon services
+    marathon_services = marathon_services_running_here()
+    nerve_list = []
+    for name, instance, port in marathon_services:
+        namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
+        nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
+        nerve_dict['port'] = port
+        nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
+        nerve_list.append((nerve_name, nerve_dict))
+    return nerve_list
+
+
+def get_classic_services_running_here_for_nerve(soa_dir):
+    regular_services = service_configuration_lib.services_that_run_here()
+    nerve_list = []
+
+    for name in regular_services:
+        nerve_dict = read_service_namespace_config(name, 'main', soa_dir)
+        port_file = os.path.join(soa_dir, name, 'port')
+        nerve_dict['port'] = service_configuration_lib.read_port(port_file)
+        nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
+        nerve_list.append((nerve_name, nerve_dict))
+        # Kill this line when we've migrated over- this is the 'old'
+        # way of naming services. We have namespaces now, which we should
+        # be using in the future, but synapse isn't really namespace
+        # compatible at the moment. Once it is, we won't need the old way.
+        nerve_list.append((name, nerve_dict))
+    return nerve_list
+
+
+def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get a list of ALL services running on this box, with returned information
     needed for nerve. Returns a list of tuples of the form (service_name, conf_dict).
 
@@ -275,32 +308,9 @@ def get_services_running_here_for_nerve(cluster='UNDEFINED_CLUSTER', soa_dir=DEF
       healthcheck_timeout_s: healthcheck timeout in seconds
       routes: a list of tuples of (source, destination)
     Some or none of these keys may not be present on a per-service basis."""
-    if cluster == 'UNDEFINED_CLUSTER':
-        cluster = get_cluster()
-    if cluster:
-        # When a cluster is defined in mesos, lets iterate through marathon services
-        marathon_services = marathon_services_running_here()
-        regular_services = service_configuration_lib.services_that_run_here()
-        nerve_list = []
-        for name, instance, port in marathon_services:
-            namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-            nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
-            nerve_dict['port'] = port
-            nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
-            nerve_list.append((nerve_name, nerve_dict))
     # All Legacy yelpsoa services are also announced
-    for name in regular_services:
-        nerve_dict = read_service_namespace_config(name, 'main', soa_dir)
-        port_file = os.path.join(soa_dir, name, 'port')
-        nerve_dict['port'] = service_configuration_lib.read_port(port_file)
-        nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
-        nerve_list.append((nerve_name, nerve_dict))
-        # Kill this line when we've migrated over- this is the 'old'
-        # way of naming services. We have namespaces now, which we should
-        # be using in the future, but synapse isn't really namespace
-        # compatible at the moment. Once it is, we won't need the old way.
-        nerve_list.append((name, nerve_dict))
-    return nerve_list
+    return get_marathon_services_running_here_for_nerve(cluster, soa_dir) + \
+        get_classic_services_running_here_for_nerve(soa_dir)
 
 
 def get_mesos_leader(hostname=MY_HOSTNAME):

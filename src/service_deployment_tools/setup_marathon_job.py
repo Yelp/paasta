@@ -19,10 +19,9 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
-    parser.add_argument('service_name',
-                        help="The service name to create or update")
-    parser.add_argument('instance_name',
-                        help="The marathon instance of the service to create or update")
+    parser.add_argument('service_instance',
+                        help="The marathon instance of the service to create or update",
+                        metavar="SERVICE.INSTANCE")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
@@ -208,13 +207,17 @@ def main():
                      service_configuration_lib.DEFAULT_SOA_DIR
       -v, --verbose: Verbose output"""
     args = parse_args()
-    service_name = args.service_name
-    instance_name = args.instance_name
     soa_dir = args.soa_dir
     if args.verbose:
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
+    try:
+        service_name = args.service_instance.split(ID_SPACER)[0]
+        instance_name = args.service_instance.split(ID_SPACER)[1]
+    except IndexError:
+        log.error("Invalid service instance specified. Format is service_name.instance_name.")
+        sys.exit(1)
 
     marathon_config = get_main_marathon_config()
     client = get_marathon_client(marathon_config['url'], marathon_config['user'],

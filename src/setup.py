@@ -31,6 +31,7 @@ setup(
         'service_deployment_tools/cleanup_marathon_jobs.py',
         'service_deployment_tools/cleanup_marathon_jobs.py',
         'service_deployment_tools/check_marathon_services_portopen.py',
+        'service_deployment_tools/list_marathon_service_instances.py',
     ]
 )
 

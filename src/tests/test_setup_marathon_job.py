@@ -27,8 +27,7 @@ class TestSetupMarathonJob:
         'executor': 'exeggutor',
     }
     fake_args = mock.MagicMock(
-        service_name='what_is_love',
-        instance_name='bby_dont_hurt_me',
+        service_instance='what_is_love.bby_dont_hurt_me',
         soa_dir='no_more',
         verbose=False,
     )
@@ -59,13 +58,13 @@ class TestSetupMarathonJob:
                     self.fake_marathon_config['user'],
                     self.fake_marathon_config['pass'])
             read_service_conf_patch.assert_called_once_with(
-                    self.fake_args.service_name,
-                    self.fake_args.instance_name,
+                    self.fake_args.service_instance.split('.')[0],
+                    self.fake_args.service_instance.split('.')[1],
                     self.fake_marathon_config['cluster'],
                     self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
-                    self.fake_args.service_name,
-                    self.fake_args.instance_name,
+                    self.fake_args.service_instance.split('.')[0],
+                    self.fake_args.service_instance.split('.')[1],
                     fake_client,
                     self.fake_marathon_config,
                     self.fake_marathon_job_config)
@@ -97,13 +96,13 @@ class TestSetupMarathonJob:
                     self.fake_marathon_config['user'],
                     self.fake_marathon_config['pass'])
             read_service_conf_patch.assert_called_once_with(
-                    self.fake_args.service_name,
-                    self.fake_args.instance_name,
+                    self.fake_args.service_instance.split('.')[0],
+                    self.fake_args.service_instance.split('.')[1],
                     self.fake_marathon_config['cluster'],
                     self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
-                    self.fake_args.service_name,
-                    self.fake_args.instance_name,
+                    self.fake_args.service_instance.split('.')[0],
+                    self.fake_args.service_instance.split('.')[1],
                     fake_client,
                     self.fake_marathon_config,
                     self.fake_marathon_job_config)

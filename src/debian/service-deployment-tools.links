@@ -4,3 +4,4 @@ usr/share/python/service-deployment-tools/bin/synapse_srv_namespaces_fact.py usr
 usr/share/python/service-deployment-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
 usr/share/python/service-deployment-tools/bin/check_marathon_services_portopen.py usr/bin/check_marathon_services_portopen
 usr/share/python/service-deployment-tools/bin/setup_chronos_jobs.py usr/bin/setup_chronos_jobs
+usr/share/python/service-deployment-tools/bin/list_marathon_service_instances.py usr/bin/list_marathon_service_instances

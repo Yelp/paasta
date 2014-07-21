@@ -288,29 +288,50 @@ class TestMarathonTools:
         assert marathon_tools.marathon_services_running_here(port, timeout) == 'chipotle'
         mesos_on_patch.assert_called_once_with(port=port, timeout_s=timeout)
 
-    def test_get_services_running_here_for_nerve(self):
+    def test_get_marathon_services_running_here_for_nerve(self):
         cluster = 'edelweiss'
         soa_dir = 'the_sound_of_music'
         fake_marathon_services = [('no_test', 'left_behind', 1111),
                                   ('no_docstrings', 'forever_abandoned', 2222)]
+        namespaces = ['dos', 'uno']
+        nerve_dicts = [{'binary': 1}, {'clock': 0}]
+        expected = [('no_test.uno', {'clock': 0, 'port': 1111}),
+                    ('no_docstrings.dos', {'binary': 1, 'port': 2222})]
+        with contextlib.nested(
+            mock.patch('marathon_tools.marathon_services_running_here',
+                       return_value=fake_marathon_services),
+            mock.patch('marathon_tools.read_namespace_for_service_instance',
+                       side_effect=lambda a, b, c, d: namespaces.pop()),
+            mock.patch('marathon_tools.read_service_namespace_config',
+                       side_effect=lambda a, b, c: nerve_dicts.pop()),
+        ) as (
+            mara_srvs_here_patch,
+            get_namespace_patch,
+            read_ns_config_patch,
+        ):
+            actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
+            assert expected == actual
+            mara_srvs_here_patch.assert_called_once_with()
+            get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
+            get_namespace_patch.assert_any_call('no_docstrings', 'forever_abandoned', cluster, soa_dir)
+            assert get_namespace_patch.call_count == 2
+            read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
+            read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
+            assert read_ns_config_patch.call_count == 2
+
+    def test_get_classic_services_running_here_for_nerve(self):
+        soa_dir = 'we_are_the_one'
         fake_normal_services = [('no_water'), ('no_life')]
         fake_port_files = ['trop', 'prot']
         fake_ports = [101, 202]
-        namespaces = ['dos', 'uno']
-        nerve_dicts = [{'ten': 10}, {'nine': 9}, {'binary': 1}, {'clock': 0}]
-        expected = [('no_test.uno', {'clock': 0, 'port': 1111}),
-                    ('no_docstrings.dos', {'binary': 1, 'port': 2222}),
-                    ('no_water.main', {'nine': 9, 'port': 202}),
+        nerve_dicts = [{'ten': 10}, {'nine': 9}]
+        expected = [('no_water.main', {'nine': 9, 'port': 202}),
                     ('no_water', {'nine': 9, 'port': 202}),
                     ('no_life.main', {'ten': 10, 'port': 101}),
                     ('no_life', {'ten': 10, 'port': 101})]
         with contextlib.nested(
-            mock.patch('marathon_tools.marathon_services_running_here',
-                       return_value=fake_marathon_services),
             mock.patch('service_configuration_lib.services_that_run_here',
                        return_value=fake_normal_services),
-            mock.patch('marathon_tools.read_namespace_for_service_instance',
-                       side_effect=lambda a, b, c, d: namespaces.pop()),
             mock.patch('marathon_tools.read_service_namespace_config',
                        side_effect=lambda a, b, c: nerve_dicts.pop()),
             mock.patch('os.path.join',
@@ -318,25 +339,43 @@ class TestMarathonTools:
             mock.patch('service_configuration_lib.read_port',
                        side_effect=lambda a: fake_ports.pop())
         ) as (
-            mara_srvs_here_patch,
             norm_srvs_here_patch,
-            get_namespace_patch,
             read_ns_config_patch,
             join_patch,
             read_port_patch,
         ):
-            actual = marathon_tools.get_services_running_here_for_nerve(cluster, soa_dir)
+            actual = marathon_tools.get_classic_services_running_here_for_nerve(soa_dir)
             assert expected == actual
-            mara_srvs_here_patch.assert_called_once_with()
             norm_srvs_here_patch.assert_called_once_with()
-            get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
-            get_namespace_patch.assert_any_call('no_docstrings', 'forever_abandoned', cluster, soa_dir)
-            assert get_namespace_patch.call_count == 2
-            read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
-            read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
             read_ns_config_patch.assert_any_call('no_water', 'main', soa_dir)
             read_ns_config_patch.assert_any_call('no_life', 'main', soa_dir)
-            assert read_ns_config_patch.call_count == 4
+            assert read_ns_config_patch.call_count == 2
+            join_patch.assert_any_call(soa_dir, 'no_water', 'port')
+            join_patch.assert_any_call(soa_dir, 'no_life', 'port')
+            assert join_patch.call_count == 2
+            read_port_patch.assert_any_call('trop')
+            read_port_patch.assert_any_call('prot')
+            assert read_port_patch.call_count == 2
+
+    def test_get_services_running_here_for_nerve(self):
+        cluster = 'plentea'
+        soa_dir = 'boba'
+        fake_marathon_services = [('never', 'again'), ('will', 'he')]
+        fake_classic_services = [('walk', 'on'), ('his', 'feet')]
+        expected = fake_marathon_services + fake_classic_services
+        with contextlib.nested(
+            mock.patch('marathon_tools.get_marathon_services_running_here_for_nerve',
+                       return_value=fake_marathon_services),
+            mock.patch('marathon_tools.get_classic_services_running_here_for_nerve',
+                       return_value=fake_classic_services),
+        ) as (
+            marathon_patch,
+            classic_patch
+        ):
+            actual = marathon_tools.get_services_running_here_for_nerve(cluster, soa_dir)
+            assert expected == actual
+            marathon_patch.assert_called_once_with(cluster, soa_dir)
+            classic_patch.assert_called_once_with(soa_dir)
 
     def test_get_mesos_leader(self):
         expected = 'mesos.master.yelpcorp.com'
