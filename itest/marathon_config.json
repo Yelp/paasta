@@ -1,0 +1,8 @@
+{
+	"cluster": "devc",
+	"url": "aaaaaaaa",
+	"user": "aaaaAAAAAAAA",
+	"pass": "AAAAAAAAAAAAAAAA",
+	"docker_registry": "the_scream",
+	"docker_options": ["painted", "walls"]
+}

@@ -1,0 +1,6 @@
+---
+main:
+    proxy_port: 1111
+
+canary:
+    proxy_port: 9876

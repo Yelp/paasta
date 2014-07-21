@@ -30,7 +30,10 @@ def main():
     instances = marathon_tools.get_marathon_services_for_cluster(cluster=args.cluster,
                                                                  soa_dir=args.soa_dir,
                                                                  include_iteration=False)
-    print ' '.join(instances)
+    composed = []
+    for name, instance in instances:
+        composed.append('%s%s%s' % (name, marathon_tools.ID_SPACER, instance))
+    print ' '.join(composed)
     sys.exit(0)
 
 

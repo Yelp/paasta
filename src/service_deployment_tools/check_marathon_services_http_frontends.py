@@ -11,9 +11,9 @@ import monitoring_tools
 import pysensu_yelp
 
 
-def check_tcp(port):
-    """Actually exec the check_tcp command and return the output"""
-    command = build_check_tcp_command(port)
+def check_http(port):
+    """Actually exec the check_http command and return the output"""
+    command = build_check_http_command(port)
     child = subprocess.Popen(command, stdout=subprocess.PIPE)
     output, _ = child.communicate()
     status = child.returncode
@@ -40,21 +40,21 @@ def send_event(service_name, instance_name, check_name, status, output):
         pysensu_yelp.send_event(**result_dict)
 
 
-def build_check_tcp_command(port):
-    return '/usr/lib/nagios/plugins/check_tcp -H localhost -p %d' % port
+def build_check_http_command(port):
+    return '/usr/lib/nagios/plugins/check_http -H localhost -p %d' % port
 
 
 def check_service_instance(service_name, instance_name):
     """Actually check a service instance and emit Sensu events if needed"""
     # TODO: Skip checking a service if it is under the namespace of another instance
     port = marathon_tools.get_proxy_port_for_instance(service_name, instance_name)
-    output, status = check_tcp(port)
-    check_name = "soa_%s.%s_portopen" % (service_name, instance_name)
+    output, status = check_http(port)
+    check_name = "soa_%s.%s_http_frontends" % (service_name, instance_name)
     send_event(service_name, instance_name, check_name, status, output)
     return output
 
 
-class MarathonServicesPortOpen(SensuPluginCheck):
+class MarathonServicesHttpFrontends(SensuPluginCheck):
 
     log = logging.getLogger(__name__)
     log.addHandler(logging.StreamHandler(sys.stdout))
@@ -90,4 +90,4 @@ class MarathonServicesPortOpen(SensuPluginCheck):
 if __name__ == "__main__":
     # The act of making the object calls ends up calling the run method via
     # SensuPluginCheck
-    check = MarathonServicesPortOpen()
+    check = MarathonServicesHttpFrontends()
