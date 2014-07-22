@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.7-yelp1) lucid; urgency=low
+
+  * Adding a deploy_marathon_services script for puppet
+
+ -- James McGuinness <jrm@yelp.com>  Mon, 21 Jul 2014 17:16:27 -0700
+
 service-deployment-tools (0.1.6-yelp1) lucid; urgency=low
 
   * Adding a monitoring check for synapse replication
