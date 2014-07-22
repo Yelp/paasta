@@ -1,3 +1,10 @@
+service-deployment-tools (0.1.10-yelp1) lucid; urgency=low
+
+  * Adding verbosity to deploy_marathon_services
+  * Fixing setup_marathon_job to not care about executor
+
+ -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 10:20:33 -0700
+
 service-deployment-tools (0.1.9-yelp1) lucid; urgency=low
 
   * Fixing check_synapse_replication to be linked correctly
