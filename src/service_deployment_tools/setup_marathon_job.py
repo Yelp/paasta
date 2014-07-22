@@ -256,7 +256,8 @@ def main():
         try:
             if setup_service(service_name, instance_name, client, marathon_config,
                              service_instance_config):
-                send_sensu_event(service_name, instance_name, pysensu_yelp.Status.OK, "Service deployed")
+                send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.OK,
+                                 "Service deployed")
                 sys.exit(0)
             else:
                 send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL,
