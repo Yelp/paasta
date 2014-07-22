@@ -40,6 +40,8 @@ do
   if ! list_marathon_service_instances | grep -q $srv; then
     echo "Service instance $srv ISN'T showing up in list_marathon_service_instances!"
     exit 1
+  else
+    echo "Service $srv showed up in list_marathon_service_instances"
   fi
 done
 
@@ -48,6 +50,8 @@ do
   if ! synapse_srv_namespaces_fact | grep -q $ns; then
     echo "Service namespace $ns ISN'T showing up in synapse_srv_namespaces_fact!"
     exit 1
+  else
+    echo "Namespace $ns showed up in synapse_srv_namespaces_fact"
   fi
 done
 
