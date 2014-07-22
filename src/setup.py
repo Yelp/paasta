@@ -32,7 +32,7 @@ setup(
         'service_deployment_tools/cleanup_marathon_jobs.py',
         'service_deployment_tools/check_marathon_services_http_frontends.py',
         'service_deployment_tools/list_marathon_service_instances.py',
-        'service_deployment_tools/monitoring/check_synapse_replication.py'
+        'service_deployment_tools/monitoring/check_synapse_replication.py',
+        'service_deployment_tools/deploy_marathon_services',
     ]
 )
-
