@@ -1,3 +1,11 @@
+service-deployment-tools (0.1.11-yelp1) lucid; urgency=low
+
+  * Added monitoring to setup_marathon_job
+  * Changed marathon job ids to change _ to -
+  * Removed verbosity from deploy_marathon_services, as its cron job is threaded 
+
+ -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 14:15:14 -0700
+
 service-deployment-tools (0.1.10-yelp1) lucid; urgency=low
 
   * Adding verbosity to deploy_marathon_services

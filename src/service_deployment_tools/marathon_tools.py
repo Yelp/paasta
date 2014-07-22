@@ -71,8 +71,11 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
 
 
 def compose_job_id(name, instance, iteration=None):
+    name = name.replace('_', '-')
+    instance = instance.replace('_', '-')
     composed = '%s%s%s' % (name, ID_SPACER, instance)
     if iteration:
+        iteration = iteration.replace('_', '-')
         composed = '%s%s%s' % (composed, ID_SPACER, iteration)
     return composed
 
@@ -178,7 +181,7 @@ def brutal_bounce(old_ids, new_config, client):
 
     Kills all old_ids then spawns a new app with the new_config via a
     Marathon client."""
-    with bounce_lock(new_config['id']):
+    with bounce_lock(remove_iteration_from_job_id(new_config['id'])):
         for app in old_ids:
             log.info("Killing %s", app)
             client.delete_app(app)

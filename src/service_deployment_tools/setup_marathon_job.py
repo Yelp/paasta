@@ -1,11 +1,13 @@
 #!/usr/bin/env python
 
+import os
 import sys
 import logging
 import argparse
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
 from marathon import MarathonClient
+import pysensu_yelp
 
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
@@ -29,6 +31,31 @@ def parse_args():
                         dest="verbose", default=False)
     args = parser.parse_args()
     return args
+
+
+def send_sensu_event(name, instance, soa_dir, status, output):
+    rootdir = os.path.abspath(soa_dir)
+    monitoring_file = os.path.join(rootdir, name, "monitoring.yaml")
+    monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
+    # We don't use compose_job_id here because we don't want to change _ to -
+    full_name = 'setup_marathon_job.%s%s%s' % (name, ID_SPACER, instance)
+    runbook = monitor_conf.get('runbook')
+    team = monitor_conf.get('team')
+    if team:
+        # We need to remove things that aren't kwargs to send_event
+        # so that we can just pass everything else as a kwarg.
+        # This means that if monitoring.yaml has an erroneous key,
+        # the event won't get emitted at all!
+        # We'll need a strict spec in yelpsoa_configsto make sure
+        # that doesn't happen.
+        if runbook:
+            del monitor_conf['runbook']
+        del monitor_conf['team']
+        try:
+            pysensu_yelp.send_event(full_name, runbook, status, output, team, **monitor_conf)
+        except TypeError:
+            log.error("Event %s failed to emit! This service's monitoring.yaml has an erroneous key.")
+            return
 
 
 def get_main_marathon_config():
@@ -226,12 +253,24 @@ def main():
                                                                  marathon_config['cluster'], soa_dir)
 
     if service_instance_config:
-        if setup_service(service_name, instance_name, client, marathon_config,
-                         service_instance_config):
-            sys.exit(0)
-        else:
+        try:
+            if setup_service(service_name, instance_name, client, marathon_config,
+                             service_instance_config):
+                send_sensu_event(service_name, instance_name, pysensu_yelp.Status.OK, "Service deployed")
+                sys.exit(0)
+            else:
+                send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL,
+                                 "Service failed to deploy, bounce_method invalid.")
+                sys.exit(1)
+        except (KeyError, TypeError, ValueError) as e:
+            log.error(str(e))
+            send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, str(e))
             sys.exit(1)
     else:
+        error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
+                    (args.service_instance, marathon_config['cluster'])
+        log.error(error_msg)
+        send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)
 
 
