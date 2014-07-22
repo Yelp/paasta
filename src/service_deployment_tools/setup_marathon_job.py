@@ -121,14 +121,13 @@ def get_marathon_client(url, user, passwd):
     return MarathonClient(url, user, passwd)
 
 
-def create_complete_config(name, url, docker_options, executor, service_marathon_config):
+def create_complete_config(name, url, docker_options, service_marathon_config):
     """Create the configuration that will be passed to the Marathon REST API.
 
     Currently compiles the following keys into one nice dict:
       id: the ID of the image in Marathon
       cmd: currently the docker_url, seemingly needed by Marathon to keep the container field
       container: a dict containing the docker url and docker launch options. Needed by deimos.
-      executor: Should generally be deimos, but comes from the marathon_config.
       uris: blank.
     The following keys are retrieved with the get_* functions defined above:
       ports: an array containing the port.
@@ -182,7 +181,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
     docker_url = get_docker_url(marathon_config['docker_registry'],
                                 service_marathon_config['docker_image'])
     complete_config = create_complete_config(full_id, docker_url, marathon_config['docker_options'],
-                                             marathon_config['executor'], service_marathon_config)
+                                             service_marathon_config)
     try:
         log.info("Checking if instance with iteration %s already exists",
                  service_marathon_config['iteration'])

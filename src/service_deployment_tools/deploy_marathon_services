@@ -1,5 +1,5 @@
 #!/bin/bash
 
 if am_i_mesos_leader >/dev/null; then
-  list_marathon_service_instances | xargs -n 1 -P 20 setup_marathon_job
+  list_marathon_service_instances | xargs -n 1 -P 20 setup_marathon_job -v
 fi

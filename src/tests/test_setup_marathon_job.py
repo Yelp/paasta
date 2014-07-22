@@ -24,7 +24,6 @@ class TestSetupMarathonJob:
         'pass': 'admin_pass',
         'docker_registry': fake_docker_registry,
         'docker_options': ['-v', 'you_wish_that_meant_verbose'],
-        'executor': 'exeggutor',
     }
     fake_args = mock.MagicMock(
         service_instance='what_is_love.bby_dont_hurt_me',
@@ -133,7 +132,6 @@ class TestSetupMarathonJob:
                                                      self.fake_marathon_job_config['iteration'])
             create_config_patch.assert_called_once_with(full_id, fake_url,
                                                         self.fake_marathon_config['docker_options'],
-                                                        self.fake_marathon_config['executor'],
                                                         self.fake_marathon_job_config)
             fake_client.get_app.assert_called_once_with(full_id)
 
@@ -167,7 +165,6 @@ class TestSetupMarathonJob:
                                                      self.fake_marathon_job_config['iteration'])
             create_config_patch.assert_called_once_with(full_id, fake_url,
                                                         self.fake_marathon_config['docker_options'],
-                                                        self.fake_marathon_config['executor'],
                                                         self.fake_marathon_job_config)
             fake_client.get_app.assert_called_once_with(full_id)
             get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
@@ -218,7 +215,6 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'docker:///dockervania_from_konami'
         fake_options = self.fake_marathon_config['docker_options']
-        executor = 'exeggcute'
         fake_ports = [1111, 2222]
         fake_mem = 1000000000000000000000
         fake_cpus = -1
@@ -245,7 +241,7 @@ class TestSetupMarathonJob:
             get_instances_patch,
         ):
             actual = setup_marathon_job.create_complete_config(fake_id, fake_url, fake_options,
-                                                               executor, self.fake_marathon_job_config)
+                                                               self.fake_marathon_job_config)
             assert actual == expected_conf
             get_port_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_mem_patch.assert_called_once_with(self.fake_marathon_job_config)
