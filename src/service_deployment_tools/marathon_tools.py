@@ -71,11 +71,11 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
 
 
 def compose_job_id(name, instance, iteration=None):
-    name = name.replace('_', '-')
-    instance = instance.replace('_', '-')
+    name = str(name).replace('_', '-')
+    instance = str(instance).replace('_', '-')
     composed = '%s%s%s' % (name, ID_SPACER, instance)
     if iteration:
-        iteration = iteration.replace('_', '-')
+        iteration = str(iteration).replace('_', '-')
         composed = '%s%s%s' % (composed, ID_SPACER, iteration)
     return composed
 

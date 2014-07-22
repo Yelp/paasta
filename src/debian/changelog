@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.12-yelp1) lucid; urgency=low
+
+  * Fixing a silly bug with iterations sometimes being ints 
+
+ -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 14:30:48 -0700
+
 service-deployment-tools (0.1.11-yelp1) lucid; urgency=low
 
   * Added monitoring to setup_marathon_job
