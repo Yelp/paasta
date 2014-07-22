@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.9-yelp1) lucid; urgency=low
+
+  * Fixing check_synapse_replication to be linked correctly
+
+ -- Joseph Lynch <jlynch@yelp.com>  Mon, 21 Jul 2014 18:13:02 -0700
+
 service-deployment-tools (0.1.8-yelp1) lucid; urgency=low
 
   * Fixing python requirements.txt

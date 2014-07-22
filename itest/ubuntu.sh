@@ -51,4 +51,11 @@ do
   fi
 done
 
+if check_synapse_replication --help; then
+  echo "Looks like we can check_synapse_replication with --help"
+else
+  echo "Could not invoke check_synapse_repkication with --help"
+  exit 1
+fi
+
 echo "Everything worked!"
