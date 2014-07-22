@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.8-yelp1) lucid; urgency=low
+
+  * Fixing python requirements.txt
+
+ -- Joseph Lynch <jlynch@yelp.com>  Mon, 21 Jul 2014 17:53:47 -0700
+
 service-deployment-tools (0.1.7-yelp1) lucid; urgency=low
 
   * Adding a deploy_marathon_services script for puppet
