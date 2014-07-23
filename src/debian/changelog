@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.14-yelp1) lucid; urgency=low
+
+  * Version bump to repackage with working pysensu-yelp pkg
+
+ -- James McGuinness <jrm@yelp.com>  Wed, 23 Jul 2014 10:59:16 -0700
+
 service-deployment-tools (0.1.13-yelp1) lucid; urgency=low
 
   * Fixing another silly bug 
