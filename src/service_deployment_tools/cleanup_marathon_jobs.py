@@ -1,6 +1,6 @@
+#!/usr/bin/env python
 import argparse
 import logging
-# import os
 
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
