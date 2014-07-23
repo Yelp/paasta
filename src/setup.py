@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'service-deployment-tools',
-    version        = '0.1.22',
+    version        = '0.1.23',
     provides       = ["service_deployment_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -16,13 +16,13 @@ setup(
     include_package_data=True,
     install_requires = [
         'isodate >= 0.5.0',
-        'service-configuration-lib >= 0.5.0',
+        'service-configuration-lib >= 0.6.0',
         'marathon == 0.2.5',
         'argparse',
         'pycurl',
         'sensu-plugin == 0.1.0',
         'requests',
-        'pysensu-yelp',
+        'pysensu-yelp >= 0.1.5',
     ],
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',
@@ -33,6 +33,7 @@ setup(
         'service_deployment_tools/check_marathon_services_http_frontends.py',
         'service_deployment_tools/list_marathon_service_instances.py',
         'service_deployment_tools/monitoring/check_synapse_replication.py',
+        'service_deployment_tools/monitoring/check_classic_service_replication.py',
         'service_deployment_tools/deploy_marathon_services',
     ]
 )

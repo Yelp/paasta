@@ -38,8 +38,6 @@ def test_parse_range():
     expected_ranges = [
         (0, 1), (1, sys.maxint), (100, sys.maxint), (20, 30), (0, 2), (0, 200)
     ]
-    expected_ranges = [map(float, expected_range) for
-                       expected_range in expected_ranges]
 
     computed_ranges = map(parse_range, range_data)
     assert computed_ranges == expected_ranges

@@ -62,4 +62,11 @@ else
   exit 1
 fi
 
+if check_classic_service_replication --help >/dev/null; then
+  echo "Looks like we can check_classic_service_replication with --help"
+else
+  echo "Could not invoke check_classic_service_replication with --help"
+  exit 1
+fi
+
 echo "Everything worked!"

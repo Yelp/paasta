@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.23-yelp1) lucid; urgency=low
+
+  * Adding replication monitoring scripts for all the services
+
+ -- Joseph Lynch <jlynch@yelp.com>  Mon, 28 Jul 2014 11:51:53 -0700
+
 service-deployment-tools (0.1.22-yelp1) lucid; urgency=low
 
   * Allow for new 'branch' field for marathon configs as an alternative to 'docker_image'
