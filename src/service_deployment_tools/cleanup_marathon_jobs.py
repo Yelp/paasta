@@ -1,6 +1,6 @@
+#!/usr/bin/env python
 import argparse
 import logging
-# import os
 
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
@@ -12,7 +12,7 @@ log = logging.getLogger(__name__)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Creates marathon jobs.')
+    parser = argparse.ArgumentParser(description='Cleans up stale marathon jobs.')
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
@@ -32,17 +32,22 @@ def get_marathon_client(url, user, passwd):
 
 
 def cleanup_apps(client, soa_dir):
+    log.info("Getting app list from marathon")
     valid_app_list = marathon_tools.get_marathon_services_for_cluster(soa_dir=soa_dir,
                                                                       include_iteration=True)
+    valid_app_list = [marathon_tools.compose_job_id(service, instance, iteration)
+                      for service, instance, iteration in valid_app_list]
     app_ids = [app.id for app in client.list_apps()]
     for app_id in app_ids:
-        if not any([app_id == marathon_tools.compose_job_id(service, instance, iteration)
-                    for service, instance, iteration in valid_app_list]):
+        log.info("Checking app id %s", app_id)
+        if not any([app_id == deployed_id for deployed_id in valid_app_list]):
             try:
+                log.warn("%s appears to be old; attempting to delete", app_id)
                 srv_instance = marathon_tools.remove_iteration_from_job_id(app_id)
                 with marathon_tools.bounce_lock(srv_instance):
                     client.delete_app(app_id)
             except IOError:
+                log.info("%s is being bounced, skipping", app_id)
                 continue  # It's being bounced, don't touch it!
 
 
@@ -59,5 +64,5 @@ def main():
     cleanup_apps(client, soa_dir)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and marathon_tools.is_mesos_leader():
     main()
