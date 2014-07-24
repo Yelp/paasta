@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.17-yelp1) lucid; urgency=low
+
+  * specify executor params for chronos jobs
+
+ -- Sophie Haskins <shaskins@yelp.com>  Thu, 24 Jul 2014 08:46:24 -0700
+
 service-deployment-tools (0.1.16-yelp1) lucid; urgency=low
 
   * Fixing deploy_marathon_services to not execute setup if no services to deploy
