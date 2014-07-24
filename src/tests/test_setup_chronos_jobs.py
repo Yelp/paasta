@@ -90,9 +90,21 @@ def test_get_executor():
     assert expected == actual
 
 
+def mock_get_docker_url_for_image(docker_image):
+    return 'docker:///test-repository/%s' % docker_image
+
+
+@patch('service_deployment_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
 def test_get_executor_flags():
-    expected = setup_chronos_jobs.DEFAULT_EXECUTOR_FLAGS
-    actual = setup_chronos_jobs.get_executor_flags()
+    job_config = {
+        'docker_image': 'test_docker_image',
+        'docker_options': ['option_1', 'option_2'],
+    }
+    expected = {'container': {
+        'image': 'docker:///test-repository/test_docker_image',
+        'options': ['option_1', 'option_2'],
+    }}
+    actual = setup_chronos_jobs.get_executor_flags(job_config)
     assert expected == actual
 
 
@@ -244,12 +256,14 @@ def test_schedule():
     assert expected == actual
 
 
+@patch('service_deployment_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
 def test_parse_job_config():
     job_config = {
         'name': 'my_test_job',
         'command': '/bin/true',
         'failure_contact_email': 'developer@example.com',
         'schedule': 'R1Y',
+        'docker_image': 'test_image',
     }
 
     actual = setup_chronos_jobs.parse_job_config(job_config)
@@ -260,8 +274,8 @@ def test_parse_job_config():
         'disabled': False,
         'disk': 100,
         'epsilon': 'PT60S',
-        'executor': 'some sort of default - look in to this',
-        'executorFlags': 'flags that will be determined',
+        'executor': '',
+        'executorFlags': {'container': {'image': 'docker:///test-repository/test_image', 'options': []}},
         'mem': 100,
         'name': 'my_test_job',
         'owner': 'developer@example.com',

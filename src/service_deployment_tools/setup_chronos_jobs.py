@@ -4,11 +4,11 @@ import argparse
 import isodate
 import os
 import service_configuration_lib
+import setup_marathon_job
 import yaml
 
 
-DEFAULT_EXECUTOR = 'some sort of default - look in to this'
-DEFAULT_EXECUTOR_FLAGS = 'flags that will be determined'
+DEFAULT_EXECUTOR = ''
 DEFAULT_EPSILON = 'PT60S'
 DEFAULT_RETRIES = 2
 DEFAULT_CPUS = 0.1
@@ -86,7 +86,7 @@ def parse_job_config(job_config):
         'command': get_command(job_config),
         'epsilon': get_epsilon(job_config),
         'executor': get_executor(),
-        'executorFlags': get_executor_flags(),
+        'executorFlags': get_executor_flags(job_config),
         'retries': get_retries(job_config),
         'owner': get_owner(job_config),
         'async': get_async(),
@@ -118,8 +118,19 @@ def get_executor():
     return DEFAULT_EXECUTOR
 
 
-def get_executor_flags():
-    return DEFAULT_EXECUTOR_FLAGS
+def get_executor_flags(job_config):
+    flags = {
+        'container': {
+            'image': get_docker_url_for_image(job_config['docker_image']),
+            'options': job_config.get('docker_options', [])
+        }
+    }
+    return flags
+
+
+def get_docker_url_for_image(docker_image):
+    marathon_config = setup_marathon_job.get_main_marathon_config()
+    return setup_marathon_job.get_docker_url(marathon_config['docker_registry'], docker_image)
 
 
 def get_retries(job_config):
