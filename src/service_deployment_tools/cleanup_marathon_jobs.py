@@ -35,11 +35,12 @@ def cleanup_apps(client, soa_dir):
     log.info("Getting app list from marathon")
     valid_app_list = marathon_tools.get_marathon_services_for_cluster(soa_dir=soa_dir,
                                                                       include_iteration=True)
+    valid_app_list = [marathon_tools.compose_job_id(service, instance, iteration)
+                      for service, instance, iteration in valid_app_list]
     app_ids = [app.id for app in client.list_apps()]
     for app_id in app_ids:
         log.info("Checking app id %s", app_id)
-        if not any([app_id == marathon_tools.compose_job_id(service, instance, iteration)
-                    for service, instance, iteration in valid_app_list]):
+        if not any([app_id == deployed_id for deployed_id in valid_app_list]):
             try:
                 log.warn("%s appears to be old; attempting to delete", app_id)
                 srv_instance = marathon_tools.remove_iteration_from_job_id(app_id)
@@ -63,5 +64,5 @@ def main():
     cleanup_apps(client, soa_dir)
 
 
-if __name__ == "__main__":
+if __name__ == "__main__" and marathon_tools.is_mesos_leader():
     main()

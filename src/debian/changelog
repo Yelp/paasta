@@ -1,3 +1,11 @@
+service-deployment-tools (0.1.16-yelp1) lucid; urgency=low
+
+  * Fixing deploy_marathon_services to not execute setup if no services to deploy
+  * Adding tests for cleanup_marathon_jobs
+  * Fixing cleanup_marathon_jobs
+
+ -- James McGuinness <jrm@yelp.com>  Wed, 23 Jul 2014 17:55:10 -0700
+
 service-deployment-tools (0.1.15-yelp1) lucid; urgency=low
 
   * Fixing cleanup script to have correct environment
