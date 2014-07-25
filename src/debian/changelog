@@ -1,3 +1,10 @@
+service-deployment-tools (0.1.18-yelp1) lucid; urgency=low
+
+  * Chronos executorFlags are supposed to be a string (hopefully this json
+    gets passed on to Mesos)
+
+ -- Sophie Haskins <shaskins@yelp.com>  Fri, 25 Jul 2014 08:58:00 -0700
+
 service-deployment-tools (0.1.17-yelp1) lucid; urgency=low
 
   * specify executor params for chronos jobs
