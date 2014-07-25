@@ -5,6 +5,7 @@ import isodate
 import os
 import service_configuration_lib
 import setup_marathon_job
+import json
 import yaml
 
 
@@ -125,7 +126,7 @@ def get_executor_flags(job_config):
             'options': job_config.get('docker_options', [])
         }
     }
-    return flags
+    return json.dumps(flags)
 
 
 def get_docker_url_for_image(docker_image):

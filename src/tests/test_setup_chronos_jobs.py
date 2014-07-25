@@ -2,6 +2,7 @@
 
 from service_deployment_tools import setup_chronos_jobs
 from mock import patch
+import json
 
 
 def test_extract_chronos_jobs_trivial():
@@ -100,10 +101,10 @@ def test_get_executor_flags():
         'docker_image': 'test_docker_image',
         'docker_options': ['option_1', 'option_2'],
     }
-    expected = {'container': {
+    expected = json.dumps({'container': {
         'image': 'docker:///test-repository/test_docker_image',
         'options': ['option_1', 'option_2'],
-    }}
+    }})
     actual = setup_chronos_jobs.get_executor_flags(job_config)
     assert expected == actual
 
@@ -275,7 +276,7 @@ def test_parse_job_config():
         'disk': 100,
         'epsilon': 'PT60S',
         'executor': '',
-        'executorFlags': {'container': {'image': 'docker:///test-repository/test_image', 'options': []}},
+        'executorFlags': '{"container": {"image": "docker:///test-repository/test_image", "options": []}}',
         'mem': 100,
         'name': 'my_test_job',
         'owner': 'developer@example.com',
