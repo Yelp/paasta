@@ -15,7 +15,6 @@ DEFAULT_RETRIES = 2
 DEFAULT_CPUS = 0.1
 DEFAULT_MEM = 100
 DEFAULT_DISK = 100
-DEFAULT_URIS = []
 
 
 class InvalidChronosException(Exception):
@@ -95,7 +94,7 @@ def parse_job_config(job_config):
         'mem': get_mem(job_config),
         'disk': get_disk(job_config),
         'disabled': get_disabled(),
-        'uris': get_uris(),
+        'uris': get_uris(job_config),
         'schedule': get_schedule(job_config),
     }
 
@@ -167,8 +166,8 @@ def get_disabled():
     return False
 
 
-def get_uris():
-    return DEFAULT_URIS
+def get_uris(job_config):
+    return [get_docker_url_for_image(job_config['docker_image'])]
 
 
 def get_schedule(job_config):

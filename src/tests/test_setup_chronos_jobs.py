@@ -244,10 +244,14 @@ def test_not_disabled():
     assert actual == expected
 
 
+@patch('service_deployment_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
 def test_uris():
-    actual = setup_chronos_jobs.get_uris()
-    expected = setup_chronos_jobs.DEFAULT_URIS
-    assert actual == expected
+    job_config = {
+        'docker_image': 'test_docker_image',
+    }
+    expected = ['docker:///test-repository/test_docker_image']
+    actual = setup_chronos_jobs.get_uris(job_config)
+    assert expected == actual
 
 
 def test_schedule():
@@ -282,6 +286,6 @@ def test_parse_job_config():
         'owner': 'developer@example.com',
         'retries': 2,
         'schedule': 'R1Y',
-        'uris': [],
+        'uris': ['docker:///test-repository/test_image'],
     }
     assert expected == actual
