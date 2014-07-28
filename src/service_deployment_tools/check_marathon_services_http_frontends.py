@@ -7,7 +7,7 @@ import sys
 from sensu_plugin import SensuPluginCheck
 
 from service_deployment_tools import marathon_tools
-import monitoring_tools
+from service_deployment_tools import monitoring_tools
 import pysensu_yelp
 
 
