@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.19-yelp1) lucid; urgency=low
+
+  * continuing to work on parameterizing the docker containers 
+
+ -- Sophie Haskins <shaskins@yelp.com>  Mon, 28 Jul 2014 13:02:46 -0700
+
 service-deployment-tools (0.1.18-yelp1) lucid; urgency=low
 
   * Chronos executorFlags are supposed to be a string (hopefully this json
