@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.20-yelp1) lucid; urgency=low
+
+  * Fixing an import error with check http frontends script 
+
+ -- James McGuinness <jrm@yelp.com>  Mon, 28 Jul 2014 13:34:36 -0700
+
 service-deployment-tools (0.1.19-yelp1) lucid; urgency=low
 
   * continuing to work on parameterizing the docker containers 
