@@ -6,3 +6,4 @@ pycurl
 sensu-plugin == 0.1.0
 requests
 pysensu-yelp >= 0.1.5
+GitPython == 0.1.7
