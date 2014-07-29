@@ -8,7 +8,8 @@ setup_chronos_jobs
 cleanup_marathon_jobs
 check_marathon_services_http_frontends
 list_marathon_service_instances
-deploy_marathon_services"
+deploy_marathon_services
+generate_deployment_json"
 
 MARATHON_SERVICES="fake_service_uno.main
 fake_service_dos.niam"

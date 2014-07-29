@@ -3,7 +3,6 @@
 import logging
 import subprocess
 import sys
-from StringIO import StringIO
 
 from sensu_plugin import SensuPluginCheck
 
@@ -15,13 +14,10 @@ import pysensu_yelp
 def check_http(port):
     """Actually exec the check_http command and return the output"""
     command = build_check_http_command(port)
-    output = StringIO()
-    try:
-        subprocess.check_call(command.split(), stdout=output)
-        status = 0
-    except subprocess.CalledProcessError as e:
-        status = e.returncode
-    return (output.getvalue(), status)
+    child = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
+    output, _ = child.communicate()
+    status = child.returncode
+    return (output, status)
 
 
 def send_event(service_name, instance_name, check_name, status, output):
@@ -29,19 +25,16 @@ def send_event(service_name, instance_name, check_name, status, output):
     # This function assumes the input is a string like "mumble.main"
     framework = 'marathon'
     team = monitoring_tools.get_team(framework, service_name, instance_name)
+    runbook = monitoring_tools.get_runbook(framework, service_name, instance_name)
     result_dict = {
-        'name': check_name,
-        'status': status,
-        'output': output,
-        'team': team,
-        'runbook': monitoring_tools.get_runbook(framework, service_name, instance_name),
         'tip': monitoring_tools.get_tip(framework, service_name, instance_name),
         'notification_email': monitoring_tools.get_notification_email(framework, service_name, instance_name),
         'page': monitoring_tools.get_page(framework, service_name, instance_name),
         'alert_after': monitoring_tools.get_alert_after(framework, service_name, instance_name),
+        'realert_every': -1
     }
-    if team is not None:
-        pysensu_yelp.send_event(**result_dict)
+    if team:
+        pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 
 
 def build_check_http_command(port):

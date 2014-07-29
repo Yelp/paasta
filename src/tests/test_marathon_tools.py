@@ -53,10 +53,12 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         fake_docker = 'no_docker:9.9'
+        config_copy = self.fake_marathon_job_config.copy()
+        del config_copy['docker_image']
 
         def conf_helper(name, filename, soa_dir="AAAAAAAAA"):
             if filename == 'marathon-amnesia':
-                return {fake_instance: self.fake_marathon_job_config}
+                return {fake_instance: config_copy}
             elif filename == 'service':
                 return self.fake_srv_config
             else:
