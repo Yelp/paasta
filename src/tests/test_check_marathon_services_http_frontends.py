@@ -1,6 +1,7 @@
 import check_marathon_services_http_frontends
 import mock
 import contextlib
+import subprocess
 
 
 def test_build_check_http_command():
@@ -14,25 +15,23 @@ def test_check_http():
     fake_port = 19343
     fake_command = '/usr/bin/check_sandwich working_girls'
     fake_output = 'vader_nooooooo.jpg'
-    expected = (fake_output, 0)
+    fake_process = mock.Mock(returncode=11, communicate=mock.Mock(return_value=(fake_output, '42')))
+    expected = (fake_output, 11)
     with contextlib.nested(
         mock.patch('check_marathon_services_http_frontends.build_check_http_command',
                    return_value=fake_command),
-        mock.patch('subprocess.check_call',
-                   return_value=fake_output),
-        mock.patch('check_marathon_services_http_frontends.StringIO',
-                   return_value=mock.Mock(getvalue=mock.Mock(return_value=fake_output)))
+        mock.patch('subprocess.Popen',
+                   return_value=fake_process)
     ) as (
         build_cmd_patch,
-        check_call_patch,
-        stringio_patch
+        popen_patch,
     ):
         actual = check_marathon_services_http_frontends.check_http(fake_port)
         assert expected == actual
-        stringio_patch.assert_called_once_with()
-        stringio_patch.return_value.getvalue.assert_called_once_with()
         build_cmd_patch.assert_called_once_with(fake_port)
-        check_call_patch.assert_called_once_with(fake_command.split(), stdout=stringio_patch.return_value)
+        popen_patch.assert_called_once_with(fake_command.split(),
+                                            stdout=subprocess.PIPE,
+                                            stderr=subprocess.STDOUT)
 
 
 def test_send_event():
@@ -48,15 +47,11 @@ def test_send_event():
     fake_page = False
     fake_alert_after = '42m'
     expected_kwargs = {
-        'name': fake_check_name,
-        'status': fake_status,
-        'output': fake_output,
-        'team': fake_team,
-        'runbook': fake_runbook,
         'tip': fake_tip,
         'notification_email': fake_notification_email,
         'page': fake_page,
         'alert_after': fake_alert_after,
+        'realert_every': -1,
     }
     with contextlib.nested(
         mock.patch("service_deployment_tools.monitoring_tools.get_team",
@@ -92,7 +87,8 @@ def test_send_event():
         monitoring_tools_get_notification_email_patch.assert_called_once_with('marathon', fake_service_name, fake_instance_name)
         monitoring_tools_get_page_patch.assert_called_once_with('marathon', fake_service_name, fake_instance_name)
         monitoring_tools_get_alert_after_patch.assert_called_once_with('marathon', fake_service_name, fake_instance_name)
-        pysensu_yelp_send_event_patch.assert_called_once_with(**expected_kwargs)
+        pysensu_yelp_send_event_patch.assert_called_once_with(fake_check_name, fake_runbook, fake_status,
+                                                              fake_output, fake_team, **expected_kwargs)
 
 
 def test_check_service_instance():

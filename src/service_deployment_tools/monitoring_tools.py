@@ -38,4 +38,5 @@ def __get_monitoring_config_value(key, framework, service_name, instance_name):
     general_config = service_configuration_lib.read_service_configuration(service_name)
     job_config = marathon_tools.read_service_config(service_name, instance_name)
     service_default = general_config.get(key, False)
+    service_default = general_config.get('monitoring', {key: service_default}).get(key, service_default)
     return job_config.get(key, service_default)

@@ -1,3 +1,10 @@
+service-deployment-tools (0.1.23-yelp1) lucid; urgency=low
+
+  * Added a generate_deployment_json script to generate deployment.json
+  * Bugfixes to setup_marathon_job
+
+ -- James McGuinness <jrm@yelp.com>  Tue, 29 Jul 2014 15:25:12 -0700
+
 service-deployment-tools (0.1.22-yelp1) lucid; urgency=low
 
   * Allow for new 'branch' field for marathon configs as an alternative to 'docker_image'

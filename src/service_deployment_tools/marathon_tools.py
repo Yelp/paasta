@@ -45,7 +45,7 @@ def get_cluster():
 
 
 def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
-    deployment_file = os.path.join(soa_dir, 'deployment.json')
+    deployment_file = os.path.join(soa_dir, 'deployments.json')
     if os.path.exists(deployment_file):
         dockers = json.loads(open(deployment_file).read())
         full_branch = '%s:%s' % (service_name, branch_name)
@@ -72,10 +72,13 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
                             soa_dir=soa_dir)
     if instance in instance_configs:
         general_config.update(instance_configs[instance])
-        if 'branch' in general_config:
-            general_config['docker_image'] = get_docker_from_branch(name,
-                                                                    general_config['branch'],
-                                                                    soa_dir)
+        # Once we don't allow docker_image anymore, remove this if and everything will work
+        if 'docker_image' not in general_config:
+            if 'branch' not in general_config:
+                branch = cluster
+            else:
+                branch = general_config['branch']
+            general_config['docker_image'] = get_docker_from_branch(name, branch, soa_dir)
         return general_config
     else:
         log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)

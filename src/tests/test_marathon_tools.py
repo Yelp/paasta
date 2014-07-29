@@ -41,7 +41,7 @@ class TestMarathonTools:
         ):
             actual = marathon_tools.get_docker_from_branch(fake_srv, fake_branch, fake_dir)
             assert actual == 'test_rocker:9.9'
-            join_patch.assert_called_once_with(fake_dir, 'deployment.json')
+            join_patch.assert_called_once_with(fake_dir, 'deployments.json')
             exists_patch.assert_called_once_with(fake_path)
             open_patch.assert_called_once_with(fake_path)
             file_mock.read.assert_called_once_with()
@@ -53,10 +53,12 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         fake_docker = 'no_docker:9.9'
+        config_copy = self.fake_marathon_job_config.copy()
+        del config_copy['docker_image']
 
         def conf_helper(name, filename, soa_dir="AAAAAAAAA"):
             if filename == 'marathon-amnesia':
-                return {fake_instance: self.fake_marathon_job_config}
+                return {fake_instance: config_copy}
             elif filename == 'service':
                 return self.fake_srv_config
             else:

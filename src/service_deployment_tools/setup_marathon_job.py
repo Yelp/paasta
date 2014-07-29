@@ -52,7 +52,7 @@ def send_sensu_event(name, instance, soa_dir, status, output):
         # the event won't get emitted at all!
         # We'll need a strict spec in yelpsoa_configs to make sure
         # that doesn't happen.
-        if runbook:
+        if 'runbook' in monitor_conf:
             del monitor_conf['runbook']
         del monitor_conf['team']
         monitor_conf['alert_after'] = -1
