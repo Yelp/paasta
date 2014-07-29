@@ -7,3 +7,4 @@ usr/share/python/service-deployment-tools/bin/setup_chronos_jobs.py usr/bin/setu
 usr/share/python/service-deployment-tools/bin/list_marathon_service_instances.py usr/bin/list_marathon_service_instances
 usr/share/python/service-deployment-tools/bin/check_synapse_replication.py usr/bin/check_synapse_replication
 usr/share/python/service-deployment-tools/bin/deploy_marathon_services usr/bin/deploy_marathon_services
+usr/share/python/service-deployment-tools/bin/generate_deployments_json.py usr/bin/generate_deployments_json
