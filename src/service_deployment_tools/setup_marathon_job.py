@@ -4,9 +4,12 @@ import os
 import sys
 import logging
 import argparse
+from StringIO import StringIO
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
+from service_deployment_tools import bounce_lib
 from marathon import MarathonClient
+import pycurl
 import pysensu_yelp
 
 # Marathon REST API:
@@ -70,11 +73,25 @@ def get_docker_url(registry_uri, docker_image):
 
     Uses the registry_uri (docker_registry) value from marathon_config
     and the docker_image value from a service config to make a Docker URL.
+    Checks if the URL will point to a valid image, first, returning a null
+    string if it doesn't.
+
     The URL is prepended with docker:/// per the deimos docs, at
     https://github.com/mesosphere/deimos"""
-    docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
-    log.info("Docker URL: %s", docker_url)
-    return docker_url
+    s = StringIO()
+    c = pycurl.Curl()
+    c.setopt(pycurl.URL, 'http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
+                                                                   docker_image.split(':')[0],
+                                                                   docker_image.split(':')[1]))
+    c.setopt(pycurl.WRITEFUNCTION, s.write)
+    c.perform()
+    if 'error' in s.getvalue():
+        log.error("Docker image not found: %s/%s", registry_uri, docker_image)
+        return ''
+    else:
+        docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
+        log.info("Docker URL: %s", docker_url)
+        return docker_url
 
 
 def get_ports(service_config):
@@ -183,16 +200,20 @@ def deploy_service(name, config, client, bounce_method):
     old_app_ids = [app.id for app in app_list if filter_name in app.id]
     if old_app_ids:  # there's a previous iteration; bounce
         log.info("Old service instance iterations found: %s", old_app_ids)
-        if bounce_method == "brutal":
-            marathon_tools.brutal_bounce(old_app_ids, config, client)
-        else:
-            log.error("bounce_method not recognized: %s. Exiting", bounce_method)
-            return False
+        try:
+            if bounce_method == "brutal":
+                bounce_lib.brutal_bounce(old_app_ids, config, client)
+            else:
+                log.error("bounce_method not recognized: %s. Exiting", bounce_method)
+                return (1, "bounce_method not recognized: %s" % bounce_method)
+        except IOError:
+            log.error("service %s already being bounced. Exiting", filter_name)
+            return (1, "Service is taking a while to bounce")
     else:  # there wasn't actually a previous iteration; just deploy it
         log.info("No old instances found. Deploying instance %s", name)
         client.create_app(**config)
     log.info("%s deployed. Exiting", name)
-    return True
+    return (0, 'Service deployed.')
 
 
 def setup_service(service_name, instance_name, client, marathon_config,
@@ -207,6 +228,9 @@ def setup_service(service_name, instance_name, client, marathon_config,
     log.info("Desired Marathon instance id: %s", full_id)
     docker_url = get_docker_url(marathon_config['docker_registry'],
                                 service_marathon_config['docker_image'])
+    if not docker_url:
+        log.error("Docker image %s not found. Exiting", service_marathon_config['docker_image'])
+        return (1, "Docker image not found: %s" % service_marathon_config['docker_image'])
     complete_config = create_complete_config(full_id, docker_url, marathon_config['docker_options'],
                                              service_marathon_config)
     try:
@@ -214,11 +238,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
                  service_marathon_config['iteration'])
         client.get_app(full_id)
         log.warning("App id %s already exists. Skipping configuration and exiting.", full_id)
-        # I wanted to compare the configs with a call to get_app, but Marathon doesn't
-        # return the 'container' key via its REST API, which makes comparing not
-        # really viable (especially since the container keys are extremely likely to
-        # get bumped when a service is updated) -jrm
-        return True
+        return (0, 'Service was already deployed.')
     except KeyError:
         return deploy_service(full_id, complete_config, client,
                               bounce_method=get_bounce_method(service_marathon_config))
@@ -254,15 +274,11 @@ def main():
 
     if service_instance_config:
         try:
-            if setup_service(service_name, instance_name, client, marathon_config,
-                             service_instance_config):
-                send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.OK,
-                                 "Service deployed")
-                sys.exit(0)
-            else:
-                send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL,
-                                 "Service failed to deploy, bounce_method invalid.")
-                sys.exit(1)
+            status, output = setup_service(service_name, instance_name, client, marathon_config,
+                                           service_instance_config)
+            sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
+            send_sensu_event(service_name, instance_name, soa_dir, sensu_status, output)
+            sys.exit(status)
         except (KeyError, TypeError, ValueError) as e:
             log.error(str(e))
             send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, str(e))

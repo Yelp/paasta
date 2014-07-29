@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.21-yelp1) lucid; urgency=low
+
+  * Moving out bounce code, fixing check http frontends
+
+ -- James McGuinness <jrm@yelp.com>  Mon, 28 Jul 2014 18:29:14 -0700
+
 service-deployment-tools (0.1.20-yelp1) lucid; urgency=low
 
   * Fixing an import error with check http frontends script 

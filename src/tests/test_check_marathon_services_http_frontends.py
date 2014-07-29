@@ -10,6 +10,31 @@ def test_build_check_http_command():
     assert expected == actual
 
 
+def test_check_http():
+    fake_port = 19343
+    fake_command = '/usr/bin/check_sandwich working_girls'
+    fake_output = 'vader_nooooooo.jpg'
+    expected = (fake_output, 0)
+    with contextlib.nested(
+        mock.patch('check_marathon_services_http_frontends.build_check_http_command',
+                   return_value=fake_command),
+        mock.patch('subprocess.check_call',
+                   return_value=fake_output),
+        mock.patch('check_marathon_services_http_frontends.StringIO',
+                   return_value=mock.Mock(getvalue=mock.Mock(return_value=fake_output)))
+    ) as (
+        build_cmd_patch,
+        check_call_patch,
+        stringio_patch
+    ):
+        actual = check_marathon_services_http_frontends.check_http(fake_port)
+        assert expected == actual
+        stringio_patch.assert_called_once_with()
+        stringio_patch.return_value.getvalue.assert_called_once_with()
+        build_cmd_patch.assert_called_once_with(fake_port)
+        check_call_patch.assert_called_once_with(fake_command.split(), stdout=stringio_patch.return_value)
+
+
 def test_send_event():
     fake_service_name = 'fake_service'
     fake_instance_name = 'fake_instance'

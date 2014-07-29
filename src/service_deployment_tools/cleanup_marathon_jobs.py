@@ -4,6 +4,7 @@ import logging
 
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
+from service_deployment_tools import bounce_lib
 from marathon import MarathonClient
 
 
@@ -44,7 +45,7 @@ def cleanup_apps(client, soa_dir):
             try:
                 log.warn("%s appears to be old; attempting to delete", app_id)
                 srv_instance = marathon_tools.remove_iteration_from_job_id(app_id)
-                with marathon_tools.bounce_lock(srv_instance):
+                with bounce_lib.bounce_lock(srv_instance):
                     client.delete_app(app_id)
             except IOError:
                 log.info("%s is being bounced, skipping", app_id)
