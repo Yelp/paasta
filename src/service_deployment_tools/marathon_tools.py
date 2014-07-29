@@ -44,6 +44,16 @@ def get_cluster():
     return get_config()['cluster']
 
 
+def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
+    deployment_file = os.path.join(soa_dir, 'deployment.json')
+    if os.path.exists(deployment_file):
+        dockers = json.loads(open(deployment_file).read())
+        full_branch = '%s:%s' % (service_name, branch_name)
+        return dockers.get(full_branch, '')
+    else:
+        return ''
+
+
 def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's marathon configuration."""
     if not cluster:
@@ -62,6 +72,10 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
                             soa_dir=soa_dir)
     if instance in instance_configs:
         general_config.update(instance_configs[instance])
+        if 'branch' in general_config:
+            general_config['docker_image'] = get_docker_from_branch(name,
+                                                                    general_config['branch'],
+                                                                    soa_dir)
         return general_config
     else:
         log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)

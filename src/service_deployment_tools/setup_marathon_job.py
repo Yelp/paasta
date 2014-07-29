@@ -42,18 +42,20 @@ def send_sensu_event(name, instance, soa_dir, status, output):
     monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
     # We don't use compose_job_id here because we don't want to change _ to -
     full_name = 'setup_marathon_job.%s%s%s' % (name, ID_SPACER, instance)
-    runbook = monitor_conf.get('runbook')
+    # runbook = monitor_conf.get('runbook')
+    runbook = 'y/rb-marathon'
     team = monitor_conf.get('team')
     if team:
         # We need to remove things that aren't kwargs to send_event
         # so that we can just pass everything else as a kwarg.
         # This means that if monitoring.yaml has an erroneous key,
         # the event won't get emitted at all!
-        # We'll need a strict spec in yelpsoa_configsto make sure
+        # We'll need a strict spec in yelpsoa_configs to make sure
         # that doesn't happen.
         if runbook:
             del monitor_conf['runbook']
         del monitor_conf['team']
+        monitor_conf['alert_after'] = -1
         try:
             pysensu_yelp.send_event(full_name, runbook, status, output, team, **monitor_conf)
         except TypeError:
@@ -80,9 +82,9 @@ def get_docker_url(registry_uri, docker_image):
     https://github.com/mesosphere/deimos"""
     s = StringIO()
     c = pycurl.Curl()
-    c.setopt(pycurl.URL, 'http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
-                                                                   docker_image.split(':')[0],
-                                                                   docker_image.split(':')[1]))
+    c.setopt(pycurl.URL, str('http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
+                                                                       docker_image.split(':')[0],
+                                                                       docker_image.split(':')[1])))
     c.setopt(pycurl.WRITEFUNCTION, s.write)
     c.perform()
     if 'error' in s.getvalue():

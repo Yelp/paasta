@@ -11,6 +11,7 @@ class TestMarathonTools:
         'cpus': 1,
         'mem': 100,
         'docker_image': 'test_docker:1.0',
+        'branch': 'master',
         'iteration': 'testin',
     }
     fake_srv_config = {
@@ -18,11 +19,40 @@ class TestMarathonTools:
         'deployed_on': ['another-box'],
     }
 
+    def test_get_docker_from_branch(self):
+        file_mock = mock.MagicMock(spec=file)
+        fake_filedata = '239jiogrefnb iqu23t4ren'
+        file_mock.read = mock.Mock(return_value=fake_filedata)
+        fake_path = '/etc/nope.json'
+        fake_srv = 'no_srv'
+        fake_branch = 'blaster'
+        fake_dir = '/var/dir_of_fake'
+        fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
+        with contextlib.nested(
+            mock.patch('marathon_tools.open', create=True, return_value=file_mock),
+            mock.patch('os.path.join', return_value=fake_path),
+            mock.patch('os.path.exists', return_value=True),
+            mock.patch('json.loads', return_value=fake_json),
+        ) as (
+            open_patch,
+            join_patch,
+            exists_patch,
+            json_patch
+        ):
+            actual = marathon_tools.get_docker_from_branch(fake_srv, fake_branch, fake_dir)
+            assert actual == 'test_rocker:9.9'
+            join_patch.assert_called_once_with(fake_dir, 'deployment.json')
+            exists_patch.assert_called_once_with(fake_path)
+            open_patch.assert_called_once_with(fake_path)
+            file_mock.read.assert_called_once_with()
+            json_patch.assert_called_once_with(fake_filedata)
+
     def test_read_service_config(self):
         fake_name = 'jazz'
         fake_instance = 'solo'
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
+        fake_docker = 'no_docker:9.9'
 
         def conf_helper(name, filename, soa_dir="AAAAAAAAA"):
             if filename == 'marathon-amnesia':
@@ -33,14 +63,24 @@ class TestMarathonTools:
                 raise Exception('read_service_config tried to access invalid filename %s' % filename)
 
         expected = dict(self.fake_srv_config.items() + self.fake_marathon_job_config.items())
-        with mock.patch('service_configuration_lib.read_extra_service_information',
-                        side_effect=conf_helper) as read_extra_info_patch:
+        expected['docker_image'] = fake_docker
+        with contextlib.nested(
+            mock.patch('service_configuration_lib.read_extra_service_information',
+                       side_effect=conf_helper),
+            mock.patch('marathon_tools.get_docker_from_branch',
+                       return_value=fake_docker)
+        ) as (
+            read_extra_info_patch,
+            get_docker_patch
+        ):
             actual = marathon_tools.read_service_config(fake_name, fake_instance,
                                                         fake_cluster, fake_dir)
             assert expected == actual
             read_extra_info_patch.assert_any_call(fake_name, "service", soa_dir=fake_dir)
             read_extra_info_patch.assert_any_call(fake_name, "marathon-amnesia", soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 2
+            get_docker_patch.assert_called_once_with(fake_name, self.fake_marathon_job_config['branch'],
+                                                     fake_dir)
 
     def test_get_service_instance_list(self):
         fake_name = 'hint'
