@@ -45,7 +45,7 @@ def get_cluster():
 
 
 def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
-    deployment_file = os.path.join(soa_dir, 'deployment.json')
+    deployment_file = os.path.join(soa_dir, 'deployments.json')
     if os.path.exists(deployment_file):
         dockers = json.loads(open(deployment_file).read())
         full_branch = '%s:%s' % (service_name, branch_name)

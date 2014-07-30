@@ -35,6 +35,6 @@ setup(
         'service_deployment_tools/list_marathon_service_instances.py',
         'service_deployment_tools/monitoring/check_synapse_replication.py',
         'service_deployment_tools/deploy_marathon_services',
-        'service_deployment_tools/generate_deployment_json.py'
+        'service_deployment_tools/generate_deployments_json.py'
     ]
 )

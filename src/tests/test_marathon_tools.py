@@ -41,7 +41,7 @@ class TestMarathonTools:
         ):
             actual = marathon_tools.get_docker_from_branch(fake_srv, fake_branch, fake_dir)
             assert actual == 'test_rocker:9.9'
-            join_patch.assert_called_once_with(fake_dir, 'deployment.json')
+            join_patch.assert_called_once_with(fake_dir, 'deployments.json')
             exists_patch.assert_called_once_with(fake_path)
             open_patch.assert_called_once_with(fake_path)
             file_mock.read.assert_called_once_with()
