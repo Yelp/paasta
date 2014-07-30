@@ -1,3 +1,27 @@
+service-deployment-tools (0.1.23-yelp1) lucid; urgency=low
+
+  * Adding replication monitoring scripts for all the services
+
+ -- Joseph Lynch <jlynch@yelp.com>  Mon, 28 Jul 2014 11:51:53 -0700
+
+service-deployment-tools (0.1.22-yelp1) lucid; urgency=low
+
+  * Allow for new 'branch' field for marathon configs as an alternative to 'docker_image'
+
+ -- James McGuinness <jrm@yelp.com>  Tue, 29 Jul 2014 12:50:04 -0700
+
+service-deployment-tools (0.1.21-yelp1) lucid; urgency=low
+
+  * Moving out bounce code, fixing check http frontends
+
+ -- James McGuinness <jrm@yelp.com>  Mon, 28 Jul 2014 18:29:14 -0700
+
+service-deployment-tools (0.1.20-yelp1) lucid; urgency=low
+
+  * Fixing an import error with check http frontends script 
+
+ -- James McGuinness <jrm@yelp.com>  Mon, 28 Jul 2014 13:34:36 -0700
+
 service-deployment-tools (0.1.19-yelp1) lucid; urgency=low
 
   * continuing to work on parameterizing the docker containers 

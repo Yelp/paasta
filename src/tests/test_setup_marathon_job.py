@@ -4,6 +4,7 @@ import setup_marathon_job
 from service_deployment_tools import marathon_tools
 import mock
 import contextlib
+import pycurl
 
 
 class TestSetupMarathonJob:
@@ -39,7 +40,7 @@ class TestSetupMarathonJob:
             mock.patch('setup_marathon_job.get_marathon_client', return_value=fake_client),
             mock.patch('service_deployment_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
-            mock.patch('setup_marathon_job.setup_service', return_value=True),
+            mock.patch('setup_marathon_job.setup_service', return_value=(0, 'it_is_finished')),
             mock.patch('setup_marathon_job.send_sensu_event'),
             mock.patch('sys.exit'),
         ) as (
@@ -79,7 +80,7 @@ class TestSetupMarathonJob:
             mock.patch('setup_marathon_job.get_marathon_client', return_value=fake_client),
             mock.patch('service_deployment_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
-            mock.patch('setup_marathon_job.setup_service', return_value=False),
+            mock.patch('setup_marathon_job.setup_service', return_value=(1, 'NEVER')),
             mock.patch('setup_marathon_job.send_sensu_event'),
             mock.patch('sys.exit'),
         ) as (
@@ -138,8 +139,8 @@ class TestSetupMarathonJob:
             abs_path_patch.assert_called_once_with(soa_dir)
             join_path_patch.assert_called_once_with('black_sheep', name, 'monitoring.yaml')
             read_monitoring_patch.assert_called_once_with('actually_albino')
-            send_event_patch.assert_called_once_with(expected_name, 'y/koobnur', status, output, 'zero',
-                                                     notification_email='44@yelp.com')
+            send_event_patch.assert_called_once_with(expected_name, 'y/rb-marathon', status, output, 'zero',
+                                                     notification_email='44@yelp.com', alert_after=-1)
 
     def test_setup_service_srv_already_exists(self):
         fake_name = 'if_trees_could_talk'
@@ -212,8 +213,10 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
-        assert not setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
-                                                     fake_client, fake_bounce)
+        expected = (1, 'bounce_method not recognized: %s' % fake_bounce)
+        actual = setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
+                                                   fake_client, fake_bounce)
+        assert expected == actual
         fake_client.list_apps.assert_called_once_with()
         assert fake_client.create_app.call_count == 0
 
@@ -224,7 +227,7 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
-        with mock.patch('service_deployment_tools.marathon_tools.brutal_bounce', return_value=True) as brutal_bounce_patch:
+        with mock.patch('service_deployment_tools.bounce_lib.brutal_bounce', return_value=True) as brutal_bounce_patch:
             assert setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
                                                      fake_client, fake_bounce)
             fake_client.list_apps.assert_called_once_with()
@@ -240,8 +243,10 @@ class TestSetupMarathonJob:
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id='fake_id'), mock.Mock(id='ahahahahaahahahaha')]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
-        assert setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
-                                                 fake_client, fake_bounce)
+        expected = (0, 'Service deployed.')
+        actual = setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
+                                                   fake_client, fake_bounce)
+        assert expected == actual
         fake_client.list_apps.assert_called_once_with()
         fake_client.create_app.assert_called_once_with(**self.fake_marathon_job_config)
 
@@ -334,11 +339,53 @@ class TestSetupMarathonJob:
     def test_get_ports_default(self):
         assert setup_marathon_job.get_ports({}) == [0]
 
-    def test_get_docker_url(self):
+    def test_get_docker_url_no_error(self):
         fake_registry = "im.a-real.vm"
         fake_image = "and-i-can-run:1.0"
+        fake_curl = mock.Mock()
+        fake_stringio = mock.Mock(getvalue=mock.Mock(return_value='483af83b81ee93ac930d'))
         expected = "docker:///%s/%s" % (fake_registry, fake_image)
-        assert setup_marathon_job.get_docker_url(fake_registry, fake_image) == expected
+        with contextlib.nested(
+            mock.patch('pycurl.Curl', return_value=fake_curl),
+            mock.patch('setup_marathon_job.StringIO', return_value=fake_stringio)
+        ) as (
+            pycurl_patch,
+            stringio_patch
+        ):
+            assert setup_marathon_job.get_docker_url(fake_registry, fake_image) == expected
+            fake_curl.setopt.assert_any_call(pycurl.URL,
+                                             'http://%s/v1/repositories/%s/tags/%s' % (
+                                                    fake_registry,
+                                                    fake_image.split(':')[0],
+                                                    fake_image.split(':')[1]))
+            fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, fake_stringio.write)
+            assert fake_curl.setopt.call_count == 2
+            fake_curl.perform.assert_called_once_with()
+            fake_stringio.getvalue.assert_called_once_with()
+
+    def test_get_docker_url_has_error(self):
+        fake_registry = "youre.just.virtual"
+        fake_image = "just-a-shadow-of-reality:0.9"
+        fake_curl = mock.Mock()
+        fake_stringio = mock.Mock(getvalue=mock.Mock(return_value='all the errors ever'))
+        expected = ""
+        with contextlib.nested(
+            mock.patch('pycurl.Curl', return_value=fake_curl),
+            mock.patch('setup_marathon_job.StringIO', return_value=fake_stringio)
+        ) as (
+            pycurl_patch,
+            stringio_patch
+        ):
+            assert setup_marathon_job.get_docker_url(fake_registry, fake_image) == expected
+            fake_curl.setopt.assert_any_call(pycurl.URL,
+                                             'http://%s/v1/repositories/%s/tags/%s' % (
+                                                    fake_registry,
+                                                    fake_image.split(':')[0],
+                                                    fake_image.split(':')[1]))
+            fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, fake_stringio.write)
+            assert fake_curl.setopt.call_count == 2
+            fake_curl.perform.assert_called_once_with()
+            fake_stringio.getvalue.assert_called_once_with()
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}

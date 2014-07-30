@@ -56,7 +56,7 @@ class TestCleanupMarathonJobs:
                        side_effect=lambda a, b, c: '%s.%s.%s' % (a, b, c)),
             mock.patch('service_deployment_tools.marathon_tools.remove_iteration_from_job_id',
                        return_value='a_location'),
-            mock.patch('service_deployment_tools.marathon_tools.bounce_lock', spec=contextmanager)
+            mock.patch('service_deployment_tools.bounce_lib.bounce_lock', spec=contextmanager)
         ) as (
             get_srvs_patch,
             compose_patch,

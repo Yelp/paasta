@@ -3,21 +3,25 @@
 import logging
 import subprocess
 import sys
+from StringIO import StringIO
 
 from sensu_plugin import SensuPluginCheck
 
 from service_deployment_tools import marathon_tools
-import monitoring_tools
+from service_deployment_tools import monitoring_tools
 import pysensu_yelp
 
 
 def check_http(port):
     """Actually exec the check_http command and return the output"""
     command = build_check_http_command(port)
-    child = subprocess.Popen(command, stdout=subprocess.PIPE)
-    output, _ = child.communicate()
-    status = child.returncode
-    return (output, status)
+    output = StringIO()
+    try:
+        subprocess.check_call(command.split(), stdout=output)
+        status = 0
+    except subprocess.CalledProcessError as e:
+        status = e.returncode
+    return (output.getvalue(), status)
 
 
 def send_event(service_name, instance_name, check_name, status, output):

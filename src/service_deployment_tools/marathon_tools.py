@@ -1,5 +1,3 @@
-from contextlib import contextmanager
-import fcntl
 import logging
 import os
 import re
@@ -46,6 +44,16 @@ def get_cluster():
     return get_config()['cluster']
 
 
+def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
+    deployment_file = os.path.join(soa_dir, 'deployment.json')
+    if os.path.exists(deployment_file):
+        dockers = json.loads(open(deployment_file).read())
+        full_branch = '%s:%s' % (service_name, branch_name)
+        return dockers.get(full_branch, '')
+    else:
+        return ''
+
+
 def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's marathon configuration."""
     if not cluster:
@@ -64,6 +72,10 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
                             soa_dir=soa_dir)
     if instance in instance_configs:
         general_config.update(instance_configs[instance])
+        if 'branch' in general_config:
+            general_config['docker_image'] = get_docker_from_branch(name,
+                                                                    general_config['branch'],
+                                                                    soa_dir)
         return general_config
     else:
         log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
@@ -157,36 +169,6 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
-
-
-@contextmanager
-def bounce_lock(name):
-    """Acquire a bounce lockfile for the name given. The name should generally
-    be the service instance being bounced."""
-    lockfile = '/var/lock/%s.lock' % name
-    fd = open(lockfile, 'w')
-    try:
-        fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
-    except IOError:
-        raise IOError("Service %s is already being bounced!" % name)
-    try:
-        yield
-    finally:
-        fd.close()
-        os.remove(lockfile)
-
-
-def brutal_bounce(old_ids, new_config, client):
-    """Brutally bounce the service by killing all old instances first.
-
-    Kills all old_ids then spawns a new app with the new_config via a
-    Marathon client."""
-    with bounce_lock(remove_iteration_from_job_id(new_config['id'])):
-        for app in old_ids:
-            log.info("Killing %s", app)
-            client.delete_app(app)
-        log.info("Creating %s", new_config['id'])
-        client.create_app(**new_config)
 
 
 def read_namespace_for_service_instance(name, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
