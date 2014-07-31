@@ -59,7 +59,7 @@ def send_sensu_event(name, instance, soa_dir, status, output):
         for kwarg in valid_kwargs:
             if kwarg in monitor_conf:
                 sensu_kwargs[kwarg] = monitor_conf[kwarg]
-        sensu_kwargs['alert_after'] = -1
+        sensu_kwargs['realert_every'] = -1
         try:
             pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
         except TypeError:
