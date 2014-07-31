@@ -57,12 +57,8 @@ def send_sensu_event(name, instance, soa_dir, status, output):
         for kwarg in valid_kwargs:
             if kwarg in monitor_conf:
                 sensu_kwargs[kwarg] = monitor_conf[kwarg]
-        sensu_kwargs['alert_after'] = -1
-        try:
-            pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
-        except TypeError:
-            log.error("Event %s failed to emit! This service's monitoring.yaml has an erroneous key.")
-            return
+        sensu_kwargs['realert_every'] = -1
+        pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
 
 
 def get_main_marathon_config():
