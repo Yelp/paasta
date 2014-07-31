@@ -85,7 +85,7 @@ def parse_job_config(job_config):
         'name': get_name(job_config),
         'command': get_command(job_config),
         'epsilon': get_epsilon(job_config),
-        'executor': get_executor(),
+        'executor': get_executor(job_config),
         'executorFlags': get_executor_flags(job_config),
         'retries': get_retries(job_config),
         'owner': get_owner(job_config),
@@ -114,8 +114,8 @@ def get_command(job_config):
     return job_config['command']
 
 
-def get_executor():
-    return DEFAULT_EXECUTOR
+def get_executor(job_config):
+    return job_config.get('executor', DEFAULT_EXECUTOR)
 
 
 def get_executor_flags(job_config):

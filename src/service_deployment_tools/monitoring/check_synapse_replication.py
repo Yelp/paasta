@@ -3,7 +3,9 @@ import sys
 
 import argparse
 
-from service_deployment_tools.monitoring.replication_utils import get_replication_for_services
+from service_deployment_tools.monitoring.replication_utils import (
+    get_replication_for_services
+)
 
 
 def check_replication(service_name, service_replication,
@@ -61,7 +63,10 @@ def parse_range(str_range):
         int_range[0] = 0
     if int_range[1] == '':
         int_range[1] = sys.maxint
-    return map(float, int_range)
+    try:
+        return tuple(map(int, int_range))
+    except:
+        fail("Failed to parse range {0}".format(str_range))
 
 
 def parse_synapse_check_options():

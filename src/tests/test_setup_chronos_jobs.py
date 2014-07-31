@@ -86,8 +86,16 @@ def test_get_command():
 
 
 def test_get_executor():
+    job_config = {'executor': 'test-executor'}
+    expected = 'test-executor'
+    actual = setup_chronos_jobs.get_executor(job_config)
+    assert expected == actual
+
+
+def test_get_executor_default():
+    job_config = {}
     expected = setup_chronos_jobs.DEFAULT_EXECUTOR
-    actual = setup_chronos_jobs.get_executor()
+    actual = setup_chronos_jobs.get_executor(job_config)
     assert expected == actual
 
 

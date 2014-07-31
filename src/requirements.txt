@@ -1,9 +1,9 @@
 isodate >= 0.5.0
-service-configuration-lib >= 0.5.0
+service-configuration-lib >= 0.6.0
 marathon == 0.2.5
 argparse
 pycurl
 sensu-plugin == 0.1.0
 requests
-pysensu-yelp
+pysensu-yelp >= 0.1.5
 GitPython == 0.1.7
