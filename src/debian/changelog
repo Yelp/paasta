@@ -1,6 +1,6 @@
 service-deployment-tools (0.1.23-yelp1) lucid; urgency=low
 
-  * Added a generate_deployment_json script to generate deployment.json
+  * Added a generate_deployments_json script to generate deployments.json
   * Bugfixes to setup_marathon_job
 
  -- James McGuinness <jrm@yelp.com>  Tue, 29 Jul 2014 15:25:12 -0700

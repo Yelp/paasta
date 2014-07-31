@@ -43,6 +43,7 @@ def send_sensu_event(name, instance, soa_dir, status, output):
     # runbook = monitor_conf.get('runbook')
     runbook = 'y/rb-marathon'
     team = monitor_conf.get('team')
+
     if team:
         # We need to remove things that aren't kwargs to send_event
         # so that we can just pass everything else as a kwarg.
@@ -50,12 +51,15 @@ def send_sensu_event(name, instance, soa_dir, status, output):
         # the event won't get emitted at all!
         # We'll need a strict spec in yelpsoa_configs to make sure
         # that doesn't happen.
-        if 'runbook' in monitor_conf:
-            del monitor_conf['runbook']
-        del monitor_conf['team']
-        monitor_conf['alert_after'] = -1
+        valid_kwargs = ['page', 'tip', 'notification_email', 'check_every', 'realert_every',
+                        'alert_after', 'dependencies', 'irc_channels']
+        sensu_kwargs = {}
+        for kwarg in valid_kwargs:
+            if kwarg in monitor_conf:
+                sensu_kwargs[kwarg] = monitor_conf[kwarg]
+        sensu_kwargs['alert_after'] = -1
         try:
-            pysensu_yelp.send_event(full_name, runbook, status, output, team, **monitor_conf)
+            pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
         except TypeError:
             log.error("Event %s failed to emit! This service's monitoring.yaml has an erroneous key.")
             return
