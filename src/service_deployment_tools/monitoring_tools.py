@@ -30,8 +30,7 @@ def get_page(framework, service_name, instance_name):
 
 
 def get_alert_after(framework, service_name, instance_name):
-    value = __get_monitoring_config_value('alert_after', framework, service_name, instance_name)
-    return value if value is not False else -1  # need != False as alert_after could be 0?
+    return __get_monitoring_config_value('alert_after', framework, service_name, instance_name)
 
 
 def __get_monitoring_config_value(key, framework, service_name, instance_name):

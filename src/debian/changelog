@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.27-yelp1) lucid; urgency=low
+
+  * Fixing a bug in monitoring_tools
+
+ -- James McGuinness <jrm@yelp.com>  Thu, 31 Jul 2014 15:21:23 -0700
+
 service-deployment-tools (0.1.26-yelp1) lucid; urgency=low
 
   * Fix to send_sensu_event in setup_marathon_job
