@@ -13,12 +13,9 @@ TARGET_FILE = 'deployments.json'
 
 
 def parse_args():
-<<<<<<< HEAD
-=======
     """Command line arguments:
       -v, --verbose: Verbose output
       -d, --soa-dir: Set a soa directory manually"""
->>>>>>> master
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
@@ -118,11 +115,7 @@ def get_branch_mappings(soa_dir):
     try:
         os.rmdir(tmp_dir)
     except OSError:
-<<<<<<< HEAD
-        pass
-=======
         log.error("Failed to remove temporary directory %s", tmp_dir)
->>>>>>> master
     return mappings
 
 
@@ -136,15 +129,7 @@ def main():
     branch_name is a branch on service_name's git repo.
     The docker image (value) has the form service_name:HEAD,
     where HEAD is the first 6 characters of the current hash
-<<<<<<< HEAD
-    at the HEAD of the branch_name this value is mapped to.
-
-    Command line arguments:
-      -v, --verbose: Verbose output
-      -d, --soa-dir: Set a soa directory manually"""
-=======
     at the HEAD of the branch_name this value is mapped to."""
->>>>>>> master
     args = parse_args()
     soa_dir = os.path.abspath(args.soa_dir)
     if args.verbose:
