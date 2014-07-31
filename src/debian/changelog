@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.26-yelp1) lucid; urgency=low
+
+  * Fix to send_sensu_event in setup_marathon_job
+
+ -- James McGuinness <jrm@yelp.com>  Thu, 31 Jul 2014 14:37:11 -0700
+
 service-deployment-tools (0.1.25-yelp1) lucid; urgency=low
 
   *  Added a generate_deployments_json script for docker image aliasing
