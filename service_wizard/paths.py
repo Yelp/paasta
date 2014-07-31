@@ -4,9 +4,9 @@ from service_wizard import config
 
 HEALTHCHECKS = os.path.join('files', 'healthcheck', 'nail', 'sys',
                             'healthcheck', '_healthcheck_services')
-SERVICEGROUPS = os.path.join('etc', 'shared', 'prod-and-stage', 'servicegroups')
-HOSTGROUPS = os.path.join('etc', 'datacenters')
-CHECKS = os.path.join('etc', 'shared', 'prod-and-stage', 'services')
+SERVICEGROUPS = os.path.join('shared', 'prod-and-stage', 'servicegroups')
+HOSTGROUPS = os.path.join('datacenters')
+CHECKS = os.path.join('shared', 'prod-and-stage', 'services')
 
 ALL_FILES = set([
     'runas',
