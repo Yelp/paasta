@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.31-yelp1) lucid; urgency=low
+
+  * Adding timeout_connect_ms, timeout_server_ms keys to nerve_ns dictionaries
+
+ -- James McGuinness <jrm@yelp.com>  Fri, 01 Aug 2014 11:49:45 -0700
+
 service-deployment-tools (0.1.30-yelp1) lucid; urgency=low
 
   * Fixing a bug with marathon_service_running_on, _ now escaped to --

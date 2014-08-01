@@ -307,6 +307,8 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
       proxy_port: the proxy port defined for the given namespace
       healthcheck_uri: URI target for healthchecking
       healthcheck_timeout_s: healthcheck timeout in seconds
+      timeout_connect_ms: proxy frontend timeout in milliseconds
+      timeout_server_ms: proxy server backend timeout in milliseconds
       routes: a list of tuples of (source, destination)
     """
     try:
@@ -325,6 +327,10 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
             ns_dict['healthcheck_timeout_s'] = ns_config['healthcheck_timeout_s']
         if 'proxy_port' in ns_config:
             ns_dict['proxy_port'] = ns_config['proxy_port']
+        if 'timeout_connect_ms' in ns_config:
+            ns_dict['timeout_connect_ms'] = ns_config['timeout_connect_ms']
+        if 'timeout_server_ms' in ns_config:
+            ns_dict['timeout_server_ms'] = ns_config['timeout_server_ms']
         if 'routes' in ns_config:
             ns_dict['routes'] = [(route['source'], dest)
                                  for route in ns_config['routes']
