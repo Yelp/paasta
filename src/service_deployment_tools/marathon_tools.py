@@ -210,11 +210,11 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
 
 
 def compose_job_id(name, instance, tag=None):
-    name = str(name).replace('_', '-')
-    instance = str(instance).replace('_', '-')
+    name = str(name).replace('_', '--')
+    instance = str(instance).replace('_', '--')
     composed = '%s%s%s' % (name, ID_SPACER, instance)
     if tag:
-        tag = str(tag).replace('_', '-')
+        tag = str(tag).replace('_', '--')
         composed = '%s%s%s' % (composed, ID_SPACER, tag)
     return composed
 
@@ -352,8 +352,8 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])]
     srv_list = []
     for executor in executors:
-        srv_name = executor['id'].split(ID_SPACER)[0]
-        srv_instance = executor['id'].split(ID_SPACER)[1]
+        srv_name = executor['id'].split(ID_SPACER)[0].replace('--', '_')
+        srv_instance = executor['id'].split(ID_SPACER)[1].replace('--', '_')
         srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list

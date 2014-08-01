@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.30-yelp1) lucid; urgency=low
+
+  * Fixing a bug with marathon_service_running_on, _ now escaped to --
+
+ -- James McGuinness <jrm@yelp.com>  Thu, 31 Jul 2014 19:34:30 -0700
+
 service-deployment-tools (0.1.29-yelp1) lucid; urgency=low
 
   * Allow developers to override realert_every in their monitoring.yaml

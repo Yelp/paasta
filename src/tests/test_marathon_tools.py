@@ -413,8 +413,8 @@ class TestMarathonTools:
         fake_id = 'docker_isnt_deployed'
         fake_instance = 'then_who_was_job'
         spacer = marathon_tools.ID_SPACER
-        expected = '%s%s%s%s%s' % (fake_name.replace('_', '-'), spacer, fake_id.replace('_', '-'),
-                                   spacer, fake_instance.replace('_', '-'))
+        expected = '%s%s%s%s%s' % (fake_name.replace('_', '--'), spacer, fake_id.replace('_', '--'),
+                                   spacer, fake_instance.replace('_', '--'))
         assert marathon_tools.compose_job_id(fake_name, fake_id, fake_instance) == expected
 
     def test_create_complete_config(self):
