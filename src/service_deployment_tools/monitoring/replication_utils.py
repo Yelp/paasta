@@ -37,12 +37,13 @@ def get_replication_for_services(synapse_host_port, service_names):
         # and there's a trailing comma on every line:
         line.pop('')
 
-        # Look for the service in question and ignore
-        # the fictional FRONTEND/BACKEND hosts:
+        # Look for the service in question and ignore the fictional
+        # FRONTEND/BACKEND hosts, use starts_with so that hosts that are UP
+        # with 1/X healthchecks to go before going down get counted as UP:
         slave, service = line['svname'], line['pxname']
         if (service in service_names and
                 slave not in ('FRONTEND', 'BACKEND') and
-                line['status'] == 'UP'):
+                str(line['status']).startswith('UP')):
             available_instances[service] += 1
 
     return available_instances

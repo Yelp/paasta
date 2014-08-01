@@ -1,3 +1,9 @@
+service-deployment-tools (0.2.0-yelp1) lucid; urgency=low
+
+  * Changing replication_utils to count partial UP as UP
+
+ -- Joseph Lynch <jlynch@yelp.com>  Fri, 01 Aug 2014 16:46:27 -0700
+
 service-deployment-tools (0.1.31-yelp1) lucid; urgency=low
 
   * Adding timeout_connect_ms, timeout_server_ms keys to nerve_ns dictionaries
