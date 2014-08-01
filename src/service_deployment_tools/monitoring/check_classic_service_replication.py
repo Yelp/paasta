@@ -44,6 +44,8 @@ def do_replication_check(service_name, monitoring_config, service_replication):
         tip ("no tip"): A tip for oncall members
         page (false): Whether to page the provided team on failure
         alert_after ("0s"): How many minutes before going critical
+        realert_every (-1): How many events before you trigger a realert
+                            -1 indicates an exponential backoff
 
         extra.replication.key ("habitat"): The file in /nail/etc to inspect
             to figure out which value to lookup in map
@@ -87,7 +89,8 @@ def do_replication_check(service_name, monitoring_config, service_replication):
         'runbook': monitoring_config['runbook'] or 'no runbook',
         'tip': monitoring_config['tip'] or 'no tip',
         'page': monitoring_config['page'] or False,
-        'alert_after': monitoring_config['alert_after'] or '0s'
+        'alert_after': monitoring_config['alert_after'] or '0s',
+        'realert_every': monitoring_config['realert_every'] or -1
     }
 
 

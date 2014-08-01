@@ -1,3 +1,9 @@
+service-deployment-tools (0.1.29-yelp1) lucid; urgency=low
+
+  * Allow developers to override realert_every in their monitoring.yaml
+
+ -- Joseph Lynch <jlynch@yelp.com>  Thu, 31 Jul 2014 17:59:21 -0700
+
 service-deployment-tools (0.1.28-yelp1) lucid; urgency=low
 
   * Iterations are gone, replaced by hashes of configurations

@@ -8,7 +8,8 @@ interface with a different provider.
 """
 
 monitoring_keys = ['team', 'notification_email', 'service_type',
-                   'runbook', 'tip', 'page', 'alert_after', 'extra']
+                   'runbook', 'tip', 'page', 'alert_after', 'realert_every',
+                   'extra']
 
 
 def extract_classic_monitoring_info(service_config):

@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'service-deployment-tools',
-    version        = '0.1.28',
+    version        = '0.1.29',
     provides       = ["service_deployment_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',

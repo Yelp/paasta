@@ -29,7 +29,7 @@ def test_do_replication_check():
     read_key_method = check_classic_module + '.read_key'
 
     mock_keys = ['team', 'notification_email', 'runbook', 'tip', 'page',
-                 'alert_after']
+                 'alert_after', 'realert_every']
 
     mock_default_data = dict([(key, None) for key in mock_keys])
     mock_default_data['team'] = 'test_team'
@@ -58,7 +58,8 @@ def test_do_replication_check():
             'runbook': 'no runbook',
             'tip': 'no tip',
             'page': False,
-            'alert_after': '0s'
+            'alert_after': '0s',
+            'realert_every': -1
         }
         results = do_replication_check('test_service', mock_default_data,
                                        3)
@@ -73,7 +74,8 @@ def test_do_replication_check():
             'runbook': 'test_runbook',
             'tip': 'test_tip',
             'page': 'test_page',
-            'alert_after': 'test_alert_after'
+            'alert_after': 'test_alert_after',
+            'realert_every': 'test_realert_every'
         }
         results = do_replication_check('test_service', mock_specific_data,
                                        3)
