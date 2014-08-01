@@ -339,12 +339,15 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
     the host hostname, where port is the port the mesos-slave is running on.
 
     Returns a list of tuples, where the tuples are (service_name, instance_name, port)."""
+    s = StringIO()
     req = pycurl.Curl()
     req.setopt(pycurl.TIMEOUT, timeout_s)
     req.setopt(pycurl.URL, 'http://%s:%s/state.json' % (hostname, port))
+    req.setopt(pycurl.WRITEFUNCTION, s.write)
+    req.perform()
     # If there's an I/O error here, we should fail and know about it, as
     # we should be running is_mesos_slave(localhost) before hitting this
-    slave_state = json.loads(req.perform())
+    slave_state = json.loads(s.getvalue())
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])]
     srv_list = []

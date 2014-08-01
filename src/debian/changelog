@@ -1,3 +1,10 @@
+service-deployment-tools (0.1.28-yelp1) lucid; urgency=low
+
+  * Iterations are gone, replaced by hashes of configurations
+  * Bugfix to marathon_services_running_on to use pycurl correctly
+
+ -- James McGuinness <jrm@yelp.com>  Thu, 31 Jul 2014 17:38:31 -0700
+
 service-deployment-tools (0.1.27-yelp1) lucid; urgency=low
 
   * Fixing a bug in monitoring_tools

@@ -249,9 +249,10 @@ class TestMarathonTools:
         assert actual == instance
         read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
 
+    @mock.patch('marathon_tools.StringIO', return_value=mock.Mock(getvalue=mock.Mock()))
     @mock.patch('pycurl.Curl', return_value=mock.Mock(setopt=mock.Mock(), perform=mock.Mock()))
     @mock.patch('json.loads')
-    def test_marathon_services_running_on(self, json_load_patch, curl_patch):
+    def test_marathon_services_running_on(self, json_load_patch, curl_patch, stringio_patch):
         id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr'
         id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94'
         id_3 = 'dota.axe.cleave.482u9jyoi4wed'
@@ -264,7 +265,7 @@ class TestMarathonTools:
         port = 123456789
         timeout = -99
 
-        curl_patch.return_value.perform.return_value = 'curl_into_a_corner'
+        stringio_patch.return_value.getvalue.return_value = 'curl_into_a_corner'
         json_load_patch.return_value = {'frameworks': [
                                             {'executors': [
                                                 {'id': id_1, 'resources': {'ports': ports_1}},
@@ -286,7 +287,9 @@ class TestMarathonTools:
         curl_patch.return_value.setopt.assert_any_call(pycurl.URL,
                                                        'http://%s:%s/state.json' % (hostname, port))
         curl_patch.return_value.setopt.assert_any_call(pycurl.TIMEOUT, timeout)
-        json_load_patch.assert_called_once_with(curl_patch.return_value.perform.return_value)
+        curl_patch.return_value.setopt.assert_any_call(pycurl.WRITEFUNCTION,
+                                                       stringio_patch.return_value.write)
+        json_load_patch.assert_called_once_with(stringio_patch.return_value.getvalue.return_value)
         assert expected == actual
 
     @mock.patch('marathon_tools.marathon_services_running_on', return_value='chipotle')
