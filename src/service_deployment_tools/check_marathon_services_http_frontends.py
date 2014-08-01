@@ -87,4 +87,5 @@ class MarathonServicesHttpFrontends(SensuPluginCheck):
 if __name__ == "__main__":
     # The act of making the object calls ends up calling the run method via
     # SensuPluginCheck
-    check = MarathonServicesHttpFrontends()
+    if marathon_tools.is_mesos_leader():
+        check = MarathonServicesHttpFrontends()

@@ -4,12 +4,10 @@ import os
 import sys
 import logging
 import argparse
-from StringIO import StringIO
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
 from service_deployment_tools import bounce_lib
 from marathon import MarathonClient
-import pycurl
 import pysensu_yelp
 
 # Marathon REST API:
@@ -60,11 +58,7 @@ def send_sensu_event(name, instance, soa_dir, status, output):
             if kwarg in monitor_conf:
                 sensu_kwargs[kwarg] = monitor_conf[kwarg]
         sensu_kwargs['realert_every'] = -1
-        try:
-            pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
-        except TypeError:
-            log.error("Event %s failed to emit! This service's monitoring.yaml has an erroneous key.")
-            return
+        pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
 
 
 def get_main_marathon_config():
@@ -72,94 +66,6 @@ def get_main_marathon_config():
     marathon_config = marathon_tools.get_config()
     log.info("Marathon config is: %s", marathon_config)
     return marathon_config
-
-
-def get_docker_url(registry_uri, docker_image):
-    """Compose the docker url.
-
-    Uses the registry_uri (docker_registry) value from marathon_config
-    and the docker_image value from a service config to make a Docker URL.
-    Checks if the URL will point to a valid image, first, returning a null
-    string if it doesn't.
-
-    The URL is prepended with docker:/// per the deimos docs, at
-    https://github.com/mesosphere/deimos"""
-    s = StringIO()
-    c = pycurl.Curl()
-    c.setopt(pycurl.URL, str('http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
-                                                                       docker_image.split(':')[0],
-                                                                       docker_image.split(':')[1])))
-    c.setopt(pycurl.WRITEFUNCTION, s.write)
-    c.perform()
-    if 'error' in s.getvalue():
-        log.error("Docker image not found: %s/%s", registry_uri, docker_image)
-        return ''
-    else:
-        docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
-        log.info("Docker URL: %s", docker_url)
-        return docker_url
-
-
-def get_ports(service_config):
-    """Gets the number of ports required from the service's marathon configuration.
-
-    Defaults to one port if unspecified.
-    Ports are randomly assigned by Mesos.
-    This must return an array, as the Marathon REST API takes an
-    array of ports, not a single value."""
-    num_ports = service_config.get('num_ports')
-    if num_ports:
-        return [0 for i in range(int(num_ports))]
-    else:
-        log.warning("'num_ports' not specified in config. One port will be used.")
-        return [0]
-
-
-def get_mem(service_config):
-    """Gets the memory required from the service's marathon configuration.
-
-    Defaults to 100 if no value specified in the config."""
-    mem = service_config.get('mem')
-    if not mem:
-        log.warning("'mem' not specified in config. Using default: 100")
-    return int(mem) if mem else 100
-
-
-def get_cpus(service_config):
-    """Gets the number of cpus required from the service's marathon configuration.
-
-    Defaults to 1 if no value specified in the config."""
-    cpus = service_config.get('cpus')
-    if not cpus:
-        log.warning("'cpus' not specified in config. Using default: 1")
-    return int(cpus) if cpus else 1
-
-
-def get_constraints(service_config):
-    """Gets the constraints specified in the service's marathon configuration.
-
-    Defaults to no constraints if none given."""
-    return service_config.get('constraints')
-
-
-def get_instances(service_config):
-    """Get the number of instances specified in the service's marathon configuration.
-
-    Defaults to 1 if not specified in the config."""
-    instances = service_config.get('instances')
-    if not instances:
-        log.warning("'instances' not specified in config. Using default: 1")
-    return int(instances) if instances else 1
-
-
-def get_bounce_method(service_config):
-    """Get the bounce method specified in the service's marathon configuration.
-
-    Defaults to brutal if no method specified in the config."""
-    bounce_method = service_config.get('bounce_method')
-    if not bounce_method:
-        log.warning("'bounce_method' not specified in config. Using default: brutal")
-    return bounce_method if bounce_method else 'brutal'
 
 
 def get_marathon_client(url, user, passwd):
@@ -171,37 +77,11 @@ def get_marathon_client(url, user, passwd):
     return MarathonClient(url, user, passwd)
 
 
-def create_complete_config(name, url, docker_options, service_marathon_config):
-    """Create the configuration that will be passed to the Marathon REST API.
-
-    Currently compiles the following keys into one nice dict:
-      id: the ID of the image in Marathon
-      cmd: currently the docker_url, seemingly needed by Marathon to keep the container field
-      container: a dict containing the docker url and docker launch options. Needed by deimos.
-      uris: blank.
-    The following keys are retrieved with the get_* functions defined above:
-      ports: an array containing the port.
-      mem: the amount of memory required.
-      cpus: the number of cpus required.
-      constraints: the constraints on the Marathon job.
-      instances: the number of instances required."""
-    complete_config = {'id': name,
-                       'container': {'image': url, 'options': docker_options},
-                       'uris': []}
-    complete_config['ports'] = get_ports(service_marathon_config)
-    complete_config['mem'] = get_mem(service_marathon_config)
-    complete_config['cpus'] = get_cpus(service_marathon_config)
-    complete_config['constraints'] = get_constraints(service_marathon_config)
-    complete_config['instances'] = get_instances(service_marathon_config)
-    log.info("Complete configuration for instance is: %s", complete_config)
-    return complete_config
-
-
 def deploy_service(name, config, client, bounce_method):
     """Deploy the service with the given name, config, and bounce_method."""
     log.info("Deploying service instance %s with bounce_method %s", name, bounce_method)
     log.debug("Searching for old service instance iterations")
-    filter_name = marathon_tools.remove_iteration_from_job_id(name)
+    filter_name = marathon_tools.remove_tag_from_job_id(name)
     app_list = client.list_apps()
     old_app_ids = [app.id for app in app_list if filter_name in app.id]
     if old_app_ids:  # there's a previous iteration; bounce
@@ -229,25 +109,29 @@ def setup_service(service_name, instance_name, client, marathon_config,
     The full id of the service instance is service_name__instance_name__iteration.
     Doesn't do anything if the full id is already in Marathon.
     If it's not, attempt to find old instances of the service and bounce them."""
-    full_id = marathon_tools.compose_job_id(service_name, instance_name, service_marathon_config['iteration'])
-    log.info("Setting up service instance for: %s", marathon_tools.remove_iteration_from_job_id(full_id))
-    log.info("Desired Marathon instance id: %s", full_id)
-    docker_url = get_docker_url(marathon_config['docker_registry'],
-                                service_marathon_config['docker_image'])
+    partial_id = marathon_tools.compose_job_id(service_name, instance_name)
+    log.info("Setting up instance %s for service %s", instance_name, service_name)
+    docker_url = marathon_tools.get_docker_url(marathon_config['docker_registry'],
+                                               service_marathon_config['docker_image'])
     if not docker_url:
         log.error("Docker image %s not found. Exiting", service_marathon_config['docker_image'])
-        return (1, "Docker image not found: %s" % service_marathon_config['docker_image'])
-    complete_config = create_complete_config(full_id, docker_url, marathon_config['docker_options'],
-                                             service_marathon_config)
+        return (1, "Docker image not found in deployments.json: %s"
+                   % service_marathon_config['docker_image'])
+    complete_config = marathon_tools.create_complete_config(partial_id, docker_url,
+                                                            marathon_config['docker_options'],
+                                                            service_marathon_config)
+    config_hash = marathon_tools.get_config_hash(complete_config)
+    full_id = marathon_tools.compose_job_id(service_name, instance_name, config_hash)
+    complete_config['id'] = full_id
+    log.info("Desired Marathon instance id: %s", full_id)
     try:
-        log.info("Checking if instance with iteration %s already exists",
-                 service_marathon_config['iteration'])
+        log.info("Checking if instance with hash %s already exists", config_hash)
         client.get_app(full_id)
         log.warning("App id %s already exists. Skipping configuration and exiting.", full_id)
         return (0, 'Service was already deployed.')
     except KeyError:
         return deploy_service(full_id, complete_config, client,
-                              bounce_method=get_bounce_method(service_marathon_config))
+                              bounce_method=marathon_tools.get_bounce_method(service_marathon_config))
 
 
 def main():

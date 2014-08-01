@@ -28,8 +28,7 @@ def main():
     soa directory with -d SOA_DIR, and a cluster with -c CLUSTER."""
     args = parse_args()
     instances = marathon_tools.get_marathon_services_for_cluster(cluster=args.cluster,
-                                                                 soa_dir=args.soa_dir,
-                                                                 include_iteration=False)
+                                                                 soa_dir=args.soa_dir)
     composed = []
     for name, instance in instances:
         composed.append('%s%s%s' % (name, marathon_tools.ID_SPACER, instance))

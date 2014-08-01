@@ -136,7 +136,7 @@ class TestMarathonTools:
             mock.patch('os.path.abspath', return_value='chex_mix'),
             mock.patch('os.listdir', return_value=['dir1', 'dir2']),
             mock.patch('marathon_tools.get_service_instance_list',
-                       side_effect=lambda a, b, c, d: instances.pop())
+                       side_effect=lambda a, b, c: instances.pop())
         ) as (
             abspath_patch,
             listdir_patch,
@@ -146,8 +146,8 @@ class TestMarathonTools:
             assert expected == actual
             abspath_patch.assert_called_once_with(soa_dir)
             listdir_patch.assert_called_once_with('chex_mix')
-            get_instances_patch.assert_any_call('dir1', cluster, soa_dir, False)
-            get_instances_patch.assert_any_call('dir2', cluster, soa_dir, False)
+            get_instances_patch.assert_any_call('dir1', cluster, soa_dir)
+            get_instances_patch.assert_any_call('dir2', cluster, soa_dir)
             assert get_instances_patch.call_count == 2
 
     def test_get_all_namespaces(self):
@@ -413,3 +413,132 @@ class TestMarathonTools:
         expected = '%s%s%s%s%s' % (fake_name.replace('_', '-'), spacer, fake_id.replace('_', '-'),
                                    spacer, fake_instance.replace('_', '-'))
         assert marathon_tools.compose_job_id(fake_name, fake_id, fake_instance) == expected
+
+    def test_create_complete_config(self):
+        fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
+        fake_url = 'docker:///dockervania_from_konami'
+        fake_options = ['-X', '11a103']
+        fake_ports = [1111, 2222]
+        fake_mem = 1000000000000000000000
+        fake_cpus = -1
+        fake_instances = 101
+        expected_conf = {'id': fake_id,
+                         'container': {'image': fake_url, 'options': fake_options},
+                         'constraints': [],
+                         'uris': [],
+                         'ports': fake_ports,
+                         'mem': fake_mem,
+                         'cpus': fake_cpus,
+                         'instances': fake_instances}
+        with contextlib.nested(
+            mock.patch('marathon_tools.get_ports', return_value=fake_ports),
+            mock.patch('marathon_tools.get_mem', return_value=fake_mem),
+            mock.patch('marathon_tools.get_cpus', return_value=fake_cpus),
+            mock.patch('marathon_tools.get_constraints', return_value=[]),
+            mock.patch('marathon_tools.get_instances', return_value=fake_instances),
+        ) as (
+            get_port_patch,
+            get_mem_patch,
+            get_cpus_patch,
+            get_constraints_patch,
+            get_instances_patch,
+        ):
+            actual = marathon_tools.create_complete_config(fake_id, fake_url, fake_options,
+                                                           self.fake_marathon_job_config)
+            assert actual == expected_conf
+            get_port_patch.assert_called_once_with(self.fake_marathon_job_config)
+            get_mem_patch.assert_called_once_with(self.fake_marathon_job_config)
+            get_cpus_patch.assert_called_once_with(self.fake_marathon_job_config)
+            get_constraints_patch.assert_called_once_with(self.fake_marathon_job_config)
+            get_instances_patch.assert_called_once_with(self.fake_marathon_job_config)
+
+    def test_get_bounce_method_in_config(self):
+        fake_method = 'aaargh'
+        fake_conf = {'bounce_method': fake_method}
+        assert marathon_tools.get_bounce_method(fake_conf) == fake_method
+
+    def test_get_bounce_method_default(self):
+        assert marathon_tools.get_bounce_method({}) == 'brutal'
+
+    def test_get_instances_in_config(self):
+        fake_conf = {'instances': -10}
+        assert marathon_tools.get_instances(fake_conf) == -10
+
+    def test_get_instances_default(self):
+        assert marathon_tools.get_instances({}) == 1
+
+    def test_get_constraints_in_config(self):
+        fake_conf = {'constraints': 'so_many_walls'}
+        assert marathon_tools.get_constraints(fake_conf) == 'so_many_walls'
+
+    def test_get_constraints_default(self):
+        assert marathon_tools.get_constraints({}) is None
+
+    def test_get_cpus_in_config(self):
+        fake_conf = {'cpus': -5}
+        assert marathon_tools.get_cpus(fake_conf) == -5
+
+    def test_get_cpus_default(self):
+        assert marathon_tools.get_cpus({}) == 1
+
+    def test_get_mem_in_config(self):
+        fake_conf = {'mem': -999}
+        assert marathon_tools.get_mem(fake_conf) == -999
+
+    def test_get_mem_default(self):
+        assert marathon_tools.get_mem({}) == 100
+
+    def test_get_ports_in_config(self):
+        fake_conf = {'num_ports': 10}
+        assert marathon_tools.get_ports(fake_conf) == [0 for i in range(10)]
+
+    def test_get_ports_default(self):
+        assert marathon_tools.get_ports({}) == [0]
+
+    def test_get_docker_url_no_error(self):
+        fake_registry = "im.a-real.vm"
+        fake_image = "and-i-can-run:1.0"
+        fake_curl = mock.Mock()
+        fake_stringio = mock.Mock(getvalue=mock.Mock(return_value='483af83b81ee93ac930d'))
+        expected = "docker:///%s/%s" % (fake_registry, fake_image)
+        with contextlib.nested(
+            mock.patch('pycurl.Curl', return_value=fake_curl),
+            mock.patch('marathon_tools.StringIO', return_value=fake_stringio)
+        ) as (
+            pycurl_patch,
+            stringio_patch
+        ):
+            assert marathon_tools.get_docker_url(fake_registry, fake_image) == expected
+            fake_curl.setopt.assert_any_call(pycurl.URL,
+                                             'http://%s/v1/repositories/%s/tags/%s' % (
+                                                    fake_registry,
+                                                    fake_image.split(':')[0],
+                                                    fake_image.split(':')[1]))
+            fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, fake_stringio.write)
+            assert fake_curl.setopt.call_count == 2
+            fake_curl.perform.assert_called_once_with()
+            fake_stringio.getvalue.assert_called_once_with()
+
+    def test_get_docker_url_has_error(self):
+        fake_registry = "youre.just.virtual"
+        fake_image = "just-a-shadow-of-reality:0.9"
+        fake_curl = mock.Mock()
+        fake_stringio = mock.Mock(getvalue=mock.Mock(return_value='all the errors ever'))
+        expected = ""
+        with contextlib.nested(
+            mock.patch('pycurl.Curl', return_value=fake_curl),
+            mock.patch('marathon_tools.StringIO', return_value=fake_stringio)
+        ) as (
+            pycurl_patch,
+            stringio_patch
+        ):
+            assert marathon_tools.get_docker_url(fake_registry, fake_image) == expected
+            fake_curl.setopt.assert_any_call(pycurl.URL,
+                                             'http://%s/v1/repositories/%s/tags/%s' % (
+                                                    fake_registry,
+                                                    fake_image.split(':')[0],
+                                                    fake_image.split(':')[1]))
+            fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, fake_stringio.write)
+            assert fake_curl.setopt.call_count == 2
+            fake_curl.perform.assert_called_once_with()
+            fake_stringio.getvalue.assert_called_once_with()

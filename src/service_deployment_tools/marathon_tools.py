@@ -1,7 +1,9 @@
+import hashlib
 import logging
 import os
 import re
 import socket
+from StringIO import StringIO
 
 import json
 import pycurl
@@ -54,6 +56,128 @@ def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
         return ''
 
 
+def get_ports(service_config):
+    """Gets the number of ports required from the service's marathon configuration.
+
+    Defaults to one port if unspecified.
+    Ports are randomly assigned by Mesos.
+    This must return an array, as the Marathon REST API takes an
+    array of ports, not a single value."""
+    num_ports = service_config.get('num_ports')
+    if num_ports:
+        return [0 for i in range(int(num_ports))]
+    else:
+        log.warning("'num_ports' not specified in config. One port will be used.")
+        return [0]
+
+
+def get_mem(service_config):
+    """Gets the memory required from the service's marathon configuration.
+
+    Defaults to 100 if no value specified in the config."""
+    mem = service_config.get('mem')
+    if not mem:
+        log.warning("'mem' not specified in config. Using default: 100")
+    return int(mem) if mem else 100
+
+
+def get_cpus(service_config):
+    """Gets the number of cpus required from the service's marathon configuration.
+
+    Defaults to 1 if no value specified in the config."""
+    cpus = service_config.get('cpus')
+    if not cpus:
+        log.warning("'cpus' not specified in config. Using default: 1")
+    return int(cpus) if cpus else 1
+
+
+def get_constraints(service_config):
+    """Gets the constraints specified in the service's marathon configuration.
+
+    Defaults to no constraints if none given."""
+    return service_config.get('constraints')
+
+
+def get_instances(service_config):
+    """Get the number of instances specified in the service's marathon configuration.
+
+    Defaults to 1 if not specified in the config."""
+    instances = service_config.get('instances')
+    if not instances:
+        log.warning("'instances' not specified in config. Using default: 1")
+    return int(instances) if instances else 1
+
+
+def get_bounce_method(service_config):
+    """Get the bounce method specified in the service's marathon configuration.
+
+    Defaults to brutal if no method specified in the config."""
+    bounce_method = service_config.get('bounce_method')
+    if not bounce_method:
+        log.warning("'bounce_method' not specified in config. Using default: brutal")
+    return bounce_method if bounce_method else 'brutal'
+
+
+def get_config_hash(config):
+    """Create an MD5 hash of the configuration dictionary to be sent to
+    Marathon. Or anything, really, so long as str(object) works."""
+    hasher = hashlib.md5()
+    hasher.update(str(config))
+    return hasher.hexdigest()
+
+
+def get_docker_url(registry_uri, docker_image, verify=True):
+    """Compose the docker url.
+
+    Uses the registry_uri (docker_registry) value from marathon_config
+    and the docker_image value from a service config to make a Docker URL.
+    Checks if the URL will point to a valid image, first, returning a null
+    string if it doesn't.
+
+    The URL is prepended with docker:/// per the deimos docs, at
+    https://github.com/mesosphere/deimos"""
+    if verify:
+        s = StringIO()
+        c = pycurl.Curl()
+        c.setopt(pycurl.URL, str('http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
+                                                                           docker_image.split(':')[0],
+                                                                           docker_image.split(':')[1])))
+        c.setopt(pycurl.WRITEFUNCTION, s.write)
+        c.perform()
+        if 'error' in s.getvalue():
+            log.error("Docker image not found: %s/%s", registry_uri, docker_image)
+            return ''
+    docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
+    log.info("Docker URL: %s", docker_url)
+    return docker_url
+
+
+def create_complete_config(name, url, docker_options, service_marathon_config):
+    """Create the configuration that will be passed to the Marathon REST API.
+
+    Currently compiles the following keys into one nice dict:
+      id: the ID of the image in Marathon
+      cmd: currently the docker_url, seemingly needed by Marathon to keep the container field
+      container: a dict containing the docker url and docker launch options. Needed by deimos.
+      uris: blank.
+    The following keys are retrieved with the get_* functions defined above:
+      ports: an array containing the port.
+      mem: the amount of memory required.
+      cpus: the number of cpus required.
+      constraints: the constraints on the Marathon job.
+      instances: the number of instances required."""
+    complete_config = {'id': name,
+                       'container': {'image': url, 'options': docker_options},
+                       'uris': []}
+    complete_config['ports'] = get_ports(service_marathon_config)
+    complete_config['mem'] = get_mem(service_marathon_config)
+    complete_config['cpus'] = get_cpus(service_marathon_config)
+    complete_config['constraints'] = get_constraints(service_marathon_config)
+    complete_config['instances'] = get_instances(service_marathon_config)
+    log.info("Complete configuration for instance is: %s", complete_config)
+    return complete_config
+
+
 def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's marathon configuration."""
     if not cluster:
@@ -85,22 +209,21 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         return {}
 
 
-def compose_job_id(name, instance, iteration=None):
+def compose_job_id(name, instance, tag=None):
     name = str(name).replace('_', '-')
     instance = str(instance).replace('_', '-')
     composed = '%s%s%s' % (name, ID_SPACER, instance)
-    if iteration:
-        iteration = str(iteration).replace('_', '-')
-        composed = '%s%s%s' % (composed, ID_SPACER, iteration)
+    if tag:
+        tag = str(tag).replace('_', '-')
+        composed = '%s%s%s' % (composed, ID_SPACER, tag)
     return composed
 
 
-def remove_iteration_from_job_id(name):
+def remove_tag_from_job_id(name):
     return '%s%s%s' % (name.split(ID_SPACER)[0], ID_SPACER, name.split(ID_SPACER)[1])
 
 
-def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR,
-                              include_iteration=False):
+def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the marathon instances defined for a service as a list of tuples."""
     if not cluster:
         cluster = get_cluster()
@@ -112,27 +235,22 @@ def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR,
                     soa_dir=soa_dir)
     instance_list = []
     for instance in instances:
-        if include_iteration:
-            instance_list.append((name, instance, instances[instance]['iteration']))
-        else:
-            instance_list.append((name, instance))
+        instance_list.append((name, instance))
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list
 
 
-def get_marathon_services_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR,
-                                      include_iteration=False):
+def get_marathon_services_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Retrieve all marathon services and instances defined to run in a cluster.
 
-    Returns a list of tuples of (service_name, instance_name) if include_iteration
-    is false, otherwise is a triple of (service_name, instance_name, iteration)."""
+    Returns a list of tuples of (service_name, instance_name)."""
     if not cluster:
         cluster = get_cluster()
     rootdir = os.path.abspath(soa_dir)
     log.info("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
     instance_list = []
     for srv_dir in os.listdir(rootdir):
-        instance_list += get_service_instance_list(srv_dir, cluster, soa_dir, include_iteration)
+        instance_list += get_service_instance_list(srv_dir, cluster, soa_dir)
     return instance_list
 
 

@@ -31,7 +31,7 @@ def brutal_bounce(old_ids, new_config, client):
 
     Kills all old_ids then spawns a new app with the new_config via a
     Marathon client."""
-    with bounce_lock(marathon_tools.remove_iteration_from_job_id(new_config['id'])):
+    with bounce_lock(marathon_tools.remove_tag_from_job_id(new_config['id'])):
         for app in old_ids:
             log.info("Killing %s", app)
             client.delete_app(app)

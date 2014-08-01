@@ -32,19 +32,39 @@ def get_marathon_client(url, user, passwd):
     return MarathonClient(url, user, passwd)
 
 
-def cleanup_apps(client, soa_dir):
-    log.info("Getting app list from marathon")
-    valid_app_list = marathon_tools.get_marathon_services_for_cluster(soa_dir=soa_dir,
-                                                                      include_iteration=True)
-    valid_app_list = [marathon_tools.compose_job_id(service, instance, iteration)
-                      for service, instance, iteration in valid_app_list]
+def get_valid_app_list(marathon_config, soa_dir):
+    log.info("Getting desired app list from configs")
+    cluster_app_list = marathon_tools.get_marathon_services_for_cluster(soa_dir=soa_dir)
+    valid_app_list = []
+    for name, instance in cluster_app_list:
+        partial_id = marathon_tools.compose_job_id(name, instance)
+        config = marathon_tools.read_service_config(name, instance, soa_dir=soa_dir)
+        docker_url = marathon_tools.get_docker_url(marathon_config['docker_registry'],
+                                                   config['docker_image'],
+                                                   verify=False)
+        complete_config = marathon_tools.create_complete_config(partial_id, docker_url,
+                                                                marathon_config['docker_options'],
+                                                                config)
+        config_hash = marathon_tools.get_config_hash(complete_config)
+        full_id = marathon_tools.compose_job_id(name, instance, config_hash)
+        valid_app_list.append(full_id)
+    return valid_app_list
+
+
+def cleanup_apps(soa_dir):
+    log.info("Loading marathon configuration")
+    marathon_config = marathon_tools.get_config()
+    log.info("Connecting to marathon")
+    client = get_marathon_client(marathon_config['url'], marathon_config['user'],
+                                 marathon_config['pass'])
+    valid_app_list = get_valid_app_list(marathon_config, soa_dir)
     app_ids = [app.id for app in client.list_apps()]
     for app_id in app_ids:
         log.info("Checking app id %s", app_id)
         if not any([app_id == deployed_id for deployed_id in valid_app_list]):
             try:
                 log.warn("%s appears to be old; attempting to delete", app_id)
-                srv_instance = marathon_tools.remove_iteration_from_job_id(app_id)
+                srv_instance = marathon_tools.remove_tag_from_job_id(app_id)
                 with bounce_lib.bounce_lock(srv_instance):
                     client.delete_app(app_id)
             except IOError:
@@ -59,10 +79,7 @@ def main():
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
-    marathon_config = marathon_tools.get_config()
-    client = get_marathon_client(marathon_config['url'], marathon_config['user'],
-                                 marathon_config['pass'])
-    cleanup_apps(client, soa_dir)
+    cleanup_apps(soa_dir)
 
 
 if __name__ == "__main__" and marathon_tools.is_mesos_leader():
