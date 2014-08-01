@@ -41,19 +41,49 @@ def get_config():
     return MarathonConfig().get()
 
 
+def compose_job_id(name, instance, tag=None):
+    name = str(name).replace('_', '--')
+    instance = str(instance).replace('_', '--')
+    composed = '%s%s%s' % (name, ID_SPACER, instance)
+    if tag:
+        tag = str(tag).replace('_', '--')
+        composed = '%s%s%s' % (composed, ID_SPACER, tag)
+    return composed
+
+
+def remove_tag_from_job_id(name):
+    return '%s%s%s' % (name.split(ID_SPACER)[0], ID_SPACER, name.split(ID_SPACER)[1])
+
+
+def get_docker_url(registry_uri, docker_image, verify=True):
+    """Compose the docker url.
+
+    Uses the registry_uri (docker_registry) value from marathon_config
+    and the docker_image value from a service config to make a Docker URL.
+    Checks if the URL will point to a valid image, first, returning a null
+    string if it doesn't.
+
+    The URL is prepended with docker:/// per the deimos docs, at
+    https://github.com/mesosphere/deimos"""
+    if verify:
+        s = StringIO()
+        c = pycurl.Curl()
+        c.setopt(pycurl.URL, str('http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
+                                                                           docker_image.split(':')[0],
+                                                                           docker_image.split(':')[1])))
+        c.setopt(pycurl.WRITEFUNCTION, s.write)
+        c.perform()
+        if 'error' in s.getvalue():
+            log.error("Docker image not found: %s/%s", registry_uri, docker_image)
+            return ''
+    docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
+    log.info("Docker URL: %s", docker_url)
+    return docker_url
+
+
 def get_cluster():
     """Get the cluster defined in this host's marathon config file."""
     return get_config()['cluster']
-
-
-def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
-    deployment_file = os.path.join(soa_dir, 'deployments.json')
-    if os.path.exists(deployment_file):
-        dockers = json.loads(open(deployment_file).read())
-        full_branch = '%s:%s' % (service_name, branch_name)
-        return dockers.get(full_branch, '')
-    else:
-        return ''
 
 
 def get_ports(service_config):
@@ -126,32 +156,6 @@ def get_config_hash(config):
     return hasher.hexdigest()
 
 
-def get_docker_url(registry_uri, docker_image, verify=True):
-    """Compose the docker url.
-
-    Uses the registry_uri (docker_registry) value from marathon_config
-    and the docker_image value from a service config to make a Docker URL.
-    Checks if the URL will point to a valid image, first, returning a null
-    string if it doesn't.
-
-    The URL is prepended with docker:/// per the deimos docs, at
-    https://github.com/mesosphere/deimos"""
-    if verify:
-        s = StringIO()
-        c = pycurl.Curl()
-        c.setopt(pycurl.URL, str('http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
-                                                                           docker_image.split(':')[0],
-                                                                           docker_image.split(':')[1])))
-        c.setopt(pycurl.WRITEFUNCTION, s.write)
-        c.perform()
-        if 'error' in s.getvalue():
-            log.error("Docker image not found: %s/%s", registry_uri, docker_image)
-            return ''
-    docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
-    log.info("Docker URL: %s", docker_url)
-    return docker_url
-
-
 def create_complete_config(name, url, docker_options, service_marathon_config):
     """Create the configuration that will be passed to the Marathon REST API.
 
@@ -176,6 +180,16 @@ def create_complete_config(name, url, docker_options, service_marathon_config):
     complete_config['instances'] = get_instances(service_marathon_config)
     log.info("Complete configuration for instance is: %s", complete_config)
     return complete_config
+
+
+def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
+    deployment_file = os.path.join(soa_dir, 'deployments.json')
+    if os.path.exists(deployment_file):
+        dockers = json.loads(open(deployment_file).read())
+        full_branch = '%s:%s' % (service_name, branch_name)
+        return dockers.get(full_branch, '')
+    else:
+        return ''
 
 
 def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -209,18 +223,16 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         return {}
 
 
-def compose_job_id(name, instance, tag=None):
-    name = str(name).replace('_', '--')
-    instance = str(instance).replace('_', '--')
-    composed = '%s%s%s' % (name, ID_SPACER, instance)
-    if tag:
-        tag = str(tag).replace('_', '--')
-        composed = '%s%s%s' % (composed, ID_SPACER, tag)
-    return composed
+def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Get the proxy_port defined in the namespace configuration for a service instance.
 
-
-def remove_tag_from_job_id(name):
-    return '%s%s%s' % (name.split(ID_SPACER)[0], ID_SPACER, name.split(ID_SPACER)[1])
+    Attempts to load two configuration files- marathon-%s.yaml % (cluster)
+    and smartstack.yaml, both from the soa_dir/name/ directory."""
+    if not cluster:
+        cluster = get_cluster()
+    namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
+    nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
+    return nerve_dict.get('proxy_port')
 
 
 def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -278,18 +290,6 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     for srv_dir in os.listdir(rootdir):
         namespace_list += get_all_namespaces_for_service(srv_dir, soa_dir)
     return namespace_list
-
-
-def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get the proxy_port defined in the namespace configuration for a service instance.
-
-    Attempts to load two configuration files- marathon-%s.yaml % (cluster)
-    and smartstack.yaml, both from the soa_dir/name/ directory."""
-    if not cluster:
-        cluster = get_cluster()
-    namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
-    return nerve_dict.get('proxy_port')
 
 
 def read_namespace_for_service_instance(name, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
