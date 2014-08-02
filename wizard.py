@@ -65,12 +65,35 @@ def ask_vip(vip=None):
     if vip == "AUTO":
         vip = default
     elif vip is None:
-        if prompt.yes_no('Load Balanced?'):
+        if prompt.yes_no('Load Balanced via VIP?'):
             while not vip:
                 vip = prompt.ask('VIP?', default)
         else:
             vip = None
     return vip
+
+def ask_smartstack():
+    return prompt.yes_no('Load Balanced via SmartStack?')
+
+def ask_lbs(opt_vip, opt_smartstack_only):
+    if opt_smartstack_only:
+        vip = None
+        use_smartstack = True
+    else:
+        vip = ask_vip(opt_vip)
+
+        if vip:
+            # If vip is configured, we also use SmartStack by default.
+            use_smartstack = True
+        else:
+            use_smartstack = ask_smartstack()
+
+    if use_smartstack:
+        smartstack = get_smartstack()
+    else:
+        smartstack = None
+
+    return vip, smartstack
 
 def get_smartstack():
     proxy_port = suggest_smartstack_proxy_port()
@@ -222,6 +245,14 @@ def parse_args():
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service. If AUTO, use default")
     group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service. If AUTO, use default")
     group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1'). If AUTO, use default")
+    group.add_option(
+        "-m",
+        "--smartstack-only",
+        dest="smartstack_only",
+        default=False,
+        action="store_true",
+        help="Service will be load-balanced by SmartStack alone. Cannot be used when vip or auto is specified"
+    )
     group.add_option("-r", "--runas", dest="runas", default=None, help="UNIX user which will run service. If AUTO, use default")
     group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default")
     group.add_option("-d", "--post-download", dest="post_download", default=None, help="Script executed after service is downloaded by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
@@ -287,6 +318,11 @@ def validate_options(parser, opts):
 
     if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
         print "ERROR: --vip must start with 'vip'!"
+        parser.print_usage()
+        sys.exit(1)
+
+    if opts.smartstack_only and (opts.vip or opts.auto):
+        print "ERROR: --smartstack-only cannot be used with --vip or --auto."
         parser.print_usage()
         sys.exit(1)
 
@@ -383,11 +419,10 @@ def main(opts, args):
     srv = Service(srvname)
 
     port = ask_port(opts.port)
-    vip = ask_vip(opts.vip)
-    runs_on = ask_runs_on(opts.runs_on)
 
-    # Add smartstack section iff load balanced
-    smartstack = get_smartstack() if vip else None
+    vip, smartstack = ask_lbs(opts.vip, opts.smartstack_only)
+
+    runs_on = ask_runs_on(opts.runs_on)
 
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
     if opts.enable_yelpsoa_config:
