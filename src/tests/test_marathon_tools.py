@@ -201,15 +201,18 @@ class TestMarathonTools:
         fake_uri = 'energy'
         fake_timeout = -10103
         fake_port = 777
+        fake_retries = 9001
         fake_info = {'healthcheck_uri': fake_uri, 'healthcheck_timeout_s': fake_timeout,
                      'proxy_port': fake_port,
                      'timeout_connect_ms': 192, 'timeout_server_ms': 291,
+                     'retries': fake_retries,
                      'routes': [{'source': 'oregon', 'destinations': ['indiana']},
                                 {'source': 'florida', 'destinations': ['miami', 'beach']}]}
         fake_config = {namespace: fake_info}
         expected = {'healthcheck_uri': fake_uri, 'healthcheck_timeout_s': fake_timeout,
                     'proxy_port': fake_port,
                     'timeout_connect_ms': 192, 'timeout_server_ms': 291,
+                    'retries': fake_retries,
                     'routes': [('oregon', 'indiana'), ('florida', 'miami'), ('florida', 'beach')]}
         with mock.patch('service_configuration_lib.read_extra_service_information',
                         return_value=fake_config) as read_extra_patch:
@@ -400,7 +403,8 @@ class TestMarathonTools:
             curl_patch.assert_called_once_with()
             fake_curl.setopt.assert_any_call(pycurl.URL, 'http://%s:5050/redirect' % fake_master)
             fake_curl.setopt.assert_any_call(pycurl.HEADER, True)
-            assert fake_curl.setopt.call_count == 2
+            fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, mock.ANY)
+            assert fake_curl.setopt.call_count == 3
             fake_curl.perform.assert_called_once_with()
             fake_curl.getinfo.assert_called_once_with(pycurl.REDIRECT_URL)
 
@@ -463,7 +467,7 @@ class TestMarathonTools:
         assert marathon_tools.get_bounce_method(fake_conf) == fake_method
 
     def test_get_bounce_method_default(self):
-        assert marathon_tools.get_bounce_method({}) == 'brutal'
+        assert marathon_tools.get_bounce_method({}) == 'crossover'
 
     def test_get_instances_in_config(self):
         fake_conf = {'instances': -10}

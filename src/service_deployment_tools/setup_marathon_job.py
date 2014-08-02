@@ -77,25 +77,27 @@ def get_marathon_client(url, user, passwd):
     return MarathonClient(url, user, passwd)
 
 
-def deploy_service(name, config, client, bounce_method):
+def deploy_service(name, config, client, namespace, bounce_method):
     """Deploy the service with the given name, config, and bounce_method."""
     log.info("Deploying service instance %s with bounce_method %s", name, bounce_method)
     log.debug("Searching for old service instance iterations")
     filter_name = marathon_tools.remove_tag_from_job_id(name)
     app_list = client.list_apps()
     old_app_ids = [app.id for app in app_list if filter_name in app.id]
-    if old_app_ids:  # there's a previous iteration; bounce
+    if old_app_ids:  # there's a previous version; bounce
         log.info("Old service instance iterations found: %s", old_app_ids)
         try:
             if bounce_method == "brutal":
-                bounce_lib.brutal_bounce(old_app_ids, config, client)
+                bounce_lib.brutal_bounce(old_app_ids, config, client, namespace)
+            elif bounce_method == "crossover":
+                bounce_lib.crossover_bounce(old_app_ids, config, client, namespace)
             else:
                 log.error("bounce_method not recognized: %s. Exiting", bounce_method)
                 return (1, "bounce_method not recognized: %s" % bounce_method)
         except IOError:
             log.error("service %s already being bounced. Exiting", filter_name)
             return (1, "Service is taking a while to bounce")
-    else:  # there wasn't actually a previous iteration; just deploy it
+    else:  # there wasn't a previous version; just deploy it
         log.info("No old instances found. Deploying instance %s", name)
         client.create_app(**config)
     log.info("%s deployed. Exiting", name)
@@ -122,6 +124,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
                                                             service_marathon_config)
     config_hash = marathon_tools.get_config_hash(complete_config)
     full_id = marathon_tools.compose_job_id(service_name, instance_name, config_hash)
+    namespace = service_marathon_config.get('nerve_ns', instance_name)
     complete_config['id'] = full_id
     log.info("Desired Marathon instance id: %s", full_id)
     try:
@@ -130,8 +133,8 @@ def setup_service(service_name, instance_name, client, marathon_config,
         log.warning("App id %s already exists. Skipping configuration and exiting.", full_id)
         return (0, 'Service was already deployed.')
     except KeyError:
-        return deploy_service(full_id, complete_config, client,
-                              bounce_method=marathon_tools.get_bounce_method(service_marathon_config))
+        return deploy_service(full_id, complete_config, client, namespace,
+                              marathon_tools.get_bounce_method(service_marathon_config))
 
 
 def main():

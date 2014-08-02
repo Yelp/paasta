@@ -141,11 +141,11 @@ def get_instances(service_config):
 def get_bounce_method(service_config):
     """Get the bounce method specified in the service's marathon configuration.
 
-    Defaults to brutal if no method specified in the config."""
+    Defaults to crossover if no method specified in the config."""
     bounce_method = service_config.get('bounce_method')
     if not bounce_method:
-        log.warning("'bounce_method' not specified in config. Using default: brutal")
-    return bounce_method if bounce_method else 'brutal'
+        log.warning("'bounce_method' not specified in config. Using default: crossover")
+    return bounce_method if bounce_method else 'crossover'
 
 
 def get_config_hash(config):
@@ -309,6 +309,7 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
       healthcheck_timeout_s: healthcheck timeout in seconds
       timeout_connect_ms: proxy frontend timeout in milliseconds
       timeout_server_ms: proxy server backend timeout in milliseconds
+      retries: the number of retires on a proxy backend
       routes: a list of tuples of (source, destination)
     """
     try:
@@ -331,6 +332,8 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
             ns_dict['timeout_connect_ms'] = ns_config['timeout_connect_ms']
         if 'timeout_server_ms' in ns_config:
             ns_dict['timeout_server_ms'] = ns_config['timeout_server_ms']
+        if 'retries' in ns_config:
+            ns_dict['retries'] = ns_config['retries']
         if 'routes' in ns_config:
             ns_dict['routes'] = [(route['source'], dest)
                                  for route in ns_config['routes']
@@ -436,6 +439,7 @@ def get_mesos_leader(hostname=MY_HOSTNAME):
     curl = pycurl.Curl()
     curl.setopt(pycurl.URL, 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT))
     curl.setopt(pycurl.HEADER, True)
+    curl.setopt(pycurl.WRITEFUNCTION, lambda a: None)
     curl.perform()
     return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', curl.getinfo(pycurl.REDIRECT_URL)).group(0)
 

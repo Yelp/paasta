@@ -1,3 +1,9 @@
+service-deployment-tools (0.2.1-yelp1) lucid; urgency=low
+
+  * Added a crossover_bounce method in bounce_lib
+
+ -- James McGuinness <jrm@yelp.com>  Fri, 01 Aug 2014 19:20:42 -0700
+
 service-deployment-tools (0.2.0-yelp1) lucid; urgency=low
 
   * Changing replication_utils to count partial UP as UP
