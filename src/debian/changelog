@@ -1,3 +1,9 @@
+service-deployment-tools (0.2.1-yelp1) lucid; urgency=low
+
+  * updating chronos code to match changed marathon code
+
+ -- Sophie Haskins <shaskins@yelp.com>  Sat, 02 Aug 2014 11:09:12 -0700
+
 service-deployment-tools (0.2.0-yelp1) lucid; urgency=low
 
   * Changing replication_utils to count partial UP as UP
