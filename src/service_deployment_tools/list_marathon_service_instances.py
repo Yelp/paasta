@@ -1,5 +1,18 @@
 #!/usr/bin/env python
+"""Usage: ./list_marathon_service_instances.py [options]
 
+Enumerates all marathon instances for services in the soa directory that
+are for the current cluster (defined by the marathon configuration file).
+
+Outputs (to stdout) a space separated list of service_name.instance_name
+for each instance found in marathon-<CLUSTER>.yaml for every folder
+in the SOA Configuration directory.
+
+Command line options:
+
+- -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
+- -c <CLUSTER>, --cluster <CLUSTER>: Specify which cluster of services to read
+"""
 import argparse
 import sys
 
@@ -20,12 +33,6 @@ def parse_args():
 
 
 def main():
-    """Enumerates all marathon instances for services in a given cluster and soa directory.
-
-    This uses the cluster defined in the marathon configuration file for
-    service_deployment_tools, and will attempt to read from the default soa
-    directory defined in service_configuration_lib. You can specify a different
-    soa directory with -d SOA_DIR, and a cluster with -c CLUSTER."""
     args = parse_args()
     instances = marathon_tools.get_marathon_services_for_cluster(cluster=args.cluster,
                                                                  soa_dir=args.soa_dir)

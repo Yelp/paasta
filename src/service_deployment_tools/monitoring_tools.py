@@ -1,9 +1,12 @@
 #!/usr/bin/env python
-#
-# Getters for deriving monitoring parameters for mesos-deployed stuff.
-# This leaves a place for sane defaults that might change depending
-# on the framework that is asking, and still allows you to set your team
-# *once* for a service in the general config.
+"""
+Getters for deriving monitoring parameters for mesos-deployed stuff.
+This leaves a place for sane defaults that might change depending
+on the framework that is asking, and still allows you to set your team
+*once* for a service in the general config.
+
+Everything in here is private, and you shouldn't worry about it.
+"""
 
 import service_configuration_lib
 import marathon_tools

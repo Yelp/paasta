@@ -1,5 +1,32 @@
 #!/usr/bin/env python
+"""
+Usage: ./setup_marathon_job.py <service_name.instance_name> [options]
 
+Deploy a service instance to Marathon from a configuration file.
+Attempts to load the marathon configuration at
+/etc/service_deployment_tools/marathon_config.json, and read
+from the soa_dir /nail/etc/services by default.
+
+This script will attempt to load a service's configuration
+from the soa_dir and generate a marathon job configuration for it,
+as well as handle deploying that configuration with a bounce strategy
+if there's an old version of the service. To determine whether or not
+a deployment is 'old', each marathon job has a complete id of
+service_name.instance_name.configuration_hash, where configuration_hash
+is an MD5 hash of the configuration dict to be sent to marathon (without
+the configuration_hash in the id field, of course- we change that after
+the hash is calculated).
+
+The script will emit a sensu event based on how the deployment went-
+if something went wrong, it'll alert the team responsible for the service
+(as defined in that service's monitoring.yaml), and it'll send resolves
+when the deployment goes alright.
+
+Command line options:
+
+- -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
+- -v, --verbose: Verbose output
+"""
 import os
 import sys
 import logging
@@ -13,9 +40,6 @@ import pysensu_yelp
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
-# DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
-# OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
-# It's used to compose a job's full ID from its name, instance, and iteration.
 ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger(__name__)
 
@@ -35,6 +59,16 @@ def parse_args():
 
 
 def send_sensu_event(name, instance, soa_dir, status, output):
+    """Send a sensu event via pysensu_yelp about this deployment.
+    Attempts to read a monitoring.yaml file from a service's soa_dir
+    in order to get configuration options for this event.
+
+    :param name: The service name
+    :param instance: The service's instance name
+    :param soa_dir: The service directory to read monitoring information from
+    :param status: The sensu status to emit for this event. Should be one of
+                   the values in pysensu_yelp.Status.
+    :param output: The output string to emit for this event."""
     rootdir = os.path.abspath(soa_dir)
     monitoring_file = os.path.join(rootdir, name, "monitoring.yaml")
     monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
@@ -71,14 +105,24 @@ def get_main_marathon_config():
 def get_marathon_client(url, user, passwd):
     """Get a new marathon client connection in the form of a MarathonClient object.
 
-    Connects to the Marathon server at 'url' with login specified
-    by 'user' and 'pass', all from the marathon config."""
+    :param url: The url to connect to marathon at
+    :param user: The username to connect with
+    :param passwd: The password to connect with
+    :returns: A new marathon.MarathonClient object"""
     log.info("Connecting to Marathon server at: %s", url)
     return MarathonClient(url, user, passwd)
 
 
 def deploy_service(name, config, client, namespace, bounce_method):
-    """Deploy the service with the given name, config, and bounce_method."""
+    """Deploy the service to marathon, either directly or via a bounce if needed.
+    Called by setup_service when it's time to actually deploy.
+
+    :param name: The full marathon job name to deploy
+    :param config: The complete configuration dict to send to marathon
+    :param client: A MarathonClient object
+    :param namespace: The service's Smartstack namespace
+    :param bounce_method: The bounce method to use, if needed
+    :returns: A tuple of (status, output) to be used with send_sensu_event"""
     log.info("Deploying service instance %s with bounce_method %s", name, bounce_method)
     log.debug("Searching for old service instance iterations")
     filter_name = marathon_tools.remove_tag_from_job_id(name)
@@ -107,10 +151,15 @@ def deploy_service(name, config, client, namespace, bounce_method):
 def setup_service(service_name, instance_name, client, marathon_config,
                   service_marathon_config):
     """Setup the service instance given and attempt to deploy it, if possible.
+    Doesn't do anything if the service is already in Marathon and hasn't changed.
+    If it's not, attempt to find old instances of the service and bounce them.
 
-    The full id of the service instance is service_name__instance_name__iteration.
-    Doesn't do anything if the full id is already in Marathon.
-    If it's not, attempt to find old instances of the service and bounce them."""
+    :param service_name: The service name to setup
+    :param instance_name: The instance of the service to setup
+    :param client: A MarathonClient object
+    :param marathon_config: The marathon configuration dict
+    :param service_marathon_config: The service instance's configuration dict
+    :returns: A tuple of (status, output) to be used with send_sensu_event"""
     partial_id = marathon_tools.compose_job_id(service_name, instance_name)
     log.info("Setting up instance %s for service %s", instance_name, service_name)
     docker_url = marathon_tools.get_docker_url(marathon_config['docker_registry'],
@@ -138,13 +187,16 @@ def setup_service(service_name, instance_name, client, marathon_config,
 
 
 def main():
-    """Deploy a service instance to Marathon from a configuration file.
+    """Attempt to set up the marathon service instance given.
+    Exits 1 if the deployment failed.
+    This is done in the following order:
 
-    Usage: python setup_marathon_job.py <service_name> <instance_name> [options]
-    Valid options:
-      -d, --soa-dir: A soa config directory to read config files from, otherwise uses
-                     service_configuration_lib.DEFAULT_SOA_DIR
-      -v, --verbose: Verbose output"""
+    - Load the marathon configuration
+    - Connect to marathon
+    - Load the service instance's configuration
+    - Create the complete marathon job configuration
+    - Deploy/bounce the service
+    - Emit an event about the deployment to sensu"""
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:

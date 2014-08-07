@@ -1,4 +1,23 @@
 #!/usr/bin/env python
+"""
+Usage: ./cleanup_marathon_jobs.py [options]
+
+Clean up marathon jobs/apps that aren't current (i.e. some part of the
+final marathon job configuration has changed) by deleting them.
+
+Gets the current job/app list from marathon, and then a 'valid_app_list'
+via marathon_tools.get_marathon_services_for_cluster and then
+compiling the complete marathon job configuration for that service and
+calculating the MD5 hash that would've been appended to that service.
+
+If a job/app in the marathon app list isn't in the valid_app_list, it's
+deleted.
+
+Command line options:
+
+- -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
+- -v, --verbose: Verbose output
+"""
 import argparse
 import logging
 
@@ -26,13 +45,22 @@ def parse_args():
 def get_marathon_client(url, user, passwd):
     """Get a new marathon client connection in the form of a MarathonClient object.
 
-    Connects to the Marathon server at 'url' with login specified
-    by 'user' and 'pass', all from the marathon config."""
+    :param url: The url to connect to marathon at
+    :param user: The username to connect with
+    :param passwd: The password to connect with
+    :returns: A new marathon.MarathonClient object"""
     log.info("Connecting to Marathon server at: %s", url)
     return MarathonClient(url, user, passwd)
 
 
 def get_valid_app_list(marathon_config, soa_dir):
+    """Get the 'valid_app_list' by calling marathon_tools.get_marathon_services_for_cluster
+    and then calculating each service's current configuration via its soa_dir configs in
+    order to get the current MD5 hash that should be on an app's id.
+
+    :param marathon_config: A dict of the marathon_configuration
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of valid app ids"""
     log.info("Getting desired app list from configs")
     cluster_app_list = marathon_tools.get_marathon_services_for_cluster(soa_dir=soa_dir)
     valid_app_list = []
@@ -52,6 +80,11 @@ def get_valid_app_list(marathon_config, soa_dir):
 
 
 def cleanup_apps(soa_dir):
+    """Clean up old or invalid jobs/apps from marathon. Retrieves
+    both a list of apps currently in marathon and a list of valid
+    app ids in order to determine what to kill.
+
+    :param soa_dir: The SOA config directory to read from"""
     log.info("Loading marathon configuration")
     marathon_config = marathon_tools.get_config()
     log.info("Connecting to marathon")

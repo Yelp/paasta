@@ -17,13 +17,18 @@ CROSSOVER_SLEEP_INTERVAL_S = 10  # seconds to sleep between scaling an app and c
 
 
 class TimeoutException(Exception):
+    """An exception type used by time_limit."""
     pass
 
 
 @contextmanager
 def bounce_lock(name):
     """Acquire a bounce lockfile for the name given. The name should generally
-    be the service instance being bounced."""
+    be the service namespace being bounced.
+
+    This is a contextmanager. Please use it via 'with bounce_lock(name):'.
+
+    :param name: The lock name to acquire"""
     lockfile = '/var/lock/%s.lock' % name
     fd = open(lockfile, 'w')
     try:
@@ -39,6 +44,10 @@ def bounce_lock(name):
 
 @contextmanager
 def time_limit(minutes):
+    """A contextmanager to raise a TimeoutException whenever a specified
+    number of minutes has passed.
+
+    :param minutes: The number of minutes until an exception is raised"""
     def signal_handler(signum, frame):
         raise TimeoutException("Timeout")
     signal.signal(signal.SIGALRM, signal_handler)
@@ -50,7 +59,10 @@ def time_limit(minutes):
 
 
 def kill_old_ids(old_ids, client):
-    """Kill old marathon job ids. Skips anything that doesn't exist."""
+    """Kill old marathon job ids. Skips anything that doesn't exist.
+
+    :param old_ids: A list of old job/app ids to kill
+    :param client: A marathon.MarathonClient object"""
     for app in old_ids:
         try:
             log.info("Killing %s", app)
@@ -62,8 +74,12 @@ def kill_old_ids(old_ids, client):
 def brutal_bounce(old_ids, new_config, client, namespace):
     """Brutally bounce the service by killing all old instances first.
 
-    Kills all old_ids then spawns a new app with the new_config via a
-    Marathon client."""
+    Kills all old_ids then spawns the new job/app.
+
+    :param old_ids: Old job ids to kill off
+    :param new_config: The complete marathon job configuration for the new job
+    :param client: A marathon.MarathonClient object
+    :param namespace: The smartstack namespace of the service"""
     target_service = marathon_tools.remove_tag_from_job_id(new_config['id'])
     service_namespace = '%s%s%s' % (target_service.split(marathon_tools.ID_SPACER)[0],
                                     marathon_tools.ID_SPACER, namespace)
@@ -74,13 +90,19 @@ def brutal_bounce(old_ids, new_config, client, namespace):
 
 
 def scale_apps(scalable_apps, remove_count, client):
-    """Kill off a number of apps from the scalable_apps list (composed of
-    tuples of id, instance_count) equal to remove_count, via the marathon
-    client provided.
+    """Kill off a number of apps from the scalable_apps list, composed of
+    tuples of (old_job_id, instance_count), equal to remove_count.
 
     If an app is deleted because it was scaled, it is removed from the
     scalable_apps list. If an app is scaled down, its instance_count
-    changes to reflect this."""
+    changes to reflect this.
+
+    If remove_count is <= 0, returns 0 immediately.
+
+    :param scalable_apps: A list of tuples of (old_job_id, instance_count)
+    :param remove_count: The number of instances to kill off
+    :param client: A marathon.MarathonClient object
+    :returns: The total number of removed instances"""
     total_remove_count = remove_count
     # We're scaling down- if there's a shortage of instances (the count
     # is negative or 0), then we shouldn't scale back any more yet!
@@ -103,7 +125,12 @@ def scale_apps(scalable_apps, remove_count, client):
 
 def crossover_bounce(old_ids, new_config, client, namespace):
     """Bounce the service via crossover: spin up the new instances
-    first, and then kill old ones as they get registered in nerve."""
+    first, and then kill old ones as they get registered in nerve.
+
+    :param old_ids: Old job ids to kill off
+    :param new_config: The complete marathon job configuration for the new job
+    :param client: A marathon.MarathonClient object
+    :param namespace: The smartstack namespace of the service"""
     target_service = marathon_tools.remove_tag_from_job_id(new_config['id'])
     service_namespace = '%s%s%s' % (target_service.split(marathon_tools.ID_SPACER)[0],
                                     marathon_tools.ID_SPACER, namespace)

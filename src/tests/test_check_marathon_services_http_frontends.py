@@ -16,7 +16,7 @@ def test_check_http():
     fake_command = '/usr/bin/check_sandwich working_girls'
     fake_output = 'vader_nooooooo.jpg'
     fake_process = mock.Mock(returncode=11, communicate=mock.Mock(return_value=(fake_output, '42')))
-    expected = (fake_output, 11)
+    expected = (11, fake_output)
     with contextlib.nested(
         mock.patch('check_marathon_services_http_frontends.build_check_http_command',
                    return_value=fake_command),
@@ -102,7 +102,7 @@ def test_check_service_instance():
          mock.patch("service_deployment_tools.marathon_tools.get_proxy_port_for_instance",
                     return_value=fake_port),
          mock.patch("check_marathon_services_http_frontends.send_event"),
-         mock.patch("check_marathon_services_http_frontends.check_http", return_value=(fake_output, fake_status))
+         mock.patch("check_marathon_services_http_frontends.check_http", return_value=(fake_status, fake_output))
     ) as (
          get_proxy_port_patch,
          send_event_patch,

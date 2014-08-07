@@ -4,7 +4,12 @@ GID:=`id -g`
 DOCKER_RUN:=docker run -t -v  $(CURDIR):/work:rw soatools_lucid_container
 DOCKER_RUN_CHRONOS:=docker run -t -i --link=chronos_itest_chronos:chronos -v  $(CURDIR):/work:rw chronos_itest/itest
 
+.PHONY: all docs
+
 all:
+
+docs:
+	cd src && tox -e docs
 
 itest_lucid: package_lucid
 	$(DOCKER_RUN) /work/itest/ubuntu.sh
@@ -26,6 +31,10 @@ build_lucid_docker:
 clean:
 	rm -rf dist/
 	rm -rf .tox
+	rm -rf src/service_deployment_tools.egg-info
+	rm -rf src/build
+	find . -name '*.pyc' -delete
+	find . -name '__pycache__' -delete
 
 test_chronos: package_lucid setup_chronos_itest
 	$(DOCKER_RUN_CHRONOS) /work/itest/chronos.sh
