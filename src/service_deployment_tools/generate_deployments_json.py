@@ -11,10 +11,11 @@ is assumed to be the same as the the cluster the script is executed in.
 
 For example, if the service paasta_test has an instance called main with no
 branch or docker_image key in its configuration in the devc cluster, then this script
-will create a key/value pair of 'paasta_test:devc': 'paasta_test:123456', if 12346 was
-the first 6 characters of the SHA at the HEAD of the branch 'main' in the repository
+will create a key/value pair of 'paasta_test:devc': 'services-paasta_test:jenkins-SHA',
+where SHA is the current SHA at the tip of the branch named devc in
 git@git.yelpcorp.com:services/paasta_test.git. If main had a branch key with
-a value of 'master', the key would be paasta_test:master instead.
+a value of 'master', the key would be paasta_test:master instead, and the SHA
+would be the SHA at the tip of master.
 
 This is done for all services in the SOA configuration directory, across any
 service configuration files (filename is 'marathon-\*.yaml').
@@ -133,12 +134,12 @@ def get_service_directories(soa_dir):
 
 
 def get_branch_mappings(soa_dir):
-    """Gets mappings from service_name:branch_name to service_name:hash, where
-    hash is the first 6 characters of the current hash at the HEAD of branch_name.
+    """Gets mappings from service_name:branch_name to services-service_name:jenkins-hash,
+    where hash is the current SHA at the HEAD of branch_name.
     This is done for all services in soa_dir.
 
     :param soa_dir: The SOA configuration directory to read from
-    :returns: A dictionary mapping service_name:branch_name to service_name:hash"""
+    :returns: A dictionary mapping service_name:branch_name to services-service_name:jenkins-hash"""
     tmp_dir = tempfile.mkdtemp()
     mygit = git.Git(tmp_dir)
     mappings = {}
@@ -151,7 +152,7 @@ def get_branch_mappings(soa_dir):
         remote_branches = get_remote_branches_for_service(mygit, service)
         for head, branch in filter(lambda (head, branch): branch in valid_branches, remote_branches):
             branch_alias = '%s:%s' % (service, branch)
-            docker_image = '%s:%s' % (service, head[0:6])
+            docker_image = 'services-%s:jenkins-%s' % (service, head)
             log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
             mappings[branch_alias] = docker_image
     try:

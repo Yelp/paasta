@@ -273,15 +273,15 @@ class TestMarathonTools:
         stringio_patch.return_value.getvalue.return_value = 'curl_into_a_corner'
         json_load_patch.return_value = {'frameworks': [
                                             {'executors': [
-                                                {'id': id_1, 'resources': {'ports': ports_1}},
-                                                {'id': id_2, 'resources': {'ports': ports_2}}],
+                                                {'id': id_1, 'resources': {'ports': ports_1}, 'tasks': 1},
+                                                {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': 1}],
                                              'name': 'marathon-1111111'},
                                             {'executors': [
-                                                {'id': id_3, 'resources': {'ports': ports_3}},
-                                                {'id': id_4, 'resources': {'ports': ports_4}}],
+                                                {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': 1},
+                                                {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': 1}],
                                              'name': 'marathon-3145jgreoifd'},
                                             {'executors': [
-                                                {'id': 'bunk', 'resources': {'ports': '[65-65]'}}],
+                                                {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': 1}],
                                              'name': 'super_bunk'}
                                         ]}
         expected = [('klingon', 'ships', 111),

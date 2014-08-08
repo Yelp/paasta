@@ -460,7 +460,8 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
     # we should be running is_mesos_slave(localhost) before hitting this
     slave_state = json.loads(s.getvalue())
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
-    executors = [ex for fw in frameworks for ex in fw.get('executors', [])]
+    executors = [ex for fw in frameworks for ex in fw.get('executors', [])
+                 if ex.get('tasks')]
     srv_list = []
     for executor in executors:
         srv_name = executor['id'].split(ID_SPACER)[0].replace('--', '_')

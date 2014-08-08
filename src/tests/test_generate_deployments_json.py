@@ -85,7 +85,8 @@ def test_get_branch_mappings():
     fake_remotes = [[('123456', 'try_me'), ('ijowarg', 'okay')],
                     [('789009', 'no_thanks'), ('j8yiomwer', 'nah')]]
     fake_git = mock.Mock()
-    expected = {'uno:no_thanks': 'uno:789009', 'dos:try_me': 'dos:123456'}
+    expected = {'uno:no_thanks': 'services-uno:jenkins-789009',
+                'dos:try_me': 'services-dos:jenkins-123456'}
     with contextlib.nested(
         mock.patch('tempfile.mkdtemp', return_value=fake_tmp_dir),
         mock.patch('git.Git', return_value=fake_git),

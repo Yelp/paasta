@@ -141,7 +141,8 @@ class TestSetupMarathonJob:
             join_path_patch.assert_called_once_with('black_sheep', name, 'monitoring.yaml')
             read_monitoring_patch.assert_called_once_with('actually_albino')
             send_event_patch.assert_called_once_with(expected_name, 'y/rb-marathon', status, output, 'zero',
-                                                     notification_email='44@yelp.com', realert_every=-1)
+                                                     notification_email='44@yelp.com', realert_every=-1,
+                                                     alert_after='5m')
 
     def test_setup_service_srv_already_exists(self):
         fake_name = 'if_trees_could_talk'

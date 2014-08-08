@@ -92,6 +92,7 @@ def send_sensu_event(name, instance, soa_dir, status, output):
             if kwarg in monitor_conf:
                 sensu_kwargs[kwarg] = monitor_conf[kwarg]
         sensu_kwargs['realert_every'] = -1
+        sensu_kwargs['alert_after'] = '5m'
         pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
 
 
@@ -224,9 +225,11 @@ def main():
             sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
             send_sensu_event(service_name, instance_name, soa_dir, sensu_status, output)
             sys.exit(status)
-        except (KeyError, TypeError, ValueError) as e:
-            log.error(str(e))
-            send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, str(e))
+        except (KeyError, TypeError, ValueError, AttributeError):
+            import traceback
+            error_str = traceback.format_tb()
+            log.error(error_str)
+            send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
             sys.exit(1)
     else:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
