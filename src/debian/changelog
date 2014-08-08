@@ -1,8 +1,8 @@
 service-deployment-tools (0.2.1-yelp1) lucid; urgency=low
 
-  * Added a crossover_bounce method in bounce_lib
+  * updating chronos code to match changed marathon code
 
- -- James McGuinness <jrm@yelp.com>  Fri, 01 Aug 2014 19:20:42 -0700
+ -- Sophie Haskins <shaskins@yelp.com>  Sat, 02 Aug 2014 11:09:12 -0700
 
 service-deployment-tools (0.2.0-yelp1) lucid; urgency=low
 

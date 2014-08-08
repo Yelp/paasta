@@ -4,6 +4,7 @@ import argparse
 import isodate
 import os
 import service_configuration_lib
+from service_deployment_tools import marathon_tools
 import setup_marathon_job
 import json
 import yaml
@@ -130,7 +131,7 @@ def get_executor_flags(job_config):
 
 def get_docker_url_for_image(docker_image):
     marathon_config = setup_marathon_job.get_main_marathon_config()
-    return setup_marathon_job.get_docker_url(marathon_config['docker_registry'], docker_image)
+    return marathon_tools.get_docker_url(marathon_config['docker_registry'], docker_image)
 
 
 def get_retries(job_config):
