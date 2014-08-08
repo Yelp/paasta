@@ -404,6 +404,7 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     - timeout_connect_ms: proxy frontend timeout in milliseconds
     - timeout_server_ms: proxy server backend timeout in milliseconds
     - retries: the number of retires on a proxy backend
+    - mode: the mode the service is run in (HTTP, TCP, etc)
     - routes: a list of tuples of (source, destination)
 
     :param srv_name: The service name
@@ -433,6 +434,8 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
             ns_dict['timeout_server_ms'] = ns_config['timeout_server_ms']
         if 'retries' in ns_config:
             ns_dict['retries'] = ns_config['retries']
+        if 'mode' in ns_config:
+            ns_dict['mode'] = ns_config['mode']
         if 'routes' in ns_config:
             ns_dict['routes'] = [(route['source'], dest)
                                  for route in ns_config['routes']

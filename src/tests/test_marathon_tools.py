@@ -199,6 +199,7 @@ class TestMarathonTools:
         namespace = 'ecapseman'
         soa_dir = 'rid_aos'
         fake_uri = 'energy'
+        fake_mode = 'ZTP'
         fake_timeout = -10103
         fake_port = 777
         fake_retries = 9001
@@ -206,6 +207,7 @@ class TestMarathonTools:
                      'proxy_port': fake_port,
                      'timeout_connect_ms': 192, 'timeout_server_ms': 291,
                      'retries': fake_retries,
+                     'mode': fake_mode,
                      'routes': [{'source': 'oregon', 'destinations': ['indiana']},
                                 {'source': 'florida', 'destinations': ['miami', 'beach']}]}
         fake_config = {namespace: fake_info}
@@ -213,6 +215,7 @@ class TestMarathonTools:
                     'proxy_port': fake_port,
                     'timeout_connect_ms': 192, 'timeout_server_ms': 291,
                     'retries': fake_retries,
+                    'mode': fake_mode,
                     'routes': [('oregon', 'indiana'), ('florida', 'miami'), ('florida', 'beach')]}
         with mock.patch('service_configuration_lib.read_extra_service_information',
                         return_value=fake_config) as read_extra_patch:

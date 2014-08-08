@@ -1,3 +1,9 @@
+service-deployment-tools (0.2.3-yelp1) lucid; urgency=low
+
+  * Added a 'mode' key to read_service_namespace_config in marathon_tools
+
+ -- James McGuinness <jrm@yelp.com>  Fri, 08 Aug 2014 15:14:01 -0700
+
 service-deployment-tools (0.2.2-yelp1) lucid; urgency=low
 
   * Added a crossover_bounce method to bounce_lib, made it the default
