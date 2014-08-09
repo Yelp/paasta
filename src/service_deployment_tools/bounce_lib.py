@@ -131,7 +131,7 @@ def crossover_bounce(old_ids, new_config, client, namespace):
     :param new_config: The complete marathon job configuration for the new job
     :param client: A marathon.MarathonClient object
     :param namespace: The smartstack namespace of the service"""
-    target_service = marathon_tools.remove_tag_from_job_id(new_config['id'])
+    target_service = marathon_tools.remove_tag_from_job_id(new_config['id']).replace('--', '_')
     service_namespace = '%s%s%s' % (target_service.split(marathon_tools.ID_SPACER)[0],
                                     marathon_tools.ID_SPACER, namespace)
     scalable_apps = [(old_id, client.get_app(old_id).instances) for old_id in old_ids]

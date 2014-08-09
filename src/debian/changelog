@@ -1,3 +1,9 @@
+service-deployment-tools (0.2.3-yelp1ubuntu1) lucid; urgency=low
+
+  * Fixing a bug with namespaces in crossover_bounce
+
+ -- James McGuinness <jrm@yelp.com>  Fri, 08 Aug 2014 19:47:40 -0700
+
 service-deployment-tools (0.2.3-yelp1) lucid; urgency=low
 
   * Added a 'mode' key to read_service_namespace_config in marathon_tools
