@@ -23,6 +23,15 @@ class TestMonitoring_Tools:
         'page': job_page
     }
     empty_job_config = {}
+    monitor_page = True
+    fake_monitor_config = {
+        'team': 'monitor_test_team',
+        'runbook': 'y/monitor_test_runbook',
+        'tip': 'monitor_test_tip',
+        'notification_email': 'monitor_test_notification_email',
+        'page': monitor_page
+    }
+    empty_monitor_config = {}
     framework = 'fake_framework'
     instance_name = 'fake_instance'
     service_name = 'fake_service'
@@ -57,42 +66,69 @@ class TestMonitoring_Tools:
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_service_configuration',
                        return_value=self.fake_general_service_config),
-            mock.patch('marathon_tools.read_service_config', return_value=self.fake_job_config)
+            mock.patch('marathon_tools.read_service_config', return_value=self.fake_job_config),
+            mock.patch('marathon_tools.read_monitoring_config', return_value=self.fake_monitor_config),
         ) as (
             service_configuration_lib_patch,
-            marathon_tools_patch
+            read_service_patch,
+            read_monitoring_patch
         ):
             actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name)
-            marathon_tools_patch.assert_called_once_with(self.service_name, self.instance_name)
+            read_service_patch.assert_called_once_with(self.service_name, self.instance_name)
+            read_monitoring_patch.assert_called_once_with(self.service_name)
+
+    def test_get_monitoring_config_value_with_monitor_config(self):
+        expected = 'monitor_test_team'
+        with contextlib.nested(
+            mock.patch('service_configuration_lib.read_service_configuration',
+                       return_value=self.fake_general_service_config),
+            mock.patch('marathon_tools.read_service_config', return_value=self.empty_job_config),
+            mock.patch('marathon_tools.read_monitoring_config', return_value=self.fake_monitor_config),
+        ) as (
+            service_configuration_lib_patch,
+            read_service_patch,
+            read_monitoring_patch
+        ):
+            actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name)
+            assert expected == actual
+            service_configuration_lib_patch.assert_called_once_with(self.service_name)
+            read_service_patch.assert_called_once_with(self.service_name, self.instance_name)
+            read_monitoring_patch.assert_called_once_with(self.service_name)
 
     def test_get_monitoring_config_value_with_service_config(self):
         expected = 'general_test_team'
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_service_configuration',
                        return_value=self.fake_general_service_config),
-            mock.patch('marathon_tools.read_service_config', return_value=self.empty_job_config)
+            mock.patch('marathon_tools.read_service_config', return_value=self.empty_job_config),
+            mock.patch('marathon_tools.read_monitoring_config', return_value=self.empty_monitor_config),
         ) as (
             service_configuration_lib_patch,
-            marathon_tools_patch
+            read_service_patch,
+            read_monitoring_patch
         ):
             actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name)
-            marathon_tools_patch.assert_called_once_with(self.service_name, self.instance_name)
+            read_service_patch.assert_called_once_with(self.service_name, self.instance_name)
+            read_monitoring_patch.assert_called_once_with(self.service_name)
 
     def test_get_monitoring_config_value_with_defaults(self):
         expected = False
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_service_configuration',
                        return_value=self.empty_job_config),
-            mock.patch('marathon_tools.read_service_config', return_value=self.empty_job_config)
+            mock.patch('marathon_tools.read_service_config', return_value=self.empty_job_config),
+            mock.patch('marathon_tools.read_monitoring_config', return_value=self.empty_monitor_config),
         ) as (
             service_configuration_lib_patch,
-            marathon_tools_patch
+            read_service_patch,
+            read_monitoring_patch
         ):
             actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name)
-            marathon_tools_patch.assert_called_once_with(self.service_name, self.instance_name)
+            read_service_patch.assert_called_once_with(self.service_name, self.instance_name)
+            read_monitoring_patch.assert_called_once_with(self.service_name)

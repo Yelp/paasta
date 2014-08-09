@@ -27,7 +27,6 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
-import os
 import sys
 import logging
 import argparse
@@ -69,9 +68,7 @@ def send_sensu_event(name, instance, soa_dir, status, output):
     :param status: The sensu status to emit for this event. Should be one of
                    the values in pysensu_yelp.Status.
     :param output: The output string to emit for this event."""
-    rootdir = os.path.abspath(soa_dir)
-    monitoring_file = os.path.join(rootdir, name, "monitoring.yaml")
-    monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
+    monitor_conf = marathon_tools.read_monitoring_config(name, soa_dir)
     # We don't use compose_job_id here because we don't want to change _ to -
     full_name = 'setup_marathon_job.%s%s%s' % (name, ID_SPACER, instance)
     # runbook = monitor_conf.get('runbook')

@@ -126,20 +126,15 @@ class TestSetupMarathonJob:
         }
         expected_name = 'setup_marathon_job.%s.%s' % (name, instance)
         with contextlib.nested(
-            mock.patch('os.path.abspath', return_value='black_sheep'),
-            mock.patch('os.path.join', return_value='actually_albino'),
-            mock.patch('service_configuration_lib.read_monitoring', return_value=fake_monitor_conf),
+            mock.patch('service_deployment_tools.marathon_tools.read_monitoring_config',
+                       return_value=fake_monitor_conf),
             mock.patch('pysensu_yelp.send_event')
         ) as (
-            abs_path_patch,
-            join_path_patch,
             read_monitoring_patch,
             send_event_patch
         ):
             setup_marathon_job.send_sensu_event(name, instance, soa_dir, status, output)
-            abs_path_patch.assert_called_once_with(soa_dir)
-            join_path_patch.assert_called_once_with('black_sheep', name, 'monitoring.yaml')
-            read_monitoring_patch.assert_called_once_with('actually_albino')
+            read_monitoring_patch.assert_called_once_with(name, soa_dir)
             send_event_patch.assert_called_once_with(expected_name, 'y/rb-marathon', status, output, 'zero',
                                                      notification_email='44@yelp.com', realert_every=-1,
                                                      alert_after='5m')

@@ -47,6 +47,27 @@ class TestMarathonTools:
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(fake_filedata)
 
+    def test_read_monitoring_config(self):
+        fake_name = 'partial'
+        fake_fname = 'acronyms'
+        fake_path = 'ever_patched'
+        fake_soa_dir = '/nail/cte/oas'
+        fake_dict = {'e': 'quail', 'v': 'snail'}
+        with contextlib.nested(
+            mock.patch('os.path.abspath', return_value=fake_path),
+            mock.patch('os.path.join', return_value=fake_fname),
+            mock.patch('service_configuration_lib.read_monitoring', return_value=fake_dict)
+        ) as (
+            abspath_patch,
+            join_patch,
+            read_monitoring_patch
+        ):
+            actual = marathon_tools.read_monitoring_config(fake_name, fake_soa_dir)
+            assert fake_dict == actual
+            abspath_patch.assert_called_once_with(fake_soa_dir)
+            join_patch.assert_called_once_with(fake_path, fake_name, 'monitoring.yaml')
+            read_monitoring_patch.assert_called_once_with(fake_fname)
+
     def test_read_service_config(self):
         fake_name = 'jazz'
         fake_instance = 'solo'

@@ -258,6 +258,18 @@ def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
         return ''
 
 
+def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
+    """Read a service's monitoring.yaml file.
+
+    :param name: The service name
+    :param soa_dir: THe SOA configuration directory to read from
+    :returns: A dictionary of whatever was in soa_dir/name/monitoring.yaml"""
+    rootdir = os.path.abspath(soa_dir)
+    monitoring_file = os.path.join(rootdir, name, "monitoring.yaml")
+    monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
+    return monitor_conf
+
+
 def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
@@ -300,9 +312,11 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         return {}
 
 
-def read_namespace_for_service_instance(name, instance, cluster, soa_dir=DEFAULT_SOA_DIR):
+def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Retreive a service instance's nerve namespace from its configuration file.
     If one is not defined in the config file, returns instance instead."""
+    if not cluster:
+        cluster = get_cluster()
     srv_info = service_configuration_lib.read_extra_service_information(
                     name, "marathon-%s" % cluster, soa_dir)[instance]
     return srv_info['nerve_ns'] if 'nerve_ns' in srv_info else instance

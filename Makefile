@@ -30,7 +30,7 @@ build_lucid_docker:
 
 clean:
 	rm -rf dist/
-	rm -rf .tox
+	rm -rf src/.tox
 	rm -rf src/service_deployment_tools.egg-info
 	rm -rf src/build
 	find . -name '*.pyc' -delete

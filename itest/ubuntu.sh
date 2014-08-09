@@ -9,7 +9,8 @@ cleanup_marathon_jobs
 check_marathon_services_http_frontends
 list_marathon_service_instances
 deploy_marathon_services
-generate_deployments_json"
+generate_deployments_json
+check_marathon_services_replication"
 
 MARATHON_SERVICES="fake_service_uno.main
 fake_service_dos.niam"
