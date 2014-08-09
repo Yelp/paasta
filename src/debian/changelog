@@ -1,4 +1,10 @@
-service-deployment-tools (0.2.3-yelp1ubuntu1) lucid; urgency=low
+service-deployment-tools (0.2.5-yelp1) lucid; urgency=low
+
+  * Changing traceback string in setup_marathon_job
+
+ -- James McGuinness <jrm@yelp.com>  Fri, 08 Aug 2014 19:53:10 -0700
+
+service-deployment-tools (0.2.4-yelp1) lucid; urgency=low
 
   * Fixing a bug with namespaces in crossover_bounce
 

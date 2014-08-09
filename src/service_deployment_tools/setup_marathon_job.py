@@ -88,6 +88,8 @@ def send_sensu_event(name, instance, soa_dir, status, output):
         for kwarg in valid_kwargs:
             if kwarg in monitor_conf:
                 sensu_kwargs[kwarg] = monitor_conf[kwarg]
+
+        sensu_kwargs['check_every'] = '1m'
         sensu_kwargs['realert_every'] = -1
         sensu_kwargs['alert_after'] = '5m'
         pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
@@ -224,7 +226,7 @@ def main():
             sys.exit(status)
         except (KeyError, TypeError, ValueError, AttributeError):
             import traceback
-            error_str = traceback.format_tb()
+            error_str = traceback.format_exc()
             log.error(error_str)
             send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
             sys.exit(1)

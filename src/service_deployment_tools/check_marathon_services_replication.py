@@ -14,8 +14,8 @@ on that namespace.
 After retrieving that information, a fraction of available instances is calculated
 (available/expected), and then compared against two thresholds- one for emitting a
 warning status to sensu, and one for emitting a critical status to sensu. The
-default thresholds are .75/.50, meaning if less than 75% of a service's backends are
-available, the script sends WARNING, and if elss than 50% are available, it sends
+default thresholds are .75/.50, meaning if fewer than 75% of a service's backends are
+available, the script sends WARNING, and if fewer than 50% are available, it sends
 CRITICAL.
 
 Command line options:
@@ -41,7 +41,7 @@ log = logging.getLogger(__name__)
 
 
 def send_event(service_name, namespace, status, output):
-    """Send an event to sensu via pysensu_yelp. With the given information.
+    """Send an event to sensu via pysensu_yelp with the given information.
 
     :param service_name: The service name the event is about
     :param namespace: The namespace of the service the event is about
@@ -51,6 +51,8 @@ def send_event(service_name, namespace, status, output):
     framework = 'marathon'
     check_name = 'check_marathon_services_replication.%s%s%s' % (service_name, ID_SPACER, namespace)
     team = monitoring_tools.get_team(framework, service_name)
+    if not team:
+        return
     runbook = monitoring_tools.get_runbook(framework, service_name)
     result_dict = {
         'tip': monitoring_tools.get_tip(framework, service_name),
@@ -59,12 +61,11 @@ def send_event(service_name, namespace, status, output):
         'alert_after': monitoring_tools.get_alert_after(framework, service_name),
         'realert_every': -1
     }
-    if team:
-        pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
+    pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 
 
 def parse_args():
-    epilog = "FRACTION is a decimal value representing a percentage of available/expected instances"
+    epilog = "DECIMAL is a decimal value representing the ratio of available to expected instances"
     parser = argparse.ArgumentParser(epilog=epilog)
 
     parser.add_argument('-s', '--synapse-host-port',
@@ -72,11 +73,11 @@ def parse_args():
                         help='The host and port to check synapse on',
                         default='localhost:3212')
     parser.add_argument('-w', '--warn', dest='warn', type=int,
-                        metavar='FRACTION', default=0.75,
+                        metavar='DECIMAL', default=0.75,
                         help="Generate warning state if fraction of instances \
                         available is less than this value")
     parser.add_argument('-c', '--critcal', dest='crit', type=int,
-                        metavar='FRACTION', default=0.50,
+                        metavar='DECIMAL', default=0.50,
                         help="Generate critical state if fraction of instances \
                         available is less than this value")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
@@ -144,9 +145,12 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
             continue
         num_available = available_backends[full_name]
         ratio = num_available / float(num_expected)
-        output = 'Service namespace %s has %d/%d instances available' % (full_name,
-                                                                         num_available,
-                                                                         num_expected)
+        output = 'Service namespace %s has %d/%d instances available,\
+                  thresholds are WARN @ %d, CRITICAL @ %d' % (full_name,
+                                                          num_available,
+                                                          num_expected,
+                                                          warn_threshold,
+                                                          crit_threshold)
         if ratio <= crit_threshold:
             log.error(output)
             status = pysensu_yelp.Status.CRITICAL
