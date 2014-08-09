@@ -227,7 +227,7 @@ def main():
             sys.exit(status)
         except (KeyError, TypeError, ValueError, AttributeError):
             import traceback
-            error_str = traceback.format_tb()
+            error_str = traceback.format_exc()
             log.error(error_str)
             send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
             sys.exit(1)
