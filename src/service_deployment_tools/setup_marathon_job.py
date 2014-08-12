@@ -93,6 +93,7 @@ def send_sensu_event(name, instance, soa_dir, status, output):
                 sensu_kwargs[kwarg] = monitor_conf[kwarg]
         sensu_kwargs['realert_every'] = -1
         sensu_kwargs['alert_after'] = '5m'
+        sensu_kwargs['check_every'] = '1m'
         pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
 
 
