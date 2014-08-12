@@ -31,6 +31,7 @@ import logging
 import os
 import tempfile
 import service_configuration_lib
+from service_deployment_tools import marathon_tools
 import git
 
 
@@ -133,7 +134,7 @@ def get_service_directories(soa_dir):
     return os.walk(soa_dir).next()[1]
 
 
-def get_branch_mappings(soa_dir):
+def get_branch_mappings(soa_dir, old_mappings):
     """Gets mappings from service_name:branch_name to services-service_name:jenkins-hash,
     where hash is the current SHA at the HEAD of branch_name.
     This is done for all services in soa_dir.
@@ -143,6 +144,7 @@ def get_branch_mappings(soa_dir):
     tmp_dir = tempfile.mkdtemp()
     mygit = git.Git(tmp_dir)
     mappings = {}
+    docker_registry = marathon_tools.get_docker_registry()
     for service in get_service_directories(soa_dir):
         log.info('Examining service %s', service)
         valid_branches = get_branches_for_service(soa_dir, service)
@@ -153,8 +155,13 @@ def get_branch_mappings(soa_dir):
         for head, branch in filter(lambda (head, branch): branch in valid_branches, remote_branches):
             branch_alias = '%s:%s' % (service, branch)
             docker_image = 'services-%s:jenkins-%s' % (service, head)
-            log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
-            mappings[branch_alias] = docker_image
+            if not marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
+                log.error('Branch %s should be mapped to image %s, but that image isn\'t \
+                           in the docker_registry %s', branch_alias, docker_image, docker_registry)
+                mappings[branch_alias] = old_mappings.get(branch_alias, None)
+            else:
+                log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
+                mappings[branch_alias] = docker_image
     try:
         os.rmdir(tmp_dir)
     except OSError:
@@ -169,7 +176,9 @@ def main():
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
-    mappings = get_branch_mappings(soa_dir)
+    with open(os.path.join(soa_dir, TARGET_FILE), 'r') as f:
+        old_mappings = json.load(f)
+    mappings = get_branch_mappings(soa_dir, old_mappings)
     with open(os.path.join(soa_dir, TARGET_FILE), 'w') as f:
         json.dump(mappings, f)
 

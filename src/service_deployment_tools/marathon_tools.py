@@ -111,6 +111,13 @@ def get_cluster():
     return get_config()['cluster']
 
 
+def get_docker_registry():
+    """Get the docker_registry defined in this host's marathon config file.
+
+    :returns: The docker_registry specified in the marathon configuration"""
+    return get_config()['docker_registry']
+
+
 def get_ports(service_config):
     """Gets the number of ports required from the service's marathon configuration.
 
@@ -302,7 +309,7 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         # Once we don't allow docker_image anymore, remove this if and everything will work
         if 'docker_image' not in general_config:
             if 'branch' not in general_config:
-                branch = cluster
+                branch = 'paasta-%s' % cluster
             else:
                 branch = general_config['branch']
             general_config['docker_image'] = get_docker_from_branch(name, branch, soa_dir)

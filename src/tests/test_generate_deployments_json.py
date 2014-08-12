@@ -84,6 +84,8 @@ def test_get_branch_mappings():
     fake_branches = [['try_me'], ['no_thanks']]
     fake_remotes = [[('123456', 'try_me'), ('ijowarg', 'okay')],
                     [('789009', 'no_thanks'), ('j8yiomwer', 'nah')]]
+    fake_registry = 'super-docker'
+    fake_old_mappings = ['']
     fake_git = mock.Mock()
     expected = {'uno:no_thanks': 'services-uno:jenkins-789009',
                 'dos:try_me': 'services-dos:jenkins-123456'}
@@ -96,6 +98,10 @@ def test_get_branch_mappings():
                    side_effect=lambda a, b: fake_branches.pop()),
         mock.patch('generate_deployments_json.get_remote_branches_for_service',
                    side_effect=lambda a, b: fake_remotes.pop()),
+        mock.patch('service_deployment_tools.marathon_tools.get_docker_registry',
+                   return_value=fake_registry),
+        mock.patch('service_deployment_tools.marathon_tools.get_docker_url',
+                   return_value=True),
         mock.patch('os.rmdir')
     ) as (
         mkdir_patch,
@@ -103,11 +109,14 @@ def test_get_branch_mappings():
         get_dirs_patch,
         get_branches_patch,
         get_remotes_patch,
+        registry_patch,
+        docker_url_patch,
         rmdir_patch
     ):
-        actual = generate_deployments_json.get_branch_mappings(fake_soa_dir)
+        actual = generate_deployments_json.get_branch_mappings(fake_soa_dir, fake_old_mappings)
         assert expected == actual
         mkdir_patch.assert_called_once_with()
+        registry_patch.assert_called_once_with()
         git_patch.assert_called_once_with(fake_tmp_dir)
         get_dirs_patch.assert_called_once_with(fake_soa_dir)
         get_branches_patch.assert_any_call(fake_soa_dir, 'uno')
@@ -117,6 +126,9 @@ def test_get_branch_mappings():
         get_remotes_patch.assert_any_call(fake_git, 'dos')
         assert get_remotes_patch.call_count == 2
         rmdir_patch.assert_called_once_with(fake_tmp_dir)
+        docker_url_patch.assert_any_call(fake_registry, 'services-uno:jenkins-789009', verify=True)
+        docker_url_patch.assert_any_call(fake_registry, 'services-dos:jenkins-123456', verify=True)
+        assert docker_url_patch.call_count == 2
 
 
 def test_main():
@@ -129,19 +141,25 @@ def test_main():
         mock.patch('generate_deployments_json.get_branch_mappings', return_value='MAPPINGS'),
         mock.patch('os.path.join', return_value='JOIN'),
         mock.patch('generate_deployments_json.open', create=True, return_value=file_mock),
-        mock.patch('json.dump')
+        mock.patch('json.dump'),
+        mock.patch('json.load', return_value='LOAAAAADIN')
     ) as (
         parse_patch,
         abspath_patch,
         mappings_patch,
         join_patch,
         open_patch,
-        json_patch
+        json_dump_patch,
+        json_load_patch
     ):
         generate_deployments_json.main()
         parse_patch.assert_called_once_with()
         abspath_patch.assert_called_once_with(fake_soa_dir)
-        mappings_patch.assert_called_once_with('ABSOLUTE'),
-        join_patch.assert_called_once_with('ABSOLUTE', generate_deployments_json.TARGET_FILE),
-        open_patch.assert_called_once_with('JOIN', 'w')
-        json_patch.assert_called_once_with('MAPPINGS', file_mock.__enter__())
+        mappings_patch.assert_called_once_with('ABSOLUTE', 'LOAAAAADIN'),
+        join_patch.assert_any_call('ABSOLUTE', generate_deployments_json.TARGET_FILE),
+        assert join_patch.call_count == 2
+        open_patch.assert_any_call('JOIN', 'w')
+        open_patch.assert_any_call('JOIN', 'r')
+        assert open_patch.call_count == 2
+        json_dump_patch.assert_called_once_with('MAPPINGS', file_mock.__enter__())
+        json_load_patch.assert_called_once_with(file_mock.__enter__())

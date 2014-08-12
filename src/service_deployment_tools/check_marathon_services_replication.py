@@ -17,14 +17,6 @@ warning status to sensu, and one for emitting a critical status to sensu. The
 default thresholds are .75/.50, meaning if fewer than 75% of a service's backends are
 available, the script sends WARNING, and if fewer than 50% are available, it sends
 CRITICAL.
-
-Command line options:
-
-- -s <HOST:PORT>, --synapse-host-port <HOST:PORT>: Specify the synapse host to connect to
-- -w <FRACTION>, --warn <FRACTION>: Specify the warning fractional threshold for available backends
-- -c <FRACTION>, --critical <FRACTION>: Specify the critical fractional threshold for available backends
-- -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
-- -v, --verbose: Verbose output
 """
 import argparse
 import logging
@@ -65,7 +57,7 @@ def send_event(service_name, namespace, status, output):
 
 
 def parse_args():
-    epilog = "DECIMAL is a decimal value representing the ratio of available to expected instances"
+    epilog = "PERCENTAGE is an integer value representing the percentage of available to expected instances"
     parser = argparse.ArgumentParser(epilog=epilog)
 
     parser.add_argument('-s', '--synapse-host-port',
@@ -73,13 +65,13 @@ def parse_args():
                         help='The host and port to check synapse on',
                         default='localhost:3212')
     parser.add_argument('-w', '--warn', dest='warn', type=int,
-                        metavar='DECIMAL', default=0.75,
+                        metavar='PERCENTAGE', default=75,
                         help="Generate warning state if fraction of instances \
-                        available is less than this value")
+                        available is less than this percentage")
     parser.add_argument('-c', '--critcal', dest='crit', type=int,
-                        metavar='DECIMAL', default=0.50,
+                        metavar='PERCENTAGE', default=90,
                         help="Generate critical state if fraction of instances \
-                        available is less than this value")
+                        available is less than this percentage")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
@@ -144,13 +136,13 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
             send_event(service_name, namespace, pysensu_yelp.Status.CRITICAL, output)
             continue
         num_available = available_backends[full_name]
-        ratio = num_available / float(num_expected)
+        ratio = (num_available / float(num_expected)) * 100
         output = 'Service namespace %s has %d/%d instances available,\
                   thresholds are WARN @ %d, CRITICAL @ %d' % (full_name,
-                                                          num_available,
-                                                          num_expected,
-                                                          warn_threshold,
-                                                          crit_threshold)
+                                                              num_available,
+                                                              num_expected,
+                                                              warn_threshold,
+                                                              crit_threshold)
         if ratio <= crit_threshold:
             log.error(output)
             status = pysensu_yelp.Status.CRITICAL

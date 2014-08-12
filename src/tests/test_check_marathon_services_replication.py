@@ -109,8 +109,8 @@ def test_check_namespaces():
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
     expected = [0, 8, 8, 8, 8]
     soa_dir = 'test_dir'
-    warn = 0.5
-    crit = 0.125
+    warn = 50
+    crit = 12.5
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.get_expected_instances',
                    side_effect=lambda a, b, c: expected.pop()),

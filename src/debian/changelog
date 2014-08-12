@@ -1,3 +1,10 @@
+service-deployment-tools (0.2.6-yelp1) lucid; urgency=low
+
+  * Changing setup_marathon_job's check_every to 1m
+  * Made generate_deployments_json verify docker urls and fallback if invalid 
+
+ -- James McGuinness <jrm@yelp.com>  Mon, 11 Aug 2014 18:55:11 -0700
+
 service-deployment-tools (0.2.5-yelp1) lucid; urgency=low
 
   * Changing traceback string in setup_marathon_job
