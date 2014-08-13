@@ -281,7 +281,7 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
     If a branch or docker_image aren't specified for a config, the
-    'branch' key defaults to the cluster argument.
+    'branch' key defaults to paasta-${cluster}-${instance}.
 
     If cluster isn't given, it's loaded using get_cluster.
 
@@ -309,7 +309,7 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         # Once we don't allow docker_image anymore, remove this if and everything will work
         if 'docker_image' not in general_config:
             if 'branch' not in general_config:
-                branch = 'paasta-%s' % cluster
+                branch = 'paasta-%s-%s' % (cluster, instance)
             else:
                 branch = general_config['branch']
             general_config['docker_image'] = get_docker_from_branch(name, branch, soa_dir)
@@ -346,6 +346,27 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
+
+
+def get_mode_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Get the mode defined in the namespace configuration for a service instances.
+    Defaults to http if one isn't defined.
+
+    This means that the namespace first has to be loaded from the service instance's
+    configuration, and then the mode has to loaded from the smartstack configuration
+    for that namespace.
+
+    :param name: The service name
+    :param instance: The instance of the service
+    :param cluster: The cluster to read the configuration for
+    :param soa_dir: The SOA config directory to read from
+    :returns: The mode for the service instance, or 'http' if not defined
+    """
+    if not cluster:
+        cluster = get_cluster()
+    namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
+    nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
+    return nerve_dict.get('mode', 'http')
 
 
 def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -425,7 +446,7 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     - timeout_connect_ms: proxy frontend timeout in milliseconds
     - timeout_server_ms: proxy server backend timeout in milliseconds
     - retries: the number of retires on a proxy backend
-    - mode: the mode the service is run in (HTTP, TCP, etc)
+    - mode: the mode the service is run in (http or tcp)
     - routes: a list of tuples of (source, destination)
 
     :param srv_name: The service name

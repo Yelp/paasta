@@ -50,7 +50,8 @@ def send_event(service_name, namespace, status, output):
         'tip': monitoring_tools.get_tip(framework, service_name),
         'notification_email': monitoring_tools.get_notification_email(framework, service_name),
         'page': monitoring_tools.get_page(framework, service_name),
-        'alert_after': monitoring_tools.get_alert_after(framework, service_name),
+        'alert_after': '2m',
+        'check_every': '1m',
         'realert_every': -1
     }
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)

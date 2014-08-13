@@ -17,12 +17,12 @@ def test_send_event():
     fake_tip = 'fake_pit'
     fake_notification_email = 'notify@fake'
     fake_page = True
-    fake_alert_after = '01m'
     expected_kwargs = {
         'tip': fake_tip,
         'notification_email': fake_notification_email,
         'page': fake_page,
-        'alert_after': fake_alert_after,
+        'alert_after': '2m',
+        'check_every': '1m',
         'realert_every': -1,
     }
     expected_check_name = 'check_marathon_services_replication.%s.%s' % (fake_service_name, fake_namespace)
@@ -37,8 +37,6 @@ def test_send_event():
                    return_value=fake_notification_email),
         mock.patch("service_deployment_tools.monitoring_tools.get_page",
                    return_value=fake_page),
-        mock.patch("service_deployment_tools.monitoring_tools.get_alert_after",
-                   return_value=fake_alert_after),
         mock.patch("pysensu_yelp.send_event"),
     ) as (
         monitoring_tools_get_team_patch,
@@ -46,7 +44,6 @@ def test_send_event():
         monitoring_tools_get_tip_patch,
         monitoring_tools_get_notification_email_patch,
         monitoring_tools_get_page_patch,
-        monitoring_tools_get_alert_after_patch,
         pysensu_yelp_send_event_patch,
     ):
         check_marathon_services_replication.send_event(fake_service_name,
@@ -58,7 +55,6 @@ def test_send_event():
         monitoring_tools_get_tip_patch.assert_called_once_with('marathon', fake_service_name)
         monitoring_tools_get_notification_email_patch.assert_called_once_with('marathon', fake_service_name)
         monitoring_tools_get_page_patch.assert_called_once_with('marathon', fake_service_name)
-        monitoring_tools_get_alert_after_patch.assert_called_once_with('marathon', fake_service_name)
         pysensu_yelp_send_event_patch.assert_called_once_with(expected_check_name, fake_runbook, fake_status,
                                                               fake_output, fake_team, **expected_kwargs)
 

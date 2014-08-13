@@ -6,7 +6,7 @@ am_i_mesos_leader
 synapse_srv_namespaces_fact
 setup_chronos_jobs
 cleanup_marathon_jobs
-check_marathon_services_http_frontends
+check_marathon_services_frontends
 list_marathon_service_instances
 deploy_marathon_services
 generate_deployments_json

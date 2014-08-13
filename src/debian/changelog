@@ -1,3 +1,12 @@
+service-deployment-tools (0.2.7-yelp1) lucid; urgency=low
+
+  * check_marathon_services_http_frontends checks tcp too, renamed to check_marathon_services_frontends
+  * New check_marathon_services_replication script to check service replication and send events
+  * Added an itest_trusty target, needs dh-virtualenv for trusty to work
+  * Fixed setup_marathon_job to use the new marathon-python client exceptions
+
+ -- James McGuinness <jrm@yelp.com>  Tue, 12 Aug 2014 17:25:10 -0700
+
 service-deployment-tools (0.2.6-yelp1) lucid; urgency=low
 
   * Changing setup_marathon_job's check_every to 1m

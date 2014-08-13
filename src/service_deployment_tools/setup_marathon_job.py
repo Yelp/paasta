@@ -34,6 +34,7 @@ import service_configuration_lib
 from service_deployment_tools import marathon_tools
 from service_deployment_tools import bounce_lib
 from marathon import MarathonClient
+from marathon.exceptions import NotFoundError, InternalServerError
 import pysensu_yelp
 
 # Marathon REST API:
@@ -182,9 +183,12 @@ def setup_service(service_name, instance_name, client, marathon_config,
         client.get_app(full_id)
         log.warning("App id %s already exists. Skipping configuration and exiting.", full_id)
         return (0, 'Service was already deployed.')
-    except KeyError:
+    except NotFoundError:
         return deploy_service(full_id, complete_config, client, namespace,
                               marathon_tools.get_bounce_method(service_marathon_config))
+    except InternalServerError as e:
+        log.error('Marathon had an internal server error: %s' % str(e))
+        return(1, str(e))
 
 
 def main():
@@ -225,7 +229,7 @@ def main():
             sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
             send_sensu_event(service_name, instance_name, soa_dir, sensu_status, output)
             sys.exit(status)
-        except (KeyError, TypeError, ValueError, AttributeError):
+        except (KeyError, TypeError, AttributeError):
             import traceback
             error_str = traceback.format_exc()
             log.error(error_str)

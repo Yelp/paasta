@@ -2,7 +2,7 @@ usr/share/python/service-deployment-tools/bin/setup_marathon_job.py usr/bin/setu
 usr/share/python/service-deployment-tools/bin/am_i_mesos_leader.py usr/bin/am_i_mesos_leader
 usr/share/python/service-deployment-tools/bin/synapse_srv_namespaces_fact.py usr/bin/synapse_srv_namespaces_fact
 usr/share/python/service-deployment-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
-usr/share/python/service-deployment-tools/bin/check_marathon_services_http_frontends.py usr/bin/check_marathon_services_http_frontends
+usr/share/python/service-deployment-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
 usr/share/python/service-deployment-tools/bin/setup_chronos_jobs.py usr/bin/setup_chronos_jobs
 usr/share/python/service-deployment-tools/bin/list_marathon_service_instances.py usr/bin/list_marathon_service_instances
 usr/share/python/service-deployment-tools/bin/check_synapse_replication.py usr/bin/check_synapse_replication

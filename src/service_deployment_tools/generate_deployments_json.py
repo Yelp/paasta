@@ -176,8 +176,11 @@ def main():
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
-    with open(os.path.join(soa_dir, TARGET_FILE), 'r') as f:
-        old_mappings = json.load(f)
+    try:
+        with open(os.path.join(soa_dir, TARGET_FILE), 'r') as f:
+            old_mappings = json.load(f)
+    except (IOError, ValueError):
+        old_mappings = {}
     mappings = get_branch_mappings(soa_dir, old_mappings)
     with open(os.path.join(soa_dir, TARGET_FILE), 'w') as f:
         json.dump(mappings, f)

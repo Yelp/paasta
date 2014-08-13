@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'service-deployment-tools',
-    version        = '0.2.6',
+    version        = '0.2.7',
     provides       = ["service_deployment_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -17,7 +17,7 @@ setup(
     install_requires = [
         'isodate >= 0.5.0',
         'service-configuration-lib >= 0.6.0',
-        'marathon == 0.2.5',
+        'marathon == 0.3.2',
         'argparse',
         'pycurl',
         'sensu-plugin == 0.1.0',
@@ -31,7 +31,7 @@ setup(
         'service_deployment_tools/am_i_mesos_leader.py',
         'service_deployment_tools/synapse_srv_namespaces_fact.py',
         'service_deployment_tools/cleanup_marathon_jobs.py',
-        'service_deployment_tools/check_marathon_services_http_frontends.py',
+        'service_deployment_tools/check_marathon_services_frontends.py',
         'service_deployment_tools/list_marathon_service_instances.py',
         'service_deployment_tools/monitoring/check_synapse_replication.py',
         'service_deployment_tools/monitoring/check_classic_service_replication.py',

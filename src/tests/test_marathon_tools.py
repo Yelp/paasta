@@ -215,6 +215,45 @@ class TestMarathonTools:
             read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
             read_config_patch.assert_called_once_with(name, namespace, soa_dir)
 
+    def test_get_mode_for_instance_present(self):
+        name = 'stage_env'
+        instance = 'in_aws'
+        cluster = 'thats_crazy'
+        soa_dir = 'the_future'
+        namespace = 'is_here'
+        fake_mode = 'banana'
+        fake_nerve = {'mode': fake_mode}
+        with contextlib.nested(
+            mock.patch('marathon_tools.read_namespace_for_service_instance', return_value=namespace),
+            mock.patch('marathon_tools.read_service_namespace_config', return_value=fake_nerve)
+        ) as (
+            read_ns_patch,
+            read_config_patch
+        ):
+            actual = marathon_tools.get_mode_for_instance(name, instance, cluster, soa_dir)
+            assert fake_mode == actual
+            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
+            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
+
+    def test_get_mode_for_instance_default(self):
+        name = 'stage_env'
+        instance = 'in_aws'
+        cluster = 'thats_crazy'
+        soa_dir = 'the_future'
+        namespace = 'is_here'
+        expected = 'http'
+        with contextlib.nested(
+            mock.patch('marathon_tools.read_namespace_for_service_instance', return_value=namespace),
+            mock.patch('marathon_tools.read_service_namespace_config', return_value={})
+        ) as (
+            read_ns_patch,
+            read_config_patch
+        ):
+            actual = marathon_tools.get_mode_for_instance(name, instance, cluster, soa_dir)
+            assert expected == actual
+            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
+            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
+
     def test_read_service_namespace_config_exists(self):
         name = 'eman'
         namespace = 'ecapseman'

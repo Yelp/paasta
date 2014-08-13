@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import setup_marathon_job
+import marathon
 from service_deployment_tools import marathon_tools
 import mock
 import contextlib
@@ -177,7 +178,9 @@ class TestSetupMarathonJob:
     def test_setup_service_srv_does_not_exist(self):
         fake_name = 'if_talk_was_cheap'
         fake_instance = 'psychatrists_would_be_broke'
-        fake_client = mock.MagicMock(get_app=mock.Mock(side_effect=KeyError))
+        fake_response = mock.Mock(json=mock.Mock(return_value={'message': 'test'}))
+        fake_client = mock.MagicMock(get_app=mock.Mock(
+                        side_effect=marathon.exceptions.NotFoundError(fake_response)))
         fake_complete = {'do': 'you', 'even': 'dota'}
         fake_url = 'docker:///a_miserable_pile_of_mocks'
         fake_bounce = 'trampoline'
