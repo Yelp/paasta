@@ -1,3 +1,9 @@
+service-deployment-tools (0.2.9-yelp1) lucid; urgency=low
+
+  * Changed default branch names again, put in a marathon_tools function now
+
+ -- James McGuinness <jrm@yelp.com>  Wed, 13 Aug 2014 16:04:23 -0700
+
 service-deployment-tools (0.2.8-yelp1) lucid; urgency=low
 
   * Added timeout_client_ms key support for smartstack.yaml

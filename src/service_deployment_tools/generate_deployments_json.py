@@ -7,11 +7,12 @@ This file contains a dictionary of k/v pairs representing a map between remote
 branches of a service's Git repository and the current SHA at the tip of that branch.
 This is done by specifing a 'branch' key in a service instance's configuration,
 or if there is no 'docker_image' key in the configuration, a branch name
-is assumed to be the same as the the cluster the script is executed in.
+is assumed to be paasta-{cluster}-{instance}, where cluster is the cluster
+the configuration is for and instance is the instance name.
 
 For example, if the service paasta_test has an instance called main with no
 branch or docker_image key in its configuration in the devc cluster, then this script
-will create a key/value pair of 'paasta_test:devc': 'services-paasta_test:jenkins-SHA',
+will create a key/value pair of 'paasta_test:paasta-devc.main': 'services-paasta_test:jenkins-SHA',
 where SHA is the current SHA at the tip of the branch named devc in
 git@git.yelpcorp.com:services/paasta_test.git. If main had a branch key with
 a value of 'master', the key would be paasta_test:master instead, and the SHA
@@ -65,8 +66,10 @@ def get_branches_from_marathon_file(file_dir, filename):
     """Get all branches defined in a single service configuration file.
     A branch is defined for an instance if it has a 'branch' key, or
     does not have any 'docker_image' key. In the case of the latter
-    but not the former, the branch name is the cluster the marathon
-    file is designated for (i.e. marathon-devc.yaml is devc).
+    but not the former, the branch name is paasta-{cluster}.{instance},
+    where cluster is the cluster the marathon file is defined for
+    (i.e. marathon-devc.yaml is for devc), and instance is the
+    instance name.
 
     :param file_dir: The directory that the filename argument is in
     :param filename: The name of the service configuration file to read from
@@ -80,7 +83,8 @@ def get_branches_from_marathon_file(file_dir, filename):
         # Change this to else when we don't care about docker_image anymore
         elif 'docker_image' not in config[instance]:
             try:
-                target_branch = filename.split('-')[1].split('.')[0]
+                cluster = filename.split('-')[1].split('.')[0]
+                target_branch = marathon_tools.get_default_branch(cluster, instance)
             except IndexError:
                 pass
         if target_branch:

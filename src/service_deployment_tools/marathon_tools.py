@@ -97,6 +97,10 @@ def remove_tag_from_job_id(job_id):
     return '%s%s%s' % (job_id.split(ID_SPACER)[0], ID_SPACER, job_id.split(ID_SPACER)[1])
 
 
+def get_default_branch(cluster, instance):
+    return 'paasta-%s.%s' % (cluster, instance)
+
+
 def get_docker_url(registry_uri, docker_image, verify=True):
     """Compose the docker url.
 
@@ -289,7 +293,7 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
     If a branch or docker_image aren't specified for a config, the
-    'branch' key defaults to paasta-${cluster}-${instance}.
+    'branch' key defaults to paasta-${cluster}.${instance}.
 
     If cluster isn't given, it's loaded using get_cluster.
 
@@ -317,7 +321,7 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         # Once we don't allow docker_image anymore, remove this if and everything will work
         if 'docker_image' not in general_config:
             if 'branch' not in general_config:
-                branch = 'paasta-%s-%s' % (cluster, instance)
+                branch = get_default_branch(cluster, instance)
             else:
                 branch = general_config['branch']
             general_config['docker_image'] = get_docker_from_branch(name, branch, soa_dir)

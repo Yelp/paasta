@@ -13,7 +13,7 @@ def test_get_branches_from_marathon_file():
     fake_dir = '/nail/etc/soa/dir'
     fake_fname = 'marathon-boston.yaml'
     fake_config = {'test1': {'branch': 'ranch'}, 'test2': {}}
-    expected = set(['ranch', 'boston'])
+    expected = set(['ranch', 'paasta-boston.test2'])
     with contextlib.nested(
         mock.patch('service_configuration_lib.read_service_information',
                    return_value=fake_config),
