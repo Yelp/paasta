@@ -5,6 +5,8 @@ import logging
 import os
 import signal
 import time
+from kazoo.client import KazooClient
+from kazoo.exceptions import LockTimeout
 import marathon_tools
 from service_deployment_tools.monitoring.replication_utils import get_replication_for_services
 
@@ -14,6 +16,8 @@ DEFAULT_SYNAPSE_HOST = 'localhost:3212'
 CROSSOVER_MAX_TIME_M = 30  # Max time in minutes to bounce
 CROSSOVER_FRACTION_REQUIRED = 0.9  # % of new instances needed in HAProxy for a successful bounce
 CROSSOVER_SLEEP_INTERVAL_S = 10  # seconds to sleep between scaling an app and checking HAProxy
+ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper
+ZK_LOCK_PATH = '/bounce'
 
 
 class TimeoutException(Exception):
@@ -31,15 +35,40 @@ def bounce_lock(name):
     :param name: The lock name to acquire"""
     lockfile = '/var/lock/%s.lock' % name
     fd = open(lockfile, 'w')
+    remove = False
     try:
         fcntl.lockf(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        remove = True
+        yield
     except IOError:
         raise IOError("Service %s is already being bounced!" % name)
-    try:
-        yield
     finally:
         fd.close()
-        os.remove(lockfile)
+        if remove:
+            os.remove(lockfile)
+
+
+@contextmanager
+def bounce_lock_zookeeper(name):
+    """Acquire a bounce lock in zookeeper for the name given. The name should
+    generally be the service namespace being bounced.
+
+    The zookeeper file is loaded via
+
+    This is a contextmanager. Please use it via 'with bounce_lock(name):'.
+
+    :param name: The lock name to acquire"""
+    zk = KazooClient(hosts=marathon_tools.get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
+    zk.start()
+    lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, name))
+    try:
+        lock.acquire(timeout=1)  # timeout=0 throws some other strange exception
+        yield
+    except LockTimeout:
+        raise IOError("Service %s is already being bounced!" % name)
+    finally:
+        lock.release()
+        zk.stop()
 
 
 @contextmanager
@@ -49,7 +78,7 @@ def time_limit(minutes):
 
     :param minutes: The number of minutes until an exception is raised"""
     def signal_handler(signum, frame):
-        raise TimeoutException("Timeout")
+        raise TimeoutException("Service bounce timed out")
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(minutes * 60)
     try:
@@ -83,7 +112,7 @@ def brutal_bounce(old_ids, new_config, client, namespace):
     target_service = marathon_tools.remove_tag_from_job_id(new_config['id'])
     service_namespace = '%s%s%s' % (target_service.split(marathon_tools.ID_SPACER)[0],
                                     marathon_tools.ID_SPACER, namespace)
-    with bounce_lock(service_namespace):
+    with bounce_lock_zookeeper(service_namespace):
         kill_old_ids(old_ids, client)
         log.info("Creating %s", new_config['id'])
         client.create_app(**new_config)
@@ -143,7 +172,7 @@ def crossover_bounce(old_ids, new_config, client, namespace):
     target_delta = max(int(new_config['instances'] * CROSSOVER_FRACTION_REQUIRED), 1)
     total_delta = 0
     try:
-        with nested(bounce_lock(service_namespace), time_limit(CROSSOVER_MAX_TIME_M)):
+        with nested(bounce_lock_zookeeper(service_namespace), time_limit(CROSSOVER_MAX_TIME_M)):
             # Okay, deploy the new job!
             client.create_app(**new_config)
             # Sleep once to give the stack some time to spin up.
@@ -158,10 +187,9 @@ def crossover_bounce(old_ids, new_config, client, namespace):
                 total_delta += scale_apps(scalable_apps, available_instances - initial_instances, client)
                 # Wait for nerve/synapse to reconfigure.
                 time.sleep(CROSSOVER_SLEEP_INTERVAL_S)
-    except TimeoutException:
-        pass
-    # The reason we don't delete from scalable_apps is because it's possible to
-    # time out a bounce while a scalable app was being scaled down, and
-    # wasn't added back into the list yet. This'll make sure everything
-    # is gone and only the new job remains.
-    kill_old_ids(old_ids, client)
+    finally:
+        # The reason we don't delete from scalable_apps is because it's possible to
+        # time out a bounce while a scalable app was being scaled down, and
+        # wasn't added back into the list yet. This'll make sure everything
+        # is gone and only the new job remains.
+        kill_old_ids(old_ids, client)

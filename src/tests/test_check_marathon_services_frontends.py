@@ -98,7 +98,7 @@ def test_check_service_instance():
     fake_port = 666
     fake_mode = 'http'
     fake_soa_dir = '/zelda/link'
-    expected_check_name = 'paasta_%s.%s_frontends' % (fake_service_name, fake_instance_name)
+    expected_check_name = 'check_marathon_services_frontends.%s.%s' % (fake_service_name, fake_instance_name)
     with contextlib.nested(
         mock.patch("service_deployment_tools.marathon_tools.get_mode_for_instance",
                    return_value=fake_mode),
@@ -131,7 +131,7 @@ def test_check_service_instance_invalid_mode():
     fake_port = 666
     fake_mode = 'ycp'
     fake_soa_dir = '/zelda/link'
-    expected_check_name = 'paasta_%s.%s_frontends' % (fake_service_name, fake_instance_name)
+    expected_check_name = 'check_marathon_services_frontends.%s.%s' % (fake_service_name, fake_instance_name)
     with contextlib.nested(
         mock.patch("service_deployment_tools.marathon_tools.get_mode_for_instance",
                    return_value=fake_mode),

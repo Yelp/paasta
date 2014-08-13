@@ -93,7 +93,7 @@ def check_service_instance(service_name, instance_name, soa_dir):
     # TODO: Skip checking a service if it is under the namespace of another instance
     port = marathon_tools.get_proxy_port_for_instance(service_name, instance_name, soa_dir=soa_dir)
     mode = marathon_tools.get_mode_for_instance(service_name, instance_name, soa_dir=soa_dir)
-    check_name = "paasta_%s.%s_frontends" % (service_name, instance_name)
+    check_name = "check_marathon_services_frontends.%s.%s" % (service_name, instance_name)
     if mode == 'tcp' or mode == 'http':
         status, output = check_service(port, mode)
     else:

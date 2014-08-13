@@ -70,7 +70,7 @@ def parse_args():
                         help="Generate warning state if fraction of instances \
                         available is less than this percentage")
     parser.add_argument('-c', '--critcal', dest='crit', type=int,
-                        metavar='PERCENTAGE', default=90,
+                        metavar='PERCENTAGE', default=50,
                         help="Generate critical state if fraction of instances \
                         available is less than this percentage")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",

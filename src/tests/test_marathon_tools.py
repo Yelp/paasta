@@ -266,16 +266,14 @@ class TestMarathonTools:
         fake_info = {'healthcheck_uri': fake_uri, 'healthcheck_timeout_s': fake_timeout,
                      'proxy_port': fake_port,
                      'timeout_connect_ms': 192, 'timeout_server_ms': 291,
-                     'retries': fake_retries,
-                     'mode': fake_mode,
+                     'timeout_client_ms': 912, 'retries': fake_retries, 'mode': fake_mode,
                      'routes': [{'source': 'oregon', 'destinations': ['indiana']},
                                 {'source': 'florida', 'destinations': ['miami', 'beach']}]}
         fake_config = {namespace: fake_info}
         expected = {'healthcheck_uri': fake_uri, 'healthcheck_timeout_s': fake_timeout,
                     'proxy_port': fake_port,
                     'timeout_connect_ms': 192, 'timeout_server_ms': 291,
-                    'retries': fake_retries,
-                    'mode': fake_mode,
+                    'timeout_client_ms': 912, 'retries': fake_retries, 'mode': fake_mode,
                     'routes': [('oregon', 'indiana'), ('florida', 'miami'), ('florida', 'beach')]}
         with mock.patch('service_configuration_lib.read_extra_service_information',
                         return_value=fake_config) as read_extra_patch:

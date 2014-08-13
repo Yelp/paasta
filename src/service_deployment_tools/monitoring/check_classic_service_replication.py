@@ -141,7 +141,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
 
         # Get the replication data once for performance
         service_replication = get_replication_for_services(
-            SYNAPSE_HOST_PORT, all_service_config.keys()
+            SYNAPSE_HOST_PORT, ['%s.main' % name for name in all_service_config.keys()]
         )
 
         checked_services = []
@@ -152,7 +152,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
 
             if do_monitoring:
                 self.log.debug("Checking {0}".format(service_name))
-                replication = service_replication.get(service_name, 0)
+                replication = service_replication.get('%s.main' % service_name, 0)
                 event = do_replication_check(service_name, monitoring_config,
                                              replication)
                 checked_services.append(service_name)

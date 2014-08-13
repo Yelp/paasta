@@ -51,6 +51,28 @@ def get_config():
     return MarathonConfig().get()
 
 
+def get_cluster():
+    """Get the cluster defined in this host's marathon config file.
+
+    :returns: The name of the cluster defined in the marathon configuration"""
+    return get_config()['cluster']
+
+
+def get_docker_registry():
+    """Get the docker_registry defined in this host's marathon config file.
+
+    :returns: The docker_registry specified in the marathon configuration"""
+    return get_config()['docker_registry']
+
+
+def get_zk_hosts():
+    """Get the zk_hosts defined in this hosts's marathon config file.
+    Strips off the zk:// prefix, if it exists, for use with Kazoo.
+
+    :returns: The zk_hosts specified in the marathon configuration"""
+    return get_config()['zk_hosts'].lstrip('zk://')
+
+
 def compose_job_id(name, instance, tag=None):
     """Compose a marathon job/app id.
 
@@ -102,20 +124,6 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
     log.info("Docker URL: %s", docker_url)
     return docker_url
-
-
-def get_cluster():
-    """Get the cluster defined in this host's marathon config file.
-
-    :returns: The name of the cluster defined in the marathon configuration"""
-    return get_config()['cluster']
-
-
-def get_docker_registry():
-    """Get the docker_registry defined in this host's marathon config file.
-
-    :returns: The docker_registry specified in the marathon configuration"""
-    return get_config()['docker_registry']
 
 
 def get_ports(service_config):
@@ -445,6 +453,7 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     - healthcheck_timeout_s: healthcheck timeout in seconds
     - timeout_connect_ms: proxy frontend timeout in milliseconds
     - timeout_server_ms: proxy server backend timeout in milliseconds
+    - timeout_client_ms: proxy server client timeout in milliseconds
     - retries: the number of retires on a proxy backend
     - mode: the mode the service is run in (http or tcp)
     - routes: a list of tuples of (source, destination)
@@ -474,6 +483,8 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
             ns_dict['timeout_connect_ms'] = ns_config['timeout_connect_ms']
         if 'timeout_server_ms' in ns_config:
             ns_dict['timeout_server_ms'] = ns_config['timeout_server_ms']
+        if 'timeout_client_ms' in ns_config:
+            ns_dict['timeout_client_ms'] = ns_config['timeout_client_ms']
         if 'retries' in ns_config:
             ns_dict['retries'] = ns_config['retries']
         if 'mode' in ns_config:

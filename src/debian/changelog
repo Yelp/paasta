@@ -1,3 +1,11 @@
+service-deployment-tools (0.2.8-yelp1) lucid; urgency=low
+
+  * Added timeout_client_ms key support for smartstack.yaml
+  * Implemented zookeeper bounce locking in bounce_lib
+  * Changed classic service healthchecks to check srv_name.main
+
+ -- James McGuinness <jrm@yelp.com>  Wed, 13 Aug 2014 15:16:55 -0700
+
 service-deployment-tools (0.2.7-yelp1) lucid; urgency=low
 
   * check_marathon_services_http_frontends checks tcp too, renamed to check_marathon_services_frontends
