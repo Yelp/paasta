@@ -136,7 +136,7 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
         if full_name not in available_backends:
             output = 'Service namespace entry %s not found! No instances available!' % full_name
             log.error(output)
-            send_event(service_name, namespace, pysensu_yelp.Status.CRITICAL, output)
+            send_event(service_name, namespace, soa_dir, pysensu_yelp.Status.CRITICAL, output)
             continue
         num_available = available_backends[full_name]
         ratio = (num_available / float(num_expected)) * 100
@@ -155,7 +155,7 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
         else:
             log.info(output)
             status = pysensu_yelp.Status.OK
-        send_event(service_name, namespace, status, output)
+        send_event(service_name, namespace, soa_dir, status, output)
 
 
 def main():

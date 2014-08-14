@@ -1,3 +1,9 @@
+service-deployment-tools (0.2.11-yelp1) lucid; urgency=low
+
+  * Fixing a bug in check_marathon_services_replication 
+
+ -- James McGuinness <jrm@yelp.com>  Wed, 13 Aug 2014 18:49:16 -0700
+
 service-deployment-tools (0.2.10-yelp1) lucid; urgency=low
 
   * Updated docs

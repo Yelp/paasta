@@ -136,10 +136,10 @@ def test_check_namespaces():
         expected_patch.assert_any_call('test', 'four', soa_dir)
         expected_patch.assert_any_call('test', 'five', soa_dir)
         assert expected_patch.call_count == 5
-        event_patch.assert_any_call('test', 'one', pysensu_yelp.Status.CRITICAL, mock.ANY)
-        event_patch.assert_any_call('test', 'two', pysensu_yelp.Status.CRITICAL, mock.ANY)
-        event_patch.assert_any_call('test', 'three', pysensu_yelp.Status.WARNING, mock.ANY)
-        event_patch.assert_any_call('test', 'four', pysensu_yelp.Status.OK, mock.ANY)
+        event_patch.assert_any_call('test', 'one', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
+        event_patch.assert_any_call('test', 'two', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
+        event_patch.assert_any_call('test', 'three', soa_dir, pysensu_yelp.Status.WARNING, mock.ANY)
+        event_patch.assert_any_call('test', 'four', soa_dir, pysensu_yelp.Status.OK, mock.ANY)
         assert event_patch.call_count == 4
 
 
