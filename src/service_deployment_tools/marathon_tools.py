@@ -458,7 +458,7 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     - timeout_connect_ms: proxy frontend timeout in milliseconds
     - timeout_server_ms: proxy server backend timeout in milliseconds
     - timeout_client_ms: proxy server client timeout in milliseconds
-    - retries: the number of retires on a proxy backend
+    - retries: the number of retries on a proxy backend
     - mode: the mode the service is run in (http or tcp)
     - routes: a list of tuples of (source, destination)
 

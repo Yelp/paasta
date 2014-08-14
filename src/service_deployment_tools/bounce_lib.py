@@ -88,7 +88,9 @@ def time_limit(minutes):
 
 
 def kill_old_ids(old_ids, client):
-    """Kill old marathon job ids. Skips anything that doesn't exist.
+    """Kill old marathon job ids. Skips anything that doesn't exist or
+    otherwise raises an exception. If this doesn't kill something due
+    to an exception, that's okay- it'll get cleaned up later.
 
     :param old_ids: A list of old job/app ids to kill
     :param client: A marathon.MarathonClient object"""
@@ -96,7 +98,7 @@ def kill_old_ids(old_ids, client):
         try:
             log.info("Killing %s", app)
             client.delete_app(app)
-        except KeyError:
+        except:
             continue
 
 

@@ -21,7 +21,8 @@ Scripts:
    :maxdepth: 2
 
    am_i_mesos_leader
-   check_marathon_services_http_frontends
+   check_marathon_services_frontends
+   check_marathon_services_replication
    cleanup_marathon_jobs
    deploy_marathon_services
    generate_deployments_json

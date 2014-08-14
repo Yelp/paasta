@@ -47,11 +47,14 @@ def test_send_event():
     fake_team = 'fake_team'
     fake_tip = 'fake_tip'
     fake_notification_email = 'fake@notify'
+    fake_irc = '#fake'
     fake_page = False
+    fake_soa_dir = '/un/sweet'
     expected_kwargs = {
         'tip': fake_tip,
         'notification_email': fake_notification_email,
         'page': fake_page,
+        'irc_channels': fake_irc,
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,
@@ -67,6 +70,8 @@ def test_send_event():
                    return_value=fake_notification_email),
         mock.patch("service_deployment_tools.monitoring_tools.get_page",
                    return_value=fake_page),
+        mock.patch("service_deployment_tools.monitoring_tools.get_irc_channels",
+                   return_value=fake_irc),
         mock.patch("pysensu_yelp.send_event"),
     ) as (
         monitoring_tools_get_team_patch,
@@ -74,18 +79,27 @@ def test_send_event():
         monitoring_tools_get_tip_patch,
         monitoring_tools_get_notification_email_patch,
         monitoring_tools_get_page_patch,
+        monitoring_tools_get_irc_patch,
         pysensu_yelp_send_event_patch,
     ):
         check_marathon_services_frontends.send_event(fake_service_name,
                                                      fake_instance_name,
                                                      fake_check_name,
+                                                     fake_soa_dir,
                                                      fake_status,
                                                      fake_output)
-        monitoring_tools_get_team_patch.assert_called_once_with('marathon', fake_service_name, fake_instance_name)
-        monitoring_tools_get_runbook_patch.assert_called_once_with('marathon', fake_service_name, fake_instance_name)
-        monitoring_tools_get_tip_patch.assert_called_once_with('marathon', fake_service_name, fake_instance_name)
-        monitoring_tools_get_notification_email_patch.assert_called_once_with('marathon', fake_service_name, fake_instance_name)
-        monitoring_tools_get_page_patch.assert_called_once_with('marathon', fake_service_name, fake_instance_name)
+        monitoring_tools_get_team_patch.assert_called_once_with('marathon', fake_service_name,
+                                                                fake_instance_name, fake_soa_dir)
+        monitoring_tools_get_runbook_patch.assert_called_once_with('marathon', fake_service_name,
+                                                                   fake_instance_name, fake_soa_dir)
+        monitoring_tools_get_tip_patch.assert_called_once_with('marathon', fake_service_name,
+                                                               fake_instance_name, fake_soa_dir)
+        monitoring_tools_get_notification_email_patch.assert_called_once_with('marathon', fake_service_name,
+                                                                              fake_instance_name, fake_soa_dir)
+        monitoring_tools_get_page_patch.assert_called_once_with('marathon', fake_service_name,
+                                                                fake_instance_name, fake_soa_dir)
+        monitoring_tools_get_irc_patch.assert_called_once_with('marathon', fake_service_name,
+                                                               fake_instance_name, fake_soa_dir)
         pysensu_yelp_send_event_patch.assert_called_once_with(fake_check_name, fake_runbook, fake_status,
                                                               fake_output, fake_team, **expected_kwargs)
 
@@ -120,7 +134,7 @@ def test_check_service_instance():
                                                      soa_dir=fake_soa_dir)
         check_service_patch.assert_called_once_with(fake_port, fake_mode)
         send_event_patch.assert_called_once_with(fake_service_name, fake_instance_name,
-                                                 expected_check_name, fake_status, fake_output)
+                                                 expected_check_name, fake_soa_dir, fake_status, fake_output)
 
 
 def test_check_service_instance_invalid_mode():
@@ -153,8 +167,8 @@ def test_check_service_instance_invalid_mode():
                                                      soa_dir=fake_soa_dir)
         assert check_service_patch.call_count == 0
         send_event_patch.assert_called_once_with(fake_service_name, fake_instance_name,
-                                                 expected_check_name, pysensu_yelp.Status.CRITICAL,
-                                                 mock.ANY)
+                                                 expected_check_name, fake_soa_dir,
+                                                 pysensu_yelp.Status.CRITICAL, mock.ANY)
 
 
 def test_main():

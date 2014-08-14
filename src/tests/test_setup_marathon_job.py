@@ -43,7 +43,7 @@ class TestSetupMarathonJob:
             mock.patch('service_deployment_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=(0, 'it_is_finished')),
-            mock.patch('setup_marathon_job.send_sensu_event'),
+            mock.patch('setup_marathon_job.send_event'),
             mock.patch('sys.exit'),
         ) as (
             parse_args_patch,
@@ -83,7 +83,7 @@ class TestSetupMarathonJob:
             mock.patch('service_deployment_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=(1, 'NEVER')),
-            mock.patch('setup_marathon_job.send_sensu_event'),
+            mock.patch('setup_marathon_job.send_event'),
             mock.patch('sys.exit'),
         ) as (
             parse_args_patch,
@@ -114,31 +114,58 @@ class TestSetupMarathonJob:
                     self.fake_marathon_job_config)
             sys_exit_patch.assert_called_once_with(1)
 
-    def test_send_sensu_event(self):
-        name = 'internal_naming'
-        instance = 'whats_taters'
-        soa_dir = 'potatoes'
-        status = 7654
-        output = "boil em, mash em, stick em in a stew",
-        fake_monitor_conf = {
-            'team': 'zero',
-            'runbook': 'y/koobnur',
-            'notification_email': '44@yelp.com'
+    def test_send_event(self):
+        fake_service_name = 'fake_service'
+        fake_instance_name = 'fake_instance'
+        fake_status = '42'
+        fake_output = 'The http port is not open'
+        fake_team = 'fake_team'
+        fake_tip = 'fake_tip'
+        fake_notification_email = 'fake@notify'
+        fake_irc = '#fake'
+        fake_soa_dir = '/fake/soa/dir'
+        expected_runbook = 'y/rb-marathon'
+        expected_check_name = 'setup_marathon_job.%s.%s' % (fake_service_name, fake_instance_name)
+        expected_kwargs = {
+            'tip': fake_tip,
+            'notification_email': fake_notification_email,
+            'irc_channels': fake_irc,
+            'alert_after': '5m',
+            'check_every': '1m',
+            'realert_every': -1,
         }
-        expected_name = 'setup_marathon_job.%s.%s' % (name, instance)
         with contextlib.nested(
-            mock.patch('service_deployment_tools.marathon_tools.read_monitoring_config',
-                       return_value=fake_monitor_conf),
-            mock.patch('pysensu_yelp.send_event')
+            mock.patch("service_deployment_tools.monitoring_tools.get_team",
+                       return_value=fake_team),
+            mock.patch("service_deployment_tools.monitoring_tools.get_tip",
+                       return_value=fake_tip),
+            mock.patch("service_deployment_tools.monitoring_tools.get_notification_email",
+                       return_value=fake_notification_email),
+            mock.patch("service_deployment_tools.monitoring_tools.get_irc_channels",
+                       return_value=fake_irc),
+            mock.patch("pysensu_yelp.send_event"),
         ) as (
-            read_monitoring_patch,
-            send_event_patch
+            monitoring_tools_get_team_patch,
+            monitoring_tools_get_tip_patch,
+            monitoring_tools_get_notification_email_patch,
+            monitoring_tools_get_irc_patch,
+            pysensu_yelp_send_event_patch,
         ):
-            setup_marathon_job.send_sensu_event(name, instance, soa_dir, status, output)
-            read_monitoring_patch.assert_called_once_with(name, soa_dir)
-            send_event_patch.assert_called_once_with(expected_name, 'y/rb-marathon', status, output, 'zero',
-                                                     notification_email='44@yelp.com', realert_every=-1,
-                                                     alert_after='5m', check_every='1m')
+            setup_marathon_job.send_event(fake_service_name,
+                                          fake_instance_name,
+                                          fake_soa_dir,
+                                          fake_status,
+                                          fake_output)
+            monitoring_tools_get_team_patch.assert_called_once_with('marathon', fake_service_name,
+                                                                    fake_instance_name, fake_soa_dir)
+            monitoring_tools_get_tip_patch.assert_called_once_with('marathon', fake_service_name,
+                                                                   fake_instance_name, fake_soa_dir)
+            monitoring_tools_get_notification_email_patch.assert_called_once_with('marathon', fake_service_name,
+                                                                                  fake_instance_name, fake_soa_dir)
+            monitoring_tools_get_irc_patch.assert_called_once_with('marathon', fake_service_name,
+                                                                   fake_instance_name, fake_soa_dir)
+            pysensu_yelp_send_event_patch.assert_called_once_with(expected_check_name, expected_runbook, fake_status,
+                                                                  fake_output, fake_team, **expected_kwargs)
 
     def test_setup_service_srv_already_exists(self):
         fake_name = 'if_trees_could_talk'

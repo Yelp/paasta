@@ -31,6 +31,7 @@ import sys
 import logging
 import argparse
 import service_configuration_lib
+from service_deployment_tools import monitoring_tools
 from service_deployment_tools import marathon_tools
 from service_deployment_tools import bounce_lib
 from marathon import MarathonClient
@@ -58,43 +59,30 @@ def parse_args():
     return args
 
 
-def send_sensu_event(name, instance, soa_dir, status, output):
-    """Send a sensu event via pysensu_yelp about this deployment.
-    Attempts to read a monitoring.yaml file from a service's soa_dir
-    in order to get configuration options for this event.
+def send_event(name, instance, soa_dir, status, output):
+    """Send an event to sensu via pysensu_yelp with the given information.
 
-    :param name: The service name
-    :param instance: The service's instance name
+    :param name: The service name the event is about
+    :param instance: The instance of the service the event is about
     :param soa_dir: The service directory to read monitoring information from
-    :param status: The sensu status to emit for this event. Should be one of
-                   the values in pysensu_yelp.Status.
-    :param output: The output string to emit for this event."""
-    monitor_conf = marathon_tools.read_monitoring_config(name, soa_dir)
-    # We don't use compose_job_id here because we don't want to change _ to -
-    full_name = 'setup_marathon_job.%s%s%s' % (name, ID_SPACER, instance)
-    # runbook = monitor_conf.get('runbook')
+    :param status: The status to emit for this event
+    :param output: The output to emit for this event"""
+    # This function assumes the input is a string like "mumble.main"
+    framework = 'marathon'
+    team = monitoring_tools.get_team(framework, name, instance, soa_dir)
+    if not team:
+        return
+    check_name = 'setup_marathon_job.%s%s%s' % (name, ID_SPACER, instance)
     runbook = 'y/rb-marathon'
-    team = monitor_conf.get('team')
-
-    if team:
-        # We need to remove things that aren't kwargs to send_event
-        # so that we can just pass everything else as a kwarg.
-        # This means that if monitoring.yaml has an erroneous key,
-        # the event won't get emitted at all!
-        # We'll need a strict spec in yelpsoa_configs to make sure
-        # that doesn't happen.
-        valid_kwargs = ['page', 'tip', 'notification_email', 'check_every', 'realert_every',
-                        'alert_after', 'dependencies', 'irc_channels']
-        sensu_kwargs = {}
-        for kwarg in valid_kwargs:
-            if kwarg in monitor_conf:
-                sensu_kwargs[kwarg] = monitor_conf[kwarg]
-
-        sensu_kwargs['check_every'] = '1m'
-        sensu_kwargs['realert_every'] = -1
-        sensu_kwargs['alert_after'] = '5m'
-        sensu_kwargs['check_every'] = '1m'
-        pysensu_yelp.send_event(full_name, runbook, status, output, team, **sensu_kwargs)
+    result_dict = {
+        'tip': monitoring_tools.get_tip(framework, name, instance, soa_dir),
+        'notification_email': monitoring_tools.get_notification_email(framework, name, instance, soa_dir),
+        'irc_channels': monitoring_tools.get_irc_channels(framework, name, instance, soa_dir),
+        'alert_after': '5m',
+        'check_every': '1m',
+        'realert_every': -1
+    }
+    pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 
 
 def get_main_marathon_config():
@@ -227,19 +215,19 @@ def main():
             status, output = setup_service(service_name, instance_name, client, marathon_config,
                                            service_instance_config)
             sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
-            send_sensu_event(service_name, instance_name, soa_dir, sensu_status, output)
+            send_event(service_name, instance_name, soa_dir, sensu_status, output)
             sys.exit(status)
         except (KeyError, TypeError, AttributeError):
             import traceback
             error_str = traceback.format_exc()
             log.error(error_str)
-            send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
+            send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
             sys.exit(1)
     else:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
                     (args.service_instance, marathon_config['cluster'])
         log.error(error_msg)
-        send_sensu_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)
 
 
