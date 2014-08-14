@@ -111,8 +111,8 @@ def get_fqdn(hostname):
     return fqdn
 
 def parse_hostnames_string(hostnames_string):
-    """Given a comma-separated list of hostnames (either passed in or received
-    by prompting the user), return a list containing the FQDN for each
+    """Given a string of comma-separated hostnames (either passed in or
+    received by prompting the user), return a list containing the FQDN for each
     hostname.
     """
     orig_hostnames = [h.strip() for h in hostnames_string.split(",")]
