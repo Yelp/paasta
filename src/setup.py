@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'service-deployment-tools',
-    version        = '0.2.12',
+    version        = '0.2.13',
     provides       = ["service_deployment_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -24,6 +24,7 @@ setup(
         'pysensu-yelp >= 0.1.5',
         'GitPython == 0.1.7',
         'kazoo == 1.3.1',
+        'sensu-plugin == 0.1.0',
     ],
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',
