@@ -78,9 +78,10 @@ def send_event(name, instance, soa_dir, status, output):
         'tip': monitoring_tools.get_tip(framework, name, instance, soa_dir),
         'notification_email': monitoring_tools.get_notification_email(framework, name, instance, soa_dir),
         'irc_channels': monitoring_tools.get_irc_channels(framework, name, instance, soa_dir),
-        'alert_after': '5m',
-        'check_every': '1m',
-        'realert_every': -1
+        'alert_after': '6m',
+        'check_every': '2m',
+        'realert_every': -1,
+        'source': 'mesos-%s' % marathon_tools.get_cluster()
     }
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 
@@ -133,7 +134,8 @@ def deploy_service(name, config, client, namespace, bounce_method):
             return (1, "Service is taking a while to bounce")
     else:  # there wasn't a previous version; just deploy it
         log.info("No old instances found. Deploying instance %s", name)
-        client.create_app(**config)
+        with bounce_lib.create_app_lock():
+            client.create_app(**config)
     log.info("%s deployed. Exiting", name)
     return (0, 'Service deployed.')
 

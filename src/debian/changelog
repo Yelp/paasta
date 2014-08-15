@@ -1,3 +1,10 @@
+service-deployment-tools (0.3.0-yelp1) lucid; urgency=low
+
+  * Added zookeeper locks to create_app calls
+  * Added source key to monitoring checks
+
+ -- James McGuinness <jrm@yelp.com>  Fri, 15 Aug 2014 14:57:44 -0700
+
 service-deployment-tools (0.2.14-yelp1) lucid; urgency=low
 
   * Added timeout=20 to MarathonClient objects

@@ -54,7 +54,8 @@ def send_event(service_name, namespace, soa_dir, status, output):
         'irc_channels': monitoring_tools.get_irc_channels(framework, service_name, soa_dir=soa_dir),
         'alert_after': '2m',
         'check_every': '1m',
-        'realert_every': -1
+        'realert_every': -1,
+        'source': 'mesos-%s' % marathon_tools.get_cluster()
     }
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 

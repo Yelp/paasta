@@ -66,13 +66,16 @@ class TestBounceLib:
         fake_client = mock.MagicMock(delete_app=mock.Mock(), create_app=mock.Mock())
         with contextlib.nested(
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.kill_old_ids'),
         ) as (
             lock_patch,
+            app_lock_patch,
             kill_patch
         ):
             bounce_lib.brutal_bounce(old_ids, new_config, fake_client, fake_namespace)
             lock_patch.assert_called_once_with('sockem.boppers')
+            app_lock_patch.assert_called_once_with()
             kill_patch.assert_called_once_with(old_ids, fake_client)
             fake_client.create_app.assert_called_once_with(**new_config)
 
@@ -109,6 +112,7 @@ class TestBounceLib:
             mock.patch('bounce_lib.get_replication_for_services',
                        side_effect=lambda a, b: haproxy_instance_count.pop()),
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.time_limit', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.scale_apps', return_value=9),
             mock.patch('bounce_lib.kill_old_ids'),
@@ -116,6 +120,7 @@ class TestBounceLib:
         ) as (
             replication_patch,
             lock_patch,
+            app_lock_patch,
             time_limit_patch,
             scale_patch,
             kill_patch,
@@ -125,6 +130,7 @@ class TestBounceLib:
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['shake.wake'])
             assert replication_patch.call_count == 2
             lock_patch.assert_called_once_with('shake.wake')
+            app_lock_patch.assert_called_once_with()
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
             fake_client.get_app.assert_any_call('fake.make')
@@ -152,6 +158,7 @@ class TestBounceLib:
             mock.patch('bounce_lib.get_replication_for_services',
                        side_effect=lambda a, b: haproxy_instance_count.pop()),
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.time_limit', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.scale_apps',
                        side_effect=lambda apps, b, c: apps.pop()[1]),
@@ -160,6 +167,7 @@ class TestBounceLib:
         ) as (
             replication_patch,
             lock_patch,
+            app_lock_patch,
             time_limit_patch,
             scale_patch,
             kill_patch,
@@ -169,6 +177,7 @@ class TestBounceLib:
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['hello.world'])
             assert replication_patch.call_count == 3
             lock_patch.assert_called_once_with('hello.world')
+            app_lock_patch.assert_called_once_with()
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
             fake_client.get_app.assert_any_call('pen.hen')
@@ -200,6 +209,7 @@ class TestBounceLib:
         with contextlib.nested(
             mock.patch('bounce_lib.get_replication_for_services', return_value=haproxy_instance_count),
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.time_limit', spec=contextlib.contextmanager,
                        side_effect=raiser),
             mock.patch('bounce_lib.scale_apps', return_value=9),
@@ -208,6 +218,7 @@ class TestBounceLib:
         ) as (
             replication_patch,
             lock_patch,
+            app_lock_patch,
             time_limit_patch,
             scale_patch,
             kill_patch,
@@ -217,6 +228,7 @@ class TestBounceLib:
                 bounce_lib.crossover_bounce(fake_old_ids, fake_new_config, fake_client, fake_namespace)
             replication_patch.assert_called_once_with(bounce_lib.DEFAULT_SYNAPSE_HOST, ['the.electricslide'])
             lock_patch.assert_called_once_with('the.electricslide')
+            assert app_lock_patch.call_count == 0
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             assert sleep_patch.call_count == 0
             fake_client.get_app.assert_any_call('70s.disco')

@@ -19,6 +19,7 @@ def test_send_event():
     fake_irc = '#fake'
     fake_page = True
     fake_soa_dir = '/hi/hello/hey'
+    fake_cluster = 'fake_cluster'
     expected_kwargs = {
         'tip': fake_tip,
         'notification_email': fake_notification_email,
@@ -27,6 +28,7 @@ def test_send_event():
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,
+        'source': 'mesos-fake_cluster',
     }
     expected_check_name = 'check_marathon_services_replication.%s.%s' % (fake_service_name, fake_namespace)
     with contextlib.nested(
@@ -43,6 +45,8 @@ def test_send_event():
         mock.patch("service_deployment_tools.monitoring_tools.get_irc_channels",
                    return_value=fake_irc),
         mock.patch("pysensu_yelp.send_event"),
+        mock.patch('service_deployment_tools.marathon_tools.get_cluster',
+                   return_value=fake_cluster)
     ) as (
         monitoring_tools_get_team_patch,
         monitoring_tools_get_runbook_patch,
@@ -51,6 +55,7 @@ def test_send_event():
         monitoring_tools_get_page_patch,
         monitoring_tools_get_irc_patch,
         pysensu_yelp_send_event_patch,
+        cluster_patch,
     ):
         check_marathon_services_replication.send_event(fake_service_name,
                                                        fake_namespace,
@@ -71,6 +76,7 @@ def test_send_event():
                                                                soa_dir=fake_soa_dir)
         pysensu_yelp_send_event_patch.assert_called_once_with(expected_check_name, fake_runbook, fake_status,
                                                               fake_output, fake_team, **expected_kwargs)
+        cluster_patch.assert_called_once_with()
 
 
 def test_split_id():

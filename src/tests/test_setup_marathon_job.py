@@ -124,15 +124,17 @@ class TestSetupMarathonJob:
         fake_notification_email = 'fake@notify'
         fake_irc = '#fake'
         fake_soa_dir = '/fake/soa/dir'
+        fake_cluster = 'fake_cluster'
         expected_runbook = 'y/rb-marathon'
         expected_check_name = 'setup_marathon_job.%s.%s' % (fake_service_name, fake_instance_name)
         expected_kwargs = {
             'tip': fake_tip,
             'notification_email': fake_notification_email,
             'irc_channels': fake_irc,
-            'alert_after': '5m',
-            'check_every': '1m',
+            'alert_after': '6m',
+            'check_every': '2m',
             'realert_every': -1,
+            'source': 'mesos-fake_cluster'
         }
         with contextlib.nested(
             mock.patch("service_deployment_tools.monitoring_tools.get_team",
@@ -144,12 +146,15 @@ class TestSetupMarathonJob:
             mock.patch("service_deployment_tools.monitoring_tools.get_irc_channels",
                        return_value=fake_irc),
             mock.patch("pysensu_yelp.send_event"),
+            mock.patch('service_deployment_tools.marathon_tools.get_cluster',
+                       return_value=fake_cluster)
         ) as (
             monitoring_tools_get_team_patch,
             monitoring_tools_get_tip_patch,
             monitoring_tools_get_notification_email_patch,
             monitoring_tools_get_irc_patch,
             pysensu_yelp_send_event_patch,
+            cluster_patch,
         ):
             setup_marathon_job.send_event(fake_service_name,
                                           fake_instance_name,
@@ -166,6 +171,7 @@ class TestSetupMarathonJob:
                                                                    fake_instance_name, fake_soa_dir)
             pysensu_yelp_send_event_patch.assert_called_once_with(expected_check_name, expected_runbook, fake_status,
                                                                   fake_output, fake_team, **expected_kwargs)
+            cluster_patch.assert_called_once_with()
 
     def test_setup_service_srv_already_exists(self):
         fake_name = 'if_trees_could_talk'
@@ -310,11 +316,14 @@ class TestSetupMarathonJob:
         fake_apps = [mock.Mock(id='fake_id'), mock.Mock(id='ahahahahaahahahaha')]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         expected = (0, 'Service deployed.')
-        actual = setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
-                                                   fake_client, fake_namespace, fake_bounce)
-        assert expected == actual
-        fake_client.list_apps.assert_called_once_with()
-        fake_client.create_app.assert_called_once_with(**self.fake_marathon_job_config)
+        with mock.patch('service_deployment_tools.bounce_lib.create_app_lock',
+                        spec=contextlib.contextmanager) as app_lock_patch:
+            actual = setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
+                                                       fake_client, fake_namespace, fake_bounce)
+            assert expected == actual
+            fake_client.list_apps.assert_called_once_with()
+            fake_client.create_app.assert_called_once_with(**self.fake_marathon_job_config)
+            app_lock_patch.assert_called_once_with()
 
     def test_get_marathon_client(self):
         fake_url = "docker:///nothing_for_me_to_do_but_dance"

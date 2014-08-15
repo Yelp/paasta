@@ -53,19 +53,39 @@ def bounce_lock_zookeeper(name):
     """Acquire a bounce lock in zookeeper for the name given. The name should
     generally be the service namespace being bounced.
 
-    The zookeeper file is loaded via
-
     This is a contextmanager. Please use it via 'with bounce_lock(name):'.
 
     :param name: The lock name to acquire"""
     zk = KazooClient(hosts=marathon_tools.get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
     zk.start()
     lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, name))
+    acquired = False
     try:
         lock.acquire(timeout=1)  # timeout=0 throws some other strange exception
+        acquired = True
         yield
     except LockTimeout:
         raise IOError("Service %s is already being bounced!" % name)
+    finally:
+        if acquired:
+            lock.release()
+        zk.stop()
+
+
+@contextmanager
+def create_app_lock():
+    """Acquire a lock in zookeeper for creating a marathon app. This is
+    due to marathon's extreme lack of resilience with creating multiple
+    apps at once, so we use this to not do that and only deploy
+    one app at a time."""
+    zk = KazooClient(hosts=marathon_tools.get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
+    zk.start()
+    lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, 'create_marathon_app_lock'))
+    try:
+        lock.acquire(timeout=30)  # timeout=0 throws some other strange exception
+        yield
+    except LockTimeout:
+        raise IOError("Failed to acquire lock for creating marathon app!")
     finally:
         lock.release()
         zk.stop()
@@ -117,7 +137,8 @@ def brutal_bounce(old_ids, new_config, client, namespace):
     with bounce_lock_zookeeper(service_namespace):
         kill_old_ids(old_ids, client)
         log.info("Creating %s", new_config['id'])
-        client.create_app(**new_config)
+        with create_app_lock():
+            client.create_app(**new_config)
 
 
 def scale_apps(scalable_apps, remove_count, client):
@@ -176,7 +197,8 @@ def crossover_bounce(old_ids, new_config, client, namespace):
     try:
         with nested(bounce_lock_zookeeper(service_namespace), time_limit(CROSSOVER_MAX_TIME_M)):
             # Okay, deploy the new job!
-            client.create_app(**new_config)
+            with create_app_lock():
+                client.create_app(**new_config)
             # Sleep once to give the stack some time to spin up.
             time.sleep(CROSSOVER_SLEEP_INTERVAL_S)
             # If we run of out stuff to kill, we're just as completed
