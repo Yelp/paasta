@@ -135,4 +135,4 @@ class TestCleanupMarathonJobs:
         with mock.patch('cleanup_marathon_jobs.MarathonClient', return_value='tt1') as client_patch:
             actual = cleanup_marathon_jobs.get_marathon_client('a1', 'b2', 'c3')
             assert actual == 'tt1'
-            client_patch.assert_called_once_with('a1', 'b2', 'c3')
+            client_patch.assert_called_once_with('a1', 'b2', 'c3', timeout=20)

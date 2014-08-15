@@ -100,7 +100,7 @@ def get_marathon_client(url, user, passwd):
     :param passwd: The password to connect with
     :returns: A new marathon.MarathonClient object"""
     log.info("Connecting to Marathon server at: %s", url)
-    return MarathonClient(url, user, passwd)
+    return MarathonClient(url, user, passwd, timeout=20)
 
 
 def deploy_service(name, config, client, namespace, bounce_method):
