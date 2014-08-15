@@ -112,7 +112,7 @@ class TestCleanupMarathonJobs:
                        return_value=self.fake_marathon_config),
             mock.patch('service_deployment_tools.marathon_tools.remove_tag_from_job_id',
                        return_value='a_location'),
-            mock.patch('service_deployment_tools.bounce_lib.bounce_lock', spec=contextmanager),
+            mock.patch('service_deployment_tools.bounce_lib.bounce_lock_zookeeper', spec=contextmanager),
             mock.patch('cleanup_marathon_jobs.get_marathon_client', return_value=self.fake_marathon_client),
         ) as (
             get_valid_patch,

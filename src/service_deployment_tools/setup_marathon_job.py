@@ -129,7 +129,7 @@ def deploy_service(name, config, client, namespace, bounce_method):
                 log.error("bounce_method not recognized: %s. Exiting", bounce_method)
                 return (1, "bounce_method not recognized: %s" % bounce_method)
         except IOError:
-            log.error("service %s already being bounced. Exiting", filter_name)
+            log.error("Namespace %s already being bounced. Exiting", filter_name)
             return (1, "Service is taking a while to bounce")
     else:  # there wasn't a previous version; just deploy it
         log.info("No old instances found. Deploying instance %s", name)

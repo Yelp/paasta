@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'service-deployment-tools',
-    version        = '0.2.11',
+    version        = '0.2.12',
     provides       = ["service_deployment_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -20,7 +20,6 @@ setup(
         'marathon == 0.3.2',
         'argparse',
         'pycurl',
-        'sensu-plugin == 0.1.0',
         'requests',
         'pysensu-yelp >= 0.1.5',
         'GitPython == 0.1.7',

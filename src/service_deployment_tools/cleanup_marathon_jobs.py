@@ -97,8 +97,8 @@ def cleanup_apps(soa_dir):
         if not any([app_id == deployed_id for deployed_id in valid_app_list]):
             try:
                 log.warn("%s appears to be old; attempting to delete", app_id)
-                srv_instance = marathon_tools.remove_tag_from_job_id(app_id)
-                with bounce_lib.bounce_lock(srv_instance):
+                srv_instance = marathon_tools.remove_tag_from_job_id(app_id).replace('--', '_')
+                with bounce_lib.bounce_lock_zookeeper(srv_instance):
                     client.delete_app(app_id)
             except IOError:
                 log.info("%s is being bounced, skipping", app_id)

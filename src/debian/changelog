@@ -1,3 +1,9 @@
+service-deployment-tools (0.2.12-yelp1) lucid; urgency=low
+
+  * cleanup_marathon_jobs now uses zookeeper locks, locks on correct namespaces
+
+ -- James McGuinness <jrm@yelp.com>  Thu, 14 Aug 2014 17:30:37 -0700
+
 service-deployment-tools (0.2.11-yelp1) lucid; urgency=low
 
   * Fixing a bug in check_marathon_services_replication 
