@@ -306,6 +306,15 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit("ERROR: Must provide either --yelpsoa-config-root or --port!")
 
+    # There's a weird dependency here because --smartstack-only requires
+    # --yelpsoa-config-root but is itself exclusive with --vip. So we must do
+    # --smartstack-only checks before the --vip check.
+    if not opts.yelpsoa_config_root and opts.smartstack_only:
+        parser.print_usage()
+        sys.exit("ERROR: --smartstack-only requires --yelpsoa-config-root!")
+    if opts.smartstack_only and opts.vip:
+        parser.print_usage()
+        sys.exit("ERROR: --smartstack-only cannot be used with --vip.")
     if not opts.yelpsoa_config_root and not opts.vip:
         parser.print_usage()
         sys.exit("ERROR: Must provide either --yelpsoa-config-root or --vip!")
@@ -313,10 +322,6 @@ def validate_options(parser, opts):
     if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
         parser.print_usage()
         sys.exit("ERROR: --vip must start with 'vip'!")
-
-    if opts.smartstack_only and opts.vip:
-        parser.print_usage()
-        sys.exit("ERROR: --smartstack-only cannot be used with --vip.")
 
     if opts.include_ops and opts.exclude_ops:
         parser.print_usage()

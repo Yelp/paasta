@@ -84,6 +84,26 @@ class ValidateOptionsTestCase(T.TestCase):
             options,
         )
 
+    def test_smartstack_only_requires_yelpsoa_config_root(self):
+        parser = mock.Mock()
+        options = mock.Mock()
+
+        options.enable_yelpsoa_config = False
+        options.yelpsoa_config_root = None
+        options.smartstack_only = True
+
+        # Disable checks we don't care about
+        options.enable_puppet = False
+        options.enable_nagios = False
+
+        T.assert_raises_and_contains(
+            SystemExit,
+            "--smartstack-only requires --yelpsoa-config-root",
+            wizard.validate_options,
+            parser,
+            options,
+        )
+
 
 class SuggestPortTestCase(T.TestCase):
     def test_suggest_port(self):
