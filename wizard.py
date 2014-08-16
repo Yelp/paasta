@@ -206,6 +206,8 @@ def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group,
     if deploys_on == "AUTO":
         deploys_on = default_deploys_on
     elif deploys_on is None:
+        print "Machines to deploy on - machines that download the service code but don't run an instance of it."
+        print "This is useful e.g. for services which want to run batch jobs on a batch machine."
         deploys_on = prompt.ask(
             'Machines to deploy on (comma-separated short hostnames)?',
             default_deploys_on,
