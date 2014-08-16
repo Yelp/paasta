@@ -280,59 +280,47 @@ def validate_options(parser, opts):
 
     if opts.enable_yelpsoa_config:
         if not opts.yelpsoa_config_root:
-            print "ERROR: yelpsoa-configs is enabled but --yelpsoa-config-root is not set!"
             parser.print_usage()
-            sys.exit(1)
+            sys.exit("ERROR: yelpsoa-configs is enabled but --yelpsoa-config-root is not set!")
         if not os.path.exists(opts.yelpsoa_config_root):
-            print "ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root
             parser.print_usage()
-            sys.exit(1)
+            sys.exit("ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root)
 
     if opts.enable_puppet:
         if not opts.puppet_root:
-            print "ERROR: Puppet is enabled but --puppet-root is not set!"
             parser.print_usage()
-            sys.exit(1)
+            sys.exit("ERROR: Puppet is enabled but --puppet-root is not set!")
         if not os.path.exists(opts.puppet_root):
-            print "ERROR: --puppet-root %s does not exist!" % opts.puppet_root
             parser.print_usage()
-            sys.exit(1)
+            sys.exit("ERROR: --puppet-root %s does not exist!" % opts.puppet_root)
 
     if opts.enable_nagios:
         if not opts.nagios_root:
-            print "ERROR: Nagios is enabled but --nagios-root is not set!"
             parser.print_usage()
-            sys.exit(1)
+            sys.exit("ERROR: Nagios is enabled but --nagios-root is not set!")
         if not os.path.exists(opts.nagios_root):
-            print "ERROR: --nagios-root %s does not exist!" % opts.nagios_root
             parser.print_usage()
-            sys.exit(1)
+            sys.exit("ERROR: --nagios-root %s does not exist!" % opts.nagios_root)
 
     if not opts.yelpsoa_config_root and not opts.port:
-        print "ERROR: Must provide either --yelpsoa-config-root or --port!"
         parser.print_usage()
-        sys.exit(1)
+        sys.exit("ERROR: Must provide either --yelpsoa-config-root or --port!")
 
     if not opts.yelpsoa_config_root and not opts.vip:
-        print "ERROR: Must provide either --yelpsoa-config-root or --vip!"
         parser.print_usage()
-        sys.exit(1)
+        sys.exit("ERROR: Must provide either --yelpsoa-config-root or --vip!")
 
     if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
-        print "ERROR: --vip must start with 'vip'!"
         parser.print_usage()
-        sys.exit(1)
+        sys.exit("ERROR: --vip must start with 'vip'!")
 
-    #$# rip this out
-    if opts.smartstack_only and (opts.vip or opts.auto):
-        print "ERROR: --smartstack-only cannot be used with --vip or --auto."
+    if opts.smartstack_only and opts.vip:
         parser.print_usage()
-        sys.exit(1)
+        sys.exit("ERROR: --smartstack-only cannot be used with --vip.")
 
     if opts.include_ops and opts.exclude_ops:
-        print "ERROR: Provide only one of --include-ops and --exclude-ops"
         parser.print_usage()
-        sys.exit(1)
+        sys.exit("ERROR: Provide only one of --include-ops and --exclude-ops")
     else:
         if opts.exclude_ops:
             opts.include_ops = False

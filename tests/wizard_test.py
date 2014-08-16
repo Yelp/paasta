@@ -26,8 +26,13 @@ class ValidateOptionsTestCase(T.TestCase):
         options.yelpsoa_config_root = None
         options.enable_puppet = False # Disable checks we don't care about
         options.enable_nagios = False # Disable checks we don't care about
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
+        T.assert_raises_and_contains(
+            SystemExit,
+            "yelpsoa-configs is enabled but --yelpsoa-config-root is not set",
+            wizard.validate_options,
+            parser,
+            options,
+        )
 
     def test_enable_puppet_requires_puppet_root(self):
         parser = mock.Mock()
@@ -36,8 +41,13 @@ class ValidateOptionsTestCase(T.TestCase):
         options.puppet_root = None
         options.enable_yelpsoa_config = False # Disable checks we don't care about
         options.enable_nagios = False # Disable checks we don't care about
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
+        T.assert_raises_and_contains(
+            SystemExit,
+            "Puppet is enabled but --puppet-root is not set",
+            wizard.validate_options,
+            parser,
+            options,
+        )
 
     def test_enable_nagios_requires_nagios_root(self):
         parser = mock.Mock()
@@ -46,15 +56,19 @@ class ValidateOptionsTestCase(T.TestCase):
         options.nagios_root = None
         options.enable_yelpsoa_config = False # Disable checks we don't care about
         options.enable_puppet = False # Disable checks we don't care about
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
+        T.assert_raises_and_contains(
+            SystemExit,
+            "Nagios is enabled but --nagios-root is not set",
+            wizard.validate_options,
+            parser,
+            options,
+        )
 
     def test_smartstack_only_cannot_be_used_with_vip(self):
         parser = mock.Mock()
         options = mock.Mock()
 
         options.vip = "vip1"
-        options.port = 1234
         options.smartstack_only = True
 
         # Disable checks we don't care about
@@ -62,24 +76,13 @@ class ValidateOptionsTestCase(T.TestCase):
         options.enable_yelpsoa_config = False
         options.enable_puppet = False
 
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
-
-    def test_smartstack_only_cannot_be_used_with_auto(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-
-        options.yelpsoa_config_root = mock.sentinel.yelpsoa_root
-        options.smartstack_only = True
-        options.auto = True
-
-        # Disable checks we don't care about
-        options.enable_nagios = False
-        options.enable_yelpsoa_config = False
-        options.enable_puppet = False
-
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
+        T.assert_raises_and_contains(
+            SystemExit,
+            "--smartstack-only cannot be used with --vip",
+            wizard.validate_options,
+            parser,
+            options,
+        )
 
 
 class SuggestPortTestCase(T.TestCase):
