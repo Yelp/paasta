@@ -321,6 +321,7 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit(1)
 
+    #$# rip this out
     if opts.smartstack_only and (opts.vip or opts.auto):
         print "ERROR: --smartstack-only cannot be used with --vip or --auto."
         parser.print_usage()
