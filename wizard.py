@@ -253,13 +253,13 @@ def parse_args():
         dest="smartstack_only",
         default=False,
         action="store_true",
-        help="Service will be load-balanced by SmartStack alone. Cannot be used when vip or auto is specified"
+        help="Service will be load-balanced by SmartStack alone. Cannot be used when vip is specified. If AUTO, use default."
     )
     group.add_option("-r", "--runas", dest="runas", default=None, help="UNIX user which will run service. If AUTO, use default")
     group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default")
     group.add_option("-d", "--post-download", dest="post_download", default=None, help="Script executed after service is downloaded by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
     group.add_option("-a", "--post-activate", dest="post_activate", default=None, help="Script executed after service is activated by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
-    group.add_option("-S", "--runs-on", dest="runs_on", default=None, help="Comma-separated list of machines where the service runs. You can use shortnames appropriate and I will translated to FQDN as needed. Can be empty string ('') for no machines; or AUTO for the default set. AUTO requires --puppet-root.")
+    group.add_option("-S", "--runs-on", dest="runs_on", default=None, help="Comma-separated list of machines where the service runs. You can use shortnames appropriate and I will translated to FQDN as needed. Can be empty string ('') for no machines; or AUTO for the default set. AUTO requires --yelpsoa-config-root.")
     group.add_option("-D", "--deploys-on", dest="deploys_on", default=None, help="Comma-separated list of machines where the service runs. You can use shortnames appropriate and I will translated to FQDN as needed. Can be empty string ('') for no machines; or AUTO for the default set.")
     parser.add_option_group(group)
 
@@ -405,6 +405,7 @@ def main(opts, args):
         opts.post_activate = opts.post_activate or "AUTO"
         opts.runs_on = opts.runs_on or "AUTO"
         opts.deploys_on = opts.deploys_on or "AUTO"
+        opts.smartstack_only = opts.smartstack_only or "AUTO"
 
     srvname = ask_srvname(opts.srvname)
     srv = Service(srvname)
