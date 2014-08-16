@@ -75,12 +75,12 @@ def ask_vip(vip=None):
 def ask_smartstack():
     return prompt.yes_no('Load Balanced via SmartStack?')
 
-def ask_lbs(opt_vip, opt_smartstack_only):
-    if opt_smartstack_only:
+def ask_lbs(vip, smartstack_only):
+    if smartstack_only:
         vip = None
         use_smartstack = True
     else:
-        vip = ask_vip(opt_vip)
+        vip = ask_vip(vip)
 
         if vip:
             # If vip is configured, we also use SmartStack by default.
