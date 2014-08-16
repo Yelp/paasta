@@ -75,6 +75,11 @@ def ask_vip(vip=None):
 def ask_smartstack():
     return prompt.yes_no('Load Balanced via SmartStack?')
 
+def get_smartstack():
+    proxy_port = suggest_smartstack_proxy_port()
+    smartstack = { 'proxy_port': proxy_port }
+    return smartstack
+
 def ask_lbs(vip, smartstack_only):
     if smartstack_only:
         vip = None
@@ -94,11 +99,6 @@ def ask_lbs(vip, smartstack_only):
         smartstack = None
 
     return vip, smartstack
-
-def get_smartstack():
-    proxy_port = suggest_smartstack_proxy_port()
-    smartstack = { 'proxy_port': proxy_port }
-    return smartstack
 
 def get_fqdn(hostname):
     # socket.getfqdn on an empty string returns localhost, which is not what we
