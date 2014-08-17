@@ -50,13 +50,59 @@ class TestBounceLib:
             fake_lock.release.assert_called_once_with()
             fake_zk.stop.assert_called_once_with()
 
+    def test_create_marathon_app(self):
+        fake_client = mock.Mock(create_app=mock.Mock())
+        fake_config = {'id': 'fake_creation'}
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.wait_for_create')
+        ) as (
+            lock_patch,
+            wait_patch
+        ):
+            bounce_lib.create_marathon_app(fake_config, fake_client)
+            lock_patch.assert_called_once_with()
+            fake_client.create_app.assert_called_once_with(**fake_config)
+            wait_patch.assert_called_once_with(fake_config['id'], fake_client)
+
+    def test_delete_marathon_app(self):
+        fake_client = mock.Mock(delete_app=mock.Mock())
+        fake_id = 'fake_deletion'
+        with mock.patch('bounce_lib.wait_for_delete') as wait_patch:
+            bounce_lib.delete_marathon_app(fake_id, fake_client)
+            fake_client.delete_app.assert_called_once_with(fake_id)
+            wait_patch.assert_called_once_with(fake_id, fake_client)
+
     def test_kill_old_ids(self):
         old_ids = ['mmm.whatcha.say', 'that.you', 'only.meant.well']
         fake_client = mock.MagicMock(delete_app=mock.Mock())
-        bounce_lib.kill_old_ids(old_ids, fake_client)
-        for old_id in old_ids:
-            fake_client.delete_app.assert_any_call(old_id)
-        assert fake_client.delete_app.call_count == len(old_ids)
+        with mock.patch('bounce_lib.delete_marathon_app') as delete_patch:
+            bounce_lib.kill_old_ids(old_ids, fake_client)
+            for old_id in old_ids:
+                delete_patch.assert_any_call(old_id, fake_client)
+            assert delete_patch.call_count == len(old_ids)
+
+    def test_wait_for_create(self):
+        fake_id = 'my_created'
+        fake_lists = [[mock.Mock(id='my_created')], []]
+        fake_client = mock.Mock(list_apps=mock.Mock(side_effect=lambda: fake_lists.pop()))
+        with mock.patch('bounce_lib.time.sleep') as time_patch:
+            bounce_lib.wait_for_create(fake_id, fake_client)
+            time_patch.assert_any_call(bounce_lib.WAIT_CREATE_S)
+            assert time_patch.call_count == 2
+            fake_client.list_apps.assert_any_call
+            assert fake_client.list_apps.call_count == 2
+
+    def test_wait_for_delete(self):
+        fake_id = 'my_deleted'
+        fake_lists = [[], [mock.Mock(id='my_deleted')]]
+        fake_client = mock.Mock(list_apps=mock.Mock(side_effect=lambda: fake_lists.pop()))
+        with mock.patch('bounce_lib.time.sleep') as time_patch:
+            bounce_lib.wait_for_delete(fake_id, fake_client)
+            time_patch.assert_any_call(bounce_lib.WAIT_DELETE_S)
+            assert time_patch.call_count == 2
+            fake_client.list_apps.assert_any_call
+            assert fake_client.list_apps.call_count == 2
 
     def test_brutal_bounce(self):
         old_ids = ["bbounce", "the_best_bounce_method"]
@@ -66,18 +112,17 @@ class TestBounceLib:
         fake_client = mock.MagicMock(delete_app=mock.Mock(), create_app=mock.Mock())
         with contextlib.nested(
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.create_marathon_app'),
             mock.patch('bounce_lib.kill_old_ids'),
         ) as (
             lock_patch,
-            app_lock_patch,
+            create_app_patch,
             kill_patch
         ):
             bounce_lib.brutal_bounce(old_ids, new_config, fake_client, fake_namespace)
             lock_patch.assert_called_once_with('sockem.boppers')
-            app_lock_patch.assert_called_once_with()
+            create_app_patch.assert_called_once_with(new_config, fake_client)
             kill_patch.assert_called_once_with(old_ids, fake_client)
-            fake_client.create_app.assert_called_once_with(**new_config)
 
     def test_scale_apps_delta_valid(self):
         fake_scalable = [('poker.face', 10), ('rocker.race', 5)]
@@ -112,7 +157,7 @@ class TestBounceLib:
             mock.patch('bounce_lib.get_replication_for_services',
                        side_effect=lambda a, b: haproxy_instance_count.pop()),
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.create_marathon_app'),
             mock.patch('bounce_lib.time_limit', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.scale_apps', return_value=9),
             mock.patch('bounce_lib.kill_old_ids'),
@@ -120,7 +165,7 @@ class TestBounceLib:
         ) as (
             replication_patch,
             lock_patch,
-            app_lock_patch,
+            create_app_patch,
             time_limit_patch,
             scale_patch,
             kill_patch,
@@ -130,14 +175,13 @@ class TestBounceLib:
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['shake.wake'])
             assert replication_patch.call_count == 2
             lock_patch.assert_called_once_with('shake.wake')
-            app_lock_patch.assert_called_once_with()
+            create_app_patch.assert_called_once_with(fake_new_config, fake_client)
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
             fake_client.get_app.assert_any_call('fake.make')
             fake_client.get_app.assert_any_call('lake.quake')
             assert fake_client.get_app.call_count == 2
             scale_patch.assert_called_once_with([('fake.make', 15), ('lake.quake', 4)], 9, fake_client)
-            fake_client.create_app.assert_called_once_with(**fake_new_config)
             assert fake_client.scale_app.call_count == 0
             kill_patch.assert_called_once_with(fake_old_ids, fake_client)
 
@@ -158,7 +202,7 @@ class TestBounceLib:
             mock.patch('bounce_lib.get_replication_for_services',
                        side_effect=lambda a, b: haproxy_instance_count.pop()),
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.create_marathon_app'),
             mock.patch('bounce_lib.time_limit', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.scale_apps',
                        side_effect=lambda apps, b, c: apps.pop()[1]),
@@ -167,7 +211,7 @@ class TestBounceLib:
         ) as (
             replication_patch,
             lock_patch,
-            app_lock_patch,
+            create_app_patch,
             time_limit_patch,
             scale_patch,
             kill_patch,
@@ -177,7 +221,7 @@ class TestBounceLib:
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['hello.world'])
             assert replication_patch.call_count == 3
             lock_patch.assert_called_once_with('hello.world')
-            app_lock_patch.assert_called_once_with()
+            create_app_patch.assert_called_once_with(fake_new_config, fake_client)
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
             fake_client.get_app.assert_any_call('pen.hen')
@@ -186,7 +230,6 @@ class TestBounceLib:
             scale_patch.assert_any_call([], 5, fake_client)
             scale_patch.assert_any_call([], 11, fake_client)
             assert scale_patch.call_count == 2
-            fake_client.create_app.assert_called_once_with(**fake_new_config)
             kill_patch.assert_called_once_with(fake_old_ids, fake_client)
 
     def test_crossover_bounce_immediate_timeout(self):
@@ -209,7 +252,7 @@ class TestBounceLib:
         with contextlib.nested(
             mock.patch('bounce_lib.get_replication_for_services', return_value=haproxy_instance_count),
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.create_marathon_app'),
             mock.patch('bounce_lib.time_limit', spec=contextlib.contextmanager,
                        side_effect=raiser),
             mock.patch('bounce_lib.scale_apps', return_value=9),
@@ -218,7 +261,7 @@ class TestBounceLib:
         ) as (
             replication_patch,
             lock_patch,
-            app_lock_patch,
+            create_app_patch,
             time_limit_patch,
             scale_patch,
             kill_patch,
@@ -228,7 +271,7 @@ class TestBounceLib:
                 bounce_lib.crossover_bounce(fake_old_ids, fake_new_config, fake_client, fake_namespace)
             replication_patch.assert_called_once_with(bounce_lib.DEFAULT_SYNAPSE_HOST, ['the.electricslide'])
             lock_patch.assert_called_once_with('the.electricslide')
-            assert app_lock_patch.call_count == 0
+            assert create_app_patch.call_count == 0
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             assert sleep_patch.call_count == 0
             fake_client.get_app.assert_any_call('70s.disco')

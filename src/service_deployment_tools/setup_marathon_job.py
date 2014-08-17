@@ -134,8 +134,7 @@ def deploy_service(name, config, client, namespace, bounce_method):
             return (1, "Service is taking a while to bounce")
     else:  # there wasn't a previous version; just deploy it
         log.info("No old instances found. Deploying instance %s", name)
-        with bounce_lib.create_app_lock():
-            client.create_app(**config)
+        bounce_lib.create_marathon_app(config, client)
     log.info("%s deployed. Exiting", name)
     return (0, 'Service deployed.')
 

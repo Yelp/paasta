@@ -551,11 +551,14 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     marathon_services = marathon_services_running_here()
     nerve_list = []
     for name, instance, port in marathon_services:
-        namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-        nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
-        nerve_dict['port'] = port
-        nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
-        nerve_list.append((nerve_name, nerve_dict))
+        try:
+            namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
+            nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
+            nerve_dict['port'] = port
+            nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
+            nerve_list.append((nerve_name, nerve_dict))
+        except KeyError:
+            continue  # SOA configs got deleted for this job, it'll get cleaned up
     return nerve_list
 
 

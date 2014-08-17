@@ -1,3 +1,11 @@
+service-deployment-tools (0.3.1-yelp1) lucid; urgency=low
+
+  * Fixing nerve function to skip entry if SOA config is gone
+  * Changes to creation and deletion of Marathon apps to both wait
+    and verify actions against marathon
+
+ -- James McGuinness <jrm@yelp.com>  Sun, 17 Aug 2014 14:06:19 -0700
+
 service-deployment-tools (0.3.0-yelp1) lucid; urgency=low
 
   * Added zookeeper locks to create_app calls

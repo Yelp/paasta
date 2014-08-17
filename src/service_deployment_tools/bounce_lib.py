@@ -18,6 +18,8 @@ CROSSOVER_FRACTION_REQUIRED = 0.9  # % of new instances needed in HAProxy for a 
 CROSSOVER_SLEEP_INTERVAL_S = 10  # seconds to sleep between scaling an app and checking HAProxy
 ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper
 ZK_LOCK_PATH = '/bounce'
+WAIT_CREATE_S = 3
+WAIT_DELETE_S = 5
 
 
 class TimeoutException(Exception):
@@ -107,6 +109,59 @@ def time_limit(minutes):
         signal.alarm(0)
 
 
+def wait_for_create(app_id, client):
+    """Wait for the specified app_id to be listed in marathon.
+    Waits WAIT_CREATE_S seconds between calls to list_apps, with a miniumum of
+    one wait (occuring when the function is called).
+
+    :param app_id: The app_id to ensure creation for
+    :param client: A MarathonClient object"""
+    app_ids = []
+    while app_id not in app_ids:
+        time.sleep(WAIT_CREATE_S)
+        try:
+            app_ids = [app.id for app in client.list_apps()]
+        except:
+            return
+
+
+def create_marathon_app(config, client):
+    """Create a new marathon application with a given
+    config and marathon client object.
+
+    :param config: The marathon configuration to be deployed
+    :param client: A MarathonClient object"""
+    with create_app_lock():
+        client.create_app(**config)
+        wait_for_create(config['id'], client)
+
+
+def wait_for_delete(app_id, client):
+    """Wait for the specified app_id to not be listed in marathon
+    anymore. Waits WAIT_DELETE_S seconds inbetween checks, starting with a
+    sleep when the function is called.
+
+    :param app_id: The app_id to check for deletion
+    :param client: A MarathonClient object"""
+    app_ids = [app_id]
+    while app_id in app_ids:
+        time.sleep(WAIT_DELETE_S)
+        try:
+            app_ids = [app.id for app in client.list_apps()]
+        except:
+            return
+
+
+def delete_marathon_app(app_id, client):
+    """Delete a new marathon application with a given
+    app_id and marathon client object.
+
+    :param app_id: The marathon app id to be deleted
+    :param client: A MarathonClient object"""
+    client.delete_app(app_id)
+    wait_for_delete(app_id, client)
+
+
 def kill_old_ids(old_ids, client):
     """Kill old marathon job ids. Skips anything that doesn't exist or
     otherwise raises an exception. If this doesn't kill something due
@@ -117,7 +172,7 @@ def kill_old_ids(old_ids, client):
     for app in old_ids:
         try:
             log.info("Killing %s", app)
-            client.delete_app(app)
+            delete_marathon_app(app, client)
         except:
             continue
 
@@ -137,8 +192,7 @@ def brutal_bounce(old_ids, new_config, client, namespace):
     with bounce_lock_zookeeper(service_namespace):
         kill_old_ids(old_ids, client)
         log.info("Creating %s", new_config['id'])
-        with create_app_lock():
-            client.create_app(**new_config)
+        create_marathon_app(new_config, client)
 
 
 def scale_apps(scalable_apps, remove_count, client):
@@ -197,8 +251,7 @@ def crossover_bounce(old_ids, new_config, client, namespace):
     try:
         with nested(bounce_lock_zookeeper(service_namespace), time_limit(CROSSOVER_MAX_TIME_M)):
             # Okay, deploy the new job!
-            with create_app_lock():
-                client.create_app(**new_config)
+            create_marathon_app(new_config, client)
             # Sleep once to give the stack some time to spin up.
             time.sleep(CROSSOVER_SLEEP_INTERVAL_S)
             # If we run of out stuff to kill, we're just as completed

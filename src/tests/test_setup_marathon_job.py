@@ -316,14 +316,12 @@ class TestSetupMarathonJob:
         fake_apps = [mock.Mock(id='fake_id'), mock.Mock(id='ahahahahaahahahaha')]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         expected = (0, 'Service deployed.')
-        with mock.patch('service_deployment_tools.bounce_lib.create_app_lock',
-                        spec=contextlib.contextmanager) as app_lock_patch:
+        with mock.patch('service_deployment_tools.bounce_lib.create_marathon_app') as create_app_patch:
             actual = setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
                                                        fake_client, fake_namespace, fake_bounce)
             assert expected == actual
             fake_client.list_apps.assert_called_once_with()
-            fake_client.create_app.assert_called_once_with(**self.fake_marathon_job_config)
-            app_lock_patch.assert_called_once_with()
+            create_app_patch.assert_called_once_with(self.fake_marathon_job_config, fake_client)
 
     def test_get_marathon_client(self):
         fake_url = "docker:///nothing_for_me_to_do_but_dance"

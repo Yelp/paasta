@@ -141,21 +141,25 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
             continue
         num_available = available_backends[full_name]
         ratio = (num_available / float(num_expected)) * 100
-        output = 'Service namespace %s has %d/%d instances available,\
-                  thresholds are WARN @ %d, CRITICAL @ %d' % (full_name,
-                                                              num_available,
-                                                              num_expected,
-                                                              warn_threshold,
-                                                              crit_threshold)
         if ratio <= crit_threshold:
             log.error(output)
             status = pysensu_yelp.Status.CRITICAL
+            status_str = 'CRITICAL'
         elif ratio <= warn_threshold:
             log.warning(output)
             status = pysensu_yelp.Status.WARNING
+            status_str = 'WARNING'
         else:
             log.info(output)
             status = pysensu_yelp.Status.OK
+            status_str = 'OK'
+        output = ('%s: Service %s has %d out of %d expected instances available!\n' +
+                  'Thresholds are WARN <= %d%%, CRITICAL <= %d%%') % (status_str,
+                                                                      full_name,
+                                                                      num_available,
+                                                                      num_expected,
+                                                                      warn_threshold,
+                                                                      crit_threshold)
         send_event(service_name, namespace, soa_dir, status, output)
 
 
