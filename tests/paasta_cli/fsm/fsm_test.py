@@ -17,3 +17,11 @@ class ValidateOptionsTest(T.TestCase):
             parser,
             options,
         )
+
+
+class AskPaastaQuestionsTestCase(T.TestCase):
+    pass
+
+
+class DoPaastaStepsTestCase(T.TestCase):
+    pass

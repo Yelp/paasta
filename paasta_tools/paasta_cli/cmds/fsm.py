@@ -23,9 +23,18 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit("ERROR: --yelpsoa-config-root is required!")
 
+def ask_paasta_questions(srvname):
+    srvname = get_srvname(srvname)
+    return srvname
+
+
 def main(opts, args):
-    srvname = ask_srvname(opts.srvname)
+
+    srvname = ask_paasta_questions()
     srv = Service(srvname, opts.yelpsoa_config_root)
+    #do_paasta_steps(srv)
+    print srv
+
 
 if __name__ == '__main__':
     opts, args = parse_args()
