@@ -10,14 +10,6 @@ from service_wizard import config
 from service_wizard import service_configuration
 
 
-class SrvReaderWriterTestCase(T.TestCase):
-    """I bailed out of this test, but I'll leave this here for now as an
-    example of how to interact with the Srv* classes."""
-    @T.setup
-    def init_service(self):
-        paths = wizard.paths.SrvPathBuilder("fake_srvpathbuilder")
-        self.srw = wizard.SrvReaderWriter(paths)
-
 class ValidateOptionsTestCase(T.TestCase):
     def test_enable_yelpsoa_config_requires_yelpsoa_config_root(self):
         parser = mock.Mock()

@@ -13,9 +13,9 @@ class Service(object):
                     srv.io.read_file(f))
         return srv
 
-    def __init__(self, name):
+    def __init__(self, name, yelpsoa_config_root):
         self.name = name
-        self.paths = paths.SrvPathBuilder(name)
+        self.paths = paths.SrvPathBuilder(name, yelpsoa_config_root)
         self.io = SrvReaderWriter(self.paths)
 
 class SrvReaderWriter(object):
