@@ -333,6 +333,8 @@ def validate_options(parser, opts):
 def setup_config_paths(yelpsoa_config_root, puppet_root, nagios_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
     assert os.path.exists(config.TEMPLATE_DIR)
+    # config.YELPSOA_CONFIG_ROOT is deprecated! Don't add it to new things!
+    # Just pass the value to your functions explicitly!
     config.YELPSOA_CONFIG_ROOT = yelpsoa_config_root
     config.PUPPET_ROOT = puppet_root
     config.NAGIOS_ROOT = nagios_root
