@@ -5,14 +5,6 @@ from service_wizard import paths
 
 class Service(object):
 
-    @classmethod
-    def from_files(cls, srvname):
-        srv = cls(srvname)
-        for f in paths.ALL_FILES:
-            setattr(srv, f.replace('-','_').replace('.','_'),
-                    srv.io.read_file(f))
-        return srv
-
     def __init__(self, name, yelpsoa_config_root):
         self.name = name
         self.paths = paths.SrvPathBuilder(name, yelpsoa_config_root)
