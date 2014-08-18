@@ -81,6 +81,9 @@ def get_smartstack(yelpsoa_config_root):
     return smartstack
 
 def ask_lbs(yelpsoa_config_root, vip, smartstack_only):
+    if smartstack_only == "AUTO":
+        smartstack_only = False
+
     if smartstack_only:
         vip = None
         use_smartstack = True
