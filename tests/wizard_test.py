@@ -149,11 +149,7 @@ class SuggestPortTestCase(T.TestCase):
 # Shamelessly copied from SuggestPortTestCase
 class SuggestSmartstackProxyPortTestCase(T.TestCase):
     def test_suggest_smartstack_proxy_port(self):
-        # mock.patch was very confused by the config module, so I'm doing it
-        # this way. One more reason to disapprove of this global config module
-        # scheme.
-        config.YELPSOA_CONFIG_ROOT = "fake_yelpsoa_config_root"
-
+        yelpsoa_config_root = "fake_yelpsoa_config_root"
         walk_return = [
             ("fake_root1", "fake_dir1", [ "service.yaml" ]),
             ("fake_root2", "fake_dir2", [ "service.yaml" ]),
@@ -175,7 +171,7 @@ class SuggestSmartstackProxyPortTestCase(T.TestCase):
             mock.patch("service_wizard.autosuggest._get_smartstack_proxy_port_from_file",
                        mock_get_smartstack_proxy_port_from_file),
         ):
-            actual = autosuggest.suggest_smartstack_proxy_port()
+            actual = autosuggest.suggest_smartstack_proxy_port(yelpsoa_config_root)
         # Sanity check: our mock was called once for each legit port file in
         # walk_return
         T.assert_equal(mock_get_smartstack_proxy_port_from_file.call_count, 3)
@@ -684,7 +680,8 @@ class TestAskLBs(T.TestCase):
             yield
 
     def test_when_yes_smartstack_only(self):
-        vip, smartstack = wizard.ask_lbs(None, True)
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, True)
 
         T.assert_equal(vip, None)
         T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
@@ -696,7 +693,8 @@ class TestAskLBs(T.TestCase):
         self.mock_ask_vip.return_value = None
         self.mock_ask_smartstack.return_value = False
 
-        vip, smartstack = wizard.ask_lbs(None, False)
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
 
         T.assert_equal(vip, None)
         T.assert_equal(smartstack, None)
@@ -708,7 +706,8 @@ class TestAskLBs(T.TestCase):
         self.mock_ask_vip.return_value = None
         self.mock_ask_smartstack.return_value = True
 
-        vip, smartstack = wizard.ask_lbs(None, False)
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
 
         T.assert_equal(vip, None)
         T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
@@ -719,7 +718,8 @@ class TestAskLBs(T.TestCase):
     def test_option_no_smartstack_only_yes_vip(self):
         self.mock_ask_vip.return_value = mock.sentinel.vip
 
-        vip, smartstack = wizard.ask_lbs(None, False)
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
 
         T.assert_equal(vip, mock.sentinel.vip)
         T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
