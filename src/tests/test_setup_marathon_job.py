@@ -329,7 +329,7 @@ class TestSetupMarathonJob:
         fake_passwd = "is_for_real"
         with mock.patch('setup_marathon_job.MarathonClient') as client_patch:
             setup_marathon_job.get_marathon_client(fake_url, fake_user, fake_passwd)
-            client_patch.assert_called_once_with(fake_url, fake_user, fake_passwd, timeout=20)
+            client_patch.assert_called_once_with(fake_url, fake_user, fake_passwd, timeout=35)
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}

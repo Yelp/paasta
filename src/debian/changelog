@@ -1,3 +1,9 @@
+service-deployment-tools (0.3.3-yelp1) lucid; urgency=low
+
+  * Changing MarathonClient timeouts 
+
+ -- James McGuinness <jrm@yelp.com>  Sun, 17 Aug 2014 17:19:20 -0700
+
 service-deployment-tools (0.3.2-yelp1) lucid; urgency=low
 
   * Fixing a bug in replication check 
