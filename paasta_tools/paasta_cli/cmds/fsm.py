@@ -18,3 +18,10 @@ def validate_options(parser, opts):
     if not opts.yelpsoa_config_root:
         parser.print_usage()
         sys.exit("ERROR: --yelpsoa-config-root is required!")
+
+def main(opts, args):
+    pass
+
+if __name__ == '__main__':
+    opts, args = parse_args()
+    main(opts, args)
