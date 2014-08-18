@@ -14,16 +14,11 @@ from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
 from service_wizard.autosuggest import suggest_smartstack_proxy_port
 from service_wizard.autosuggest import suggest_vip
+from service_wizard.questions import ask_srvname
 from service_wizard.service import Service
 from service_wizard.service_configuration import collate_hosts_by_habitat
 from service_wizard.template import Template
 
-
-def ask_srvname(srvname=None):
-    if srvname is None:
-        while not srvname:
-            srvname = raw_input('Service name? ')
-    return srvname
 
 def ask_port(port=None):
     # Don't bother calculating (doing so is non-trivial) if we don't have to.

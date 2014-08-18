@@ -3,10 +3,14 @@
 import optparse
 import sys
 
+from service_wizard.questions import ask_srvname
+from service_wizard.service import Service
+
 
 def parse_args():
     parser = optparse.OptionParser()
     parser.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout")
+    parser.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
 
     opts, args = parser.parse_args()
     validate_options(parser, opts)
@@ -20,7 +24,8 @@ def validate_options(parser, opts):
         sys.exit("ERROR: --yelpsoa-config-root is required!")
 
 def main(opts, args):
-    pass
+    srvname = ask_srvname(opts.srvname)
+    srv = Service(srvname, opts.yelpsoa_config_root)
 
 if __name__ == '__main__':
     opts, args = parse_args()
