@@ -59,10 +59,10 @@ def _get_smartstack_proxy_port_from_file(root, file):
             port = int(port)
     return port
 
-def suggest_smartstack_proxy_port():
+def suggest_smartstack_proxy_port(yelpsoa_config_root):
     """Pick the next highest smartstack proxy port from the 20000-21000 block"""
     max_proxy_port = 0
-    for root, dirs, files in os.walk(config.YELPSOA_CONFIG_ROOT):
+    for root, dirs, files in os.walk(yelpsoa_config_root):
         for f in files:
             if f.endswith('service.yaml'):
                 proxy_port = _get_smartstack_proxy_port_from_file(root, f)
