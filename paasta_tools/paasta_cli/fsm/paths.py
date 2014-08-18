@@ -8,18 +8,6 @@ SERVICEGROUPS = os.path.join('shared', 'prod-and-stage', 'servicegroups')
 HOSTGROUPS = os.path.join('datacenters')
 CHECKS = os.path.join('shared', 'prod-and-stage', 'services')
 
-ALL_FILES = set([
-    'runas',
-    'runas_group',
-    'port',
-    'status_port',
-    'lb.yaml',
-    'vip'
-    'post-download',
-    'post-activate',
-    'service.yaml',
-])
-
 
 class SrvPathBuilder(object):
     """Builds paths to files in the puppet heirarchy for a given service."""
