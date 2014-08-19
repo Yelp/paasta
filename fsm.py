@@ -4,6 +4,7 @@ import optparse
 from os.path import exists
 import sys
 
+from service_wizard.questions import _yamlize
 from service_wizard.questions import get_smartstack_stanza
 from service_wizard.questions import get_srvname
 from service_wizard.service import Service
@@ -42,7 +43,7 @@ def get_paasta_config(yelpsoa_config_root, srvname, auto, port):
 
 
 def write_paasta_config(srv, smartstack_stanza):
-    srv.io.write_file('smartstack.yaml', smartstack_stanza)
+    srv.io.write_file('smartstack.yaml', _yamlize(smartstack_stanza))
 
 
 def main(opts, args):
