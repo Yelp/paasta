@@ -31,5 +31,5 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
             port = suggested_port
         else:
             port = ask("Smartstack proxy_port?", suggested_port)
-    smartstack_stanza = { 'proxy_port': port }
+    smartstack_stanza = { 'proxy_port': int(port) }
     return smartstack_stanza

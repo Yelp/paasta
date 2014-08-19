@@ -59,7 +59,7 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
     def test_arg_passed_in(self):
         """If a port is specified, use it."""
         yelpsoa_config_root = 'fake_yelpsoa_config_root'
-        port = '12345'
+        port = 12345
         auto = 'UNUSED'
 
         expected = { 'proxy_port': port }
