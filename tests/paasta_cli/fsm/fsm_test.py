@@ -25,7 +25,7 @@ class ValidateOptionsTest(T.TestCase):
     def test_yelpsoa_config_root_exists(self):
         parser = mock.Mock()
         options = mock.Mock()
-        options.yelpsoa_config_root = 'non-existent thing'
+        options.yelpsoa_config_root = "non-existent thing"
 
         with mock.patch("fsm.exists") as self.mock_exists:
             self.mock_exists.return_value = False
@@ -56,7 +56,7 @@ class GetPaastaConfigTestCase(T.TestCase):
         the individual get_* methods, just that al of them get called as
         expected.
         """
-        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        yelpsoa_config_root = "fake_yelpsoa_config_root"
         srvname = "services/fake_srvname"
         auto = "UNUSED"
         port = 12345
@@ -73,9 +73,16 @@ class WritePaastaConfigTestCase(T.TestCase):
         self.srv.io = mock.Mock(spec_set=SrvReaderWriter)
 
     def test(self):
-        smartstack_stanza = { 'stack': 'smrt' }
-        fsm.write_paasta_config(self.srv, smartstack_stanza)
-        self.srv.io.write_file.assert_called_once_with(
-            'smartstack.yaml',
+        smartstack_stanza = { "stack": "smrt" }
+        marathon_stanza = { "boston": "2015-04-20" }
+
+        fsm.write_paasta_config(self.srv, smartstack_stanza, marathon_stanza)
+
+        self.srv.io.write_file.assert_any_call(
+            "smartstack.yaml",
             _yamlize(smartstack_stanza),
+        )
+        self.srv.io.write_file.assert_any_call(
+            "marathon-devc.yaml",
+            _yamlize(marathon_stanza),
         )

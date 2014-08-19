@@ -42,8 +42,9 @@ def get_paasta_config(yelpsoa_config_root, srvname, auto, port):
     return (srvname, smartstack_stanza)
 
 
-def write_paasta_config(srv, smartstack_stanza):
-    srv.io.write_file('smartstack.yaml', _yamlize(smartstack_stanza))
+def write_paasta_config(srv, smartstack_stanza, marathon_stanza):
+    srv.io.write_file("smartstack.yaml", _yamlize(smartstack_stanza))
+    srv.io.write_file("marathon-devc.yaml", _yamlize(marathon_stanza))
 
 
 def main(opts, args):
@@ -52,6 +53,6 @@ def main(opts, args):
     write_paasta_config(srv, smartstack_stanza)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     opts, args = parse_args()
     main(opts, args)
