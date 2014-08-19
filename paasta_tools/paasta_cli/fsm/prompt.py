@@ -6,7 +6,7 @@ from contextlib import contextmanager
 def prepopulate(default):
     """Prepopluates the input with the default text for the user to edit"""
     def hook():
-        readline.insert_text(default)
+        readline.insert_text(str(default))
         readline.redisplay()
     if default is not None:
         readline.set_pre_input_hook(hook)
@@ -21,7 +21,7 @@ def ask(question, suggestion=None):
         prompt_str += '\n------\n'
     elif not prompt_str.endswith(' '):
         prompt_str += ' '
-    with prepopulate(str(suggestion)):
+    with prepopulate(suggestion):
         return raw_input(prompt_str).strip(' ')
 
 def yes_no(question):
