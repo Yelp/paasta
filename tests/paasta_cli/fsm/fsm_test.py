@@ -55,12 +55,14 @@ class GetPaastaConfigTestCase(T.TestCase):
         the individual get_* methods, just that al of them get called as
         expected.
         """
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
         srvname = "services/fake_srvname"
         auto = "UNUSED"
-        fsm.get_paasta_config(srvname, auto)
+        port = 12345
+        fsm.get_paasta_config(yelpsoa_config_root, srvname, auto, port)
 
         self.mock_get_srvname.assert_called_once_with(srvname, auto)
-        self.mock_get_smartstack_yaml.assert_called_once_with(auto)
+        self.mock_get_smartstack_yaml.assert_called_once_with(yelpsoa_config_root, auto, port)
 
 
 class WritePaastaConfigTestCase(T.TestCase):
@@ -70,6 +72,6 @@ class WritePaastaConfigTestCase(T.TestCase):
         self.srv.io = mock.Mock(spec_set=SrvReaderWriter)
 
     def test(self):
-        smartstack_yaml = 'stack: smrt'
+        smartstack_yaml = { 'stack': 'smrt' }
         fsm.write_paasta_config(self.srv, smartstack_yaml)
         self.srv.io.write_file.assert_called_once_with('smartstack.yaml', smartstack_yaml)

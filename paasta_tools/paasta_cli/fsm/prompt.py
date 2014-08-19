@@ -21,7 +21,7 @@ def ask(question, suggestion=None):
         prompt_str += '\n------\n'
     elif not prompt_str.endswith(' '):
         prompt_str += ' '
-    with prepopulate(suggestion):
+    with prepopulate(str(suggestion)):
         return raw_input(prompt_str).strip(' ')
 
 def yes_no(question):
