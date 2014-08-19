@@ -55,13 +55,13 @@ class GetSrvnameTestCase(QuestionsTestCase):
         T.assert_equal(1, self.mock_ask.call_count)
 
 
-class GetSmartstackYamlTestCase(QuestionsTestCase):
+class GetSmartstackStanzaTestCase(QuestionsTestCase):
     @T.setup
     def setup_canned_data(self):
         self.yelpsoa_config_root = "fake_yelpsoa_config_root"
         self.suggested_port = 12345
         self.expected_stanza = {
-            "smartstack": { "proxy_port": self.suggested_port }
+            "main": { "proxy_port": self.suggested_port }
         }
 
     def test_arg_passed_in(self):
