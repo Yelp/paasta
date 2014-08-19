@@ -129,3 +129,10 @@ class GetMarathonStanzaTestCase(QuestionsTestCase):
         actual = fsm.get_marathon_stanza()
         T.assert_in("main", actual.keys())
         T.assert_in("canary", actual.keys())
+
+
+class GetMonitoringStanzaTestCase(QuestionsTestCase):
+    def test(self):
+        actual = fsm.get_monitoring_stanza()
+        T.assert_in("team", actual.keys())
+        T.assert_in("notification_email", actual.keys())

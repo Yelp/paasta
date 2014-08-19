@@ -15,21 +15,6 @@ def _yamlize(contents):
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
 
-def get_marathon_stanza():
-    stanza = {}
-    stanza["main"] = {
-        "cpu": 1,
-        "mem": 100,
-        "instances": 3,
-    }
-    stanza["canary"] = {
-        "cpu": 1,
-        "mem": 100,
-        "nerve_ns": "main",
-    }
-    return stanza
-
-
 def get_srvname(srvname, auto):
     if srvname is None:
         if auto:
@@ -51,3 +36,25 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
         "proxy_port": int(port),
     }
     return smartstack_stanza
+
+
+def get_marathon_stanza():
+    stanza = {}
+    stanza["main"] = {
+        "cpu": 1,
+        "mem": 100,
+        "instances": 3,
+    }
+    stanza["canary"] = {
+        "cpu": 1,
+        "mem": 100,
+        "nerve_ns": "main",
+    }
+    return stanza
+
+
+def get_monitoring_stanza():
+    stanza = {}
+    stanza["team"] = "mesos"
+    stanza["notification_email"] = "jrm@yelp.com"
+    return stanza
