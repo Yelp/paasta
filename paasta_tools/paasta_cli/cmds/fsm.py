@@ -6,6 +6,7 @@ import sys
 
 from service_wizard.questions import _yamlize
 from service_wizard.questions import get_marathon_stanza
+from service_wizard.questions import get_monitoring_stanza
 from service_wizard.questions import get_smartstack_stanza
 from service_wizard.questions import get_srvname
 from service_wizard.service import Service
@@ -44,9 +45,14 @@ def get_paasta_config(yelpsoa_config_root, srvname, auto, port):
     return (srvname, smartstack_stanza, marathon_stanza)
 
 
-def write_paasta_config(srv, smartstack_stanza, marathon_stanza):
+def write_paasta_config(srv,
+    smartstack_stanza,
+    marathon_stanza,
+    monitoring_stanza,
+):
     srv.io.write_file("smartstack.yaml", _yamlize(smartstack_stanza))
     srv.io.write_file("marathon-devc.yaml", _yamlize(marathon_stanza))
+    srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
 
 
 def main(opts, args):
