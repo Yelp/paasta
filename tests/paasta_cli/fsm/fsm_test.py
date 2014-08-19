@@ -45,9 +45,11 @@ class GetPaastaConfigTestCase(T.TestCase):
         with contextlib.nested(
             mock.patch("fsm.get_srvname", autospec=True),
             mock.patch("fsm.get_smartstack_stanza", autospec=True),
+            mock.patch("fsm.get_marathon_stanza", autospec=True),
         ) as (
             self.mock_get_srvname,
             self.mock_get_smartstack_stanza,
+            self.mock_get_marathon_stanza,
         ):
             yield
 
@@ -64,6 +66,7 @@ class GetPaastaConfigTestCase(T.TestCase):
 
         self.mock_get_srvname.assert_called_once_with(srvname, auto)
         self.mock_get_smartstack_stanza.assert_called_once_with(yelpsoa_config_root, auto, port)
+        self.mock_get_marathon_stanza.assert_called_once_with()
 
 
 class WritePaastaConfigTestCase(T.TestCase):

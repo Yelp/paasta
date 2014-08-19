@@ -15,6 +15,21 @@ def _yamlize(contents):
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
 
+def get_marathon_stanza():
+    stanza = {}
+    stanza["main"] = {
+        "cpu": 1,
+        "mem": 100,
+        "instances": 3,
+    }
+    stanza["canary"] = {
+        "cpu": 1,
+        "mem": 100,
+        "nerve_ns": "main",
+    }
+    return stanza
+
+
 def get_srvname(srvname, auto):
     if srvname is None:
         if auto:

@@ -122,3 +122,10 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
             mock.ANY,
             suggested_port,
         )
+
+
+class GetMarathonStanzaTestCase(QuestionsTestCase):
+    def test(self):
+        actual = fsm.get_marathon_stanza()
+        T.assert_in("main", actual.keys())
+        T.assert_in("canary", actual.keys())
