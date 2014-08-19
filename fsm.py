@@ -3,6 +3,7 @@
 import optparse
 import sys
 
+from service_wizard.questions import get_smartstack_yaml
 from service_wizard.questions import get_srvname
 from service_wizard.service import Service
 

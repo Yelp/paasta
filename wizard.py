@@ -70,11 +70,6 @@ def ask_vip(vip=None):
 def ask_smartstack():
     return prompt.yes_no('Load Balanced via SmartStack?')
 
-def get_smartstack(yelpsoa_config_root):
-    proxy_port = suggest_smartstack_proxy_port(yelpsoa_config_root)
-    smartstack = { 'proxy_port': proxy_port }
-    return smartstack
-
 def ask_lbs(yelpsoa_config_root, vip, smartstack_only):
     if smartstack_only == "AUTO":
         smartstack_only = False

@@ -27,8 +27,10 @@ class GetPaastaConfigTestCase(T.TestCase):
     def setup_mocks(self):
         with contextlib.nested(
             mock.patch("fsm.get_srvname", autospec=True),
+            mock.patch("fsm.get_smartstack_yaml", autospec=True),
         ) as (
             self.mock_get_srvname,
+            self.mock_get_smartstack_yaml,
         ):
             yield
 
@@ -42,6 +44,7 @@ class GetPaastaConfigTestCase(T.TestCase):
         fsm.get_paasta_config(srvname, auto)
 
         self.mock_get_srvname.assert_called_once_with(srvname, auto)
+        self.mock_get_smartstack_yaml.assert_called_once_with(auto)
 
 
 class WritePaastaConfigTestCase(T.TestCase):
