@@ -5,8 +5,14 @@ inputs.
 
 import sys
 
+import yaml
+
 from service_wizard.prompt import ask
 from service_wizard.autosuggest import suggest_smartstack_proxy_port
+
+
+def _yamlize(contents):
+    return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
 
 def get_srvname(srvname, auto):

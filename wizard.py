@@ -5,14 +5,13 @@ import os
 import socket
 import sys
 
-import yaml
-
 from service_wizard import config
 from service_wizard import prompt
 from service_wizard.autosuggest import is_stage_habitat
 from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
 from service_wizard.autosuggest import suggest_vip
+from service_wizard.questions import _yamlize
 from service_wizard.questions import get_srvname
 from service_wizard.questions import get_smartstack_yaml
 from service_wizard.service import Service
@@ -123,7 +122,7 @@ def get_service_yaml_contents(runs_on, deploys_on, smartstack):
     }
     if smartstack is not None:
         contents["smartstack"] = smartstack
-    return yaml.dump(contents, explicit_start=True, default_flow_style=False)
+    return _yamlize(contents)
 
 def get_habitat_overrides(host_by_habitat, srvname, vip=False, vip_number=None):
     """Given a host_by_habitat dict, calculate appropriate hostgroup file
