@@ -56,16 +56,22 @@ class GetSrvnameTestCase(QuestionsTestCase):
 
 
 class GetSmartstackYamlTestCase(QuestionsTestCase):
+    @T.setup
+    def setup_canned_data(self):
+        self.yelpsoa_config_root = "fake_yelpsoa_config_root"
+        self.suggested_port = 12345
+        self.expected_stanza = {
+            "smartstack": { "proxy_port": self.suggested_port }
+        }
+
     def test_arg_passed_in(self):
         """If a port is specified, use it."""
-        yelpsoa_config_root = "fake_yelpsoa_config_root"
-        port = 12345
+        port = self.suggested_port
         auto = "UNUSED"
 
-        expected = { "smartstack": { "proxy_port": port } }
-        actual = fsm.get_smartstack_stanza(yelpsoa_config_root, auto, port)
+        actual = fsm.get_smartstack_stanza(self.yelpsoa_config_root, auto, port)
 
-        T.assert_equal(expected, actual)
+        T.assert_equal(self.expected_stanza, actual)
         T.assert_equal(0, self.mock_ask.call_count)
 
     def test_arg_not_passed_in_auto_true(self):
@@ -74,14 +80,12 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
         """
         yelpsoa_config_root = "fake_yelpsoa_config_root"
         port = None
-        suggested_port = 12345
         auto = True
 
-        expected = { "smartstack": { "proxy_port": suggested_port } }
         with mock.patch(
             "service_wizard.questions.suggest_smartstack_proxy_port",
             autospec=True,
-            return_value=suggested_port,
+            return_value=self.suggested_port,
         ) as (
             self.mock_suggest_smartstack_proxy_port
         ):
@@ -89,7 +93,7 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
 
         self.mock_suggest_smartstack_proxy_port.assert_called_once_with(
             yelpsoa_config_root)
-        T.assert_equal(expected, actual)
+        T.assert_equal(self.expected_stanza, actual)
         T.assert_equal(0, self.mock_ask.call_count)
 
     def test_arg_not_passed_in_auto_false(self):
@@ -101,7 +105,6 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
         suggested_port = 12345
         auto = False
 
-        expected = { "smartstack" : { "proxy_port": suggested_port } }
         self.mock_ask.return_value = suggested_port
         with mock.patch(
             "service_wizard.questions.suggest_smartstack_proxy_port",
@@ -114,7 +117,7 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
 
         self.mock_suggest_smartstack_proxy_port.assert_called_once_with(
             yelpsoa_config_root)
-        T.assert_equal(expected, actual)
+        T.assert_equal(self.expected_stanza, actual)
         self.mock_ask.assert_called_once_with(
             mock.ANY,
             suggested_port,
