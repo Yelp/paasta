@@ -73,9 +73,6 @@ class SrvReaderWriter(object):
     def append_check(self, contents):
         self._append(self.paths.check, contents)
 
-    def write_service_yaml(self, contents):
-        self._write(self.paths.service_yaml, contents)
-
     def _read(self, path):
         if not os.path.exists(path):
             return ''
