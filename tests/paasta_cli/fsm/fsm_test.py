@@ -4,6 +4,7 @@ import mock
 import testify as T
 
 import fsm
+from service_wizard.service import SrvReaderWriter
 
 
 class ValidateOptionsTest(T.TestCase):
@@ -36,13 +37,19 @@ class GetPaastaConfigTestCase(T.TestCase):
         the individual get_* methods, just that al of them get called as
         expected.
         """
-        srvname = 'services/fake_srvname'
-        auto = 'UNUSED'
+        srvname = "services/fake_srvname"
+        auto = "UNUSED"
         fsm.get_paasta_config(srvname, auto)
 
         self.mock_get_srvname.assert_called_once_with(srvname, auto)
 
 
-class DoPaastaStepsTestCase(T.TestCase):
+class WritePaastaConfigTestCase(T.TestCase):
+    @T.setup
+    def setup_mocks(self):
+        self.srv = mock.Mock()
+        self.srv.io = mock.Mock(spec_set=SrvReaderWriter)
+
     def test(self):
-        pass
+        fsm.write_paasta_config(self.srv)
+        self.srv.io.write_file.assert_called_once_with('smartstack.yaml', 'FIXMEEE')

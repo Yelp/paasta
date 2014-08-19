@@ -31,11 +31,14 @@ def get_paasta_config(srvname, auto):
     return srvname
 
 
+def write_paasta_config(srv):
+    srv.io.write_file('smartstack.yaml', 'FIXMEEE')
+
+
 def main(opts, args):
     srvname = get_paasta_config(opts.srvname, opts.auto)
     srv = Service(srvname, opts.yelpsoa_config_root)
-    #do_paasta_steps(srv)
-    print srv.__dict__
+    write_paasta_config(srv)
 
 
 if __name__ == '__main__':
