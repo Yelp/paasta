@@ -63,7 +63,7 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
         auto = 'UNUSED'
 
         expected = { 'proxy_port': port }
-        actual = fsm.get_smartstack_yaml(yelpsoa_config_root, port, auto)
+        actual = fsm.get_smartstack_yaml(yelpsoa_config_root, auto, port)
 
         T.assert_equal(expected, actual)
         T.assert_equal(0, self.mock_ask.call_count)
@@ -85,7 +85,7 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
         ) as (
             self.mock_suggest_smartstack_proxy_port
         ):
-            actual = fsm.get_smartstack_yaml(yelpsoa_config_root, port, auto)
+            actual = fsm.get_smartstack_yaml(yelpsoa_config_root, auto, port)
 
         self.mock_suggest_smartstack_proxy_port.assert_called_once_with(
             yelpsoa_config_root)
@@ -110,8 +110,12 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
         ) as (
             self.mock_suggest_smartstack_proxy_port
         ):
-            actual = fsm.get_smartstack_yaml(yelpsoa_config_root, port, auto)
+            actual = fsm.get_smartstack_yaml(yelpsoa_config_root, auto, port)
+
         self.mock_suggest_smartstack_proxy_port.assert_called_once_with(
             yelpsoa_config_root)
         T.assert_equal(expected, actual)
-        T.assert_equal(1, self.mock_ask.call_count)
+        self.mock_ask.assert_called_once_with(
+            mock.ANY,
+            suggested_port,
+        )

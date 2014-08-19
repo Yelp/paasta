@@ -12,9 +12,9 @@ from service_wizard import prompt
 from service_wizard.autosuggest import is_stage_habitat
 from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
-from service_wizard.autosuggest import suggest_smartstack_proxy_port
 from service_wizard.autosuggest import suggest_vip
 from service_wizard.questions import get_srvname
+from service_wizard.questions import get_smartstack_yaml
 from service_wizard.service import Service
 from service_wizard.service_configuration import collate_hosts_by_habitat
 from service_wizard.template import Template
@@ -87,7 +87,7 @@ def ask_lbs(yelpsoa_config_root, vip, smartstack_only):
             use_smartstack = ask_smartstack()
 
     if use_smartstack:
-        smartstack = get_smartstack(yelpsoa_config_root)
+        smartstack = get_smartstack_yaml(yelpsoa_config_root, None, True)
     else:
         smartstack = None
 

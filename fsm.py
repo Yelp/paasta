@@ -12,8 +12,9 @@ from service_wizard.service import Service
 def parse_args():
     parser = optparse.OptionParser()
     parser.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout")
-    parser.add_option("-a", "--auto", dest="auto", default=False, action="store_true", help="Automatically calculate and use sane defaults. Exit violently if any values cannot be automatically calculated.")
     parser.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured (--auto not available)")
+    parser.add_option("-a", "--auto", dest="auto", default=False, action="store_true", help="Automatically calculate and use sane defaults. Exit violently if any values cannot be automatically calculated.")
+    parser.add_option("-p", "--port", dest="port", default=None, help="Smartstack proxy port used by service.")
 
     opts, args = parser.parse_args()
     validate_options(parser, opts)
@@ -34,9 +35,10 @@ def validate_options(parser, opts):
         )
 
 
-def get_paasta_config(srvname, auto):
+def get_paasta_config(yelpsoa_config_root, srvname, auto, port):
     srvname = get_srvname(srvname, auto)
-    return srvname
+    smartstack_yaml = get_smartstack_yaml(yelpsoa_config_root, auto, port)
+    return (srvname, smartstack_yaml)
 
 
 def write_paasta_config(srv, smartstack_yaml):
@@ -44,9 +46,9 @@ def write_paasta_config(srv, smartstack_yaml):
 
 
 def main(opts, args):
-    srvname = get_paasta_config(opts.srvname, opts.auto)
+    (srvname, smartstack_yaml) = get_paasta_config(opts.yelpsoa_config_root, opts.srvname, opts.auto, opts.port)
     srv = Service(srvname, opts.yelpsoa_config_root)
-    write_paasta_config(srv)
+    write_paasta_config(srv, smartstack_yaml)
 
 
 if __name__ == '__main__':
