@@ -34,6 +34,7 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
     smartstack_stanza = {}
     smartstack_stanza["main"] = {
         "proxy_port": int(port),
+        "healthcheck_uri": "/",
     }
     return smartstack_stanza
 
