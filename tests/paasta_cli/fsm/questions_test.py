@@ -4,7 +4,7 @@ import testify as T
 import fsm
 
 
-class AskSrvnameTestCase(T.TestCase):
+class GetSrvnameTestCase(T.TestCase):
     @T.setup_teardown
     def setup_mocks(self):
         """Calling raw_input() from automated tests can ruin your day, so we'll
@@ -19,7 +19,7 @@ class AskSrvnameTestCase(T.TestCase):
         srvname = 'services/fake'
         auto = 'UNUSED'
         expected = srvname
-        actual = fsm.ask_srvname(srvname, auto)
+        actual = fsm.get_srvname(srvname, auto)
         T.assert_equal(expected, actual)
         T.assert_equal(0, self.mock_raw_input.call_count)
 
@@ -34,7 +34,7 @@ class AskSrvnameTestCase(T.TestCase):
         T.assert_raises_and_contains(
             SystemExit,
             "I'd Really Rather You Didn't Use --auto Without --service-name",
-            fsm.ask_srvname,
+            fsm.get_srvname,
             srvname,
             auto,
         )
@@ -46,5 +46,5 @@ class AskSrvnameTestCase(T.TestCase):
         """
         srvname = None
         auto = False
-        fsm.ask_srvname(srvname, auto)
+        fsm.get_srvname(srvname, auto)
         T.assert_equal(1, self.mock_raw_input.call_count)
