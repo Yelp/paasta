@@ -4,6 +4,7 @@ import mock
 import testify as T
 
 import fsm
+from service_wizard.questions import _yamlize
 from service_wizard.service import SrvReaderWriter
 
 
@@ -74,4 +75,7 @@ class WritePaastaConfigTestCase(T.TestCase):
     def test(self):
         smartstack_stanza = { 'stack': 'smrt' }
         fsm.write_paasta_config(self.srv, smartstack_stanza)
-        self.srv.io.write_file.assert_called_once_with('smartstack.yaml', smartstack_stanza)
+        self.srv.io.write_file.assert_called_once_with(
+            'smartstack.yaml',
+            _yamlize(smartstack_stanza),
+        )
