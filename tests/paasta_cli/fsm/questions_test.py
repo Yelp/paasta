@@ -61,8 +61,10 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         self.yelpsoa_config_root = "fake_yelpsoa_config_root"
         self.suggested_port = 12345
         self.expected_stanza = {
-            "main": { "proxy_port": self.suggested_port }
-        }
+            "main": {
+                "proxy_port": self.suggested_port,
+                "healthcheck_uri": "/",
+        }}
 
     def test_arg_passed_in(self):
         """If a port is specified, use it."""
