@@ -144,7 +144,7 @@ class SuggestSmartstackProxyPortTestCase(T.TestCase):
         yelpsoa_config_root = "fake_yelpsoa_config_root"
         walk_return = [
             ("fake_root1", "fake_dir1", [ "service.yaml" ]),
-            ("fake_root2", "fake_dir2", [ "service.yaml" ]),
+            ("fake_root2", "fake_dir2", [ "smartstack.yaml" ]),
             ("fake_root3", "fake_dir3", [ "service.yaml" ]),
         ]
         mock_walk = mock.Mock(return_value=walk_return)

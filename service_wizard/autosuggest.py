@@ -64,7 +64,7 @@ def suggest_smartstack_proxy_port(yelpsoa_config_root):
     max_proxy_port = 0
     for root, dirs, files in os.walk(yelpsoa_config_root):
         for f in files:
-            if f.endswith('service.yaml'):
+            if f.endswith('service.yaml') or f.endswith('smartstack.yaml'):
                 proxy_port = _get_smartstack_proxy_port_from_file(root, f)
                 if not 20000 < proxy_port < 21000:
                     proxy_port = 0
