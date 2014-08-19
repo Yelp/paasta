@@ -24,12 +24,12 @@ def get_srvname(srvname, auto):
     return srvname
 
 
-def get_smartstack_yaml(yelpsoa_config_root, auto, port):
+def get_smartstack_stanza(yelpsoa_config_root, auto, port):
     if port is None:
         suggested_port = suggest_smartstack_proxy_port(yelpsoa_config_root)
         if auto:
             port = suggested_port
         else:
             port = ask("Smartstack proxy_port?", suggested_port)
-    smartstack_yaml = { 'proxy_port': port }
-    return smartstack_yaml
+    smartstack_stanza = { 'proxy_port': port }
+    return smartstack_stanza

@@ -43,10 +43,10 @@ class GetPaastaConfigTestCase(T.TestCase):
     def setup_mocks(self):
         with contextlib.nested(
             mock.patch("fsm.get_srvname", autospec=True),
-            mock.patch("fsm.get_smartstack_yaml", autospec=True),
+            mock.patch("fsm.get_smartstack_stanza", autospec=True),
         ) as (
             self.mock_get_srvname,
-            self.mock_get_smartstack_yaml,
+            self.mock_get_smartstack_stanza,
         ):
             yield
 
@@ -62,7 +62,7 @@ class GetPaastaConfigTestCase(T.TestCase):
         fsm.get_paasta_config(yelpsoa_config_root, srvname, auto, port)
 
         self.mock_get_srvname.assert_called_once_with(srvname, auto)
-        self.mock_get_smartstack_yaml.assert_called_once_with(yelpsoa_config_root, auto, port)
+        self.mock_get_smartstack_stanza.assert_called_once_with(yelpsoa_config_root, auto, port)
 
 
 class WritePaastaConfigTestCase(T.TestCase):
@@ -72,6 +72,6 @@ class WritePaastaConfigTestCase(T.TestCase):
         self.srv.io = mock.Mock(spec_set=SrvReaderWriter)
 
     def test(self):
-        smartstack_yaml = { 'stack': 'smrt' }
-        fsm.write_paasta_config(self.srv, smartstack_yaml)
-        self.srv.io.write_file.assert_called_once_with('smartstack.yaml', smartstack_yaml)
+        smartstack_stanza = { 'stack': 'smrt' }
+        fsm.write_paasta_config(self.srv, smartstack_stanza)
+        self.srv.io.write_file.assert_called_once_with('smartstack.yaml', smartstack_stanza)
