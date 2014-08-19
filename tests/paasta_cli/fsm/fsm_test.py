@@ -51,5 +51,6 @@ class WritePaastaConfigTestCase(T.TestCase):
         self.srv.io = mock.Mock(spec_set=SrvReaderWriter)
 
     def test(self):
-        fsm.write_paasta_config(self.srv)
-        self.srv.io.write_file.assert_called_once_with('smartstack.yaml', 'FIXMEEE')
+        smartstack_yaml = 'stack: smrt'
+        fsm.write_paasta_config(self.srv, smartstack_yaml)
+        self.srv.io.write_file.assert_called_once_with('smartstack.yaml', smartstack_yaml)
