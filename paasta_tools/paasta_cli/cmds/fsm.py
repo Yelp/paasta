@@ -4,7 +4,7 @@ import optparse
 from os.path import exists
 import sys
 
-from service_wizard.questions import get_smartstack_yaml
+from service_wizard.questions import get_smartstack_stanza
 from service_wizard.questions import get_srvname
 from service_wizard.service import Service
 
@@ -37,18 +37,18 @@ def validate_options(parser, opts):
 
 def get_paasta_config(yelpsoa_config_root, srvname, auto, port):
     srvname = get_srvname(srvname, auto)
-    smartstack_yaml = get_smartstack_yaml(yelpsoa_config_root, auto, port)
-    return (srvname, smartstack_yaml)
+    smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, auto, port)
+    return (srvname, smartstack_stanza)
 
 
-def write_paasta_config(srv, smartstack_yaml):
-    srv.io.write_file('smartstack.yaml', smartstack_yaml)
+def write_paasta_config(srv, smartstack_stanza):
+    srv.io.write_file('smartstack.yaml', smartstack_stanza)
 
 
 def main(opts, args):
-    (srvname, smartstack_yaml) = get_paasta_config(opts.yelpsoa_config_root, opts.srvname, opts.auto, opts.port)
+    (srvname, smartstack_stanza) = get_paasta_config(opts.yelpsoa_config_root, opts.srvname, opts.auto, opts.port)
     srv = Service(srvname, opts.yelpsoa_config_root)
-    write_paasta_config(srv, smartstack_yaml)
+    write_paasta_config(srv, smartstack_stanza)
 
 
 if __name__ == '__main__':
