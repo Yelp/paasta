@@ -1,6 +1,7 @@
 #!/usr/bin/python
 
 import optparse
+from os.path import exists
 import sys
 
 from service_wizard.questions import get_smartstack_yaml
@@ -24,7 +25,13 @@ def validate_options(parser, opts):
     Otherwise returns None (implicitly)."""
     if not opts.yelpsoa_config_root:
         parser.print_usage()
-        sys.exit("ERROR: --yelpsoa-config-root is required!")
+        sys.exit("I'd Really Rather You Didn't Fail To Provide --yelpsoa-config-root")
+    if not exists(opts.yelpsoa_config_root):
+        parser.print_usage()
+        sys.exit(
+            "I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
+            "Like %s" % opts.yelpsoa_config_root
+        )
 
 
 def get_paasta_config(srvname, auto):
