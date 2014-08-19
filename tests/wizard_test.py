@@ -661,13 +661,13 @@ class TestAskLBs(T.TestCase):
             mock.patch.object(wizard, 'ask_smartstack', autospec=True),
             mock.patch.object(
                 wizard,
-                'get_smartstack',
+                'get_smartstack_yaml',
                 autospec=True,
                 return_value=mock.sentinel.smartstack_conf),
         ) as (
             self.mock_ask_vip,
             self.mock_ask_smartstack,
-            self.mock_get_smartstack
+            self.mock_get_smartstack_yaml
         ):
             yield
 
