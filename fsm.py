@@ -31,8 +31,8 @@ def get_paasta_config(srvname, auto):
     return srvname
 
 
-def write_paasta_config(srv):
-    srv.io.write_file('smartstack.yaml', 'FIXMEEE')
+def write_paasta_config(srv, smartstack_yaml):
+    srv.io.write_file('smartstack.yaml', smartstack_yaml)
 
 
 def main(opts, args):
