@@ -52,12 +52,13 @@ def _get_smartstack_proxy_port_from_file(root, file):
     proxy_port."""
     with open(os.path.join(root, file)) as f:
         data = yaml.load(f)
-        if not 'smartstack' in data:
-            port = 0
-        else:
+        if file.endswith('service.yaml') and 'smartstack' in data:
             port = data['smartstack'].get('proxy_port', 0)
-            port = int(port)
-    return port
+        elif file.endswith('smartstack.yaml') and 'main' in data:
+            port = data['main'].get('proxy_port', 0)
+        else:
+            port = 0
+    return int(port)
 
 def suggest_smartstack_proxy_port(yelpsoa_config_root):
     """Pick the next highest smartstack proxy port from the 20000-21000 block"""
