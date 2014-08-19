@@ -21,8 +21,8 @@ class QuestionsTestCase(T.TestCase):
 class GetSrvnameTestCase(QuestionsTestCase):
     def test_arg_passed_in(self):
         """If a value is specified, use it."""
-        srvname = 'services/fake'
-        auto = 'UNUSED'
+        srvname = "services/fake"
+        auto = "UNUSED"
         expected = srvname
         actual = fsm.get_srvname(srvname, auto)
         T.assert_equal(expected, actual)
@@ -58,11 +58,11 @@ class GetSrvnameTestCase(QuestionsTestCase):
 class GetSmartstackYamlTestCase(QuestionsTestCase):
     def test_arg_passed_in(self):
         """If a port is specified, use it."""
-        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        yelpsoa_config_root = "fake_yelpsoa_config_root"
         port = 12345
-        auto = 'UNUSED'
+        auto = "UNUSED"
 
-        expected = { 'proxy_port': port }
+        expected = { "smartstack": { "proxy_port": port } }
         actual = fsm.get_smartstack_stanza(yelpsoa_config_root, auto, port)
 
         T.assert_equal(expected, actual)
@@ -72,12 +72,12 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
         """If a value is not specified but --auto was requested, calculate and
         use a sane default.
         """
-        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        yelpsoa_config_root = "fake_yelpsoa_config_root"
         port = None
         suggested_port = 12345
         auto = True
 
-        expected = { 'proxy_port': suggested_port }
+        expected = { "smartstack": { "proxy_port": suggested_port } }
         with mock.patch(
             "service_wizard.questions.suggest_smartstack_proxy_port",
             autospec=True,
@@ -96,12 +96,12 @@ class GetSmartstackYamlTestCase(QuestionsTestCase):
         """If a value is not specified but and --auto was not requested, prompt
         the user.
         """
-        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        yelpsoa_config_root = "fake_yelpsoa_config_root"
         port = None
         suggested_port = 12345
         auto = False
 
-        expected = { 'proxy_port': suggested_port }
+        expected = { "smartstack" : { "proxy_port": suggested_port } }
         self.mock_ask.return_value = suggested_port
         with mock.patch(
             "service_wizard.questions.suggest_smartstack_proxy_port",
