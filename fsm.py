@@ -42,7 +42,8 @@ def get_paasta_config(yelpsoa_config_root, srvname, auto, port):
     srvname = get_srvname(srvname, auto)
     smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, auto, port)
     marathon_stanza = get_marathon_stanza()
-    return (srvname, smartstack_stanza, marathon_stanza)
+    monitoring_stanza = get_monitoring_stanza()
+    return (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza)
 
 
 def write_paasta_config(srv,
@@ -56,7 +57,7 @@ def write_paasta_config(srv,
 
 
 def main(opts, args):
-    (srvname, smartstack_stanza, marathon_stanza) = (
+    (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza) = (
         get_paasta_config(
             opts.yelpsoa_config_root,
             opts.srvname,
@@ -64,7 +65,12 @@ def main(opts, args):
             opts.port
     ))
     srv = Service(srvname, opts.yelpsoa_config_root)
-    write_paasta_config(srv, smartstack_stanza, marathon_stanza)
+    write_paasta_config(
+        srv,
+        smartstack_stanza,
+        marathon_stanza,
+        monitoring_stanza,
+    )
 
 
 if __name__ == "__main__":
