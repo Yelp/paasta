@@ -412,7 +412,7 @@ def main(opts, args):
         opts.deploys_on = opts.deploys_on or "AUTO"
         opts.smartstack_only = opts.smartstack_only or "AUTO"
 
-    srvname = ask_srvname(opts.srvname)
+    srvname = ask_srvname(opts.srvname, opts.auto)
     srv = Service(srvname, opts.yelpsoa_config_root)
 
     port = ask_port(opts.port)
