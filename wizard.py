@@ -14,7 +14,7 @@ from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
 from service_wizard.autosuggest import suggest_smartstack_proxy_port
 from service_wizard.autosuggest import suggest_vip
-from service_wizard.questions import ask_srvname
+from service_wizard.questions import get_srvname
 from service_wizard.service import Service
 from service_wizard.service_configuration import collate_hosts_by_habitat
 from service_wizard.template import Template
@@ -412,7 +412,7 @@ def main(opts, args):
         opts.deploys_on = opts.deploys_on or "AUTO"
         opts.smartstack_only = opts.smartstack_only or "AUTO"
 
-    srvname = ask_srvname(opts.srvname, opts.auto)
+    srvname = get_srvname(opts.srvname, opts.auto)
     srv = Service(srvname, opts.yelpsoa_config_root)
 
     port = ask_port(opts.port)

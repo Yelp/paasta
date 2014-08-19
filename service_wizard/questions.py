@@ -6,7 +6,7 @@ inputs.
 import sys
 
 
-def ask_srvname(srvname, auto):
+def get_srvname(srvname, auto):
     if srvname is None:
         if auto:
             sys.exit("I'd Really Rather You Didn't Use --auto Without --service-name")
