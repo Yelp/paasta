@@ -1,3 +1,9 @@
+service-deployment-tools (0.3.3-yelp1ubuntu1) lucid; urgency=low
+
+  * Fixing a bug in get_docker_url to return '' if no docker_image passed 
+
+ -- James McGuinness <jrm@yelp.com>  Tue, 19 Aug 2014 09:56:34 -0700
+
 service-deployment-tools (0.3.3-yelp1) lucid; urgency=low
 
   * Changing MarathonClient timeouts 
