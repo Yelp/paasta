@@ -156,9 +156,10 @@ def setup_service(service_name, instance_name, client, marathon_config,
     docker_url = marathon_tools.get_docker_url(marathon_config['docker_registry'],
                                                service_marathon_config['docker_image'])
     if not docker_url:
-        log.error("Docker image %s not found. Exiting", service_marathon_config['docker_image'])
-        return (1, "Docker image not found in deployments.json: %s"
-                   % service_marathon_config['docker_image'])
+        error_msg = "Docker image for %s.%s not in deployments.json (or marathon config) Exiting.".format(
+                  (service_name, instance_name))
+        log.error(error_msg)
+        return (1, error_msg)
     complete_config = marathon_tools.create_complete_config(partial_id, docker_url,
                                                             marathon_config['docker_options'],
                                                             service_marathon_config)
