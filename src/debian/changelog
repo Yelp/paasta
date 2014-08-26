@@ -1,3 +1,9 @@
+service-deployment-tools (0.3.4-yelp1) lucid; urgency=low
+
+  * Make marathon deployment less verbose when using defaults.
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 25 Aug 2014 18:18:16 -0700
+
 service-deployment-tools (0.3.3-yelp1ubuntu1) lucid; urgency=low
 
   * Fixing a bug in get_docker_url to return '' if no docker_image passed 

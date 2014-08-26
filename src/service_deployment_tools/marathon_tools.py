@@ -158,8 +158,6 @@ def get_mem(service_config):
     :param service_config: The service instance's configuration dictionary
     :returns: The amount of memory specified by the config, 100 if not specified"""
     mem = service_config.get('mem')
-    if not mem:
-        log.warning("'mem' not specified in config. Using default: 100")
     return int(mem) if mem else 100
 
 
@@ -171,8 +169,6 @@ def get_cpus(service_config):
     :param service_config: The service instance's configuration dictionary
     :returns: The number of cpus specified in the config, 1 if not specified"""
     cpus = service_config.get('cpus')
-    if not cpus:
-        log.warning("'cpus' not specified in config. Using default: 1")
     return int(cpus) if cpus else 1
 
 
@@ -197,8 +193,6 @@ def get_instances(service_config):
     :param service_config: The service instance's configuration dictionary
     :returns: The number of instances specified in the config, 1 if not specified"""
     instances = service_config.get('instances')
-    if not instances:
-        log.warning("'instances' not specified in config. Using default: 1")
     return int(instances) if instances else 1
 
 
@@ -210,8 +204,6 @@ def get_bounce_method(service_config):
     :param service_config: The service instance's configuration dictionary
     :returns: The bounce method specified in the config, or 'crossover' if not specified"""
     bounce_method = service_config.get('bounce_method')
-    if not bounce_method:
-        log.warning("'bounce_method' not specified in config. Using default: crossover")
     return bounce_method if bounce_method else 'crossover'
 
 
