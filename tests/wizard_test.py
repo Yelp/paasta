@@ -10,14 +10,6 @@ from service_wizard import config
 from service_wizard import service_configuration
 
 
-class SrvReaderWriterTestCase(T.TestCase):
-    """I bailed out of this test, but I'll leave this here for now as an
-    example of how to interact with the Srv* classes."""
-    @T.setup
-    def init_service(self):
-        paths = wizard.paths.SrvPathBuilder("fake_srvpathbuilder")
-        self.srw = wizard.SrvReaderWriter(paths)
-
 class ValidateOptionsTestCase(T.TestCase):
     def test_enable_yelpsoa_config_requires_yelpsoa_config_root(self):
         parser = mock.Mock()
@@ -26,8 +18,13 @@ class ValidateOptionsTestCase(T.TestCase):
         options.yelpsoa_config_root = None
         options.enable_puppet = False # Disable checks we don't care about
         options.enable_nagios = False # Disable checks we don't care about
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
+        T.assert_raises_and_contains(
+            SystemExit,
+            "yelpsoa-configs is enabled but --yelpsoa-config-root is not set",
+            wizard.validate_options,
+            parser,
+            options,
+        )
 
     def test_enable_puppet_requires_puppet_root(self):
         parser = mock.Mock()
@@ -36,8 +33,13 @@ class ValidateOptionsTestCase(T.TestCase):
         options.puppet_root = None
         options.enable_yelpsoa_config = False # Disable checks we don't care about
         options.enable_nagios = False # Disable checks we don't care about
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
+        T.assert_raises_and_contains(
+            SystemExit,
+            "Puppet is enabled but --puppet-root is not set",
+            wizard.validate_options,
+            parser,
+            options,
+        )
 
     def test_enable_nagios_requires_nagios_root(self):
         parser = mock.Mock()
@@ -46,15 +48,19 @@ class ValidateOptionsTestCase(T.TestCase):
         options.nagios_root = None
         options.enable_yelpsoa_config = False # Disable checks we don't care about
         options.enable_puppet = False # Disable checks we don't care about
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
+        T.assert_raises_and_contains(
+            SystemExit,
+            "Nagios is enabled but --nagios-root is not set",
+            wizard.validate_options,
+            parser,
+            options,
+        )
 
     def test_smartstack_only_cannot_be_used_with_vip(self):
         parser = mock.Mock()
         options = mock.Mock()
 
         options.vip = "vip1"
-        options.port = 1234
         options.smartstack_only = True
 
         # Disable checks we don't care about
@@ -62,24 +68,33 @@ class ValidateOptionsTestCase(T.TestCase):
         options.enable_yelpsoa_config = False
         options.enable_puppet = False
 
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
+        T.assert_raises_and_contains(
+            SystemExit,
+            "--smartstack-only cannot be used with --vip",
+            wizard.validate_options,
+            parser,
+            options,
+        )
 
-    def test_smartstack_only_cannot_be_used_with_auto(self):
+    def test_smartstack_only_requires_yelpsoa_config_root(self):
         parser = mock.Mock()
         options = mock.Mock()
 
-        options.yelpsoa_config_root = mock.sentinel.yelpsoa_root
+        options.enable_yelpsoa_config = False
+        options.yelpsoa_config_root = None
         options.smartstack_only = True
-        options.auto = True
 
         # Disable checks we don't care about
-        options.enable_nagios = False
-        options.enable_yelpsoa_config = False
         options.enable_puppet = False
+        options.enable_nagios = False
 
-        with T.assert_raises(SystemExit):
-            wizard.validate_options(parser, options)
+        T.assert_raises_and_contains(
+            SystemExit,
+            "--smartstack-only requires --yelpsoa-config-root",
+            wizard.validate_options,
+            parser,
+            options,
+        )
 
 
 class SuggestPortTestCase(T.TestCase):
@@ -126,14 +141,10 @@ class SuggestPortTestCase(T.TestCase):
 # Shamelessly copied from SuggestPortTestCase
 class SuggestSmartstackProxyPortTestCase(T.TestCase):
     def test_suggest_smartstack_proxy_port(self):
-        # mock.patch was very confused by the config module, so I'm doing it
-        # this way. One more reason to disapprove of this global config module
-        # scheme.
-        config.YELPSOA_CONFIG_ROOT = "fake_yelpsoa_config_root"
-
+        yelpsoa_config_root = "fake_yelpsoa_config_root"
         walk_return = [
             ("fake_root1", "fake_dir1", [ "service.yaml" ]),
-            ("fake_root2", "fake_dir2", [ "service.yaml" ]),
+            ("fake_root2", "fake_dir2", [ "smartstack.yaml" ]),
             ("fake_root3", "fake_dir3", [ "service.yaml" ]),
         ]
         mock_walk = mock.Mock(return_value=walk_return)
@@ -152,7 +163,7 @@ class SuggestSmartstackProxyPortTestCase(T.TestCase):
             mock.patch("service_wizard.autosuggest._get_smartstack_proxy_port_from_file",
                        mock_get_smartstack_proxy_port_from_file),
         ):
-            actual = autosuggest.suggest_smartstack_proxy_port()
+            actual = autosuggest.suggest_smartstack_proxy_port(yelpsoa_config_root)
         # Sanity check: our mock was called once for each legit port file in
         # walk_return
         T.assert_equal(mock_get_smartstack_proxy_port_from_file.call_count, 3)
@@ -487,7 +498,11 @@ class GetServiceYamlContentsTestCase(T.TestCase):
     def test_smartstack(self):
         runs_on = []
         deploys_on = []
-        smartstack = {"proxy_port": 1234}
+        smartstack = {
+            "smartstack": {
+                "proxy_port": 1234
+            }
+        }
         actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
 
         expected = "smartstack:\n  proxy_port: 1234\n"
@@ -650,21 +665,28 @@ class TestAskLBs(T.TestCase):
             mock.patch.object(wizard, 'ask_smartstack', autospec=True),
             mock.patch.object(
                 wizard,
-                'get_smartstack',
+                'get_smartstack_stanza',
                 autospec=True,
                 return_value=mock.sentinel.smartstack_conf),
         ) as (
             self.mock_ask_vip,
             self.mock_ask_smartstack,
-            self.mock_get_smartstack
+            self.mock_get_smartstack_stanza
         ):
             yield
 
     def test_when_yes_smartstack_only(self):
-        vip, smartstack = wizard.ask_lbs(None, True)
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, True)
 
         T.assert_equal(vip, None)
         T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
+        self.mock_get_smartstack_stanza.assert_called_once_with(
+            yelpsoa_config_root,
+            None,
+            True,
+            legacy_style=True,
+        )
 
         T.assert_false(self.mock_ask_vip.called)
         T.assert_false(self.mock_ask_smartstack.called)
@@ -673,7 +695,8 @@ class TestAskLBs(T.TestCase):
         self.mock_ask_vip.return_value = None
         self.mock_ask_smartstack.return_value = False
 
-        vip, smartstack = wizard.ask_lbs(None, False)
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
 
         T.assert_equal(vip, None)
         T.assert_equal(smartstack, None)
@@ -685,7 +708,8 @@ class TestAskLBs(T.TestCase):
         self.mock_ask_vip.return_value = None
         self.mock_ask_smartstack.return_value = True
 
-        vip, smartstack = wizard.ask_lbs(None, False)
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
 
         T.assert_equal(vip, None)
         T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
@@ -696,7 +720,8 @@ class TestAskLBs(T.TestCase):
     def test_option_no_smartstack_only_yes_vip(self):
         self.mock_ask_vip.return_value = mock.sentinel.vip
 
-        vip, smartstack = wizard.ask_lbs(None, False)
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
 
         T.assert_equal(vip, mock.sentinel.vip)
         T.assert_equal(smartstack, mock.sentinel.smartstack_conf)

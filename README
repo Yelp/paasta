@@ -1,5 +1,8 @@
-service_wizard is a script to assist Operations and Friends of Operations with
+service_wizard is a module to assist Operations and Friends of Operations with
 the chores of configuration for deployment and monitoring of Yelp SOA services.
+
+For legacy yelpsoa services: wizard.py --help
+For PaaSTA services: fsm.py --help
 
 Many more details are in the New Service Setup Runbook
 https://docs.google.com/a/yelp.com/document/d/10VSZvnIcxspUbLVFXoEHP-kAedxIiqsoYPUk93EoWkM/edit#

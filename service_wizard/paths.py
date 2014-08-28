@@ -8,28 +8,17 @@ SERVICEGROUPS = os.path.join('shared', 'prod-and-stage', 'servicegroups')
 HOSTGROUPS = os.path.join('datacenters')
 CHECKS = os.path.join('shared', 'prod-and-stage', 'services')
 
-ALL_FILES = set([
-    'runas',
-    'runas_group',
-    'port',
-    'status_port',
-    'lb.yaml',
-    'vip'
-    'post-download',
-    'post-activate',
-    'service.yaml',
-])
-
 
 class SrvPathBuilder(object):
     """Builds paths to files in the puppet heirarchy for a given service."""
 
-    def __init__(self, srvname):
+    def __init__(self, srvname, yelpsoa_config_root):
         self.srvname = srvname
+        self.yelpsoa_config_root = yelpsoa_config_root
 
     @property
     def root_dir(self):
-        return os.path.join(config.YELPSOA_CONFIG_ROOT, self.srvname)
+        return os.path.join(self.yelpsoa_config_root, self.srvname)
 
     def to_file(self, filename):
         """Return a filename under this service's directory"""
