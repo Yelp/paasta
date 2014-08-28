@@ -24,7 +24,7 @@ def get_srvname(srvname, auto):
     return srvname
 
 
-def get_smartstack_stanza(yelpsoa_config_root, auto, port):
+def get_smartstack_stanza(yelpsoa_config_root, auto, port, legacy_style=False):
     if port is None:
         suggested_port = suggest_smartstack_proxy_port(yelpsoa_config_root)
         if auto:
@@ -32,7 +32,10 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
         else:
             port = ask("Smartstack proxy_port?", suggested_port)
     smartstack_stanza = {}
-    smartstack_stanza["main"] = {
+    key_name = "main"
+    if legacy_style:
+        key_name = "smartstack"
+    smartstack_stanza[key_name] = {
         "proxy_port": int(port),
         "healthcheck_uri": "/",
     }
