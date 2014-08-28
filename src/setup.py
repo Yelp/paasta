@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'service-deployment-tools',
-    version        = '0.3.5',
+    version        = '0.4.0',
     provides       = ["service_deployment_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -38,6 +38,7 @@ setup(
         'service_deployment_tools/monitoring/check_classic_service_replication.py',
         'service_deployment_tools/deploy_marathon_services',
         'service_deployment_tools/generate_deployments_json.py',
-        'service_deployment_tools/check_marathon_services_replication.py'
+        'service_deployment_tools/check_marathon_services_replication.py',
+        'service_deployment_tools/generate_services_yaml.py'
     ]
 )

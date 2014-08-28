@@ -1,3 +1,9 @@
+service-deployment-tools (0.4.0-yelp1) lucid; urgency=low
+
+  * Add generate_services_yaml script.
+
+ -- John Billings <billings@yelp.com>  Thu, 28 Aug 2014 11:47:05 -0700
+
 service-deployment-tools (0.3.4-yelp1) lucid; urgency=low
 
   * Make marathon deployment less verbose when using defaults.

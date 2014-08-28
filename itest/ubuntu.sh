@@ -10,7 +10,8 @@ check_marathon_services_frontends
 list_marathon_service_instances
 deploy_marathon_services
 generate_deployments_json
-check_marathon_services_replication"
+check_marathon_services_replication
+generate_services_yaml"
 
 MARATHON_SERVICES="fake_service_uno.main
 fake_service_dos.niam"
@@ -70,5 +71,27 @@ else
   echo "Could not invoke check_classic_service_replication with --help"
   exit 1
 fi
+
+
+# Test generate_services_yaml
+
+services_yaml=$(mktemp)
+function remove_services_yaml {
+  rm -f "$services_yaml"
+}
+trap remove_services_yaml EXIT
+
+generate_services_yaml "$services_yaml"
+
+for ns in $SERVICE_NAMESPACES
+do
+    if grep -q $ns "$services_yaml"; then
+        echo "Namespace $ns showed up in services.yaml"
+    else
+        echo "Service namespace $ns ISN'T showing up in services.yaml"
+        exit 1
+    fi
+done
+
 
 echo "Everything worked!"
