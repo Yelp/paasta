@@ -86,7 +86,7 @@ def ask_lbs(yelpsoa_config_root, vip, smartstack_only):
             use_smartstack = ask_smartstack()
 
     if use_smartstack:
-        smartstack = get_smartstack_stanza(yelpsoa_config_root, None, True)
+        smartstack = get_smartstack_stanza(yelpsoa_config_root, None, True, legacy_style=True)
     else:
         smartstack = None
 
