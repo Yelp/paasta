@@ -5,17 +5,9 @@ from service_wizard import paths
 
 class Service(object):
 
-    @classmethod
-    def from_files(cls, srvname):
-        srv = cls(srvname)
-        for f in paths.ALL_FILES:
-            setattr(srv, f.replace('-','_').replace('.','_'),
-                    srv.io.read_file(f))
-        return srv
-
-    def __init__(self, name):
+    def __init__(self, name, yelpsoa_config_root):
         self.name = name
-        self.paths = paths.SrvPathBuilder(name)
+        self.paths = paths.SrvPathBuilder(name, yelpsoa_config_root)
         self.io = SrvReaderWriter(self.paths)
 
 class SrvReaderWriter(object):
@@ -80,9 +72,6 @@ class SrvReaderWriter(object):
 
     def append_check(self, contents):
         self._append(self.paths.check, contents)
-
-    def write_service_yaml(self, contents):
-        self._write(self.paths.service_yaml, contents)
 
     def _read(self, path):
         if not os.path.exists(path):
