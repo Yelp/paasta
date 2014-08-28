@@ -498,7 +498,11 @@ class GetServiceYamlContentsTestCase(T.TestCase):
     def test_smartstack(self):
         runs_on = []
         deploys_on = []
-        smartstack = {"proxy_port": 1234}
+        smartstack = {
+            "smartstack": {
+                "proxy_port": 1234
+            }
+        }
         actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
 
         expected = "smartstack:\n  proxy_port: 1234\n"

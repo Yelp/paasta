@@ -121,7 +121,7 @@ def get_service_yaml_contents(runs_on, deploys_on, smartstack):
         "deployed_to": deploys_on,
     }
     if smartstack is not None:
-        contents["smartstack"] = smartstack
+        contents.update(smartstack)
     return _yamlize(contents)
 
 def get_habitat_overrides(host_by_habitat, srvname, vip=False, vip_number=None):
