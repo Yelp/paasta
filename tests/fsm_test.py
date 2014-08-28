@@ -57,7 +57,7 @@ class GetPaastaConfigTestCase(T.TestCase):
 
     def test_everything_specified(self):
         """A sort of happy path test because we don't care about the logic in
-        the individual get_* methods, just that al of them get called as
+        the individual get_* methods, just that all of them get called as
         expected.
         """
         yelpsoa_config_root = "fake_yelpsoa_config_root"
