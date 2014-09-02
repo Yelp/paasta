@@ -1,3 +1,9 @@
+service-deployment-tools (0.4.1-yelp1) lucid; urgency=low
+
+  * Fix monitoring check output messages
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 02 Sep 2014 11:22:38 -0700
+
 service-deployment-tools (0.4.0-yelp1) lucid; urgency=low
 
   * Add generate_services_yaml script.
