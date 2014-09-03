@@ -63,7 +63,6 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         self.expected_stanza = {
             "main": {
                 "proxy_port": self.suggested_port,
-                "healthcheck_uri": "/",
         }}
 
     def test_arg_passed_in(self):
@@ -132,7 +131,6 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         expected_stanza = {
             "smartstack": {
                 "proxy_port": self.suggested_port,
-                "healthcheck_uri": "/",
         }}
 
         actual = fsm.get_smartstack_stanza(self.yelpsoa_config_root, auto, port, legacy_style=True)
