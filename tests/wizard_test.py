@@ -683,8 +683,8 @@ class TestAskLBs(T.TestCase):
         T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
         self.mock_get_smartstack_stanza.assert_called_once_with(
             yelpsoa_config_root,
-            None,
             True,
+            None,
             legacy_style=True,
         )
 
