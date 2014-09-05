@@ -61,11 +61,11 @@ def validate_args(parser, args):
         )
 
 
-def get_paasta_config(yelpsoa_config_root, srvname, auto, port):
+def get_paasta_config(yelpsoa_config_root, srvname, auto, port, team):
     srvname = get_srvname(srvname, auto)
     smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, auto, port)
     marathon_stanza = get_marathon_stanza()
-    monitoring_stanza = get_monitoring_stanza()
+    monitoring_stanza = get_monitoring_stanza(team)
     return (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza)
 
 
