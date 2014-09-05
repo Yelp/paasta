@@ -54,6 +54,11 @@ def validate_args(parser, args):
             "I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
             "Like %s" % args.yelpsoa_config_root
         )
+    if args.auto and not args.srvname:
+        parser.print_usage()
+        sys.exit(
+            "I'd Really Rather You Didn't Use --auto Without --service-name"
+        )
 
 
 def get_paasta_config(yelpsoa_config_root, srvname, auto, port):
