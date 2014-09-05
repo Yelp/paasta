@@ -147,6 +147,7 @@ class GetMarathonStanzaTestCase(QuestionsTestCase):
 
 class GetMonitoringStanzaTestCase(QuestionsTestCase):
     def test(self):
-        actual = fsm.get_monitoring_stanza()
-        T.assert_in("team", actual.keys())
-        T.assert_in("notification_email", actual.keys())
+        team = "america world police"
+        actual = fsm.get_monitoring_stanza(team)
+        T.assert_in(("team", team), actual.items())
+        T.assert_in(("notification_email", "%s@yelp.com" % team), actual.items())

@@ -57,12 +57,13 @@ class GetPaastaConfigTestCase(T.TestCase):
         srvname = "services/fake_srvname"
         auto = "UNUSED"
         port = 12345
-        fsm.get_paasta_config(yelpsoa_config_root, srvname, auto, port)
+        team = "america world police"
+        fsm.get_paasta_config(yelpsoa_config_root, srvname, auto, port, team)
 
         self.mock_get_srvname.assert_called_once_with(srvname, auto)
         self.mock_get_smartstack_stanza.assert_called_once_with(yelpsoa_config_root, auto, port)
         self.mock_get_marathon_stanza.assert_called_once_with()
-        self.mock_get_monitoring_stanza.assert_called_once_with()
+        self.mock_get_monitoring_stanza.assert_called_once_with(team)
 
 
 class WritePaastaConfigTestCase(T.TestCase):

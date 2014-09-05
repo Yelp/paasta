@@ -75,8 +75,8 @@ def get_marathon_stanza():
     return stanza
 
 
-def get_monitoring_stanza():
+def get_monitoring_stanza(team):
     stanza = {}
-    stanza["team"] = "mesos"
-    stanza["notification_email"] = "jrm@yelp.com"
+    stanza["team"] = team
+    stanza["notification_email"] = "%s@yelp.com" % team
     return stanza
