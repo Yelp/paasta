@@ -146,8 +146,36 @@ class GetMarathonStanzaTestCase(QuestionsTestCase):
 
 
 class GetMonitoringStanzaTestCase(QuestionsTestCase):
-    def test(self):
+    def test_arg_passed_in(self):
         team = "america world police"
-        actual = fsm.get_monitoring_stanza(team)
+        auto = "UNUSED"
+
+        actual = fsm.get_monitoring_stanza(auto, team)
         T.assert_in(("team", team), actual.items())
         T.assert_in(("notification_email", "%s@yelp.com" % team), actual.items())
+
+    def test_arg_not_passed_in_auto_true(self):
+        """If a value is not specified but --auto was requested, calculate and
+        use a sane default.
+        """
+        team = None
+        auto = True
+
+        T.assert_raises_and_contains(
+            SystemExit,
+            "I'd Really Rather You Didn't Use --auto Without --team",
+            fsm.get_monitoring_stanza,
+            auto,
+            team,
+        )
+        T.assert_equal(0, self.mock_ask.call_count)
+
+    def test_arg_not_passed_in_auto_false(self):
+        """If a value is not specified but and --auto was not requested, prompt
+        the user.
+        """
+        team = None
+        auto = False
+
+        fsm.get_monitoring_stanza(auto, team)
+        T.assert_equal(1, self.mock_ask.call_count)
