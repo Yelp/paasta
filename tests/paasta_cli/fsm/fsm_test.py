@@ -9,21 +9,41 @@ from service_wizard.service import SrvReaderWriter
 
 
 class ValidateOptionsTest(T.TestCase):
+    @T.setup_teardown
+    def setup_mocks(self):
+        with mock.patch("fsm.exists") as self.mock_exists:
+            # Happpy path by default
+            self.mock_exists.return_value = True
+            yield
+
     def test_yelpsoa_config_root_exists(self):
         parser = mock.Mock()
         args = mock.Mock()
         args.yelpsoa_config_root = "non-existent thing"
 
-        with mock.patch("fsm.exists") as self.mock_exists:
-            self.mock_exists.return_value = False
-            T.assert_raises_and_contains(
-                SystemExit,
-                ("I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
-                    "Like %s" % args.yelpsoa_config_root),
-                fsm.validate_args,
-                parser,
-                args,
-            )
+        self.mock_exists.return_value = False
+        T.assert_raises_and_contains(
+            SystemExit,
+            ("I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
+                "Like %s" % args.yelpsoa_config_root),
+            fsm.validate_args,
+            parser,
+            args,
+        )
+
+    def test_auto_and_no_service_name(self):
+        parser = mock.Mock()
+        args = mock.Mock()
+        args.auto = True
+        args.srvname = None
+
+        T.assert_raises_and_contains(
+            SystemExit,
+            ("I'd Really Rather You Didn't Use --auto Without --service-name"),
+            fsm.validate_args,
+            parser,
+            args,
+        )
 
 
 class GetPaastaConfigTestCase(T.TestCase):
