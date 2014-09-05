@@ -19,7 +19,7 @@ def parse_args():
         dest="yelpsoa_config_root",
         default=None,
         required=True,
-        help="Path to root of yelpsoa-configs checkout")
+        help="Path to root of yelpsoa-configs checkout (required)")
     parser.add_argument(
         "-s", "--service-name",
         dest="srvname",
@@ -41,12 +41,12 @@ def parse_args():
         help="Smartstack proxy port used by service.")
 
     args = parser.parse_args()
-    validate_options(parser, args)
+    validate_args(parser, args)
     return args
 
 
-def validate_options(parser, args):
-    """Does sys.exit() if an invalid combination of options is specified.
+def validate_args(parser, args):
+    """Does sys.exit() if an invalid combination of args is specified.
     Otherwise returns None (implicitly)."""
     if not exists(args.yelpsoa_config_root):
         parser.print_usage()

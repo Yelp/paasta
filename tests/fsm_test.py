@@ -11,18 +11,18 @@ from service_wizard.service import SrvReaderWriter
 class ValidateOptionsTest(T.TestCase):
     def test_yelpsoa_config_root_exists(self):
         parser = mock.Mock()
-        options = mock.Mock()
-        options.yelpsoa_config_root = "non-existent thing"
+        args = mock.Mock()
+        args.yelpsoa_config_root = "non-existent thing"
 
         with mock.patch("fsm.exists") as self.mock_exists:
             self.mock_exists.return_value = False
             T.assert_raises_and_contains(
                 SystemExit,
                 ("I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
-                    "Like %s" % options.yelpsoa_config_root),
-                fsm.validate_options,
+                    "Like %s" % args.yelpsoa_config_root),
+                fsm.validate_args,
                 parser,
-                options,
+                args,
             )
 
 
