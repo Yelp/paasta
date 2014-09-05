@@ -63,7 +63,7 @@ class GetPaastaConfigTestCase(T.TestCase):
         self.mock_get_srvname.assert_called_once_with(srvname, auto)
         self.mock_get_smartstack_stanza.assert_called_once_with(yelpsoa_config_root, auto, port)
         self.mock_get_marathon_stanza.assert_called_once_with()
-        self.mock_get_monitoring_stanza.assert_called_once_with(team)
+        self.mock_get_monitoring_stanza.assert_called_once_with(auto, team)
 
 
 class WritePaastaConfigTestCase(T.TestCase):

@@ -75,7 +75,12 @@ def get_marathon_stanza():
     return stanza
 
 
-def get_monitoring_stanza(team):
+def get_monitoring_stanza(auto, team):
+    if team is None:
+        if auto:
+            sys.exit("I'd Really Rather You Didn't Use --auto Without --team")
+        while not team:
+            team = ask("Team responsible for this service?")
     stanza = {}
     stanza["team"] = team
     stanza["notification_email"] = "%s@yelp.com" % team

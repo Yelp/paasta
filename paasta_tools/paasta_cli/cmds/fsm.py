@@ -39,6 +39,13 @@ def parse_args():
         dest="port",
         default=None,
         help="Smartstack proxy port used by service.")
+    parser.add_argument(
+        "-t", "--team",
+        dest="team",
+        default=None,
+        help="Team responsible for the service. Used by various notification "
+            "systems. (--auto not available)",
+    )
 
     args = parser.parse_args()
     validate_args(parser, args)
@@ -65,8 +72,8 @@ def get_paasta_config(yelpsoa_config_root, srvname, auto, port, team):
     srvname = get_srvname(srvname, auto)
     smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, auto, port)
     marathon_stanza = get_marathon_stanza()
-    monitoring_stanza = get_monitoring_stanza(team)
-    return (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza)
+    monitoring_stanza = get_monitoring_stanza(auto, team)
+    return (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza, team)
 
 
 def write_paasta_config(srv,
@@ -80,12 +87,13 @@ def write_paasta_config(srv,
 
 
 def main(args):
-    (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza) = (
+    (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza, team) = (
         get_paasta_config(
             args.yelpsoa_config_root,
             args.srvname,
             args.auto,
             args.port,
+            args.team,
     ))
     srv = Service(srvname, args.yelpsoa_config_root)
     write_paasta_config(
