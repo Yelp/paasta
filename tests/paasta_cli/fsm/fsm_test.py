@@ -31,20 +31,6 @@ class ValidateOptionsTest(T.TestCase):
             args,
         )
 
-    def test_auto_and_no_service_name(self):
-        parser = mock.Mock()
-        args = mock.Mock()
-        args.auto = True
-        args.srvname = None
-
-        T.assert_raises_and_contains(
-            SystemExit,
-            ("I'd Really Rather You Didn't Use --auto Without --service-name"),
-            fsm.validate_args,
-            parser,
-            args,
-        )
-
 
 class GetPaastaConfigTestCase(T.TestCase):
     @T.setup_teardown
