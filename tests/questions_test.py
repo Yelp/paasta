@@ -97,7 +97,7 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         T.assert_equal(0, self.mock_ask.call_count)
 
     def test_arg_not_passed_in_auto_false(self):
-        """If a value is not specified but and --auto was not requested, prompt
+        """If a value is not specified and --auto was not requested, prompt
         the user.
         """
         yelpsoa_config_root = "fake_yelpsoa_config_root"
