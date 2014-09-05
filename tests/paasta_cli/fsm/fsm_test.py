@@ -9,19 +9,6 @@ from service_wizard.service import SrvReaderWriter
 
 
 class ValidateOptionsTest(T.TestCase):
-    def test_yelpsoa_config_root_required(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-        options.yelpsoa_config_root = None
-
-        T.assert_raises_and_contains(
-            SystemExit,
-            "I'd Really Rather You Didn't Fail To Provide --yelpsoa-config-root",
-            fsm.validate_options,
-            parser,
-            options,
-        )
-
     def test_yelpsoa_config_root_exists(self):
         parser = mock.Mock()
         options = mock.Mock()
