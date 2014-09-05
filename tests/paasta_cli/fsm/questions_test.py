@@ -5,7 +5,6 @@ import fsm
 
 
 class QuestionsTestCase(T.TestCase):
-    pass
     @T.setup_teardown
     def setup_mocks(self):
         """Calling raw_input() from automated tests can ruin your day, so we'll
