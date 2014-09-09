@@ -76,6 +76,9 @@ def get_marathon_stanza():
 
 
 def get_monitoring_stanza(auto, team):
+    """Most monitoring things key off of 'team'. How this works is not
+    particularly documented; see OPS-2372.
+    """
     if team is None:
         if auto:
             sys.exit("I'd Really Rather You Didn't Use --auto Without --team")
