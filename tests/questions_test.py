@@ -152,7 +152,6 @@ class GetMonitoringStanzaTestCase(QuestionsTestCase):
 
         actual = fsm.get_monitoring_stanza(auto, team)
         T.assert_in(("team", team), actual.items())
-        T.assert_in(("notification_email", "%s@yelp.com" % team), actual.items())
 
     def test_arg_not_passed_in_auto_true(self):
         """If a value is not specified but --auto was requested, calculate and
@@ -177,5 +176,6 @@ class GetMonitoringStanzaTestCase(QuestionsTestCase):
         team = None
         auto = False
 
-        fsm.get_monitoring_stanza(auto, team)
+        actual = fsm.get_monitoring_stanza(auto, team)
         T.assert_equal(1, self.mock_ask.call_count)
+        T.assert_in(("team", self.mock_ask.return_value), actual.items())

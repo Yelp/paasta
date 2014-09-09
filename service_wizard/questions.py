@@ -83,5 +83,4 @@ def get_monitoring_stanza(auto, team):
             team = ask("Team responsible for this service?")
     stanza = {}
     stanza["team"] = team
-    stanza["notification_email"] = "%s@yelp.com" % team
     return stanza
