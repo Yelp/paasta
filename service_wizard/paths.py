@@ -4,9 +4,6 @@ from service_wizard import config
 
 HEALTHCHECKS = os.path.join('files', 'healthcheck', 'nail', 'sys',
                             'healthcheck', '_healthcheck_services')
-SERVICEGROUPS = os.path.join('shared', 'prod-and-stage', 'servicegroups')
-HOSTGROUPS = os.path.join('datacenters')
-CHECKS = os.path.join('shared', 'prod-and-stage', 'services')
 
 
 class SrvPathBuilder(object):
@@ -29,24 +26,6 @@ class SrvPathBuilder(object):
         """Path to the healthcheck for this service"""
         return os.path.join(
             config.PUPPET_ROOT, HEALTHCHECKS, self.srvname + '.py')
-
-    @property
-    def servicegroup(self):
-        """Path to the servicegroup for this service"""
-        return os.path.join(
-            config.NAGIOS_ROOT, SERVICEGROUPS, 'soa.cfg')
-
-    @property
-    def hostgroup(self):
-        """Path to the servicegroup for this service"""
-        return os.path.join(
-            config.NAGIOS_ROOT, HOSTGROUPS)
-
-    @property
-    def check(self):
-        """Path to the check for this service"""
-        return os.path.join(
-            config.NAGIOS_ROOT, CHECKS, self.srvname + '.cfg')
 
     @property
     def service_yaml(self):

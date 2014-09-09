@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 from contextlib import nested
 
 import mock
@@ -17,7 +16,6 @@ class ValidateOptionsTestCase(T.TestCase):
         options.enable_yelpsoa_config = True
         options.yelpsoa_config_root = None
         options.enable_puppet = False # Disable checks we don't care about
-        options.enable_nagios = False # Disable checks we don't care about
         T.assert_raises_and_contains(
             SystemExit,
             "yelpsoa-configs is enabled but --yelpsoa-config-root is not set",
@@ -32,25 +30,9 @@ class ValidateOptionsTestCase(T.TestCase):
         options.enable_puppet = True
         options.puppet_root = None
         options.enable_yelpsoa_config = False # Disable checks we don't care about
-        options.enable_nagios = False # Disable checks we don't care about
         T.assert_raises_and_contains(
             SystemExit,
             "Puppet is enabled but --puppet-root is not set",
-            wizard.validate_options,
-            parser,
-            options,
-        )
-
-    def test_enable_nagios_requires_nagios_root(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-        options.enable_nagios = True
-        options.nagios_root = None
-        options.enable_yelpsoa_config = False # Disable checks we don't care about
-        options.enable_puppet = False # Disable checks we don't care about
-        T.assert_raises_and_contains(
-            SystemExit,
-            "Nagios is enabled but --nagios-root is not set",
             wizard.validate_options,
             parser,
             options,
@@ -64,7 +46,6 @@ class ValidateOptionsTestCase(T.TestCase):
         options.smartstack_only = True
 
         # Disable checks we don't care about
-        options.enable_nagios = False
         options.enable_yelpsoa_config = False
         options.enable_puppet = False
 
@@ -86,7 +67,6 @@ class ValidateOptionsTestCase(T.TestCase):
 
         # Disable checks we don't care about
         options.enable_puppet = False
-        options.enable_nagios = False
 
         T.assert_raises_and_contains(
             SystemExit,
@@ -602,57 +582,6 @@ class GetHabitatFromFqdnTestCase(T.TestCase):
         fqdn = "relengsrv1-sjc.dev.yelpcorp.com"
         expected = "testopia"
         actual = service_configuration.get_habitat_from_fqdn(fqdn)
-        T.assert_equal(expected, actual)
-
-
-class CollateHostsByHabitat(T.TestCase):
-    @contextmanager
-    def patch_get_habitat_from_fqdn(self, return_value=None):
-        def fake_get_habitat_from_fqdn(fqdn):
-            return return_value or "%s-habitat" % fqdn
-        with mock.patch("service_wizard.service_configuration.get_habitat_from_fqdn", fake_get_habitat_from_fqdn):
-            yield
-
-    def test_no_fqdns(self):
-        expected = {}
-        fqdns = []
-        actual = service_configuration.collate_hosts_by_habitat(fqdns)
-        T.assert_equal(expected, actual)
-
-    def test_bad_fqdn_is_dropped(self):
-        expected = {}
-        fqdns = ["bad_fqdn"]
-        actual = service_configuration.collate_hosts_by_habitat(fqdns)
-        T.assert_equal(expected, actual)
-
-    def test_one_good_fqdn(self):
-        fqdn = "fakehost1.fakehabitat.yelpcorp.com"
-        expected = {"%s-habitat" % fqdn: ["fakehost1"]}
-        fqdns = [fqdn]
-        with self.patch_get_habitat_from_fqdn():
-            actual = service_configuration.collate_hosts_by_habitat(fqdns)
-        T.assert_equal(expected, actual)
-
-    def test_two_good_fqdns_different_habitat(self):
-        fqdn1 = "fakehost1.fakehabitat.yelpcorp.com"
-        fqdn2 = "fakehost2.fakehabitat.yelpcorp.com"
-        expected = {
-            "%s-habitat" % fqdn1: ["fakehost1"],
-            "%s-habitat" % fqdn2: ["fakehost2"],
-        }
-        fqdns = [fqdn1, fqdn2]
-        with self.patch_get_habitat_from_fqdn():
-            actual = service_configuration.collate_hosts_by_habitat(fqdns)
-        T.assert_equal(expected, actual)
-
-    def test_two_good_fqdns_same_habitat(self):
-        fqdn1 = "fakehost1.samehabitat.yelpcorp.com"
-        fqdn2 = "fakehost2.samehabitat.yelpcorp.com"
-        habitat = "samehabitat"
-        expected = {habitat: ["fakehost1", "fakehost2"]}
-        fqdns = [fqdn1, fqdn2]
-        with self.patch_get_habitat_from_fqdn(habitat):
-            actual = service_configuration.collate_hosts_by_habitat(fqdns)
         T.assert_equal(expected, actual)
 
 

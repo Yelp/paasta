@@ -7,7 +7,6 @@ import sys
 
 from service_wizard import config
 from service_wizard import prompt
-from service_wizard.autosuggest import is_stage_habitat
 from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
 from service_wizard.autosuggest import suggest_vip
@@ -15,7 +14,6 @@ from service_wizard.questions import _yamlize
 from service_wizard.questions import get_srvname
 from service_wizard.questions import get_smartstack_stanza
 from service_wizard.service import Service
-from service_wizard.service_configuration import collate_hosts_by_habitat
 from service_wizard.template import Template
 
 
@@ -124,36 +122,6 @@ def get_service_yaml_contents(runs_on, deploys_on, smartstack):
         contents.update(smartstack)
     return _yamlize(contents)
 
-def get_habitat_overrides(host_by_habitat, srvname, vip=False, vip_number=None):
-    """Given a host_by_habitat dict, calculate appropriate hostgroup file
-    contents (soa.cfg by default; vips.cfg if vip is truthy). The contents will
-    contain a members line if the service runs in that hostgroup file's
-    habitat; otherwise it will not include the members line.
-
-    If 'vip' is truthy, 'vip_number' must also be provided since the vip
-    hostgroup template needs it.
-
-    Returns a dict where the keys are habitats and the values are the template
-    contents.
-    """
-    if vip and not vip_number:
-        raise ValueError("vip is truthy so vip_number is required." % vip)
-    habitat_overrides = {}
-    for (habitat, members_list) in host_by_habitat.items():
-        members_string = ",".join(sorted(members_list))
-        if vip:
-            # Load balancers in stage are kind of new so we either don't have
-            # VIPs at all or haven't decided to set them up in Nagios.
-            if is_stage_habitat(habitat):
-                continue
-            contents = Template('vip_hostgroup_with_members').substitute(
-                    {'srvname': srvname, 'vip_number': vip_number})
-        else:
-            contents = Template('hostgroup_with_members').substitute(
-                    {'srvname': srvname, 'members': members_string})
-        habitat_overrides[habitat] = contents
-    return habitat_overrides
-
 def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group, post_download, post_activate, deploys_on):
     """Surveys the user about the various entries in files/services/$srvname"""
     status_port = ask_status_port(port, status_port)
@@ -208,25 +176,9 @@ def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group,
 
     return status_port, runas, runas_group, post_download, post_activate, parsed_deploys_on
 
-def ask_nagios_questions(contact_groups=None, contacts=None, include_ops=None):
-    if not contact_groups and not contacts:
-        contact_groups = prompt.ask('Nagios contact_groups (comma-separated list)?')
-        contacts = prompt.ask('Nagios contacts (individuals, comma-separated list)?')
-    if include_ops is None:
-        include_ops = prompt.yes_no('Nagios alerts ops?')
-
-    if not contact_groups and not contacts and not include_ops:
-        print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
-        print "Must provide someone to be alerted!"
-        sys.exit(2)
-
-    return contact_groups, contacts, include_ops
-
 def parse_args():
     parser = optparse.OptionParser()
     group = optparse.OptionGroup(parser, "Configuring this script")
-    group.add_option("-n", "--nagios-root", dest="nagios_root", default=None, help="Path to root of Nagios checkout")
-    group.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
     group.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
     group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
     group.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout")
@@ -255,13 +207,6 @@ def parse_args():
     group.add_option("-D", "--deploys-on", dest="deploys_on", default=None, help="Comma-separated list of machines where the service is deployed but the init script isn't run. This is useful e.g. for running batches. You can use shortnames and I will translated to FQDN as needed. Can be empty string ('') for no machines, or AUTO for the default set. AUTO requires --yelpsoa-config-root.")
     parser.add_option_group(group)
 
-    group = optparse.OptionGroup(parser, "Nagios configuration for the service being added. User will be prompted for anything left unspecified")
-    group.add_option("-C", "--contact-groups", dest="contact_groups", default=None, help="Comma-separated list of Nagios groups to alert")
-    group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If either --contacts or --contact-groups specified, user will not be prompted for either option.")
-    group.add_option("-i", "--include-ops", dest="include_ops", default=None, action="store_true", help="Operations on-call shall be alerted")
-    group.add_option("-x", "--exclude-ops", dest="exclude_ops", default=None, action="store_true", help="Operations on-call shall NOT be alerted. If neither --include-ops nor --exclude-ops specified, user will be prompted.")
-    parser.add_option_group(group)
-
     opts, args = parser.parse_args()
     validate_options(parser, opts)
     return opts, args
@@ -286,14 +231,6 @@ def validate_options(parser, opts):
             parser.print_usage()
             sys.exit("ERROR: --puppet-root %s does not exist!" % opts.puppet_root)
 
-    if opts.enable_nagios:
-        if not opts.nagios_root:
-            parser.print_usage()
-            sys.exit("ERROR: Nagios is enabled but --nagios-root is not set!")
-        if not os.path.exists(opts.nagios_root):
-            parser.print_usage()
-            sys.exit("ERROR: --nagios-root %s does not exist!" % opts.nagios_root)
-
     if not opts.yelpsoa_config_root and not opts.port:
         parser.print_usage()
         sys.exit("ERROR: Must provide either --yelpsoa-config-root or --port!")
@@ -315,21 +252,13 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit("ERROR: --vip must start with 'vip'!")
 
-    if opts.include_ops and opts.exclude_ops:
-        parser.print_usage()
-        sys.exit("ERROR: Provide only one of --include-ops and --exclude-ops")
-    else:
-        if opts.exclude_ops:
-            opts.include_ops = False
-
-def setup_config_paths(yelpsoa_config_root, puppet_root, nagios_root):
+def setup_config_paths(yelpsoa_config_root, puppet_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
     assert os.path.exists(config.TEMPLATE_DIR)
     # config.YELPSOA_CONFIG_ROOT is deprecated! Don't add it to new things!
     # Just pass the value to your functions explicitly!
     config.YELPSOA_CONFIG_ROOT = yelpsoa_config_root
     config.PUPPET_ROOT = puppet_root
-    config.NAGIOS_ROOT = nagios_root
 
 def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack):
     srv.io.write_file('runas', runas)
@@ -350,49 +279,9 @@ def do_puppet_steps(srv, port, vip):
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
 
-def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_on):
-    host_by_habitat = collate_hosts_by_habitat(runs_on)
-
-    servicegroup_contents = Template('servicegroup').substitute(
-        {'srvname': srv.name })
-    srv.io.append_servicegroup(servicegroup_contents)
-
-    default_contents = Template('hostgroup_empty_members').substitute(
-                {'srvname': srv.name})
-    habitat_overrides = get_habitat_overrides(host_by_habitat, srv.name)
-    srv.io.append_hostgroups(default_contents, habitat_overrides=habitat_overrides)
-
-    check_contents = Template('check').substitute({
-        'srvname': srv.name,
-        'port': port,
-        'contact_groups': contact_groups or '',
-        'contacts': contacts or '',
-        'plus_if_include_ops': '+' if include_ops else '',
-    })
-    srv.io.write_check(check_contents)
-
-    if vip:
-        # Strip off 'vip' from vip
-        vip_number = vip[3:]
-        default_contents = Template('vip_hostgroup_empty_members').substitute({
-            'srvname': srv.name,
-            'vip_number': vip_number,
-        })
-        habitat_overrides = get_habitat_overrides(host_by_habitat, srv.name, vip=True, vip_number=vip_number)
-        srv.io.append_hostgroups(default_contents, habitat_overrides=habitat_overrides, vip=True)
-
-        check_contents = Template('vip_check').substitute({
-            'srvname': srv.name,
-            'port': port,
-            'contact_groups': contact_groups or '',
-            'contacts': contacts or '',
-            'plus_if_include_ops': '+' if include_ops else '',
-        })
-        srv.io.append_check(check_contents)
-
 
 def main(opts, args):
-    setup_config_paths(opts.yelpsoa_config_root, opts.puppet_root, opts.nagios_root)
+    setup_config_paths(opts.yelpsoa_config_root, opts.puppet_root)
 
     if opts.auto:
         opts.port = opts.port or "AUTO"
@@ -418,15 +307,11 @@ def main(opts, args):
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
     if opts.enable_yelpsoa_config:
         status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
-    if opts.enable_nagios:
-        contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
 
     if opts.enable_yelpsoa_config:
         do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack)
     if opts.enable_puppet:
         do_puppet_steps(srv, port, vip)
-    if opts.enable_nagios:
-        do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_on)
 
 
 if __name__ == '__main__':
