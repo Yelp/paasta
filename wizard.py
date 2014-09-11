@@ -86,7 +86,7 @@ def ask_lbs(yelpsoa_config_root, vip, smartstack_only):
             use_smartstack = ask_smartstack()
 
     if use_smartstack:
-        smartstack = get_smartstack_stanza(yelpsoa_config_root, True, None, legacy_style=True)
+        smartstack = get_smartstack_stanza(yelpsoa_config_root, True, None)
     else:
         smartstack = None
 
@@ -112,16 +112,14 @@ def parse_hostnames_string(hostnames_string):
     fqdn_hostnames = [get_fqdn(h) for h in non_blank_hostnames]
     return fqdn_hostnames
 
-def get_service_yaml_contents(runs_on, deploys_on, smartstack):
-    """Given 'runs_on' and 'deploys_on' lists, and a 'smartstack' dictionary,
-    return yaml appropriate for writing into service.yaml.
+def get_service_yaml_contents(runs_on, deploys_on):
+    """Given 'runs_on' and 'deploys_on' lists, return yaml appropriate for
+    writing into service.yaml.
     """
     contents = {
         "runs_on": runs_on,
         "deployed_to": deploys_on,
     }
-    if smartstack is not None:
-        contents.update(smartstack)
     return _yamlize(contents)
 
 def get_habitat_overrides(host_by_habitat, srvname, vip=False, vip_number=None):
@@ -338,8 +336,10 @@ def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, pos
     srv.io.write_file('status_port', status_port)
     srv.io.write_file('post-download', post_download, executable=True)
     srv.io.write_file('post-activate', post_activate, executable=True)
-    service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on, smartstack)
+    service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on)
     srv.io.write_file('service.yaml', service_yaml_contents)
+    if smartstack is not None:
+        srv.io.write_file('smartstack.yaml', _yamlize(smartstack))
     if vip is not None:
         srv.io.write_file('vip', vip)
         srv.io.write_file('lb.yaml', '')

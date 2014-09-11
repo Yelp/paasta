@@ -466,8 +466,7 @@ class GetServiceYamlContentsTestCase(T.TestCase):
     def test_empty(self):
         runs_on = []
         deploys_on = []
-        smartstack = None
-        actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
 
         # Verify entire lines to make sure that e.g. '---' appears as its own
         # line and not as part of 'crazy---service----name'.
@@ -480,8 +479,7 @@ class GetServiceYamlContentsTestCase(T.TestCase):
     def test_one_runs_on(self):
         runs_on = ["runs_on1"]
         deploys_on = []
-        smartstack = None
-        actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
 
         expected = "runs_on:\n- %s" % "runs_on1"
         T.assert_in(expected, actual)
@@ -489,23 +487,9 @@ class GetServiceYamlContentsTestCase(T.TestCase):
     def test_two_runs_on(self):
         runs_on = ["runs_on1", "runs_on2"]
         deploys_on = []
-        smartstack = None
-        actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
+        actual = wizard.get_service_yaml_contents(runs_on, deploys_on)
 
         expected = "runs_on:\n- %s\n- %s" % ("runs_on1", "runs_on2")
-        T.assert_in(expected, actual)
-
-    def test_smartstack(self):
-        runs_on = []
-        deploys_on = []
-        smartstack = {
-            "smartstack": {
-                "proxy_port": 1234
-            }
-        }
-        actual = wizard.get_service_yaml_contents(runs_on, deploys_on, smartstack)
-
-        expected = "smartstack:\n  proxy_port: 1234\n"
         T.assert_in(expected, actual)
 
 
@@ -685,7 +669,6 @@ class TestAskLBs(T.TestCase):
             yelpsoa_config_root,
             True,
             None,
-            legacy_style=True,
         )
 
         T.assert_false(self.mock_ask_vip.called)
