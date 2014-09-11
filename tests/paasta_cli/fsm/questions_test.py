@@ -124,20 +124,6 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
             suggested_port,
         )
 
-    def test_legacy_style(self):
-        port = self.suggested_port
-        auto = "UNUSED"
-
-        expected_stanza = {
-            "smartstack": {
-                "proxy_port": self.suggested_port,
-        }}
-
-        actual = fsm.get_smartstack_stanza(self.yelpsoa_config_root, auto, port, legacy_style=True)
-
-        T.assert_equal(expected_stanza, actual)
-        T.assert_equal(0, self.mock_ask.call_count)
-
 
 class GetMarathonStanzaTestCase(QuestionsTestCase):
     def test(self):
