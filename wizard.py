@@ -9,7 +9,6 @@ from service_wizard import config
 from service_wizard import prompt
 from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
-from service_wizard.autosuggest import suggest_vip
 from service_wizard.questions import _yamlize
 from service_wizard.questions import get_srvname
 from service_wizard.questions import get_smartstack_stanza
@@ -52,43 +51,16 @@ def ask_runs_on(runs_on=None):
     parsed_runs_on = parse_hostnames_string(runs_on)
     return parsed_runs_on
 
-def ask_vip(vip=None):
-    default = suggest_vip()
-    if vip == "AUTO":
-        vip = default
-    elif vip is None:
-        if prompt.yes_no('Load Balanced via VIP?'):
-            while not vip:
-                vip = prompt.ask('VIP?', default)
-        else:
-            vip = None
-    return vip
-
 def ask_smartstack():
-    return prompt.yes_no('Load Balanced via SmartStack?')
+    return prompt.yes_no('Load Balanced (via SmartStack)?')
 
-def ask_lbs(yelpsoa_config_root, vip, smartstack_only):
-    if smartstack_only == "AUTO":
-        smartstack_only = False
-
-    if smartstack_only:
-        vip = None
-        use_smartstack = True
-    else:
-        vip = ask_vip(vip)
-
-        if vip:
-            # If vip is configured, we also use SmartStack by default.
-            use_smartstack = True
-        else:
-            use_smartstack = ask_smartstack()
-
-    if use_smartstack:
-        smartstack = get_smartstack_stanza(yelpsoa_config_root, True, None, legacy_style=True)
-    else:
-        smartstack = None
-
-    return vip, smartstack
+def ask_lbs(yelpsoa_config_root, smartstack):
+    if smartstack == "AUTO" or smartstack is None:
+        smartstack = ask_smartstack()
+    smartstack_stanza = None
+    if smartstack:
+        smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, True, None, legacy_style=True)
+    return smartstack_stanza
 
 def get_fqdn(hostname):
     # socket.getfqdn on an empty string returns localhost, which is not what we
@@ -190,14 +162,13 @@ def parse_args():
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
     group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
-    group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1'). If AUTO, use default (caluclated from yelpsoa-configs)")
     group.add_option(
         "-m",
-        "--smartstack-only",
-        dest="smartstack_only",
-        default=False,
+        "--smartstack",
+        dest="smartstack",
+        default=None,
         action="store_true",
-        help="Service will be load-balanced by SmartStack alone. Cannot be used when vip is specified. If AUTO, use default (%default)."
+        help="Service will be load-balanced by SmartStack. If AUTO, use default (%default)."
     )
     group.add_option("-r", "--runas", dest="runas", default=None, help="UNIX user which will run service. If AUTO, use default (consult the code)")
     group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default (consult the code)")
@@ -235,22 +206,9 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit("ERROR: Must provide either --yelpsoa-config-root or --port!")
 
-    # There's a weird dependency here because --smartstack-only requires
-    # --yelpsoa-config-root but is itself exclusive with --vip. So we must do
-    # --smartstack-only checks before the --vip check.
-    if not opts.yelpsoa_config_root and opts.smartstack_only:
+    if not opts.yelpsoa_config_root and opts.smartstack:
         parser.print_usage()
-        sys.exit("ERROR: --smartstack-only requires --yelpsoa-config-root!")
-    if opts.smartstack_only and opts.vip:
-        parser.print_usage()
-        sys.exit("ERROR: --smartstack-only cannot be used with --vip.")
-    if not opts.yelpsoa_config_root and not opts.vip:
-        parser.print_usage()
-        sys.exit("ERROR: Must provide either --yelpsoa-config-root or --vip!")
-
-    if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
-        parser.print_usage()
-        sys.exit("ERROR: --vip must start with 'vip'!")
+        sys.exit("ERROR: --smartstack requires --yelpsoa-config-root!")
 
 def setup_config_paths(yelpsoa_config_root, puppet_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
@@ -260,7 +218,7 @@ def setup_config_paths(yelpsoa_config_root, puppet_root):
     config.YELPSOA_CONFIG_ROOT = yelpsoa_config_root
     config.PUPPET_ROOT = puppet_root
 
-def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack):
+def do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack):
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runas_group)
     srv.io.write_file('port', port)
@@ -269,12 +227,9 @@ def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, pos
     srv.io.write_file('post-activate', post_activate, executable=True)
     service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on, smartstack)
     srv.io.write_file('service.yaml', service_yaml_contents)
-    if vip is not None:
-        srv.io.write_file('vip', vip)
-        srv.io.write_file('lb.yaml', '')
 
-def do_puppet_steps(srv, port, vip):
-    if vip is not None:
+def do_puppet_steps(srv, port, smartstack):
+    if smartstack is not None:
         srv.io.write_healthcheck(
             Template('healthcheck').substitute(
                 {'srvname': srv.name, 'port': port}))
@@ -286,21 +241,19 @@ def main(opts, args):
     if opts.auto:
         opts.port = opts.port or "AUTO"
         opts.status_port = opts.status_port or "AUTO"
-        opts.vip = opts.vip or "AUTO"
         opts.runas = opts.runas or "AUTO"
         opts.runas_group = opts.runas_group or "AUTO"
         opts.post_download = opts.post_download or "AUTO"
         opts.post_activate = opts.post_activate or "AUTO"
         opts.runs_on = opts.runs_on or "AUTO"
         opts.deploys_on = opts.deploys_on or "AUTO"
-        opts.smartstack_only = opts.smartstack_only or "AUTO"
 
     srvname = get_srvname(opts.srvname, opts.auto)
     srv = Service(srvname, opts.yelpsoa_config_root)
 
     port = ask_port(opts.port)
 
-    vip, smartstack = ask_lbs(opts.yelpsoa_config_root, opts.vip, opts.smartstack_only)
+    smartstack = ask_lbs(opts.yelpsoa_config_root, opts.smartstack)
 
     runs_on = ask_runs_on(opts.runs_on)
 
@@ -309,9 +262,9 @@ def main(opts, args):
         status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
 
     if opts.enable_yelpsoa_config:
-        do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack)
+        do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack)
     if opts.enable_puppet:
-        do_puppet_steps(srv, port, vip)
+        do_puppet_steps(srv, port, smartstack)
 
 
 if __name__ == '__main__':

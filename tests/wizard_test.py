@@ -38,39 +38,20 @@ class ValidateOptionsTestCase(T.TestCase):
             options,
         )
 
-    def test_smartstack_only_cannot_be_used_with_vip(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-
-        options.vip = "vip1"
-        options.smartstack_only = True
-
-        # Disable checks we don't care about
-        options.enable_yelpsoa_config = False
-        options.enable_puppet = False
-
-        T.assert_raises_and_contains(
-            SystemExit,
-            "--smartstack-only cannot be used with --vip",
-            wizard.validate_options,
-            parser,
-            options,
-        )
-
-    def test_smartstack_only_requires_yelpsoa_config_root(self):
+    def test_smartstack_requires_yelpsoa_config_root(self):
         parser = mock.Mock()
         options = mock.Mock()
 
         options.enable_yelpsoa_config = False
         options.yelpsoa_config_root = None
-        options.smartstack_only = True
+        options.smartstack = True
 
         # Disable checks we don't care about
         options.enable_puppet = False
 
         T.assert_raises_and_contains(
             SystemExit,
-            "--smartstack-only requires --yelpsoa-config-root",
+            "--smartstack requires --yelpsoa-config-root",
             wizard.validate_options,
             parser,
             options,
@@ -590,7 +571,6 @@ class TestAskLBs(T.TestCase):
     @T.setup_teardown
     def data_setup(self):
         with nested(
-            mock.patch.object(wizard, 'ask_vip', autospec=True),
             mock.patch.object(wizard, 'ask_smartstack', autospec=True),
             mock.patch.object(
                 wizard,
@@ -598,17 +578,15 @@ class TestAskLBs(T.TestCase):
                 autospec=True,
                 return_value=mock.sentinel.smartstack_conf),
         ) as (
-            self.mock_ask_vip,
             self.mock_ask_smartstack,
             self.mock_get_smartstack_stanza
         ):
             yield
 
-    def test_when_yes_smartstack_only(self):
+    def test_smartstack_none(self):
         yelpsoa_config_root = 'fake_yelpsoa_config_root'
-        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, True)
+        smartstack = wizard.ask_lbs(yelpsoa_config_root, None)
 
-        T.assert_equal(vip, None)
         T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
         self.mock_get_smartstack_stanza.assert_called_once_with(
             yelpsoa_config_root,
@@ -617,45 +595,30 @@ class TestAskLBs(T.TestCase):
             legacy_style=True,
         )
 
-        T.assert_false(self.mock_ask_vip.called)
+        T.assert_true(self.mock_ask_smartstack.called)
+
+    def test_smartstack_true(self):
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        smartstack = wizard.ask_lbs(yelpsoa_config_root, True)
+
+        T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
+        self.mock_get_smartstack_stanza.assert_called_once_with(
+            yelpsoa_config_root,
+            True,
+            None,
+            legacy_style=True,
+        )
+
         T.assert_false(self.mock_ask_smartstack.called)
 
-    def test_option_no_smartstack_only_no_vip_no_smartstack(self):
-        self.mock_ask_vip.return_value = None
+    def test_smartstack_false(self):
         self.mock_ask_smartstack.return_value = False
 
         yelpsoa_config_root = 'fake_yelpsoa_config_root'
-        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
+        smartstack = wizard.ask_lbs(yelpsoa_config_root, False)
 
-        T.assert_equal(vip, None)
         T.assert_equal(smartstack, None)
 
-        T.assert_true(self.mock_ask_vip.called)
-        T.assert_true(self.mock_ask_smartstack.called)
-
-    def test_option_no_smartstack_only_no_vip_yes_smartstack(self):
-        self.mock_ask_vip.return_value = None
-        self.mock_ask_smartstack.return_value = True
-
-        yelpsoa_config_root = 'fake_yelpsoa_config_root'
-        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
-
-        T.assert_equal(vip, None)
-        T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
-
-        T.assert_true(self.mock_ask_vip.called)
-        T.assert_true(self.mock_ask_smartstack.called)
-
-    def test_option_no_smartstack_only_yes_vip(self):
-        self.mock_ask_vip.return_value = mock.sentinel.vip
-
-        yelpsoa_config_root = 'fake_yelpsoa_config_root'
-        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
-
-        T.assert_equal(vip, mock.sentinel.vip)
-        T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
-
-        T.assert_true(self.mock_ask_vip.called)
         T.assert_false(self.mock_ask_smartstack.called)
 
 
