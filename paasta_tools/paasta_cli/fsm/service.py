@@ -25,12 +25,6 @@ class SrvReaderWriter(object):
                     contents,
                     executable=executable)
 
-    def read_healthcheck(self):
-        return self._read(self.paths.to_file)
-
-    def write_healthcheck(self, contents):
-        self._write(self.paths.healthcheck, contents, executable=True)
-
     def _read(self, path):
         if not os.path.exists(path):
             return ''

@@ -148,9 +148,9 @@ def suggest_runs_on(runs_on=None):
 
     While doing all of that, try not to go read a bunch of yaml off disk if we
     don't have to. We don't want the dependencies or the overhead (user warned
-    about --puppet-root even though it isn't actually needed; loading hundreds
-    of yaml files just to throw them away because the user provided a list of
-    hosts).
+    about inocmpatible options even though we don't get that far; loading
+    hundreds of yaml files just to throw them away because the user provided a
+    list of hosts).
 
     Returns the (possibly munged) 'runs_on' as a string of comma-separated
     hostnames.
