@@ -15,24 +15,9 @@ class ValidateOptionsTestCase(T.TestCase):
         options = mock.Mock()
         options.enable_yelpsoa_config = True
         options.yelpsoa_config_root = None
-        options.enable_puppet = False # Disable checks we don't care about
         T.assert_raises_and_contains(
             SystemExit,
             "yelpsoa-configs is enabled but --yelpsoa-config-root is not set",
-            wizard.validate_options,
-            parser,
-            options,
-        )
-
-    def test_enable_puppet_requires_puppet_root(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-        options.enable_puppet = True
-        options.puppet_root = None
-        options.enable_yelpsoa_config = False # Disable checks we don't care about
-        T.assert_raises_and_contains(
-            SystemExit,
-            "Puppet is enabled but --puppet-root is not set",
             wizard.validate_options,
             parser,
             options,
@@ -45,9 +30,6 @@ class ValidateOptionsTestCase(T.TestCase):
         options.enable_yelpsoa_config = False
         options.yelpsoa_config_root = None
         options.smartstack = True
-
-        # Disable checks we don't care about
-        options.enable_puppet = False
 
         T.assert_raises_and_contains(
             SystemExit,
@@ -251,7 +233,6 @@ class LoadServiceYamls(T.TestCase):
     @T.setup_teardown
     def setup_config(self):
         config.YELPSOA_CONFIG_ROOT = "non_empty_unused_yelpsoa_config_root"
-        config.PUPPET_ROOT = "non_empty_unused_puppet_root"
         # The method under test short circuits and returns [] if something goes wrong. If
         # we get past that point, hit mocks rather than acutally reading things
         # off disk.
@@ -265,10 +246,6 @@ class LoadServiceYamls(T.TestCase):
     def test_returns_empty_list_when_yelpsoa_config_root_not_set(self):
         config.YELPSOA_CONFIG_ROOT = None
         T.assert_equal([], service_configuration.load_service_yamls())
-
-    def test_returns_something_when_puppet_root_not_set(self):
-        config.PUPPET_ROOT = None
-        T.assert_equal(self.fake_load_service_yamls_from_disk, service_configuration.load_service_yamls())
 
 class CollateServiceYamlsTestCase(T.TestCase):
     @T.setup_teardown

@@ -151,8 +151,6 @@ def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group,
 def parse_args():
     parser = optparse.OptionParser()
     group = optparse.OptionGroup(parser, "Configuring this script")
-    group.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
-    group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
     group.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout")
     group.add_option("-Y", "--disable-yelpsoa-config", dest="enable_yelpsoa_config", default=True, action="store_false", help="Don't run steps related to yelpsoa-configs")
     group.add_option("-A", "--auto", dest="auto", default=False, action="store_true", help="Use defaults instead of prompting when default value is available")
@@ -168,7 +166,7 @@ def parse_args():
         dest="smartstack",
         default=None,
         action="store_true",
-        help="Service will be load-balanced by SmartStack. If AUTO, use default (%default)."
+        help="Service will be load-balanced by SmartStack"
     )
     group.add_option("-r", "--runas", dest="runas", default=None, help="UNIX user which will run service. If AUTO, use default (consult the code)")
     group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default (consult the code)")
@@ -194,14 +192,6 @@ def validate_options(parser, opts):
             parser.print_usage()
             sys.exit("ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root)
 
-    if opts.enable_puppet:
-        if not opts.puppet_root:
-            parser.print_usage()
-            sys.exit("ERROR: Puppet is enabled but --puppet-root is not set!")
-        if not os.path.exists(opts.puppet_root):
-            parser.print_usage()
-            sys.exit("ERROR: --puppet-root %s does not exist!" % opts.puppet_root)
-
     if not opts.yelpsoa_config_root and not opts.port:
         parser.print_usage()
         sys.exit("ERROR: Must provide either --yelpsoa-config-root or --port!")
@@ -210,13 +200,12 @@ def validate_options(parser, opts):
         parser.print_usage()
         sys.exit("ERROR: --smartstack requires --yelpsoa-config-root!")
 
-def setup_config_paths(yelpsoa_config_root, puppet_root):
+def setup_config_paths(yelpsoa_config_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
     assert os.path.exists(config.TEMPLATE_DIR)
     # config.YELPSOA_CONFIG_ROOT is deprecated! Don't add it to new things!
     # Just pass the value to your functions explicitly!
     config.YELPSOA_CONFIG_ROOT = yelpsoa_config_root
-    config.PUPPET_ROOT = puppet_root
 
 def do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack):
     srv.io.write_file('runas', runas)
@@ -228,15 +217,9 @@ def do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_dow
     service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on, smartstack)
     srv.io.write_file('service.yaml', service_yaml_contents)
 
-def do_puppet_steps(srv, port, smartstack):
-    if smartstack is not None:
-        srv.io.write_healthcheck(
-            Template('healthcheck').substitute(
-                {'srvname': srv.name, 'port': port}))
-
 
 def main(opts, args):
-    setup_config_paths(opts.yelpsoa_config_root, opts.puppet_root)
+    setup_config_paths(opts.yelpsoa_config_root)
 
     if opts.auto:
         opts.port = opts.port or "AUTO"
@@ -263,8 +246,6 @@ def main(opts, args):
 
     if opts.enable_yelpsoa_config:
         do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack)
-    if opts.enable_puppet:
-        do_puppet_steps(srv, port, smartstack)
 
 
 if __name__ == '__main__':
