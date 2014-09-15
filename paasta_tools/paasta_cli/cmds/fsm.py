@@ -13,7 +13,7 @@ from service_wizard.service import Service
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description="Configure A New PaaSTA Service")
+    parser = argparse.ArgumentParser(description="Configure A New PaaSTA Service -- http://y/paasta For Details")
     parser.add_argument(
         "-y", "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
@@ -102,6 +102,12 @@ def main(args):
         marathon_stanza,
         monitoring_stanza,
     )
+    print "With My Noodly Appendage I Have Written Configs For"
+    print
+    print "    %s" % srvname
+    print
+    print "Customize Them If It Makes You Happy -- http://y/paasta For Details"
+    print "Remember To Add, Commit, And Push When You're Done!"
 
 
 if __name__ == "__main__":

@@ -152,6 +152,7 @@ class GetMonitoringStanzaTestCase(QuestionsTestCase):
 
         actual = fsm.get_monitoring_stanza(auto, team)
         T.assert_in(("team", team), actual.items())
+        T.assert_in(("service_type", "marathon"), actual.items())
 
     def test_arg_not_passed_in_auto_true(self):
         """If a value is not specified but --auto was requested, calculate and
