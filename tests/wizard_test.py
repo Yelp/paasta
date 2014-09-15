@@ -599,5 +599,38 @@ class TestAskLBs(T.TestCase):
         T.assert_false(self.mock_ask_smartstack.called)
 
 
+class TestGetReplicationStanza(T.TestCase):
+
+    @T.setup_teardown
+    def setup_mocks(self):
+        with mock.patch(
+            "wizard.get_replication_stanza_map",
+            autospec=True,
+        ) as (
+            self.mock_get_replication_stanza_map
+        ):
+            yield
+
+    def test(self):
+        actual = wizard.get_replication_stanza()
+        T.assert_in("replication", actual.keys())
+
+        replication = actual["replication"]
+        T.assert_in(("key", "habitat"), replication.items())
+        T.assert_in(("default", 0), replication.items())
+        T.assert_in("map", replication.keys())
+
+        map = replication["map"]
+        T.assert_equal(map, self.mock_get_replication_stanza_map.return_value)
+
+
+class TestGetReplicationStanzaMap(T.TestCase):
+
+    def test(self):
+        expected = {}
+        actual = wizard.get_replication_stanza_map()
+        T.assert_equal(expected, actual)
+
+
 if __name__ == "__main__":
     T.run()

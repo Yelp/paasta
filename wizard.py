@@ -55,6 +55,17 @@ def ask_runs_on(runs_on=None):
 def ask_smartstack():
     return prompt.yes_no('Load Balanced (via SmartStack)?')
 
+def get_replication_stanza():
+    stanza = {}
+    stanza["replication"] = {}
+    stanza["replication"]["key"] = "habitat"
+    stanza["replication"]["default"] = 0
+    stanza["replication"]["map"] = get_replication_stanza_map()
+    return stanza
+
+def get_replication_stanza_map():
+    return {}
+
 def ask_lbs(yelpsoa_config_root, smartstack):
     if smartstack == "AUTO" or smartstack is None:
         smartstack = ask_smartstack()
