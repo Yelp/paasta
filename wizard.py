@@ -198,7 +198,7 @@ def validate_options(parser, opts):
 
     if not opts.yelpsoa_config_root:
         parser.print_usage()
-        sys.exit("ERROR: yelpsoa-configs is enabled but --yelpsoa-config-root is not set!")
+        sys.exit("ERROR: --yelpsoa-config-root is required!")
     if not os.path.exists(opts.yelpsoa_config_root):
         parser.print_usage()
         sys.exit("ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root)
