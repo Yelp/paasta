@@ -163,8 +163,7 @@ def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group,
 def parse_args():
     parser = optparse.OptionParser()
     group = optparse.OptionGroup(parser, "Configuring this script")
-    group.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout")
-    group.add_option("-Y", "--disable-yelpsoa-config", dest="enable_yelpsoa_config", default=True, action="store_false", help="Don't run steps related to yelpsoa-configs")
+    group.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout (REQUIRED)")
     group.add_option("-A", "--auto", dest="auto", default=False, action="store_true", help="Use defaults instead of prompting when default value is available")
     parser.add_option_group(group)
 
@@ -197,21 +196,12 @@ def validate_options(parser, opts):
     """Does sys.exit() if an invalid combination of options is specified.
     Otherwise returns None (implicitly)."""
 
-    if opts.enable_yelpsoa_config:
-        if not opts.yelpsoa_config_root:
-            parser.print_usage()
-            sys.exit("ERROR: yelpsoa-configs is enabled but --yelpsoa-config-root is not set!")
-        if not os.path.exists(opts.yelpsoa_config_root):
-            parser.print_usage()
-            sys.exit("ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root)
-
-    if not opts.yelpsoa_config_root and not opts.port:
+    if not opts.yelpsoa_config_root:
         parser.print_usage()
-        sys.exit("ERROR: Must provide either --yelpsoa-config-root or --port!")
-
-    if not opts.yelpsoa_config_root and opts.smartstack:
+        sys.exit("ERROR: yelpsoa-configs is enabled but --yelpsoa-config-root is not set!")
+    if not os.path.exists(opts.yelpsoa_config_root):
         parser.print_usage()
-        sys.exit("ERROR: --smartstack requires --yelpsoa-config-root!")
+        sys.exit("ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root)
 
 def setup_config_paths(yelpsoa_config_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
@@ -254,15 +244,12 @@ def main(opts, args):
 
     runs_on = ask_runs_on(opts.runs_on)
 
-    # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
-    if opts.enable_yelpsoa_config:
-        status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
+    status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
 
     monitoring_stanza = get_monitoring_stanza(opts.auto, opts.team, legacy_style=True)
     monitoring_stanza.update(get_replication_stanza())
 
-    if opts.enable_yelpsoa_config:
-        do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack, monitoring_stanza)
+    do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack, monitoring_stanza)
 
 
 if __name__ == '__main__':

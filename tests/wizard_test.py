@@ -9,37 +9,6 @@ from service_wizard import config
 from service_wizard import service_configuration
 
 
-class ValidateOptionsTestCase(T.TestCase):
-    def test_enable_yelpsoa_config_requires_yelpsoa_config_root(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-        options.enable_yelpsoa_config = True
-        options.yelpsoa_config_root = None
-        T.assert_raises_and_contains(
-            SystemExit,
-            "yelpsoa-configs is enabled but --yelpsoa-config-root is not set",
-            wizard.validate_options,
-            parser,
-            options,
-        )
-
-    def test_smartstack_requires_yelpsoa_config_root(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-
-        options.enable_yelpsoa_config = False
-        options.yelpsoa_config_root = None
-        options.smartstack = True
-
-        T.assert_raises_and_contains(
-            SystemExit,
-            "--smartstack requires --yelpsoa-config-root",
-            wizard.validate_options,
-            parser,
-            options,
-        )
-
-
 class SuggestPortTestCase(T.TestCase):
     def test_suggest_port(self):
         # mock.patch was very confused by the config module, so I'm doing it
