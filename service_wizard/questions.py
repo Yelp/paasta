@@ -75,18 +75,22 @@ def get_marathon_stanza():
     return stanza
 
 
-def get_monitoring_stanza(auto, team):
+def get_monitoring_stanza(auto, team, legacy_style=False):
     """Produce a monitoring.yaml a la
     https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
 
     'team' is the critical key and is not calculable so it is required.
+
+    legacy_style changes some behavior for use with wizard.py.
     """
     if team is None:
-        if auto:
+        if auto and not legacy_style:
             sys.exit("I'd Really Rather You Didn't Use --auto Without --team")
         while not team:
             team = ask("Team responsible for this service?")
     stanza = {}
     stanza["team"] = team
     stanza["service_type"] = "marathon"
+    if legacy_style:
+        stanza["service_type"] = "classic"
     return stanza
