@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import optparse
+import argparse
 from os.path import exists
 import sys
 
@@ -13,37 +13,67 @@ from service_wizard.service import Service
 
 
 def parse_args():
-    parser = optparse.OptionParser()
-    parser.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout")
-    parser.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured (--auto not available)")
-    parser.add_option("-a", "--auto", dest="auto", default=False, action="store_true", help="Automatically calculate and use sane defaults. Exit violently if any values cannot be automatically calculated.")
-    parser.add_option("-p", "--port", dest="port", default=None, help="Smartstack proxy port used by service.")
+    parser = argparse.ArgumentParser(description="Configure A New PaaSTA Service -- http://y/paasta For Details")
+    parser.add_argument(
+        "-y", "--yelpsoa-config-root",
+        dest="yelpsoa_config_root",
+        default=None,
+        required=True,
+        help="Path to root of yelpsoa-configs checkout (required)")
+    parser.add_argument(
+        "-s", "--service-name",
+        dest="srvname",
+        default=None,
+        help="Name of service being configured (--auto not available)")
+    parser.add_argument(
+        "-a",
+        "--auto",
+        dest="auto",
+        default=False,
+        action="store_true",
+        help="Automatically calculate and use sane defaults. Exit violently if "
+            "any values cannot be automatically calculated.",
+    )
+    parser.add_argument(
+        "-p", "--port",
+        dest="port",
+        default=None,
+        help="Smartstack proxy port used by service.")
+    parser.add_argument(
+        "-t", "--team",
+        dest="team",
+        default=None,
+        help="Team responsible for the service. Used by various notification "
+            "systems. (--auto not available)",
+    )
 
-    opts, args = parser.parse_args()
-    validate_options(parser, opts)
-    return opts, args
+    args = parser.parse_args()
+    validate_args(parser, args)
+    return args
 
 
-def validate_options(parser, opts):
-    """Does sys.exit() if an invalid combination of options is specified.
+def validate_args(parser, args):
+    """Does sys.exit() if an invalid combination of args is specified.
     Otherwise returns None (implicitly)."""
-    if not opts.yelpsoa_config_root:
-        parser.print_usage()
-        sys.exit("I'd Really Rather You Didn't Fail To Provide --yelpsoa-config-root")
-    if not exists(opts.yelpsoa_config_root):
+    if not exists(args.yelpsoa_config_root):
         parser.print_usage()
         sys.exit(
             "I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
-            "Like %s" % opts.yelpsoa_config_root
+            "Like %s" % args.yelpsoa_config_root
+        )
+    if args.auto and not args.srvname:
+        parser.print_usage()
+        sys.exit(
+            "I'd Really Rather You Didn't Use --auto Without --service-name"
         )
 
 
-def get_paasta_config(yelpsoa_config_root, srvname, auto, port):
+def get_paasta_config(yelpsoa_config_root, srvname, auto, port, team):
     srvname = get_srvname(srvname, auto)
     smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, auto, port)
     marathon_stanza = get_marathon_stanza()
-    monitoring_stanza = get_monitoring_stanza()
-    return (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza)
+    monitoring_stanza = get_monitoring_stanza(auto, team)
+    return (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza, team)
 
 
 def write_paasta_config(srv,
@@ -56,23 +86,30 @@ def write_paasta_config(srv,
     srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
 
 
-def main(opts, args):
-    (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza) = (
+def main(args):
+    (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza, team) = (
         get_paasta_config(
-            opts.yelpsoa_config_root,
-            opts.srvname,
-            opts.auto,
-            opts.port
+            args.yelpsoa_config_root,
+            args.srvname,
+            args.auto,
+            args.port,
+            args.team,
     ))
-    srv = Service(srvname, opts.yelpsoa_config_root)
+    srv = Service(srvname, args.yelpsoa_config_root)
     write_paasta_config(
         srv,
         smartstack_stanza,
         marathon_stanza,
         monitoring_stanza,
     )
+    print "With My Noodly Appendage I Have Written Configs For"
+    print
+    print "    %s" % srvname
+    print
+    print "Customize Them If It Makes You Happy -- http://y/paasta For Details"
+    print "Remember To Add, Commit, And Push When You're Done!"
 
 
 if __name__ == "__main__":
-    opts, args = parse_args()
-    main(opts, args)
+    args = parse_args()
+    main(args)
