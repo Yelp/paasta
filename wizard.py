@@ -248,8 +248,6 @@ def main(opts, args):
     srvname = get_srvname(opts.srvname, opts.auto)
     srv = Service(srvname, opts.yelpsoa_config_root)
 
-    monitoring_stanza = get_monitoring_stanza(opts.auto, opts.team, legacy_style=True)
-
     port = ask_port(opts.port)
 
     smartstack = ask_lbs(opts.yelpsoa_config_root, opts.smartstack)
@@ -259,6 +257,9 @@ def main(opts, args):
     # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
     if opts.enable_yelpsoa_config:
         status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
+
+    monitoring_stanza = get_monitoring_stanza(opts.auto, opts.team, legacy_style=True)
+    monitoring_stanza.update(get_replication_stanza())
 
     if opts.enable_yelpsoa_config:
         do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack, monitoring_stanza)
