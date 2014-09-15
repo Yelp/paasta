@@ -10,6 +10,7 @@ from service_wizard import prompt
 from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
 from service_wizard.questions import _yamlize
+from service_wizard.questions import get_monitoring_stanza
 from service_wizard.questions import get_srvname
 from service_wizard.questions import get_smartstack_stanza
 from service_wizard.service import Service
@@ -158,8 +159,9 @@ def parse_args():
 
     group = optparse.OptionGroup(parser, "General configuration for the service being added. User will be prompted for anything left unspecified")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
+    group.add_option("-t", "--team", dest="team", default=None, help="Team responsible for the service. Used by various notification systems. (--auto not available)")
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
-    group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
+    group.add_option("-u", "--status-port", dest="status_port", default=None, help="Status port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
     group.add_option(
         "-m",
         "--smartstack",
@@ -207,7 +209,7 @@ def setup_config_paths(yelpsoa_config_root):
     # Just pass the value to your functions explicitly!
     config.YELPSOA_CONFIG_ROOT = yelpsoa_config_root
 
-def do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack):
+def do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack, monitoring_stanza):
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runas_group)
     srv.io.write_file('port', port)
@@ -216,6 +218,7 @@ def do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_dow
     srv.io.write_file('post-activate', post_activate, executable=True)
     service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on, smartstack)
     srv.io.write_file('service.yaml', service_yaml_contents)
+    srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
 
 
 def main(opts, args):
@@ -234,6 +237,8 @@ def main(opts, args):
     srvname = get_srvname(opts.srvname, opts.auto)
     srv = Service(srvname, opts.yelpsoa_config_root)
 
+    monitoring_stanza = get_monitoring_stanza(opts.auto, opts.team, legacy_style=True)
+
     port = ask_port(opts.port)
 
     smartstack = ask_lbs(opts.yelpsoa_config_root, opts.smartstack)
@@ -245,7 +250,7 @@ def main(opts, args):
         status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
 
     if opts.enable_yelpsoa_config:
-        do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack)
+        do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack, monitoring_stanza)
 
 
 if __name__ == '__main__':
