@@ -40,6 +40,25 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
 
 
 def get_marathon_stanza():
+    """We want to default to The Simplest Thing That Can Possibly Work. This
+    allows new services to hit the ground running, but forces developers to
+    think about their resource needs and tune as they move toward production.
+    So:
+    - 1 cpu
+    - 100MB of memory.
+        - kwa: There are plenty of workers on srv1 right now that are >100M
+          RES, and there are *no* processes under 100M VSZ, and docker
+          processes will not be sharing virt across containers.  I'm pretty
+          sure in practice 100M going to be a crippling default for most
+          services, but I think it is ok to start low, instead of start high.
+    - 3 instances, including 1 canary. Why 2+1 instead of 1+1?
+        - Three Of Everything (http://opsprincipl.es/principles/three_of_everything/)
+        - If we reboot the dev box running that single main instance, the
+          cluster is reduced to just a canary. This also may trigger (useless)
+          alerts.
+        - krall: In production, there will be multiple main instances and a single
+          canary. With 1+1, this is less obvious.
+    """
     stanza = {}
     stanza["main"] = {
         "cpu": 1,
@@ -54,8 +73,18 @@ def get_marathon_stanza():
     return stanza
 
 
-def get_monitoring_stanza():
+def get_monitoring_stanza(auto, team):
+    """Produce a monitoring.yaml a la
+    https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
+
+    'team' is the critical key and is not calculable so it is required.
+    """
+    if team is None:
+        if auto:
+            sys.exit("I'd Really Rather You Didn't Use --auto Without --team")
+        while not team:
+            team = ask("Team responsible for this service?")
     stanza = {}
-    stanza["team"] = "mesos"
-    stanza["notification_email"] = "jrm@yelp.com"
+    stanza["team"] = team
+    stanza["service_type"] = "marathon"
     return stanza

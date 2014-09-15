@@ -5,7 +5,6 @@ import fsm
 
 
 class QuestionsTestCase(T.TestCase):
-    pass
     @T.setup_teardown
     def setup_mocks(self):
         """Calling raw_input() from automated tests can ruin your day, so we'll
@@ -98,7 +97,7 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         T.assert_equal(0, self.mock_ask.call_count)
 
     def test_arg_not_passed_in_auto_false(self):
-        """If a value is not specified but and --auto was not requested, prompt
+        """If a value is not specified and --auto was not requested, prompt
         the user.
         """
         yelpsoa_config_root = "fake_yelpsoa_config_root"
@@ -133,7 +132,37 @@ class GetMarathonStanzaTestCase(QuestionsTestCase):
 
 
 class GetMonitoringStanzaTestCase(QuestionsTestCase):
-    def test(self):
-        actual = fsm.get_monitoring_stanza()
-        T.assert_in("team", actual.keys())
-        T.assert_in("notification_email", actual.keys())
+    def test_arg_passed_in(self):
+        team = "america world police"
+        auto = "UNUSED"
+
+        actual = fsm.get_monitoring_stanza(auto, team)
+        T.assert_in(("team", team), actual.items())
+        T.assert_in(("service_type", "marathon"), actual.items())
+
+    def test_arg_not_passed_in_auto_true(self):
+        """If a value is not specified but --auto was requested, calculate and
+        use a sane default.
+        """
+        team = None
+        auto = True
+
+        T.assert_raises_and_contains(
+            SystemExit,
+            "I'd Really Rather You Didn't Use --auto Without --team",
+            fsm.get_monitoring_stanza,
+            auto,
+            team,
+        )
+        T.assert_equal(0, self.mock_ask.call_count)
+
+    def test_arg_not_passed_in_auto_false(self):
+        """If a value is not specified but and --auto was not requested, prompt
+        the user.
+        """
+        team = None
+        auto = False
+
+        actual = fsm.get_monitoring_stanza(auto, team)
+        T.assert_equal(1, self.mock_ask.call_count)
+        T.assert_in(("team", self.mock_ask.return_value), actual.items())

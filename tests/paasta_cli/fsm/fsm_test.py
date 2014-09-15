@@ -9,34 +9,27 @@ from service_wizard.service import SrvReaderWriter
 
 
 class ValidateOptionsTest(T.TestCase):
-    def test_yelpsoa_config_root_required(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-        options.yelpsoa_config_root = None
-
-        T.assert_raises_and_contains(
-            SystemExit,
-            "I'd Really Rather You Didn't Fail To Provide --yelpsoa-config-root",
-            fsm.validate_options,
-            parser,
-            options,
-        )
+    @T.setup_teardown
+    def setup_mocks(self):
+        with mock.patch("fsm.exists") as self.mock_exists:
+            # Happpy path by default
+            self.mock_exists.return_value = True
+            yield
 
     def test_yelpsoa_config_root_exists(self):
         parser = mock.Mock()
-        options = mock.Mock()
-        options.yelpsoa_config_root = "non-existent thing"
+        args = mock.Mock()
+        args.yelpsoa_config_root = "non-existent thing"
 
-        with mock.patch("fsm.exists") as self.mock_exists:
-            self.mock_exists.return_value = False
-            T.assert_raises_and_contains(
-                SystemExit,
-                ("I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
-                    "Like %s" % options.yelpsoa_config_root),
-                fsm.validate_options,
-                parser,
-                options,
-            )
+        self.mock_exists.return_value = False
+        T.assert_raises_and_contains(
+            SystemExit,
+            ("I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
+                "Like %s" % args.yelpsoa_config_root),
+            fsm.validate_args,
+            parser,
+            args,
+        )
 
 
 class GetPaastaConfigTestCase(T.TestCase):
@@ -64,12 +57,13 @@ class GetPaastaConfigTestCase(T.TestCase):
         srvname = "services/fake_srvname"
         auto = "UNUSED"
         port = 12345
-        fsm.get_paasta_config(yelpsoa_config_root, srvname, auto, port)
+        team = "america world police"
+        fsm.get_paasta_config(yelpsoa_config_root, srvname, auto, port, team)
 
         self.mock_get_srvname.assert_called_once_with(srvname, auto)
         self.mock_get_smartstack_stanza.assert_called_once_with(yelpsoa_config_root, auto, port)
         self.mock_get_marathon_stanza.assert_called_once_with()
-        self.mock_get_monitoring_stanza.assert_called_once_with()
+        self.mock_get_monitoring_stanza.assert_called_once_with(auto, team)
 
 
 class WritePaastaConfigTestCase(T.TestCase):
