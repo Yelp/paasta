@@ -76,8 +76,10 @@ def get_marathon_stanza():
 
 
 def get_monitoring_stanza(auto, team):
-    """Most monitoring things key off of 'team'. How this works is not
-    particularly documented; see OPS-2372.
+    """Produce a monitoring.yaml a la
+    https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
+
+    'team' is the critical key and is not calculable so it is required.
     """
     if team is None:
         if auto:
@@ -86,4 +88,5 @@ def get_monitoring_stanza(auto, team):
             team = ask("Team responsible for this service?")
     stanza = {}
     stanza["team"] = team
+    stanza["service_type"] = "marathon"
     return stanza
