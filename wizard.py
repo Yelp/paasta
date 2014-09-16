@@ -7,6 +7,7 @@ import sys
 
 from service_wizard import config
 from service_wizard import prompt
+from service_wizard.autosuggest import is_prod_habitat
 from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
 from service_wizard.questions import _yamlize
@@ -14,6 +15,7 @@ from service_wizard.questions import get_monitoring_stanza
 from service_wizard.questions import get_srvname
 from service_wizard.questions import get_smartstack_stanza
 from service_wizard.service import Service
+from service_wizard.service_configuration import get_habitat_from_fqdn
 from service_wizard.template import Template
 
 
@@ -55,16 +57,40 @@ def ask_runs_on(runs_on=None):
 def ask_smartstack():
     return prompt.yes_no('Load Balanced (via SmartStack)?')
 
-def get_replication_stanza():
+def get_replication_stanza(runs_on):
     stanza = {}
     stanza["replication"] = {}
     stanza["replication"]["key"] = "habitat"
     stanza["replication"]["default"] = 0
-    stanza["replication"]["map"] = get_replication_stanza_map()
+    stanza["replication"]["map"] = get_replication_stanza_map(runs_on)
     return stanza
 
-def get_replication_stanza_map():
-    return {}
+def get_replication_stanza_map(runs_on):
+    """runs_on - a comma-separated list of FQDNs as produced by
+    suggest_runs_on()
+
+    Returns: a dictionary. Keys are habitats (only prod habitats are included).
+    Values are a minimum number of instances. If the replication check finds
+    that the number of instances running in the habitat is less than this
+    minimum number, the alert will sound.
+
+    Example:
+    {
+        'sfo2': 2,
+        'iad1': 3,
+        'sfo1': 2,
+    }
+
+    See also:
+    https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
+    """
+    stanza = {}
+    fqdns = runs_on.split(",")
+    for fqdn in fqdns:
+        habitat = get_habitat_from_fqdn(fqdn)
+        if is_prod_habitat(habitat):
+            stanza[habitat] = stanza.get(habitat, 0) + 1
+    return stanza
 
 def ask_lbs(yelpsoa_config_root, smartstack):
     if smartstack == "AUTO" or smartstack is None:
@@ -247,7 +273,7 @@ def main(opts, args):
     status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
 
     monitoring_stanza = get_monitoring_stanza(opts.auto, opts.team, legacy_style=True)
-    monitoring_stanza.update(get_replication_stanza())
+    monitoring_stanza.update(get_replication_stanza(runs_on))
 
     do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack, monitoring_stanza)
 

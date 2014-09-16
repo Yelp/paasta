@@ -581,7 +581,8 @@ class TestGetReplicationStanza(T.TestCase):
             yield
 
     def test(self):
-        actual = wizard.get_replication_stanza()
+        runs_on = "UNUSED"
+        actual = wizard.get_replication_stanza(runs_on)
         T.assert_in("replication", actual.keys())
 
         replication = actual["replication"]
@@ -594,10 +595,35 @@ class TestGetReplicationStanza(T.TestCase):
 
 
 class TestGetReplicationStanzaMap(T.TestCase):
+    """These tests rely on some behavior outside the unit (the functions that
+    map hostnames to habitat names) but it's easier to just pick realistic
+    hostnames than to mock everything out.
+    """
 
-    def test(self):
+    def test_empty_runs_on(self):
+        runs_on = ""
         expected = {}
-        actual = wizard.get_replication_stanza_map()
+        actual = wizard.get_replication_stanza_map(runs_on)
+        T.assert_equal(expected, actual)
+
+    def test_(self):
+        runs_on = (
+            # non-prod will be ignored
+            "stagexservices9.subdomain.yelpcorp.com,"
+            # we'll test some prod habitats but we'll leave at least one out
+            "srv1-sfo1.subdomain.yelpcorp.com,"
+            "srv2-sfo1.subdomain.yelpcorp.com,"
+            "srv3-sfo1.subdomain.yelpcorp.com,"
+            "srv1-iad1.subdomain.yelpcorp.com,"
+            "srv2-iad1.subdomain.yelpcorp.com,"
+            "srv3-iad1.subdomain.yelpcorp.com,"
+        )
+
+        expected = {
+            "sfo1": 3,
+            "iad1": 3,
+        }
+        actual = wizard.get_replication_stanza_map(runs_on)
         T.assert_equal(expected, actual)
 
 
