@@ -582,7 +582,8 @@ class TestGetReplicationStanza(T.TestCase):
 
     def test(self):
         runs_on = "UNUSED"
-        actual = wizard.get_replication_stanza(runs_on)
+        threshold = "UNUSED"
+        actual = wizard.get_replication_stanza(runs_on, threshold)
         T.assert_in("replication", actual.keys())
 
         replication = actual["replication"]
@@ -602,28 +603,61 @@ class TestGetReplicationStanzaMap(T.TestCase):
 
     def test_empty_runs_on(self):
         runs_on = ""
+        threshold = "UNUSED"
         expected = {}
-        actual = wizard.get_replication_stanza_map(runs_on)
+        actual = wizard.get_replication_stanza_map(runs_on, threshold)
         T.assert_equal(expected, actual)
 
-    def test_(self):
+    def test_threshold_100(self):
         runs_on = (
             # non-prod will be ignored
             "stagexservices9.subdomain.yelpcorp.com,"
+
             # we'll test some prod habitats but we'll leave at least one out
-            "srv1-sfo1.subdomain.yelpcorp.com,"
-            "srv2-sfo1.subdomain.yelpcorp.com,"
-            "srv3-sfo1.subdomain.yelpcorp.com,"
+            # (sfo1)
+            "srv1-sfo2.subdomain.yelpcorp.com,"
+
+            "srv1-iad1.subdomain.yelpcorp.com,"
+            "srv2-iad1.subdomain.yelpcorp.com,"
+        )
+        threshold = 100
+
+        # With threshold = 100%, we expect to see an instance for every host in
+        # each prod habitat
+        expected = {
+            "sfo2": 1,
+            "iad1": 2,
+        }
+        actual = wizard.get_replication_stanza_map(runs_on, threshold)
+        T.assert_equal(expected, actual)
+
+    def test_threshold_50(self):
+        runs_on = (
+            # non-prod will be ignored
+            "stagexservices9.subdomain.yelpcorp.com,"
+
+            # we'll test some prod habitats but we'll leave at least one out
+            # (sfo1)
+            "srv1-sfo2.subdomain.yelpcorp.com,"
+            "srv2-sfo2.subdomain.yelpcorp.com,"
+            "srv3-sfo2.subdomain.yelpcorp.com,"
+            "srv4-sfo2.subdomain.yelpcorp.com,"
+
             "srv1-iad1.subdomain.yelpcorp.com,"
             "srv2-iad1.subdomain.yelpcorp.com,"
             "srv3-iad1.subdomain.yelpcorp.com,"
         )
+        threshold = 50
 
+        # With threshold = 50%, we expect to see:
+        # * 2 of sfo1's 4 instances (exactly 50%)
+        # * 2 of iad1's 3 instances (1/3 is not enough; 2/3 is the
+        #   smallest number of instances greater than 50%)
         expected = {
-            "sfo1": 3,
-            "iad1": 3,
+            "sfo2": 2,
+            "iad1": 2,
         }
-        actual = wizard.get_replication_stanza_map(runs_on)
+        actual = wizard.get_replication_stanza_map(runs_on, threshold)
         T.assert_equal(expected, actual)
 
 

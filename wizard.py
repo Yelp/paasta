@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from math import ceil
 import optparse
 import os
 import socket
@@ -57,17 +58,20 @@ def ask_runs_on(runs_on=None):
 def ask_smartstack():
     return prompt.yes_no('Load Balanced (via SmartStack)?')
 
-def get_replication_stanza(runs_on):
+def get_replication_stanza(runs_on, threshold):
     stanza = {}
     stanza["replication"] = {}
     stanza["replication"]["key"] = "habitat"
     stanza["replication"]["default"] = 0
-    stanza["replication"]["map"] = get_replication_stanza_map(runs_on)
+    stanza["replication"]["map"] = get_replication_stanza_map(runs_on, threshold)
     return stanza
 
-def get_replication_stanza_map(runs_on):
+def get_replication_stanza_map(runs_on, threshold):
     """runs_on - a comma-separated list of FQDNs as produced by
     suggest_runs_on()
+
+    threshold - a percentage used to calculate the minimum number of instances
+    per habitat
 
     Returns: a dictionary. Keys are habitats (only prod habitats are included).
     Values are a minimum number of instances. If the replication check finds
@@ -90,6 +94,9 @@ def get_replication_stanza_map(runs_on):
         habitat = get_habitat_from_fqdn(fqdn)
         if is_prod_habitat(habitat):
             stanza[habitat] = stanza.get(habitat, 0) + 1
+    for habitat in stanza.keys():
+        # Yes, this can be wrong because floating point fuzz
+        stanza[habitat] = int(ceil(stanza[habitat] * (threshold / 100.0)))
     return stanza
 
 def ask_lbs(yelpsoa_config_root, smartstack):
