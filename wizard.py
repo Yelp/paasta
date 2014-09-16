@@ -58,19 +58,19 @@ def ask_runs_on(runs_on=None):
 def ask_smartstack():
     return prompt.yes_no('Load Balanced (via SmartStack)?')
 
-def get_replication_stanza(runs_on, threshold):
+def get_replication_stanza(runs_on, cluster_alert_threshold):
     stanza = {}
     stanza["replication"] = {}
     stanza["replication"]["key"] = "habitat"
     stanza["replication"]["default"] = 0
-    stanza["replication"]["map"] = get_replication_stanza_map(runs_on, threshold)
+    stanza["replication"]["map"] = get_replication_stanza_map(runs_on, cluster_alert_threshold)
     return stanza
 
-def get_replication_stanza_map(runs_on, threshold):
+def get_replication_stanza_map(runs_on, cluster_alert_threshold):
     """runs_on - a comma-separated list of FQDNs as produced by
     suggest_runs_on()
 
-    threshold - a percentage used to calculate the minimum number of instances
+    cluster_alert_threshold - a percentage used to calculate the minimum number of instances
     per habitat
 
     Returns: a dictionary. Keys are habitats (only prod habitats are included).
@@ -89,14 +89,13 @@ def get_replication_stanza_map(runs_on, threshold):
     https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
     """
     stanza = {}
-    fqdns = runs_on.split(",")
-    for fqdn in fqdns:
+    for fqdn in runs_on:
         habitat = get_habitat_from_fqdn(fqdn)
         if is_prod_habitat(habitat):
             stanza[habitat] = stanza.get(habitat, 0) + 1
     for habitat in stanza.keys():
         # Yes, this can be wrong because floating point fuzz
-        stanza[habitat] = int(ceil(stanza[habitat] * (threshold / 100.0)))
+        stanza[habitat] = int(ceil(stanza[habitat] * (cluster_alert_threshold / 100.0)))
     return stanza
 
 def ask_lbs(yelpsoa_config_root, smartstack):
@@ -138,6 +137,20 @@ def get_service_yaml_contents(runs_on, deploys_on, smartstack):
     if smartstack is not None:
         contents.update(smartstack)
     return _yamlize(contents)
+
+def get_cluster_alert_threshold(auto, cluster_alert_threshold):
+    default = 50
+    if cluster_alert_threshold is None:
+        if auto:
+            cluster_alert_threshold = default
+        else:
+            while not cluster_alert_threshold:
+                cluster_alert_threshold = prompt.ask(
+                    "Cluster alert threshold (minimum integer % of "
+                    "instances which must be running or alert fires)?",
+                    default,
+                )
+    return int(cluster_alert_threshold)
 
 def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group, post_download, post_activate, deploys_on):
     """Surveys the user about the various entries in files/services/$srvname"""
@@ -203,6 +216,7 @@ def parse_args():
     group = optparse.OptionGroup(parser, "General configuration for the service being added. User will be prompted for anything left unspecified")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
     group.add_option("-t", "--team", dest="team", default=None, help="Team responsible for the service. Used by various notification systems. (--auto not available)")
+    group.add_option("-c", "--cluster-alert-threshold", dest="cluster_alert_threshold", default=None, help="Minimum integer % of instances which must be running in each habitat or an alert will fire. If AUTO, use default (consult the code)")
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
     group.add_option("-u", "--status-port", dest="status_port", default=None, help="Status port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
     group.add_option(
@@ -280,7 +294,11 @@ def main(opts, args):
     status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
 
     monitoring_stanza = get_monitoring_stanza(opts.auto, opts.team, legacy_style=True)
-    monitoring_stanza.update(get_replication_stanza(runs_on))
+    cluster_alert_threshold = get_cluster_alert_threshold(
+        opts.auto,
+        opts.cluster_alert_threshold,
+    )
+    monitoring_stanza.update(get_replication_stanza(runs_on, cluster_alert_threshold))
 
     do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack, monitoring_stanza)
 

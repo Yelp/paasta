@@ -581,9 +581,9 @@ class TestGetReplicationStanza(T.TestCase):
             yield
 
     def test(self):
-        runs_on = "UNUSED"
-        threshold = "UNUSED"
-        actual = wizard.get_replication_stanza(runs_on, threshold)
+        runs_on = ["UNUSED",]
+        cluster_alert_threshold = "UNUSED"
+        actual = wizard.get_replication_stanza(runs_on, cluster_alert_threshold)
         T.assert_in("replication", actual.keys())
 
         replication = actual["replication"]
@@ -602,54 +602,54 @@ class TestGetReplicationStanzaMap(T.TestCase):
     """
 
     def test_empty_runs_on(self):
-        runs_on = ""
-        threshold = "UNUSED"
+        runs_on = []
+        cluster_alert_threshold = "UNUSED"
         expected = {}
-        actual = wizard.get_replication_stanza_map(runs_on, threshold)
+        actual = wizard.get_replication_stanza_map(runs_on, cluster_alert_threshold)
         T.assert_equal(expected, actual)
 
-    def test_threshold_100(self):
+    def test_cluster_alert_threshold_100(self):
         runs_on = (
             # non-prod will be ignored
-            "stagexservices9.subdomain.yelpcorp.com,"
+            "stagexservices9.subdomain.yelpcorp.com",
 
             # we'll test some prod habitats but we'll leave at least one out
             # (sfo1)
-            "srv1-sfo2.subdomain.yelpcorp.com,"
+            "srv1-sfo2.subdomain.yelpcorp.com",
 
-            "srv1-iad1.subdomain.yelpcorp.com,"
-            "srv2-iad1.subdomain.yelpcorp.com,"
+            "srv1-iad1.subdomain.yelpcorp.com",
+            "srv2-iad1.subdomain.yelpcorp.com",
         )
-        threshold = 100
+        cluster_alert_threshold = 100
 
-        # With threshold = 100%, we expect to see an instance for every host in
+        # With cluster_alert_threshold = 100%, we expect to see an instance for every host in
         # each prod habitat
         expected = {
             "sfo2": 1,
             "iad1": 2,
         }
-        actual = wizard.get_replication_stanza_map(runs_on, threshold)
+        actual = wizard.get_replication_stanza_map(runs_on, cluster_alert_threshold)
         T.assert_equal(expected, actual)
 
-    def test_threshold_50(self):
+    def test_cluster_alert_threshold_50(self):
         runs_on = (
             # non-prod will be ignored
-            "stagexservices9.subdomain.yelpcorp.com,"
+            "stagexservices9.subdomain.yelpcorp.com",
 
             # we'll test some prod habitats but we'll leave at least one out
             # (sfo1)
-            "srv1-sfo2.subdomain.yelpcorp.com,"
-            "srv2-sfo2.subdomain.yelpcorp.com,"
-            "srv3-sfo2.subdomain.yelpcorp.com,"
-            "srv4-sfo2.subdomain.yelpcorp.com,"
+            "srv1-sfo2.subdomain.yelpcorp.com",
+            "srv2-sfo2.subdomain.yelpcorp.com",
+            "srv3-sfo2.subdomain.yelpcorp.com",
+            "srv4-sfo2.subdomain.yelpcorp.com",
 
-            "srv1-iad1.subdomain.yelpcorp.com,"
-            "srv2-iad1.subdomain.yelpcorp.com,"
-            "srv3-iad1.subdomain.yelpcorp.com,"
+            "srv1-iad1.subdomain.yelpcorp.com",
+            "srv2-iad1.subdomain.yelpcorp.com",
+            "srv3-iad1.subdomain.yelpcorp.com",
         )
-        threshold = 50
+        cluster_alert_threshold = 50
 
-        # With threshold = 50%, we expect to see:
+        # With cluster_alert_threshold = 50%, we expect to see:
         # * 2 of sfo1's 4 instances (exactly 50%)
         # * 2 of iad1's 3 instances (1/3 is not enough; 2/3 is the
         #   smallest number of instances greater than 50%)
@@ -657,7 +657,7 @@ class TestGetReplicationStanzaMap(T.TestCase):
             "sfo2": 2,
             "iad1": 2,
         }
-        actual = wizard.get_replication_stanza_map(runs_on, threshold)
+        actual = wizard.get_replication_stanza_map(runs_on, cluster_alert_threshold)
         T.assert_equal(expected, actual)
 
 
