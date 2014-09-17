@@ -3,7 +3,6 @@ Tools for interacting with the data model represented by
 service_configuration_lib and /nail/etc/services/*/service.yaml.
 """
 
-from collections import defaultdict
 import os.path
 import re
 
@@ -62,27 +61,6 @@ def get_habitat_from_fqdn(fqdn):
 
     print "WARNING: Could not find habitat for fqdn %s" % fqdn
     return None
-
-def collate_hosts_by_habitat(fqdns):
-    """Given a list of fqdns, return a dictionary where the value is the short
-    hostname of the fqdn and the key is the habitat calculated from the fqdn.
-
-    If a habitat cannot be calculated for an fqdn, that fqdn is dropped from
-    the returned dictionary.
-    """
-    host_by_habitat = defaultdict(list)
-    for fqdn in fqdns:
-        # Some service.yamls have a line " - " which gets loaded as [None].
-        # We'll just throw these lines out.
-        if fqdn is None:
-            continue
-        host = fqdn.split(".")[0]
-        habitat = get_habitat_from_fqdn(fqdn)
-        if not habitat:
-            print "WARNING: Skipping habitatless host %s" % fqdn
-        else:
-            host_by_habitat[habitat].append(host)
-    return host_by_habitat
 
 def load_service_yamls():
     """Walks config.YELPSOA_CONFIG_ROOT looking for service.yaml files. Returns

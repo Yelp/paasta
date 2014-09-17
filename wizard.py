@@ -1,5 +1,6 @@
 #!/usr/bin/python
 
+from math import ceil
 import optparse
 import os
 import socket
@@ -7,15 +8,15 @@ import sys
 
 from service_wizard import config
 from service_wizard import prompt
-from service_wizard.autosuggest import is_stage_habitat
+from service_wizard.autosuggest import is_prod_habitat
 from service_wizard.autosuggest import suggest_port
 from service_wizard.autosuggest import suggest_runs_on
-from service_wizard.autosuggest import suggest_vip
 from service_wizard.questions import _yamlize
+from service_wizard.questions import get_monitoring_stanza
 from service_wizard.questions import get_srvname
 from service_wizard.questions import get_smartstack_stanza
 from service_wizard.service import Service
-from service_wizard.service_configuration import collate_hosts_by_habitat
+from service_wizard.service_configuration import get_habitat_from_fqdn
 from service_wizard.template import Template
 
 
@@ -54,43 +55,56 @@ def ask_runs_on(runs_on=None):
     parsed_runs_on = parse_hostnames_string(runs_on)
     return parsed_runs_on
 
-def ask_vip(vip=None):
-    default = suggest_vip()
-    if vip == "AUTO":
-        vip = default
-    elif vip is None:
-        if prompt.yes_no('Load Balanced via VIP?'):
-            while not vip:
-                vip = prompt.ask('VIP?', default)
-        else:
-            vip = None
-    return vip
-
 def ask_smartstack():
-    return prompt.yes_no('Load Balanced via SmartStack?')
+    return prompt.yes_no('Load Balanced (via SmartStack)?')
 
-def ask_lbs(yelpsoa_config_root, vip, smartstack_only):
-    if smartstack_only == "AUTO":
-        smartstack_only = False
+def get_replication_stanza(runs_on, cluster_alert_threshold):
+    stanza = {}
+    stanza["replication"] = {}
+    stanza["replication"]["key"] = "habitat"
+    stanza["replication"]["default"] = 0
+    stanza["replication"]["map"] = get_replication_stanza_map(runs_on, cluster_alert_threshold)
+    return stanza
 
-    if smartstack_only:
-        vip = None
-        use_smartstack = True
-    else:
-        vip = ask_vip(vip)
+def get_replication_stanza_map(runs_on, cluster_alert_threshold):
+    """runs_on - a comma-separated list of FQDNs as produced by
+    suggest_runs_on()
 
-        if vip:
-            # If vip is configured, we also use SmartStack by default.
-            use_smartstack = True
-        else:
-            use_smartstack = ask_smartstack()
+    cluster_alert_threshold - a percentage used to calculate the minimum number of instances
+    per habitat
 
-    if use_smartstack:
-        smartstack = get_smartstack_stanza(yelpsoa_config_root, True, None)
-    else:
-        smartstack = None
+    Returns: a dictionary. Keys are habitats (only prod habitats are included).
+    Values are a minimum number of instances. If the replication check finds
+    that the number of instances running in the habitat is less than this
+    minimum number, the alert will sound.
 
-    return vip, smartstack
+    Example:
+    {
+        'sfo2': 2,
+        'iad1': 3,
+        'sfo1': 2,
+    }
+
+    See also:
+    https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
+    """
+    stanza = {}
+    for fqdn in runs_on:
+        habitat = get_habitat_from_fqdn(fqdn)
+        if is_prod_habitat(habitat):
+            stanza[habitat] = stanza.get(habitat, 0) + 1
+    for habitat in stanza.keys():
+        # Yes, this can be wrong because floating point fuzz
+        stanza[habitat] = int(ceil(stanza[habitat] * (cluster_alert_threshold / 100.0)))
+    return stanza
+
+def ask_lbs(yelpsoa_config_root, smartstack):
+    if smartstack == "AUTO" or smartstack is None:
+        smartstack = ask_smartstack()
+    smartstack_stanza = None
+    if smartstack:
+        smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, True, None, legacy_style=True)
+    return smartstack_stanza
 
 def get_fqdn(hostname):
     # socket.getfqdn on an empty string returns localhost, which is not what we
@@ -122,35 +136,19 @@ def get_service_yaml_contents(runs_on, deploys_on):
     }
     return _yamlize(contents)
 
-def get_habitat_overrides(host_by_habitat, srvname, vip=False, vip_number=None):
-    """Given a host_by_habitat dict, calculate appropriate hostgroup file
-    contents (soa.cfg by default; vips.cfg if vip is truthy). The contents will
-    contain a members line if the service runs in that hostgroup file's
-    habitat; otherwise it will not include the members line.
-
-    If 'vip' is truthy, 'vip_number' must also be provided since the vip
-    hostgroup template needs it.
-
-    Returns a dict where the keys are habitats and the values are the template
-    contents.
-    """
-    if vip and not vip_number:
-        raise ValueError("vip is truthy so vip_number is required." % vip)
-    habitat_overrides = {}
-    for (habitat, members_list) in host_by_habitat.items():
-        members_string = ",".join(sorted(members_list))
-        if vip:
-            # Load balancers in stage are kind of new so we either don't have
-            # VIPs at all or haven't decided to set them up in Nagios.
-            if is_stage_habitat(habitat):
-                continue
-            contents = Template('vip_hostgroup_with_members').substitute(
-                    {'srvname': srvname, 'vip_number': vip_number})
+def get_cluster_alert_threshold(auto, cluster_alert_threshold):
+    default = 50
+    if cluster_alert_threshold is None:
+        if auto:
+            cluster_alert_threshold = default
         else:
-            contents = Template('hostgroup_with_members').substitute(
-                    {'srvname': srvname, 'members': members_string})
-        habitat_overrides[habitat] = contents
-    return habitat_overrides
+            while not cluster_alert_threshold:
+                cluster_alert_threshold = prompt.ask(
+                    "Cluster alert threshold (minimum integer % of "
+                    "instances which must be running or alert fires)?",
+                    default,
+                )
+    return int(cluster_alert_threshold)
 
 def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group, post_download, post_activate, deploys_on):
     """Surveys the user about the various entries in files/services/$srvname"""
@@ -206,44 +204,26 @@ def ask_yelpsoa_config_questions(srvname, port, status_port, runas, runas_group,
 
     return status_port, runas, runas_group, post_download, post_activate, parsed_deploys_on
 
-def ask_nagios_questions(contact_groups=None, contacts=None, include_ops=None):
-    if not contact_groups and not contacts:
-        contact_groups = prompt.ask('Nagios contact_groups (comma-separated list)?')
-        contacts = prompt.ask('Nagios contacts (individuals, comma-separated list)?')
-    if include_ops is None:
-        include_ops = prompt.yes_no('Nagios alerts ops?')
-
-    if not contact_groups and not contacts and not include_ops:
-        print "ERROR: No contact_groups or contacts provided and Operations on-call is not alerted."
-        print "Must provide someone to be alerted!"
-        sys.exit(2)
-
-    return contact_groups, contacts, include_ops
-
 def parse_args():
     parser = optparse.OptionParser()
     group = optparse.OptionGroup(parser, "Configuring this script")
-    group.add_option("-n", "--nagios-root", dest="nagios_root", default=None, help="Path to root of Nagios checkout")
-    group.add_option("-N", "--disable-nagios", dest="enable_nagios", default=True, action="store_false", help="Don't run steps related to Nagios")
-    group.add_option("-p", "--puppet-root", dest="puppet_root", default=None, help="Path to root of Puppet checkout")
-    group.add_option("-P", "--disable-puppet", dest="enable_puppet", default=True, action="store_false", help="Don't run steps related to Puppet")
-    group.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout")
-    group.add_option("-Y", "--disable-yelpsoa-config", dest="enable_yelpsoa_config", default=True, action="store_false", help="Don't run steps related to yelpsoa-configs")
+    group.add_option("-y", "--yelpsoa-config-root", dest="yelpsoa_config_root", default=None, help="Path to root of yelpsoa-configs checkout (REQUIRED)")
     group.add_option("-A", "--auto", dest="auto", default=False, action="store_true", help="Use defaults instead of prompting when default value is available")
     parser.add_option_group(group)
 
     group = optparse.OptionGroup(parser, "General configuration for the service being added. User will be prompted for anything left unspecified")
     group.add_option("-s", "--service-name", dest="srvname", default=None, help="Name of service being configured")
+    group.add_option("-t", "--team", dest="team", default=None, help="Team responsible for the service. Used by various notification systems. (--auto not available)")
+    group.add_option("-c", "--cluster-alert-threshold", dest="cluster_alert_threshold", default=None, help="Minimum integer % of instances which must be running in each habitat or an alert will fire. If AUTO, use default (consult the code)")
     group.add_option("-o", "--port", dest="port", default=None, help="Port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
-    group.add_option("-t", "--status-port", dest="status_port", default=None, help="Status port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
-    group.add_option("-v", "--vip", dest="vip", default=None, help="VIP used by service (e.g. 'vip1'). If AUTO, use default (caluclated from yelpsoa-configs)")
+    group.add_option("-u", "--status-port", dest="status_port", default=None, help="Status port used by service. If AUTO, use default (calculated from yelpsoa-configs)")
     group.add_option(
         "-m",
-        "--smartstack-only",
-        dest="smartstack_only",
-        default=False,
+        "--smartstack",
+        dest="smartstack",
+        default=None,
         action="store_true",
-        help="Service will be load-balanced by SmartStack alone. Cannot be used when vip is specified. If AUTO, use default (%default)."
+        help="Service will be load-balanced by SmartStack"
     )
     group.add_option("-r", "--runas", dest="runas", default=None, help="UNIX user which will run service. If AUTO, use default (consult the code)")
     group.add_option("-R", "--runas-group", dest="runas_group", default=None, help="UNIX group which will run service. If AUTO, use default (consult the code)")
@@ -251,13 +231,6 @@ def parse_args():
     group.add_option("-a", "--post-activate", dest="post_activate", default=None, help="Script executed after service is activated by target machine. (Probably easier to do this by hand if the script is complex.) Can be NONE for an empty template or AUTO for the default (python) template.")
     group.add_option("-S", "--runs-on", dest="runs_on", default=None, help="Comma-separated list of machines where the service runs. You can use shortnames and I will translate to FQDN as needed. Can be empty string ('') for no machines, or AUTO for the default set. AUTO requires --yelpsoa-config-root.")
     group.add_option("-D", "--deploys-on", dest="deploys_on", default=None, help="Comma-separated list of machines where the service is deployed but the init script isn't run. This is useful e.g. for running batches. You can use shortnames and I will translated to FQDN as needed. Can be empty string ('') for no machines, or AUTO for the default set. AUTO requires --yelpsoa-config-root.")
-    parser.add_option_group(group)
-
-    group = optparse.OptionGroup(parser, "Nagios configuration for the service being added. User will be prompted for anything left unspecified")
-    group.add_option("-C", "--contact-groups", dest="contact_groups", default=None, help="Comma-separated list of Nagios groups to alert")
-    group.add_option("-c", "--contacts", dest="contacts", default=None, help="Comma-separated list of individuals to alert. If either --contacts or --contact-groups specified, user will not be prompted for either option.")
-    group.add_option("-i", "--include-ops", dest="include_ops", default=None, action="store_true", help="Operations on-call shall be alerted")
-    group.add_option("-x", "--exclude-ops", dest="exclude_ops", default=None, action="store_true", help="Operations on-call shall NOT be alerted. If neither --include-ops nor --exclude-ops specified, user will be prompted.")
     parser.add_option_group(group)
 
     opts, args = parser.parse_args()
@@ -268,68 +241,21 @@ def validate_options(parser, opts):
     """Does sys.exit() if an invalid combination of options is specified.
     Otherwise returns None (implicitly)."""
 
-    if opts.enable_yelpsoa_config:
-        if not opts.yelpsoa_config_root:
-            parser.print_usage()
-            sys.exit("ERROR: yelpsoa-configs is enabled but --yelpsoa-config-root is not set!")
-        if not os.path.exists(opts.yelpsoa_config_root):
-            parser.print_usage()
-            sys.exit("ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root)
-
-    if opts.enable_puppet:
-        if not opts.puppet_root:
-            parser.print_usage()
-            sys.exit("ERROR: Puppet is enabled but --puppet-root is not set!")
-        if not os.path.exists(opts.puppet_root):
-            parser.print_usage()
-            sys.exit("ERROR: --puppet-root %s does not exist!" % opts.puppet_root)
-
-    if opts.enable_nagios:
-        if not opts.nagios_root:
-            parser.print_usage()
-            sys.exit("ERROR: Nagios is enabled but --nagios-root is not set!")
-        if not os.path.exists(opts.nagios_root):
-            parser.print_usage()
-            sys.exit("ERROR: --nagios-root %s does not exist!" % opts.nagios_root)
-
-    if not opts.yelpsoa_config_root and not opts.port:
+    if not opts.yelpsoa_config_root:
         parser.print_usage()
-        sys.exit("ERROR: Must provide either --yelpsoa-config-root or --port!")
+        sys.exit("ERROR: --yelpsoa-config-root is required!")
+    if not os.path.exists(opts.yelpsoa_config_root):
+        parser.print_usage()
+        sys.exit("ERROR: --yelpsoa-config-root %s does not exist!" % opts.yelpsoa_config_root)
 
-    # There's a weird dependency here because --smartstack-only requires
-    # --yelpsoa-config-root but is itself exclusive with --vip. So we must do
-    # --smartstack-only checks before the --vip check.
-    if not opts.yelpsoa_config_root and opts.smartstack_only:
-        parser.print_usage()
-        sys.exit("ERROR: --smartstack-only requires --yelpsoa-config-root!")
-    if opts.smartstack_only and opts.vip:
-        parser.print_usage()
-        sys.exit("ERROR: --smartstack-only cannot be used with --vip.")
-    if not opts.yelpsoa_config_root and not opts.vip:
-        parser.print_usage()
-        sys.exit("ERROR: Must provide either --yelpsoa-config-root or --vip!")
-
-    if opts.vip and not (opts.vip.startswith("vip") or opts.vip == "AUTO"):
-        parser.print_usage()
-        sys.exit("ERROR: --vip must start with 'vip'!")
-
-    if opts.include_ops and opts.exclude_ops:
-        parser.print_usage()
-        sys.exit("ERROR: Provide only one of --include-ops and --exclude-ops")
-    else:
-        if opts.exclude_ops:
-            opts.include_ops = False
-
-def setup_config_paths(yelpsoa_config_root, puppet_root, nagios_root):
+def setup_config_paths(yelpsoa_config_root):
     config.TEMPLATE_DIR = os.path.join(os.path.dirname(sys.argv[0]), 'templates')
     assert os.path.exists(config.TEMPLATE_DIR)
     # config.YELPSOA_CONFIG_ROOT is deprecated! Don't add it to new things!
     # Just pass the value to your functions explicitly!
     config.YELPSOA_CONFIG_ROOT = yelpsoa_config_root
-    config.PUPPET_ROOT = puppet_root
-    config.NAGIOS_ROOT = nagios_root
 
-def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack):
+def do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack, monitoring_stanza):
     srv.io.write_file('runas', runas)
     srv.io.write_file('runas_group', runas_group)
     srv.io.write_file('port', port)
@@ -338,95 +264,41 @@ def do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, pos
     srv.io.write_file('post-activate', post_activate, executable=True)
     service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on)
     srv.io.write_file('service.yaml', service_yaml_contents)
-    if smartstack is not None:
-        srv.io.write_file('smartstack.yaml', _yamlize(smartstack))
-    if vip is not None:
-        srv.io.write_file('vip', vip)
-        srv.io.write_file('lb.yaml', '')
-
-def do_puppet_steps(srv, port, vip):
-    if vip is not None:
-        srv.io.write_healthcheck(
-            Template('healthcheck').substitute(
-                {'srvname': srv.name, 'port': port}))
-
-def do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_on):
-    host_by_habitat = collate_hosts_by_habitat(runs_on)
-
-    servicegroup_contents = Template('servicegroup').substitute(
-        {'srvname': srv.name })
-    srv.io.append_servicegroup(servicegroup_contents)
-
-    default_contents = Template('hostgroup_empty_members').substitute(
-                {'srvname': srv.name})
-    habitat_overrides = get_habitat_overrides(host_by_habitat, srv.name)
-    srv.io.append_hostgroups(default_contents, habitat_overrides=habitat_overrides)
-
-    check_contents = Template('check').substitute({
-        'srvname': srv.name,
-        'port': port,
-        'contact_groups': contact_groups or '',
-        'contacts': contacts or '',
-        'plus_if_include_ops': '+' if include_ops else '',
-    })
-    srv.io.write_check(check_contents)
-
-    if vip:
-        # Strip off 'vip' from vip
-        vip_number = vip[3:]
-        default_contents = Template('vip_hostgroup_empty_members').substitute({
-            'srvname': srv.name,
-            'vip_number': vip_number,
-        })
-        habitat_overrides = get_habitat_overrides(host_by_habitat, srv.name, vip=True, vip_number=vip_number)
-        srv.io.append_hostgroups(default_contents, habitat_overrides=habitat_overrides, vip=True)
-
-        check_contents = Template('vip_check').substitute({
-            'srvname': srv.name,
-            'port': port,
-            'contact_groups': contact_groups or '',
-            'contacts': contacts or '',
-            'plus_if_include_ops': '+' if include_ops else '',
-        })
-        srv.io.append_check(check_contents)
+    srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
 
 
 def main(opts, args):
-    setup_config_paths(opts.yelpsoa_config_root, opts.puppet_root, opts.nagios_root)
+    setup_config_paths(opts.yelpsoa_config_root)
 
     if opts.auto:
         opts.port = opts.port or "AUTO"
         opts.status_port = opts.status_port or "AUTO"
-        opts.vip = opts.vip or "AUTO"
         opts.runas = opts.runas or "AUTO"
         opts.runas_group = opts.runas_group or "AUTO"
         opts.post_download = opts.post_download or "AUTO"
         opts.post_activate = opts.post_activate or "AUTO"
         opts.runs_on = opts.runs_on or "AUTO"
         opts.deploys_on = opts.deploys_on or "AUTO"
-        opts.smartstack_only = opts.smartstack_only or "AUTO"
 
     srvname = get_srvname(opts.srvname, opts.auto)
     srv = Service(srvname, opts.yelpsoa_config_root)
 
     port = ask_port(opts.port)
 
-    vip, smartstack = ask_lbs(opts.yelpsoa_config_root, opts.vip, opts.smartstack_only)
+    smartstack = ask_lbs(opts.yelpsoa_config_root, opts.smartstack)
 
     runs_on = ask_runs_on(opts.runs_on)
 
-    # Ask all the questions (and do all the validation) first so we don't have to bail out and undo later.
-    if opts.enable_yelpsoa_config:
-        status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
-    if opts.enable_nagios:
-        contact_groups, contacts, include_ops = ask_nagios_questions(opts.contact_groups, opts.contacts, opts.include_ops)
+    status_port, runas, runas_group, post_download, post_activate, deploys_on = ask_yelpsoa_config_questions(srv.name, port, opts.status_port, opts.runas, opts.runas_group, opts.post_download, opts.post_activate, opts.deploys_on)
 
-    if opts.enable_yelpsoa_config:
-        do_yelpsoa_config_steps(srv, port, status_port, vip, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack)
-    if opts.enable_puppet:
-        do_puppet_steps(srv, port, vip)
-    if opts.enable_nagios:
-        do_nagios_steps(srv, port, vip, contact_groups, contacts, include_ops, runs_on)
+    monitoring_stanza = get_monitoring_stanza(opts.auto, opts.team, legacy_style=True)
+    cluster_alert_threshold = get_cluster_alert_threshold(
+        opts.auto,
+        opts.cluster_alert_threshold,
+    )
+    monitoring_stanza.update(get_replication_stanza(runs_on, cluster_alert_threshold))
+
+    do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_download, post_activate, runs_on, deploys_on, smartstack, monitoring_stanza)
 
 
 if __name__ == '__main__':

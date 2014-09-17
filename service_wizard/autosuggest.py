@@ -8,24 +8,6 @@ from service_wizard import config
 from service_wizard import service_configuration
 
 
-class NoVipError(Exception):
-    pass
-
-
-def suggest_vip():
-    """Suggest the most under-utilized vip"""
-    vip_counts = {}
-    for root, dirs, files in os.walk(config.YELPSOA_CONFIG_ROOT):
-        if 'vip' in files:
-            with open(os.path.join(root, 'vip')) as f:
-                vip = f.read().strip()
-                if vip:
-                    vip_counts[vip] = vip_counts.get(vip, 0) + 1
-    if not vip_counts:
-        raise NoVipError("Could not find any vips. Bad YELPSOA_CONFIG_ROOT %s?" % (config.YELPSOA_CONFIG_ROOT))
-    least_vip = min(vip_counts.items(), key=operator.itemgetter(1))
-    return least_vip[0]
-
 def _get_port_from_file(root, file):
     """Given a root and file (as from os.walk), attempt to return a port
     number (int) from that file. Returns 0 if file is empty."""
@@ -166,9 +148,9 @@ def suggest_runs_on(runs_on=None):
 
     While doing all of that, try not to go read a bunch of yaml off disk if we
     don't have to. We don't want the dependencies or the overhead (user warned
-    about --puppet-root even though it isn't actually needed; loading hundreds
-    of yaml files just to throw them away because the user provided a list of
-    hosts).
+    about inocmpatible options even though we don't get that far; loading
+    hundreds of yaml files just to throw them away because the user provided a
+    list of hosts).
 
     Returns the (possibly munged) 'runs_on' as a string of comma-separated
     hostnames.

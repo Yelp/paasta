@@ -1,4 +1,3 @@
-from contextlib import contextmanager
 from contextlib import nested
 
 import mock
@@ -8,93 +7,6 @@ import wizard
 from service_wizard import autosuggest
 from service_wizard import config
 from service_wizard import service_configuration
-
-
-class ValidateOptionsTestCase(T.TestCase):
-    def test_enable_yelpsoa_config_requires_yelpsoa_config_root(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-        options.enable_yelpsoa_config = True
-        options.yelpsoa_config_root = None
-        options.enable_puppet = False # Disable checks we don't care about
-        options.enable_nagios = False # Disable checks we don't care about
-        T.assert_raises_and_contains(
-            SystemExit,
-            "yelpsoa-configs is enabled but --yelpsoa-config-root is not set",
-            wizard.validate_options,
-            parser,
-            options,
-        )
-
-    def test_enable_puppet_requires_puppet_root(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-        options.enable_puppet = True
-        options.puppet_root = None
-        options.enable_yelpsoa_config = False # Disable checks we don't care about
-        options.enable_nagios = False # Disable checks we don't care about
-        T.assert_raises_and_contains(
-            SystemExit,
-            "Puppet is enabled but --puppet-root is not set",
-            wizard.validate_options,
-            parser,
-            options,
-        )
-
-    def test_enable_nagios_requires_nagios_root(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-        options.enable_nagios = True
-        options.nagios_root = None
-        options.enable_yelpsoa_config = False # Disable checks we don't care about
-        options.enable_puppet = False # Disable checks we don't care about
-        T.assert_raises_and_contains(
-            SystemExit,
-            "Nagios is enabled but --nagios-root is not set",
-            wizard.validate_options,
-            parser,
-            options,
-        )
-
-    def test_smartstack_only_cannot_be_used_with_vip(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-
-        options.vip = "vip1"
-        options.smartstack_only = True
-
-        # Disable checks we don't care about
-        options.enable_nagios = False
-        options.enable_yelpsoa_config = False
-        options.enable_puppet = False
-
-        T.assert_raises_and_contains(
-            SystemExit,
-            "--smartstack-only cannot be used with --vip",
-            wizard.validate_options,
-            parser,
-            options,
-        )
-
-    def test_smartstack_only_requires_yelpsoa_config_root(self):
-        parser = mock.Mock()
-        options = mock.Mock()
-
-        options.enable_yelpsoa_config = False
-        options.yelpsoa_config_root = None
-        options.smartstack_only = True
-
-        # Disable checks we don't care about
-        options.enable_puppet = False
-        options.enable_nagios = False
-
-        T.assert_raises_and_contains(
-            SystemExit,
-            "--smartstack-only requires --yelpsoa-config-root",
-            wizard.validate_options,
-            parser,
-            options,
-        )
 
 
 class SuggestPortTestCase(T.TestCase):
@@ -290,7 +202,6 @@ class LoadServiceYamls(T.TestCase):
     @T.setup_teardown
     def setup_config(self):
         config.YELPSOA_CONFIG_ROOT = "non_empty_unused_yelpsoa_config_root"
-        config.PUPPET_ROOT = "non_empty_unused_puppet_root"
         # The method under test short circuits and returns [] if something goes wrong. If
         # we get past that point, hit mocks rather than acutally reading things
         # off disk.
@@ -304,10 +215,6 @@ class LoadServiceYamls(T.TestCase):
     def test_returns_empty_list_when_yelpsoa_config_root_not_set(self):
         config.YELPSOA_CONFIG_ROOT = None
         T.assert_equal([], service_configuration.load_service_yamls())
-
-    def test_returns_something_when_puppet_root_not_set(self):
-        config.PUPPET_ROOT = None
-        T.assert_equal(self.fake_load_service_yamls_from_disk, service_configuration.load_service_yamls())
 
 class CollateServiceYamlsTestCase(T.TestCase):
     @T.setup_teardown
@@ -589,63 +496,11 @@ class GetHabitatFromFqdnTestCase(T.TestCase):
         T.assert_equal(expected, actual)
 
 
-class CollateHostsByHabitat(T.TestCase):
-    @contextmanager
-    def patch_get_habitat_from_fqdn(self, return_value=None):
-        def fake_get_habitat_from_fqdn(fqdn):
-            return return_value or "%s-habitat" % fqdn
-        with mock.patch("service_wizard.service_configuration.get_habitat_from_fqdn", fake_get_habitat_from_fqdn):
-            yield
-
-    def test_no_fqdns(self):
-        expected = {}
-        fqdns = []
-        actual = service_configuration.collate_hosts_by_habitat(fqdns)
-        T.assert_equal(expected, actual)
-
-    def test_bad_fqdn_is_dropped(self):
-        expected = {}
-        fqdns = ["bad_fqdn"]
-        actual = service_configuration.collate_hosts_by_habitat(fqdns)
-        T.assert_equal(expected, actual)
-
-    def test_one_good_fqdn(self):
-        fqdn = "fakehost1.fakehabitat.yelpcorp.com"
-        expected = {"%s-habitat" % fqdn: ["fakehost1"]}
-        fqdns = [fqdn]
-        with self.patch_get_habitat_from_fqdn():
-            actual = service_configuration.collate_hosts_by_habitat(fqdns)
-        T.assert_equal(expected, actual)
-
-    def test_two_good_fqdns_different_habitat(self):
-        fqdn1 = "fakehost1.fakehabitat.yelpcorp.com"
-        fqdn2 = "fakehost2.fakehabitat.yelpcorp.com"
-        expected = {
-            "%s-habitat" % fqdn1: ["fakehost1"],
-            "%s-habitat" % fqdn2: ["fakehost2"],
-        }
-        fqdns = [fqdn1, fqdn2]
-        with self.patch_get_habitat_from_fqdn():
-            actual = service_configuration.collate_hosts_by_habitat(fqdns)
-        T.assert_equal(expected, actual)
-
-    def test_two_good_fqdns_same_habitat(self):
-        fqdn1 = "fakehost1.samehabitat.yelpcorp.com"
-        fqdn2 = "fakehost2.samehabitat.yelpcorp.com"
-        habitat = "samehabitat"
-        expected = {habitat: ["fakehost1", "fakehost2"]}
-        fqdns = [fqdn1, fqdn2]
-        with self.patch_get_habitat_from_fqdn(habitat):
-            actual = service_configuration.collate_hosts_by_habitat(fqdns)
-        T.assert_equal(expected, actual)
-
-
 class TestAskLBs(T.TestCase):
 
     @T.setup_teardown
     def data_setup(self):
         with nested(
-            mock.patch.object(wizard, 'ask_vip', autospec=True),
             mock.patch.object(wizard, 'ask_smartstack', autospec=True),
             mock.patch.object(
                 wizard,
@@ -653,17 +508,29 @@ class TestAskLBs(T.TestCase):
                 autospec=True,
                 return_value=mock.sentinel.smartstack_conf),
         ) as (
-            self.mock_ask_vip,
             self.mock_ask_smartstack,
             self.mock_get_smartstack_stanza
         ):
             yield
 
-    def test_when_yes_smartstack_only(self):
+    def test_smartstack_none(self):
         yelpsoa_config_root = 'fake_yelpsoa_config_root'
-        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, True)
+        smartstack = wizard.ask_lbs(yelpsoa_config_root, None)
 
-        T.assert_equal(vip, None)
+        T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
+        self.mock_get_smartstack_stanza.assert_called_once_with(
+            yelpsoa_config_root,
+            True,
+            None,
+            legacy_style=True,
+        )
+
+        T.assert_true(self.mock_ask_smartstack.called)
+
+    def test_smartstack_true(self):
+        yelpsoa_config_root = 'fake_yelpsoa_config_root'
+        smartstack = wizard.ask_lbs(yelpsoa_config_root, True)
+
         T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
         self.mock_get_smartstack_stanza.assert_called_once_with(
             yelpsoa_config_root,
@@ -671,46 +538,110 @@ class TestAskLBs(T.TestCase):
             None,
         )
 
-        T.assert_false(self.mock_ask_vip.called)
         T.assert_false(self.mock_ask_smartstack.called)
 
-    def test_option_no_smartstack_only_no_vip_no_smartstack(self):
-        self.mock_ask_vip.return_value = None
+    def test_smartstack_false(self):
         self.mock_ask_smartstack.return_value = False
 
         yelpsoa_config_root = 'fake_yelpsoa_config_root'
-        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
+        smartstack = wizard.ask_lbs(yelpsoa_config_root, False)
 
-        T.assert_equal(vip, None)
         T.assert_equal(smartstack, None)
 
-        T.assert_true(self.mock_ask_vip.called)
-        T.assert_true(self.mock_ask_smartstack.called)
-
-    def test_option_no_smartstack_only_no_vip_yes_smartstack(self):
-        self.mock_ask_vip.return_value = None
-        self.mock_ask_smartstack.return_value = True
-
-        yelpsoa_config_root = 'fake_yelpsoa_config_root'
-        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
-
-        T.assert_equal(vip, None)
-        T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
-
-        T.assert_true(self.mock_ask_vip.called)
-        T.assert_true(self.mock_ask_smartstack.called)
-
-    def test_option_no_smartstack_only_yes_vip(self):
-        self.mock_ask_vip.return_value = mock.sentinel.vip
-
-        yelpsoa_config_root = 'fake_yelpsoa_config_root'
-        vip, smartstack = wizard.ask_lbs(yelpsoa_config_root, None, False)
-
-        T.assert_equal(vip, mock.sentinel.vip)
-        T.assert_equal(smartstack, mock.sentinel.smartstack_conf)
-
-        T.assert_true(self.mock_ask_vip.called)
         T.assert_false(self.mock_ask_smartstack.called)
+
+
+class TestGetReplicationStanza(T.TestCase):
+
+    @T.setup_teardown
+    def setup_mocks(self):
+        with mock.patch(
+            "wizard.get_replication_stanza_map",
+            autospec=True,
+        ) as (
+            self.mock_get_replication_stanza_map
+        ):
+            yield
+
+    def test(self):
+        runs_on = ["UNUSED",]
+        cluster_alert_threshold = "UNUSED"
+        actual = wizard.get_replication_stanza(runs_on, cluster_alert_threshold)
+        T.assert_in("replication", actual.keys())
+
+        replication = actual["replication"]
+        T.assert_in(("key", "habitat"), replication.items())
+        T.assert_in(("default", 0), replication.items())
+        T.assert_in("map", replication.keys())
+
+        map = replication["map"]
+        T.assert_equal(map, self.mock_get_replication_stanza_map.return_value)
+
+
+class TestGetReplicationStanzaMap(T.TestCase):
+    """These tests rely on some behavior outside the unit (the functions that
+    map hostnames to habitat names) but it's easier to just pick realistic
+    hostnames than to mock everything out.
+    """
+
+    def test_empty_runs_on(self):
+        runs_on = []
+        cluster_alert_threshold = "UNUSED"
+        expected = {}
+        actual = wizard.get_replication_stanza_map(runs_on, cluster_alert_threshold)
+        T.assert_equal(expected, actual)
+
+    def test_cluster_alert_threshold_100(self):
+        runs_on = (
+            # non-prod will be ignored
+            "stagexservices9.subdomain.yelpcorp.com",
+
+            # we'll test some prod habitats but we'll leave at least one out
+            # (sfo1)
+            "srv1-sfo2.subdomain.yelpcorp.com",
+
+            "srv1-iad1.subdomain.yelpcorp.com",
+            "srv2-iad1.subdomain.yelpcorp.com",
+        )
+        cluster_alert_threshold = 100
+
+        # With cluster_alert_threshold = 100%, we expect to see an instance for every host in
+        # each prod habitat
+        expected = {
+            "sfo2": 1,
+            "iad1": 2,
+        }
+        actual = wizard.get_replication_stanza_map(runs_on, cluster_alert_threshold)
+        T.assert_equal(expected, actual)
+
+    def test_cluster_alert_threshold_50(self):
+        runs_on = (
+            # non-prod will be ignored
+            "stagexservices9.subdomain.yelpcorp.com",
+
+            # we'll test some prod habitats but we'll leave at least one out
+            # (sfo1)
+            "srv1-sfo2.subdomain.yelpcorp.com",
+            "srv2-sfo2.subdomain.yelpcorp.com",
+            "srv3-sfo2.subdomain.yelpcorp.com",
+            "srv4-sfo2.subdomain.yelpcorp.com",
+
+            "srv1-iad1.subdomain.yelpcorp.com",
+            "srv2-iad1.subdomain.yelpcorp.com",
+            "srv3-iad1.subdomain.yelpcorp.com",
+        )
+        cluster_alert_threshold = 50
+
+        # With cluster_alert_threshold = 50%, we expect to see:
+        # * 2 of sfo1's 4 instances (exactly 50%)
+        # * 2 of iad1's 3 instances (1/3 is not enough; 2/3 is the
+        #   smallest number of instances greater than 50%)
+        expected = {
+            "sfo2": 2,
+            "iad1": 2,
+        }
+        actual = wizard.get_replication_stanza_map(runs_on, cluster_alert_threshold)
+        T.assert_equal(expected, actual)
 
 
 if __name__ == "__main__":
