@@ -157,8 +157,8 @@ class GetMonitoringStanzaTestCase(QuestionsTestCase):
         T.assert_equal(0, self.mock_ask.call_count)
 
     def test_arg_not_passed_in_auto_false(self):
-        """If a value is not specified but and --auto was not requested, prompt
-        the user.
+        """If a value is not specified but --auto was not requested, prompt the
+        user.
         """
         team = None
         auto = False
@@ -166,3 +166,21 @@ class GetMonitoringStanzaTestCase(QuestionsTestCase):
         actual = fsm.get_monitoring_stanza(auto, team)
         T.assert_equal(1, self.mock_ask.call_count)
         T.assert_in(("team", self.mock_ask.return_value), actual.items())
+
+    def test_arg_not_passed_in_auto_true_legacy_style_true(self):
+        """If a value is not specified and --auto was requested and
+        legacy_style is on, prompt the user.
+        """
+        team = None
+        auto = True
+
+        actual = fsm.get_monitoring_stanza(auto, team, legacy_style=True)
+        T.assert_equal(1, self.mock_ask.call_count)
+        T.assert_in(("team", self.mock_ask.return_value), actual.items())
+
+    def test_service_type_marathon_when_legacy_style_true(self):
+        team = "whatever"
+        auto = "UNUSED"
+
+        actual = fsm.get_monitoring_stanza(auto, team, legacy_style=True)
+        T.assert_in(("service_type", "classic"), actual.items())
