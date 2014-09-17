@@ -522,7 +522,6 @@ class TestAskLBs(T.TestCase):
             yelpsoa_config_root,
             True,
             None,
-            legacy_style=True,
         )
 
         T.assert_true(self.mock_ask_smartstack.called)

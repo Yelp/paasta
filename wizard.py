@@ -103,7 +103,7 @@ def ask_lbs(yelpsoa_config_root, smartstack):
         smartstack = ask_smartstack()
     smartstack_stanza = None
     if smartstack:
-        smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, True, None, legacy_style=True)
+        smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, True, None)
     return smartstack_stanza
 
 def get_fqdn(hostname):
@@ -264,6 +264,8 @@ def do_yelpsoa_config_steps(srv, port, status_port, runas, runas_group, post_dow
     srv.io.write_file('post-activate', post_activate, executable=True)
     service_yaml_contents = get_service_yaml_contents(runs_on, deploys_on)
     srv.io.write_file('service.yaml', service_yaml_contents)
+    if smartstack is not None:
+        srv.io.write_file('smartstack.yaml', _yamlize(smartstack))
     srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
 
 
