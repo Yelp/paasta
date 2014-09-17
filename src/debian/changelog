@@ -1,3 +1,9 @@
+service-deployment-tools (0.4.2-yelp1) lucid; urgency=low
+
+  * Make notification_email an optional field with classic service sensu checks
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 17 Sep 2014 14:24:48 -0700
+
 service-deployment-tools (0.4.1-yelp1) lucid; urgency=low
 
   * Fix monitoring check output messages

@@ -97,7 +97,7 @@ def do_replication_check(service_name, monitoring_config, service_replication):
 def extract_replication_info(service_config):
     """Extract monitoring information from yelpsoa-configs
 
-    To be monitored a service *must* supply a team and notification email.
+    To be monitored a service *must* supply a team.
 
     Mandatory keys:
         team: The team to send pages to
@@ -114,7 +114,6 @@ def extract_replication_info(service_config):
 
     # If we do not meet required information, do nothing
     if not (monitoring_config['team'] and
-            monitoring_config['notification_email'] and
             monitoring_config.get('service_type') == 'classic'):
         return False, {}
     return True, monitoring_config

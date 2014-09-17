@@ -33,7 +33,6 @@ def test_do_replication_check():
 
     mock_default_data = dict([(key, None) for key in mock_keys])
     mock_default_data['team'] = 'test_team'
-    mock_default_data['notification_email'] = 'test_email'
 
     mock_specific_data = dict(
         [(key, "test_{0}".format(key)) for key in mock_keys]
@@ -54,7 +53,7 @@ def test_do_replication_check():
             'status': -1,
             'output': 'bar',
             'team': 'test_team',
-            'notification_email': 'test_email',
+            'notification_email': None,
             'runbook': 'no runbook',
             'tip': 'no tip',
             'page': False,
@@ -82,40 +81,58 @@ def test_do_replication_check():
         assert expected == results
 
 
-def test_extract_replication_info():
+def test_extract_replication_info_valid_data():
     base_module = 'service_deployment_tools.monitoring'
     check_classic_module = base_module + '.check_classic_service_replication'
-
     extract_method = check_classic_module + '.extract_monitoring_info'
 
     mock_valid_data = {
         'team': 'test_team',
-        'notification_email': 'test_notification_email',
         'service_type': 'classic'
     }
-
-    mock_valid_non_classic_data = {
-        'team': 'test_team',
-        'notification_email': 'test_notification_email',
-        'service_type': 'not_classic'
-    }
-
-    mock_invalid_data = {
-        'team': None,
-        'notification_email': None,
-        'service_type': None,
-    }
-
     with mock.patch(extract_method, return_value=mock_valid_data):
         expected = (True, mock_valid_data)
         result = extract_replication_info({})
         assert expected == result
 
+
+def test_extract_replication_info_non_classic_data():
+    base_module = 'service_deployment_tools.monitoring'
+    check_classic_module = base_module + '.check_classic_service_replication'
+    extract_method = check_classic_module + '.extract_monitoring_info'
+    mock_valid_non_classic_data = {
+        'team': 'test_team',
+        'service_type': 'not_classic'
+    }
     with mock.patch(extract_method, return_value=mock_valid_non_classic_data):
         expected = (False, {})
         result = extract_replication_info({})
         assert expected == result
 
+
+def test_extract_replication_info_valid_team_no_email():
+    base_module = 'service_deployment_tools.monitoring'
+    check_classic_module = base_module + '.check_classic_service_replication'
+    extract_method = check_classic_module + '.extract_monitoring_info'
+    mock_valid_team_no_email = {
+        'team': 'test_team',
+        'notification_email': None,
+        'service_type': 'classic'
+    }
+    with mock.patch(extract_method, return_value=mock_valid_team_no_email):
+        expected = (True, mock_valid_team_no_email)
+        result = extract_replication_info({})
+        assert expected == result
+
+
+def test_extract_replication_info_invalid_data():
+    base_module = 'service_deployment_tools.monitoring'
+    check_classic_module = base_module + '.check_classic_service_replication'
+    extract_method = check_classic_module + '.extract_monitoring_info'
+    mock_invalid_data = {
+        'team': None,
+        'service_type': None,
+    }
     with mock.patch(extract_method, return_value=mock_invalid_data):
         expected = (False, {})
         result = extract_replication_info({})
