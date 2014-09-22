@@ -5,6 +5,7 @@ and a number of other things used by other components in order to
 make the PaaSTA stack work.
 """
 import hashlib
+import itertools
 import logging
 import os
 import re
@@ -23,6 +24,9 @@ MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = 5051
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+
+PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
+
 log = logging.getLogger(__name__)
 
 
@@ -556,22 +560,34 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     return nerve_list
 
 
-def get_classic_services_running_here_for_nerve(soa_dir):
-    regular_services = service_configuration_lib.services_that_run_here()
-    nerve_list = []
+def get_classic_services_that_run_here():
+    return sorted(
+        service_configuration_lib.services_that_run_here() +
+        os.listdir(PUPPET_SERVICE_DIR)
+    )
 
-    for name in regular_services:
-        nerve_dict = read_service_namespace_config(name, 'main', soa_dir)
-        port_file = os.path.join(soa_dir, name, 'port')
-        nerve_dict['port'] = service_configuration_lib.read_port(port_file)
-        nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
-        nerve_list.append((nerve_name, nerve_dict))
+
+def get_classic_service_information_for_nerve(name, soa_dir):
+    nerve_dict = read_service_namespace_config(name, 'main', soa_dir)
+    port_file = os.path.join(soa_dir, name, 'port')
+    nerve_dict['port'] = service_configuration_lib.read_port(port_file)
+    nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
+    return [
         # Kill this line when we've migrated over- this is the 'old'
         # way of naming services. We have namespaces now, which we should
         # be using in the future, but synapse isn't really namespace
         # compatible at the moment. Once it is, we won't need the old way.
-        nerve_list.append((name, nerve_dict))
-    return nerve_list
+        (name, nerve_dict),
+        (nerve_name, nerve_dict),
+    ]
+
+
+def get_classic_services_running_here_for_nerve(soa_dir):
+    return list(itertools.chain.from_iterable(
+        get_classic_service_information_for_nerve(name, soa_dir)
+        for name in
+        get_classic_services_that_run_here()
+    ))
 
 
 def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
