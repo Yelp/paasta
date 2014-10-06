@@ -136,23 +136,6 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     return docker_url
 
 
-def get_ports(service_config):
-    """Gets the number of ports required from the service's marathon configuration.
-
-    Defaults to one port if unspecified.
-    Ports are randomly assigned by Mesos.
-    This returns an array, as the Marathon REST API takes an
-    array of ports, not a single value.
-
-    :param service_config: The service instance's configuration dictionary
-    :returns: An array of 0s with length equal to num_ports in the config (1 if not specified)"""
-    num_ports = service_config.get('num_ports')
-    if num_ports:
-        return [0 for i in range(int(num_ports))]
-    else:
-        return [0]
-
-
 def get_mem(service_config):
     """Gets the memory required from the service's marathon configuration.
 
@@ -221,7 +204,7 @@ def get_config_hash(config):
     return hasher.hexdigest()
 
 
-def create_complete_config(job_id, docker_url, docker_options, service_marathon_config):
+def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_config):
     """Create the configuration that will be passed to the Marathon REST API.
 
     Currently compiles the following keys into one nice dict:
@@ -240,14 +223,13 @@ def create_complete_config(job_id, docker_url, docker_options, service_marathon_
 
     :param job_id: The job/app id name
     :param docker_url: The url to the docker image the job will actually execute
-    :param docker_options: The docker options to run the image with, via the
+    :param docker_volumes: The docker volumes to run the image with, via the
                            marathon configuration file
     :param service_marathon_config: The service instance's configuration dict
     :returns: A dict containing all of the keys listed above"""
     complete_config = {'id': job_id,
-                       'container': {'image': docker_url, 'options': docker_options},
+                       'container': {'image': docker_url, 'options': docker_volumes},
                        'uris': []}
-    complete_config['ports'] = get_ports(service_marathon_config)
     complete_config['mem'] = get_mem(service_marathon_config)
     complete_config['cpus'] = get_cpus(service_marathon_config)
     complete_config['constraints'] = get_constraints(service_marathon_config)

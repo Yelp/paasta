@@ -107,7 +107,7 @@ def mock_get_docker_url_for_image(docker_image):
 def test_get_executor_flags():
     job_config = {
         'docker_image': 'test_docker_image',
-        'docker_options': ['option_1', 'option_2'],
+        'docker_volumes': ['option_1', 'option_2'],
     }
     expected = json.dumps({'container': {
         'image': 'docker:///test-repository/test_docker_image',

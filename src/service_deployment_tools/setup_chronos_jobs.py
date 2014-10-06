@@ -123,7 +123,7 @@ def get_executor_flags(job_config):
     flags = {
         'container': {
             'image': get_docker_url_for_image(job_config['docker_image']),
-            'options': job_config.get('docker_options', [])
+            'options': job_config.get('docker_volumes', [])
         }
     }
     return json.dumps(flags)

@@ -17,3 +17,4 @@ src/debian/service-deployment-tools.debhelper.log
 src/debian/service-deployment-tools.substvars
 src/debian/service-deployment-tools/
 src/virtualenv_run/
+tags

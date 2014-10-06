@@ -161,7 +161,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
         log.error(error_msg)
         return (1, error_msg)
     complete_config = marathon_tools.create_complete_config(partial_id, docker_url,
-                                                            marathon_config['docker_options'],
+                                                            marathon_config['docker_volumes'],
                                                             service_marathon_config)
     config_hash = marathon_tools.get_config_hash(complete_config)
     full_id = marathon_tools.compose_job_id(service_name, instance_name, config_hash)

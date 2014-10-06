@@ -26,7 +26,18 @@ class TestSetupMarathonJob:
         'user': 'admin',
         'pass': 'admin_pass',
         'docker_registry': fake_docker_registry,
-        'docker_options': ['-v', 'you_wish_that_meant_verbose'],
+        'docker_volumes': [
+            {
+                'hostPath': '/var/data/a',
+                'containerPath': '/etc/a',
+                'mode': 'RO',
+            },
+            {
+                'hostPath': '/var/data/b',
+                'containerPath': '/etc/b',
+                'mode': 'RW',
+            },
+        ],
     }
     fake_args = mock.MagicMock(
         service_instance='what_is_love.bby_dont_hurt_me',
@@ -203,7 +214,7 @@ class TestSetupMarathonJob:
             compose_id_patch.assert_any_call(fake_name, fake_instance)
             assert compose_id_patch.call_count == 2
             create_config_patch.assert_called_once_with(full_id, fake_url,
-                                                        self.fake_marathon_config['docker_options'],
+                                                        self.fake_marathon_config['docker_volumes'],
                                                         self.fake_marathon_job_config)
             fake_client.get_app.assert_called_once_with(full_id)
             hash_patch.assert_called_once_with(fake_complete)
@@ -247,7 +258,7 @@ class TestSetupMarathonJob:
             compose_id_patch.assert_any_call(fake_name, fake_instance, fake_hash)
             assert compose_id_patch.call_count == 2
             create_config_patch.assert_called_once_with(full_id, fake_url,
-                                                        self.fake_marathon_config['docker_options'],
+                                                        self.fake_marathon_config['docker_volumes'],
                                                         self.fake_marathon_job_config)
             fake_client.get_app.assert_called_once_with(full_id)
             get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)

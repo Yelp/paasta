@@ -498,37 +498,60 @@ class TestMarathonTools:
 
     def test_create_complete_config(self):
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
-        fake_url = 'docker:///dockervania_from_konami'
-        fake_options = ['-X', '11a103']
-        fake_ports = [1111, 2222]
+        ### docker:/// removed, probably needs get_docker_Url() change
+        fake_url = 'dockervania_from_konami'
+        fake_volumes = [
+            {
+                'hostPath': '/var/data/a',
+                'containerPath': '/etc/a',
+                'mode': 'RO',
+            },
+            {
+                'hostPath': '/var/data/b',
+                'containerPath': '/etc/b',
+                'mode': 'RW',
+            },
+        ]
         fake_mem = 1000000000000000000000
         fake_cpus = -1
         fake_instances = 101
-        expected_conf = {'id': fake_id,
-                         'container': {'image': fake_url, 'options': fake_options},
-                         'constraints': [],
-                         'uris': [],
-                         'ports': fake_ports,
-                         'mem': fake_mem,
-                         'cpus': fake_cpus,
-                         'instances': fake_instances}
+        expected_conf = {
+            'id': fake_id,
+            'container': {
+                'docker': {
+                    'image': fake_url,
+                    'network': 'BRIDGE',
+                    'portMappings': [
+                        {
+                            'containerPort': 8888,
+                            'hostPort': 0,
+                            'protocol': 'tcp',
+                        },
+                    ],
+                    'type': 'DOCKER',
+                    'volumes': fake_volumes,
+                },
+            },
+            'constraints': [],
+            'uris': [],
+            'mem': fake_mem,
+            'cpus': fake_cpus,
+            'instances': fake_instances
+        }
         with contextlib.nested(
-            mock.patch('marathon_tools.get_ports', return_value=fake_ports),
             mock.patch('marathon_tools.get_mem', return_value=fake_mem),
             mock.patch('marathon_tools.get_cpus', return_value=fake_cpus),
             mock.patch('marathon_tools.get_constraints', return_value=[]),
             mock.patch('marathon_tools.get_instances', return_value=fake_instances),
         ) as (
-            get_port_patch,
             get_mem_patch,
             get_cpus_patch,
             get_constraints_patch,
             get_instances_patch,
         ):
-            actual = marathon_tools.create_complete_config(fake_id, fake_url, fake_options,
+            actual = marathon_tools.create_complete_config(fake_id, fake_url, fake_volumes,
                                                            self.fake_marathon_job_config)
             assert actual == expected_conf
-            get_port_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_mem_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_cpus_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_constraints_patch.assert_called_once_with(self.fake_marathon_job_config)
@@ -569,13 +592,6 @@ class TestMarathonTools:
 
     def test_get_mem_default(self):
         assert marathon_tools.get_mem({}) == 100
-
-    def test_get_ports_in_config(self):
-        fake_conf = {'num_ports': 10}
-        assert marathon_tools.get_ports(fake_conf) == [0 for i in range(10)]
-
-    def test_get_ports_default(self):
-        assert marathon_tools.get_ports({}) == [0]
 
     def test_get_docker_url_no_error(self):
         fake_registry = "im.a-real.vm"
