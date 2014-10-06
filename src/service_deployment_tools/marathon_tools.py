@@ -150,7 +150,6 @@ def get_ports(service_config):
     if num_ports:
         return [0 for i in range(int(num_ports))]
     else:
-        log.warning("'num_ports' not specified in config. One port will be used.")
         return [0]
 
 
