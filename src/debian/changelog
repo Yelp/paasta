@@ -1,3 +1,11 @@
+service-deployment-tools (0.4.4-yelp1) lucid; urgency=low
+
+  * Revert 0.4.3 as those changes were never tested for real
+  * Add support for new Marathon API with support for native Docker launching
+    (MESOS-94)
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 07 Oct 2014 14:30:41 -0700
+
 service-deployment-tools (0.4.2-yelp1) lucid; urgency=low
 
   * Make notification_email an optional field with classic service sensu checks
