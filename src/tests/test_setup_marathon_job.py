@@ -26,7 +26,18 @@ class TestSetupMarathonJob:
         'user': 'admin',
         'pass': 'admin_pass',
         'docker_registry': fake_docker_registry,
-        'docker_options': ['-v', 'you_wish_that_meant_verbose'],
+        'docker_volumes': [
+            {
+                'hostPath': '/var/data/a',
+                'containerPath': '/etc/a',
+                'mode': 'RO',
+            },
+            {
+                'hostPath': '/var/data/b',
+                'containerPath': '/etc/b',
+                'mode': 'RW',
+            },
+        ],
     }
     fake_args = mock.MagicMock(
         service_instance='what_is_love.bby_dont_hurt_me',
@@ -178,7 +189,7 @@ class TestSetupMarathonJob:
         fake_instance = 'would_they_scream'
         fake_client = mock.MagicMock(get_app=mock.Mock(return_value=True))
         fake_complete = {'seven': 'full', 'eight': 'frightened', 'nine': 'eaten'}
-        fake_url = 'docker:///what_is_a_test'
+        fake_url = 'what_is_a_test'
         fake_hash = '4d5e6f'
         full_id = marathon_tools.compose_job_id(fake_name, fake_instance,
                                                 self.fake_marathon_job_config['iteration'])
@@ -203,7 +214,7 @@ class TestSetupMarathonJob:
             compose_id_patch.assert_any_call(fake_name, fake_instance)
             assert compose_id_patch.call_count == 2
             create_config_patch.assert_called_once_with(full_id, fake_url,
-                                                        self.fake_marathon_config['docker_options'],
+                                                        self.fake_marathon_config['docker_volumes'],
                                                         self.fake_marathon_job_config)
             fake_client.get_app.assert_called_once_with(full_id)
             hash_patch.assert_called_once_with(fake_complete)
@@ -215,7 +226,7 @@ class TestSetupMarathonJob:
         fake_client = mock.MagicMock(get_app=mock.Mock(
                         side_effect=marathon.exceptions.NotFoundError(fake_response)))
         fake_complete = {'do': 'you', 'even': 'dota'}
-        fake_url = 'docker:///a_miserable_pile_of_mocks'
+        fake_url = 'a_miserable_pile_of_mocks'
         fake_bounce = 'trampoline'
         fake_hash = '1a2b3c'
         full_id = marathon_tools.compose_job_id(fake_name, fake_instance,
@@ -247,7 +258,7 @@ class TestSetupMarathonJob:
             compose_id_patch.assert_any_call(fake_name, fake_instance, fake_hash)
             assert compose_id_patch.call_count == 2
             create_config_patch.assert_called_once_with(full_id, fake_url,
-                                                        self.fake_marathon_config['docker_options'],
+                                                        self.fake_marathon_config['docker_volumes'],
                                                         self.fake_marathon_job_config)
             fake_client.get_app.assert_called_once_with(full_id)
             get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
@@ -324,7 +335,7 @@ class TestSetupMarathonJob:
             create_app_patch.assert_called_once_with(self.fake_marathon_job_config, fake_client)
 
     def test_get_marathon_client(self):
-        fake_url = "docker:///nothing_for_me_to_do_but_dance"
+        fake_url = "nothing_for_me_to_do_but_dance"
         fake_user = "the_boogie"
         fake_passwd = "is_for_real"
         with mock.patch('setup_marathon_job.MarathonClient') as client_patch:

@@ -101,7 +101,7 @@ def test_get_branch_mappings():
         mock.patch('service_deployment_tools.marathon_tools.get_docker_registry',
                    return_value=fake_registry),
         mock.patch('service_deployment_tools.marathon_tools.get_docker_url',
-                   return_value=True),
+                   return_value="not empty"),
         mock.patch('os.rmdir')
     ) as (
         mkdir_patch,

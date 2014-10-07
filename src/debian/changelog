@@ -1,8 +1,10 @@
-service-deployment-tools (0.4.3-yelp1) lucid; urgency=low
+service-deployment-tools (0.4.4-yelp1) lucid; urgency=low
 
-  * Allow marathon_tools to configure nerve using Puppet-deployed services
+  * Revert 0.4.3 as those changes were never tested for real
+  * Add support for new Marathon API with support for native Docker launching
+    (MESOS-94)
 
- -- Josh Snyder <josnyder@yelp.com>  Wed, 01 Oct 2014 20:48:11 -0700
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 07 Oct 2014 14:30:41 -0700
 
 service-deployment-tools (0.4.2-yelp1) lucid; urgency=low
 

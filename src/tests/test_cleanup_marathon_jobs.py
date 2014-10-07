@@ -15,7 +15,18 @@ class TestCleanupMarathonJobs:
         'user': 'namnin',
         'pass': 'pass_nememim',
         'docker_registry': fake_docker_registry,
-        'docker_options': ['-v', 'vvvvvv'],
+        'docker_volumes': [
+            {
+                'hostPath': '/var/data/a',
+                'containerPath': '/etc/a',
+                'mode': 'RO',
+            },
+            {
+                'hostPath': '/var/data/b',
+                'containerPath': '/etc/b',
+                'mode': 'RW',
+            },
+        ],
     }
     fake_marathon_client = mock.Mock()
 
@@ -88,11 +99,11 @@ class TestCleanupMarathonJobs:
             assert docker_url_patch.call_count == 2
             complete_config_patch.assert_any_call('fake-app.one',
                                                   '%s/%s' % (self.fake_docker_registry, 'srv:9.1'),
-                                                  self.fake_marathon_config['docker_options'],
+                                                  self.fake_marathon_config['docker_volumes'],
                                                   fake_config_one)
             complete_config_patch.assert_any_call('really-fake.two',
                                                   '%s/%s' % (self.fake_docker_registry, 'tree:1.0'),
-                                                  self.fake_marathon_config['docker_options'],
+                                                  self.fake_marathon_config['docker_volumes'],
                                                   fake_config_two)
             assert complete_config_patch.call_count == 2
             hash_patch.assert_any_call('not_actually')

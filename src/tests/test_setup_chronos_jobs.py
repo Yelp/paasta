@@ -100,17 +100,17 @@ def test_get_executor_default():
 
 
 def mock_get_docker_url_for_image(docker_image):
-    return 'docker:///test-repository/%s' % docker_image
+    return 'test-repository/%s' % docker_image
 
 
 @patch('service_deployment_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
 def test_get_executor_flags():
     job_config = {
         'docker_image': 'test_docker_image',
-        'docker_options': ['option_1', 'option_2'],
+        'docker_volumes': ['option_1', 'option_2'],
     }
     expected = json.dumps({'container': {
-        'image': 'docker:///test-repository/test_docker_image',
+        'image': 'test-repository/test_docker_image',
         'options': ['option_1', 'option_2'],
     }})
     actual = setup_chronos_jobs.get_executor_flags(job_config)
@@ -257,7 +257,7 @@ def test_uris():
     job_config = {
         'docker_image': 'test_docker_image',
     }
-    expected = ['docker:///test-repository/test_docker_image']
+    expected = ['test-repository/test_docker_image']
     actual = setup_chronos_jobs.get_uris(job_config)
     assert expected == actual
 
@@ -288,12 +288,12 @@ def test_parse_job_config():
         'disk': 100,
         'epsilon': 'PT60S',
         'executor': '',
-        'executorFlags': '{"container": {"image": "docker:///test-repository/test_image", "options": []}}',
+        'executorFlags': '{"container": {"image": "test-repository/test_image", "options": []}}',
         'mem': 100,
         'name': 'my_test_job',
         'owner': 'developer@example.com',
         'retries': 2,
         'schedule': 'R1Y',
-        'uris': ['docker:///test-repository/test_image'],
+        'uris': ['test-repository/test_image'],
     }
     assert expected == actual

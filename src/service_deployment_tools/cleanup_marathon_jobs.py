@@ -71,7 +71,7 @@ def get_valid_app_list(marathon_config, soa_dir):
                                                    config['docker_image'],
                                                    verify=False)
         complete_config = marathon_tools.create_complete_config(partial_id, docker_url,
-                                                                marathon_config['docker_options'],
+                                                                marathon_config['docker_volumes'],
                                                                 config)
         config_hash = marathon_tools.get_config_hash(complete_config)
         full_id = marathon_tools.compose_job_id(name, instance, config_hash)

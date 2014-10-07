@@ -396,55 +396,43 @@ class TestMarathonTools:
             read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
             assert read_ns_config_patch.call_count == 2
 
-    def test_get_classic_service_information_for_nerve(self):
-        with contextlib.nested(
-            mock.patch('service_configuration_lib.read_port', return_value=101),
-            mock.patch('marathon_tools.read_service_namespace_config', return_value={'ten': 10}),
-        ) as (
-            read_port_patch,
-            namespace_config_patch,
-        ):
-            info = marathon_tools.get_classic_service_information_for_nerve('no_water', 'we_are_the_one')
-            assert info == [
-                ('no_water', {'ten': 10, 'port': 101}),
-                ('no_water.main', {'ten': 10, 'port': 101})
-            ]
-
-    def test_get_classic_services_that_run_here(self):
-        with contextlib.nested(
-            mock.patch(
-                'service_configuration_lib.services_that_run_here',
-                return_value=['d', 'c']
-            ),
-            mock.patch(
-                'os.listdir',
-                return_value=['b', 'a']
-            ),
-        ) as (
-            services_that_run_here_patch,
-            listdir_patch,
-        ):
-            services = marathon_tools.get_classic_services_that_run_here()
-            assert services == ['a', 'b', 'c', 'd']
-            services_that_run_here_patch.assert_called_once_with()
-            listdir_patch.assert_called_once_with(marathon_tools.PUPPET_SERVICE_DIR)
-
     def test_get_classic_services_running_here_for_nerve(self):
+        soa_dir = 'we_are_the_one'
+        fake_normal_services = [('no_water'), ('no_life')]
+        fake_port_files = ['trop', 'prot']
+        fake_ports = [101, 202]
+        nerve_dicts = [{'ten': 10}, {'nine': 9}]
+        expected = [('no_water.main', {'nine': 9, 'port': 202}),
+                    ('no_water', {'nine': 9, 'port': 202}),
+                    ('no_life.main', {'ten': 10, 'port': 101}),
+                    ('no_life', {'ten': 10, 'port': 101})]
         with contextlib.nested(
-            mock.patch(
-                'marathon_tools.get_classic_services_that_run_here',
-                side_effect=lambda: ['a', 'b', 'c']
-            ),
-            mock.patch(
-                'marathon_tools.get_classic_service_information_for_nerve',
-                side_effect=lambda x, _: [x, '%s.bar' % x, '%s.foo' % x]
-            ),
+            mock.patch('service_configuration_lib.services_that_run_here',
+                       return_value=fake_normal_services),
+            mock.patch('marathon_tools.read_service_namespace_config',
+                       side_effect=lambda a, b, c: nerve_dicts.pop()),
+            mock.patch('os.path.join',
+                       side_effect=lambda a, b, c: fake_port_files.pop()),
+            mock.patch('service_configuration_lib.read_port',
+                       side_effect=lambda a: fake_ports.pop())
+        ) as (
+            norm_srvs_here_patch,
+            read_ns_config_patch,
+            join_patch,
+            read_port_patch,
         ):
-            assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
-                'a', 'a.bar', 'a.foo',
-                'b', 'b.bar', 'b.foo',
-                'c', 'c.bar', 'c.foo',
-            ]
+            actual = marathon_tools.get_classic_services_running_here_for_nerve(soa_dir)
+            assert expected == actual
+            norm_srvs_here_patch.assert_called_once_with()
+            read_ns_config_patch.assert_any_call('no_water', 'main', soa_dir)
+            read_ns_config_patch.assert_any_call('no_life', 'main', soa_dir)
+            assert read_ns_config_patch.call_count == 2
+            join_patch.assert_any_call(soa_dir, 'no_water', 'port')
+            join_patch.assert_any_call(soa_dir, 'no_life', 'port')
+            assert join_patch.call_count == 2
+            read_port_patch.assert_any_call('trop')
+            read_port_patch.assert_any_call('prot')
+            assert read_port_patch.call_count == 2
 
     def test_get_services_running_here_for_nerve(self):
         cluster = 'plentea'
@@ -498,37 +486,59 @@ class TestMarathonTools:
 
     def test_create_complete_config(self):
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
-        fake_url = 'docker:///dockervania_from_konami'
-        fake_options = ['-X', '11a103']
-        fake_ports = [1111, 2222]
+        fake_url = 'dockervania_from_konami'
+        fake_volumes = [
+            {
+                'hostPath': '/var/data/a',
+                'containerPath': '/etc/a',
+                'mode': 'RO',
+            },
+            {
+                'hostPath': '/var/data/b',
+                'containerPath': '/etc/b',
+                'mode': 'RW',
+            },
+        ]
         fake_mem = 1000000000000000000000
         fake_cpus = -1
         fake_instances = 101
-        expected_conf = {'id': fake_id,
-                         'container': {'image': fake_url, 'options': fake_options},
-                         'constraints': [],
-                         'uris': [],
-                         'ports': fake_ports,
-                         'mem': fake_mem,
-                         'cpus': fake_cpus,
-                         'instances': fake_instances}
+        expected_conf = {
+            'id': fake_id,
+            'container': {
+                'docker': {
+                    'image': fake_url,
+                    'network': 'BRIDGE',
+                    'portMappings': [
+                        {
+                            'containerPort': 8888,
+                            'hostPort': 0,
+                            'protocol': 'tcp',
+                        },
+                    ],
+                    'type': 'DOCKER',
+                    'volumes': fake_volumes,
+                },
+            },
+            'constraints': [],
+            'uris': [],
+            'mem': fake_mem,
+            'cpus': fake_cpus,
+            'instances': fake_instances
+        }
         with contextlib.nested(
-            mock.patch('marathon_tools.get_ports', return_value=fake_ports),
             mock.patch('marathon_tools.get_mem', return_value=fake_mem),
             mock.patch('marathon_tools.get_cpus', return_value=fake_cpus),
             mock.patch('marathon_tools.get_constraints', return_value=[]),
             mock.patch('marathon_tools.get_instances', return_value=fake_instances),
         ) as (
-            get_port_patch,
             get_mem_patch,
             get_cpus_patch,
             get_constraints_patch,
             get_instances_patch,
         ):
-            actual = marathon_tools.create_complete_config(fake_id, fake_url, fake_options,
+            actual = marathon_tools.create_complete_config(fake_id, fake_url, fake_volumes,
                                                            self.fake_marathon_job_config)
             assert actual == expected_conf
-            get_port_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_mem_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_cpus_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_constraints_patch.assert_called_once_with(self.fake_marathon_job_config)
@@ -570,19 +580,12 @@ class TestMarathonTools:
     def test_get_mem_default(self):
         assert marathon_tools.get_mem({}) == 100
 
-    def test_get_ports_in_config(self):
-        fake_conf = {'num_ports': 10}
-        assert marathon_tools.get_ports(fake_conf) == [0 for i in range(10)]
-
-    def test_get_ports_default(self):
-        assert marathon_tools.get_ports({}) == [0]
-
     def test_get_docker_url_no_error(self):
         fake_registry = "im.a-real.vm"
         fake_image = "and-i-can-run:1.0"
         fake_curl = mock.Mock()
         fake_stringio = mock.Mock(getvalue=mock.Mock(return_value='483af83b81ee93ac930d'))
-        expected = "docker:///%s/%s" % (fake_registry, fake_image)
+        expected = "%s/%s" % (fake_registry, fake_image)
         with contextlib.nested(
             mock.patch('pycurl.Curl', return_value=fake_curl),
             mock.patch('marathon_tools.StringIO', return_value=fake_stringio)

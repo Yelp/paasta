@@ -5,7 +5,6 @@ and a number of other things used by other components in order to
 make the PaaSTA stack work.
 """
 import hashlib
-import itertools
 import logging
 import os
 import re
@@ -24,9 +23,6 @@ MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = 5051
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
-
-PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
-
 log = logging.getLogger(__name__)
 
 
@@ -111,13 +107,10 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     If verify is true, checks if the URL will point to a
     valid image first, returning an empty string if it doesn't.
 
-    The URL is prepended with docker:/// per the deimos docs, at
-    https://github.com/mesosphere/deimos
-
     :param registry_uri: The URI of the docker registry
     :param docker_image: The docker image name, with tag if desired
     :param verify: Set to False to not verify the composed docker url
-    :returns: 'docker:///<registry_uri>/<docker_image>', or '' if URL didn't verify"""
+    :returns: '<registry_uri>/<docker_image>', or '' if URL didn't verify"""
     if not docker_image:
         return ''
     if verify:
@@ -131,26 +124,9 @@ def get_docker_url(registry_uri, docker_image, verify=True):
         if 'error' in s.getvalue():
             log.error("Docker image not found: %s/%s", registry_uri, docker_image)
             return ''
-    docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
+    docker_url = '%s/%s' % (registry_uri, docker_image)
     log.info("Docker URL: %s", docker_url)
     return docker_url
-
-
-def get_ports(service_config):
-    """Gets the number of ports required from the service's marathon configuration.
-
-    Defaults to one port if unspecified.
-    Ports are randomly assigned by Mesos.
-    This returns an array, as the Marathon REST API takes an
-    array of ports, not a single value.
-
-    :param service_config: The service instance's configuration dictionary
-    :returns: An array of 0s with length equal to num_ports in the config (1 if not specified)"""
-    num_ports = service_config.get('num_ports')
-    if num_ports:
-        return [0 for i in range(int(num_ports))]
-    else:
-        return [0]
 
 
 def get_mem(service_config):
@@ -221,7 +197,7 @@ def get_config_hash(config):
     return hasher.hexdigest()
 
 
-def create_complete_config(job_id, docker_url, docker_options, service_marathon_config):
+def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_config):
     """Create the configuration that will be passed to the Marathon REST API.
 
     Currently compiles the following keys into one nice dict:
@@ -240,14 +216,29 @@ def create_complete_config(job_id, docker_url, docker_options, service_marathon_
 
     :param job_id: The job/app id name
     :param docker_url: The url to the docker image the job will actually execute
-    :param docker_options: The docker options to run the image with, via the
+    :param docker_volumes: The docker volumes to run the image with, via the
                            marathon configuration file
     :param service_marathon_config: The service instance's configuration dict
     :returns: A dict containing all of the keys listed above"""
-    complete_config = {'id': job_id,
-                       'container': {'image': docker_url, 'options': docker_options},
-                       'uris': []}
-    complete_config['ports'] = get_ports(service_marathon_config)
+    complete_config = {
+        'id': job_id,
+        'container': {
+            'docker': {
+                'image': docker_url,
+                'network': 'BRIDGE',
+                'portMappings': [
+                    {
+                        'containerPort': 8888,
+                        'hostPort': 0,
+                        'protocol': 'tcp',
+                    },
+                ],
+                'type': 'DOCKER',
+                'volumes': docker_volumes,
+            },
+        },
+        'uris': [],
+    }
     complete_config['mem'] = get_mem(service_marathon_config)
     complete_config['cpus'] = get_cpus(service_marathon_config)
     complete_config['constraints'] = get_constraints(service_marathon_config)
@@ -559,34 +550,22 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     return nerve_list
 
 
-def get_classic_services_that_run_here():
-    return sorted(
-        service_configuration_lib.services_that_run_here() +
-        os.listdir(PUPPET_SERVICE_DIR)
-    )
+def get_classic_services_running_here_for_nerve(soa_dir):
+    regular_services = service_configuration_lib.services_that_run_here()
+    nerve_list = []
 
-
-def get_classic_service_information_for_nerve(name, soa_dir):
-    nerve_dict = read_service_namespace_config(name, 'main', soa_dir)
-    port_file = os.path.join(soa_dir, name, 'port')
-    nerve_dict['port'] = service_configuration_lib.read_port(port_file)
-    nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
-    return [
+    for name in regular_services:
+        nerve_dict = read_service_namespace_config(name, 'main', soa_dir)
+        port_file = os.path.join(soa_dir, name, 'port')
+        nerve_dict['port'] = service_configuration_lib.read_port(port_file)
+        nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
+        nerve_list.append((nerve_name, nerve_dict))
         # Kill this line when we've migrated over- this is the 'old'
         # way of naming services. We have namespaces now, which we should
         # be using in the future, but synapse isn't really namespace
         # compatible at the moment. Once it is, we won't need the old way.
-        (name, nerve_dict),
-        (nerve_name, nerve_dict),
-    ]
-
-
-def get_classic_services_running_here_for_nerve(soa_dir):
-    return list(itertools.chain.from_iterable(
-        get_classic_service_information_for_nerve(name, soa_dir)
-        for name in
-        get_classic_services_that_run_here()
-    ))
+        nerve_list.append((name, nerve_dict))
+    return nerve_list
 
 
 def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
