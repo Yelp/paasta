@@ -512,7 +512,7 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
     slave_state = json.loads(s.getvalue())
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
-                 if ex.get('tasks')]
+                 if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
     srv_list = []
     for executor in executors:
         srv_name = executor['id'].split(ID_SPACER)[0].replace('--', '_')

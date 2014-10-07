@@ -323,10 +323,12 @@ class TestMarathonTools:
         id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94'
         id_3 = 'dota.axe.cleave.482u9jyoi4wed'
         id_4 = 'mesos.deployment.is.hard'
+        id_5 = 'how.to.fake.data'
         ports_1 = '[111-111]'
         ports_2 = '[222-222]'
         ports_3 = '[333-333]'
         ports_4 = '[444-444]'
+        ports_5 = '[555-555]'
         hostname = 'io-dev.oiio.io'
         port = 123456789
         timeout = -99
@@ -334,15 +336,18 @@ class TestMarathonTools:
         stringio_patch.return_value.getvalue.return_value = 'curl_into_a_corner'
         json_load_patch.return_value = {'frameworks': [
                                             {'executors': [
-                                                {'id': id_1, 'resources': {'ports': ports_1}, 'tasks': 1},
-                                                {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': 1}],
+                                                {'id': id_1, 'resources': {'ports': ports_1}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                                                {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{u'state': u'TASK_RUNNING'}]}],
                                              'name': 'marathon-1111111'},
                                             {'executors': [
-                                                {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': 1},
-                                                {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': 1}],
+                                                {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                                                {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{u'state': u'TASK_RUNNING'}]}],
                                              'name': 'marathon-3145jgreoifd'},
                                             {'executors': [
-                                                {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': 1}],
+                                                {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{u'state': u'TASK_STAGED'}]}],
+                                             'name': 'marathon-754rchoeurcho'},
+                                            {'executors': [
+                                                {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{u'state': u'TASK_RUNNING'}]}],
                                              'name': 'super_bunk'}
                                         ]}
         expected = [('klingon', 'ships', 111),
