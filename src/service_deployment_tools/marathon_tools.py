@@ -111,13 +111,10 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     If verify is true, checks if the URL will point to a
     valid image first, returning an empty string if it doesn't.
 
-    The URL is prepended with docker:/// per the deimos docs, at
-    https://github.com/mesosphere/deimos
-
     :param registry_uri: The URI of the docker registry
     :param docker_image: The docker image name, with tag if desired
     :param verify: Set to False to not verify the composed docker url
-    :returns: 'docker:///<registry_uri>/<docker_image>', or '' if URL didn't verify"""
+    :returns: '<registry_uri>/<docker_image>', or '' if URL didn't verify"""
     if not docker_image:
         return ''
     if verify:
@@ -131,7 +128,7 @@ def get_docker_url(registry_uri, docker_image, verify=True):
         if 'error' in s.getvalue():
             log.error("Docker image not found: %s/%s", registry_uri, docker_image)
             return ''
-    docker_url = 'docker:///%s/%s' % (registry_uri, docker_image)
+    docker_url = '%s/%s' % (registry_uri, docker_image)
     log.info("Docker URL: %s", docker_url)
     return docker_url
 

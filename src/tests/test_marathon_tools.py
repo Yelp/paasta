@@ -498,7 +498,6 @@ class TestMarathonTools:
 
     def test_create_complete_config(self):
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
-        ### docker:/// removed, probably needs get_docker_Url() change
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
             {
@@ -598,7 +597,7 @@ class TestMarathonTools:
         fake_image = "and-i-can-run:1.0"
         fake_curl = mock.Mock()
         fake_stringio = mock.Mock(getvalue=mock.Mock(return_value='483af83b81ee93ac930d'))
-        expected = "docker:///%s/%s" % (fake_registry, fake_image)
+        expected = "%s/%s" % (fake_registry, fake_image)
         with contextlib.nested(
             mock.patch('pycurl.Curl', return_value=fake_curl),
             mock.patch('marathon_tools.StringIO', return_value=fake_stringio)
