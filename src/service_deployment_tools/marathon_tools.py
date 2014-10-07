@@ -227,9 +227,25 @@ def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_
                            marathon configuration file
     :param service_marathon_config: The service instance's configuration dict
     :returns: A dict containing all of the keys listed above"""
-    complete_config = {'id': job_id,
-                       'container': {'image': docker_url, 'options': docker_volumes},
-                       'uris': []}
+    complete_config = {
+        'id': job_id,
+        'container': {
+            'docker': {
+                'image': docker_url,
+                'network': 'BRIDGE',
+                'portMappings': [
+                    {
+                        'containerPort': 8888,
+                        'hostPort': 0,
+                        'protocol': 'tcp',
+                    },
+                ],
+                'type': 'DOCKER',
+                'volumes': docker_volumes,
+            },
+        },
+        'uris': [],
+    }
     complete_config['mem'] = get_mem(service_marathon_config)
     complete_config['cpus'] = get_cpus(service_marathon_config)
     complete_config['constraints'] = get_constraints(service_marathon_config)
