@@ -396,55 +396,43 @@ class TestMarathonTools:
             read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
             assert read_ns_config_patch.call_count == 2
 
-    def test_get_classic_service_information_for_nerve(self):
-        with contextlib.nested(
-            mock.patch('service_configuration_lib.read_port', return_value=101),
-            mock.patch('marathon_tools.read_service_namespace_config', return_value={'ten': 10}),
-        ) as (
-            read_port_patch,
-            namespace_config_patch,
-        ):
-            info = marathon_tools.get_classic_service_information_for_nerve('no_water', 'we_are_the_one')
-            assert info == [
-                ('no_water', {'ten': 10, 'port': 101}),
-                ('no_water.main', {'ten': 10, 'port': 101})
-            ]
-
-    def test_get_classic_services_that_run_here(self):
-        with contextlib.nested(
-            mock.patch(
-                'service_configuration_lib.services_that_run_here',
-                return_value=['d', 'c']
-            ),
-            mock.patch(
-                'os.listdir',
-                return_value=['b', 'a']
-            ),
-        ) as (
-            services_that_run_here_patch,
-            listdir_patch,
-        ):
-            services = marathon_tools.get_classic_services_that_run_here()
-            assert services == ['a', 'b', 'c', 'd']
-            services_that_run_here_patch.assert_called_once_with()
-            listdir_patch.assert_called_once_with(marathon_tools.PUPPET_SERVICE_DIR)
-
     def test_get_classic_services_running_here_for_nerve(self):
+        soa_dir = 'we_are_the_one'
+        fake_normal_services = [('no_water'), ('no_life')]
+        fake_port_files = ['trop', 'prot']
+        fake_ports = [101, 202]
+        nerve_dicts = [{'ten': 10}, {'nine': 9}]
+        expected = [('no_water.main', {'nine': 9, 'port': 202}),
+                    ('no_water', {'nine': 9, 'port': 202}),
+                    ('no_life.main', {'ten': 10, 'port': 101}),
+                    ('no_life', {'ten': 10, 'port': 101})]
         with contextlib.nested(
-            mock.patch(
-                'marathon_tools.get_classic_services_that_run_here',
-                side_effect=lambda: ['a', 'b', 'c']
-            ),
-            mock.patch(
-                'marathon_tools.get_classic_service_information_for_nerve',
-                side_effect=lambda x, _: [x, '%s.bar' % x, '%s.foo' % x]
-            ),
+            mock.patch('service_configuration_lib.services_that_run_here',
+                       return_value=fake_normal_services),
+            mock.patch('marathon_tools.read_service_namespace_config',
+                       side_effect=lambda a, b, c: nerve_dicts.pop()),
+            mock.patch('os.path.join',
+                       side_effect=lambda a, b, c: fake_port_files.pop()),
+            mock.patch('service_configuration_lib.read_port',
+                       side_effect=lambda a: fake_ports.pop())
+        ) as (
+            norm_srvs_here_patch,
+            read_ns_config_patch,
+            join_patch,
+            read_port_patch,
         ):
-            assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
-                'a', 'a.bar', 'a.foo',
-                'b', 'b.bar', 'b.foo',
-                'c', 'c.bar', 'c.foo',
-            ]
+            actual = marathon_tools.get_classic_services_running_here_for_nerve(soa_dir)
+            assert expected == actual
+            norm_srvs_here_patch.assert_called_once_with()
+            read_ns_config_patch.assert_any_call('no_water', 'main', soa_dir)
+            read_ns_config_patch.assert_any_call('no_life', 'main', soa_dir)
+            assert read_ns_config_patch.call_count == 2
+            join_patch.assert_any_call(soa_dir, 'no_water', 'port')
+            join_patch.assert_any_call(soa_dir, 'no_life', 'port')
+            assert join_patch.call_count == 2
+            read_port_patch.assert_any_call('trop')
+            read_port_patch.assert_any_call('prot')
+            assert read_port_patch.call_count == 2
 
     def test_get_services_running_here_for_nerve(self):
         cluster = 'plentea'
