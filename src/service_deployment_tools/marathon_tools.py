@@ -233,9 +233,9 @@ def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_
                         'protocol': 'tcp',
                     },
                 ],
-                'type': 'DOCKER',
-                'volumes': docker_volumes,
             },
+            'type': 'DOCKER',
+            'volumes': docker_volumes,
         },
         'uris': [],
     }
