@@ -1,3 +1,9 @@
+service-deployment-tools (0.4.5-yelp1) lucid; urgency=low
+
+  * Reorganize keys 'type' and 'volumes'
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 07 Oct 2014 17:06:29 -0700
+
 service-deployment-tools (0.4.4-yelp1) lucid; urgency=low
 
   * Revert 0.4.3 as those changes were never tested for real
