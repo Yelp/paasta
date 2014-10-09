@@ -1,3 +1,9 @@
+service-deployment-tools (0.4.5-yelp1ubuntu1) lucid; urgency=low
+
+  * Fix docker registry authentication
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 08 Oct 2014 17:48:08 -0700
+
 service-deployment-tools (0.4.5-yelp1) lucid; urgency=low
 
   * Reorganize keys 'type' and 'volumes'
