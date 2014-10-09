@@ -1,4 +1,4 @@
-service-deployment-tools (0.4.5-yelp1ubuntu1) lucid; urgency=low
+service-deployment-tools (0.4.6-yelp1) lucid; urgency=low
 
   * Fix docker registry authentication
 
