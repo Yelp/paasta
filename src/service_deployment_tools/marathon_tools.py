@@ -237,7 +237,7 @@ def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_
             'type': 'DOCKER',
             'volumes': docker_volumes,
         },
-        'uris': [],
+        'uris': ['file:///root/.dockercfg', ],
     }
     complete_config['mem'] = get_mem(service_marathon_config)
     complete_config['cpus'] = get_cpus(service_marathon_config)

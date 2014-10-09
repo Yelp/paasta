@@ -520,7 +520,7 @@ class TestMarathonTools:
                 'volumes': fake_volumes,
             },
             'constraints': [],
-            'uris': [],
+            'uris': ['file:///root/.dockercfg', ],
             'mem': fake_mem,
             'cpus': fake_cpus,
             'instances': fake_instances
