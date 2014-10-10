@@ -89,6 +89,16 @@ class TestBounceLib:
                 delete_patch.assert_any_call(old_id, fake_client)
             assert delete_patch.call_count == len(old_ids)
 
+    def test_is_app_id_running_true(self):
+        fake_client = mock.Mock(list_apps=[ 'fake_app1', 'fake_app2' ])
+        fake_id = 'fake_app1'
+        assert bounce_lib.is_app_id_running(fake_client, fake_id) == True
+
+    def test_is_app_id_running_false(self):
+        fake_client = mock.Mock(list_apps=[ 'fake_app1', 'fake_app2' ])
+        fake_id = 'fake_app3'
+        assert bounce_lib.is_app_id_running(fake_client, fake_id) == False
+
     def test_wait_for_create(self):
         fake_id = 'my_created'
         fake_lists = [[mock.Mock(id='my_created')], []]

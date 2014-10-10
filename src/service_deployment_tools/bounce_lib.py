@@ -109,21 +109,28 @@ def time_limit(minutes):
         signal.alarm(0)
 
 
+def is_app_id_running(app_id, client):
+    """Returns a boolean indicating if the app is in the current list 
+    of marathon apps
+
+    :param app_id: The app_id to ensure creation for
+    :param client: A MarathonClient object"""
+    
+    app_id = '/%s' % app_id
+    all_app_ids = [app.id for app in client.list_apps()]
+    return app_id in all_app_ids
+
+
 def wait_for_create(app_id, client):
     """Wait for the specified app_id to be listed in marathon.
     Waits WAIT_CREATE_S seconds between calls to list_apps.
 
     :param app_id: The app_id to ensure creation for
     :param client: A MarathonClient object"""
-    app_id = '/%s' % app_id
-    app_ids = []
-    while app_id not in app_ids:
-        try:
-            app_ids = [app.id for app in client.list_apps()]
-        except:
-            return
+    while is_app_id_running(app_id, client) == False:
         log.info("Waiting for %s to be created in marathon..", app_id)
         time.sleep(WAIT_CREATE_S)
+    return
 
 
 def create_marathon_app(config, client):
@@ -143,15 +150,10 @@ def wait_for_delete(app_id, client):
 
     :param app_id: The app_id to check for deletion
     :param client: A MarathonClient object"""
-    app_id = '/%s' % app_id
-    app_ids = [app_id]
-    while app_id in app_ids:
-        try:
-            app_ids = [app.id for app in client.list_apps()]
-        except:
-            return
+    while is_app_id_running(app_id, client) == True:
         log.info("Waiting for %s to be deleted from marathon...", app_id)
         time.sleep(WAIT_DELETE_S)
+    return
 
 
 def delete_marathon_app(app_id, client):
