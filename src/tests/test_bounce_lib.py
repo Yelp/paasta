@@ -90,36 +90,86 @@ class TestBounceLib:
             assert delete_patch.call_count == len(old_ids)
 
     def test_is_app_id_running_true(self):
-        fake_client = mock.Mock(list_apps=[ 'fake_app1', 'fake_app2' ])
+        fakeapp1 = mock.Mock(id='/fake_app1')
+        fakeapp2 = mock.Mock(id='/fake_app2')
+        apps = [fakeapp1, fakeapp2]
+        list_apps_mock = mock.Mock(return_value=apps)
+        fake_client = mock.Mock(list_apps=list_apps_mock)
         fake_id = 'fake_app1'
-        assert bounce_lib.is_app_id_running(fake_client, fake_id) == True
+        assert bounce_lib.is_app_id_running(fake_id, fake_client) is True
 
     def test_is_app_id_running_false(self):
-        fake_client = mock.Mock(list_apps=[ 'fake_app1', 'fake_app2' ])
+        fakeapp1 = mock.Mock(id='/fake_app1')
+        fakeapp2 = mock.Mock(id='/fake_app2')
+        apps = [fakeapp1, fakeapp2]
+        list_apps_mock = mock.Mock(return_value=apps)
+        fake_client = mock.Mock(list_apps=list_apps_mock)
         fake_id = 'fake_app3'
-        assert bounce_lib.is_app_id_running(fake_client, fake_id) == False
+        assert bounce_lib.is_app_id_running(fake_id, fake_client) is False
 
-    def test_wait_for_create(self):
+    def test_wait_for_create_slow(self):
         fake_id = 'my_created'
-        fake_lists = [[mock.Mock(id='my_created')], []]
-        fake_client = mock.Mock(list_apps=mock.Mock(side_effect=lambda: fake_lists.pop()))
-        with mock.patch('bounce_lib.time.sleep') as time_patch:
+        fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
+        fake_is_app_running_values = [False, False, True]
+        with contextlib.nested(
+            mock.patch('bounce_lib.is_app_id_running'),
+            mock.patch('time.sleep'),
+        ) as (
+            is_app_id_running_patch,
+            sleep_patch,
+        ):
+            is_app_id_running_patch.side_effect = fake_is_app_running_values
             bounce_lib.wait_for_create(fake_id, fake_client)
-            time_patch.assert_any_call(bounce_lib.WAIT_CREATE_S)
-            assert time_patch.call_count == 2
-            fake_client.list_apps.assert_any_call
-            assert fake_client.list_apps.call_count == 3
+        assert sleep_patch.call_count == 2
+        assert is_app_id_running_patch.call_count == 3
 
-    def test_wait_for_delete(self):
+    def test_wait_for_create_fast(self):
+        fake_id = 'my_created'
+        fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
+        fake_is_app_running_values = [True]
+        with contextlib.nested(
+            mock.patch('bounce_lib.is_app_id_running'),
+            mock.patch('time.sleep'),
+        ) as (
+            is_app_id_running_patch,
+            sleep_patch,
+        ):
+            is_app_id_running_patch.side_effect = fake_is_app_running_values
+            bounce_lib.wait_for_create(fake_id, fake_client)
+        assert sleep_patch.call_count == 0
+        assert is_app_id_running_patch.call_count == 1
+
+    def test_wait_for_delete_slow(self):
         fake_id = 'my_deleted'
-        fake_lists = [[], [mock.Mock(id='my_deleted')]]
-        fake_client = mock.Mock(list_apps=mock.Mock(side_effect=lambda: fake_lists.pop()))
-        with mock.patch('bounce_lib.time.sleep') as time_patch:
+        fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
+        fake_is_app_running_values = [True, True, False]
+        with contextlib.nested(
+            mock.patch('bounce_lib.is_app_id_running'),
+            mock.patch('time.sleep'),
+        ) as (
+            is_app_id_running_patch,
+            sleep_patch,
+        ):
+            is_app_id_running_patch.side_effect = fake_is_app_running_values
             bounce_lib.wait_for_delete(fake_id, fake_client)
-            time_patch.assert_any_call(bounce_lib.WAIT_DELETE_S)
-            assert time_patch.call_count == 1
-            fake_client.list_apps.assert_any_call
-            assert fake_client.list_apps.call_count == 1
+        assert sleep_patch.call_count == 2
+        assert is_app_id_running_patch.call_count == 3
+
+    def test_wait_for_delete_fast(self):
+        fake_id = 'my_deleted'
+        fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
+        fake_is_app_running_values = [False]
+        with contextlib.nested(
+            mock.patch('bounce_lib.is_app_id_running'),
+            mock.patch('time.sleep'),
+        ) as (
+            is_app_id_running_patch,
+            sleep_patch,
+        ):
+            is_app_id_running_patch.side_effect = fake_is_app_running_values
+            bounce_lib.wait_for_delete(fake_id, fake_client)
+        assert sleep_patch.call_count == 0
+        assert is_app_id_running_patch.call_count == 1
 
     def test_brutal_bounce(self):
         old_ids = ["bbounce", "the_best_bounce_method"]
