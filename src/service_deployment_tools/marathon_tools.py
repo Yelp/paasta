@@ -23,7 +23,7 @@ MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = 5051
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 
 
 class MarathonConfig:

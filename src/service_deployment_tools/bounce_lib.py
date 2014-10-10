@@ -11,7 +11,7 @@ import marathon_tools
 from service_deployment_tools.monitoring.replication_utils import get_replication_for_services
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 DEFAULT_SYNAPSE_HOST = 'localhost:3212'
 CROSSOVER_MAX_TIME_M = 30  # Max time in minutes to bounce
 CROSSOVER_FRACTION_REQUIRED = 0.9  # % of new instances needed in HAProxy for a successful bounce

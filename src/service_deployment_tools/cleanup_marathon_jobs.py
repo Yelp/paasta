@@ -28,7 +28,7 @@ from marathon import MarathonClient
 
 
 ID_SPACER = marathon_tools.ID_SPACER
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 
 
 def parse_args():

@@ -42,7 +42,7 @@ import pysensu_yelp
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
 ID_SPACER = marathon_tools.ID_SPACER
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 
 
 def parse_args():
