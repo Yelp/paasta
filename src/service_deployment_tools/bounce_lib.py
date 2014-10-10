@@ -100,7 +100,7 @@ def time_limit(minutes):
 
     :param minutes: The number of minutes until an exception is raised"""
     def signal_handler(signum, frame):
-        raise TimeoutException("Service bounce timed out")
+        raise TimeoutException("Time limit exired")
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(minutes * 60)
     try:
@@ -111,18 +111,19 @@ def time_limit(minutes):
 
 def wait_for_create(app_id, client):
     """Wait for the specified app_id to be listed in marathon.
-    Waits WAIT_CREATE_S seconds between calls to list_apps, with a miniumum of
-    one wait (occuring when the function is called).
+    Waits WAIT_CREATE_S seconds between calls to list_apps.
 
     :param app_id: The app_id to ensure creation for
     :param client: A MarathonClient object"""
+    app_id = '/%s' % app_id
     app_ids = []
     while app_id not in app_ids:
-        time.sleep(WAIT_CREATE_S)
         try:
             app_ids = [app.id for app in client.list_apps()]
         except:
             return
+        log.info("Waiting for %s to be created in marathon..", app_id)
+        time.sleep(WAIT_CREATE_S)
 
 
 def create_marathon_app(config, client):
@@ -131,25 +132,26 @@ def create_marathon_app(config, client):
 
     :param config: The marathon configuration to be deployed
     :param client: A MarathonClient object"""
-    with create_app_lock():
+    with nested(create_app_lock(), time_limit(1)):
         client.create_app(**config)
         wait_for_create(config['id'], client)
 
 
 def wait_for_delete(app_id, client):
     """Wait for the specified app_id to not be listed in marathon
-    anymore. Waits WAIT_DELETE_S seconds inbetween checks, starting with a
-    sleep when the function is called.
+    anymore. Waits WAIT_DELETE_S seconds inbetween checks.
 
     :param app_id: The app_id to check for deletion
     :param client: A MarathonClient object"""
+    app_id = '/%s' % app_id
     app_ids = [app_id]
     while app_id in app_ids:
-        time.sleep(WAIT_DELETE_S)
         try:
             app_ids = [app.id for app in client.list_apps()]
         except:
             return
+        log.info("Waiting for %s to be deleted from marathon...", app_id)
+        time.sleep(WAIT_DELETE_S)
 
 
 def delete_marathon_app(app_id, client):
@@ -158,8 +160,9 @@ def delete_marathon_app(app_id, client):
 
     :param app_id: The marathon app id to be deleted
     :param client: A MarathonClient object"""
-    client.delete_app(app_id)
-    wait_for_delete(app_id, client)
+    with nested(create_app_lock(), time_limit(1)):
+        client.delete_app(app_id)
+        wait_for_delete(app_id, client)
 
 
 def kill_old_ids(old_ids, client):
