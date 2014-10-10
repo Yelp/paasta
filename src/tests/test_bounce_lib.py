@@ -68,10 +68,17 @@ class TestBounceLib:
     def test_delete_marathon_app(self):
         fake_client = mock.Mock(delete_app=mock.Mock())
         fake_id = 'fake_deletion'
-        with mock.patch('bounce_lib.wait_for_delete') as wait_patch:
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.wait_for_delete')
+        ) as (
+            lock_patch,
+            wait_patch,
+        ):
             bounce_lib.delete_marathon_app(fake_id, fake_client)
             fake_client.delete_app.assert_called_once_with(fake_id)
             wait_patch.assert_called_once_with(fake_id, fake_client)
+            lock_patch.assert_called_once_with()
 
     def test_kill_old_ids(self):
         old_ids = ['mmm.whatcha.say', 'that.you', 'only.meant.well']
@@ -91,7 +98,7 @@ class TestBounceLib:
             time_patch.assert_any_call(bounce_lib.WAIT_CREATE_S)
             assert time_patch.call_count == 2
             fake_client.list_apps.assert_any_call
-            assert fake_client.list_apps.call_count == 2
+            assert fake_client.list_apps.call_count == 3
 
     def test_wait_for_delete(self):
         fake_id = 'my_deleted'
@@ -100,9 +107,9 @@ class TestBounceLib:
         with mock.patch('bounce_lib.time.sleep') as time_patch:
             bounce_lib.wait_for_delete(fake_id, fake_client)
             time_patch.assert_any_call(bounce_lib.WAIT_DELETE_S)
-            assert time_patch.call_count == 2
+            assert time_patch.call_count == 1
             fake_client.list_apps.assert_any_call
-            assert fake_client.list_apps.call_count == 2
+            assert fake_client.list_apps.call_count == 1
 
     def test_brutal_bounce(self):
         old_ids = ["bbounce", "the_best_bounce_method"]
