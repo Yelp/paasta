@@ -622,3 +622,30 @@ def is_mesos_leader(hostname=MY_HOSTNAME):
     :param hostname: The hostname to query mesos-master on
     :returns: True if hostname is the mesos-master leader, False otherwise"""
     return hostname in get_mesos_leader(hostname)
+
+
+def list_all_marathon_app_ids(client):
+    """List all marathon app_ids, regardless of state
+
+    The raw marathon API returns app ids in their URL form, with leading '/'s
+    conforming to the Application Group format:
+    https://github.com/mesosphere/marathon/blob/master/docs/docs/application-groups.md
+
+    This function wraps the full output of list_apps to return a list
+    in the original form, without leading "/"'s.
+
+    returns: List of app ids in the same format they are POSTed."""
+    all_app_ids = [app.id for app in client.list_apps()]
+    stripped_app_ids = [app_id.lstrip('/') for app_id in all_app_ids]
+    return stripped_app_ids
+
+
+def is_app_id_running(app_id, client):
+    """Returns a boolean indicating if the app is in the current list
+    of marathon apps
+
+    :param app_id: The app_id to look for
+    :param client: A MarathonClient object"""
+
+    all_app_ids = list_all_marathon_app_ids(client)
+    return app_id in all_app_ids

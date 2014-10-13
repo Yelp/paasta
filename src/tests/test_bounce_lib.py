@@ -89,30 +89,12 @@ class TestBounceLib:
                 delete_patch.assert_any_call(old_id, fake_client)
             assert delete_patch.call_count == len(old_ids)
 
-    def test_is_app_id_running_true(self):
-        fakeapp1 = mock.Mock(id='/fake_app1')
-        fakeapp2 = mock.Mock(id='/fake_app2')
-        apps = [fakeapp1, fakeapp2]
-        list_apps_mock = mock.Mock(return_value=apps)
-        fake_client = mock.Mock(list_apps=list_apps_mock)
-        fake_id = 'fake_app1'
-        assert bounce_lib.is_app_id_running(fake_id, fake_client) is True
-
-    def test_is_app_id_running_false(self):
-        fakeapp1 = mock.Mock(id='/fake_app1')
-        fakeapp2 = mock.Mock(id='/fake_app2')
-        apps = [fakeapp1, fakeapp2]
-        list_apps_mock = mock.Mock(return_value=apps)
-        fake_client = mock.Mock(list_apps=list_apps_mock)
-        fake_id = 'fake_app3'
-        assert bounce_lib.is_app_id_running(fake_id, fake_client) is False
-
     def test_wait_for_create_slow(self):
         fake_id = 'my_created'
         fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [False, False, True]
         with contextlib.nested(
-            mock.patch('bounce_lib.is_app_id_running'),
+            mock.patch('marathon_tools.is_app_id_running'),
             mock.patch('time.sleep'),
         ) as (
             is_app_id_running_patch,
@@ -128,7 +110,7 @@ class TestBounceLib:
         fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [True]
         with contextlib.nested(
-            mock.patch('bounce_lib.is_app_id_running'),
+            mock.patch('marathon_tools.is_app_id_running'),
             mock.patch('time.sleep'),
         ) as (
             is_app_id_running_patch,
@@ -144,7 +126,7 @@ class TestBounceLib:
         fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [True, True, False]
         with contextlib.nested(
-            mock.patch('bounce_lib.is_app_id_running'),
+            mock.patch('marathon_tools.is_app_id_running'),
             mock.patch('time.sleep'),
         ) as (
             is_app_id_running_patch,
@@ -160,7 +142,7 @@ class TestBounceLib:
         fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [False]
         with contextlib.nested(
-            mock.patch('bounce_lib.is_app_id_running'),
+            mock.patch('marathon_tools.is_app_id_running'),
             mock.patch('time.sleep'),
         ) as (
             is_app_id_running_patch,

@@ -639,3 +639,28 @@ class TestMarathonTools:
             assert fake_curl.setopt.call_count == 2
             fake_curl.perform.assert_called_once_with()
             fake_stringio.getvalue.assert_called_once_with()
+
+    def test_list_all_marathon_app_ids(self):
+        fakeapp1 = mock.Mock(id='/fake_app1')
+        fakeapp2 = mock.Mock(id='/fake_app2')
+        apps = [fakeapp1, fakeapp2]
+        list_apps_mock = mock.Mock(return_value=apps)
+        fake_client = mock.Mock(list_apps=list_apps_mock)
+        expected_apps = ['fake_app1', 'fake_app2']
+        assert marathon_tools.list_all_marathon_app_ids(fake_client) == expected_apps
+
+    def test_is_app_id_running_true(self):
+        fake_id = 'fake_app1'
+        fake_all_marathon_app_ids = ['fake_app1', 'fake_app2']
+        fake_client = mock.Mock()
+        with mock.patch('marathon_tools.list_all_marathon_app_ids', return_value=fake_all_marathon_app_ids) as list_all_marathon_app_ids_patch:
+            assert marathon_tools.is_app_id_running(fake_id, fake_client) is True
+            list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
+
+    def test_is_app_id_running_false(self):
+        fake_id = 'fake_app3'
+        fake_all_marathon_app_ids = ['fake_app1', 'fake_app2']
+        fake_client = mock.Mock()
+        with mock.patch('marathon_tools.list_all_marathon_app_ids', return_value=fake_all_marathon_app_ids) as list_all_marathon_app_ids_patch:
+            assert marathon_tools.is_app_id_running(fake_id, fake_client) is False
+            list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)

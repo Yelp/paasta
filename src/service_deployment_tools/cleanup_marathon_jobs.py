@@ -91,7 +91,7 @@ def cleanup_apps(soa_dir):
     client = get_marathon_client(marathon_config['url'], marathon_config['user'],
                                  marathon_config['pass'])
     valid_app_list = get_valid_app_list(marathon_config, soa_dir)
-    app_ids = [app.id for app in client.list_apps()]
+    app_ids = marathon_tools.list_all_marathon_app_ids(client)
     for app_id in app_ids:
         log.info("Checking app id %s", app_id)
         if not any([app_id == deployed_id for deployed_id in valid_app_list]):
