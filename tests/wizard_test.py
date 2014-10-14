@@ -176,6 +176,11 @@ class SuggestHostsForHabitat(T.TestCase):
                 "mon1": 1,
                 "search1": 1,
             },
+            "sfo2": {
+                "srvbatch-r1-sfo2": 10,
+                "srv1-r1-pcde.prod.yelp-payments.com": 1,
+                "srv2-uswest1aprod.prod.yelpcorp.com": 1,
+            },
         }
         actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "sfo1")
         T.assert_equal(expected, actual)

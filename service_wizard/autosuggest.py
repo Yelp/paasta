@@ -106,8 +106,23 @@ def is_srv_machine(host, habitat):
     else:
         return True
 
+def is_general_prod_srv_machine(host):
+    """Returns True if 'host' is considered a general production srv machine that
+    is eligible to run general service code.
+    """
+    if host.startswith('srv'):
+        if any((
+            'batch' in host,
+            'pcde' in host,
+            'uswest' in host,
+        )):
+            return False
+        else:
+            return True
+    return False
+
 def get_prod_srv_hosts(host_histogram):
-    hosts = [host for host in host_histogram.keys() if host.startswith("srv")]
+    hosts = [host for host in host_histogram.keys() if is_general_prod_srv_machine(host)]
     return ",".join(hosts)
 
 def get_least_used_host(host_histogram, habitat=None):
