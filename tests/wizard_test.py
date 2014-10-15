@@ -176,6 +176,7 @@ class SuggestHostsForHabitat(T.TestCase):
                 "mon1": 1,
                 "search1": 1,
             },
+            # All these machines will be filtered out since they're not general service machines.
             "sfo2": {
                 "srvbatch-r1-sfo2": 10,
                 "srv1-r1-pcde.prod.yelp-payments.com": 1,
