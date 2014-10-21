@@ -1,3 +1,9 @@
+service-deployment-tools (0.5.1-yelp1) lucid; urgency=low
+
+  * Work around un-dying marathon tasks by scaling them to 0 first. 
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 21 Oct 2014 14:05:13 -0700
+
 service-deployment-tools (0.5.0-yelp1) lucid; urgency=low
 
   * Only report marathon services that are currently TASK_RUNNING.
