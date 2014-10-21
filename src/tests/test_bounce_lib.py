@@ -55,10 +55,10 @@ class TestBounceLib:
         fake_config = {'id': 'fake_creation'}
         with contextlib.nested(
             mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.wait_for_create')
+            mock.patch('bounce_lib.wait_for_create'),
         ) as (
             lock_patch,
-            wait_patch
+            wait_patch,
         ):
             bounce_lib.create_marathon_app(fake_config, fake_client)
             lock_patch.assert_called_once_with()
@@ -70,19 +70,23 @@ class TestBounceLib:
         fake_id = 'fake_deletion'
         with contextlib.nested(
             mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.wait_for_delete')
+            mock.patch('bounce_lib.wait_for_delete'),
+            mock.patch('time.sleep')
         ) as (
             lock_patch,
             wait_patch,
+            sleep_patch
         ):
             bounce_lib.delete_marathon_app(fake_id, fake_client)
+            fake_client.scale_app.assert_called_once_with(fake_id, instances=0)
             fake_client.delete_app.assert_called_once_with(fake_id)
+            sleep_patch.assert_called_once_with(1)
             wait_patch.assert_called_once_with(fake_id, fake_client)
             lock_patch.assert_called_once_with()
 
     def test_kill_old_ids(self):
         old_ids = ['mmm.whatcha.say', 'that.you', 'only.meant.well']
-        fake_client = mock.MagicMock(delete_app=mock.Mock())
+        fake_client = mock.MagicMock()
         with mock.patch('bounce_lib.delete_marathon_app') as delete_patch:
             bounce_lib.kill_old_ids(old_ids, fake_client)
             for old_id in old_ids:
@@ -158,7 +162,7 @@ class TestBounceLib:
         new_config = {"now_featuring": "no_gracefuls", "guaranteed": "or_your_money_back",
                       'id': 'sockem.fun'}
         fake_namespace = 'boppers'
-        fake_client = mock.MagicMock(delete_app=mock.Mock(), create_app=mock.Mock())
+        fake_client = mock.MagicMock()
         with contextlib.nested(
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.create_marathon_app'),
@@ -174,20 +178,21 @@ class TestBounceLib:
             kill_patch.assert_called_once_with(old_ids, fake_client)
 
     def test_scale_apps_delta_valid(self):
-        fake_scalable = [('poker.face', 10), ('rocker.race', 5)]
+        fake_scalable = [('poker.face', 10), ('roker.race', 5)]
         fake_delta = 14
-        fake_client = mock.MagicMock(delete_app=mock.Mock(), scale_app=mock.Mock())
-        assert bounce_lib.scale_apps(fake_scalable, fake_delta, fake_client) == 14
-        fake_client.delete_app.assert_called_once_with('rocker.race')
-        fake_client.scale_app.assert_called_once_with('poker.face', delta=-9)
+        fake_client = mock.MagicMock()
+        with mock.patch('bounce_lib.delete_marathon_app') as delete_marathon_app_patch:
+            assert bounce_lib.scale_apps(fake_scalable, fake_delta, fake_client) == 14
+            delete_marathon_app_patch.assert_called_once_with('roker.race', fake_client)
+            fake_client.scale_app.assert_called_once_with('poker.face', delta=-9)
 
     def test_scale_apps_delta_invalid(self):
         fake_scalable = [('muh.mah.muh.mah', 9999), ('uh.huh.huh.uh.huh', 7777)]
         fake_delta = -9
-        fake_client = mock.MagicMock(delete_app=mock.Mock(), scale_app=mock.Mock())
-        assert bounce_lib.scale_apps(fake_scalable, fake_delta, fake_client) == 0
-        assert fake_client.delete_app.call_count == 0
-        assert fake_client.delete_app.call_count == 0
+        fake_client = mock.MagicMock()
+        with mock.patch('bounce_lib.delete_marathon_app') as delete_marathon_app_patch:
+            assert bounce_lib.scale_apps(fake_scalable, fake_delta, fake_client) == 0
+            assert delete_marathon_app_patch.call_count == 0
 
     def test_crossover_bounce_exact_delta(self):
         fake_new_config = {
@@ -198,9 +203,7 @@ class TestBounceLib:
         fake_old_ids = ['fake.make', 'lake.quake']
         fake_old_instance_counts = [mock.Mock(instances=4), mock.Mock(instances=15)]
         fake_client = mock.MagicMock(
-                        get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()),
-                        delete_app=mock.Mock(),
-                        create_app=mock.Mock())
+                        get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()))
         haproxy_instance_count = [{'shake.wake': 18}, {'shake.wake': 9}]
         with contextlib.nested(
             mock.patch('bounce_lib.get_replication_for_services',
@@ -243,9 +246,7 @@ class TestBounceLib:
         fake_old_ids = ['pen.hen', 'tool.rule']
         fake_old_instance_counts = [mock.Mock(instances=7), mock.Mock(instances=19)]
         fake_client = mock.MagicMock(
-                        get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()),
-                        delete_app=mock.Mock(),
-                        create_app=mock.Mock())
+                        get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()))
         haproxy_instance_count = [{'hello.world': 16}, {'hello.world': 10}, {'hello.world': 5}]
         with contextlib.nested(
             mock.patch('bounce_lib.get_replication_for_services',
@@ -290,9 +291,7 @@ class TestBounceLib:
         fake_old_ids = ['70s.disco', '80s.funk']
         fake_old_instance_counts = [mock.Mock(instances=77), mock.Mock(instances=55)]
         fake_client = mock.MagicMock(
-                        get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()),
-                        delete_app=mock.Mock(),
-                        create_app=mock.Mock())
+                        get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()))
         haproxy_instance_count = {'the.electricslide': 10}
 
         def raiser(a):

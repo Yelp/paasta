@@ -149,6 +149,10 @@ def delete_marathon_app(app_id, client):
     :param app_id: The marathon app id to be deleted
     :param client: A MarathonClient object"""
     with nested(create_app_lock(), time_limit(1)):
+        # Scale app to 0 first to work around
+        # https://github.com/mesosphere/marathon/issues/725
+        client.scale_app(app_id, instances=0)
+        time.sleep(1)
         client.delete_app(app_id)
         wait_for_delete(app_id, client)
 
@@ -210,7 +214,7 @@ def scale_apps(scalable_apps, remove_count, client):
         app_id, remaining = scalable_apps.pop()
         # If this app can be removed completely, do it!
         if remove_count >= remaining:
-            client.delete_app(app_id)
+            delete_marathon_app(app_id, client)
             remove_count -= remaining
         # Otherwise, scale it down and add the app back into the list.
         else:
