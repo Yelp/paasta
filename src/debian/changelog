@@ -1,3 +1,9 @@
+service-deployment-tools (0.5.0-yelp1) lucid; urgency=low
+
+  * Only report marathon services that are currently TASK_RUNNING.
+
+ -- Evan Krall <krall@yelp.com>  Tue, 21 Oct 2014 13:32:39 -0700
+
 service-deployment-tools (0.4.9-yelp1) lucid; urgency=low
 
   * Fixed marathon app id detection. MESOS-115 
