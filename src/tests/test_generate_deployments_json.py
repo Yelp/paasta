@@ -87,8 +87,8 @@ def test_get_branch_mappings():
     fake_registry = 'super-docker'
     fake_old_mappings = ['']
     fake_git = mock.Mock()
-    expected = {'uno:no_thanks': 'services-uno:jenkins-789009',
-                'dos:try_me': 'services-dos:jenkins-123456'}
+    expected = {'uno:no_thanks': 'services-uno:paasta-789009',
+                'dos:try_me': 'services-dos:paasta-123456'}
     with contextlib.nested(
         mock.patch('tempfile.mkdtemp', return_value=fake_tmp_dir),
         mock.patch('git.Git', return_value=fake_git),
@@ -126,8 +126,8 @@ def test_get_branch_mappings():
         get_remotes_patch.assert_any_call(fake_git, 'dos')
         assert get_remotes_patch.call_count == 2
         rmdir_patch.assert_called_once_with(fake_tmp_dir)
-        docker_url_patch.assert_any_call(fake_registry, 'services-uno:jenkins-789009', verify=True)
-        docker_url_patch.assert_any_call(fake_registry, 'services-dos:jenkins-123456', verify=True)
+        docker_url_patch.assert_any_call(fake_registry, 'services-uno:paasta-789009', verify=True)
+        docker_url_patch.assert_any_call(fake_registry, 'services-dos:paasta-123456', verify=True)
         assert docker_url_patch.call_count == 2
 
 

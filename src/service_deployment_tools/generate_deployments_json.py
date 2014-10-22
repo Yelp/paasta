@@ -12,7 +12,7 @@ the configuration is for and instance is the instance name.
 
 For example, if the service paasta_test has an instance called main with no
 branch or docker_image key in its configuration in the devc cluster, then this script
-will create a key/value pair of 'paasta_test:paasta-devc.main': 'services-paasta_test:jenkins-SHA',
+will create a key/value pair of 'paasta_test:paasta-devc.main': 'services-paasta_test:paasta-SHA',
 where SHA is the current SHA at the tip of the branch named devc in
 git@git.yelpcorp.com:services/paasta_test.git. If main had a branch key with
 a value of 'master', the key would be paasta_test:master instead, and the SHA
@@ -139,12 +139,12 @@ def get_service_directories(soa_dir):
 
 
 def get_branch_mappings(soa_dir, old_mappings):
-    """Gets mappings from service_name:branch_name to services-service_name:jenkins-hash,
+    """Gets mappings from service_name:branch_name to services-service_name:paasta-hash,
     where hash is the current SHA at the HEAD of branch_name.
     This is done for all services in soa_dir.
 
     :param soa_dir: The SOA configuration directory to read from
-    :returns: A dictionary mapping service_name:branch_name to services-service_name:jenkins-hash"""
+    :returns: A dictionary mapping service_name:branch_name to services-service_name:paasta-hash"""
     tmp_dir = tempfile.mkdtemp()
     mygit = git.Git(tmp_dir)
     mappings = {}
@@ -158,7 +158,7 @@ def get_branch_mappings(soa_dir, old_mappings):
         remote_branches = get_remote_branches_for_service(mygit, service)
         for head, branch in filter(lambda (head, branch): branch in valid_branches, remote_branches):
             branch_alias = '%s:%s' % (service, branch)
-            docker_image = 'services-%s:jenkins-%s' % (service, head)
+            docker_image = 'services-%s:paasta-%s' % (service, head)
             if not marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
                 log.error('Branch %s should be mapped to image %s, but that image isn\'t \
                            in the docker_registry %s', branch_alias, docker_image, docker_registry)
