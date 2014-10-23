@@ -144,6 +144,7 @@ def get_branch_mappings(soa_dir, old_mappings):
     This is done for all services in soa_dir.
 
     :param soa_dir: The SOA configuration directory to read from
+    :param old_mapings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new mapping.
     :returns: A dictionary mapping service_name:branch_name to services-service_name:paasta-hash"""
     tmp_dir = tempfile.mkdtemp()
     mygit = git.Git(tmp_dir)
