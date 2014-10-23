@@ -181,12 +181,10 @@ def get_instances(service_config):
 def get_bounce_method(service_config):
     """Get the bounce method specified in the service's marathon configuration.
 
-    Defaults to crossover if no method specified in the config.
-
     :param service_config: The service instance's configuration dictionary
-    :returns: The bounce method specified in the config, or 'crossover' if not specified"""
+    :returns: The bounce method specified in the config, or 'brutal' if not specified"""
     bounce_method = service_config.get('bounce_method')
-    return bounce_method if bounce_method else 'crossover'
+    return bounce_method if bounce_method else 'brutal'
 
 
 def get_config_hash(config):
