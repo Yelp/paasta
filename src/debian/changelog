@@ -1,3 +1,9 @@
+service-deployment-tools (0.6.0-yelp1) lucid; urgency=low
+
+  * Small PaaSTA API change for MESOS-108
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 22 Oct 2014 22:40:00 -0700
+
 service-deployment-tools (0.5.1-yelp1) lucid; urgency=low
 
   * Work around un-dying marathon tasks by scaling them to 0 first. 
