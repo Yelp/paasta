@@ -7,7 +7,7 @@ a service using Marathon to a mesos cluster via docker images.
 As an outline, to deploy a service to mesos in a docker image
 via Marathon, you'll need three things:
 
-* A docker image in a services-{service_name} repository with a tag set to jenkins-{SHA},
+* A docker image in a services-{service_name} repository with a tag set to paasta-{SHA},
   where SHA is the SHA at the current head of a branch (if you want to use 'branch' keys
   in your config files, for more automated deployment), OR whatever tag you like
   (if you want to use 'docker_image' keys in your config files, for more static
@@ -36,7 +36,7 @@ service:
 
 1. A 'docker_image' key, which allows you to set a static docker image name and tag
 2. A 'branch' key, which will make generate_deployments_json create a map between
-   a static {service_name}:{branch} key to a generated services-{service_name}:jenkins-{SHA}
+   a static {service_name}:{branch} key to a generated services-{service_name}:paasta-{SHA}
    key, where SHA is the SHA at the tip of the branch name given in the
    service's git repository
 
