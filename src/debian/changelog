@@ -1,3 +1,9 @@
+service-deployment-tools (0.6.2-yelp1) lucid; urgency=low
+
+  * Really fix the destroying of apps for MESOS-119 
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 23 Oct 2014 16:05:50 -0700
+
 service-deployment-tools (0.6.1-yelp1) lucid; urgency=low
 
   * Default bounce strategy back to 'brutal'
