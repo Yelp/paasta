@@ -1,3 +1,9 @@
+service-deployment-tools (0.6.1-yelp1) lucid; urgency=low
+
+  * Default bounce strategy back to 'brutal'
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 23 Oct 2014 14:02:59 -0700
+
 service-deployment-tools (0.6.0-yelp1) lucid; urgency=low
 
   * Small PaaSTA API change for MESOS-108
