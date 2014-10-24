@@ -11,7 +11,8 @@ list_marathon_service_instances
 deploy_marathon_services
 generate_deployments_json
 check_marathon_services_replication
-generate_services_yaml"
+generate_services_yaml
+cleanup_marathon_orphaned_images"
 
 MARATHON_SERVICES="fake_service_uno.main
 fake_service_dos.niam"
@@ -69,6 +70,13 @@ if check_classic_service_replication --help >/dev/null; then
   echo "Looks like we can check_classic_service_replication with --help"
 else
   echo "Could not invoke check_classic_service_replication with --help"
+  exit 1
+fi
+
+if cleanup_marathon_orphaned_images --help >/dev/null; then
+  echo "Looks like we can cleanup_marathon_orphaned_images with --help"
+else
+  echo "Could not invoke cleanup_marathon_orphaned_images with --help"
   exit 1
 fi
 
