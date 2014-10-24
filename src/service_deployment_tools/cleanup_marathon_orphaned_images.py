@@ -6,6 +6,8 @@ Usage: cleanup_marathon_orphaned_images.py [options]
 import argparse
 import logging
 
+import docker
+
 log = logging.getLogger('__main__')
 
 
@@ -23,8 +25,10 @@ def parse_args():
 
 
 def main():
-    args = parse_args()
-    print args
+    # args = parse_args()
+    client = docker.Client()
+    print client
+    # import pdb; pdb.set_trace()
 
 
 if __name__ == "__main__":
