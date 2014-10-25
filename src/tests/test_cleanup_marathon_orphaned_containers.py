@@ -26,6 +26,7 @@ running_images = [
 
 
 def test_get_mesos_images():
+    assert nonmesos_undeployed_old in running_images
     actual = cleanup_marathon_orphaned_images.get_mesos_images(running_images)
     assert nonmesos_undeployed_old not in actual
 
