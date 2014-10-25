@@ -15,12 +15,16 @@ def get_running_images(client):
     return client.containers()
 
 
-def get_running_mesos_images(running_images):
-    running_mesos_images = []
+def get_mesos_images(running_images):
+    mesos_images = []
     for image in running_images:
         if any([name for name in image.get('Names', '') if name.startswith('/mesos-')]):
-            running_mesos_images.append(image)
-    return running_mesos_images
+            mesos_images.append(image)
+    return mesos_images
+
+
+def get_old_images(running_images):
+    pass
 
 
 def parse_args():
@@ -45,9 +49,9 @@ def main():
 
     client = docker.Client()
     running_images = get_running_images(client)
-    running_mesos_images = get_running_mesos_images(running_images)
+    mesos_images = get_mesos_images(running_images)
     from pprint import pprint
-    pprint(running_mesos_images)
+    pprint(mesos_images)
 
 
 if __name__ == "__main__":
