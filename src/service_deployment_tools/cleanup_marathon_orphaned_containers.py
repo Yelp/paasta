@@ -24,7 +24,7 @@ def get_mesos_images(running_images):
 
 
 def get_old_images(running_images):
-    pass
+    return running_images
 
 
 def parse_args():
@@ -50,8 +50,9 @@ def main():
     client = docker.Client()
     running_images = get_running_images(client)
     mesos_images = get_mesos_images(running_images)
+    old_images = get_old_images(mesos_images)
     from pprint import pprint
-    pprint(mesos_images)
+    pprint(old_images)
 
 
 if __name__ == "__main__":
