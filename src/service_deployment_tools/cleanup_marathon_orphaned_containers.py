@@ -33,14 +33,14 @@ def get_mesos_containers(containers):
 
 def get_old_containers(containers, max_age=60, now=None):
     """Given a list of Docker containers as from get_running_containers(),
-    return a list of the containers started more than max_age ago.
+    return a list of the containers started more than max_age minutes ago.
     """
     age_delta = datetime.timedelta(minutes=max_age)
     if now is None:
         now = datetime.datetime.now()
-    max_age_timestamp = calendar.timegm((now + age_delta).timetuple())
+    max_age_timestamp = calendar.timegm((now - age_delta).timetuple())
 
-    return [image for image in containers if image.get('Created', 0) > max_age_timestamp]
+    return [image for image in containers if image.get('Created', 0) < max_age_timestamp]
 
 
 def parse_args():
@@ -66,9 +66,17 @@ def main():
     client = docker.Client()
     from pprint import pprint
     running_containers = get_running_containers(client)
+    print "################## RUNNING ##################"
     pprint(running_containers)
+
     mesos_containers = get_mesos_containers(running_containers)
-    old_containers = get_old_containers(mesos_containers)
+    print "################## MESOS ##################"
+    pprint(mesos_containers)
+
+    # ### old_containers = get_old_containers(mesos_containers)
+    old_containers = get_old_containers(running_containers)
+    # ###
+    print "################## OLD ##################"
     pprint(old_containers)
 
 

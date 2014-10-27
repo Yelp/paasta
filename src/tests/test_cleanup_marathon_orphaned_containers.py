@@ -6,23 +6,23 @@ import datetime
 import cleanup_marathon_orphaned_containers
 
 
-fake_now = datetime.datetime(2014, 01, 01)
+fake_now = datetime.datetime(2014, 01, 01, 04, 20)
 young_offset = datetime.timedelta(minutes=59)
 old_offset = datetime.timedelta(minutes=61)
 mesos_deployed_old = {
-    'Created': calendar.timegm((fake_now + old_offset).timetuple()),
+    'Created': calendar.timegm((fake_now - old_offset).timetuple()),
     'Names': ['/mesos-deployed-old', ],
 }
 mesos_undeployed_old = {
-    'Created': calendar.timegm((fake_now + old_offset).timetuple()),
+    'Created': calendar.timegm((fake_now - old_offset).timetuple()),
     'Names': ['/mesos-undeployed-old', ],
 }
 mesos_undeployed_young = {
-    'Created': calendar.timegm((fake_now + young_offset).timetuple()),
+    'Created': calendar.timegm((fake_now - young_offset).timetuple()),
     'Names': ['/mesos-undeployed-young', ],
 }
 nonmesos_undeployed_old = {
-    'Created': calendar.timegm((fake_now + old_offset).timetuple()),
+    'Created': calendar.timegm((fake_now - old_offset).timetuple()),
     'Names': ['/nonmesos-undeployed-old', ],
 }
 running_containers = [
