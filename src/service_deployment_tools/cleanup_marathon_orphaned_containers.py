@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Usage: cleanup_marathon_orphaned_images.py [options]
+Usage: cleanup_marathon_orphaned_containers.py [options]
 """
 
 import argparse
@@ -13,30 +13,39 @@ import docker
 log = logging.getLogger('__main__')
 
 
-def get_running_images(client):
+def get_running_containers(client):
+    """Given a docker-py Docker client, return the docker containers running on
+    this machine (docker ps).
+    """
     return client.containers()
 
 
-def get_mesos_images(images):
-    mesos_images = []
-    for image in images:
+def get_mesos_containers(containers):
+    """Given a list of Docker containers as from get_running_containers(),
+    return a list of the containers started by Mesos.
+    """
+    mesos_containers = []
+    for image in containers:
         if any([name for name in image.get('Names', []) if name.startswith('/mesos-')]):
-            mesos_images.append(image)
-    return mesos_images
+            mesos_containers.append(image)
+    return mesos_containers
 
 
-def get_old_images(images, max_age=60, now=None):
+def get_old_containers(containers, max_age=60, now=None):
+    """Given a list of Docker containers as from get_running_containers(),
+    return a list of the containers started more than max_age ago.
+    """
     age_delta = datetime.timedelta(minutes=max_age)
     if now is None:
         now = datetime.datetime.now()
     max_age_timestamp = calendar.timegm((now + age_delta).timetuple())
 
-    return [image for image in images if image.get('Created', 0) > max_age_timestamp]
+    return [image for image in containers if image.get('Created', 0) > max_age_timestamp]
 
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Stop Docker images spawned by Mesos which are no longer supposed to be running')
+        description='Stop Docker containers spawned by Mesos which are no longer supposed to be running')
     parser.add_argument(
         '-v', '--verbose',
         action='store_true',
@@ -56,11 +65,11 @@ def main():
 
     client = docker.Client()
     from pprint import pprint
-    running_images = get_running_images(client)
-    pprint(running_images)
-    mesos_images = get_mesos_images(running_images)
-    old_images = get_old_images(mesos_images)
-    pprint(old_images)
+    running_containers = get_running_containers(client)
+    pprint(running_containers)
+    mesos_containers = get_mesos_containers(running_containers)
+    old_containers = get_old_containers(mesos_containers)
+    pprint(old_containers)
 
 
 if __name__ == "__main__":
