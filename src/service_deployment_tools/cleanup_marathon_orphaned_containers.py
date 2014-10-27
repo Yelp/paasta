@@ -45,6 +45,16 @@ def get_old_containers(containers, max_age=60, now=None):
             if image.get('Created') and image.get('Created') < max_age_timestamp]
 
 
+def get_undeployed_containers(containers, deployed_images):
+    """Given a list of Docker containers as from get_running_containers() and a
+    list of images that are supposed (allowed) to be deployed as from
+    get_deployed_images(), return a list of containers that are not expected to
+    be running.
+    """
+    return [image for image in containers
+            if image.get('Image', 'NO IMAGE') not in deployed_images]
+
+
 def parse_args():
     parser = argparse.ArgumentParser(
         description='Stop Docker containers spawned by Mesos which are no longer supposed to be running')
