@@ -266,6 +266,17 @@ def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
         return ''
 
 
+def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
+    """Get the docker images that are supposed/allowed to be deployed here
+    according to deployments.json.
+
+    :param soa_dir: The SOA Configuration directory with deployments.json
+    :returns: A list of images (strings) or empty list if deployments.json
+    doesn't exist in soa_dir
+    """
+    pass
+
+
 def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
     """Read a service's monitoring.yaml file.
 

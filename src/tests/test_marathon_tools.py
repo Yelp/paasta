@@ -47,6 +47,9 @@ class TestMarathonTools:
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(fake_filedata)
 
+    def test_get_deployed_images(self):
+        marathon_tools.get_deployed_images()
+
     def test_read_monitoring_config(self):
         fake_name = 'partial'
         fake_fname = 'acronyms'
