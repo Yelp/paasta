@@ -11,4 +11,4 @@ usr/share/python/service-deployment-tools/bin/deploy_marathon_services usr/bin/d
 usr/share/python/service-deployment-tools/bin/generate_deployments_json.py usr/bin/generate_deployments_json
 usr/share/python/service-deployment-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
 usr/share/python/service-deployment-tools/bin/generate_services_yaml.py usr/bin/generate_services_yaml
-usr/share/python/service-deployment-tools/bin/cleanup_marathon_orphaned_images.py usr/bin/cleanup_marathon_orphaned_images
+usr/share/python/service-deployment-tools/bin/cleanup_marathon_orphaned_containers.py usr/bin/cleanup_marathon_orphaned_containers

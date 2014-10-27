@@ -40,6 +40,6 @@ setup(
         'service_deployment_tools/generate_deployments_json.py',
         'service_deployment_tools/check_marathon_services_replication.py',
         'service_deployment_tools/generate_services_yaml.py',
-        'service_deployment_tools/cleanup_marathon_orphaned_images.py',
+        'service_deployment_tools/cleanup_marathon_orphaned_containers.py',
     ]
 )

@@ -12,7 +12,7 @@ deploy_marathon_services
 generate_deployments_json
 check_marathon_services_replication
 generate_services_yaml
-cleanup_marathon_orphaned_images"
+cleanup_marathon_orphaned_containers"
 
 MARATHON_SERVICES="fake_service_uno.main
 fake_service_dos.niam"
@@ -73,10 +73,10 @@ else
   exit 1
 fi
 
-if cleanup_marathon_orphaned_images --help >/dev/null; then
-  echo "Looks like we can cleanup_marathon_orphaned_images with --help"
+if cleanup_marathon_orphaned_containers --help >/dev/null; then
+  echo "Looks like we can cleanup_marathon_orphaned_containers with --help"
 else
-  echo "Could not invoke cleanup_marathon_orphaned_images with --help"
+  echo "Could not invoke cleanup_marathon_orphaned_containers with --help"
   exit 1
 fi
 
