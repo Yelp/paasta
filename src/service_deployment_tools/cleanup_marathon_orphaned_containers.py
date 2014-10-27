@@ -17,21 +17,21 @@ def get_running_images(client):
     return client.containers()
 
 
-def get_mesos_images(running_images):
+def get_mesos_images(images):
     mesos_images = []
-    for image in running_images:
+    for image in images:
         if any([name for name in image.get('Names', []) if name.startswith('/mesos-')]):
             mesos_images.append(image)
     return mesos_images
 
 
-def get_old_images(running_images, max_age=60, now=None):
+def get_old_images(images, max_age=60, now=None):
     age_delta = datetime.timedelta(minutes=max_age)
     if now is None:
         now = datetime.datetime.now()
     max_age_timestamp = calendar.timegm((now + age_delta).timetuple())
 
-    return [image for image in running_images if image.get('Created', 0) > max_age_timestamp]
+    return [image for image in images if image.get('Created', 0) > max_age_timestamp]
 
 
 def parse_args():
