@@ -6,7 +6,7 @@ import datetime
 import cleanup_marathon_orphaned_images
 
 
-fake_now = datetime.datetime(2014, 10, 24)
+fake_now = datetime.datetime(2014, 01, 01)
 young_offset = datetime.timedelta(minutes=59)
 old_offset = datetime.timedelta(minutes=61)
 mesos_deployed_old = {
@@ -42,7 +42,7 @@ def test_get_mesos_images():
 
 
 def test_get_old_images():
-    actual = cleanup_marathon_orphaned_images.get_old_images(running_images)
+    actual = cleanup_marathon_orphaned_images.get_old_images(running_images, now=fake_now)
     assert mesos_deployed_old in actual
     assert mesos_undeployed_old in actual
     assert mesos_undeployed_young not in actual
