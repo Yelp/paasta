@@ -248,22 +248,31 @@ def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_
     return complete_config
 
 
+def _get_deployments_json(soa_dir):
+    """Load deployments.json.
+
+    :param soa_dir: The SOA Configuration directory with deployments.json
+    :returns: A dictionary of the loaded json, or empty dict if
+    soa_dir/deployments.json does not exist
+    """
+    deployment_file = os.path.join(soa_dir, 'deployments.json')
+    if os.path.exists(deployment_file):
+        return json.loads(open(deployment_file).read())
+    else:
+        return {}
+
+
 def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
     """Get the docker image name (with tag) for a given service branch from
     a generated deployments.json file.
 
     :param service_name: The name of the service
     :param branch_name: The name of the remote branch to get an image for
-    :param soa_dir: The SOA Configuration directory with deployments.json
     :returns: The name and tag of the docker image for the branch, or '' if
               deployments.json doesn't exist in soa_dir"""
-    deployment_file = os.path.join(soa_dir, 'deployments.json')
-    if os.path.exists(deployment_file):
-        dockers = json.loads(open(deployment_file).read())
-        full_branch = '%s:%s' % (service_name, branch_name)
-        return dockers.get(full_branch, '')
-    else:
-        return ''
+    full_branch = '%s:%s' % (service_name, branch_name)
+    deployments_json = _get_deployments_json(soa_dir)
+    return deployments_json.get(full_branch, '')
 
 
 def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):

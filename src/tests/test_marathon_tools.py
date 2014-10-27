@@ -19,13 +19,11 @@ class TestMarathonTools:
         'deployed_on': ['another-box'],
     }
 
-    def test_get_docker_from_branch(self):
+    def test_get_deployments_json(self):
         file_mock = mock.MagicMock(spec=file)
         fake_filedata = '239jiogrefnb iqu23t4ren'
         file_mock.read = mock.Mock(return_value=fake_filedata)
         fake_path = '/etc/nope.json'
-        fake_srv = 'no_srv'
-        fake_branch = 'blaster'
         fake_dir = '/var/dir_of_fake'
         fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
         with contextlib.nested(
@@ -39,13 +37,22 @@ class TestMarathonTools:
             exists_patch,
             json_patch
         ):
-            actual = marathon_tools.get_docker_from_branch(fake_srv, fake_branch, fake_dir)
-            assert actual == 'test_rocker:9.9'
+            actual = marathon_tools._get_deployments_json(fake_dir)
             join_patch.assert_called_once_with(fake_dir, 'deployments.json')
             exists_patch.assert_called_once_with(fake_path)
             open_patch.assert_called_once_with(fake_path)
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(fake_filedata)
+            assert actual == fake_json
+
+    def test_get_docker_from_branch(self):
+        fake_srv = 'no_srv'
+        fake_branch = 'blaster'
+        fake_dir = '/var/dir_of_fake'
+        fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
+        with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
+            actual = marathon_tools.get_docker_from_branch(fake_srv, fake_branch, fake_dir)
+            assert actual == 'test_rocker:9.9'
 
     def test_get_deployed_images(self):
         marathon_tools.get_deployed_images()
