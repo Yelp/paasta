@@ -55,7 +55,7 @@ def test_get_old_containers():
 
 
 def test_get_undeployed_containers():
-    deployed_images = [deployed_image]
+    deployed_images = set([deployed_image])
     actual = cleanup_marathon_orphaned_containers.get_undeployed_containers(running_containers, deployed_images)
     assert mesos_deployed_old not in actual
     assert mesos_undeployed_old in actual

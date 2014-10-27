@@ -46,10 +46,10 @@ def get_old_containers(containers, max_age=60, now=None):
 
 
 def get_undeployed_containers(containers, deployed_images):
-    """Given a list of Docker containers as from get_running_containers() and a
-    list of images that are supposed (allowed) to be deployed as from
-    get_deployed_images(), return a list of containers that are not expected to
-    be running.
+    """Given a list of Docker containers, as from get_running_containers(); and
+    a set of images that are supposed/allowed to be deployed, as from
+    marathon_tools.get_deployed_images(); return a list of containers that are
+    not expected to be running.
     """
     return [image for image in containers
             if image.get('Image', 'NO IMAGE') not in deployed_images]

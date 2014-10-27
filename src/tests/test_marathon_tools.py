@@ -55,7 +55,11 @@ class TestMarathonTools:
             assert actual == 'test_rocker:9.9'
 
     def test_get_deployed_images(self):
-        marathon_tools.get_deployed_images()
+        fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
+        with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
+            actual = marathon_tools.get_deployed_images()
+            expected = set(['test_rocker:9.9', 'this:guy'])
+            assert actual == expected
 
     def test_read_monitoring_config(self):
         fake_name = 'partial'

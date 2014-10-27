@@ -280,10 +280,11 @@ def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
     according to deployments.json.
 
     :param soa_dir: The SOA Configuration directory with deployments.json
-    :returns: A list of images (strings) or empty list if deployments.json
+    :returns: A set of images (as strings), or empty set if deployments.json
     doesn't exist in soa_dir
     """
-    pass
+    deployments_json = _get_deployments_json(soa_dir)
+    return set(deployments_json.values())
 
 
 def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
