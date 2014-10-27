@@ -18,7 +18,7 @@ def get_running_images(client):
 def get_mesos_images(running_images):
     mesos_images = []
     for image in running_images:
-        if any([name for name in image.get('Names', '') if name.startswith('/mesos-')]):
+        if any([name for name in image.get('Names', []) if name.startswith('/mesos-')]):
             mesos_images.append(image)
     return mesos_images
 
