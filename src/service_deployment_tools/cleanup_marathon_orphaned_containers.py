@@ -71,6 +71,12 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Stop Docker containers spawned by Mesos which are no longer supposed to be running')
     parser.add_argument(
+        '-n', '--dry-run',
+        action='store_true',
+        dest='dry_run',
+        default=False,
+    )
+    parser.add_argument(
         '-m', '--max-age',
         dest='max_age',
         default=60,
@@ -106,7 +112,8 @@ def main():
 
     for container in running_mesos_old_undeployed_containers:
         log.warning("Killing long-lived, undeployed Mesos container %s" % container)
-        # ### client.kill(container)
+        if not args.dry_run:
+            client.kill(container)
 
 
 if __name__ == "__main__":
