@@ -78,11 +78,13 @@ def main():
 
     client = docker.Client()
     running_containers = get_running_containers(client)
-    log.info("I found these containers running:")
-    [log.info(container) for container in running_containers]
     running_mesos_containers = get_mesos_containers(running_containers)
     running_mesos_old_containers = get_old_containers(running_mesos_containers)
     running_mesos_old_undeployed_containers = get_old_containers(running_mesos_old_containers)
+
+    log.info("I found these containers running:")
+    [log.info(container) for container in running_containers]
+
     for container in running_mesos_old_undeployed_containers:
         log.warning("Killing long-lived, undeployed Mesos container %s" % container)
         # ### client.kill(container)
