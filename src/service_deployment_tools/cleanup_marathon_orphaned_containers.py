@@ -51,8 +51,17 @@ def get_undeployed_containers(containers, deployed_images):
     marathon_tools.get_deployed_images(); return a list of containers that are
     not expected to be running.
     """
-    return [image for image in containers
-            if image.get('Image', 'NO IMAGE') not in deployed_images]
+    undeployed_containers = []
+    for container in containers:
+        image = container.get('Image', 'NO IMAGE')
+        # Strip out the registry url (everything before the first /). The
+        # subsequent re-gluing is just in case someone has a / in their actual
+        # image name.
+        image = '/'.join(image.split('/')[1:])
+
+        if image not in deployed_images:
+            undeployed_containers.append(container)
+    return undeployed_containers
 
 
 def parse_args():

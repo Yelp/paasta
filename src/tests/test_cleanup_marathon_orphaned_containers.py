@@ -12,7 +12,7 @@ old_offset = datetime.timedelta(minutes=61)
 deployed_image = 'services-example_service:paasta-e682882f439de98bc9611f54563ee5c2a7785665'
 mesos_deployed_old = {
     'Created': calendar.timegm((fake_now - old_offset).timetuple()),
-    'Image': deployed_image,
+    'Image': 'docker-registry.example.com:443/%s' % deployed_image,
     'Names': ['/mesos-deployed-old', ],
 }
 mesos_undeployed_old = {
