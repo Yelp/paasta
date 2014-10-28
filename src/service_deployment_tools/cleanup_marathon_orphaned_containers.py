@@ -44,8 +44,8 @@ def get_old_containers(containers, max_age, now=None):
     max_age_timestamp = calendar.timegm((now - age_delta).timetuple())
     log.info('Looking for containers older than %s' % max_age_timestamp)
 
-    return [image for image in containers
-            if image.get('Created') and image.get('Created') < max_age_timestamp]
+    return [container for container in containers
+            if container.get('Created') and container.get('Created') < max_age_timestamp]
 
 
 def get_undeployed_containers(containers, deployed_images):
