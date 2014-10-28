@@ -33,7 +33,7 @@ def get_mesos_containers(containers):
     return mesos_containers
 
 
-def get_old_containers(containers, max_age=60, now=None):
+def get_old_containers(containers, max_age, now=None):
     """Given a list of Docker containers as from get_running_containers(),
     return a list of the containers started more than max_age minutes before
     now.
@@ -42,6 +42,7 @@ def get_old_containers(containers, max_age=60, now=None):
     if now is None:
         now = datetime.datetime.now()
     max_age_timestamp = calendar.timegm((now - age_delta).timetuple())
+    log.info('Looking for containers older than %s' % max_age_timestamp)
 
     return [image for image in containers
             if image.get('Created') and image.get('Created') < max_age_timestamp]
@@ -70,12 +71,18 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Stop Docker containers spawned by Mesos which are no longer supposed to be running')
     parser.add_argument(
+        '-m', '--max-age',
+        dest='max_age',
+        default=60,
+    )
+    parser.add_argument(
         '-v', '--verbose',
         action='store_true',
         dest='verbose',
         default=False,
     )
     args = parser.parse_args()
+    args.max_age = int(args.max_age)
     return args
 
 
@@ -90,7 +97,7 @@ def main():
     client = docker.Client()
     running_containers = get_running_containers(client)
     running_mesos_containers = get_mesos_containers(running_containers)
-    running_mesos_old_containers = get_old_containers(running_mesos_containers)
+    running_mesos_old_containers = get_old_containers(running_mesos_containers, args.max_age)
     deployed_images = get_deployed_images()
     running_mesos_old_undeployed_containers = get_undeployed_containers(running_mesos_old_containers, deployed_images)
 

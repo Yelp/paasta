@@ -7,6 +7,7 @@ import cleanup_marathon_orphaned_containers
 
 
 fake_now = datetime.datetime(2014, 01, 01, 04, 20)
+max_age = 60
 young_offset = datetime.timedelta(minutes=59)
 old_offset = datetime.timedelta(minutes=61)
 deployed_image = 'services-example_service:paasta-e682882f439de98bc9611f54563ee5c2a7785665'
@@ -47,7 +48,7 @@ def test_get_mesos_containers():
 
 
 def test_get_old_containers():
-    actual = cleanup_marathon_orphaned_containers.get_old_containers(running_containers, now=fake_now)
+    actual = cleanup_marathon_orphaned_containers.get_old_containers(running_containers, max_age, now=fake_now)
     assert mesos_deployed_old in actual
     assert mesos_undeployed_old in actual
     assert mesos_undeployed_young not in actual
