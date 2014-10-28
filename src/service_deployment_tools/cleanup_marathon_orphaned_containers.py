@@ -40,7 +40,7 @@ def get_old_containers(containers, max_age, now=None):
     """
     age_delta = datetime.timedelta(minutes=max_age)
     if now is None:
-        now = datetime.datetime.now()
+        now = datetime.datetime.utcnow()
     max_age_timestamp = calendar.timegm((now - age_delta).timetuple())
     log.info('Looking for containers older than %s' % max_age_timestamp)
 
