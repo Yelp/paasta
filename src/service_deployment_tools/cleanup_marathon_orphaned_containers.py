@@ -70,26 +70,22 @@ def parse_args():
 
 def main():
     args = parse_args()
+    logging.basicConfig()
     if args.verbose:
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
 
     client = docker.Client()
-    from pprint import pprint
     running_containers = get_running_containers(client)
-    print "################## RUNNING ##################"
-    pprint(running_containers)
-
-    mesos_containers = get_mesos_containers(running_containers)
-    print "################## MESOS ##################"
-    pprint(mesos_containers)
-
-    # ### old_containers = get_old_containers(mesos_containers)
-    old_containers = get_old_containers(running_containers)
-    # ###
-    print "################## OLD ##################"
-    pprint(old_containers)
+    log.info("I found these containers running:")
+    [log.info(container) for container in running_containers]
+    running_mesos_containers = get_mesos_containers(running_containers)
+    running_mesos_old_containers = get_old_containers(running_mesos_containers)
+    running_mesos_old_undeployed_containers = get_old_containers(running_mesos_old_containers)
+    for container in running_mesos_old_undeployed_containers:
+        log.warning("Killing long-lived, undeployed Mesos container %s" % container)
+        # ### client.kill(container)
 
 
 if __name__ == "__main__":
