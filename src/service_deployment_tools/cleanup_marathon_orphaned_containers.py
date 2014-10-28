@@ -89,7 +89,7 @@ def main():
     running_containers = get_running_containers(client)
     running_mesos_containers = get_mesos_containers(running_containers)
     running_mesos_old_containers = get_old_containers(running_mesos_containers)
-    running_mesos_old_undeployed_containers = get_old_containers(running_mesos_old_containers)
+    running_mesos_old_undeployed_containers = get_undeployed_containers(running_mesos_old_containers)
 
     log.info("I found these containers running:")
     [log.info(container) for container in running_containers]
