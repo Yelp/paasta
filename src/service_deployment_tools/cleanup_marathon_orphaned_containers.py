@@ -10,6 +10,8 @@ import logging
 
 import docker
 
+from service_deployment_tools.marathon_tools import get_deployed_images
+
 log = logging.getLogger('__main__')
 
 
@@ -89,7 +91,8 @@ def main():
     running_containers = get_running_containers(client)
     running_mesos_containers = get_mesos_containers(running_containers)
     running_mesos_old_containers = get_old_containers(running_mesos_containers)
-    running_mesos_old_undeployed_containers = get_undeployed_containers(running_mesos_old_containers)
+    deployed_images = get_deployed_images()
+    running_mesos_old_undeployed_containers = get_undeployed_containers(running_mesos_old_containers, deployed_images)
 
     log.info("I found these containers running:")
     [log.info(container) for container in running_containers]
