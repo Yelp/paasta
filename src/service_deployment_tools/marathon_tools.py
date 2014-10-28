@@ -268,6 +268,7 @@ def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
 
     :param service_name: The name of the service
     :param branch_name: The name of the remote branch to get an image for
+    :param soa_dir: The SOA Configuration directory with deployments.json
     :returns: The name and tag of the docker image for the branch, or '' if
               deployments.json doesn't exist in soa_dir"""
     full_branch = '%s:%s' % (service_name, branch_name)
