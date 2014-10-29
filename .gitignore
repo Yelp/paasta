@@ -1,4 +1,4 @@
-.*.swp
+.*.sw?
 *.py?
 /build/
 /dist/
