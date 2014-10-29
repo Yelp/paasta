@@ -1,12 +1,18 @@
+service-deployment-tools (0.6.4-yelp1) lucid; urgency=low
+
+  * Add cleanup_marathon_orphaned_containers
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 29 Oct 2014 12:21:22 -0700
+
 service-deployment-tools (0.6.3-yelp1) lucid; urgency=low
 
-  * Screwed up the tag/pypi for 0.6.2 :/ 
+  * Screwed up the tag/pypi for 0.6.2 :/
 
  -- Tyler Roscoe <troscoe@yelp.com>  Thu, 23 Oct 2014 16:40:45 -0700
 
 service-deployment-tools (0.6.2-yelp1) lucid; urgency=low
 
-  * Really fix the destroying of apps for MESOS-119 
+  * Really fix the destroying of apps for MESOS-119
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 23 Oct 2014 16:05:50 -0700
 
@@ -24,7 +30,7 @@ service-deployment-tools (0.6.0-yelp1) lucid; urgency=low
 
 service-deployment-tools (0.5.1-yelp1) lucid; urgency=low
 
-  * Work around un-dying marathon tasks by scaling them to 0 first. 
+  * Work around un-dying marathon tasks by scaling them to 0 first.
 
  -- Kyle Anderson <kwa@yelp.com>  Tue, 21 Oct 2014 14:05:13 -0700
 
@@ -36,7 +42,7 @@ service-deployment-tools (0.5.0-yelp1) lucid; urgency=low
 
 service-deployment-tools (0.4.9-yelp1) lucid; urgency=low
 
-  * Fixed marathon app id detection. MESOS-115 
+  * Fixed marathon app id detection. MESOS-115
 
  -- Kyle Anderson <kwa@yelp.com>  Tue, 14 Oct 2014 11:29:31 -0700
 
@@ -48,7 +54,7 @@ service-deployment-tools (0.4.8-yelp1) lucid; urgency=low
 
 service-deployment-tools (0.4.7-yelp1) lucid; urgency=low
 
-  * More fixes on locks and timeouts to make it more marathon 7 compatible. 
+  * More fixes on locks and timeouts to make it more marathon 7 compatible.
 
  -- Kyle Anderson <kwa@yelp.com>  Fri, 10 Oct 2014 11:23:42 -0700
 
@@ -98,19 +104,19 @@ service-deployment-tools (0.3.4-yelp1) lucid; urgency=low
 
 service-deployment-tools (0.3.3-yelp1ubuntu1) lucid; urgency=low
 
-  * Fixing a bug in get_docker_url to return '' if no docker_image passed 
+  * Fixing a bug in get_docker_url to return '' if no docker_image passed
 
  -- James McGuinness <jrm@yelp.com>  Tue, 19 Aug 2014 09:56:34 -0700
 
 service-deployment-tools (0.3.3-yelp1) lucid; urgency=low
 
-  * Changing MarathonClient timeouts 
+  * Changing MarathonClient timeouts
 
  -- James McGuinness <jrm@yelp.com>  Sun, 17 Aug 2014 17:19:20 -0700
 
 service-deployment-tools (0.3.2-yelp1) lucid; urgency=low
 
-  * Fixing a bug in replication check 
+  * Fixing a bug in replication check
 
  -- James McGuinness <jrm@yelp.com>  Sun, 17 Aug 2014 16:22:40 -0700
 
@@ -149,7 +155,7 @@ service-deployment-tools (0.2.12-yelp1) lucid; urgency=low
 
 service-deployment-tools (0.2.11-yelp1) lucid; urgency=low
 
-  * Fixing a bug in check_marathon_services_replication 
+  * Fixing a bug in check_marathon_services_replication
 
  -- James McGuinness <jrm@yelp.com>  Wed, 13 Aug 2014 18:49:16 -0700
 
@@ -189,7 +195,7 @@ service-deployment-tools (0.2.7-yelp1) lucid; urgency=low
 service-deployment-tools (0.2.6-yelp1) lucid; urgency=low
 
   * Changing setup_marathon_job's check_every to 1m
-  * Made generate_deployments_json verify docker urls and fallback if invalid 
+  * Made generate_deployments_json verify docker urls and fallback if invalid
 
  -- James McGuinness <jrm@yelp.com>  Mon, 11 Aug 2014 18:55:11 -0700
 
@@ -300,13 +306,13 @@ service-deployment-tools (0.1.21-yelp1) lucid; urgency=low
 
 service-deployment-tools (0.1.20-yelp1) lucid; urgency=low
 
-  * Fixing an import error with check http frontends script 
+  * Fixing an import error with check http frontends script
 
  -- James McGuinness <jrm@yelp.com>  Mon, 28 Jul 2014 13:34:36 -0700
 
 service-deployment-tools (0.1.19-yelp1) lucid; urgency=low
 
-  * continuing to work on parameterizing the docker containers 
+  * continuing to work on parameterizing the docker containers
 
  -- Sophie Haskins <shaskins@yelp.com>  Mon, 28 Jul 2014 13:02:46 -0700
 
@@ -345,13 +351,13 @@ service-deployment-tools (0.1.14-yelp1) lucid; urgency=low
 
 service-deployment-tools (0.1.13-yelp1) lucid; urgency=low
 
-  * Fixing another silly bug 
+  * Fixing another silly bug
 
  -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 14:48:21 -0700
 
 service-deployment-tools (0.1.12-yelp1) lucid; urgency=low
 
-  * Fixing a silly bug with iterations sometimes being ints 
+  * Fixing a silly bug with iterations sometimes being ints
 
  -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 14:30:48 -0700
 
@@ -359,7 +365,7 @@ service-deployment-tools (0.1.11-yelp1) lucid; urgency=low
 
   * Added monitoring to setup_marathon_job
   * Changed marathon job ids to change _ to -
-  * Removed verbosity from deploy_marathon_services, as its cron job is threaded 
+  * Removed verbosity from deploy_marathon_services, as its cron job is threaded
 
  -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 14:15:14 -0700
 
