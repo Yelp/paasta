@@ -114,6 +114,7 @@ def main():
         log.warning("Killing long-lived, undeployed Mesos container %s" % container)
         if not args.dry_run:
             client.kill(container)
+            client.remove_image(container['Image'], force=True)
 
 
 if __name__ == "__main__":
