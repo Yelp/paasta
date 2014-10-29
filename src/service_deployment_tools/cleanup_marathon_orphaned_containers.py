@@ -113,9 +113,20 @@ def main():
     for container in running_mesos_old_undeployed_containers:
         log.warning('Killing long-lived, undeployed Mesos container %s' % container)
         if not args.dry_run:
-            client.kill(container)
-            client.remove_image(container['Image'], force=True)
+            # The docker-py docs are short on details about what kinds of
+            # exceptions can be raised when something goes wrong. I see a bunch
+            # of custom exceptions in docker.errors. Everything is done with
+            # requests which has its own set of things it can throw.
+            #
+            # So: catch everything, log it, and move on.
+            try:
+                client.kill(container)
+                client.remove_container(container)
+                client.remove_image(container['Image'])
+            except Exception as e:
+                log.critical('Problem while stopping/removing container %s' % container)
+                log.critical(e)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
     main()
