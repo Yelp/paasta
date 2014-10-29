@@ -107,11 +107,11 @@ def main():
     deployed_images = get_deployed_images()
     running_mesos_old_undeployed_containers = get_undeployed_containers(running_mesos_old_containers, deployed_images)
 
-    log.info("I found these containers running:")
+    log.info('I found these containers running:')
     [log.info(container) for container in running_containers]
 
     for container in running_mesos_old_undeployed_containers:
-        log.warning("Killing long-lived, undeployed Mesos container %s" % container)
+        log.warning('Killing long-lived, undeployed Mesos container %s' % container)
         if not args.dry_run:
             client.kill(container)
             client.remove_image(container['Image'], force=True)
