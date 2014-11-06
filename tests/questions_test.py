@@ -65,6 +65,8 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
                 "routes": [
                     {'source': 'uswest1aprod',
                      'destinations': ['sfo1', 'sfo2']},
+                    {'source': 'uswest1bprod',
+                     'destinations': ['sfo1', 'sfo2']},
                 ]
         }}
 

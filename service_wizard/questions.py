@@ -40,6 +40,8 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
         "routes": [
             {'source': 'uswest1aprod',
              'destinations': ['sfo1', 'sfo2']},
+            {'source': 'uswest1bprod',
+             'destinations': ['sfo1', 'sfo2']},
         ]
 
     }
