@@ -63,9 +63,7 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
             "main": {
                 "proxy_port": self.suggested_port,
                 "routes": [
-                    {'source': 'uswest1aprod',
-                     'destinations': ['sfo1', 'sfo2']},
-                    {'source': 'uswest1bprod',
+                    {'source': 'uswest1prod',
                      'destinations': ['sfo1', 'sfo2']},
                 ]
         }}
