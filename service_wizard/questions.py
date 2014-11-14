@@ -38,9 +38,7 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
         # Default routes for AWSPROD-42
         # To be removed once AWSPROD has its own srv boxes
         "routes": [
-            {'source': 'uswest1aprod',
-             'destinations': ['sfo1', 'sfo2']},
-            {'source': 'uswest1bprod',
+            {'source': 'uswest1prod',
              'destinations': ['sfo1', 'sfo2']},
         ]
 
