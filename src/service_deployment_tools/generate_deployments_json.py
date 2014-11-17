@@ -27,16 +27,18 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
+import git
 import json
 import logging
 import os
-import tempfile
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
-import git
+import sys
+import tempfile
 
 
 log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler(sys.stdout))
 TARGET_FILE = 'deployments.json'
 
 
