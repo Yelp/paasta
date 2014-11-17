@@ -137,7 +137,7 @@ def get_service_directories(soa_dir):
     # Uses os.walk to create a generator, then calls .next() to get
     # the first entry of the generator (the entries in soa_dir itself).
     # The generator returns pwd, dirs, files, and we want dirs.
-    return os.walk(soa_dir).next()[1]
+    return sorted(os.walk(soa_dir).next()[1])
 
 
 def get_branch_mappings(soa_dir, old_mappings):

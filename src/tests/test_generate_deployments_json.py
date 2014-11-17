@@ -67,8 +67,9 @@ def test_get_remote_branches_for_service():
 
 def test_get_service_directories():
     fake_dir = '/red/version'
-    expected = ['tier1', 't3', 'racks']
-    fake_triple = (fake_dir, expected, 'nuuuuuuuuuu')
+    fake_dir_entities = ['z', 'tier1', 't3', 'racks']
+    expected = sorted(fake_dir_entities)
+    fake_triple = (fake_dir, fake_dir_entities, 'nuuuuuuuuuu')
     fake_generator = mock.Mock(next=mock.Mock(return_value=fake_triple))
     with mock.patch('os.walk', return_value=fake_generator) as walk_patch:
         actual = generate_deployments_json.get_service_directories(fake_dir)
