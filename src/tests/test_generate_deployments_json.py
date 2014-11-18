@@ -11,9 +11,9 @@ def test_get_git_url():
 
 def test_get_branches_from_marathon_file():
     fake_dir = '/nail/etc/soa/dir'
-    fake_fname = 'marathon-boston.yaml'
+    fake_fname = 'marathon-boston-devc-with-extra-dashes.yaml'
     fake_config = {'test1': {'branch': 'ranch'}, 'test2': {}}
-    expected = set(['ranch', 'paasta-boston.test2'])
+    expected = set(['ranch', 'paasta-boston-devc-with-extra-dashes.test2'])
     with contextlib.nested(
         mock.patch('service_configuration_lib.read_service_information',
                    return_value=fake_config),

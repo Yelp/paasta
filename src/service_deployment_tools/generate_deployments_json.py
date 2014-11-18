@@ -85,7 +85,9 @@ def get_branches_from_marathon_file(file_dir, filename):
         # Change this to else when we don't care about docker_image anymore
         elif 'docker_image' not in config[instance]:
             try:
-                cluster = filename.split('-')[1].split('.')[0]
+                # cluster may contain dashes (and frequently does) so
+                # reassemble the cluster after pulling out the marathon bit.
+                cluster = '-'.join(filename.split('-')[1:]).split('.')[0]
                 target_branch = marathon_tools.get_default_branch(cluster, instance)
             except IndexError:
                 pass
@@ -156,10 +158,14 @@ def get_branch_mappings(soa_dir, old_mappings):
         log.info('Examining service %s', service)
         valid_branches = get_branches_for_service(soa_dir, service)
         if not valid_branches:
-            log.info('Service %s has no valid branches.', service)
+            log.info('Service %s has no valid branches. Skipping.', service)
             continue
         remote_branches = get_remote_branches_for_service(mygit, service)
-        for head, branch in filter(lambda (head, branch): branch in valid_branches, remote_branches):
+        head_and_branch_from_valid_remote_branches = filter(lambda (head, branch): branch in valid_branches, remote_branches)
+        if not head_and_branch_from_valid_remote_branches:
+            log.info('Service %s has no remote branches which are valid. Skipping.', service)
+            continue
+        for head, branch in head_and_branch_from_valid_remote_branches:
             branch_alias = '%s:%s' % (service, branch)
             docker_image = 'services-%s:paasta-%s' % (service, head)
             if marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
