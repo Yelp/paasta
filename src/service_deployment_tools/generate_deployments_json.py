@@ -103,7 +103,7 @@ def get_branches_for_service(soa_dir, service):
     valid_branches = set([])
     working_dir = os.path.join(soa_dir, service)
     for fname in os.listdir(working_dir):
-        if 'marathon-' in fname:
+        if fname.startswith('marathon-'):
             valid_branches = valid_branches.union(get_branches_from_marathon_file(working_dir, fname))
     return valid_branches
 
@@ -156,19 +156,19 @@ def get_branch_mappings(soa_dir, old_mappings):
         log.info('Examining service %s', service)
         valid_branches = get_branches_for_service(soa_dir, service)
         if not valid_branches:
-            log.info('Service %s has no branches.', service)
+            log.info('Service %s has no valid branches.', service)
             continue
         remote_branches = get_remote_branches_for_service(mygit, service)
         for head, branch in filter(lambda (head, branch): branch in valid_branches, remote_branches):
             branch_alias = '%s:%s' % (service, branch)
             docker_image = 'services-%s:paasta-%s' % (service, head)
-            if not marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
+            if marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
+                log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
+                mappings[branch_alias] = docker_image
+            else:
                 log.error('Branch %s should be mapped to image %s, but that image isn\'t \
                            in the docker_registry %s', branch_alias, docker_image, docker_registry)
                 mappings[branch_alias] = old_mappings.get(branch_alias, None)
-            else:
-                log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
-                mappings[branch_alias] = docker_image
     try:
         os.rmdir(tmp_dir)
     except OSError:
