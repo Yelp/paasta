@@ -20,6 +20,7 @@ Command line options:
 """
 import argparse
 import logging
+import sys
 
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
@@ -29,6 +30,7 @@ from marathon import MarathonClient
 
 ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger('__main__')
+log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def parse_args():

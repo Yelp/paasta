@@ -27,22 +27,24 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
-import sys
-import logging
-import argparse
-import service_configuration_lib
-from service_deployment_tools import monitoring_tools
-from service_deployment_tools import marathon_tools
-from service_deployment_tools import bounce_lib
-from marathon import MarathonClient
 from marathon.exceptions import NotFoundError, InternalServerError
+from marathon import MarathonClient
+import argparse
+import logging
 import pysensu_yelp
+import service_configuration_lib
+import sys
+
+from service_deployment_tools import bounce_lib
+from service_deployment_tools import marathon_tools
+from service_deployment_tools import monitoring_tools
 
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
 ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger('__main__')
+log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def parse_args():

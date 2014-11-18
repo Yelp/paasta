@@ -20,8 +20,9 @@ CRITICAL.
 """
 import argparse
 import logging
-import service_configuration_lib
 import pysensu_yelp
+import service_configuration_lib
+import sys
 
 from service_deployment_tools.monitoring import replication_utils
 from service_deployment_tools import marathon_tools
@@ -30,6 +31,7 @@ from service_deployment_tools import monitoring_tools
 
 ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger(__name__)
+log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def send_event(service_name, namespace, soa_dir, status, output):

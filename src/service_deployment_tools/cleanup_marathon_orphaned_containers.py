@@ -7,12 +7,14 @@ import argparse
 import calendar
 import datetime
 import logging
+import sys
 
 import docker
 
 from service_deployment_tools.marathon_tools import get_deployed_images
 
 log = logging.getLogger('__main__')
+log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def get_running_containers(client):

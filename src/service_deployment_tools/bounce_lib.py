@@ -1,14 +1,14 @@
 #!/usr/bin/env python
 from contextlib import contextmanager, nested
+from kazoo.client import KazooClient
+from kazoo.exceptions import LockTimeout
+from service_deployment_tools.monitoring.replication_utils import get_replication_for_services
 import fcntl
 import logging
+import marathon_tools
 import os
 import signal
 import time
-from kazoo.client import KazooClient
-from kazoo.exceptions import LockTimeout
-import marathon_tools
-from service_deployment_tools.monitoring.replication_utils import get_replication_for_services
 
 
 log = logging.getLogger('__main__')
