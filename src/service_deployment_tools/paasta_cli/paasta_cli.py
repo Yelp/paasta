@@ -2,7 +2,8 @@
 
 # To enable autocompletion, run:
 # eval "$(register-python-argcomplete paasta-cli.py)"
-"""Usage: ./paasta-cli.py [options]
+# TODO: Move the above command to the build process
+"""Usage: paasta [options]
 
 A paasta client to interface with the Yelp paasta stack.
 
@@ -13,39 +14,22 @@ Command line options:
 import argcomplete
 import argparse
 
+from cmds.list import paasta_list
+from cmds.check import paasta_check
+
 
 def commands():
     """
-    :return: A list of commands that paasta-cli can execute
+    :return: A list of commands that paasta_cli can execute
     """
     return ['check', 'list']
 
 
-def get_services():
-    """
-    :return: a list of Yelp services that are currently running
-    """
-    # TODO: Replace with actual call that gets services
-    return ["mock_service_1", "mock_service_2"]
-
-
-def paasta_check():
-    """
-    Analyze the service in the PWD to determine if it is paasta ready
-    """
-    # TODO: Write this method
-    print "Executing check"
-
-
-def paasta_list():
-    """
-    Print a list of Yelp services currently running
-    """
-    for service in get_services():
-        print service
-
-
 def parse_args():
+    """
+    Initialize autocompletion and configure the argument parser
+    :return: a namespace mapping parameter names to the inputs from sys.argv
+    """
     parser = argparse.ArgumentParser(description="Yelp PAASTA client")
 
     parser.add_argument('cmd', help='paasta client command to execute',
@@ -57,6 +41,9 @@ def parse_args():
 
 
 def main():
+    """
+    Performs a paasta cli call
+    """
 
     args = parse_args()
 
