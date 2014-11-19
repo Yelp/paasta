@@ -1,3 +1,9 @@
+service-deployment-tools (0.6.7-yelp1) lucid; urgency=low
+
+  * Bump to use the latest service_configuration_lib with real caching 
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 18 Nov 2014 16:05:42 -0800
+
 service-deployment-tools (0.6.6-yelp1) lucid; urgency=low
 
   * Fix more logging in runnable scripts
