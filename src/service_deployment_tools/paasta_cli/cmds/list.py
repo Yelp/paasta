@@ -6,6 +6,12 @@ Contains methods used by the paasta client to list Yelp services
 from service_deployment_tools import marathon_tools
 
 
+def add_subparser(subparsers):
+    list_parser = subparsers.add_parser(
+        'list', description="Display a list of Yelp services.")
+    list_parser.set_defaults(command=paasta_list)
+
+
 def get_services():
     """
     :return: a list of marathon services that are currently running
