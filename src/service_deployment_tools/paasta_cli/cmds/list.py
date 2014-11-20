@@ -3,24 +3,26 @@
 Contains methods used by the paasta client to list Yelp services
 """
 
-from service_deployment_tools import marathon_tools
+from service_configuration_lib import read_services_configuration
 
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'list', description="Display a list of Yelp services.")
     list_parser.set_defaults(command=paasta_list)
+    list_parser.add_argument(
+        '-s', '--sort', action='store_true', default='False',
+        help='sort alphabetically')
 
 
 def get_services():
     """
     :return: a list of marathon services that are currently running
     """
-    # TODO: Return all Yelp services, not just marathon services
-    return marathon_tools.get_marathon_services_for_cluster()
+    return read_services_configuration().keys()
 
 
-def paasta_list():
+def paasta_list(args):
     """
     Print a list of Yelp services currently running
     """

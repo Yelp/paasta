@@ -46,7 +46,7 @@ def main():
     """
 
     args = parse_args()
-    args.command()
+    args.command(args)
 
 if __name__ == '__main__':
     main()

@@ -11,7 +11,7 @@ def add_subparser(subparsers):
     check_parser.set_defaults(command=paasta_check)
 
 
-def paasta_check():
+def paasta_check(args):
     """
     Analyze the service in the PWD to determine if it is paasta ready
     """
