@@ -12,4 +12,4 @@ usr/share/python/service-deployment-tools/bin/generate_deployments_json.py usr/b
 usr/share/python/service-deployment-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
 usr/share/python/service-deployment-tools/bin/generate_services_yaml.py usr/bin/generate_services_yaml
 usr/share/python/service-deployment-tools/bin/cleanup_marathon_orphaned_containers.py usr/bin/cleanup_marathon_orphaned_containers
-usr/share/python/service-deployment-tools/bin/paasta_cli.py usr/bin/paasta_cli
+usr/share/python/service-deployment-tools/bin/paasta_cli.py usr/bin/paasta

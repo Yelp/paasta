@@ -24,7 +24,8 @@ def paasta_commands():
     :return: a list of string such as ['list','check'] that correspond to a
     file in cmds
     """
-    path = '%s/cmds/*.py' % os.path.abspath('.')
+    my_dir = os.path.dirname(os.path.abspath(__file__))
+    path = os.path.join(my_dir, 'cmds', '*.py')
     for file_name in glob.glob(path):
         basename = os.path.basename(file_name)
         root, _ = os.path.splitext(basename)
@@ -68,7 +69,7 @@ def parse_args():
     Initialize autocompletion and configure the argument parser
     :return: a namespace mapping parameter names to the inputs from sys.argv
     """
-    parser = argparse.ArgumentParser(description="Yelp PAASTA client")
+    parser = argparse.ArgumentParser(description="Yelp PaaSTA client")
 
     subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help")
 
