@@ -7,9 +7,6 @@ Contains helper functions common to all paasta commands or the client
 import glob
 import os
 
-# List of commands the paasta client can execute
-CMDS = None
-
 
 def paasta_commands():
     """
@@ -18,21 +15,10 @@ def paasta_commands():
     :return: a list of string such as ['list','check'] that correspond to a
     file in cmds
     """
-    global CMDS
-
-    if CMDS is None:
-
-        CMDS = []
-
-        path = "%s/cmds/*.py" % os.path.abspath('.')
-
-        for file_name in glob.glob(path):
-            start = file_name.rfind('/') + 1
-            end = file_name.rfind('.')
-            CMDS.append(file_name[start:end])
-
-        # Remove __init__.py
-        CMDS.sort()
-        CMDS.pop(0)
-
-    return CMDS
+    path = '%s/cmds/*.py' % os.path.abspath('.')
+    for file_name in glob.glob(path):
+        basename = os.path.basename(file_name)
+        root, _ = os.path.splitext(basename)
+        if root == '__init__':
+            continue
+        yield root
