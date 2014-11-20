@@ -4,23 +4,63 @@
 # To enable autocompletion, run:
 # eval "$(register-python-argcomplete paasta_cli.py)"
 # TODO: Move the above command to the build process
-"""Usage: paasta [options]
+"""
+A command line tool for viewing information from the PaaSTA stack.
 
-A paasta client to interface with the Yelp paasta stack.
-
-Command line options:
-[check | list] : name of paasta command to execute
-
-NOTE: make paasta_cli executable for tab complete to function
+NOTE: make paasta_cli executable for tab completion to function properly
 
 """
-
+import glob
+import os
 
 import argcomplete
 import argparse
 
-from utils.arg_utils import add_subparser
-from utils.cmd_utils import paasta_commands
+
+def paasta_commands():
+    """
+    Read the files names in the cmds directory to determine the various commands
+    the paasta client is able to execute
+    :return: a list of string such as ['list','check'] that correspond to a
+    file in cmds
+    """
+    path = '%s/cmds/*.py' % os.path.abspath('.')
+    for file_name in glob.glob(path):
+        basename = os.path.basename(file_name)
+        root, _ = os.path.splitext(basename)
+        if root == '__init__':
+            continue
+        yield root
+
+
+def load_method(module_name, method_name):
+    """
+    Return a function given a module and method name
+    :param module_name: a string
+    :param method_name: a string
+    :return: a function
+    """
+    module = __import__(module_name, fromlist=[method_name])
+    method = getattr(module, method_name)
+    return method
+
+
+def add_subparser(command, subparsers):
+    """
+    Given a command name, paasta_cmd, execute the add_subparser method
+    implemented in paasta_cmd.py
+
+    Each paasta client command must implement a method called add_subparser.
+    This allows the client to dynamically add subparsers to its subparser, which
+    provides the benefits of argcomplete/argparse but gets it done in a modular
+    fashion.
+
+    :param command: a simple string - e.g. 'list'
+    :param subparsers: an ArgumentParser object
+    """
+    module_name = 'cmds.%s' % command
+    add_subparser_fn = load_method(module_name, 'add_subparser')
+    add_subparser_fn(subparsers)
 
 
 def parse_args():
@@ -47,6 +87,7 @@ def main():
 
     args = parse_args()
     args.command(args)
+
 
 if __name__ == '__main__':
     main()

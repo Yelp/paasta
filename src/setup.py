@@ -42,5 +42,7 @@ setup(
         'service_deployment_tools/generate_services_yaml.py',
         'service_deployment_tools/cleanup_marathon_orphaned_containers.py',
         'service_deployment_tools/paasta_cli/paasta_cli.py',
+        'service_deployment_tools/paasta_cli/cmds/check.py',
+        'service_deployment_tools/paasta_cli/cmds/list.py',
     ]
 )
