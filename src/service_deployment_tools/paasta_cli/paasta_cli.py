@@ -59,7 +59,7 @@ def add_subparser(command, subparsers):
     :param command: a simple string - e.g. 'list'
     :param subparsers: an ArgumentParser object
     """
-    module_name = 'cmds.%s' % command
+    module_name = 'service_deployment_tools.paasta_cli.cmds.%s' % command
     add_subparser_fn = load_method(module_name, 'add_subparser')
     add_subparser_fn(subparsers)
 
