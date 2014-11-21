@@ -1,3 +1,9 @@
+service-deployment-tools (0.6.9-yelp1) lucid; urgency=low
+
+  * Fixed broken tests
+ 
+ -- Karthig Balendran <karthig@yelp.com>  Fri, 21 Nov 2014 11:42:55 -0800
+
 service-deployment-tools (0.6.8-yelp1) lucid; urgency=low
 
   * Added paasta cli command line utility
