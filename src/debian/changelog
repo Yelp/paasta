@@ -1,3 +1,9 @@
+service-deployment-tools (0.6.8-yelp1) lucid; urgency=low
+
+  * Added paasta cli command line utility
+
+ -- Karthig Balendran <karthig@yelp.com>  Thu, 20 Nov 2014 16:37:41 -0800
+
 service-deployment-tools (0.6.7-yelp1) lucid; urgency=low
 
   * Bump to use the latest service_configuration_lib with real caching 
