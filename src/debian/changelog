@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.0-yelp1) lucid; urgency=low
+
+  * Dynamically load module using absolute path 
+
+ -- Karthig Balendran <karthig@yelp.com>  Fri, 21 Nov 2014 16:15:13 -0800
+
 service-deployment-tools (0.6.9-yelp1) lucid; urgency=low
 
   * Fixed broken tests
