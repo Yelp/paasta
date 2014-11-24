@@ -26,7 +26,7 @@ def paasta_commands():
     :return: a list of string such as ['list','check'] that correspond to a
     file in cmds
     """
-    cmds_dir_path = os.path.dirname(cmds.__file__)
+    cmds_dir_path = os.path.dirname(os.path.abspath(cmds.__file__))
     path = os.path.join(cmds_dir_path, '*.py')
 
     for file_name in glob.glob(path):

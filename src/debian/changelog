@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.1-yelp1) lucid; urgency=low
+
+  * Add integration tests for paasta list 
+
+ -- Karthig Balendran <karthig@yelp.com>  Mon, 24 Nov 2014 11:38:07 -0800
+
 service-deployment-tools (0.7.0-yelp1) lucid; urgency=low
 
   * Dynamically load module using absolute path 
