@@ -8,7 +8,7 @@ from service_deployment_tools.paasta_cli import paasta_cli
 
 @patch('sys.stdout', new_callable=StringIO)
 @patch('service_deployment_tools.paasta_cli.cmds.list.read_services_configuration')
-@patch('service_deployment_tools.paasta_cli.paasta_cli.paasta_commands')
+@patch('service_deployment_tools.paasta_cli.paasta_cli.paasta_commands_dir')
 def test_paasta_list(mock_paasta_commands, mock_read_services, mock_stdout):
     # 'paasta list' with no args prints list of services in list.get_services
 

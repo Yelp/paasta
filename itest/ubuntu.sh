@@ -22,7 +22,8 @@ SERVICE_NAMESPACES="fake_service_uno.main
 fake_service_uno.canary
 fake_service_dos.all_fake"
 
-PAASTA_COMMANDS="list"
+PAASTA_COMMANDS="list
+check"
 
 mkdir -p /nail/etc
 [ -L /nail/etc/services ] || ln -s /work/itest/fake_services /nail/etc/services

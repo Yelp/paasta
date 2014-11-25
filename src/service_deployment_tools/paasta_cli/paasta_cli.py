@@ -10,43 +10,12 @@ A command line tool for viewing information from the PaaSTA stack.
 NOTE: make paasta_cli executable for tab completion to function properly
 
 """
-import glob
-import os
-
 import argcomplete
 import argparse
 
 from service_deployment_tools.paasta_cli import cmds
-
-
-def paasta_commands():
-    """
-    Read the files names in the cmds directory to determine the various commands
-    the paasta client is able to execute
-    :return: a list of string such as ['list','check'] that correspond to a
-    file in cmds
-    """
-    cmds_dir_path = os.path.dirname(os.path.abspath(cmds.__file__))
-    path = os.path.join(cmds_dir_path, '*.py')
-
-    for file_name in glob.glob(path):
-        basename = os.path.basename(file_name)
-        root, _ = os.path.splitext(basename)
-        if root == '__init__':
-            continue
-        yield root
-
-
-def load_method(module_name, method_name):
-    """
-    Return a function given a module and method name
-    :param module_name: a string
-    :param method_name: a string
-    :return: a function
-    """
-    module = __import__(module_name, fromlist=[method_name])
-    method = getattr(module, method_name)
-    return method
+from service_deployment_tools.paasta_cli.utils \
+    import file_names_in_dir as paasta_commands_dir, load_method
 
 
 def add_subparser(command, subparsers):
@@ -76,7 +45,7 @@ def parse_args():
 
     subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help")
 
-    for command in paasta_commands():
+    for command in paasta_commands_dir(cmds):
         add_subparser(command, subparsers)
 
     argcomplete.autocomplete(parser)
