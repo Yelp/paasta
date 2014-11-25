@@ -1,13 +1,5 @@
-def check():
+def is_in_smartstack():
     """
-    Return the port number if service is running in smartstack, else False
+    Return true if service is running in smartstack
     """
-    if smartstack_check():
-        return True, "Is in smartstack"
-    else:
-        return False, "Not in smartstack"
-
-
-def smartstack_check():
-    # TODO: write logic
-    return True
+    return False
