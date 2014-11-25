@@ -1,20 +1,13 @@
-"""
-Every file in this directory must implement 'check', 'success', 'fail'
-"""
-from service_deployment_tools.paasta_cli.utils import check_mark, x_mark
-
-
 def check():
     """
     Return true if dockerfile is present
     """
+    if docker_check():
+        return True, "Dockerfile present"
+    else:
+        return False, "No dockerfile present"
+
+
+def docker_check():
     # TODO: write logic
     return False
-
-
-def success():
-    print "%s Dockerfile present" % check_mark()
-
-
-def fail():
-    print "%s No dockerfile present" % x_mark()
