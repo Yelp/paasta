@@ -44,6 +44,7 @@ def is_file_in_dir(file_name, path):
                 return True
     return False
 
+
 def check_mark():
     return u'\u2713'.encode('utf-8')
 

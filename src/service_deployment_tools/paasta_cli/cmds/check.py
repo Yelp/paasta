@@ -43,7 +43,7 @@ def paasta_check(args):
     else:
         print file_not_found_message('monitoring.yaml')
 
-    if smartstack_check.is_in_smartstack():
-        print "%s is in smartstack." % utils.check_mark()
+    if smartstack_check.smartstack_yaml_exists():
+        print file_found_message('smartstack.yaml')
     else:
-        print "%s service is not in smartstack" % utils.x_mark()
+        print file_not_found_message('smartstack.yaml')
