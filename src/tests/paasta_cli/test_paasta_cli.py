@@ -23,3 +23,13 @@ def test_paasta_list(mock_paasta_commands, mock_read_services, mock_stdout):
     paasta_cli.main()
     output = mock_stdout.getvalue()
     assert output == 'service_1\nservice_2\n'
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.check.docker_check')
+def test_paasta_check(mock_docker_check):
+    # 'paasta list' results in check.paasta_check() getting executed
+
+    mock_docker_check.dockerfile_exists.return_value = None
+    sys.argv = ['./paasta_cli', 'check']
+    paasta_cli.main()
+    assert mock_docker_check.dockerfile_exists.called
