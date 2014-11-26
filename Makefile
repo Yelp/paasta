@@ -4,6 +4,7 @@ GID:=`id -g`
 DOCKER_RUN_LUCID:=docker run -t -v  $(CURDIR):/work:rw soatools_lucid_container
 DOCKER_RUN_TRUSTY:=docker run -t -v  $(CURDIR):/work:rw soatools_trusty_container
 DOCKER_RUN_CHRONOS:=docker run -t -i --link=chronos_itest_chronos:chronos -v  $(CURDIR):/work:rw chronos_itest/itest
+DOCKER_QUICK_START:=docker run -t -i -v $(CURDIR):/work:rw soatools_lucid_container
 
 .PHONY: all docs
 
@@ -45,6 +46,9 @@ test_trusty: build_trusty_docker
 build_trusty_docker:
 	[ -d dist ] || mkdir dist
 	cd dockerfiles/trusty/ && docker build -t "soatools_trusty_container" .
+
+quick_start:
+	$(DOCKER_QUICK_START) /bin/bash
 
 
 clean:
