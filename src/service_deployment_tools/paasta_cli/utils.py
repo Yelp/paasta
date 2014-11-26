@@ -46,8 +46,36 @@ def is_file_in_dir(file_name, path):
 
 
 def check_mark():
-    return u'\u2713'.encode('utf-8')
+    """
+    Return output the can print a checkmark
+    """
+    return PaastaColors.green(u'\u2713'.encode('utf-8'))
 
 
 def x_mark():
-    return u'\u2717'.encode('utf-8')
+    """
+    Return output the can print an x mark
+    """
+    return PaastaColors.red(u'\u2717'.encode('utf-8'))
+
+
+class PaastaColors:
+    """
+    Collection of static variables and methods to assist in coloring text
+    """
+    # ANSI colour codes
+    DEFAULT = '\033[0m'
+    RED = '\033[31m'
+    GREEN = '\033[32m'
+
+    @staticmethod
+    def green(text):
+        return PaastaColors.color_text(PaastaColors.GREEN, text)
+
+    @staticmethod
+    def red(text):
+        return PaastaColors.color_text(PaastaColors.RED, text)
+
+    @staticmethod
+    def color_text(color, text):
+        return color + text + PaastaColors.DEFAULT
