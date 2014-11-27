@@ -1,35 +1,23 @@
 import sys
-from StringIO import StringIO
 
-from mock import patch, MagicMock
+from mock import patch
 
 from service_deployment_tools.paasta_cli import paasta_cli
 
 
-@patch('sys.stdout', new_callable=StringIO)
-@patch('service_deployment_tools.paasta_cli.cmds.list.read_services_configuration')
-@patch('service_deployment_tools.paasta_cli.paasta_cli.paasta_commands_dir')
-def test_paasta_list(mock_paasta_commands, mock_read_services, mock_stdout):
-    # 'paasta list' with no args prints list of services in list.get_services
-
-    mock_paasta_commands.return_value = ['list']
-
-    attrs = {'keys.return_value': ['service_1', 'service_2']}
-    mock_function = MagicMock()
-    mock_function.configure_mock(**attrs)
-    mock_read_services.return_value = mock_function
+@patch('service_deployment_tools.paasta_cli.cmds.list.paasta_list')
+def test_paasta_list(mock_paasta_list):
+    # 'paasta list' results in check.paasta_list getting executed
 
     sys.argv = ['./paasta_cli', 'list']
     paasta_cli.main()
-    output = mock_stdout.getvalue()
-    assert output == 'service_1\nservice_2\n'
+    assert mock_paasta_list.called
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.check.docker_check')
-def test_paasta_check(mock_docker_check):
-    # 'paasta list' results in check.paasta_check() getting executed
+@patch('service_deployment_tools.paasta_cli.cmds.check.paasta_check')
+def test_paasta_check(mock_paasta_check):
+    # 'paasta check' results in check.paasta_check getting executed
 
-    mock_docker_check.dockerfile_exists.return_value = None
     sys.argv = ['./paasta_cli', 'check']
     paasta_cli.main()
-    assert mock_docker_check.dockerfile_exists.called
+    assert mock_paasta_check.called
