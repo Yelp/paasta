@@ -13,15 +13,10 @@ def test_list_paasta_check(
 
     # Ensure each check in 'paasta_check' is called
 
-    mock_deploy_check.deploy_yaml_exists.return_value = None
-    mock_docker_check.dockerfile_exists.return_value = None
-    mock_sensu_check.monitoring_yaml_exists.return_value = None
-    mock_smartstart_check.smartstack_yaml_exists.return_value = None
-
     args = ['./paasta_cli', 'check']
     paasta_check(args)
 
-    assert mock_deploy_check.deploy_yaml_exists.called
-    assert mock_docker_check.dockerfile_exists.called
-    assert mock_sensu_check.monitoring_yaml_exists.called
-    assert mock_smartstart_check.smartstack_yaml_exists.called
+    assert mock_deploy_check.called
+    assert mock_docker_check.called
+    assert mock_sensu_check.called
+    assert mock_smartstart_check.called
