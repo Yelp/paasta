@@ -12,15 +12,16 @@ from service_deployment_tools.paasta_cli.utils import \
 def add_subparser(subparsers):
     check_parser = subparsers.add_parser(
         'check',
-        description="Determine whether service in pwd is paasta ready.")
+        description="Execute 'paasta check' from service repo root",
+        help="Determine whether service in pwd is paasta ready")
     check_parser.set_defaults(command=paasta_check)
 
 
-def file_exists_check(filename):
+def file_exists_check(filename, path):
     """
     Print whether filename exists within pwd or one of its children
     """
-    if is_file_in_dir(filename, os.getcwd()):
+    if is_file_in_dir(filename, path):
         print "%s Found %s" % (check_mark(), filename)
     else:
         print "%s Missing %s" % (x_mark(), filename)
@@ -30,28 +31,34 @@ def deploy_check():
     """
     Check whether deploy.yaml exists in service directory
     """
-    file_exists_check('deploy.yaml')
+    service_name = os.path.basename(os.getcwd())
+    service_path = os.path.join('/nail/etc/services', service_name)
+    file_exists_check('deploy.yaml', service_path)
 
 
 def docker_check():
     """
     Check whether Dockerfile exists in service directory
     """
-    file_exists_check('Dockerfile')
+    file_exists_check('Dockerfile', os.getcwd())
 
 
 def sensu_check():
     """
     Check whether monitoring.yaml exists in service directory
     """
-    file_exists_check('monitoring.yaml')
+    service_name = os.path.basename(os.getcwd())
+    service_path = os.path.join('/nail/etc/services', service_name)
+    file_exists_check('monitoring.yaml', service_path)
 
 
 def smartstack_check():
     """
     Check whether smartstack.yaml exists in service directory
     """
-    file_exists_check('smartstack.yaml')
+    service_name = os.path.basename(os.getcwd())
+    service_path = os.path.join('/nail/etc/services', service_name)
+    file_exists_check('smartstack.yaml', service_path)
 
 
 def paasta_check(args):
