@@ -31,16 +31,17 @@ def file_names_in_dir(directory):
         yield root
 
 
-def is_file_in_dir(file_name, path):
+def is_file_in_dir(file_name, path, endswith=""):
     """
     Recursively search path for file_name
     :param file_name: a string of a file name to find
     :param path: a string path
+    :param file_ext: a string of a file extension
     :return: a boolean
     """
     for root, dirnames, filenames in os.walk(path):
         for filename in filenames:
-            if filename == file_name:
+            if filename.startswith(file_name) and filename.endswith(endswith):
                 return True
     return False
 

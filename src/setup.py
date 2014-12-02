@@ -25,6 +25,7 @@ setup(
         'GitPython == 0.1.7',
         'kazoo == 1.3.1',
         'sensu-plugin == 0.1.0',
+        'argcomplete == 0.8.1',
     ],
     scripts = [
         'service_deployment_tools/setup_marathon_job.py',
