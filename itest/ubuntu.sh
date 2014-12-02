@@ -63,11 +63,14 @@ do
   fi
 done
 
-
+mkdir fake_service_dos
+cd fake_service_dos
 for command in $PAASTA_COMMANDS
 do
     paasta $command >/dev/null || (echo "paasta $command failed to execute!"; exit 1)
 done
+cd ..
+rmdir fake_service_dos
 
 if check_synapse_replication --help >/dev/null; then
   echo "Looks like we can check_synapse_replication with --help"

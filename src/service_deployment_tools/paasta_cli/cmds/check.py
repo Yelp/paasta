@@ -40,24 +40,20 @@ def guess_service_name():
         return False
 
 
-def service_not_found_error(check):
+def service_not_found_error():
     """
     Print error message indicating service name could not be guessed
     """
-    print "%s %s check failed. Could not decipher service name." \
-          " Ensure you are in the service repo root." % (x_mark(), check)
+
+    print 'Could not figure out the service name.\n' \
+          'Please run this from the root of a copy (git clone) of your service.'
 
 
-def deploy_check():
+def deploy_check(service_path):
     """
     Check whether deploy.yaml exists in service directory
     """
-    service_name = guess_service_name()
-    if service_name:
-        service_path = os.path.join('/nail/etc/services', service_name)
-        file_exists_check('deploy.yaml', service_path)
-    else:
-        service_not_found_error('deploy')
+    file_exists_check('deploy.yaml', service_path)
 
 
 def docker_check():
@@ -67,48 +63,40 @@ def docker_check():
     file_exists_check('Dockerfile', os.getcwd())
 
 
-def marathon_check():
+def marathon_check(service_path):
     """
     Check whether marathon yaml file exists in service directory
     """
-    service_name = guess_service_name()
-    if service_name:
-        service_path = os.path.join('/nail/etc/services', service_name)
-        file_exists_check('marathon', service_path, 'yaml')
-    else:
-        service_not_found_error('marathon')
+    file_exists_check('marathon', service_path, 'yaml')
 
 
-def sensu_check():
+def sensu_check(service_path):
     """
     Check whether monitoring.yaml exists in service directory
     """
-    service_name = guess_service_name()
-    if service_name:
-        service_path = os.path.join('/nail/etc/services', service_name)
-        file_exists_check('monitoring.yaml', service_path)
-    else:
-        service_not_found_error('sensu')
+    file_exists_check('monitoring.yaml', service_path)
 
 
-def smartstack_check():
+def smartstack_check(service_path):
     """
     Check whether smartstack.yaml exists in service directory
     """
-    service_name = guess_service_name()
-    if service_name:
-        service_path = os.path.join('/nail/etc/services', service_name)
-        file_exists_check('smartstack.yaml', service_path)
-    else:
-        service_not_found_error('smartstack')
+    file_exists_check('smartstack.yaml', service_path)
 
 
 def paasta_check(args):
     """
     Analyze the service in the PWD to determine if it is paasta ready
     """
-    deploy_check()
-    docker_check()
-    marathon_check()
-    sensu_check()
-    smartstack_check()
+
+    service_name = guess_service_name()
+    if service_name:
+        service_path = os.path.join('/nail/etc/services', service_name)
+        deploy_check(service_path)
+        docker_check()
+        marathon_check(service_path)
+        sensu_check(service_path)
+        smartstack_check(service_path)
+    else:
+        service_not_found_error()
+        exit(1)
