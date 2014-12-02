@@ -5,7 +5,6 @@ and a number of other things used by other components in order to
 make the PaaSTA stack work.
 """
 import hashlib
-import itertools
 import logging
 import os
 import re
@@ -585,22 +584,14 @@ def get_classic_service_information_for_nerve(name, soa_dir):
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
     nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
-    return [
-        # Kill this line when we've migrated over- this is the 'old'
-        # way of naming services. We have namespaces now, which we should
-        # be using in the future, but synapse isn't really namespace
-        # compatible at the moment. Once it is, we won't need the old way.
-        (name, nerve_dict),
-        (nerve_name, nerve_dict),
-    ]
+    return (nerve_name, nerve_dict)
 
 
 def get_classic_services_running_here_for_nerve(soa_dir):
-    return list(itertools.chain.from_iterable(
+    return [
         get_classic_service_information_for_nerve(name, soa_dir)
-        for name in
-        get_classic_services_that_run_here()
-    ))
+        for name in get_classic_services_that_run_here()
+    ]
 
 
 def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):

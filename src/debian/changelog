@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.3-yelp1) lucid; urgency=low
+
+  * Stop announcing non-namespaced classic service names for Nerve.
+
+ -- John Billings <billings@yelp.com>  Mon, 01 Dec 2014 22:12:00 -0800
+
 service-deployment-tools (0.7.2-yelp1) lucid; urgency=low
 
   * Implement paasta check commend 

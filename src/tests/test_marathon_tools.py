@@ -424,10 +424,7 @@ class TestMarathonTools:
             namespace_config_patch,
         ):
             info = marathon_tools.get_classic_service_information_for_nerve('no_water', 'we_are_the_one')
-            assert info == [
-                ('no_water', {'ten': 10, 'port': 101}),
-                ('no_water.main', {'ten': 10, 'port': 101})
-            ]
+            assert info == ('no_water.main', {'ten': 10, 'port': 101})
 
     def test_get_classic_services_that_run_here(self):
         with contextlib.nested(
@@ -456,13 +453,11 @@ class TestMarathonTools:
             ),
             mock.patch(
                 'marathon_tools.get_classic_service_information_for_nerve',
-                side_effect=lambda x, _: [x, '%s.bar' % x, '%s.foo' % x]
+                side_effect=lambda x, _: '%s.foo' % x
             ),
         ):
             assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
-                'a', 'a.bar', 'a.foo',
-                'b', 'b.bar', 'b.foo',
-                'c', 'c.bar', 'c.foo',
+                'a.foo', 'b.foo', 'c.foo',
             ]
 
     def test_get_services_running_here_for_nerve(self):
