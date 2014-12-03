@@ -1,3 +1,5 @@
 ---
+main:
+    proxy_port: 50
 all_fake:
     proxy_port: 0

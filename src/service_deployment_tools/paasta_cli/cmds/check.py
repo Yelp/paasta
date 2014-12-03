@@ -4,9 +4,12 @@ Contains methods used by the paasta client to check whether Yelp service
 passes all the markers required to be considered paasta ready.
 """
 import os
+import sys
 
+from service_deployment_tools.marathon_tools import get_proxy_port_for_instance
+from service_deployment_tools.monitoring_tools import get_team
 from service_deployment_tools.paasta_cli.utils import \
-    is_file_in_dir, check_mark, x_mark
+    is_file_in_dir, PaastaCheckMessages
 
 
 def add_subparser(subparsers):
@@ -15,16 +18,6 @@ def add_subparser(subparsers):
         description="Execute 'paasta check' from service repo root",
         help="Determine whether service in pwd is paasta ready")
     check_parser.set_defaults(command=paasta_check)
-
-
-def file_exists_check(filename, path, endswith=""):
-    """
-    Print whether filename exists within pwd or one of its children
-    """
-    if is_file_in_dir(filename, path, endswith):
-        print "%s Found %s" % (check_mark(), filename)
-    else:
-        print "%s Missing %s" % (x_mark(), filename)
 
 
 def guess_service_name():
@@ -40,48 +33,79 @@ def guess_service_name():
         return False
 
 
-def service_not_found_error():
-    """
-    Print error message indicating service name could not be guessed
-    """
-
-    print 'Could not figure out the service name.\n' \
-          'Please run this from the root of a copy (git clone) of your service.'
-
-
 def deploy_check(service_path):
     """
     Check whether deploy.yaml exists in service directory
     """
-    file_exists_check('deploy.yaml', service_path)
+    if is_file_in_dir('deploy.yaml', service_path):
+        print PaastaCheckMessages.DEPLOY_YAML_FOUND
+    else:
+        print PaastaCheckMessages.DEPLOY_YAML_MISSING
+
+
+def docker_file_valid(path):
+    dockerfile = open(path, 'r')
+    first_line = dockerfile.readline()
+    if first_line.startswith("FROM docker-dev.yelpcorp.com"):
+        return True
+    else:
+        return False
 
 
 def docker_check():
     """
     Check whether Dockerfile exists in service directory
     """
-    file_exists_check('Dockerfile', os.getcwd())
+    docker_file_path = is_file_in_dir('Dockerfile', os.getcwd())
+    if docker_file_path:
+        print PaastaCheckMessages.DOCKERFILE_FOUND
+        if docker_file_valid(docker_file_path):
+            print PaastaCheckMessages.DOCKERFILE_VALID
+        else:
+            print PaastaCheckMessages.DOCKERFILE_INVALID
+    else:
+        print PaastaCheckMessages.DOCKERFILE_MISSING
 
 
 def marathon_check(service_path):
     """
     Check whether marathon yaml file exists in service directory
     """
-    file_exists_check('marathon', service_path, 'yaml')
+    if is_file_in_dir('marathon', service_path, 'yaml'):
+        print PaastaCheckMessages.MARATHON_YAML_FOUND
+    else:
+        print PaastaCheckMessages.MARATHON_YAML_MISSING
 
 
-def sensu_check(service_path):
+def sensu_check(service_name, service_path):
     """
     Check whether monitoring.yaml exists in service directory
     """
-    file_exists_check('monitoring.yaml', service_path)
+    if is_file_in_dir('monitoring.yaml', service_path):
+        print PaastaCheckMessages.SENSU_MONITORING_FOUND
+        team = get_team(None, service_name)
+        if team is None:
+            print PaastaCheckMessages.SENSU_TEAM_MISSING
+        else:
+            print PaastaCheckMessages.sensu_team_found(team)
+    else:
+        print PaastaCheckMessages.SENSU_MONITORING_MISSING
 
 
-def smartstack_check(service_path):
+def smartstack_check(service_name, service_path):
     """
     Check whether smartstack.yaml exists in service directory
     """
-    file_exists_check('smartstack.yaml', service_path)
+
+    if is_file_in_dir('smartstack.yaml', service_path):
+        print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
+        port = get_proxy_port_for_instance(service_name, 'main')
+        if port is None:
+            print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
+        else:
+            print PaastaCheckMessages.smartstack_port_found(port)
+    else:
+        print PaastaCheckMessages.SMARTSTACK_YAML_MISSING
 
 
 def paasta_check(args):
@@ -95,8 +119,8 @@ def paasta_check(args):
         deploy_check(service_path)
         docker_check()
         marathon_check(service_path)
-        sensu_check(service_path)
-        smartstack_check(service_path)
+        sensu_check(service_name, service_path)
+        smartstack_check(service_name, service_path)
     else:
-        service_not_found_error()
-        exit(1)
+        print PaastaCheckMessages.SERVICE_NAME_NOT_FOUND
+        sys.exit(1)
