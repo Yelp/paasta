@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'service-deployment-tools',
-    version        = '0.7.7',
+    version        = '0.7.8',
     provides       = ["service_deployment_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -17,7 +17,7 @@ setup(
     install_requires = [
         'isodate >= 0.5.0',
         'service-configuration-lib == 0.8.2',
-        'marathon == 0.3.2',
+        'marathon == 0.6.9',
         'argparse',
         'pycurl',
         'requests',

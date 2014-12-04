@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.8-yelp1) lucid; urgency=low
+
+  * Bump to the latest marathon package so we can force removal 
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 15:50:56 -0800
+
 service-deployment-tools (0.7.7-yelp1) lucid; urgency=low
 
   * PaaSTA check command more thorough 
