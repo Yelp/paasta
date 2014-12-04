@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.6-yelp1) lucid; urgency=low
+
+  * Add README for paasta client 
+
+ -- Karthig Balendran <karthig@yelp.com>  Thu, 04 Dec 2014 15:20:39 -0800
+
 service-deployment-tools (0.7.5-yelp1) lucid; urgency=low
 
   * Fix scaling bug to also force marathon jobs to 0 when deleting. MESOS-138 
