@@ -78,7 +78,7 @@ class TestBounceLib:
             sleep_patch
         ):
             bounce_lib.delete_marathon_app(fake_id, fake_client)
-            fake_client.scale_app.assert_called_once_with(fake_id, instances=0)
+            fake_client.scale_app.assert_called_once_with(fake_id, instances=0, force=True)
             fake_client.delete_app.assert_called_once_with(fake_id, force=True)
             sleep_patch.assert_called_once_with(1)
             wait_patch.assert_called_once_with(fake_id, fake_client)

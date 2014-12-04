@@ -151,7 +151,7 @@ def delete_marathon_app(app_id, client):
     with nested(create_app_lock(), time_limit(1)):
         # Scale app to 0 first to work around
         # https://github.com/mesosphere/marathon/issues/725
-        client.scale_app(app_id, instances=0)
+        client.scale_app(app_id, instances=0, force=True)
         time.sleep(1)
         client.delete_app(app_id, force=True)
         wait_for_delete(app_id, client)

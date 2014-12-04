@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.5-yelp1) lucid; urgency=low
+
+  * Fix scaling bug to also force marathon jobs to 0 when deleting. MESOS-138 
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 12:00:50 -0800
+
 service-deployment-tools (0.7.4-yelp1) lucid; urgency=low
 
   * Fix bug where marathon jobs were not being deleted. MESOS-138. 
