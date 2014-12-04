@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.7-yelp1) lucid; urgency=low
+
+  * PaaSTA check command more thorough 
+
+ -- Karthig Balendran <karthig@yelp.com>  Thu, 04 Dec 2014 15:43:08 -0800
+
 service-deployment-tools (0.7.6-yelp1) lucid; urgency=low
 
   * Add README for paasta client 
