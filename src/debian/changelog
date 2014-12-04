@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.4-yelp1) lucid; urgency=low
+
+  * Fix bug where marathon jobs were not being deleted. MESOS-138. 
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 10:45:38 -0800
+
 service-deployment-tools (0.7.3-yelp1) lucid; urgency=low
 
   * Stop announcing non-namespaced classic service names for Nerve.
