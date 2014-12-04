@@ -153,7 +153,7 @@ def delete_marathon_app(app_id, client):
         # https://github.com/mesosphere/marathon/issues/725
         client.scale_app(app_id, instances=0)
         time.sleep(1)
-        client.delete_app(app_id)
+        client.delete_app(app_id, force=True)
         wait_for_delete(app_id, client)
 
 
