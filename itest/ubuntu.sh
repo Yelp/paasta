@@ -64,9 +64,8 @@ done
 
 mkdir fake_service_uno
 function remove_fake_service_uno {
-  rm -f fake_service_uno
+  rm -rf fake_service_uno
 }
-trap remove_fake_service_uno EXIT
 
 (
   cd fake_service_uno
@@ -104,7 +103,12 @@ services_yaml=$(mktemp)
 function remove_services_yaml {
   rm -f "$services_yaml"
 }
-trap remove_services_yaml EXIT
+
+function trap_handler {
+    remove_services_yaml;
+    remove_fake_service_uno;
+}
+trap trap_handler EXIT
 
 generate_services_yaml "$services_yaml"
 

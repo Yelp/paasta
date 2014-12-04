@@ -264,7 +264,7 @@ def test_check_smartstack_check_missing_port(
        'read_extra_service_information')
 @patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_smartstack_check_missing_port(
+def test_check_smartstack_check_missing_instance(
         mock_stdout, mock_is_file_in_dir, mock_read_service_info):
     # smartstack.yaml exists, but no instances found
 

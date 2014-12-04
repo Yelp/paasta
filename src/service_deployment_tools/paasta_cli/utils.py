@@ -73,7 +73,7 @@ def success(msg):
 
 
 def sub_success(msg):
-    return "%s %s" % (arrow(), msg)
+    return "  %s %s" % (arrow(), msg)
 
 
 def failure(msg, link):
@@ -178,5 +178,5 @@ class PaastaCheckMessages:
     @staticmethod
     def smartstack_port_found(instance, port):
         return sub_success(
-            "Instance %s of your service is using smartstack port %d "
+            "Instance '%s' of your service is using smartstack port %d "
             "and will be automatically load balanced" % (instance, port))
