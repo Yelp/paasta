@@ -401,7 +401,7 @@ def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     if not cluster:
         cluster = get_cluster()
     marathon_conf_file = "marathon-%s" % cluster
-    log.info("Enumerating all instances for config file: %s/%s.yaml", soa_dir, marathon_conf_file)
+    log.info("Enumerating all instances for config file: %s/*/%s.yaml", soa_dir, marathon_conf_file)
     instances = service_configuration_lib.read_extra_service_information(
                     name,
                     marathon_conf_file,
