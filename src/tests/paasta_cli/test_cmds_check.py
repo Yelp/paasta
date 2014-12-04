@@ -206,20 +206,27 @@ def test_check_sensu_check_fail(mock_stdout, mock_is_file_in_dir):
     assert output == expected_output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('service_deployment_tools.paasta_cli.cmds.check.'
-       'get_proxy_port_for_instance')
+       'read_extra_service_information')
+@patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_smartstack_check_pass(mock_stdout, mock_get_port,
-                                     mock_is_file_in_dir):
+def test_check_smartstack_check_pass(mock_stdout, mock_is_file_in_dir,
+                                     mock_read_service_info):
     # smartstack.yaml exists and port is found
 
-    mock_is_file_in_dir.return_value = "/fake/path"
+    mock_is_file_in_dir.return_value = True
     port = 80
-    mock_get_port.return_value = port
-    expected_output = "%s\n%s\n" % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
-                                    PaastaCheckMessages.smartstack_port_found(
-                                        port))
+    instance = 'main'
+    smartstack_dict = {
+        instance: {
+            'proxy_port': port
+        }
+    }
+    mock_read_service_info.return_value = smartstack_dict
+    expected_output = "%s\n%s\n" \
+                      % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
+                         PaastaCheckMessages.smartstack_port_found(
+                             instance, port))
 
     smartstack_check('fake_service', 'path')
     output = mock_stdout.getvalue()
@@ -227,19 +234,46 @@ def test_check_smartstack_check_pass(mock_stdout, mock_get_port,
     assert output == expected_output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('service_deployment_tools.paasta_cli.cmds.check.'
-       'get_proxy_port_for_instance')
+       'read_extra_service_information')
+@patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_smartstack_no_port(mock_stdout, mock_get_port,
-                                  mock_is_file_in_dir):
-    # smartstack.yaml exists retrieving port raises exception
+def test_check_smartstack_check_missing_port(
+        mock_stdout, mock_is_file_in_dir, mock_read_service_info):
+    # smartstack.yaml, instance exists, but no ports found
 
-    mock_is_file_in_dir.return_value = "/fake/path"
+    mock_is_file_in_dir.return_value = True
+    instance = 'main'
+    smartstack_dict = {
+        instance: {
+            'foo': 0
+        }
+    }
+    mock_read_service_info.return_value = smartstack_dict
+    expected_output = "%s\n%s\n" \
+                      % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
+                         PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
 
-    mock_get_port.side_effect = KeyError
-    expected_output = "%s\n%s\n" % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
-                                    PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
+    smartstack_check('fake_service', 'path')
+    output = mock_stdout.getvalue()
+
+    assert output == expected_output
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.check.'
+       'read_extra_service_information')
+@patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
+@patch('sys.stdout', new_callable=StringIO)
+def test_check_smartstack_check_missing_port(
+        mock_stdout, mock_is_file_in_dir, mock_read_service_info):
+    # smartstack.yaml exists, but no instances found
+
+    mock_is_file_in_dir.return_value = True
+    smartstack_dict = {}
+    mock_read_service_info.return_value = smartstack_dict
+    expected_output = "%s\n%s\n" \
+                      % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
+                         PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
 
     smartstack_check('fake_service', 'path')
     output = mock_stdout.getvalue()

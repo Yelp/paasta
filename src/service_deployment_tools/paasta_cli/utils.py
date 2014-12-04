@@ -61,8 +61,19 @@ def x_mark():
     return PaastaColors.red(u'\u2717'.encode('utf-8'))
 
 
+def arrow():
+    """
+    Return output that can print an arrow going down then right
+    """
+    return PaastaColors.green(u'\u21B3'.encode('utf-8'))
+
+
 def success(msg):
     return "%s %s" % (check_mark(), msg)
+
+
+def sub_success(msg):
+    return "%s %s" % (arrow(), msg)
 
 
 def failure(msg, link):
@@ -165,7 +176,7 @@ class PaastaCheckMessages:
             "Your service uses Sensu and team %s will get alerts." % team_name)
 
     @staticmethod
-    def smartstack_port_found(port):
-        return success(
-            "Your service is using smartstack port %d "
-            "and will be automatically load balanced" % port)
+    def smartstack_port_found(instance, port):
+        return sub_success(
+            "Instance %s of your service is using smartstack port %d "
+            "and will be automatically load balanced" % (instance, port))

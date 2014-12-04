@@ -6,7 +6,7 @@ passes all the markers required to be considered paasta ready.
 import os
 import sys
 
-from service_deployment_tools.marathon_tools import get_proxy_port_for_instance
+from service_configuration_lib import read_extra_service_information
 from service_deployment_tools.monitoring_tools import get_team
 from service_deployment_tools.paasta_cli.utils import \
     is_file_in_dir, PaastaCheckMessages
@@ -103,13 +103,21 @@ def smartstack_check(service_name, service_path):
     """
     Check whether smartstack.yaml exists in service directory
     """
-
     if is_file_in_dir('smartstack.yaml', service_path):
         print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
-        try:
-            port = get_proxy_port_for_instance(service_name, 'main')
-            print PaastaCheckMessages.smartstack_port_found(port)
-        except KeyError:
+        smartstack_dict = read_extra_service_information(
+            service_name, 'smartstack')
+        instances = smartstack_dict.keys()
+        if instances:
+            no_ports_found = True
+            for instance in instances:
+                if 'proxy_port' in smartstack_dict[instance]:
+                    no_ports_found = False
+                    print PaastaCheckMessages.smartstack_port_found(
+                        instance, smartstack_dict[instance]['proxy_port'])
+            if no_ports_found:
+                print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
+        else:
             print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
     else:
         print PaastaCheckMessages.SMARTSTACK_YAML_MISSING
