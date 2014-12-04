@@ -1,6 +1,6 @@
 ---
-naim:
+niam:
     docker_image: ekaf:0.1
-    cpus: 1
+    cpus: 0
     mem: 100
     iteration: tree

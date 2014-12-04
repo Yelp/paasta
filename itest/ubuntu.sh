@@ -12,8 +12,7 @@ deploy_marathon_services
 generate_deployments_json
 check_marathon_services_replication
 generate_services_yaml
-cleanup_marathon_orphaned_containers
-paasta"
+cleanup_marathon_orphaned_containers"
 
 MARATHON_SERVICES="fake_service_uno.main
 fake_service_dos.niam"
@@ -63,14 +62,19 @@ do
   fi
 done
 
-mkdir fake_service_dos
-cd fake_service_dos
-for command in $PAASTA_COMMANDS
-do
+mkdir fake_service_uno
+function remove_fake_service_uno {
+  rm -f fake_service_uno
+}
+trap remove_fake_service_uno EXIT
+
+(
+  cd fake_service_uno
+  for command in $PAASTA_COMMANDS
+  do
     paasta $command >/dev/null || (echo "paasta $command failed to execute!"; exit 1)
-done
-cd ..
-rmdir fake_service_dos
+  done
+)
 
 if check_synapse_replication --help >/dev/null; then
   echo "Looks like we can check_synapse_replication with --help"

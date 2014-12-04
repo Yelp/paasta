@@ -4,7 +4,7 @@ from StringIO import StringIO
 
 from service_deployment_tools.paasta_cli.cmds.check import \
     paasta_check, deploy_check, docker_check, marathon_check, \
-    sensu_check, smartstack_check
+    sensu_check, smartstack_check, NoSuchService
 from service_deployment_tools.paasta_cli.utils import PaastaCheckMessages
 
 
@@ -37,7 +37,7 @@ def test_check_paasta_check(
 def test_check_service_name_not_found(mock_stdout, mock_guess_service_name):
     # Paasta checks do not run when service name cannot be guessed, exit(1)
 
-    mock_guess_service_name.return_value = False
+    mock_guess_service_name.side_effect = NoSuchService('foo')
     args = ['./paasta_cli', 'check']
     expected_output = '%s\n' % PaastaCheckMessages.SERVICE_NAME_NOT_FOUND
 
@@ -233,11 +233,11 @@ def test_check_smartstack_check_pass(mock_stdout, mock_get_port,
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_smartstack_no_port(mock_stdout, mock_get_port,
                                   mock_is_file_in_dir):
-    # smartstack.yaml exists not port is not found
+    # smartstack.yaml exists retrieving port raises exception
 
     mock_is_file_in_dir.return_value = "/fake/path"
 
-    mock_get_port.return_value = None
+    mock_get_port.side_effect = KeyError
     expected_output = "%s\n%s\n" % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
                                     PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
 

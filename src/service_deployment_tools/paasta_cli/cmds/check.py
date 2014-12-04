@@ -12,6 +12,13 @@ from service_deployment_tools.paasta_cli.utils import \
     is_file_in_dir, PaastaCheckMessages
 
 
+class NoSuchService(Exception):
+    """
+    Exception to be raised in the event that the service name can not be guessed
+    """
+    pass
+
+
 def add_subparser(subparsers):
     check_parser = subparsers.add_parser(
         'check',
@@ -30,7 +37,7 @@ def guess_service_name():
     if os.path.isdir(service_path):
         return dir_name
     else:
-        return False
+        raise NoSuchService(dir_name)
 
 
 def deploy_check(service_path):
@@ -71,7 +78,7 @@ def marathon_check(service_path):
     """
     Check whether marathon yaml file exists in service directory
     """
-    if is_file_in_dir('marathon', service_path, 'yaml'):
+    if is_file_in_dir('marathon*.yaml', service_path):
         print PaastaCheckMessages.MARATHON_YAML_FOUND
     else:
         print PaastaCheckMessages.MARATHON_YAML_MISSING
@@ -99,11 +106,11 @@ def smartstack_check(service_name, service_path):
 
     if is_file_in_dir('smartstack.yaml', service_path):
         print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
-        port = get_proxy_port_for_instance(service_name, 'main')
-        if port is None:
-            print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
-        else:
+        try:
+            port = get_proxy_port_for_instance(service_name, 'main')
             print PaastaCheckMessages.smartstack_port_found(port)
+        except KeyError:
+            print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
     else:
         print PaastaCheckMessages.SMARTSTACK_YAML_MISSING
 
@@ -112,15 +119,14 @@ def paasta_check(args):
     """
     Analyze the service in the PWD to determine if it is paasta ready
     """
-
-    service_name = guess_service_name()
-    if service_name:
+    try:
+        service_name = guess_service_name()
         service_path = os.path.join('/nail/etc/services', service_name)
         deploy_check(service_path)
         docker_check()
         marathon_check(service_path)
         sensu_check(service_name, service_path)
         smartstack_check(service_name, service_path)
-    else:
+    except NoSuchService:
         print PaastaCheckMessages.SERVICE_NAME_NOT_FOUND
         sys.exit(1)
