@@ -49,34 +49,33 @@ def is_file_in_dir(file_name, path):
 
 def check_mark():
     """
-    Return output the can print a checkmark
+    :return: string that can print a checkmark
     """
     return PaastaColors.green(u'\u2713'.encode('utf-8'))
 
 
 def x_mark():
     """
-    Return output the can print an x mark
+    :return: string that can print an x-mark
     """
     return PaastaColors.red(u'\u2717'.encode('utf-8'))
 
 
-def arrow():
-    """
-    Return output that can print an arrow going down then right
-    """
-    return PaastaColors.green(u'\u21B3'.encode('utf-8'))
-
-
 def success(msg):
+    """
+    Format a paasta check success message
+    :param msg: a string
+    :return: a beautiful string
+    """
     return "%s %s" % (check_mark(), msg)
 
 
-def sub_success(msg):
-    return "  %s %s" % (arrow(), msg)
-
-
 def failure(msg, link):
+    """
+    Format a paasta check failure message
+    :param msg: a string
+    :return: a beautiful string
+    """
     return "%s %s %s" % (x_mark(), msg, PaastaColors.blue(link))
 
 
@@ -92,18 +91,30 @@ class PaastaColors:
 
     @staticmethod
     def blue(text):
+        """
+        Return text that can be printed blue
+        """
         return PaastaColors.color_text(PaastaColors.BLUE, text)
 
     @staticmethod
     def green(text):
+        """
+        Return text that can be printed green
+        """
         return PaastaColors.color_text(PaastaColors.GREEN, text)
 
     @staticmethod
     def red(text):
+        """
+        Return text that can be printed red
+        """
         return PaastaColors.color_text(PaastaColors.RED, text)
 
     @staticmethod
     def color_text(color, text):
+        """
+        Return text that can be printed color
+        """
         return color + text + PaastaColors.DEFAULT
 
 
@@ -177,6 +188,6 @@ class PaastaCheckMessages:
 
     @staticmethod
     def smartstack_port_found(instance, port):
-        return sub_success(
+        return success(
             "Instance '%s' of your service is using smartstack port %d "
             "and will be automatically load balanced" % (instance, port))

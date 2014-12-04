@@ -51,6 +51,11 @@ def deploy_check(service_path):
 
 
 def docker_file_valid(path):
+    """
+    Ensure Dockerfile is valid
+    :param path : path to a Dockerfile
+    :return : A boolean that is True if the Dockerfile reads from yelpcorp
+    """
     dockerfile = open(path, 'r')
     first_line = dockerfile.readline()
     if first_line.startswith("FROM docker-dev.yelpcorp.com"):
@@ -61,7 +66,7 @@ def docker_file_valid(path):
 
 def docker_check():
     """
-    Check whether Dockerfile exists in service directory
+    Check whether Dockerfile exists in service directory, and is valid
     """
     docker_file_path = is_file_in_dir('Dockerfile', os.getcwd())
     if docker_file_path:
@@ -76,7 +81,7 @@ def docker_check():
 
 def marathon_check(service_path):
     """
-    Check whether marathon yaml file exists in service directory
+    Check whether a marathon yaml file exists in service directory
     """
     if is_file_in_dir('marathon*.yaml', service_path):
         print PaastaCheckMessages.MARATHON_YAML_FOUND
@@ -86,7 +91,8 @@ def marathon_check(service_path):
 
 def sensu_check(service_name, service_path):
     """
-    Check whether monitoring.yaml exists in service directory
+    Check whether monitoring.yaml exists in service directory, and that the team
+    name is declared
     """
     if is_file_in_dir('monitoring.yaml', service_path):
         print PaastaCheckMessages.SENSU_MONITORING_FOUND
@@ -101,7 +107,8 @@ def sensu_check(service_name, service_path):
 
 def smartstack_check(service_name, service_path):
     """
-    Check whether smartstack.yaml exists in service directory
+    Check whether smartstack.yaml exists in service directory, and the proxy
+    ports are declared
     """
     if is_file_in_dir('smartstack.yaml', service_path):
         print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
@@ -126,6 +133,7 @@ def smartstack_check(service_name, service_path):
 def paasta_check(args):
     """
     Analyze the service in the PWD to determine if it is paasta ready
+    :param args: arguments supplied to the paasta client
     """
     try:
         service_name = guess_service_name()
