@@ -32,27 +32,13 @@ Adding a new PaaSTA command:
     ```
 
 3)  Write the method passed to foo_parser.set_defaults(command="some_method").
+
+    ```
+    def some_method(args):
+        print "Executing foo"
+    ```
+
     That is all :)
-
-
-WORKING SAMPLE
-
-Copy and paste the follow code into a file called "foo.py".  Execute
-'paasta foo' to see it in action.  You can use this to start your command.
-
-
-```
-def add_subparser(subparsers):
-    foo_parser = subparsers.add_parser(
-        'foo',
-        description="foo",
-        help="bar")
-    list_parser.set_defaults(command=call_foo)
-
-def call_foo(args):
-    print "Executing foo"
-
-```
 
 4)  Don't forget to add unit tests to src/tests/paasta_cli for any new commands
     you write.
