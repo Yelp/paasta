@@ -14,6 +14,7 @@ RUN apt-get -y install python-yaml
 RUN apt-get -y install python-pycurl
 RUN apt-get -y install python-pytest
 RUN apt-get -y install pyflakes
+RUN apt-get -y install python2.7
 
 ENV HOME /work
 ENV PWD /work
