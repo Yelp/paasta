@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.10-yelp1) lucid; urgency=low
+
+  * Add tab completion script to /etc/bash_complete.d 
+
+ -- Karthig Balendran <karthig@yelp.com>  Fri, 05 Dec 2014 11:21:42 -0800
+
 service-deployment-tools (0.7.9-yelp1) lucid; urgency=low
 
   * Bump to python 2.7 to support new marathon packages 
