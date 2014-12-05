@@ -13,3 +13,4 @@ usr/share/python/service-deployment-tools/bin/check_marathon_services_replicatio
 usr/share/python/service-deployment-tools/bin/generate_services_yaml.py usr/bin/generate_services_yaml
 usr/share/python/service-deployment-tools/bin/cleanup_marathon_orphaned_containers.py usr/bin/cleanup_marathon_orphaned_containers
 usr/share/python/service-deployment-tools/bin/paasta_cli.py usr/bin/paasta
+usr/share/python/service-deployment-tools/bin/paasta_tabcomplete.sh /etc/bash_completion.d/paasta.bash
