@@ -332,7 +332,7 @@ class TestSetupMarathonJob:
                                                        fake_client, fake_namespace, fake_bounce)
             assert expected == actual
             fake_client.list_apps.assert_called_once_with()
-            create_app_patch.assert_called_once_with(self.fake_marathon_job_config, fake_client)
+            create_app_patch.assert_called_once_with(fake_id, self.fake_marathon_job_config, fake_client)
 
     def test_get_marathon_client(self):
         fake_url = "nothing_for_me_to_do_but_dance"

@@ -120,15 +120,15 @@ def wait_for_create(app_id, client):
         time.sleep(WAIT_CREATE_S)
 
 
-def create_marathon_app(config, client):
+def create_marathon_app(app_id, config, client):
     """Create a new marathon application with a given
     config and marathon client object.
 
     :param config: The marathon configuration to be deployed
     :param client: A MarathonClient object"""
     with nested(create_app_lock(), time_limit(1)):
-        client.create_app(**config)
-        wait_for_create(config['id'], client)
+        client.create_app(app_id, config)
+        wait_for_create(app_id, client)
 
 
 def wait_for_delete(app_id, client):

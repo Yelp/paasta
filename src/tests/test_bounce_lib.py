@@ -2,6 +2,7 @@ import bounce_lib
 import contextlib
 import mock
 import pytest
+import marathon
 
 
 class TestBounceLib:
@@ -51,7 +52,8 @@ class TestBounceLib:
             fake_zk.stop.assert_called_once_with()
 
     def test_create_marathon_app(self):
-        fake_client = mock.Mock(create_app=mock.Mock())
+        marathon_client_mock = mock.create_autospec(marathon.MarathonClient)
+        fake_client = marathon_client_mock
         fake_config = {'id': 'fake_creation'}
         with contextlib.nested(
             mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
@@ -60,9 +62,9 @@ class TestBounceLib:
             lock_patch,
             wait_patch,
         ):
-            bounce_lib.create_marathon_app(fake_config, fake_client)
+            bounce_lib.create_marathon_app('fake_creation', fake_config, fake_client)
             lock_patch.assert_called_once_with()
-            fake_client.create_app.assert_called_once_with(**fake_config)
+            fake_client.create_app.assert_called_once_with('fake_creation', fake_config)
             wait_patch.assert_called_once_with(fake_config['id'], fake_client)
 
     def test_delete_marathon_app(self):
