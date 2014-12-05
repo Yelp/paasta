@@ -163,4 +163,4 @@ def test_classic_replication_check():
             check = ClassicServiceReplicationCheck()
             check.run()
             assert mcheck.assert_called_with('pow', {'wat': 1}, -1)
-        assert error.value == 0
+        assert error.value.code == 0

@@ -45,7 +45,7 @@ def test_check_service_name_not_found(mock_stdout, mock_guess_service_name):
         paasta_check(args)
 
     output = mock_stdout.getvalue()
-    assert sys_exit.value == 1
+    assert sys_exit.value.code == 1
     assert output == expected_output
 
 

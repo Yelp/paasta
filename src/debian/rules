@@ -12,4 +12,4 @@ export DH_OPTIONS
 	dh $@ --with python-virtualenv
 
 override_dh_virtualenv:
-	dh_virtualenv --pypi-url='http://pypi.yelpcorp.com/simple'
+	dh_virtualenv --pypi-url='http://pypi.yelpcorp.com/simple' --python=/usr/bin/python2.7
