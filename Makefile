@@ -81,13 +81,13 @@ cleanup_chronos_itest:
 build_chronos_itest: build_chronos_itest_zookeeper_docker build_chronos_itest_mesos_docker build_chronos_itest_chronos_docker build_chronos_itest_itest_docker
 
 build_chronos_itest_zookeeper_docker:
-	cd dockerfiles/chronos_itest/zookeeper/ && docker build -t "chronos_itest/zookeeper" .
+	cd dockerfiles/itest/zookeeper/ && docker build -t "chronos_itest/zookeeper" .
 
 build_chronos_itest_mesos_docker:
-	cd dockerfiles/chronos_itest/mesos/ && docker build -t "chronos_itest/mesos" .
+	cd dockerfiles/itest/mesos/ && docker build -t "chronos_itest/mesos" .
 
 build_chronos_itest_chronos_docker:
-	cd dockerfiles/chronos_itest/chronos/ && docker build -t "chronos_itest/chronos" .
+	cd dockerfiles/itest/chronos/ && docker build -t "chronos_itest/chronos" .
 
 build_chronos_itest_itest_docker:
-	cd dockerfiles/chronos_itest/itest/ && docker build -t "chronos_itest/itest" .
+	cd dockerfiles/itest/itest/ && docker build -t "chronos_itest/itest" .
