@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.11-yelp1) lucid; urgency=low
+
+  * Fix create_app function, MESOS-164 
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 08 Dec 2014 12:42:44 -0800
+
 service-deployment-tools (0.7.10-yelp1) lucid; urgency=low
 
   * Add tab completion script to /etc/bash_complete.d 
