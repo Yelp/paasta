@@ -3,6 +3,26 @@ import glob
 import os
 
 
+class NoSuchService(Exception):
+    """
+    Exception to be raised in the event that the service name can not be guessed
+    """
+    pass
+
+
+def guess_service_name():
+    """
+    Deduce the service name from the pwd
+    :return : A string representing the service name, or a bool False
+    """
+    dir_name = os.path.basename(os.getcwd())
+    service_path = os.path.join('/nail/etc/services', dir_name)
+    if os.path.isdir(service_path):
+        return dir_name
+    else:
+        raise NoSuchService(dir_name)
+
+
 def load_method(module_name, method_name):
     """
     Return a function given a module and method name
@@ -150,7 +170,7 @@ class PaastaCheckMessages:
 
     MARATHON_YAML_MISSING = failure(
         "No marathon.yaml exists, so your service cannot be deployed.\n  "
-        "Push a deploy.yaml and run `paasta build-deploy-pipline`.\n  "
+        "Push a marathon-[ecosystem].yaml and run `paasta build-deploy-pipline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
     SENSU_MONITORING_FOUND = success(

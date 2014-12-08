@@ -9,14 +9,7 @@ import sys
 from service_configuration_lib import read_extra_service_information
 from service_deployment_tools.monitoring_tools import get_team
 from service_deployment_tools.paasta_cli.utils import \
-    is_file_in_dir, PaastaCheckMessages
-
-
-class NoSuchService(Exception):
-    """
-    Exception to be raised in the event that the service name can not be guessed
-    """
-    pass
+    guess_service_name, is_file_in_dir, PaastaCheckMessages, NoSuchService
 
 
 def add_subparser(subparsers):
@@ -25,19 +18,6 @@ def add_subparser(subparsers):
         description="Execute 'paasta check' from service repo root",
         help="Determine whether service in pwd is paasta ready")
     check_parser.set_defaults(command=paasta_check)
-
-
-def guess_service_name():
-    """
-    Deduce the service name from the pwd
-    :return : A string representing the service name, or a bool False
-    """
-    dir_name = os.path.basename(os.getcwd())
-    service_path = os.path.join('/nail/etc/services', dir_name)
-    if os.path.isdir(service_path):
-        return dir_name
-    else:
-        raise NoSuchService(dir_name)
 
 
 def deploy_check(service_path):
