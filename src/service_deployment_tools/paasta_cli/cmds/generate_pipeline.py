@@ -29,21 +29,25 @@ def paasta_generate_pipeline(args):
     """
     Generate a Jenkins build pipeline
     """
+
+    # Get the service name
     try:
         service_name = args.service or guess_service_name()
-        try:
-            args1 = 'setup_jenkins:services/' \
-                    '%s,profile=paasta,job_disabled=False' % service_name
-
-            subprocess.check_call(['fab_repo', args1])
-
-            args2 = 'setup_jenkins:services/' \
-                    '%s,profile=paasta_boilerplate' % service_name
-
-            return subprocess.check_call(['fab_repo', args2])
-        except subprocess.CalledProcessError as subprocess_error:
-            print "%s\nFailed to generate Jenkins pipeline" % subprocess_error
-            sys.exit(1)
     except NoSuchService:
         print "Service not found"
+        sys.exit(1)
+
+    # Build pipeline
+    try:
+        args1 = 'setup_jenkins:services/' \
+                '%s,profile=paasta,job_disabled=False' % service_name
+
+        subprocess.check_call(['fab_repo', args1])
+
+        args2 = 'setup_jenkins:services/' \
+                '%s,profile=paasta_boilerplate' % service_name
+
+        subprocess.check_call(['fab_repo', args2])
+    except subprocess.CalledProcessError as subprocess_error:
+        print "%s\nFailed to generate Jenkins pipeline" % subprocess_error
         sys.exit(1)

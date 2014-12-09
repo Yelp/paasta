@@ -80,9 +80,7 @@ def test_generate_pipeline_success_no_opts(
     sys.argv = [
         './paasta_cli', 'generate-pipeline']
     parsed_args = parse_args()
-    exit_code = paasta_generate_pipeline(parsed_args)
-
-    assert exit_code == 0
+    assert paasta_generate_pipeline(parsed_args) is None
 
 
 @patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
@@ -97,6 +95,4 @@ def test_generate_pipeline_success_with_opts(
     sys.argv = [
         './paasta_cli', 'generate-pipeline', '--service', 'fake_service']
     parsed_args = parse_args()
-    exit_code = paasta_generate_pipeline(parsed_args)
-
-    assert exit_code == 0
+    assert paasta_generate_pipeline(parsed_args) is None
