@@ -3,26 +3,6 @@ import glob
 import os
 
 
-class NoSuchService(Exception):
-    """
-    Exception to be raised in the event that the service name can not be guessed
-    """
-    pass
-
-
-def guess_service_name():
-    """
-    Deduce the service name from the pwd
-    :return : A string representing the service name, or a bool False
-    """
-    dir_name = os.path.basename(os.getcwd())
-    service_path = os.path.join('/nail/etc/services', dir_name)
-    if os.path.isdir(service_path):
-        return dir_name
-    else:
-        raise NoSuchService(dir_name)
-
-
 def load_method(module_name, method_name):
     """
     Return a function given a module and method name
@@ -108,6 +88,7 @@ class PaastaColors:
     RED = '\033[31m'
     GREEN = '\033[32m'
     BLUE = '\033[34m'
+    CYAN = '\033[36m'
 
     @staticmethod
     def blue(text):
@@ -136,6 +117,13 @@ class PaastaColors:
         Return text that can be printed color
         """
         return color + text + PaastaColors.DEFAULT
+
+    @staticmethod
+    def cyan(text):
+        """
+        Return text that can be printed cyan
+        """
+        return PaastaColors.color_text(PaastaColors.CYAN, text)
 
 
 class PaastaCheckMessages:
@@ -185,10 +173,6 @@ class PaastaCheckMessages:
         "Cannot get team name. Ensure 'team' field is set in monitoring.yaml.\n"
         "  More info:", "http://y/monitoring-yaml")
 
-    SERVICE_NAME_NOT_FOUND = "Could not figure out the service name.\n" \
-                             "Please run this from the root of a copy " \
-                             "(git clone) of your service."
-
     SMARTSTACK_YAML_FOUND = success("Found smartstack.yaml file")
 
     SMARTSTACK_YAML_MISSING = failure(
@@ -211,3 +195,32 @@ class PaastaCheckMessages:
         return success(
             "Instance '%s' of your service is using smartstack port %d "
             "and will be automatically load balanced" % (instance, port))
+
+
+class NoSuchService(Exception):
+    """
+    Exception to be raised in the event that the service name can not be guessed
+    """
+
+    ERROR_MSG = "Could not determine service name.\n" \
+                "Please run this from the root of a copy " \
+                "(git clone) of your service.\n" \
+                "Alternatively, supply the %s name you wish to " \
+                "inspect with the %s option." \
+                % (PaastaColors.cyan('SERVICE'), PaastaColors.cyan('-s'))
+
+    def __str__(self):
+        return self.ERROR_MSG
+
+
+def guess_service_name():
+    """
+    Deduce the service name from the pwd
+    :return : A string representing the service name, or a bool False
+    """
+    dir_name = os.path.basename(os.getcwd())
+    service_path = os.path.join('/nail/etc/services', dir_name)
+    if os.path.isdir(service_path):
+        return dir_name
+    else:
+        raise NoSuchService(dir_name)

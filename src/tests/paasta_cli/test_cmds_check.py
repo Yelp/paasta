@@ -39,7 +39,7 @@ def test_check_service_name_not_found(mock_stdout, mock_guess_service_name):
 
     mock_guess_service_name.side_effect = NoSuchService('foo')
     args = ['./paasta_cli', 'check']
-    expected_output = '%s\n' % PaastaCheckMessages.SERVICE_NAME_NOT_FOUND
+    expected_output = '%s\n' % NoSuchService.ERROR_MSG
 
     with raises(SystemExit) as sys_exit:
         paasta_check(args)

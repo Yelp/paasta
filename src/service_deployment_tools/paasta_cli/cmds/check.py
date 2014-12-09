@@ -117,12 +117,13 @@ def paasta_check(args):
     """
     try:
         service_name = guess_service_name()
-        service_path = os.path.join('/nail/etc/services', service_name)
-        deploy_check(service_path)
-        docker_check()
-        marathon_check(service_path)
-        sensu_check(service_name, service_path)
-        smartstack_check(service_name, service_path)
-    except NoSuchService:
-        print PaastaCheckMessages.SERVICE_NAME_NOT_FOUND
+    except NoSuchService as service_not_found:
+        print service_not_found
         sys.exit(1)
+
+    service_path = os.path.join('/nail/etc/services', service_name)
+    deploy_check(service_path)
+    docker_check()
+    marathon_check(service_path)
+    sensu_check(service_name, service_path)
+    smartstack_check(service_name, service_path)

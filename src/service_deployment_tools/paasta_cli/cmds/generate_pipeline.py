@@ -33,8 +33,8 @@ def paasta_generate_pipeline(args):
     # Get the service name
     try:
         service_name = args.service or guess_service_name()
-    except NoSuchService:
-        print "Service not found"
+    except NoSuchService as service_not_found:
+        print service_not_found
         sys.exit(1)
 
     # Build pipeline

@@ -21,6 +21,7 @@ def test_generate_pipeline_service_not_found(
 
     sys.argv = ['./paasta_cli', 'generate-pipeline']
     parsed_args = parse_args()
+    expected_output = "%s\n" % NoSuchService.ERROR_MSG
 
     # Fail if exit(1) does not get called
     with raises(SystemExit) as sys_exit:
@@ -28,7 +29,7 @@ def test_generate_pipeline_service_not_found(
 
     output = mock_stdout.getvalue()
     assert sys_exit.value.code == 1
-    assert output == 'Service not found\n'
+    assert output == expected_output
 
 
 @patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
