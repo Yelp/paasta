@@ -16,15 +16,14 @@ docs:
 itest_lucid: package_lucid
 	$(DOCKER_RUN_LUCID) /work/itest/ubuntu.sh
 
-package_lucid: test_lucid
+package_lucid: test build_lucid_docker
 	$(DOCKER_RUN_LUCID) /bin/bash -c "cd src && dpkg-buildpackage -d && mv ../*.deb ../dist/"
 	$(DOCKER_RUN_LUCID) chown -R $(UID):$(GID) /work
 
-test_lucid: build_lucid_docker
+test:
 	find . -name "*.pyc" -exec rm -rf {} \;
 	cd src && tox -r
-#	$(DOCKER_RUN_LUCID) bash -c "cd src && tox"
-	$(DOCKER_RUN_LUCID) chown -R $(UID):$(GID) /work
+	cd src && tox -e marathon_integration
 
 build_lucid_docker:
 	[ -d dist ] || mkdir dist
@@ -33,14 +32,8 @@ build_lucid_docker:
 itest_trusty: package_trusty
 	$(DOCKER_RUN_TRUSTY) /work/itest/ubuntu.sh
 
-package_trusty: test_trusty
+package_trusty: test build_trusty_docker
 	$(DOCKER_RUN_TRUSTY) /bin/bash -c "cd src && dpkg-buildpackage -d && mv ../*.deb ../dist/"
-	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work
-
-test_trusty: build_trusty_docker
-	find . -name "*.pyc" -exec rm -rf {} \;
-	cd src && tox -r
-#	$(DOCKER_RUN_TRUSTY) bash -c "cd src && tox"
 	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work
 
 build_trusty_docker:
@@ -50,7 +43,6 @@ build_trusty_docker:
 quick_start:
 	$(DOCKER_QUICK_START) /bin/bash
 
-
 clean:
 	rm -rf dist/
 	rm -rf src/.tox
@@ -59,6 +51,7 @@ clean:
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete
 
+#TODO: Move into fig
 test_chronos: package_lucid setup_chronos_itest
 	$(DOCKER_RUN_CHRONOS) /work/itest/chronos.sh
 	make cleanup_chronos_itest
