@@ -21,3 +21,13 @@ def test_paasta_check(mock_paasta_check):
     sys.argv = ['./paasta_cli', 'check']
     paasta_cli.main()
     assert mock_paasta_check.called
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.'
+       'paasta_generate_pipeline')
+def test_paasta_generate_pipeline(mock_paasta_generate_pipeline):
+    # 'paasta check' results in check.paasta_check getting executed
+
+    sys.argv = ['./paasta_cli', 'generate-pipeline']
+    paasta_cli.main()
+    assert mock_paasta_generate_pipeline.called
