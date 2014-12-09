@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.12-yelp1) lucid; urgency=low
+
+  * Pin to a correct version of the marathon package. 
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 08 Dec 2014 18:04:00 -0800
+
 service-deployment-tools (0.7.11-yelp1) lucid; urgency=low
 
   * Fix create_app function, MESOS-164 
