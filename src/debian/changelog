@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.13-yelp1) lucid; urgency=low
+
+  * Add 'paasta generate-pipeline' method
+
+ -- Karthig Balendran <karthig@yelp.com>  Tue, 09 Dec 2014 15:53:44 -0800
+
 service-deployment-tools (0.7.12-yelp1) lucid; urgency=low
 
   * Pin to a correct version of the marathon package. 
