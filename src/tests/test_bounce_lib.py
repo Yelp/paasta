@@ -64,7 +64,10 @@ class TestBounceLib:
         ):
             bounce_lib.create_marathon_app('fake_creation', fake_config, fake_client)
             lock_patch.assert_called_once_with()
-            fake_client.create_app.assert_called_once_with('fake_creation', fake_config)
+            assert fake_client.create_app.call_count == 1
+            actual_call_args = fake_client.create_app.call_args
+            actual_config = actual_call_args[0][1]
+            assert actual_config.id == 'fake_creation'
             wait_patch.assert_called_once_with(fake_config['id'], fake_client)
 
     def test_delete_marathon_app(self):
@@ -329,3 +332,6 @@ class TestBounceLib:
             assert fake_client.get_app.call_count == 2
             assert scale_patch.call_count == 0
             kill_patch.assert_called_once_with(fake_old_ids, fake_client)
+
+
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

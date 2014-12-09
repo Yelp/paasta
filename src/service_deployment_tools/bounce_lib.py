@@ -1,15 +1,17 @@
 #!/usr/bin/env python
 from contextlib import contextmanager, nested
-from kazoo.client import KazooClient
-from kazoo.exceptions import LockTimeout
-from service_deployment_tools.monitoring.replication_utils import get_replication_for_services
 import fcntl
 import logging
-import marathon_tools
 import os
 import signal
 import time
 
+from kazoo.client import KazooClient
+from kazoo.exceptions import LockTimeout
+from marathon.models import MarathonApp
+
+import marathon_tools
+from service_deployment_tools.monitoring.replication_utils import get_replication_for_services
 
 log = logging.getLogger('__main__')
 DEFAULT_SYNAPSE_HOST = 'localhost:3212'
@@ -127,7 +129,7 @@ def create_marathon_app(app_id, config, client):
     :param config: The marathon configuration to be deployed
     :param client: A MarathonClient object"""
     with nested(create_app_lock(), time_limit(1)):
-        client.create_app(app_id, config)
+        client.create_app(app_id, MarathonApp(**config))
         wait_for_create(app_id, client)
 
 
