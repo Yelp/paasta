@@ -42,12 +42,15 @@ def paasta_generate_pipeline(args):
         args1 = 'setup_jenkins:services/' \
                 '%s,profile=paasta,job_disabled=False' % service_name
 
+        print "INFO: Executing fab_repo %s" % args1
         subprocess.check_call(['fab_repo', args1])
 
         args2 = 'setup_jenkins:services/' \
                 '%s,profile=paasta_boilerplate' % service_name
 
+        print "INFO: Executing fab_repo %s" % args2
         subprocess.check_call(['fab_repo', args2])
+
     except subprocess.CalledProcessError as subprocess_error:
         print "%s\nFailed to generate Jenkins pipeline" % subprocess_error
         sys.exit(1)
