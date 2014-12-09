@@ -22,6 +22,7 @@ def test_generate_pipeline_service_not_found(
     sys.argv = ['./paasta_cli', 'generate-pipeline']
     parsed_args = parse_args()
 
+    # Fail if exit(1) does not get called
     with raises(SystemExit) as sys_exit:
         paasta_generate_pipeline(parsed_args)
 
@@ -34,12 +35,12 @@ def test_generate_pipeline_service_not_found(
 @patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.subprocess')
 def test_generate_pipeline_subprocess1_fail_no_opt_args(
         mock_subprocess, mock_guess_service_name):
-    # paasta generate fails on the first subprocess call, no opt args
+    # paasta generate fails on the first subprocess call
+    # service name has to be guessed
 
     mock_guess_service_name.return_value = 'fake_service'
-    mock_subprocess.check_call.side_effect = \
-        CalledProcessError(1, 'jenkins cmd 1')
-
+    mock_subprocess.check_call.side_effect = [
+        0, CalledProcessError('jenkins cmd 1', 0)]
     sys.argv = ['./paasta_cli', 'generate-pipeline']
     parsed_args = parse_args()
 
@@ -51,11 +52,12 @@ def test_generate_pipeline_subprocess1_fail_no_opt_args(
 @patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.subprocess')
 def test_generate_pipeline_subprocess2_fail_with_opt_args(
         mock_subprocess, mock_guess_service_name):
-    # paasta generate fails on the second subprocess call, opt args
+    # paasta generate fails on the second subprocess call
+    # service name provided as arg
 
     mock_guess_service_name.return_value = 'fake_service'
     mock_subprocess.check_call.side_effect = [
-        0, CalledProcessError(1, 'jenkins cmd 1')]
+        0, CalledProcessError(1, 'jenkins cmd 2')]
 
     sys.argv = [
         './paasta_cli', 'generate-pipeline', '--service', 'fake_service']
@@ -63,3 +65,38 @@ def test_generate_pipeline_subprocess2_fail_with_opt_args(
 
     with raises(CalledProcessError):
         paasta_generate_pipeline(parsed_args)
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
+@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.subprocess')
+def test_generate_pipeline_success_no_opts(
+        mock_subprocess, mock_guess_service_name):
+    # paasta generate succeeds when service name must be guessed
+
+    mock_guess_service_name.return_value = 'fake_service'
+    mock_subprocess.check_call.side_effect = [
+        0, 0]
+
+    sys.argv = [
+        './paasta_cli', 'generate-pipeline']
+    parsed_args = parse_args()
+    exit_code = paasta_generate_pipeline(parsed_args)
+
+    assert exit_code == 0
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
+@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.subprocess')
+def test_generate_pipeline_success_with_opts(
+        mock_subprocess, mock_guess_service_name):
+    # paasta generate succeeds when service name provided as arg
+
+    mock_subprocess.check_call.side_effect = [
+        0, 0]
+
+    sys.argv = [
+        './paasta_cli', 'generate-pipeline', '--service', 'fake_service']
+    parsed_args = parse_args()
+    exit_code = paasta_generate_pipeline(parsed_args)
+
+    assert exit_code == 0
