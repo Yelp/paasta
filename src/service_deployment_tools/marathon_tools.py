@@ -121,6 +121,7 @@ def get_docker_url(registry_uri, docker_image, verify=True):
         c.setopt(pycurl.URL, str('http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
                                                                            docker_image.split(':')[0],
                                                                            docker_image.split(':')[1])))
+        c.setopt(pycurl.TIMEOUT, 30)
         c.setopt(pycurl.WRITEFUNCTION, s.write)
         c.perform()
         if 'error' in s.getvalue():

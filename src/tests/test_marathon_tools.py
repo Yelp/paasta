@@ -626,7 +626,9 @@ class TestMarathonTools:
                                                     fake_image.split(':')[0],
                                                     fake_image.split(':')[1]))
             fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, fake_stringio.write)
-            assert fake_curl.setopt.call_count == 2
+
+            assert fake_curl.setopt.call_count == 3
+            fake_curl.setopt.assert_any_call(pycurl.TIMEOUT, 30)
             fake_curl.perform.assert_called_once_with()
             fake_stringio.getvalue.assert_called_once_with()
 
@@ -650,7 +652,8 @@ class TestMarathonTools:
                                                     fake_image.split(':')[0],
                                                     fake_image.split(':')[1]))
             fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, fake_stringio.write)
-            assert fake_curl.setopt.call_count == 2
+            assert fake_curl.setopt.call_count == 3
+            fake_curl.setopt.assert_any_call(pycurl.TIMEOUT, 30)
             fake_curl.perform.assert_called_once_with()
             fake_stringio.getvalue.assert_called_once_with()
 
