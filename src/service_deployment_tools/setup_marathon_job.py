@@ -158,7 +158,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
     docker_url = marathon_tools.get_docker_url(marathon_config['docker_registry'],
                                                service_marathon_config['docker_image'])
     if not docker_url:
-        error_msg = "Docker image for {0}.{1} not in deployments.json (or marathon config) Exiting.".format(
+        error_msg = "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?".format(
                   service_name, instance_name)
         log.error(error_msg)
         return (1, error_msg)
