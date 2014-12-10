@@ -11,7 +11,7 @@ is assumed to be paasta-{cluster}-{instance}, where cluster is the cluster
 the configuration is for and instance is the instance name.
 
 For example, if the service paasta_test has an instance called main with no
-branch or docker_image key in its configuration in the devc cluster, then this script
+branch in its configuration in the devc cluster, then this script
 will create a key/value pair of 'paasta_test:paasta-devc.main': 'services-paasta_test:paasta-SHA',
 where SHA is the current SHA at the tip of the branch named devc in
 git@git.yelpcorp.com:services/paasta_test.git. If main had a branch key with
@@ -67,8 +67,7 @@ def get_git_url(service):
 def get_branches_from_marathon_file(file_dir, filename):
     """Get all branches defined in a single service configuration file.
     A branch is defined for an instance if it has a 'branch' key, or
-    does not have any 'docker_image' key. In the case of the latter
-    but not the former, the branch name is paasta-{cluster}.{instance},
+    the branch name is paasta-{cluster}.{instance},
     where cluster is the cluster the marathon file is defined for
     (i.e. marathon-devc.yaml is for devc), and instance is the
     instance name.
@@ -82,8 +81,7 @@ def get_branches_from_marathon_file(file_dir, filename):
         target_branch = None
         if 'branch' in config[instance]:
             target_branch = config[instance]['branch']
-        # Change this to else when we don't care about docker_image anymore
-        elif 'docker_image' not in config[instance]:
+        else:
             try:
                 # cluster may contain dashes (and frequently does) so
                 # reassemble the cluster after pulling out the marathon bit.
