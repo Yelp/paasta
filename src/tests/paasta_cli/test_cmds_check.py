@@ -1,3 +1,4 @@
+import sys
 from mock import patch
 from pytest import raises
 from StringIO import StringIO
@@ -5,6 +6,7 @@ from StringIO import StringIO
 from service_deployment_tools.paasta_cli.cmds.check import \
     paasta_check, deploy_check, docker_check, marathon_check, \
     sensu_check, smartstack_check, NoSuchService
+from service_deployment_tools.paasta_cli.paasta_cli import parse_args
 from service_deployment_tools.paasta_cli.utils import PaastaCheckMessages
 
 
@@ -22,8 +24,10 @@ def test_check_paasta_check(
     mock_guess_service_name.return_value = 'servicedocs'
 
     # Ensure each check in 'paasta_check' is called
-    args = ['./paasta_cli', 'check']
-    paasta_check(args)
+    sys.argv = ['./paasta_cli', 'check']
+    parsed_args = parse_args()
+
+    paasta_check(parsed_args)
 
     assert mock_deploy_check.called
     assert mock_docker_check.called
@@ -38,11 +42,12 @@ def test_check_service_name_not_found(mock_stdout, mock_guess_service_name):
     # Paasta checks do not run when service name cannot be guessed, exit(1)
 
     mock_guess_service_name.side_effect = NoSuchService('foo')
-    args = ['./paasta_cli', 'check']
+    sys.argv = ['./paasta_cli', 'check']
+    parsed_args = parse_args()
     expected_output = '%s\n' % NoSuchService.ERROR_MSG
 
     with raises(SystemExit) as sys_exit:
-        paasta_check(args)
+        paasta_check(parsed_args)
 
     output = mock_stdout.getvalue()
     assert sys_exit.value.code == 1

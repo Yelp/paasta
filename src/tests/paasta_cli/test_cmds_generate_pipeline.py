@@ -41,7 +41,7 @@ def test_generate_pipeline_subprocess1_fail_no_opt_args(
 
     mock_guess_service_name.return_value = 'fake_service'
     mock_subprocess.check_call.side_effect = [
-        0, CalledProcessError('jenkins cmd 1', 0)]
+        CalledProcessError(1, 'jenkins cmd 1'), 0]
     sys.argv = ['./paasta_cli', 'generate-pipeline']
     parsed_args = parse_args()
 
