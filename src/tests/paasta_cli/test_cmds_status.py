@@ -32,9 +32,9 @@ def test_status_service_not_found_error(mock_stdout, mock_guess_service_name):
 @patch('service_deployment_tools.paasta_cli.cmds.status._get_deployments_json')
 @patch('service_deployment_tools.paasta_cli.cmds.status.guess_service_name')
 @patch('sys.stdout', new_callable=StringIO)
-def test_status_list(
+def test_status_displays_deployed_service(
         mock_stdout, mock_guess_service_name, mock_get_deployments):
-    # paasta_status with no args and non-service directory results in error
+    # paasta_status with no args displays deploy info
 
     service_name = 'fake_service'
     mock_guess_service_name.return_value = service_name
