@@ -178,6 +178,16 @@ def get_instances(service_config):
     return int(instances) if instances else 1
 
 
+def get_args(service_config):
+    """Get the docker args specified in the service's marathon configuration.
+
+    Defaults to an empty array if not specified in the config.
+
+    :param service_config: The service instance's configuration dictionary
+    :returns: An array of args specified in the config, [] if not specified"""
+    return service_config.get('args', [])
+
+
 def get_bounce_method(service_config):
     """Get the bounce method specified in the service's marathon configuration.
 
@@ -244,6 +254,7 @@ def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_
     complete_config['cpus'] = get_cpus(service_marathon_config)
     complete_config['constraints'] = get_constraints(service_marathon_config)
     complete_config['instances'] = get_instances(service_marathon_config)
+    complete_config['args'] = get_args(service_marathon_config)
     log.info("Complete configuration for instance is: %s", complete_config)
     return complete_config
 

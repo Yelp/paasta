@@ -528,6 +528,7 @@ class TestMarathonTools:
         fake_mem = 1000000000000000000000
         fake_cpus = -1
         fake_instances = 101
+        fake_args = ['arg1', 'arg2']
         expected_conf = {
             'id': fake_id,
             'container': {
@@ -549,18 +550,21 @@ class TestMarathonTools:
             'uris': ['file:///root/.dockercfg', ],
             'mem': fake_mem,
             'cpus': fake_cpus,
-            'instances': fake_instances
+            'instances': fake_instances,
+            'args': fake_args
         }
         with contextlib.nested(
             mock.patch('marathon_tools.get_mem', return_value=fake_mem),
             mock.patch('marathon_tools.get_cpus', return_value=fake_cpus),
             mock.patch('marathon_tools.get_constraints', return_value=[]),
             mock.patch('marathon_tools.get_instances', return_value=fake_instances),
+            mock.patch('marathon_tools.get_args', return_value=fake_args),
         ) as (
             get_mem_patch,
             get_cpus_patch,
             get_constraints_patch,
             get_instances_patch,
+            get_args_patch
         ):
             actual = marathon_tools.create_complete_config(fake_id, fake_url, fake_volumes,
                                                            self.fake_marathon_job_config)
@@ -569,6 +573,7 @@ class TestMarathonTools:
             get_cpus_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_constraints_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_instances_patch.assert_called_once_with(self.fake_marathon_job_config)
+            get_args_patch.assert_called_once_with(self.fake_marathon_job_config)
 
     def test_get_bounce_method_in_config(self):
         fake_method = 'aaargh'
@@ -605,6 +610,13 @@ class TestMarathonTools:
 
     def test_get_mem_default(self):
         assert marathon_tools.get_mem({}) == 100
+
+    def test_get_args_default(self):
+        assert marathon_tools.get_args({}) == []
+
+    def test_get_args_in_config(self):
+        fake_conf = {'args': ['arg1', 'arg2']}
+        assert marathon_tools.get_args(fake_conf) == ['arg1', 'arg2']
 
     def test_get_docker_url_no_error(self):
         fake_registry = "im.a-real.vm"
