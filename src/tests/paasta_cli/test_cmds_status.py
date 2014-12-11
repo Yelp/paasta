@@ -43,10 +43,11 @@ def test_status_displays_deployed_service(
     }
     mock_get_deployments.return_value = deployments_json_dict
     expected_output = "\nRunning instance(s) of %s:\n\n" \
-                      "cluster: cluster\n" \
-                      "instance: instance\n" \
-                      "version: this_is_a_sha\n\n" \
-                      % PaastaColors.cyan(service_name)
+                      "cluster: %s\n" \
+                      "\tinstance: instance\n" \
+                      "\t\tversion: this_is_a_sha\n\n" \
+                      % (PaastaColors.cyan(service_name),
+                         PaastaColors.green('cluster'))
 
     sys.argv = [
         './paasta_cli', 'status', '-s', 'fake_service']

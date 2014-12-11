@@ -8,8 +8,8 @@ import pkg_resources
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'version',
-        description="Display the current version of the PaaSTA client",
-        help="Display the current version of the PaaSTA client")
+        description="Print the current version of the PaaSTA client",
+        help="Print the current version of the PaaSTA client")
     list_parser.set_defaults(command=paasta_version)
 
 

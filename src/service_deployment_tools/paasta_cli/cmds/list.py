@@ -10,7 +10,7 @@ def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'list',
         description="Display a list of Yelp services.",
-        help="Display a list of Yelp services.")
+        help="List Yelp services.")
     list_parser.set_defaults(command=paasta_list)
 
 

@@ -31,17 +31,21 @@ def paasta_status(args):
         exit(1)
 
     deployments_json = _get_deployments_json(DEFAULT_SOA_DIR)
-    service_found = False
-    for key in deployments_json.keys():
+    cluster_dict = {}
+    for key in deployments_json:
         service, deployed_to = key.encode('utf8').split(':')
         if service == service_name:
-            if not service_found:
-                print "\nRunning instance(s) of %s:\n" \
-                      % PaastaColors.cyan(service)
-                service_found = True
             cluster, instance = deployed_to.split('.')
             value = deployments_json[key].encode('utf8')
             sha = value[value.rfind('-') + 1:]
-            print "cluster: %s" % cluster
-            print "instance: %s" % instance
-            print "version: %s\n" % sha
+            cluster_dict.setdefault(cluster, []).append(
+                {'instance': instance, 'version': sha})
+
+    if cluster_dict:
+        print "\nRunning instance(s) of %s:\n" \
+              % PaastaColors.cyan(service_name)
+        for cluster_instance in cluster_dict:
+            print "cluster: %s" % PaastaColors.green(cluster_instance)
+            for service_instance in cluster_dict[cluster_instance]:
+                print "\tinstance: %s" % service_instance['instance']
+                print "\t\tversion: %s\n" % service_instance['version']
