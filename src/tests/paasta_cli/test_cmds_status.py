@@ -56,3 +56,43 @@ def test_status_displays_deployed_service(
 
     output = mock_stdout.getvalue()
     assert output == expected_output
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.status._get_deployments_json')
+@patch('service_deployment_tools.paasta_cli.cmds.status.guess_service_name')
+@patch('sys.stdout', new_callable=StringIO)
+def test_status_info_is_sorted(
+        mock_stdout, mock_guess_service_name, mock_get_deployments):
+    # paasta_status sorts clusters and instances
+
+    service_name = 'fake_service'
+    mock_guess_service_name.return_value = service_name
+    deployments_json_dict = {
+        'fake_service:a_cluster.a_instance': 'this_is_a_sha',
+        'fake_service:a_cluster.b_instance': 'this_is_a_sha',
+        'fake_service:b_cluster.a_instance': 'this_is_a_sha',
+        'fake_service:b_cluster.b_instance': 'this_is_a_sha'
+    }
+    mock_get_deployments.return_value = deployments_json_dict
+    expected_output = "\nRunning instance(s) of %s:\n\n" \
+                      "cluster: %s\n" \
+                      "\tinstance: a_instance\n" \
+                      "\t\tversion: this_is_a_sha\n\n" \
+                      "\tinstance: b_instance\n" \
+                      "\t\tversion: this_is_a_sha\n\n" \
+                      "cluster: %s\n" \
+                      "\tinstance: a_instance\n" \
+                      "\t\tversion: this_is_a_sha\n\n" \
+                      "\tinstance: b_instance\n" \
+                      "\t\tversion: this_is_a_sha\n\n" \
+                      % (PaastaColors.cyan(service_name),
+                         PaastaColors.green('a_cluster'),
+                         PaastaColors.green('b_cluster'))
+
+    sys.argv = [
+        './paasta_cli', 'status', '-s', 'fake_service']
+    parsed_args = parse_args()
+    paasta_status(parsed_args)
+
+    output = mock_stdout.getvalue()
+    assert output == expected_output

@@ -44,8 +44,8 @@ def paasta_status(args):
     if cluster_dict:
         print "\nRunning instance(s) of %s:\n" \
               % PaastaColors.cyan(service_name)
-        for cluster_instance in cluster_dict:
+        for cluster_instance in sorted(cluster_dict):
             print "cluster: %s" % PaastaColors.green(cluster_instance)
-            for service_instance in cluster_dict[cluster_instance]:
+            for service_instance in sorted(cluster_dict[cluster_instance]):
                 print "\tinstance: %s" % service_instance['instance']
                 print "\t\tversion: %s\n" % service_instance['version']
