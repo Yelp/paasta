@@ -39,7 +39,7 @@ def test_status_displays_deployed_service(
     service_name = 'fake_service'
     mock_guess_service_name.return_value = service_name
     deployments_json_dict = {
-        'fake_service:cluster.instance': 'this_is_a_sha'
+        'fake_service:paasta-cluster.instance': 'this_is_a_sha'
     }
     mock_get_deployments.return_value = deployments_json_dict
     expected_output = "\nRunning instance(s) of %s:\n\n" \
@@ -68,10 +68,10 @@ def test_status_info_is_sorted(
     service_name = 'fake_service'
     mock_guess_service_name.return_value = service_name
     deployments_json_dict = {
-        'fake_service:a_cluster.a_instance': 'this_is_a_sha',
-        'fake_service:a_cluster.b_instance': 'this_is_a_sha',
-        'fake_service:b_cluster.a_instance': 'this_is_a_sha',
-        'fake_service:b_cluster.b_instance': 'this_is_a_sha'
+        'fake_service:paasta-a_cluster.a_instance': 'this_is_a_sha',
+        'fake_service:paasta-a_cluster.b_instance': 'this_is_a_sha',
+        'fake_service:paasta-b_cluster.a_instance': 'this_is_a_sha',
+        'fake_service:paasta-b_cluster.b_instance': 'this_is_a_sha'
     }
     mock_get_deployments.return_value = deployments_json_dict
     expected_output = "\nRunning instance(s) of %s:\n\n" \

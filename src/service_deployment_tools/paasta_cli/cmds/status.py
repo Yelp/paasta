@@ -3,6 +3,9 @@
 Contains methods used by the paasta client to check the status of the service
 on the PaaSTA stack
 """
+import os
+
+from service_configuration_lib import read_deploy
 from service_deployment_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
 from service_deployment_tools.paasta_cli.utils import \
@@ -18,6 +21,17 @@ def add_subparser(subparsers):
     status_parser.add_argument('-s', '--service', help='The name of the service '
                                                        'you wish to inspect')
     status_parser.set_defaults(command=paasta_status)
+
+
+def get_deploy_yaml(service_name):
+    deploy_file_path = os.path.join(DEFAULT_SOA_DIR, service_name, "deploy.yaml")
+    deploy_file = read_deploy(deploy_file_path)
+    return deploy_file
+
+
+def yelp_sort(service_name):
+    deploy_file = get_deploy_yaml(service_name)
+    deploy_file
 
 
 def paasta_status(args):
@@ -45,7 +59,8 @@ def paasta_status(args):
         print "\nRunning instance(s) of %s:\n" \
               % PaastaColors.cyan(service_name)
         for cluster_instance in sorted(cluster_dict):
-            print "cluster: %s" % PaastaColors.green(cluster_instance)
+            cluster_name = cluster_instance[7:]
+            print "cluster: %s" % PaastaColors.green(cluster_name)
             for service_instance in sorted(cluster_dict[cluster_instance]):
                 print "\tinstance: %s" % service_instance['instance']
                 print "\t\tversion: %s\n" % service_instance['version']
