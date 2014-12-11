@@ -16,7 +16,7 @@ def test_version(mock_stdout):
     # Format the version string
     if '-' in version:
         version = version[:version.find('-')]
-    expected_output = '%s\n' % version[1:]
+    expected_output = '%s' % version[1:]
 
     sys.argv = [
         './paasta_cli', 'version']
