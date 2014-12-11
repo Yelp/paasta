@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.16-yelp1) lucid; urgency=low
+
+  * Make 'paasta status' more readable 
+
+ -- Karthig Balendran <karthig@yelp.com>  Wed, 10 Dec 2014 17:03:51 -0800
+
 service-deployment-tools (0.7.15-yelp1) lucid; urgency=low
 
   * Add 'paasta version' command 
