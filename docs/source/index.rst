@@ -8,7 +8,7 @@ Configuration and deployment
 
 .. toctree::
    :maxdepth: 1
-   
+
    config/marathon
 
 
@@ -37,7 +37,7 @@ Libraries:
 
    bounce_lib
    marathon_tools
-   
+
 Submodules:
 
 .. toctree::
