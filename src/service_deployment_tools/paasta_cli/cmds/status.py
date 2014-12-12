@@ -30,7 +30,7 @@ def get_deploy_yaml(service_name):
     return deploy_file
 
 
-def planned_deployments(service_name):
+def planned_deployments(deploy_file):
     """
     Yield deployment environments in the form 'cluster.instance' in the order
     they appear in the deploy.yaml file for service service_name
@@ -40,12 +40,6 @@ def planned_deployments(service_name):
     """
 
     cluster_dict = OrderedDict()
-
-    deploy_file = get_deploy_yaml(service_name)
-
-    if not deploy_file:
-        print PaastaCheckMessages.DEPLOY_YAML_MISSING
-        exit(1)
 
     # Store cluster names in the order in which they are read
     # Clusters map to an ordered list of instances
@@ -76,6 +70,11 @@ def paasta_status(args):
         print 'Failed to locate deployments.json in default SOA directory'
         exit(1)
 
+    deploy_file = get_deploy_yaml(service_name)
+    if not deploy_file:
+        print PaastaCheckMessages.DEPLOY_YAML_MISSING
+        exit(1)
+
     # Create a dictionary of actual $service_name Jenkins deployments
     actual_deployments = {}
     for key in deployments_json:
@@ -90,12 +89,12 @@ def paasta_status(args):
         previous_cluster = ''
 
         # Get cluster.instance in the order in which they appear in deploy.yaml
-        for namespace in planned_deployments(service_name):
+        for namespace in planned_deployments(deploy_file):
             cluster_name, instance = namespace.split('.')
 
             # Previous deploy cluster printed isn't this, so print the name
             if cluster_name != previous_cluster:
-                print cluster_name
+                print "cluster: %s" % cluster_name
                 previous_cluster = cluster_name
 
             # Case: service deployed to cluster.instance
