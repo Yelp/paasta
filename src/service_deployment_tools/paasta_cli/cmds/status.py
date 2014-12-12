@@ -3,6 +3,7 @@
 Contains methods used by the paasta client to check the status of the service
 on the PaaSTA stack
 """
+from ordereddict import OrderedDict
 import os
 
 from service_configuration_lib import read_deploy
@@ -31,7 +32,16 @@ def get_deploy_yaml(service_name):
 
 def yelp_sort(service_name):
     deploy_file = get_deploy_yaml(service_name)
-    deploy_file
+    cluster_dict = OrderedDict()
+    for namespace in deploy_file['pipeline']:
+        namespace = namespace['instance_name']
+        if (namespace != 'itest') and (namespace != 'registry'):
+            cluster, instance = namespace.split('.')
+            cluster_dict.setdefault(cluster, []).append(instance)
+
+    for cluster in cluster_dict:
+        for instance in cluster_dict[cluster]:
+            yield "%s.%s" % (cluster, instance)
 
 
 def paasta_status(args):
@@ -47,20 +57,20 @@ def paasta_status(args):
     deployments_json = _get_deployments_json(DEFAULT_SOA_DIR)
     cluster_dict = {}
     for key in deployments_json:
-        service, deployed_to = key.encode('utf8').split(':')
+        service, namespace = key.encode('utf8').split(':')
         if service == service_name:
-            cluster, instance = deployed_to.split('.')
             value = deployments_json[key].encode('utf8')
             sha = value[value.rfind('-') + 1:]
-            cluster_dict.setdefault(cluster, []).append(
-                {'instance': instance, 'version': sha})
+            cluster_dict[namespace[7:]] = sha
+
+    clusters_seen = []
 
     if cluster_dict:
-        print "\nRunning instance(s) of %s:\n" \
-              % PaastaColors.cyan(service_name)
-        for cluster_instance in sorted(cluster_dict):
-            cluster_name = cluster_instance[7:]
-            print "cluster: %s" % PaastaColors.green(cluster_name)
-            for service_instance in sorted(cluster_dict[cluster_instance]):
-                print "\tinstance: %s" % service_instance['instance']
-                print "\t\tversion: %s\n" % service_instance['version']
+        for namespace in yelp_sort(service_name):
+            if namespace in cluster_dict:
+                cluster_name, instance = namespace.split('.')
+                if cluster_name not in clusters_seen:
+                    print "cluster: %s" % PaastaColors.green(cluster_name)
+                    clusters_seen.append(cluster_name)
+                print "\tinstance: %s" % instance
+                print "\t\tversion: %s\n" % cluster_dict[namespace]
