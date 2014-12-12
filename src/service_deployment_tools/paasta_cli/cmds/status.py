@@ -10,7 +10,7 @@ from service_configuration_lib import read_deploy
 from service_deployment_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
 from service_deployment_tools.paasta_cli.utils import \
-    guess_service_name, NoSuchService, PaastaColors
+    guess_service_name, NoSuchService, PaastaColors, PaastaCheckMessages
 
 
 def add_subparser(subparsers):
@@ -30,15 +30,32 @@ def get_deploy_yaml(service_name):
     return deploy_file
 
 
-def yelp_sort(service_name):
-    deploy_file = get_deploy_yaml(service_name)
+def planned_deployments(service_name):
+    """
+    Yield deployment environments in the form 'cluster.instance' in the order
+    they appear in the deploy.yaml file for service service_name
+    :param service_name : name of the service for we wish to inspect
+    :return : a series of strings of the form: 'cluster.instance', exits on
+    error if deploy.yaml is not found
+    """
+
     cluster_dict = OrderedDict()
-    for namespace in deploy_file['pipeline']:
-        namespace = namespace['instance_name']
+
+    deploy_file = get_deploy_yaml(service_name)
+
+    if not deploy_file:
+        print PaastaCheckMessages.DEPLOY_YAML_MISSING
+        exit(1)
+
+    # Store cluster names in the order in which they are read
+    # Clusters map to an ordered list of instances
+    for entry in deploy_file['pipeline']:
+        namespace = entry['instance_name']
         if (namespace != 'itest') and (namespace != 'registry'):
             cluster, instance = namespace.split('.')
             cluster_dict.setdefault(cluster, []).append(instance)
 
+    # Yield deployment environments in the form of 'cluster.instance'
     for cluster in cluster_dict:
         for instance in cluster_dict[cluster]:
             yield "%s.%s" % (cluster, instance)
@@ -55,22 +72,41 @@ def paasta_status(args):
         exit(1)
 
     deployments_json = _get_deployments_json(DEFAULT_SOA_DIR)
-    cluster_dict = {}
+    if not deployments_json:
+        print 'Failed to locate deployments.json in default SOA directory'
+        exit(1)
+
+    # Create a dictionary of actual $service_name Jenkins deployments
+    actual_deployments = {}
     for key in deployments_json:
         service, namespace = key.encode('utf8').split(':')
         if service == service_name:
             value = deployments_json[key].encode('utf8')
             sha = value[value.rfind('-') + 1:]
-            cluster_dict[namespace[7:]] = sha
+            actual_deployments[namespace.replace('paasta-', '', 1)] = sha
 
-    clusters_seen = []
+    if actual_deployments:
 
-    if cluster_dict:
-        for namespace in yelp_sort(service_name):
-            if namespace in cluster_dict:
-                cluster_name, instance = namespace.split('.')
-                if cluster_name not in clusters_seen:
-                    print "cluster: %s" % PaastaColors.green(cluster_name)
-                    clusters_seen.append(cluster_name)
-                print "\tinstance: %s" % instance
-                print "\t\tversion: %s\n" % cluster_dict[namespace]
+        previous_cluster = ''
+
+        # Get cluster.instance in the order in which they appear in deploy.yaml
+        for namespace in planned_deployments(service_name):
+            cluster_name, instance = namespace.split('.')
+
+            # Previous deploy cluster printed isn't this, so print the name
+            if cluster_name != previous_cluster:
+                print cluster_name
+                previous_cluster = cluster_name
+
+            # Case: service deployed to cluster.instance
+            if namespace in actual_deployments:
+                instance = PaastaColors.green(instance)
+                version = actual_deployments[namespace]
+
+            # Case: service NOT deployed to cluster.instance
+            else:
+                instance = PaastaColors.red(instance)
+                version = 'None'
+
+            print '\tinstance: %s' % instance
+            print '\t\tversion: %s\n' % version
