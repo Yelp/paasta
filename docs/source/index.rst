@@ -44,6 +44,7 @@ Submodules:
    :maxdepth: 2
 
    monitoring/index
+   paasta_cli/index
 
 Indices and tables
 ==================

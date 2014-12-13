@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.18-yelp1) lucid; urgency=low
+
+  * Create servicedocs stubs for paasta_cli 
+
+ -- Karthig Balendran <karthig@yelp.com>  Fri, 12 Dec 2014 17:23:56 -0800
+
 service-deployment-tools (0.7.17-yelp1) lucid; urgency=low
 
   * 'paasta status' sorts according to deploy.yaml 
