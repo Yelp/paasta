@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.17-yelp1) lucid; urgency=low
+
+  * 'paasta status' sorts according to deploy.yaml 
+
+ -- Karthig Balendran <karthig@yelp.com>  Fri, 12 Dec 2014 16:12:54 -0800
+
 service-deployment-tools (0.7.16-yelp1) lucid; urgency=low
 
   * Make 'paasta status' more readable 
