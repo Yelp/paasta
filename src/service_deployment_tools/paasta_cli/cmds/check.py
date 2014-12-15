@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-"""
-Contains methods used by the paasta client to check whether Yelp service
-passes all the markers required to be considered paasta ready.
-"""
+"""Contains methods used by the paasta client to check whether Yelp service
+passes all the markers required to be considered paasta ready."""
 import os
 import sys
 
@@ -22,9 +20,10 @@ def add_subparser(subparsers):
 
 
 def deploy_check(service_path):
-    """
-    Check whether deploy.yaml exists in service directory
-    """
+    """Check whether deploy.yaml exists in service directory. Prints success or
+    error message.
+
+    :param service_path: path to a directory containing deploy.yaml"""
     if is_file_in_dir('deploy.yaml', service_path):
         print PaastaCheckMessages.DEPLOY_YAML_FOUND
     else:
@@ -32,11 +31,10 @@ def deploy_check(service_path):
 
 
 def docker_file_valid(path):
-    """
-    Ensure Dockerfile is valid
+    """Ensure Dockerfile is valid.
+
     :param path : path to a Dockerfile
-    :return : A boolean that is True if the Dockerfile reads from yelpcorp
-    """
+    :return : A boolean that is True if the Dockerfile reads from yelpcorp"""
     dockerfile = open(path, 'r')
     first_line = dockerfile.readline()
     if first_line.startswith("FROM docker-dev.yelpcorp.com"):
@@ -46,9 +44,8 @@ def docker_file_valid(path):
 
 
 def docker_check():
-    """
-    Check whether Dockerfile exists in service directory, and is valid
-    """
+    """Check whether Dockerfile exists in service directory, and is valid.
+    Prints suitable message depending on outcome"""
     docker_file_path = is_file_in_dir('Dockerfile', os.getcwd())
     if docker_file_path:
         print PaastaCheckMessages.DOCKERFILE_FOUND
@@ -61,9 +58,11 @@ def docker_check():
 
 
 def marathon_check(service_path):
-    """
-    Check whether a marathon yaml file exists in service directory
-    """
+    """Check whether a marathon yaml file exists in service directory, and
+    print success/failure message.
+
+    :param service_path: path to a directory containing the marathon yaml
+    files"""
     if is_file_in_dir('marathon*.yaml', service_path):
         print PaastaCheckMessages.MARATHON_YAML_FOUND
     else:
@@ -71,10 +70,11 @@ def marathon_check(service_path):
 
 
 def sensu_check(service_name, service_path):
-    """
-    Check whether monitoring.yaml exists in service directory, and that the team
-    name is declared
-    """
+    """Check whether monitoring.yaml exists in service directory,
+    and that the team name is declared.
+
+    :param service_name: name of service currently being examined
+    :param service_path: path to loction of monitoring.yaml file"""
     if is_file_in_dir('monitoring.yaml', service_path):
         print PaastaCheckMessages.SENSU_MONITORING_FOUND
         team = get_team(None, service_name)
@@ -87,10 +87,11 @@ def sensu_check(service_name, service_path):
 
 
 def smartstack_check(service_name, service_path):
-    """
-    Check whether smartstack.yaml exists in service directory, and the proxy
-    ports are declared
-    """
+    """Check whether smartstack.yaml exists in service directory, and the proxy
+    ports are declared.  Print appropriate message depending on outcome.
+
+    :param service_name: name of service currently being examined
+    :param service_path: path to loction of smartstack.yaml file"""
     if is_file_in_dir('smartstack.yaml', service_path):
         print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
         smartstack_dict = read_extra_service_information(
@@ -112,10 +113,8 @@ def smartstack_check(service_name, service_path):
 
 
 def paasta_check(args):
-    """
-    Analyze the service in the PWD to determine if it is paasta ready
-    :param args: arguments supplied to the paasta client
-    """
+    """Analyze the service in the PWD to determine if it is paasta ready
+    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
     service_name = guess_service_name()
     try:
         service_dir_exists_check(service_name)

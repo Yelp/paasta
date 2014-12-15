@@ -1,5 +1,5 @@
 list
 =========================
 
-.. automodule:: paasta_cli.cmds.list
+.. automodule:: service_deployment_tools.paasta_cli.cmds.list
    :members:

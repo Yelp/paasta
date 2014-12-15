@@ -4,8 +4,8 @@ import os
 
 
 def load_method(module_name, method_name):
-    """
-    Return a function given a module and method name
+    """Return a function given a module and method name.
+
     :param module_name: a string
     :param method_name: a string
     :return: a function
@@ -16,11 +16,10 @@ def load_method(module_name, method_name):
 
 
 def file_names_in_dir(directory):
-    """
-    Read and return the files names in the directory
+    """Read and return the files names in the directory.
+
     :return: a list of strings such as ['list','check'] that correspond to the
-    files in the directory without their extensions
-    """
+    files in the directory without their extensions."""
     dir_path = os.path.dirname(os.path.abspath(directory.__file__))
     path = os.path.join(dir_path, '*.py')
 
@@ -33,13 +32,12 @@ def file_names_in_dir(directory):
 
 
 def is_file_in_dir(file_name, path):
-    """
-    Recursively search path for file_name
+    """Recursively search path for file_name.
+
     :param file_name: a string of a file name to find
     :param path: a string path
     :param file_ext: a string of a file extension
-    :return: a boolean
-    """
+    :return: a boolean"""
     for root, dirnames, filenames in os.walk(path):
         for filename in filenames:
             if fnmatch.fnmatch(filename, file_name):
@@ -49,40 +47,34 @@ def is_file_in_dir(file_name, path):
 
 def check_mark():
     """
-    :return: string that can print a checkmark
-    """
+    :return: string that can print a checkmark"""
     return PaastaColors.green(u'\u2713'.encode('utf-8'))
 
 
 def x_mark():
     """
-    :return: string that can print an x-mark
-    """
+    :return: string that can print an x-mark"""
     return PaastaColors.red(u'\u2717'.encode('utf-8'))
 
 
 def success(msg):
-    """
-    Format a paasta check success message
+    """Format a paasta check success message.
+
     :param msg: a string
-    :return: a beautiful string
-    """
+    :return: a beautiful string"""
     return "%s %s" % (check_mark(), msg)
 
 
 def failure(msg, link):
-    """
-    Format a paasta check failure message
+    """Format a paasta check failure message.
+
     :param msg: a string
-    :return: a beautiful string
-    """
+    :return: a beautiful string"""
     return "%s %s %s" % (x_mark(), msg, PaastaColors.blue(link))
 
 
 class PaastaColors:
-    """
-    Collection of static variables and methods to assist in coloring text
-    """
+    """Collection of static variables and methods to assist in coloring text."""
     # ANSI colour codes
     DEFAULT = '\033[0m'
     RED = '\033[31m'
@@ -92,45 +84,50 @@ class PaastaColors:
 
     @staticmethod
     def blue(text):
-        """
-        Return text that can be printed blue
+        """Return text that can be printed cyan.
+
+        :param text: a string
+        :return: text colour coded with ANSI blue
         """
         return PaastaColors.color_text(PaastaColors.BLUE, text)
 
     @staticmethod
     def green(text):
-        """
-        Return text that can be printed green
-        """
+        """Return text that can be printed cyan.
+
+        :param text: a string
+        :return: text colour coded with ANSI green"""
         return PaastaColors.color_text(PaastaColors.GREEN, text)
 
     @staticmethod
     def red(text):
-        """
-        Return text that can be printed red
-        """
+        """Return text that can be printed cyan.
+
+        :param text: a string
+        :return: text colour coded with ANSI red"""
         return PaastaColors.color_text(PaastaColors.RED, text)
 
     @staticmethod
     def color_text(color, text):
-        """
-        Return text that can be printed color
-        """
+        """Return text that can be printed color.
+
+        :param color: ANSI colour code
+        :param text: a string
+        :return: a string with ANSI colour encoding"""
         return color + text + PaastaColors.DEFAULT
 
     @staticmethod
     def cyan(text):
-        """
-        Return text that can be printed cyan
-        """
+        """Return text that can be printed cyan.
+
+        :param text: a string
+        :return: text colour coded with ANSI cyan"""
         return PaastaColors.color_text(PaastaColors.CYAN, text)
 
 
 class PaastaCheckMessages:
-    """
-    Collection of message printed out by 'paasta check'.  Helpful as it avoids
-    cumbersome maintenance of the unit tests.
-    """
+    """Collection of message printed out by 'paasta check'.
+    Helpful as it avoids cumbersome maintenance of the unit tests."""
 
     DEPLOY_YAML_FOUND = success("deploy.yaml exists for a Jenkins pipeline")
 
@@ -203,10 +200,8 @@ class PaastaCheckMessages:
 
 
 class NoSuchService(Exception):
-    """
-    Exception to be raised in the event that the service name can not be guessed
-    """
-
+    """Exception to be raised in the event that the service
+    name can not be guessed."""
     GUESS_ERROR_MSG = "Could not determine service name.\n" \
                       "Please run this from the root of a copy " \
                       "(git clone) of your service.\n" \
