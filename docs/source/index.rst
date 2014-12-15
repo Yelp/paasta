@@ -3,19 +3,28 @@
    You can adapt this file completely to your liking, but it should at least
    contain the root `toctree` directive.
 
-Configuration and deployment
-============================
+service_deployment_tools: PaaSTA sauce
+======================================
+
+service_deployment_tools is a Python library. It is the sauce that combines the
+individual strands of `PaaSTA <http://y/paasta>`_ -- Jenkins, Docker, Mesos,
+etc. -- into a cohesive, highly-available, distributed meal.
+
+Directions
+----------
 
 .. toctree::
-   :maxdepth: 1
-   
-   config/marathon
+   :maxdepth: 2
+
+   yelpsoa_configs
+   workflow
 
 
-Files in service_deployment_tools
-=================================
+Ingredients
+-----------
 
-Scripts:
+Scripts
+~~~~~~~
 
 .. toctree::
    :maxdepth: 2
@@ -24,21 +33,26 @@ Scripts:
    check_marathon_services_frontends
    check_marathon_services_replication
    cleanup_marathon_jobs
+   cleanup_marathon_orphaned_containers
    deploy_marathon_services
    generate_deployments_json
+   generate_services_yaml
    list_marathon_service_instances
+   setup_chronos_jobs
    setup_marathon_job
    synapse_srv_namespaces_fact
 
-Libraries:
+Libraries
+~~~~~~~~~
 
 .. toctree::
    :maxdepth: 2
 
    bounce_lib
    marathon_tools
-   
-Submodules:
+
+Submodules
+~~~~~~~~~~
 
 .. toctree::
    :maxdepth: 2
@@ -47,7 +61,7 @@ Submodules:
    paasta_cli/index
 
 Indices and tables
-==================
+------------------
 
 * :ref:`genindex`
 * :ref:`modindex`

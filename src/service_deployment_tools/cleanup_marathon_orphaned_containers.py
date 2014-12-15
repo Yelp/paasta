@@ -1,6 +1,15 @@
 #!/usr/bin/env python
 """
 Usage: cleanup_marathon_orphaned_containers.py [options]
+
+Reaps containers that get lost in the shuffle when we restart Mesos slaves too
+hard. See https://jira.yelpcorp.com/browse/MESOS-120.
+
+Command line options:
+
+- -n, --dry-run: Report what would be cleaned up but don't do it
+- -m, --max-age: Containers older than this will be cleaned up
+- -v, --verbose: Verbose output
 """
 
 import argparse

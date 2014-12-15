@@ -39,14 +39,14 @@ def paasta_generate_pipeline(args):
 
     # Build pipeline
     try:
-        args1 = 'setup_jenkins:services/' \
-                '%s,profile=paasta,job_disabled=False' % service_name
+        args1 = 'setup_jenkins:services/%s,' \
+                'profile=paasta,job_disabled=False' % service_name
 
         print "INFO: Executing fab_repo %s" % args1
         subprocess.check_call(['fab_repo', args1])
 
-        args2 = 'setup_jenkins:services/' \
-                '%s,profile=paasta_boilerplate' % service_name
+        args2 = 'setup_jenkins:services/%s,' \
+                'profile=paasta_boilerplate' % service_name
 
         print "INFO: Executing fab_repo %s" % args2
         subprocess.check_call(['fab_repo', args2])
