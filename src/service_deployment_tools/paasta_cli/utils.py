@@ -202,25 +202,39 @@ class NoSuchService(Exception):
     Exception to be raised in the event that the service name can not be guessed
     """
 
-    ERROR_MSG = "Could not determine service name.\n" \
-                "Please run this from the root of a copy " \
-                "(git clone) of your service.\n" \
-                "Alternatively, supply the %s name you wish to " \
-                "inspect with the %s option." \
-                % (PaastaColors.cyan('SERVICE'), PaastaColors.cyan('-s'))
+    GUESS_ERROR_MSG = "Could not determine service name.\n" \
+                      "Please run this from the root of a copy " \
+                      "(git clone) of your service.\n" \
+                      "Alternatively, supply the %s name you wish to " \
+                      "inspect with the %s option." \
+                      % (PaastaColors.cyan('SERVICE'), PaastaColors.cyan('-s'))
+
+    CHECK_ERROR_MSG = "not found.  Please provide a valid service name.\n" \
+                      "Ensure that a directory of the same name exists in %s."\
+                      % PaastaColors.green('/nail/etc/services')
+
+    def __init__(self, service):
+        self.service = service
 
     def __str__(self):
-        return self.ERROR_MSG
+        if self.service:
+            return "SERVICE: %s %s" \
+                   % (PaastaColors.cyan(self.service), self.CHECK_ERROR_MSG)
+        else:
+            return self.GUESS_ERROR_MSG
 
 
-def guess_service_name():
+def guess_service_name(service=None):
     """
-    Deduce the service name from the pwd
-    :return : A string representing the service name, or a bool False
+    Deduce the service name from the pwd if service_name not provided, and
+    check whether such a service exists in the default SOA directory
+    :param service: The name of the service you wish to check exists
+    :return : A string representing the service name if it exists, else
+    raises NoSuchService exception
     """
-    dir_name = os.path.basename(os.getcwd())
-    service_path = os.path.join('/nail/etc/services', dir_name)
+    service_name = service or os.path.basename(os.getcwd())
+    service_path = os.path.join('/nail/etc/services', service_name)
     if os.path.isdir(service_path):
-        return dir_name
+        return service_name
     else:
-        raise NoSuchService(dir_name)
+        raise NoSuchService(service)

@@ -60,7 +60,10 @@ def paasta_status(args):
     Print the status of a Yelp service running on PaaSTA
     """
     try:
-        service_name = args.service or guess_service_name()
+        if args.service:
+            service_name = guess_service_name(args.service)
+        else:
+            service_name = guess_service_name()
     except NoSuchService as service_not_found:
         print service_not_found
         exit(1)

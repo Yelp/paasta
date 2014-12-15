@@ -17,11 +17,11 @@ def test_generate_pipeline_service_not_found(
         mock_stdout, mock_guess_service_name):
     # paasta generate cannot guess service name and none is provided
 
-    mock_guess_service_name.side_effect = NoSuchService('foo')
+    mock_guess_service_name.side_effect = NoSuchService(None)
 
     sys.argv = ['./paasta_cli', 'generate-pipeline']
     parsed_args = parse_args()
-    expected_output = "%s\n" % NoSuchService.ERROR_MSG
+    expected_output = "%s\n" % NoSuchService.GUESS_ERROR_MSG
 
     # Fail if exit(1) does not get called
     with raises(SystemExit) as sys_exit:
