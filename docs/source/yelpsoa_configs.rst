@@ -4,10 +4,12 @@ Preparation: service_deployment_tools and yelpsoa-configs
 service_deployment_tools reads configuration about services from several YAML
 files in `yelpsoa-configs <http://y/cep319>`_:
 
-marathon-[superregion].yaml
+marathon-[clustername].yaml
 ---------------------------
 
-(e.g. ``marathon-norcal-devc.yaml``, ``marathon-nova-prod.yaml``)
+(e.g. ``marathon-norcal-prod.yaml``, ``marathon-mesosstage.yaml``. The
+clustername is usually the same as the ``superregion`` in which the cluster
+lives (``norcal-prod``), but not always (``mesosstage``). )
 
 The yaml where marathon jobs are actually defined.
 
