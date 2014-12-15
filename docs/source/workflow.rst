@@ -50,8 +50,9 @@ not match the desired state.
 Cleanup
 -------
 `cleanup_marathon_jobs <cleanup_marathon_jobs.html>`_ gets rid of Marathon jobs
-that don't need to be running anymore, e.g. the Green version in a Blue/Green
-deployment once the Blue side is deemed stable.
+that don't need to be running anymore. This should be rare, like if you change
+a service's name or manually delete a ``paasta-[clustername]`` git branch, but
+is a useful safety net in case a task escapes.
 
 `cleanup_marathon_orphaned_containers
 <cleanup_marathon_orphaned_containers.html>`_ reaps containers that get lost in
