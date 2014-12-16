@@ -120,7 +120,7 @@ class WritePaastaConfigTestCase(T.TestCase):
         )
 
         for clustername in clusternames:
-            self.srv.io.symlink_file.assert_any_call(
+            self.srv.io.symlink_file_relative.assert_any_call(
                 "marathon-SHARED.yaml",
                 "marathon-%s.yaml" % clustername,
             )

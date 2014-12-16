@@ -91,7 +91,7 @@ def write_paasta_config(srv,
     srv.io.write_file("marathon-SHARED.yaml", _yamlize(marathon_stanza))
 
     for clustername in get_clusternames_from_deploy_stanza(deploy_stanza):
-        srv.io.symlink_file("marathon-SHARED.yaml", "marathon-%s.yaml" % clustername)
+        srv.io.symlink_file_relative("marathon-SHARED.yaml", "marathon-%s.yaml" % clustername)
 
 
 def main(args):
