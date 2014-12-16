@@ -194,13 +194,14 @@ class GetDeployStanzaTestCase(QuestionsTestCase):
     def test(self):
         actual = fsm.get_deploy_stanza()
         T.assert_in("pipeline", actual.keys())
-        actual_pipeline = actual["pipeline"]
+        actual["pipeline"] = actual["pipeline"]
 
-        expected_entry = { "instance_name": "itest" }
-        T.assert_in(expected_entry, actual_pipeline)
-
-        expected_entry = {
-            "instance_name": "pnw-prod.canary",
-            "trigger_next_step_manually": True,
-        }
-        T.assert_in(expected_entry, actual_pipeline)
+        for expected_entry in (
+            { "instancename": "itest" },
+            { "instancename": "pnw-stagea.main" },
+            {
+                "instancename": "pnw-prod.canary",
+                "trigger_next_step_manually": True,
+            },
+        ):
+            T.assert_in(expected_entry, actual["pipeline"])

@@ -11,6 +11,19 @@ from service_wizard.prompt import ask
 from service_wizard.autosuggest import suggest_smartstack_proxy_port
 
 
+# This is a list of Marathon clusternames. Clusternames are listed in order of
+# deployment since this is consumed by get_deploy_stanza().
+CLUSTERNAMES = (
+    "pnw-stagea",
+    "norcal-stageb",
+    "norcal-devb",
+    "norcal-devc",
+    "norcal-prod",
+    "nova-prod",
+    "pnw-prod",
+)
+
+
 def _yamlize(contents):
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
@@ -103,21 +116,18 @@ def get_monitoring_stanza(auto, team, legacy_style=False):
 def get_deploy_stanza():
     stanza = {}
     stanza["pipeline"] = [
-        { "instance_name": "itest", },
-        { "instance_name": "registry", },
-        { "instance_name": "pnw-stagea.canary", },
-        { "instance_name": "pnw-stagea.main", },
-        { "instance_name": "norcal-stageb.canary", },
-        { "instance_name": "norcal-stageb.main", },
-        { "instance_name": "norcal-devb.canary", },
-        { "instance_name": "norcal-devb.main", },
-        { "instance_name": "norcal-devc.canary", },
-        { "instance_name": "norcal-devc.main", "trigger_next_step_manually": True, },
-        { "instance_name": "norcal-prod.canary", },
-        { "instance_name": "nova-prod.canary", },
-        { "instance_name": "pnw-prod.canary", "trigger_next_step_manually": True,},
-        { "instance_name": "norcal-prod.main", },
-        { "instance_name": "nova-prod.main", },
-        { "instance_name": "pnw-prod.main", },
+        { "instancename": "itest", },
+        { "instancename": "registry", },
     ]
+    for clustername in CLUSTERNAMES:
+        for namespace in ('canary', 'main'):
+            instancename = "%s.%s" % (clustername, namespace)
+            entry = {"instancename": instancename }
+            # Insert a manual trigger if this instancename happens to be the
+            # last thing before users pause and have a look at things: e.g.
+            # before going to prod, or before promoting the prod canary to 100%
+            # of traffic.
+            if instancename in ("norcal-devc.main", "pnw-prod.canary"):
+                entry["trigger_next_step_manually"] = True
+            stanza["pipeline"].append(entry)
     return stanza
