@@ -40,11 +40,13 @@ class GetPaastaConfigTestCase(T.TestCase):
             mock.patch("fsm.get_smartstack_stanza", autospec=True),
             mock.patch("fsm.get_marathon_stanza", autospec=True),
             mock.patch("fsm.get_monitoring_stanza", autospec=True),
+            mock.patch("fsm.get_deploy_stanza", autospec=True),
         ) as (
             self.mock_get_srvname,
             self.mock_get_smartstack_stanza,
             self.mock_get_marathon_stanza,
             self.mock_get_monitoring_stanza,
+            self.mock_get_deploy_stanza,
         ):
             yield
 
@@ -64,6 +66,7 @@ class GetPaastaConfigTestCase(T.TestCase):
         self.mock_get_smartstack_stanza.assert_called_once_with(yelpsoa_config_root, auto, port)
         self.mock_get_marathon_stanza.assert_called_once_with()
         self.mock_get_monitoring_stanza.assert_called_once_with(auto, team)
+        self.mock_get_deploy_stanza.assert_called_once_with()
 
 
 class WritePaastaConfigTestCase(T.TestCase):
@@ -76,12 +79,14 @@ class WritePaastaConfigTestCase(T.TestCase):
         smartstack_stanza = { "stack": "smrt" }
         marathon_stanza = { "springfield": "2015-04-20" }
         monitoring_stanza = { "team": "homer" }
+        deploy_stanza = { "otto": "dude" }
 
         fsm.write_paasta_config(
             self.srv,
             smartstack_stanza,
             marathon_stanza,
             monitoring_stanza,
+            deploy_stanza,
         )
 
         self.srv.io.write_file.assert_any_call(
@@ -95,4 +100,8 @@ class WritePaastaConfigTestCase(T.TestCase):
         self.srv.io.write_file.assert_any_call(
             "monitoring.yaml",
             _yamlize(monitoring_stanza),
+        )
+        self.srv.io.write_file.assert_any_call(
+            "deploy.yaml",
+            _yamlize(deploy_stanza),
         )
