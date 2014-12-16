@@ -1,7 +1,5 @@
 #!/usr/bin/env python
-"""
-Contains methods used to return the current version of the PaaSTA client
-"""
+"""Contains methods used to return the current version of the PaaSTA client"""
 import pkg_resources
 
 
@@ -14,10 +12,6 @@ def add_subparser(subparsers):
 
 
 def paasta_version(args):
-    """
-    Print the current version of the PaaSTA client.  The version number must
-    match the latest git tag as returned by 'git describe --tags' otherwise a
-    test will fail.
-    """
-
+    """Print the current version of the PaaSTA client.
+    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
     print pkg_resources.require("service-deployment-tools")[0].version

@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-"""
-Contains methods used by the paasta client to generate a Jenkins build pipeline.
-"""
+"""Contains methods used by the paasta client to generate a Jenkins build
+pipeline."""
 import subprocess
 import sys
 
@@ -26,9 +25,8 @@ def add_subparser(subparsers):
 
 
 def paasta_generate_pipeline(args):
-    """
-    Generate a Jenkins build pipeline
-    """
+    """Generate a Jenkins build pipeline.
+    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
     service_name = args.service or guess_service_name()
     try:
         validate_service_name(service_name)

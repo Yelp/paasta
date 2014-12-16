@@ -1,8 +1,6 @@
 #!/usr/bin/env python
-"""
-Contains methods used by the paasta client to check the status of the service
-on the PaaSTA stack
-"""
+"""Contains methods used by the paasta client to check the status of the service
+on the PaaSTA stack"""
 from ordereddict import OrderedDict
 import os
 
@@ -32,14 +30,11 @@ def get_deploy_yaml(service_name):
 
 
 def planned_deployments(deploy_file):
-    """
-    Yield deployment environments in the form 'cluster.instance' in the order
-    they appear in the deploy.yaml file for service service_name
+    """Yield deployment environments in the form 'cluster.instance' in the order
+    they appear in the deploy.yaml file for service service_name.
     :param service_name : name of the service for we wish to inspect
     :return : a series of strings of the form: 'cluster.instance', exits on
-    error if deploy.yaml is not found
-    """
-
+    error if deploy.yaml is not found"""
     cluster_dict = OrderedDict()
 
     # Store cluster names in the order in which they are read
@@ -57,9 +52,8 @@ def planned_deployments(deploy_file):
 
 
 def paasta_status(args):
-    """
-    Print the status of a Yelp service running on PaaSTA
-    """
+    """Print the status of a Yelp service running on PaaSTA.
+    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
     service_name = args.service or guess_service_name()
     try:
         validate_service_name(service_name)
