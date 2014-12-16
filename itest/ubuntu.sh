@@ -22,7 +22,11 @@ fake_service_uno.canary
 fake_service_dos.all_fake"
 
 PAASTA_COMMANDS="list
-check"
+check
+generate-pipeline
+help
+status
+version"
 
 mkdir -p /nail/etc
 [ -L /nail/etc/services ] || ln -s /work/itest/fake_services /nail/etc/services
@@ -71,7 +75,7 @@ remove_fake_service_uno() {
   cd fake_service_uno
   for command in $PAASTA_COMMANDS
   do
-    paasta $command >/dev/null || (echo "paasta $command failed to execute!"; exit 1)
+    paasta $command -h >/dev/null || (echo "paasta $command failed to execute!"; exit 1)
   done
 )
 
