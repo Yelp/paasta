@@ -2,13 +2,12 @@
 """Contains methods used by the paasta client to check whether Yelp service
 passes all the markers required to be considered paasta ready."""
 import os
-import sys
 
 from service_configuration_lib import read_extra_service_information
 from service_deployment_tools.monitoring_tools import get_team
 from service_deployment_tools.paasta_cli.utils import \
     guess_service_name, is_file_in_dir, PaastaCheckMessages, \
-    NoSuchService, validate_service_name as service_dir_exists_check
+    NoSuchService, validate_service_name
 
 
 def add_subparser(subparsers):
@@ -86,6 +85,17 @@ def sensu_check(service_name, service_path):
         print PaastaCheckMessages.SENSU_MONITORING_MISSING
 
 
+def service_dir_check(service_name):
+    """Check whether directory service_name exists in /nail/etc/services
+    :param service_name: string of service name we wish to inspect
+    """
+    try:
+        validate_service_name(service_name)
+        print PaastaCheckMessages.service_dir_found(service_name)
+    except NoSuchService:
+        print PaastaCheckMessages.service_dir_missing(service_name)
+
+
 def smartstack_check(service_name, service_path):
     """Check whether smartstack.yaml exists in service directory, and the proxy
     ports are declared.  Print appropriate message depending on outcome.
@@ -116,13 +126,9 @@ def paasta_check(args):
     """Analyze the service in the PWD to determine if it is paasta ready
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
     service_name = guess_service_name()
-    try:
-        service_dir_exists_check(service_name)
-    except NoSuchService:
-        print PaastaCheckMessages.SERVICE_DIR_MISSING
-        sys.exit(1)
-
     service_path = os.path.join('/nail/etc/services', service_name)
+
+    service_dir_check(service_name)
     deploy_check(service_path)
     docker_check()
     marathon_check(service_path)

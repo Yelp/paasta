@@ -170,11 +170,6 @@ class PaastaCheckMessages:
         "Cannot get team name. Ensure 'team' field is set in monitoring.yaml.\n"
         "  More info:", "http://y/monitoring-yaml")
 
-    SERVICE_DIR_MISSING = failure(
-        "Create a directory named SERVICE_NAME in /nail/etc/services to "
-        "contain your configuration files.\n"
-        "  More info:", "http://y/yelpsoa-configs")
-
     SMARTSTACK_YAML_FOUND = success("Found smartstack.yaml file")
 
     SMARTSTACK_YAML_MISSING = failure(
@@ -197,6 +192,21 @@ class PaastaCheckMessages:
         return success(
             "Instance '%s' of your service is using smartstack port %d "
             "and will be automatically load balanced" % (instance, port))
+
+    @staticmethod
+    def service_dir_found(service_name):
+        message = "Service directory for %s found in /nail/etc/services" \
+                  % PaastaColors.cyan(service_name)
+        return success(message)
+
+    @staticmethod
+    def service_dir_missing(service_name):
+        fsm = PaastaColors.green(
+            './fsm.py --yelpsoa-config-root ~/yelpsoa-configs --service-name '
+            '%s --auto --team noop') % PaastaColors.cyan(service_name)
+        message = '%s not found in /nail/etc/services.  Please run\n%s.\n' \
+                  ' More info' % (PaastaColors.cyan(service_name), fsm)
+        return failure(message, "http://y/yelpsoa-configs")
 
 
 class NoSuchService(Exception):
