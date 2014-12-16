@@ -201,11 +201,8 @@ class PaastaCheckMessages:
 
     @staticmethod
     def service_dir_missing(service_name):
-        fsm = PaastaColors.green(
-            './fsm.py --yelpsoa-config-root ~/yelpsoa-configs --service-name '
-            '%s --auto --team noop') % PaastaColors.cyan(service_name)
-        message = '%s not found in /nail/etc/services.  Please run\n%s.\n' \
-                  ' More info' % (PaastaColors.cyan(service_name), fsm)
+        message = "Failed to locate service directory for %s. Please follow " \
+                  "the guide linked below to get boilerplate." % service_name
         return failure(message, "http://y/yelpsoa-configs")
 
 
