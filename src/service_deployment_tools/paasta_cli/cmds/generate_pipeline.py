@@ -6,7 +6,7 @@ import subprocess
 import sys
 
 from service_deployment_tools.paasta_cli.utils import \
-    guess_service_name, NoSuchService
+    guess_service_name, NoSuchService, validate_service_name
 
 
 def add_subparser(subparsers):
@@ -29,10 +29,9 @@ def paasta_generate_pipeline(args):
     """
     Generate a Jenkins build pipeline
     """
-
-    # Get the service name
+    service_name = args.service or guess_service_name()
     try:
-        service_name = args.service or guess_service_name()
+        validate_service_name(service_name)
     except NoSuchService as service_not_found:
         print service_not_found
         sys.exit(1)

@@ -10,7 +10,8 @@ from service_configuration_lib import read_deploy
 from service_deployment_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
 from service_deployment_tools.paasta_cli.utils import \
-    guess_service_name, NoSuchService, PaastaColors, PaastaCheckMessages
+    guess_service_name, NoSuchService, PaastaColors, PaastaCheckMessages, \
+    validate_service_name
 
 
 def add_subparser(subparsers):
@@ -59,8 +60,9 @@ def paasta_status(args):
     """
     Print the status of a Yelp service running on PaaSTA
     """
+    service_name = args.service or guess_service_name()
     try:
-        service_name = args.service or guess_service_name()
+        validate_service_name(service_name)
     except NoSuchService as service_not_found:
         print service_not_found
         exit(1)

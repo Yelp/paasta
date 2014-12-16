@@ -10,6 +10,7 @@ from service_deployment_tools.paasta_cli.paasta_cli import parse_args
 from service_deployment_tools.paasta_cli.utils import PaastaCheckMessages
 
 
+@patch('service_deployment_tools.paasta_cli.cmds.check.service_dir_exists_check')
 @patch('service_deployment_tools.paasta_cli.cmds.check.guess_service_name')
 @patch('service_deployment_tools.paasta_cli.cmds.check.deploy_check')
 @patch('service_deployment_tools.paasta_cli.cmds.check.docker_check')
@@ -18,11 +19,12 @@ from service_deployment_tools.paasta_cli.utils import PaastaCheckMessages
 @patch('service_deployment_tools.paasta_cli.cmds.check.smartstack_check')
 def test_check_paasta_check(
         mock_smartstart_check, mock_sensu_check, mock_marathon_check,
-        mock_docker_check, mock_deploy_check, mock_guess_service_name):
+        mock_docker_check, mock_deploy_check,
+        mock_guess_service_name, mock_service_dir_exists_check):
     # All checks run when service name found
 
     mock_guess_service_name.return_value = 'servicedocs'
-
+    mock_service_dir_exists_check.return_value = None
     # Ensure each check in 'paasta_check' is called
     sys.argv = ['./paasta_cli', 'check']
     parsed_args = parse_args()
@@ -36,20 +38,22 @@ def test_check_paasta_check(
     assert mock_smartstart_check.called
 
 
+@patch('service_deployment_tools.paasta_cli.cmds.check.service_dir_exists_check')
 @patch('service_deployment_tools.paasta_cli.cmds.check.guess_service_name')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_service_name_not_found(mock_stdout, mock_guess_service_name):
-    # Paasta checks do not run when service name cannot be guessed, exit(1)
-
-    mock_guess_service_name.side_effect = NoSuchService('foo')
+def test_check_service_name_not_found(mock_stdout, mock_guess_service_name,
+                                      mock_service_dir_exists_check):
+    # Paasta checks do not run when service_name dir DNE, exit(1)
+    mock_guess_service_name.return_value = 'bad_service'
+    mock_service_dir_exists_check.side_effect = NoSuchService(None)
     sys.argv = ['./paasta_cli', 'check']
     parsed_args = parse_args()
-    expected_output = '%s\n' % NoSuchService.ERROR_MSG
+    expected_output = "%s\n" % PaastaCheckMessages.SERVICE_DIR_MISSING
 
     with raises(SystemExit) as sys_exit:
         paasta_check(parsed_args)
-
     output = mock_stdout.getvalue()
+
     assert sys_exit.value.code == 1
     assert output == expected_output
 

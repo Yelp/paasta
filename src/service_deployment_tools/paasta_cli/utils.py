@@ -173,6 +173,11 @@ class PaastaCheckMessages:
         "Cannot get team name. Ensure 'team' field is set in monitoring.yaml.\n"
         "  More info:", "http://y/monitoring-yaml")
 
+    SERVICE_DIR_MISSING = failure(
+        "Create a directory named SERVICE_NAME in /nail/etc/services to "
+        "contain your configuration files.\n"
+        "  More info:", "http://y/yelpsoa-configs")
+
     SMARTSTACK_YAML_FOUND = success("Found smartstack.yaml file")
 
     SMARTSTACK_YAML_MISSING = failure(
@@ -202,25 +207,41 @@ class NoSuchService(Exception):
     Exception to be raised in the event that the service name can not be guessed
     """
 
-    ERROR_MSG = "Could not determine service name.\n" \
-                "Please run this from the root of a copy " \
-                "(git clone) of your service.\n" \
-                "Alternatively, supply the %s name you wish to " \
-                "inspect with the %s option." \
-                % (PaastaColors.cyan('SERVICE'), PaastaColors.cyan('-s'))
+    GUESS_ERROR_MSG = "Could not determine service name.\n" \
+                      "Please run this from the root of a copy " \
+                      "(git clone) of your service.\n" \
+                      "Alternatively, supply the %s name you wish to " \
+                      "inspect with the %s option." \
+                      % (PaastaColors.cyan('SERVICE'), PaastaColors.cyan('-s'))
+
+    CHECK_ERROR_MSG = "not found.  Please provide a valid service name.\n" \
+                      "Ensure that a directory of the same name exists in %s."\
+                      % PaastaColors.green('/nail/etc/services')
+
+    def __init__(self, service):
+        self.service = service
 
     def __str__(self):
-        return self.ERROR_MSG
+        if self.service:
+            return "SERVICE: %s %s" \
+                   % (PaastaColors.cyan(self.service), self.CHECK_ERROR_MSG)
+        else:
+            return self.GUESS_ERROR_MSG
 
 
 def guess_service_name():
-    """
-    Deduce the service name from the pwd
-    :return : A string representing the service name, or a bool False
-    """
-    dir_name = os.path.basename(os.getcwd())
-    service_path = os.path.join('/nail/etc/services', dir_name)
-    if os.path.isdir(service_path):
-        return dir_name
-    else:
-        raise NoSuchService(dir_name)
+    """Deduce the service name from the pwd
+    :return : A string representing the service name
+    :raises: NoSuchService exception"""
+    return os.path.basename(os.getcwd())
+
+
+def validate_service_name(service_name):
+    """Determine whether directory named service_name exists in
+    /nail/etc/services
+    :param service_name: a string of the name of the service you wish to check exists
+    :return : boolean True
+    :raises: NoSuchService exception"""
+    service_path = os.path.join('/nail/etc/services', service_name)
+    if not os.path.isdir(service_path):
+        raise NoSuchService(service_name)
