@@ -47,43 +47,6 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
     return smartstack_stanza
 
 
-def get_marathon_stanza():
-    """Produce a marathon-*.yaml a la
-    http://servicedocs.yelpcorp.com/docs/service_deployment_tools/yelpsoa_configs.html#marathon-clustername-yaml
-
-    We want to default to The Simplest Thing That Can Possibly Work. This
-    allows new services to hit the ground running, but forces developers to
-    think about their resource needs and tune as they move toward production.
-    So:
-    - 1 cpu
-    - 100MB of memory.
-        - kwa: There are plenty of workers on srv1 right now that are >100M
-          RES, and there are *no* processes under 100M VSZ, and docker
-          processes will not be sharing virt across containers.  I'm pretty
-          sure in practice 100M going to be a crippling default for most
-          services, but I think it is ok to start low, instead of start high.
-    - 3 instances, including 1 canary. Why 2+1 instead of 1+1?
-        - Three Of Everything (http://opsprincipl.es/principles/three_of_everything/)
-        - If we reboot the dev box running that single main instance, the
-          cluster is reduced to just a canary. This also may trigger (useless)
-          alerts.
-        - krall: In production, there will be multiple main instances and a single
-          canary. With 1+1, this is less obvious.
-    """
-    stanza = {}
-    stanza["main"] = {
-        "cpu": 1,
-        "mem": 100,
-        "instances": 3,
-    }
-    stanza["canary"] = {
-        "cpu": 1,
-        "mem": 100,
-        "nerve_ns": "main",
-    }
-    return stanza
-
-
 def get_monitoring_stanza(auto, team, legacy_style=False):
     """Produce a monitoring.yaml a la
     https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
@@ -125,4 +88,41 @@ def get_deploy_stanza():
         { "instancename": "nova-prod.main", },
         { "instancename": "pnw-prod.main", },
     ]
+    return stanza
+
+
+def get_marathon_stanza():
+    """Produce a marathon-*.yaml a la
+    http://servicedocs.yelpcorp.com/docs/service_deployment_tools/yelpsoa_configs.html#marathon-clustername-yaml
+
+    We want to default to The Simplest Thing That Can Possibly Work. This
+    allows new services to hit the ground running, but forces developers to
+    think about their resource needs and tune as they move toward production.
+    So:
+    - 1 cpu
+    - 100MB of memory.
+        - kwa: There are plenty of workers on srv1 right now that are >100M
+          RES, and there are *no* processes under 100M VSZ, and docker
+          processes will not be sharing virt across containers.  I'm pretty
+          sure in practice 100M going to be a crippling default for most
+          services, but I think it is ok to start low, instead of start high.
+    - 3 instances, including 1 canary. Why 2+1 instead of 1+1?
+        - Three Of Everything (http://opsprincipl.es/principles/three_of_everything/)
+        - If we reboot the dev box running that single main instance, the
+          cluster is reduced to just a canary. This also may trigger (useless)
+          alerts.
+        - krall: In production, there will be multiple main instances and a single
+          canary. With 1+1, this is less obvious.
+    """
+    stanza = {}
+    stanza["main"] = {
+        "cpu": 1,
+        "mem": 100,
+        "instances": 3,
+    }
+    stanza["canary"] = {
+        "cpu": 1,
+        "mem": 100,
+        "nerve_ns": "main",
+    }
     return stanza

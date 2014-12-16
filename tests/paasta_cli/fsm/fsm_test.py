@@ -77,25 +77,21 @@ class WritePaastaConfigTestCase(T.TestCase):
 
     def test(self):
         smartstack_stanza = { "stack": "smrt" }
-        marathon_stanza = { "springfield": "2015-04-20" }
         monitoring_stanza = { "team": "homer" }
         deploy_stanza = { "otto": "dude" }
+        marathon_stanza = { "springfield": "2015-04-20" }
 
         fsm.write_paasta_config(
             self.srv,
             smartstack_stanza,
-            marathon_stanza,
             monitoring_stanza,
             deploy_stanza,
+            marathon_stanza,
         )
 
         self.srv.io.write_file.assert_any_call(
             "smartstack.yaml",
             _yamlize(smartstack_stanza),
-        )
-        self.srv.io.write_file.assert_any_call(
-            "marathon-devc.yaml",
-            _yamlize(marathon_stanza),
         )
         self.srv.io.write_file.assert_any_call(
             "monitoring.yaml",
@@ -104,4 +100,8 @@ class WritePaastaConfigTestCase(T.TestCase):
         self.srv.io.write_file.assert_any_call(
             "deploy.yaml",
             _yamlize(deploy_stanza),
+        )
+        self.srv.io.write_file.assert_any_call(
+            "marathon-devc.yaml",
+            _yamlize(marathon_stanza),
         )
