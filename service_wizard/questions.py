@@ -99,3 +99,25 @@ def get_monitoring_stanza(auto, team, legacy_style=False):
     if legacy_style:
         stanza["service_type"] = "classic"
     return stanza
+
+def get_deploy_stanza():
+    stanza = {}
+    stanza["pipeline"] = [
+        { "instance_name": "itest", },
+        { "instance_name": "registry", },
+        { "instance_name": "pnw-stagea.canary", },
+        { "instance_name": "pnw-stagea.main", },
+        { "instance_name": "norcal-stageb.canary", },
+        { "instance_name": "norcal-stageb.main", },
+        { "instance_name": "norcal-devb.canary", },
+        { "instance_name": "norcal-devb.main", },
+        { "instance_name": "norcal-devc.canary", },
+        { "instance_name": "norcal-devc.main", "trigger_next_step_manually": True, },
+        { "instance_name": "norcal-prod.canary", },
+        { "instance_name": "nova-prod.canary", },
+        { "instance_name": "pnw-prod.canary", "trigger_next_step_manually": True,},
+        { "instance_name": "norcal-prod.main", },
+        { "instance_name": "nova-prod.main", },
+        { "instance_name": "pnw-prod.main", },
+    ]
+    return stanza
