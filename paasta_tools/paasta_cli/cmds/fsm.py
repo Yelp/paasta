@@ -5,6 +5,7 @@ from os.path import exists
 import sys
 
 from service_wizard.questions import _yamlize
+from service_wizard.questions import get_deploy_stanza
 from service_wizard.questions import get_marathon_stanza
 from service_wizard.questions import get_monitoring_stanza
 from service_wizard.questions import get_smartstack_stanza
