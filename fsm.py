@@ -72,26 +72,26 @@ def validate_args(parser, args):
 def get_paasta_config(yelpsoa_config_root, srvname, auto, port, team):
     srvname = get_srvname(srvname, auto)
     smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, auto, port)
-    marathon_stanza = get_marathon_stanza()
     monitoring_stanza = get_monitoring_stanza(auto, team)
     deploy_stanza = get_deploy_stanza()
-    return (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza, deploy_stanza, team)
+    marathon_stanza = get_marathon_stanza()
+    return (srvname, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team)
 
 
 def write_paasta_config(srv,
     smartstack_stanza,
-    marathon_stanza,
     monitoring_stanza,
     deploy_stanza,
+    marathon_stanza,
 ):
     srv.io.write_file("smartstack.yaml", _yamlize(smartstack_stanza))
-    srv.io.write_file("marathon-devc.yaml", _yamlize(marathon_stanza))
     srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
     srv.io.write_file("deploy.yaml", _yamlize(deploy_stanza))
+    srv.io.write_file("marathon-devc.yaml", _yamlize(marathon_stanza))
 
 
 def main(args):
-    (srvname, smartstack_stanza, marathon_stanza, monitoring_stanza, deploy_stanza, team) = (
+    (srvname, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team) = (
         get_paasta_config(
             args.yelpsoa_config_root,
             args.srvname,
@@ -103,9 +103,9 @@ def main(args):
     write_paasta_config(
         srv,
         smartstack_stanza,
-        marathon_stanza,
         monitoring_stanza,
         deploy_stanza,
+        marathon_stanza,
     )
     print "With My Noodly Appendage I Have Written Configs For"
     print

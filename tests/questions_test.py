@@ -128,13 +128,6 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         )
 
 
-class GetMarathonStanzaTestCase(QuestionsTestCase):
-    def test(self):
-        actual = fsm.get_marathon_stanza()
-        T.assert_in("main", actual.keys())
-        T.assert_in("canary", actual.keys())
-
-
 class GetMonitoringStanzaTestCase(QuestionsTestCase):
     def test_arg_passed_in(self):
         team = "america world police"
@@ -205,3 +198,10 @@ class GetDeployStanzaTestCase(QuestionsTestCase):
             },
         ):
             T.assert_in(expected_entry, actual["pipeline"])
+
+
+class GetMarathonStanzaTestCase(QuestionsTestCase):
+    def test(self):
+        actual = fsm.get_marathon_stanza()
+        T.assert_in("main", actual.keys())
+        T.assert_in("canary", actual.keys())
