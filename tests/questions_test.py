@@ -2,6 +2,7 @@ import mock
 import testify as T
 
 import fsm
+from service_wizard.questions import get_clusternames_from_deploy_stanza
 
 
 class QuestionsTestCase(T.TestCase):
@@ -198,6 +199,33 @@ class GetDeployStanzaTestCase(QuestionsTestCase):
             },
         ):
             T.assert_in(expected_entry, actual["pipeline"])
+
+
+class GetClusternamesFromDeployStanzaTestCase(QuestionsTestCase):
+    def test_empty(self):
+        deploy_stanza = {}
+        expected = set()
+        actual = get_clusternames_from_deploy_stanza(deploy_stanza)
+        T.assert_equal(expected, actual)
+
+    def test_non_empty(self):
+        deploy_stanza = {}
+        deploy_stanza["pipeline"] = [
+            { "instancename": "itest", },
+            { "instancename": "registry", },
+            { "instancename": "mesosstage.canary", },
+            { "instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
+            { "instancename": "nova-prod.main.with.extra.dots", },
+            { "instancename": "clustername-without-namespace", },
+        ]
+        expected = set([
+            "mesosstage",
+            "norcal-devc",
+            "nova-prod",
+            "clustername-without-namespace",
+        ])
+        actual = get_clusternames_from_deploy_stanza(deploy_stanza)
+        T.assert_equal(expected, actual)
 
 
 class GetMarathonStanzaTestCase(QuestionsTestCase):
