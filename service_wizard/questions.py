@@ -25,6 +25,7 @@ def get_srvname(srvname, auto):
 
 
 def get_smartstack_stanza(yelpsoa_config_root, auto, port):
+    """Produce a smartstack.yaml a la http://y/cep319"""
     if port is None:
         suggested_port = suggest_smartstack_proxy_port(yelpsoa_config_root)
         if auto:
@@ -47,7 +48,10 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
 
 
 def get_marathon_stanza():
-    """We want to default to The Simplest Thing That Can Possibly Work. This
+    """Produce a marathon-*.yaml a la
+    http://servicedocs.yelpcorp.com/docs/service_deployment_tools/yelpsoa_configs.html#marathon-clustername-yaml
+
+    We want to default to The Simplest Thing That Can Possibly Work. This
     allows new services to hit the ground running, but forces developers to
     think about their resource needs and tune as they move toward production.
     So:
@@ -101,6 +105,7 @@ def get_monitoring_stanza(auto, team, legacy_style=False):
     return stanza
 
 def get_deploy_stanza():
+    """Produce a deploy.yaml a la http://y/cep319"""
     stanza = {}
     stanza["pipeline"] = [
         { "instancename": "itest", },
