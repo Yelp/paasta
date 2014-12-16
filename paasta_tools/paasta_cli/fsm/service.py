@@ -25,6 +25,9 @@ class SrvReaderWriter(object):
                     contents,
                     executable=executable)
 
+    def symlink_file(self, source_filename, link_filename):
+        pass
+
     def _read(self, path):
         if not os.path.exists(path):
             return ''
