@@ -10,7 +10,7 @@ from service_configuration_lib import read_extra_service_information
 from service_deployment_tools.monitoring_tools import get_team
 from service_deployment_tools.paasta_cli.utils import \
     guess_service_name, is_file_in_dir, PaastaCheckMessages, \
-    NoSuchService, validate_service_name
+    NoSuchService, validate_service_name as service_dir_exists_check
 
 
 def add_subparser(subparsers):
@@ -118,9 +118,9 @@ def paasta_check(args):
     """
     service_name = guess_service_name()
     try:
-        validate_service_name(service_name)
-    except NoSuchService as service_not_found:
-        print service_not_found
+        service_dir_exists_check(service_name)
+    except NoSuchService:
+        print PaastaCheckMessages.SERVICE_DIR_MISSING
         sys.exit(1)
 
     service_path = os.path.join('/nail/etc/services', service_name)

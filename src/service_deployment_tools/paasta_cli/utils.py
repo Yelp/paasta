@@ -173,6 +173,11 @@ class PaastaCheckMessages:
         "Cannot get team name. Ensure 'team' field is set in monitoring.yaml.\n"
         "  More info:", "http://y/monitoring-yaml")
 
+    SERVICE_DIR_MISSING = failure(
+        "Create a directory named SERVICE_NAME in /nail/etc/services to "
+        "contain your configuration files.\n"
+        "  More info:", "http://y/yelpsoa-configs")
+
     SMARTSTACK_YAML_FOUND = success("Found smartstack.yaml file")
 
     SMARTSTACK_YAML_MISSING = failure(
