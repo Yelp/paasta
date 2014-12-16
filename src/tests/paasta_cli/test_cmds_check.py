@@ -10,6 +10,7 @@ from service_deployment_tools.paasta_cli.paasta_cli import parse_args
 from service_deployment_tools.paasta_cli.utils import PaastaCheckMessages
 
 
+@patch('service_deployment_tools.paasta_cli.cmds.check.validate_service_name')
 @patch('service_deployment_tools.paasta_cli.cmds.check.guess_service_name')
 @patch('service_deployment_tools.paasta_cli.cmds.check.deploy_check')
 @patch('service_deployment_tools.paasta_cli.cmds.check.docker_check')
@@ -18,11 +19,11 @@ from service_deployment_tools.paasta_cli.utils import PaastaCheckMessages
 @patch('service_deployment_tools.paasta_cli.cmds.check.smartstack_check')
 def test_check_paasta_check(
         mock_smartstart_check, mock_sensu_check, mock_marathon_check,
-        mock_docker_check, mock_deploy_check, mock_guess_service_name):
+        mock_docker_check, mock_deploy_check, mock_guess_service_name,
+        mock_validate_service_name):
     # All checks run when service name found
-
     mock_guess_service_name.return_value = 'servicedocs'
-
+    mock_validate_service_name.return_value = None
     # Ensure each check in 'paasta_check' is called
     sys.argv = ['./paasta_cli', 'check']
     parsed_args = parse_args()
@@ -36,12 +37,15 @@ def test_check_paasta_check(
     assert mock_smartstart_check.called
 
 
+@patch('service_deployment_tools.paasta_cli.cmds.check.validate_service_name')
 @patch('service_deployment_tools.paasta_cli.cmds.check.guess_service_name')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_service_name_not_found(mock_stdout, mock_guess_service_name):
+def test_check_service_name_not_found(mock_stdout, mock_guess_service_name,
+                                      mock_validate_service_name):
     # Paasta checks do not run when service name cannot be guessed, exit(1)
 
-    mock_guess_service_name.side_effect = NoSuchService(None)
+    mock_guess_service_name.return_value = 'not_a_service'
+    mock_validate_service_name.side_effect = NoSuchService(None)
     sys.argv = ['./paasta_cli', 'check']
     parsed_args = parse_args()
     expected_output = '%s\n' % NoSuchService.GUESS_ERROR_MSG

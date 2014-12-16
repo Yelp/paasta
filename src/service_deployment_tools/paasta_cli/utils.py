@@ -224,24 +224,19 @@ class NoSuchService(Exception):
             return self.GUESS_ERROR_MSG
 
 
-def guess_service_name(service=None):
-    """Deduce the service name from the pwd if service_name not provided, and
-    check whether such a service exists in the default SOA directory
-    :param service: The name of the service you wish to check exists
-    :return : A string representing the service name if it exists
+def guess_service_name():
+    """Deduce the service name from the pwd
+    :return : A string representing the service name
     :raises: NoSuchService exception"""
-    service_name = service or os.path.basename(os.getcwd())
-    return validate_service_exists(service_name)
+    return os.path.basename(os.getcwd())
 
 
-def validate_service_exists(service_name):
+def validate_service_name(service_name):
     """Determine whether directory named service_name exists in
     /nail/etc/services
-    :param service_name: The name of the service you wish to check exists
-    :return : A string representing the service name if it exists
+    :param service_name: a string of the name of the service you wish to check exists
+    :return : boolean True
     :raises: NoSuchService exception"""
     service_path = os.path.join('/nail/etc/services', service_name)
-    if os.path.isdir(service_path):
-        return service_name
-    else:
+    if not os.path.isdir(service_path):
         raise NoSuchService(service_name)

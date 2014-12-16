@@ -9,7 +9,8 @@ import sys
 from service_configuration_lib import read_extra_service_information
 from service_deployment_tools.monitoring_tools import get_team
 from service_deployment_tools.paasta_cli.utils import \
-    guess_service_name, is_file_in_dir, PaastaCheckMessages, NoSuchService
+    guess_service_name, is_file_in_dir, PaastaCheckMessages, \
+    NoSuchService, validate_service_name
 
 
 def add_subparser(subparsers):
@@ -115,8 +116,9 @@ def paasta_check(args):
     Analyze the service in the PWD to determine if it is paasta ready
     :param args: arguments supplied to the paasta client
     """
+    service_name = guess_service_name()
     try:
-        service_name = guess_service_name()
+        validate_service_name(service_name)
     except NoSuchService as service_not_found:
         print service_not_found
         sys.exit(1)
