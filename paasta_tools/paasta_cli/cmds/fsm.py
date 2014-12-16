@@ -87,7 +87,7 @@ def write_paasta_config(srv,
     srv.io.write_file("smartstack.yaml", _yamlize(smartstack_stanza))
     srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
     srv.io.write_file("deploy.yaml", _yamlize(deploy_stanza))
-    srv.io.write_file("marathon-devc.yaml", _yamlize(marathon_stanza))
+    srv.io.write_file("marathon-SHARED.yaml", _yamlize(marathon_stanza))
 
 
 def main(args):
