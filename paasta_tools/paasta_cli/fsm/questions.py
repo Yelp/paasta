@@ -91,6 +91,23 @@ def get_deploy_stanza():
     return stanza
 
 
+def get_clusternames_from_deploy_stanza(deploy_stanza):
+    """Given a dictionary deploy_stanza, as from get_deploy_stanza(), return a
+    set of the clusternames referenced in the pipeline.
+    """
+    clusternames = set()
+    for entry in deploy_stanza.get("pipeline", []):
+        instancename = entry["instancename"]
+        if instancename in ("itest", "registry"):
+            continue
+        # Usually clustername will be instancename.namespace, so lop off
+        # namespace. (If there's no namespace, this just returns clustername,
+        # which is correct.)
+        clustername = instancename.split(".")[0]
+        clusternames.add(clustername)
+    return clusternames
+
+
 def get_marathon_stanza():
     """Produce a marathon-*.yaml a la
     http://servicedocs.yelpcorp.com/docs/service_deployment_tools/yelpsoa_configs.html#marathon-clustername-yaml
