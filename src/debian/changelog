@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.20-yelp1) lucid; urgency=low
+
+  * Update paasta_cli documentation and integration tests 
+
+ -- Karthig Balendran <karthig@yelp.com>  Tue, 16 Dec 2014 11:51:30 -0800
+
 service-deployment-tools (0.7.19-yelp1) lucid; urgency=low
 
   * Fix 'paasta status' bug + improve servicedocs documentation 
