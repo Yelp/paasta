@@ -75,12 +75,25 @@ class WritePaastaConfigTestCase(T.TestCase):
         self.srv = mock.Mock()
         self.srv.io = mock.Mock(spec_set=SrvReaderWriter)
 
+    @T.setup_teardown
+    def setup_patches(self):
+        with mock.patch(
+            "fsm.get_clusternames_from_deploy_stanza", autospec=True,
+        ) as self.mock_get_clusternames_from_deploy_stanza:
+            yield
+
     def test(self):
         smartstack_stanza = { "stack": "smrt" }
         monitoring_stanza = { "team": "homer" }
         deploy_stanza = { "otto": "dude" }
         marathon_stanza = { "springfield": "2015-04-20" }
+        clusternames = set([
+            "flanders",
+            "van-houten",
+            "wiggum",
+        ])
 
+        self.mock_get_clusternames_from_deploy_stanza.return_value = clusternames
         fsm.write_paasta_config(
             self.srv,
             smartstack_stanza,
@@ -105,3 +118,9 @@ class WritePaastaConfigTestCase(T.TestCase):
             "marathon-SHARED.yaml",
             _yamlize(marathon_stanza),
         )
+
+        for clustername in clusternames:
+            self.srv.io.symlink_file.assert_any_call(
+                "marathon-SHARED.yaml",
+                "marathon-%s.yaml" % clustername,
+            )

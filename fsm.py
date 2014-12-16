@@ -5,6 +5,7 @@ from os.path import exists
 import sys
 
 from service_wizard.questions import _yamlize
+from service_wizard.questions import get_clusternames_from_deploy_stanza
 from service_wizard.questions import get_deploy_stanza
 from service_wizard.questions import get_marathon_stanza
 from service_wizard.questions import get_monitoring_stanza
@@ -88,6 +89,9 @@ def write_paasta_config(srv,
     srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
     srv.io.write_file("deploy.yaml", _yamlize(deploy_stanza))
     srv.io.write_file("marathon-SHARED.yaml", _yamlize(marathon_stanza))
+
+    for clustername in get_clusternames_from_deploy_stanza(deploy_stanza):
+        srv.io.symlink_file("marathon-SHARED.yaml", "marathon-%s.yaml" % clustername)
 
 
 def main(args):
