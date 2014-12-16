@@ -2,6 +2,7 @@
 """Contains methods used by the paasta client to check whether Yelp service
 passes all the markers required to be considered paasta ready."""
 import os
+import subprocess
 
 from service_configuration_lib import read_extra_service_information
 from service_deployment_tools.monitoring_tools import get_team
@@ -54,6 +55,15 @@ def docker_check():
             print PaastaCheckMessages.DOCKERFILE_INVALID
     else:
         print PaastaCheckMessages.DOCKERFILE_MISSING
+
+
+def git_repo_check(service_name):
+    cmd = 'git'
+    args = [cmd, 'ls-remote', 'git@git.yelpcorp.com:services/%s' % service_name]
+    if subprocess.call(args) == 0:
+        print PaastaCheckMessages.GIT_REPO_FOUND
+    else:
+        print PaastaCheckMessages.git_repo_missing(service_name)
 
 
 def marathon_check(service_path):
@@ -131,6 +141,7 @@ def paasta_check(args):
     service_dir_check(service_name)
     deploy_check(service_path)
     docker_check()
+    git_repo_check(service_name)
     marathon_check(service_path)
     sensu_check(service_name, service_path)
     smartstack_check(service_name, service_path)

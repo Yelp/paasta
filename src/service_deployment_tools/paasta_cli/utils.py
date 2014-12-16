@@ -151,7 +151,9 @@ class PaastaCheckMessages:
         "using the local mirrors.\n  "
         "More info:", "http://y/paasta-runbook-dockerfile")
 
-    MARATHON_YAML_FOUND = success("Found marathon.yaml file")
+    GIT_REPO_FOUND = success("Git repo found.")
+
+    MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
 
     MARATHON_YAML_MISSING = failure(
         "No marathon.yaml exists, so your service cannot be deployed.\n  "
@@ -181,6 +183,13 @@ class PaastaCheckMessages:
         "Could not determine port. "
         "Ensure 'proxy_port' is set in smartstack.yaml.\n  "
         "More info:", "http://y/smartstack-cep323")
+
+    @staticmethod
+    def git_repo_missing(service_name):
+        return failure(
+            "Could not find Git repo for %s under git.yelpcorp.com:services/.\n"
+            "More info:" % PaastaColors.cyan(service_name),
+            "http://y/yelpsoa-configs")
 
     @staticmethod
     def sensu_team_found(team_name):
