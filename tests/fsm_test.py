@@ -102,6 +102,6 @@ class WritePaastaConfigTestCase(T.TestCase):
             _yamlize(deploy_stanza),
         )
         self.srv.io.write_file.assert_any_call(
-            "marathon-devc.yaml",
+            "marathon-SHARED.yaml",
             _yamlize(marathon_stanza),
         )
