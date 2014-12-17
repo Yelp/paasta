@@ -81,9 +81,13 @@ def marathon_check(service_path):
 
 def pipeline_check(service_name):
     url = "https://jenkins.yelpcorp.com/view/services-%s/api/xml" % service_name
-    if urllib2.urlopen(url).getcode() == 200:
-        print PaastaCheckMessages.PIPELINE_FOUND
-    else:
+    try:
+        req_status = urllib2.urlopen(url).getcode()
+        if req_status == 200:
+            print PaastaCheckMessages.PIPELINE_FOUND
+        else:
+            print PaastaCheckMessages.PIPELINE_MISSING
+    except urllib2.HTTPError:
         print PaastaCheckMessages.PIPELINE_MISSING
 
 

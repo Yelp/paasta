@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.21-yelp1) lucid; urgency=low
+
+  * Add new 'paasta check' checks 
+
+ -- Karthig Balendran <karthig@yelp.com>  Tue, 16 Dec 2014 19:20:36 -0800
+
 service-deployment-tools (0.7.20-yelp1) lucid; urgency=low
 
   * Update paasta_cli documentation and integration tests 

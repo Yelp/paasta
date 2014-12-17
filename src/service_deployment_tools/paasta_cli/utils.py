@@ -192,12 +192,12 @@ class PaastaCheckMessages:
 
     @staticmethod
     def git_repo_missing(service_name):
-        git_url = PaastaColors.blue("git.yelpcorp.com:services/")
-        git_link = "%s%s" % (git_url, PaastaColors.cyan(service_name))
+        git_url = PaastaColors.cyan(
+            "http://git.yelpcorp.com:services/%s" % service_name)
         return failure(
-            "Could not find Git repo git.yelpcorp.com:services/%s. "
+            "Could not find Git repo %s. "
             "Your service must be there.\n"
-            "More info:" % git_link,
+            "  More info:" % git_url,
             "http://y/yelpsoa-configs")
 
     @staticmethod
@@ -219,8 +219,8 @@ class PaastaCheckMessages:
 
     @staticmethod
     def service_dir_missing(service_name):
-        message = "Failed to locate yelpsoa-config directory for %s." \
-                  "Please follow the guide linked below to get boilerplate." \
+        message = "Failed to locate yelpsoa-config directory for %s.\n" \
+                  "  Please follow the guide linked below to get boilerplate." \
                   % service_name
         return failure(message, "http://y/yelpsoa-configs")
 
