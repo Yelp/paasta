@@ -9,6 +9,8 @@ from service_deployment_tools.paasta_cli.paasta_cli import parse_args
 from service_deployment_tools.paasta_cli.utils import PaastaCheckMessages
 
 
+@patch('service_deployment_tools.paasta_cli.cmds.check.git_repo_check')
+@patch('service_deployment_tools.paasta_cli.cmds.check.pipeline_check')
 @patch('service_deployment_tools.paasta_cli.cmds.check.service_dir_check')
 @patch('service_deployment_tools.paasta_cli.cmds.check.validate_service_name')
 @patch('service_deployment_tools.paasta_cli.cmds.check.guess_service_name')
@@ -21,7 +23,7 @@ def test_check_paasta_check(
         mock_smartstart_check, mock_sensu_check, mock_marathon_check,
         mock_docker_check, mock_deploy_check,
         mock_guess_service_name, mock_validate_service_name,
-        mock_service_dir_check):
+        mock_service_dir_check, mock_pipeline_check, mock_git_repo_check):
     # All checks run when service name found
 
     mock_guess_service_name.return_value = 'servicedocs'
@@ -32,6 +34,8 @@ def test_check_paasta_check(
 
     paasta_check(parsed_args)
 
+    assert mock_git_repo_check.called
+    assert mock_pipeline_check.called
     assert mock_service_dir_check.called
     assert mock_deploy_check.called
     assert mock_docker_check.called
@@ -40,12 +44,17 @@ def test_check_paasta_check(
     assert mock_smartstart_check.called
 
 
+@patch('service_deployment_tools.paasta_cli.cmds.check.git_repo_check')
+@patch('service_deployment_tools.paasta_cli.cmds.check.pipeline_check')
 @patch('service_deployment_tools.paasta_cli.cmds.check.validate_service_name')
 @patch('service_deployment_tools.paasta_cli.cmds.check.guess_service_name')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_service_name_not_found(mock_stdout, mock_guess_service_name,
-                                      mock_validate_service_name):
+def test_check_service_name_not_found(
+        mock_stdout, mock_guess_service_name, mock_validate_service_name,
+        mock_pipeline_check, mock_git_repo_check):
     # Paasta checks do not run when service_name dir DNE, exit(1)
+    mock_pipeline_check.return_value = None
+    mock_git_repo_check.return_value = None
     mock_guess_service_name.return_value = 'bad_service'
     mock_validate_service_name.side_effect = NoSuchService(None)
     sys.argv = ['./paasta_cli', 'check']
