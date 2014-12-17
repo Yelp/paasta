@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.23-yelp1) lucid; urgency=low
+
+  * Suppress output from paasta git repo check 
+
+ -- Karthig Balendran <karthig@yelp.com>  Wed, 17 Dec 2014 12:06:15 -0800
+
 service-deployment-tools (0.7.22-yelp1) lucid; urgency=low
 
   * Clean up 'paasta check' msg 

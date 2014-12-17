@@ -59,9 +59,10 @@ def docker_check():
 
 
 def git_repo_check(service_name):
+    devnull = open(os.devnull, 'w')
     cmd = 'git'
     args = [cmd, 'ls-remote', 'git@git.yelpcorp.com:services/%s' % service_name]
-    if subprocess.call(args) == 0:
+    if subprocess.call(args, stdout=devnull, stderr=devnull) == 0:
         print PaastaCheckMessages.GIT_REPO_FOUND
     else:
         print PaastaCheckMessages.git_repo_missing(service_name)
