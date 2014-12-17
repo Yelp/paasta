@@ -195,14 +195,15 @@ class PaastaCheckMessages:
 
     @staticmethod
     def service_dir_found(service_name):
-        message = "Service directory for %s found in /nail/etc/services" \
+        message = "yelpsoa-config directory for %s found in /nail/etc/services" \
                   % PaastaColors.cyan(service_name)
         return success(message)
 
     @staticmethod
     def service_dir_missing(service_name):
-        message = "Failed to locate service directory for %s. Please follow " \
-                  "the guide linked below to get boilerplate." % service_name
+        message = "Failed to locate yelpsoa-config directory for %s." \
+                  "Please follow the guide linked below to get boilerplate." \
+                  % service_name
         return failure(message, "http://y/yelpsoa-configs")
 
 
