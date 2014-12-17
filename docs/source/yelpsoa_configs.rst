@@ -7,13 +7,13 @@ files in `yelpsoa-configs <http://y/cep319>`_:
 marathon-[clustername].yaml
 ---------------------------
 
-(e.g. ``marathon-norcal-prod.yaml``, ``marathon-mesosstage.yaml``. The
+e.g. ``marathon-norcal-prod.yaml``, ``marathon-mesosstage.yaml``. The
 clustername is usually the same as the ``superregion`` in which the cluster
-lives (``norcal-prod``), but not always (``mesosstage``). )
+lives (``norcal-prod``), but not always (``mesosstage``).
 
 The yaml where marathon jobs are actually defined.
 
-Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancename MAY have:
+Top level keys are namespaces, e.g. ``main`` and ``canary``. Each namespace MAY have:
 
   * ``cpu``: Number of CPUs an instance needs
 
@@ -21,13 +21,13 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
-  * ``nerve_ns``: Specifies that this instancename should be routed to by another instancename. E.g. ``canary`` instances have a different configuration but traffic from the ``main`` pool reaches them.
+  * ``nerve_ns``: Specifies that this namespace should be routed to by another namespace. E.g. ``canary`` instances have a different configuration but traffic from the ``main`` pool reaches them.
 
   * ``bounce_method``: future placeholder; see `bounce_lib <bounce_lib.html>`_
 
   * ``constraints``: future placeholder; see https://github.com/mesosphere/marathon/wiki/Constraints
 
-  * ``args``: docker args if you use the “entrypoint” functionality
+  * ``args``: docker args if you use the "entrypoint" functionality
 
 smartstack.yaml
 ---------------
