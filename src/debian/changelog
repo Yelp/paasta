@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.24-yelp1) lucid; urgency=low
+
+  * instance_name -> instancename
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 17 Dec 2014 12:17:09 -0800
+
 service-deployment-tools (0.7.23-yelp1) lucid; urgency=low
 
   * Suppress output from paasta git repo check 
