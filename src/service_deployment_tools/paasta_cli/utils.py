@@ -151,7 +151,7 @@ class PaastaCheckMessages:
         "using the local mirrors.\n  "
         "More info:", "http://y/paasta-runbook-dockerfile")
 
-    GIT_REPO_FOUND = success("Git repo found.")
+    GIT_REPO_FOUND = success("Git repo found in the expected location.")
 
     MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
 
@@ -186,9 +186,12 @@ class PaastaCheckMessages:
 
     @staticmethod
     def git_repo_missing(service_name):
+        git_url = PaastaColors.blue("git.yelpcorp.com:services/")
+        git_link = "%s%s" % (git_url, PaastaColors.cyan(service_name))
         return failure(
-            "Could not find Git repo for %s under git.yelpcorp.com:services/.\n"
-            "More info:" % PaastaColors.cyan(service_name),
+            "Could not find Git repo git.yelpcorp.com:services/%s. "
+            "Your service must be there.\n"
+            "More info:" % git_link,
             "http://y/yelpsoa-configs")
 
     @staticmethod

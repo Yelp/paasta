@@ -140,8 +140,8 @@ def paasta_check(args):
 
     service_dir_check(service_name)
     deploy_check(service_path)
-    docker_check()
     git_repo_check(service_name)
+    docker_check()
     marathon_check(service_path)
     sensu_check(service_name, service_path)
     smartstack_check(service_name, service_path)
