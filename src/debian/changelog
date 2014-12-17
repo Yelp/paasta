@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.22-yelp1) lucid; urgency=low
+
+  * Clean up 'paasta check' msg 
+
+ -- Karthig Balendran <karthig@yelp.com>  Wed, 17 Dec 2014 11:06:10 -0800
+
 service-deployment-tools (0.7.21-yelp1) lucid; urgency=low
 
   * Add new 'paasta check' checks 
