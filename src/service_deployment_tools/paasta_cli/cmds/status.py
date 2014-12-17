@@ -40,7 +40,7 @@ def planned_deployments(deploy_file):
     # Store cluster names in the order in which they are read
     # Clusters map to an ordered list of instances
     for entry in deploy_file['pipeline']:
-        namespace = entry['instance_name']
+        namespace = entry['instancename']
         if (namespace != 'itest') and (namespace != 'registry'):
             cluster, instance = namespace.split('.')
             cluster_dict.setdefault(cluster, []).append(instance)

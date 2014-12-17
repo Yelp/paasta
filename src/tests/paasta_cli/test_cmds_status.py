@@ -118,7 +118,7 @@ def test_status_displays_deployed_service(
     # paasta_status with no args displays deploy info - vanilla case
     mock_guess_service_name.return_value = 'fake_service'
     mock_validate_service_name.return_value = None
-    pipeline = [{'instance_name': 'cluster.instance'}]
+    pipeline = [{'instancename': 'cluster.instance'}]
     mock_get_deploy_yaml.return_value = {'pipeline': pipeline}
 
     deployments_json_dict = {
@@ -150,9 +150,9 @@ def test_status_sorts_in_deploy_order(
     # paasta_status with no args displays deploy info
     mock_guess_service_name.return_value = 'fake_service'
     mock_validate_service_name.return_value = None
-    pipeline = [{'instance_name': 'a_cluster.a_instance'},
-                {'instance_name': 'a_cluster.b_instance'},
-                {'instance_name': 'b_cluster.b_instance'}]
+    pipeline = [{'instancename': 'a_cluster.a_instance'},
+                {'instancename': 'a_cluster.b_instance'},
+                {'instancename': 'b_cluster.b_instance'}]
     mock_get_deploy_yaml.return_value = {'pipeline': pipeline}
 
     deployments_json_dict = {
@@ -193,9 +193,9 @@ def test_status_missing_deploys_in_red(
     # paasta_status displays missing deploys in red
     mock_guess_service_name.return_value = 'fake_service'
     mock_validate_service_name.return_value = None
-    pipeline = [{'instance_name': 'a_cluster.a_instance'},
-                {'instance_name': 'a_cluster.b_instance'},
-                {'instance_name': 'b_cluster.b_instance'}]
+    pipeline = [{'instancename': 'a_cluster.a_instance'},
+                {'instancename': 'a_cluster.b_instance'},
+                {'instancename': 'b_cluster.b_instance'}]
     mock_get_deploy_yaml.return_value = {'pipeline': pipeline}
 
     deployments_json_dict = {
