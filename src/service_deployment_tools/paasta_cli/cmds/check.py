@@ -3,6 +3,7 @@
 passes all the markers required to be considered paasta ready."""
 import os
 import subprocess
+import urllib2
 
 from service_configuration_lib import read_extra_service_information
 from service_deployment_tools.monitoring_tools import get_team
@@ -78,6 +79,14 @@ def marathon_check(service_path):
         print PaastaCheckMessages.MARATHON_YAML_MISSING
 
 
+def pipeline_check(service_name):
+    url = "https://jenkins.yelpcorp.com/view/services-%s/api/xml" % service_name
+    if urllib2.urlopen(url).getcode() == 200:
+        print PaastaCheckMessages.PIPELINE_FOUND
+    else:
+        print PaastaCheckMessages.PIPELINE_MISSING
+
+
 def sensu_check(service_name, service_path):
     """Check whether monitoring.yaml exists in service directory,
     and that the team name is declared.
@@ -140,6 +149,7 @@ def paasta_check(args):
 
     service_dir_check(service_name)
     deploy_check(service_path)
+    pipeline_check(service_name)
     git_repo_check(service_name)
     docker_check()
     marathon_check(service_path)

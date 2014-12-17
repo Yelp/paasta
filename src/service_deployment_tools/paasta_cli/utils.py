@@ -160,6 +160,12 @@ class PaastaCheckMessages:
         "Push a marathon-[ecosystem].yaml and run `paasta build-deploy-pipline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
+    PIPELINE_FOUND = success("Jenkins build pipeline found")
+
+    PIPELINE_MISSING = failure("Jenkins build pipeline missing. Please run "
+                               "'paasta generate-pipeline'\n"
+                               "  More info:", "http://y/paasta-deploy")
+
     SENSU_MONITORING_FOUND = success(
         "monitoring.yaml found for Sensu monitoring")
 
