@@ -105,3 +105,10 @@ def paasta_status(args):
 
             print '\tinstance: %s' % instance
             print '\t\tversion: %s\n' % version
+
+    # No deployments of SERVICE currently exist in deployments.json
+    else:
+        print "No instances of %s found in deployments.json.\n" \
+              "Does a Jenkins pipeline exist for this service?\n" \
+              "If so, please wait a few minutes for deployments.json " \
+              "to be updated." % service_name
