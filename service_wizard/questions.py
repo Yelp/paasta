@@ -25,6 +25,7 @@ def get_srvname(srvname, auto):
 
 
 def get_smartstack_stanza(yelpsoa_config_root, auto, port):
+    """Produce a smartstack.yaml a la http://y/cep319"""
     if port is None:
         suggested_port = suggest_smartstack_proxy_port(yelpsoa_config_root)
         if auto:
@@ -46,8 +47,72 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
     return smartstack_stanza
 
 
+def get_monitoring_stanza(auto, team, legacy_style=False):
+    """Produce a monitoring.yaml a la
+    https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
+
+    'team' is the critical key and is not calculable so it is required.
+
+    legacy_style changes some behavior for use with wizard.py.
+    """
+    if team is None:
+        if auto and not legacy_style:
+            sys.exit("I'd Really Rather You Didn't Use --auto Without --team")
+        while not team:
+            team = ask("Team responsible for this service?")
+    stanza = {}
+    stanza["team"] = team
+    stanza["service_type"] = "marathon"
+    if legacy_style:
+        stanza["service_type"] = "classic"
+    return stanza
+
+def get_deploy_stanza():
+    """Produce a deploy.yaml a la http://y/cep319"""
+    stanza = {}
+    stanza["pipeline"] = [
+        { "instancename": "itest", },
+        { "instancename": "registry", },
+        { "instancename": "pnw-stagea.canary", },
+        { "instancename": "pnw-stagea.main", },
+        { "instancename": "norcal-stageb.canary", },
+        { "instancename": "norcal-stageb.main", },
+        { "instancename": "norcal-devb.canary", },
+        { "instancename": "norcal-devb.main", },
+        { "instancename": "norcal-devc.canary", },
+        { "instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
+        { "instancename": "norcal-prod.canary", },
+        { "instancename": "nova-prod.canary", },
+        { "instancename": "pnw-prod.canary", "trigger_next_step_manually": True,},
+        { "instancename": "norcal-prod.main", },
+        { "instancename": "nova-prod.main", },
+        { "instancename": "pnw-prod.main", },
+    ]
+    return stanza
+
+
+def get_clusternames_from_deploy_stanza(deploy_stanza):
+    """Given a dictionary deploy_stanza, as from get_deploy_stanza(), return a
+    set of the clusternames referenced in the pipeline.
+    """
+    clusternames = set()
+    for entry in deploy_stanza.get("pipeline", []):
+        instancename = entry["instancename"]
+        if instancename in ("itest", "registry"):
+            continue
+        # Usually clustername will be instancename.namespace, so lop off
+        # namespace. (If there's no namespace, this just returns clustername,
+        # which is correct.)
+        clustername = instancename.split(".")[0]
+        clusternames.add(clustername)
+    return clusternames
+
+
 def get_marathon_stanza():
-    """We want to default to The Simplest Thing That Can Possibly Work. This
+    """Produce a marathon-*.yaml a la
+    http://servicedocs.yelpcorp.com/docs/service_deployment_tools/yelpsoa_configs.html#marathon-clustername-yaml
+
+    We want to default to The Simplest Thing That Can Possibly Work. This
     allows new services to hit the ground running, but forces developers to
     think about their resource needs and tune as they move toward production.
     So:
@@ -77,25 +142,4 @@ def get_marathon_stanza():
         "mem": 100,
         "nerve_ns": "main",
     }
-    return stanza
-
-
-def get_monitoring_stanza(auto, team, legacy_style=False):
-    """Produce a monitoring.yaml a la
-    https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
-
-    'team' is the critical key and is not calculable so it is required.
-
-    legacy_style changes some behavior for use with wizard.py.
-    """
-    if team is None:
-        if auto and not legacy_style:
-            sys.exit("I'd Really Rather You Didn't Use --auto Without --team")
-        while not team:
-            team = ask("Team responsible for this service?")
-    stanza = {}
-    stanza["team"] = team
-    stanza["service_type"] = "marathon"
-    if legacy_style:
-        stanza["service_type"] = "classic"
     return stanza

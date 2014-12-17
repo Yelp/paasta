@@ -25,6 +25,18 @@ class SrvReaderWriter(object):
                     contents,
                     executable=executable)
 
+    def symlink_file_relative(self, source_filename, link_filename):
+        """Create a symlink in our service root from source_filename to
+        link_filename. This is a relative symlink so that
+        /nail/home/troscoe/yelpsoa-configs/ isn't baked in.
+        """
+        if not os.path.exists(self.paths.root_dir):
+            os.makedirs(self.paths.root_dir)
+        os.symlink(
+            source_filename,
+            self.paths.to_file(link_filename),
+        )
+
     def _read(self, path):
         if not os.path.exists(path):
             return ''
