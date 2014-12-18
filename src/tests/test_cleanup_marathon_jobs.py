@@ -124,7 +124,7 @@ class TestCleanupMarathonJobs:
             mock.patch('service_deployment_tools.marathon_tools.remove_tag_from_job_id',
                        return_value='a_location'),
             mock.patch('service_deployment_tools.bounce_lib.bounce_lock_zookeeper', spec=contextmanager),
-            mock.patch('cleanup_marathon_jobs.get_marathon_client', return_value=self.fake_marathon_client),
+            mock.patch('service_deployment_tools.marathon_tools.get_marathon_client', return_value=self.fake_marathon_client),
             mock.patch('service_deployment_tools.bounce_lib.delete_marathon_app')
         ) as (
             get_valid_patch,
@@ -143,9 +143,3 @@ class TestCleanupMarathonJobs:
             remove_patch.assert_called_once_with('not-here.oh.no')
             bounce_patch.assert_called_once_with('a_location')
             delete_patch.assert_called_once_with('not-here.oh.no', self.fake_marathon_client)
-
-    def test_get_marathon_client(self):
-        with mock.patch('cleanup_marathon_jobs.MarathonClient', return_value='tt1') as client_patch:
-            actual = cleanup_marathon_jobs.get_marathon_client('a1', 'b2', 'c3')
-            assert actual == 'tt1'
-            client_patch.assert_called_once_with('a1', 'b2', 'c3', timeout=35)

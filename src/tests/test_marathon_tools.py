@@ -669,6 +669,14 @@ class TestMarathonTools:
             fake_curl.perform.assert_called_once_with()
             fake_stringio.getvalue.assert_called_once_with()
 
+    def test_get_marathon_client(self):
+        fake_url = "nothing_for_me_to_do_but_dance"
+        fake_user = "the_boogie"
+        fake_passwd = "is_for_real"
+        with mock.patch('marathon_tools.MarathonClient') as client_patch:
+            marathon_tools.get_marathon_client(fake_url, fake_user, fake_passwd)
+            client_patch.assert_called_once_with(fake_url, fake_user, fake_passwd, timeout=30)
+
     def test_list_all_marathon_app_ids(self):
         fakeapp1 = mock.Mock(id='/fake_app1')
         fakeapp2 = mock.Mock(id='/fake_app2')
