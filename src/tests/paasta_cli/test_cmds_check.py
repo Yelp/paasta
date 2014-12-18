@@ -1,10 +1,11 @@
 import sys
-from mock import patch
+from mock import patch, MagicMock
 from StringIO import StringIO
 
 from service_deployment_tools.paasta_cli.cmds.check import \
     paasta_check, deploy_check, docker_check, marathon_check, \
-    sensu_check, smartstack_check, NoSuchService
+    sensu_check, smartstack_check, NoSuchService, service_dir_check, \
+    pipeline_check, git_repo_check
 from service_deployment_tools.paasta_cli.paasta_cli import parse_args
 from service_deployment_tools.paasta_cli.utils import PaastaCheckMessages
 
@@ -24,11 +25,10 @@ def test_check_paasta_check(
         mock_docker_check, mock_deploy_check,
         mock_guess_service_name, mock_validate_service_name,
         mock_service_dir_check, mock_pipeline_check, mock_git_repo_check):
-    # All checks run when service name found
+    # Ensure each check in 'paasta_check' is called
 
     mock_guess_service_name.return_value = 'servicedocs'
     mock_validate_service_name.return_value = None
-    # Ensure each check in 'paasta_check' is called
     sys.argv = ['./paasta_cli', 'check']
     parsed_args = parse_args()
 
@@ -44,27 +44,30 @@ def test_check_paasta_check(
     assert mock_smartstart_check.called
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.check.git_repo_check')
-@patch('service_deployment_tools.paasta_cli.cmds.check.pipeline_check')
 @patch('service_deployment_tools.paasta_cli.cmds.check.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.check.guess_service_name')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_service_name_not_found(
-        mock_stdout, mock_guess_service_name, mock_validate_service_name,
-        mock_pipeline_check, mock_git_repo_check):
-    # Paasta checks do not run when service_name dir DNE, exit(1)
-    mock_pipeline_check.return_value = None
-    mock_git_repo_check.return_value = None
-    mock_guess_service_name.return_value = 'bad_service'
-    mock_validate_service_name.side_effect = NoSuchService(None)
-    sys.argv = ['./paasta_cli', 'check']
-    parsed_args = parse_args()
-    expected_output = "%s\n" \
-                      % PaastaCheckMessages.service_dir_missing('bad_service')
-    paasta_check(parsed_args)
+def test_check_service_dir_check_pass(mock_stdout, mock_validate_service_name):
+    mock_validate_service_name.return_value = None
+    service_name = 'fake_service'
+    expected_output = \
+        "%s\n" % PaastaCheckMessages.service_dir_found(service_name)
+    service_dir_check(service_name)
     output = mock_stdout.getvalue()
 
-    assert expected_output in output
+    assert output == expected_output
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.check.validate_service_name')
+@patch('sys.stdout', new_callable=StringIO)
+def test_check_service_dir_check_fail(mock_stdout, mock_validate_service_name):
+    service_name = 'fake_service'
+    mock_validate_service_name.side_effect = NoSuchService(service_name)
+    expected_output = "%s\n" \
+                      % PaastaCheckMessages.service_dir_missing(service_name)
+    service_dir_check(service_name)
+    output = mock_stdout.getvalue()
+
+    assert output == expected_output
 
 
 @patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
@@ -308,6 +311,70 @@ def test_check_smartstack_check_fail(mock_stdout, mock_is_file_in_dir):
     expected_output = "%s\n" % PaastaCheckMessages.SMARTSTACK_YAML_MISSING
 
     smartstack_check('fake_service', 'path')
+    output = mock_stdout.getvalue()
+
+    assert output == expected_output
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.check.urllib2')
+@patch('sys.stdout', new_callable=StringIO)
+def test_check_pipeline_check_pass(mock_stdout, mock_urllib2):
+    attrs = {'getcode.return_value': 200}
+    mock_function = MagicMock()
+    mock_function.configure_mock(**attrs)
+    mock_urllib2.urlopen.return_value = mock_function
+    expected_output = "%s\n" % PaastaCheckMessages.PIPELINE_FOUND
+    pipeline_check("fake_service")
+    output = mock_stdout.getvalue()
+
+    assert output == expected_output
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.check.urllib2')
+@patch('sys.stdout', new_callable=StringIO)
+def test_check_pipeline_check_fail_404(mock_stdout, mock_urllib2):
+    attrs = {'getcode.return_value': 404}
+    mock_function = MagicMock()
+    mock_function.configure_mock(**attrs)
+    mock_urllib2.urlopen.return_value = mock_function
+    expected_output = "%s\n" % PaastaCheckMessages.PIPELINE_MISSING
+    pipeline_check("fake_service")
+    output = mock_stdout.getvalue()
+
+    assert output == expected_output
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.check.urllib2.HTTPERROR')
+@patch('service_deployment_tools.paasta_cli.cmds.check.urllib2')
+@patch('sys.stdout', new_callable=StringIO)
+def test_check_pipeline_check_fail_httperr(mock_stdout, mock_urllib2, mock_error):
+
+    mock_urllib2.urlopen.side_effect = mock_error
+    expected_output = "%s\n" % PaastaCheckMessages.PIPELINE_MISSING
+    pipeline_check("fake_service")
+    output = mock_stdout.getvalue()
+
+    assert output == expected_output
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.check.subprocess')
+@patch('sys.stdout', new_callable=StringIO)
+def test_check_git_repo_check_pass(mock_stdout, mock_subprocess):
+    mock_subprocess.call.return_value = 0
+    git_repo_check('fake_service')
+    expected_output = "%s\n" % PaastaCheckMessages.GIT_REPO_FOUND
+    output = mock_stdout.getvalue()
+
+    assert output == expected_output
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.check.subprocess')
+@patch('sys.stdout', new_callable=StringIO)
+def test_check_git_repo_check_fail(mock_stdout, mock_subprocess):
+    mock_subprocess.call.return_value = 2
+    service = 'fake_service'
+    git_repo_check(service)
+    expected_output = "%s\n" % PaastaCheckMessages.git_repo_missing(service)
     output = mock_stdout.getvalue()
 
     assert output == expected_output
