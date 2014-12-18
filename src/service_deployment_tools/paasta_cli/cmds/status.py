@@ -9,7 +9,7 @@ from service_deployment_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
 from service_deployment_tools.paasta_cli.utils import \
     guess_service_name, NoSuchService, PaastaColors, PaastaCheckMessages, \
-    validate_service_name
+    validate_service_name, x_mark
 
 
 def add_subparser(subparsers):
@@ -21,6 +21,15 @@ def add_subparser(subparsers):
     status_parser.add_argument('-s', '--service', help='The name of the service '
                                                        'you wish to inspect')
     status_parser.set_defaults(command=paasta_status)
+
+
+def missing_deployments_message(service_name):
+    jenkins_url = PaastaColors.cyan(
+        'https://jenkins.yelpcorp.com/view/%s' % service_name)
+    message = "%s No deployments in deployments.json yet.\n  " \
+              "Has Jenkins run?\n  " \
+              "Check: %s" % (x_mark(), jenkins_url)
+    return message
 
 
 def get_deploy_yaml(service_name):
@@ -82,6 +91,11 @@ def paasta_status(args):
 
     if actual_deployments:
 
+        jenkins_url = PaastaColors.cyan(
+            'https://jenkins.yelpcorp.com/view/%s' % service_name)
+
+        print "Pipeline: %s" % jenkins_url
+
         previous_cluster = ''
 
         # Get cluster.instance in the order in which they appear in deploy.yaml
@@ -108,7 +122,4 @@ def paasta_status(args):
 
     # No deployments of SERVICE currently exist in deployments.json
     else:
-        print "No instances of %s found in deployments.json.\n" \
-              "Does a Jenkins pipeline exist for this service?\n" \
-              "If so, please wait a few minutes for deployments.json " \
-              "to be updated." % service_name
+        print missing_deployments_message(service_name)
