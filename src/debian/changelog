@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.25-yelp1) lucid; urgency=low
+
+  * paasta status returns jenkins pipeline url 
+
+ -- Karthig Balendran <karthig@yelp.com>  Thu, 18 Dec 2014 11:25:59 -0800
+
 service-deployment-tools (0.7.24-yelp1) lucid; urgency=low
 
   * instance_name -> instancename
