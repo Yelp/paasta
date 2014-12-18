@@ -222,7 +222,7 @@ class PaastaCheckMessages:
         message = "Failed to locate yelpsoa-config directory for %s.\n" \
                   "  Please follow the guide linked below to get boilerplate." \
                   % service_name
-        return failure(message, "http://y/yelpsoa-configs")
+        return failure(message, "http://y/paasta-deploy")
 
 
 class NoSuchService(Exception):
