@@ -25,7 +25,6 @@ import sys
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
 from service_deployment_tools import bounce_lib
-from marathon import MarathonClient
 
 
 ID_SPACER = marathon_tools.ID_SPACER
@@ -42,17 +41,6 @@ def parse_args():
                         dest="verbose", default=False)
     args = parser.parse_args()
     return args
-
-
-def get_marathon_client(url, user, passwd):
-    """Get a new marathon client connection in the form of a MarathonClient object.
-
-    :param url: The url to connect to marathon at
-    :param user: The username to connect with
-    :param passwd: The password to connect with
-    :returns: A new marathon.MarathonClient object"""
-    log.info("Connecting to Marathon server at: %s", url)
-    return MarathonClient(url, user, passwd, timeout=35)
 
 
 def get_valid_app_list(marathon_config, soa_dir):
@@ -90,8 +78,8 @@ def cleanup_apps(soa_dir):
     log.info("Loading marathon configuration")
     marathon_config = marathon_tools.get_config()
     log.info("Connecting to marathon")
-    client = get_marathon_client(marathon_config['url'], marathon_config['user'],
-                                 marathon_config['pass'])
+    client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
+                                                marathon_config['pass'])
     valid_app_list = get_valid_app_list(marathon_config, soa_dir)
     app_ids = marathon_tools.list_all_marathon_app_ids(client)
     for app_id in app_ids:

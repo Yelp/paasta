@@ -11,6 +11,7 @@ import re
 import socket
 from StringIO import StringIO
 
+from marathon import MarathonClient
 import json
 import pycurl
 import service_configuration_lib
@@ -58,6 +59,17 @@ def get_cluster():
 
     :returns: The name of the cluster defined in the marathon configuration"""
     return get_config()['cluster']
+
+
+def get_marathon_client(url, user, passwd):
+    """Get a new marathon client connection in the form of a MarathonClient object.
+
+    :param url: The url to connect to marathon at
+    :param user: The username to connect with
+    :param passwd: The password to connect with
+    :returns: A new marathon.MarathonClient object"""
+    log.info("Connecting to Marathon server at: %s", url)
+    return MarathonClient(url, user, passwd, timeout=30)
 
 
 def get_docker_registry():

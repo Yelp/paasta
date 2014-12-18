@@ -50,7 +50,7 @@ class TestSetupMarathonJob:
         with contextlib.nested(
             mock.patch('setup_marathon_job.parse_args', return_value=self.fake_args),
             mock.patch('setup_marathon_job.get_main_marathon_config', return_value=self.fake_marathon_config),
-            mock.patch('setup_marathon_job.get_marathon_client', return_value=fake_client),
+            mock.patch('service_deployment_tools.marathon_tools.get_marathon_client', return_value=fake_client),
             mock.patch('service_deployment_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=(0, 'it_is_finished')),
@@ -90,7 +90,7 @@ class TestSetupMarathonJob:
         with contextlib.nested(
             mock.patch('setup_marathon_job.parse_args', return_value=self.fake_args),
             mock.patch('setup_marathon_job.get_main_marathon_config', return_value=self.fake_marathon_config),
-            mock.patch('setup_marathon_job.get_marathon_client', return_value=fake_client),
+            mock.patch('service_deployment_tools.marathon_tools.get_marathon_client', return_value=fake_client),
             mock.patch('service_deployment_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=(1, 'NEVER')),
@@ -333,14 +333,6 @@ class TestSetupMarathonJob:
             assert expected == actual
             fake_client.list_apps.assert_called_once_with()
             create_app_patch.assert_called_once_with(fake_id, self.fake_marathon_job_config, fake_client)
-
-    def test_get_marathon_client(self):
-        fake_url = "nothing_for_me_to_do_but_dance"
-        fake_user = "the_boogie"
-        fake_passwd = "is_for_real"
-        with mock.patch('setup_marathon_job.MarathonClient') as client_patch:
-            setup_marathon_job.get_marathon_client(fake_url, fake_user, fake_passwd)
-            client_patch.assert_called_once_with(fake_url, fake_user, fake_passwd, timeout=35)
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}

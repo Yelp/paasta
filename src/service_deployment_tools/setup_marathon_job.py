@@ -28,7 +28,6 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 from marathon.exceptions import NotFoundError, InternalServerError
-from marathon import MarathonClient
 import argparse
 import logging
 import pysensu_yelp
@@ -93,17 +92,6 @@ def get_main_marathon_config():
     marathon_config = marathon_tools.get_config()
     log.info("Marathon config is: %s", marathon_config)
     return marathon_config
-
-
-def get_marathon_client(url, user, passwd):
-    """Get a new marathon client connection in the form of a MarathonClient object.
-
-    :param url: The url to connect to marathon at
-    :param user: The username to connect with
-    :param passwd: The password to connect with
-    :returns: A new marathon.MarathonClient object"""
-    log.info("Connecting to Marathon server at: %s", url)
-    return MarathonClient(url, user, passwd, timeout=35)
 
 
 def deploy_service(name, config, client, namespace, bounce_method):
@@ -208,8 +196,8 @@ def main():
         sys.exit(1)
 
     marathon_config = get_main_marathon_config()
-    client = get_marathon_client(marathon_config['url'], marathon_config['user'],
-                                 marathon_config['pass'])
+    client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
+                                                marathon_config['pass'])
 
     service_instance_config = marathon_tools.read_service_config(service_name, instance_name,
                                                                  marathon_config['cluster'], soa_dir)
