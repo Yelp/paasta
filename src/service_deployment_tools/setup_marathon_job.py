@@ -153,13 +153,12 @@ def setup_service(service_name, instance_name, client, marathon_config,
     complete_config = marathon_tools.create_complete_config(partial_id, docker_url,
                                                             marathon_config['docker_volumes'],
                                                             service_marathon_config)
-    config_hash = marathon_tools.get_config_hash(complete_config)
-    full_id = marathon_tools.compose_job_id(service_name, instance_name, config_hash)
+    full_id = marathon_tools.get_app_id(service_name, instance_name, marathon_config)
     namespace = service_marathon_config.get('nerve_ns', instance_name)
     complete_config['id'] = full_id
     log.info("Desired Marathon instance id: %s", full_id)
     try:
-        log.info("Checking if instance with hash %s already exists", config_hash)
+        log.info("Checking if an app already exists with id: %s", full_id)
         client.get_app(full_id)
         log.warning("App id %s already exists. Skipping configuration and exiting.", full_id)
         return (0, 'Service was already deployed.')

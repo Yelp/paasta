@@ -12,11 +12,30 @@ class TestMarathonTools:
         'mem': 100,
         'docker_image': 'test_docker:1.0',
         'branch': 'master',
-        'iteration': 'testin',
     }
     fake_srv_config = {
         'runs_on': ['some-box'],
         'deployed_on': ['another-box'],
+    }
+    fake_docker_registry = 'remote_registry.com'
+    fake_marathon_config = {
+        'cluster': 'test_cluster',
+        'url': 'http://test_url',
+        'user': 'admin',
+        'pass': 'admin_pass',
+        'docker_registry': fake_docker_registry,
+        'docker_volumes': [
+            {
+                'hostPath': '/var/data/a',
+                'containerPath': '/etc/a',
+                'mode': 'RO',
+            },
+            {
+                'hostPath': '/var/data/b',
+                'containerPath': '/etc/b',
+                'mode': 'RW',
+            },
+        ],
     }
 
     def test_get_deployments_json(self):
@@ -701,3 +720,25 @@ class TestMarathonTools:
         with mock.patch('marathon_tools.list_all_marathon_app_ids', return_value=fake_all_marathon_app_ids) as list_all_marathon_app_ids_patch:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is False
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
+
+    def test_get_app_id(self):
+        fake_name = 'fakeapp'
+        fake_instance = 'fakeinstance'
+        fake_url = 'fake_url'
+        fake_hash = 'abc123'
+        with contextlib.nested(
+            mock.patch('marathon_tools.read_service_config',
+                       return_value=self.fake_marathon_job_config),
+            mock.patch('marathon_tools.get_docker_url', return_value=fake_url),
+            mock.patch('marathon_tools.create_complete_config',
+                       return_value=self.fake_marathon_job_config),
+            mock.patch('marathon_tools.get_config_hash', return_value=fake_hash),
+        ) as (
+            read_service_config_patch,
+            docker_url_patch,
+            create_complete_config_patch,
+            hash_patch,
+        ):
+            assert marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config) == 'fakeapp.fakeinstance.abc123'
+            read_service_config_patch.assert_called_once_with(fake_name, fake_instance, soa_dir='/nail/etc/services')
+            hash_patch.assert_called_once_with(self.fake_marathon_job_config)

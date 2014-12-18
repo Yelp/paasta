@@ -15,7 +15,6 @@ class TestSetupMarathonJob:
         'cpus': 1,
         'mem': 100,
         'docker_image': fake_docker_image,
-        'iteration': 'testin',
         'nerve_ns': 'aaaaugh',
         'bounce_method': 'brutal'
     }
@@ -190,34 +189,26 @@ class TestSetupMarathonJob:
         fake_client = mock.MagicMock(get_app=mock.Mock(return_value=True))
         fake_complete = {'seven': 'full', 'eight': 'frightened', 'nine': 'eaten'}
         fake_url = 'what_is_a_test'
-        fake_hash = '4d5e6f'
-        full_id = marathon_tools.compose_job_id(fake_name, fake_instance,
-                                                self.fake_marathon_job_config['iteration'])
+        full_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         with contextlib.nested(
             mock.patch('service_deployment_tools.marathon_tools.get_docker_url', return_value=fake_url),
             mock.patch('service_deployment_tools.marathon_tools.create_complete_config',
                        return_value=fake_complete),
-            mock.patch('service_deployment_tools.marathon_tools.get_config_hash',
-                       return_value=fake_hash),
-            mock.patch('service_deployment_tools.marathon_tools.compose_job_id', return_value=full_id),
+            mock.patch('service_deployment_tools.marathon_tools.get_app_id', return_value=full_id),
         ) as (
             docker_url_patch,
             create_config_patch,
-            hash_patch,
-            compose_id_patch,
+            get_app_id_patch,
         ):
             status, output = setup_marathon_job.setup_service(fake_name, fake_instance, fake_client,
                                                               self.fake_marathon_config,
                                                               self.fake_marathon_job_config)
             docker_url_patch.assert_called_once_with(self.fake_docker_registry, self.fake_docker_image)
-            compose_id_patch.assert_any_call(fake_name, fake_instance, fake_hash)
-            compose_id_patch.assert_any_call(fake_name, fake_instance)
-            assert compose_id_patch.call_count == 2
+            get_app_id_patch.assert_called_once_with(fake_name, fake_instance, self.fake_marathon_config)
             create_config_patch.assert_called_once_with(full_id, fake_url,
                                                         self.fake_marathon_config['docker_volumes'],
                                                         self.fake_marathon_job_config)
             fake_client.get_app.assert_called_once_with(full_id)
-            hash_patch.assert_called_once_with(fake_complete)
 
     def test_setup_service_srv_does_not_exist(self):
         fake_name = 'if_talk_was_cheap'
@@ -228,25 +219,22 @@ class TestSetupMarathonJob:
         fake_complete = {'do': 'you', 'even': 'dota'}
         fake_url = 'a_miserable_pile_of_mocks'
         fake_bounce = 'trampoline'
-        fake_hash = '1a2b3c'
-        full_id = marathon_tools.compose_job_id(fake_name, fake_instance,
-                                                self.fake_marathon_job_config['iteration'])
+        full_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         with contextlib.nested(
             mock.patch('service_deployment_tools.marathon_tools.get_docker_url', return_value=fake_url),
             mock.patch('service_deployment_tools.marathon_tools.create_complete_config',
                        return_value=fake_complete),
-            mock.patch('service_deployment_tools.marathon_tools.get_config_hash',
-                       return_value=fake_hash),
             mock.patch('setup_marathon_job.deploy_service', return_value=(111, 'Never')),
             mock.patch('service_deployment_tools.marathon_tools.get_bounce_method', return_value=fake_bounce),
             mock.patch('service_deployment_tools.marathon_tools.compose_job_id', return_value=full_id),
+            mock.patch('service_deployment_tools.marathon_tools.get_app_id', return_value=full_id),
         ) as (
             docker_url_patch,
             create_config_patch,
-            hash_patch,
             deploy_service_patch,
             get_bounce_patch,
             compose_id_patch,
+            get_app_id_patch,
         ):
             status, output = setup_marathon_job.setup_service(fake_name, fake_instance, fake_client,
                                                               self.fake_marathon_config,
@@ -255,8 +243,8 @@ class TestSetupMarathonJob:
             assert output == 'Never'
             docker_url_patch.assert_called_once_with(self.fake_docker_registry, self.fake_docker_image)
             compose_id_patch.assert_any_call(fake_name, fake_instance)
-            compose_id_patch.assert_any_call(fake_name, fake_instance, fake_hash)
-            assert compose_id_patch.call_count == 2
+            get_app_id_patch.assert_called_once_with(fake_name, fake_instance, self.fake_marathon_config)
+            assert compose_id_patch.call_count == 1
             create_config_patch.assert_called_once_with(full_id, fake_url,
                                                         self.fake_marathon_config['docker_volumes'],
                                                         self.fake_marathon_job_config)
@@ -265,7 +253,6 @@ class TestSetupMarathonJob:
             deploy_service_patch.assert_called_once_with(full_id, fake_complete, fake_client,
                                                          self.fake_marathon_job_config['nerve_ns'],
                                                          fake_bounce)
-            hash_patch.assert_called_once_with(fake_complete)
 
     def test_deploy_service_unknown_bounce(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
