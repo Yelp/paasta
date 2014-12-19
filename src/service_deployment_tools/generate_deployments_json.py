@@ -180,6 +180,21 @@ def get_branch_mappings(soa_dir, old_mappings):
     return mappings
 
 
+def get_deployments_dict(mappings):
+    deployments_dict = {}
+    # import pdb; pdb.set_trace()
+    deployments_dict.update(mappings)  # for backwards compatibility.
+
+    v1_dict = {}
+
+    for app_name, docker_image in mappings.items():
+        v1_dict.setdefault(app_name, {})['docker_image'] = docker_image
+
+    deployments_dict['v1'] = v1_dict
+
+    return deployments_dict
+
+
 def main():
     args = parse_args()
     soa_dir = os.path.abspath(args.soa_dir)
@@ -193,8 +208,11 @@ def main():
     except (IOError, ValueError):
         old_mappings = {}
     mappings = get_branch_mappings(soa_dir, old_mappings)
+
+    deployments_dict = get_deployments_dict(mappings)
+
     with open(os.path.join(soa_dir, TARGET_FILE), 'w') as f:
-        json.dump(mappings, f)
+        json.dump(deployments_dict, f)
 
 
 if __name__ == "__main__":

@@ -139,7 +139,7 @@ def test_main():
         mock.patch('generate_deployments_json.parse_args',
                    return_value=mock.Mock(verbose=False, soa_dir=fake_soa_dir)),
         mock.patch('os.path.abspath', return_value='ABSOLUTE'),
-        mock.patch('generate_deployments_json.get_branch_mappings', return_value='MAPPINGS'),
+        mock.patch('generate_deployments_json.get_branch_mappings', return_value={'MAP': 'PINGS'}),
         mock.patch('os.path.join', return_value='JOIN'),
         mock.patch('generate_deployments_json.open', create=True, return_value=file_mock),
         mock.patch('json.dump'),
@@ -162,5 +162,25 @@ def test_main():
         open_patch.assert_any_call('JOIN', 'w')
         open_patch.assert_any_call('JOIN', 'r')
         assert open_patch.call_count == 2
-        json_dump_patch.assert_called_once_with('MAPPINGS', file_mock.__enter__())
+        json_dump_patch.assert_called_once_with({'MAP': 'PINGS', 'v1': {'MAP': {'docker_image': 'PINGS'}}}, file_mock.__enter__())
         json_load_patch.assert_called_once_with(file_mock.__enter__())
+
+
+def test_get_deployments_dict():
+    mappings = {
+        'app1': 'image1',
+        'app2': 'image2',
+    }
+
+    assert generate_deployments_json.get_deployments_dict(mappings) == {
+        'app1': 'image1',
+        'app2': 'image2',
+        'v1': {
+            'app1': {
+                'docker_image': 'image1',
+            },
+            'app2': {
+                'docker_image': 'image2',
+            },
+        },
+    }
