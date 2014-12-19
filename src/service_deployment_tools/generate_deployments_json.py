@@ -207,12 +207,12 @@ def get_deployments_dict_from_branch_mappings(branch_mappings):
     return deployments_dict
 
 
-def get_branch_mappings_from_deployments_dict(old_deployments_dict):
+def get_branch_mappings_from_deployments_dict(deployments_dict):
     try:
-        return old_deployments_dict['v1']
+        return deployments_dict['v1']
     except KeyError:
         branch_mappings = {}
-        for branch, image in old_deployments_dict.items():
+        for branch, image in deployments_dict.items():
             if isinstance(image, str):
                 branch_mappings[branch] = {
                     'docker_image': image,

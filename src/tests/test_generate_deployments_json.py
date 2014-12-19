@@ -118,7 +118,7 @@ def test_get_branch_mappings():
         mock.patch('service_deployment_tools.marathon_tools.get_docker_url',
                    return_value="not empty"),
         mock.patch('generate_deployments_json.get_desired_state',
-                   side_effect=lambda git, repo, branch, sha: fake_desired_states.get((repo, branch, sha))),
+                   side_effect=lambda git, service, branch, sha: fake_desired_states.get((service, branch, sha))),
         mock.patch('os.rmdir')
     ) as (
         mkdir_patch,
