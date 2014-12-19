@@ -23,8 +23,8 @@ Contract with services
 ----------------------
 The `Paasta Contract <http://y/paasta-contract>`_ describes the
 responsibilities of services that wish to work with PaaSTA.
-service_deployment_tools contains the implementation of several of these rules.
 
+service_deployment_tools contains the implementation of several of these rules.
 For example, `generate_deployments_json <generate_deployments_json.html>`_ is
 the piece that checks each service's git repo for the specially-named branch
 that tells PaaSTA which versions of the service should go to which clusters.
@@ -40,6 +40,14 @@ Marathon masters run `deploy_marathon_services
 <setup_marathon_job.html>`_. These scripts parse ``deployments.json`` and the
 current cluster state, then issue comands to Marathon to put the cluster into
 the right state -- cluster X should be running version Y of service Z.
+
+Running images
+--------------
+Marathon launches the Docker containers that comprise a PaaSTA service. Some
+defaults -- notably, volumes from the host system like ``/nail/srv`` which are
+mounted inside the container -- are managed by puppet in the `the
+service_deployment_tools module
+<https://opengrok.yelpcorp.com/xref/sysgit/puppet/modules/service_deployment_tools/manifests/init.pp>`_.
 
 Monitoring
 ----------
