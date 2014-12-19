@@ -180,15 +180,24 @@ def get_branch_mappings(soa_dir, old_mappings):
     return mappings
 
 
-def get_deployments_dict(mappings):
+def get_desired_state():
+    return {}
+
+
+def get_deployments_dict(image_by_branch, state_by_branch):
     deployments_dict = {}
-    # import pdb; pdb.set_trace()
-    deployments_dict.update(mappings)  # for backwards compatibility.
+    deployments_dict.update(image_by_branch)  # for backwards compatibility.
 
     v1_dict = {}
-
-    for app_name, docker_image in mappings.items():
+    for app_name, docker_image in image_by_branch.items():
         v1_dict.setdefault(app_name, {})['docker_image'] = docker_image
+
+    for app_name, state in state_by_branch.items():
+        v1_dict.setdefault(app_name, {})['desired_state'] = state
+
+    # fill in defaults
+    for info in v1_dict.values():
+        info.setdefault('desired_state', 'start')
 
     deployments_dict['v1'] = v1_dict
 
@@ -205,11 +214,14 @@ def main():
     try:
         with open(os.path.join(soa_dir, TARGET_FILE), 'r') as f:
             old_mappings = json.load(f)
+            old_mappings.pop('v1', None)
     except (IOError, ValueError):
         old_mappings = {}
     mappings = get_branch_mappings(soa_dir, old_mappings)
 
-    deployments_dict = get_deployments_dict(mappings)
+    desired_state = get_desired_state()
+
+    deployments_dict = get_deployments_dict(mappings, desired_state)
 
     with open(os.path.join(soa_dir, TARGET_FILE), 'w') as f:
         json.dump(deployments_dict, f)

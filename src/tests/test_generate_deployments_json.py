@@ -143,7 +143,7 @@ def test_main():
         mock.patch('os.path.join', return_value='JOIN'),
         mock.patch('generate_deployments_json.open', create=True, return_value=file_mock),
         mock.patch('json.dump'),
-        mock.patch('json.load', return_value='LOAAAAADIN')
+        mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'})
     ) as (
         parse_patch,
         abspath_patch,
@@ -156,31 +156,54 @@ def test_main():
         generate_deployments_json.main()
         parse_patch.assert_called_once_with()
         abspath_patch.assert_called_once_with(fake_soa_dir)
-        mappings_patch.assert_called_once_with('ABSOLUTE', 'LOAAAAADIN'),
+        mappings_patch.assert_called_once_with('ABSOLUTE', {'OLD_MAP': 'PINGS'}),
         join_patch.assert_any_call('ABSOLUTE', generate_deployments_json.TARGET_FILE),
         assert join_patch.call_count == 2
         open_patch.assert_any_call('JOIN', 'w')
         open_patch.assert_any_call('JOIN', 'r')
         assert open_patch.call_count == 2
-        json_dump_patch.assert_called_once_with({'MAP': 'PINGS', 'v1': {'MAP': {'docker_image': 'PINGS'}}}, file_mock.__enter__())
+        json_dump_patch.assert_called_once_with({'MAP': 'PINGS', 'v1': {'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}}, file_mock.__enter__())
         json_load_patch.assert_called_once_with(file_mock.__enter__())
 
 
 def test_get_deployments_dict():
-    mappings = {
+    branch_mapping = {
         'app1': 'image1',
         'app2': 'image2',
     }
 
-    assert generate_deployments_json.get_deployments_dict(mappings) == {
+    desired_state_mapping = {
+        'app1': 'start_1418951213',
+        'app2': 'stop_1412345678',
+    }
+
+    assert generate_deployments_json.get_deployments_dict(branch_mapping, desired_state_mapping) == {
         'app1': 'image1',
         'app2': 'image2',
         'v1': {
             'app1': {
                 'docker_image': 'image1',
+                'desired_state': 'start_1418951213',
             },
             'app2': {
                 'docker_image': 'image2',
+                'desired_state': 'stop_1412345678',
+            },
+        },
+    }
+
+    # if no desired states are specified (because the control tags don't exist yet), assume we should be started.
+    assert generate_deployments_json.get_deployments_dict(branch_mapping, {}) == {
+        'app1': 'image1',
+        'app2': 'image2',
+        'v1': {
+            'app1': {
+                'docker_image': 'image1',
+                'desired_state': 'start',
+            },
+            'app2': {
+                'docker_image': 'image2',
+                'desired_state': 'start',
             },
         },
     }
