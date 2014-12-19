@@ -130,7 +130,6 @@ def test_check_docker_check_pass(
 def test_check_docker_check_doesnt_expose_8888(
         mock_stdout, mock_docker_file_reads_from_yelpcorp,
         mock_is_file_in_dir, mock_expose_8888_in_dockerfile):
-    # Dockerfile doesn't contain 'EXPOSE 8888'
 
     mock_is_file_in_dir.return_value = "/fake/path"
     mock_docker_file_reads_from_yelpcorp.return_value = True
@@ -153,7 +152,6 @@ def test_check_docker_check_doesnt_expose_8888(
 def test_check_docker_check_doesnt_read_yelpcorp(
         mock_stdout, mock_docker_file_reads_from_yelpcorp,
         mock_is_file_in_dir, mock_expose_8888_in_dockerfile):
-    # Dockerfile doesn't read from Yelpcorp
 
     mock_is_file_in_dir.return_value = "/fake/path"
     mock_docker_file_reads_from_yelpcorp.return_value = False
@@ -176,7 +174,6 @@ def test_check_docker_check_doesnt_read_yelpcorp(
 def test_check_docker_check_file_not_found(
         mock_stdout, mock_docker_file_reads_from_yelpcorp,
         mock_is_file_in_dir, mock_expose_8888_in_dockerfile):
-    # Dockerfile doesn't exist
 
     mock_is_file_in_dir.return_value = False
     mock_docker_file_reads_from_yelpcorp.return_value = False
@@ -361,10 +358,9 @@ def test_check_smartstack_check_fail(mock_stdout, mock_is_file_in_dir):
 @patch('service_deployment_tools.paasta_cli.cmds.check.urllib2.urlopen')
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_pipeline_check_pass(mock_stdout, mock_urlopen):
-    attrs = {'getcode.return_value': 200}
-    mock_function = MagicMock()
-    mock_function.configure_mock(**attrs)
-    mock_urlopen.return_value = mock_function
+    mock_result = MagicMock()
+    mock_result.getcode.return_value = 200
+    mock_urlopen.return_value = mock_result
     expected_output = "%s\n" % PaastaCheckMessages.PIPELINE_FOUND
     pipeline_check("fake_service")
     output = mock_stdout.getvalue()
@@ -372,13 +368,12 @@ def test_check_pipeline_check_pass(mock_stdout, mock_urlopen):
     assert output == expected_output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.check.urllib2')
+@patch('service_deployment_tools.paasta_cli.cmds.check.urllib2.urlopen')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_pipeline_check_fail_404(mock_stdout, mock_urllib2):
-    attrs = {'getcode.return_value': 404}
-    mock_function = MagicMock()
-    mock_function.configure_mock(**attrs)
-    mock_urllib2.urlopen.return_value = mock_function
+def test_check_pipeline_check_fail_404(mock_stdout, mock_urlopen):
+    mock_result = MagicMock()
+    mock_result.getcode.return_value = 404
+    mock_urlopen.return_value = mock_result
     expected_output = "%s\n" % PaastaCheckMessages.PIPELINE_MISSING
     pipeline_check("fake_service")
     output = mock_stdout.getvalue()

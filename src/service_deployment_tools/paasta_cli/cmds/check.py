@@ -2,6 +2,7 @@
 """Contains methods used by the paasta client to check whether Yelp service
 passes all the markers required to be considered paasta ready."""
 import os
+import re
 import subprocess
 import urllib2
 
@@ -35,11 +36,14 @@ def expose_8888_in_dockerfile(path):
     """Ensure Dockerfile contains line 'EXPOSE 8888'.
 
     :param path : path to a Dockerfile
-    :return : A boolean that is True if the Dockerfile contains 'EXPOSE 8888'"""
-    for line in open(path, 'r'):
-        if line == 'EXPOSE 8888':
-            return True
-    return False
+    :return : A boolean that is True if the Dockerfile contains 'EXPOSE 8888'
+    """
+    pattern = re.compile('/EXPOSE\s+8888.*/')
+    with open(path, 'r') as dockerfile:
+        for line in dockerfile.readlines():
+            if pattern.match(line):
+                return True
+        return False
 
 
 def docker_file_reads_from_yelpcorp(path):
@@ -47,12 +51,13 @@ def docker_file_reads_from_yelpcorp(path):
 
     :param path : path to a Dockerfile
     :return : A boolean that is True if the Dockerfile reads from yelpcorp"""
-    dockerfile = open(path, 'r')
-    first_line = dockerfile.readline()
-    if first_line.startswith("FROM docker-dev.yelpcorp.com"):
-        return True
-    else:
-        return False
+
+    with open(path, 'r') as dockerfile:
+        first_line = dockerfile.readline()
+        if first_line.startswith("FROM docker-dev.yelpcorp.com"):
+            return True
+        else:
+            return False
 
 
 def docker_check():
