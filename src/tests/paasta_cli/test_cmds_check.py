@@ -98,54 +98,96 @@ def test_check_deploy_check_fail(mock_stdout, mock_is_file_in_dir):
     assert output == expected_output
 
 
+@patch('service_deployment_tools.paasta_cli.cmds.check.'
+       'expose_8888_in_dockerfile')
 @patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
-@patch('service_deployment_tools.paasta_cli.cmds.check.docker_file_valid')
+@patch('service_deployment_tools.paasta_cli.cmds.check.'
+       'docker_file_reads_from_yelpcorp')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_docker_check_pass(mock_stdout, mock_docker_file_valid,
-                                 mock_is_file_in_dir):
+def test_check_docker_check_pass(
+        mock_stdout, mock_docker_file_reads_from_yelpcorp,
+        mock_is_file_in_dir, mock_expose_8888_in_dockerfile):
     # Dockerfile exists and is valid
 
     mock_is_file_in_dir.return_value = "/fake/path"
-    mock_docker_file_valid.return_value = True
-    expected_output = "%s\n%s\n" % (PaastaCheckMessages.DOCKERFILE_FOUND,
-                                    PaastaCheckMessages.DOCKERFILE_VALID)
+    mock_docker_file_reads_from_yelpcorp.return_value = True
+    mock_expose_8888_in_dockerfile.return_value = True
 
     docker_check()
     output = mock_stdout.getvalue()
 
-    assert output == expected_output
+    assert PaastaCheckMessages.DOCKERFILE_FOUND in output
+    assert PaastaCheckMessages.DOCKERFILE_YELPCORP in output
+    assert PaastaCheckMessages.DOCKERFILE_EXPOSES_8888 in output
 
 
+@patch('service_deployment_tools.paasta_cli.cmds.check.'
+       'expose_8888_in_dockerfile')
 @patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
-@patch('service_deployment_tools.paasta_cli.cmds.check.docker_file_valid')
+@patch('service_deployment_tools.paasta_cli.cmds.check.'
+       'docker_file_reads_from_yelpcorp')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_docker_check_invalid(mock_stdout, mock_docker_file_valid,
-                                    mock_is_file_in_dir):
-    # Dockerfile exists but is not valid
+def test_check_docker_check_doesnt_expose_8888(
+        mock_stdout, mock_docker_file_reads_from_yelpcorp,
+        mock_is_file_in_dir, mock_expose_8888_in_dockerfile):
+    # Dockerfile doesn't contain 'EXPOSE 8888'
 
     mock_is_file_in_dir.return_value = "/fake/path"
-    mock_docker_file_valid.return_value = False
-    expected_output = "%s\n%s\n" % (PaastaCheckMessages.DOCKERFILE_FOUND,
-                                    PaastaCheckMessages.DOCKERFILE_INVALID)
+    mock_docker_file_reads_from_yelpcorp.return_value = True
+    mock_expose_8888_in_dockerfile.return_value = False
 
     docker_check()
     output = mock_stdout.getvalue()
 
-    assert output == expected_output
+    assert PaastaCheckMessages.DOCKERFILE_FOUND in output
+    assert PaastaCheckMessages.DOCKERFILE_YELPCORP in output
+    assert PaastaCheckMessages.DOCKERFILE_DOESNT_EXPOSE_8888 in output
 
 
+@patch('service_deployment_tools.paasta_cli.cmds.check.'
+       'expose_8888_in_dockerfile')
 @patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
+@patch('service_deployment_tools.paasta_cli.cmds.check.'
+       'docker_file_reads_from_yelpcorp')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_docker_check_file_not_found(mock_stdout, mock_is_file_in_dir):
+def test_check_docker_check_doesnt_read_yelpcorp(
+        mock_stdout, mock_docker_file_reads_from_yelpcorp,
+        mock_is_file_in_dir, mock_expose_8888_in_dockerfile):
+    # Dockerfile doesn't read from Yelpcorp
+
+    mock_is_file_in_dir.return_value = "/fake/path"
+    mock_docker_file_reads_from_yelpcorp.return_value = False
+    mock_expose_8888_in_dockerfile.return_value = False
+
+    docker_check()
+    output = mock_stdout.getvalue()
+
+    assert PaastaCheckMessages.DOCKERFILE_FOUND in output
+    assert PaastaCheckMessages.DOCKERFILE_NOT_YELPCORP in output
+    assert PaastaCheckMessages.DOCKERFILE_DOESNT_EXPOSE_8888 in output
+
+
+@patch('service_deployment_tools.paasta_cli.cmds.check.'
+       'expose_8888_in_dockerfile')
+@patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
+@patch('service_deployment_tools.paasta_cli.cmds.check.'
+       'docker_file_reads_from_yelpcorp')
+@patch('sys.stdout', new_callable=StringIO)
+def test_check_docker_check_file_not_found(
+        mock_stdout, mock_docker_file_reads_from_yelpcorp,
+        mock_is_file_in_dir, mock_expose_8888_in_dockerfile):
     # Dockerfile doesn't exist
 
     mock_is_file_in_dir.return_value = False
-    expected_output = "%s\n" % PaastaCheckMessages.DOCKERFILE_MISSING
+    mock_docker_file_reads_from_yelpcorp.return_value = False
+    mock_expose_8888_in_dockerfile.return_value = False
 
     docker_check()
     output = mock_stdout.getvalue()
 
-    assert output == expected_output
+    assert PaastaCheckMessages.DOCKERFILE_MISSING in output
+    assert PaastaCheckMessages.DOCKERFILE_NOT_YELPCORP not in output
+    assert PaastaCheckMessages.DOCKERFILE_DOESNT_EXPOSE_8888 not in output
 
 
 @patch('service_deployment_tools.paasta_cli.cmds.check.is_file_in_dir')
@@ -316,13 +358,13 @@ def test_check_smartstack_check_fail(mock_stdout, mock_is_file_in_dir):
     assert output == expected_output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.check.urllib2')
+@patch('service_deployment_tools.paasta_cli.cmds.check.urllib2.urlopen')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_pipeline_check_pass(mock_stdout, mock_urllib2):
+def test_check_pipeline_check_pass(mock_stdout, mock_urlopen):
     attrs = {'getcode.return_value': 200}
     mock_function = MagicMock()
     mock_function.configure_mock(**attrs)
-    mock_urllib2.urlopen.return_value = mock_function
+    mock_urlopen.return_value = mock_function
     expected_output = "%s\n" % PaastaCheckMessages.PIPELINE_FOUND
     pipeline_check("fake_service")
     output = mock_stdout.getvalue()
