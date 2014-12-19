@@ -87,13 +87,21 @@ def test_get_branch_mappings():
                     [('789009', 'no_thanks'), ('j8yiomwer', 'nah')]]
     fake_registry = 'super-docker'
     fake_old_mappings = ['']
+    fake_desired_states = {
+        ('uno', 'no_thanks', '789009'): ('start', None),
+        ('dos', 'try_me', '123456'): ('stop', 123),
+    }
     fake_git = mock.Mock()
     expected = {
         'uno:no_thanks': {
             'docker_image': 'services-uno:paasta-789009',
+            'desired_state': 'start',
+            'force_bounce': None,
         },
         'dos:try_me': {
             'docker_image': 'services-dos:paasta-123456',
+            'desired_state': 'stop',
+            'force_bounce': 123,
         },
     }
     with contextlib.nested(
@@ -109,6 +117,8 @@ def test_get_branch_mappings():
                    return_value=fake_registry),
         mock.patch('service_deployment_tools.marathon_tools.get_docker_url',
                    return_value="not empty"),
+        mock.patch('generate_deployments_json.get_desired_state',
+                   side_effect=lambda git, repo, branch, sha: fake_desired_states.get((repo, branch, sha))),
         mock.patch('os.rmdir')
     ) as (
         mkdir_patch,
@@ -118,6 +128,7 @@ def test_get_branch_mappings():
         get_remotes_patch,
         registry_patch,
         docker_url_patch,
+        get_desired_state_patch,
         rmdir_patch
     ):
         actual = generate_deployments_json.get_branch_mappings(fake_soa_dir, fake_old_mappings)
@@ -136,6 +147,10 @@ def test_get_branch_mappings():
         docker_url_patch.assert_any_call(fake_registry, 'services-uno:paasta-789009', verify=True)
         docker_url_patch.assert_any_call(fake_registry, 'services-dos:paasta-123456', verify=True)
         assert docker_url_patch.call_count == 2
+
+        get_desired_state_patch.assert_any_call(fake_git, 'uno', 'no_thanks', '789009')
+        get_desired_state_patch.assert_any_call(fake_git, 'dos', 'try_me', '123456')
+        assert get_desired_state_patch.call_count == 2
 
 
 def test_main():
@@ -162,7 +177,7 @@ def test_main():
         generate_deployments_json.main()
         parse_patch.assert_called_once_with()
         abspath_patch.assert_called_once_with(fake_soa_dir)
-        mappings_patch.assert_called_once_with('ABSOLUTE', {'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS'}}),
+        mappings_patch.assert_called_once_with('ABSOLUTE', {'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS', 'force_bounce': None}}),
         join_patch.assert_any_call('ABSOLUTE', generate_deployments_json.TARGET_FILE),
         assert join_patch.call_count == 2
         open_patch.assert_any_call('JOIN', 'w')
@@ -176,11 +191,13 @@ def test_get_deployments_dict():
     branch_mappings = {
         'app1': {
             'docker_image': 'image1',
-            'desired_state': 'start_1418951213',
+            'desired_state': 'start',
+            'force_bounce': 1418951213,
         },
         'app2': {
             'docker_image': 'image2',
-            'desired_state': 'stop_1412345678',
+            'desired_state': 'stop',
+            'force_bounce': 1412345678,
         },
     }
 
@@ -190,11 +207,13 @@ def test_get_deployments_dict():
         'v1': {
             'app1': {
                 'docker_image': 'image1',
-                'desired_state': 'start_1418951213',
+                'desired_state': 'start',
+                'force_bounce': 1418951213,
             },
             'app2': {
                 'docker_image': 'image2',
-                'desired_state': 'stop_1412345678',
+                'desired_state': 'stop',
+                'force_bounce': 1412345678,
             },
         },
     }

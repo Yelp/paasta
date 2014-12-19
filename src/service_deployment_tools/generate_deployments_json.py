@@ -147,7 +147,12 @@ def get_branch_mappings(soa_dir, old_mappings):
 
     :param soa_dir: The SOA configuration directory to read from
     :param old_mappings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new mapping.
-    :returns: A dictionary mapping service_name:branch_name to services-service_name:paasta-hash"""
+    :returns: A dictionary mapping service_name:branch_name to a dictionary containing:
+        - 'docker_image': something like "services-service_name:paasta-hash". This is relative to the paasta docker registry.
+        - 'desired_state': either 'start' or 'stop'. Says whether this branch should be running.
+        - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if the
+            other properties of this app have not changed.
+    """
     tmp_dir = tempfile.mkdtemp()
     mygit = git.Git(tmp_dir)
     mappings = {}
@@ -160,15 +165,21 @@ def get_branch_mappings(soa_dir, old_mappings):
             continue
         remote_branches = get_remote_branches_for_service(mygit, service)
         head_and_branch_from_valid_remote_branches = filter(lambda (head, branch): branch in valid_branches, remote_branches)
+
         if not head_and_branch_from_valid_remote_branches:
             log.info('Service %s has no remote branches which are valid. Skipping.', service)
             continue
+
         for head, branch in head_and_branch_from_valid_remote_branches:
             branch_alias = '%s:%s' % (service, branch)
             docker_image = 'services-%s:paasta-%s' % (service, head)
             if marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
                 log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
                 mappings.setdefault(branch_alias, {})['docker_image'] = docker_image
+
+                desired_state, force_bounce = get_desired_state(mygit, service, branch, head)
+                mappings[branch_alias]['desired_state'] = desired_state
+                mappings[branch_alias]['force_bounce'] = force_bounce
             else:
                 log.error('Branch %s should be mapped to image %s, but that image isn\'t \
                            in the docker_registry %s', branch_alias, docker_image, docker_registry)
@@ -178,6 +189,12 @@ def get_branch_mappings(soa_dir, old_mappings):
     except OSError:
         log.error("Failed to remove temporary directory %s", tmp_dir)
     return mappings
+
+
+def get_desired_state(mygit, service, branch, sha):
+    """Gets the desired state (start or stop) from the given repo
+    """
+    return ('start', None)
 
 
 def get_deployments_dict_from_branch_mappings(branch_mappings):
@@ -200,6 +217,7 @@ def get_branch_mappings_from_deployments_dict(old_deployments_dict):
                 branch_mappings[branch] = {
                     'docker_image': image,
                     'desired_state': 'start',
+                    'force_bounce': None,
                 }
         return branch_mappings
 
