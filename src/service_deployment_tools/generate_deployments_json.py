@@ -146,7 +146,7 @@ def get_branch_mappings(soa_dir, old_mappings):
     This is done for all services in soa_dir.
 
     :param soa_dir: The SOA configuration directory to read from
-    :param old_mapings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new mapping.
+    :param old_mappings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new mapping.
     :returns: A dictionary mapping service_name:branch_name to services-service_name:paasta-hash"""
     tmp_dir = tempfile.mkdtemp()
     mygit = git.Git(tmp_dir)
@@ -168,7 +168,7 @@ def get_branch_mappings(soa_dir, old_mappings):
             docker_image = 'services-%s:paasta-%s' % (service, head)
             if marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
                 log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
-                mappings[branch_alias] = docker_image
+                mappings.setdefault(branch_alias, {})['docker_image'] = docker_image
             else:
                 log.error('Branch %s should be mapped to image %s, but that image isn\'t \
                            in the docker_registry %s', branch_alias, docker_image, docker_registry)
@@ -180,28 +180,28 @@ def get_branch_mappings(soa_dir, old_mappings):
     return mappings
 
 
-def get_desired_state():
-    return {}
-
-
-def get_deployments_dict(image_by_branch, state_by_branch):
+def get_deployments_dict_from_branch_mappings(branch_mappings):
     deployments_dict = {}
-    deployments_dict.update(image_by_branch)  # for backwards compatibility.
+    deployments_dict['v1'] = branch_mappings
 
-    v1_dict = {}
-    for app_name, docker_image in image_by_branch.items():
-        v1_dict.setdefault(app_name, {})['docker_image'] = docker_image
-
-    for app_name, state in state_by_branch.items():
-        v1_dict.setdefault(app_name, {})['desired_state'] = state
-
-    # fill in defaults
-    for info in v1_dict.values():
-        info.setdefault('desired_state', 'start')
-
-    deployments_dict['v1'] = v1_dict
+    for branch, info in branch_mappings.items():
+        deployments_dict[branch] = info['docker_image']
 
     return deployments_dict
+
+
+def get_branch_mappings_from_deployments_dict(old_deployments_dict):
+    try:
+        return old_deployments_dict['v1']
+    except KeyError:
+        branch_mappings = {}
+        for branch, image in old_deployments_dict.items():
+            if isinstance(image, str):
+                branch_mappings[branch] = {
+                    'docker_image': image,
+                    'desired_state': 'start',
+                }
+        return branch_mappings
 
 
 def main():
@@ -213,15 +213,13 @@ def main():
         log.setLevel(logging.WARNING)
     try:
         with open(os.path.join(soa_dir, TARGET_FILE), 'r') as f:
-            old_mappings = json.load(f)
-            old_mappings.pop('v1', None)
+            old_deployments_dict = json.load(f)
+            old_mappings = get_branch_mappings_from_deployments_dict(old_deployments_dict)
     except (IOError, ValueError):
         old_mappings = {}
     mappings = get_branch_mappings(soa_dir, old_mappings)
 
-    desired_state = get_desired_state()
-
-    deployments_dict = get_deployments_dict(mappings, desired_state)
+    deployments_dict = get_deployments_dict_from_branch_mappings(mappings)
 
     with open(os.path.join(soa_dir, TARGET_FILE), 'w') as f:
         json.dump(deployments_dict, f)
