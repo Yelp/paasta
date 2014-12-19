@@ -18,7 +18,7 @@ import service_configuration_lib
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
-# It's used to compose a job's full ID from its name, instance, and iteration.
+# It's used to compose a job's full ID from its name and instance
 ID_SPACER = '.'
 MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
@@ -682,3 +682,21 @@ def is_app_id_running(app_id, client):
 
     all_app_ids = list_all_marathon_app_ids(client)
     return app_id in all_app_ids
+
+
+def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
+    """Composes a predicatable marathon app_id from the service's docker image and
+    marathon configuration. Editing this function *will* cause a bounce of all
+    services because they will see an "old" version of the marathon app deployed,
+    and a new one with the new hash will try to be deployed"""
+    partial_id = compose_job_id(name, instance)
+    config = read_service_config(name, instance, soa_dir=soa_dir)
+    docker_url = get_docker_url(marathon_config['docker_registry'],
+                                config['docker_image'],
+                                verify=False)
+    complete_config = create_complete_config(partial_id, docker_url,
+                                             marathon_config['docker_volumes'],
+                                             config)
+    config_hash = get_config_hash(complete_config)
+    full_id = compose_job_id(name, instance, config_hash)
+    return full_id

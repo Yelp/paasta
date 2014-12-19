@@ -55,17 +55,8 @@ def get_valid_app_list(marathon_config, soa_dir):
     cluster_app_list = marathon_tools.get_marathon_services_for_cluster(soa_dir=soa_dir)
     valid_app_list = []
     for name, instance in cluster_app_list:
-        partial_id = marathon_tools.compose_job_id(name, instance)
-        config = marathon_tools.read_service_config(name, instance, soa_dir=soa_dir)
-        docker_url = marathon_tools.get_docker_url(marathon_config['docker_registry'],
-                                                   config['docker_image'],
-                                                   verify=False)
-        complete_config = marathon_tools.create_complete_config(partial_id, docker_url,
-                                                                marathon_config['docker_volumes'],
-                                                                config)
-        config_hash = marathon_tools.get_config_hash(complete_config)
-        full_id = marathon_tools.compose_job_id(name, instance, config_hash)
-        valid_app_list.append(full_id)
+        app_id = marathon_tools.get_app_id(name, instance, marathon_config, soa_dir=soa_dir)
+        valid_app_list.append(app_id)
     return valid_app_list
 
 
