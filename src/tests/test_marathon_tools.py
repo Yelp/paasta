@@ -44,7 +44,18 @@ class TestMarathonTools:
         file_mock.read = mock.Mock(return_value=fake_filedata)
         fake_path = '/etc/nope.json'
         fake_dir = '/var/dir_of_fake'
-        fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'dont_care:about': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': 12345,
+            },
+        }
         with contextlib.nested(
             mock.patch('marathon_tools.open', create=True, return_value=file_mock),
             mock.patch('os.path.join', return_value=fake_path),
@@ -68,13 +79,35 @@ class TestMarathonTools:
         fake_srv = 'no_srv'
         fake_branch = 'blaster'
         fake_dir = '/var/dir_of_fake'
-        fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'dont_care:about': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': 12345,
+            },
+        }
         with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
             actual = marathon_tools.get_docker_from_branch(fake_srv, fake_branch, fake_dir)
             assert actual == 'test_rocker:9.9'
 
     def test_get_deployed_images(self):
-        fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'dont_care:about': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': 12345,
+            },
+        }
         with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
             actual = marathon_tools.get_deployed_images()
             expected = set(['test_rocker:9.9', 'this:guy'])

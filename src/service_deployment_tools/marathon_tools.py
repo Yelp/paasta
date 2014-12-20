@@ -296,7 +296,7 @@ def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
               deployments.json doesn't exist in soa_dir"""
     full_branch = '%s:%s' % (service_name, branch_name)
     deployments_json = _get_deployments_json(soa_dir)
-    return deployments_json.get(full_branch, '')
+    return deployments_json.get(full_branch, {}).get('docker_image', '')
 
 
 def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
@@ -308,7 +308,7 @@ def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
     doesn't exist in soa_dir
     """
     deployments_json = _get_deployments_json(soa_dir)
-    return set(deployments_json.values())
+    return set([d['docker_image'] for d in deployments_json.values() if 'docker_image' in d])
 
 
 def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
