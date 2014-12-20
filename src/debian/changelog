@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.26-yelp1) lucid; urgency=low
+
+  * Docs about how Docker containers are run
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Fri, 19 Dec 2014 16:03:52 -0800
+
 service-deployment-tools (0.7.25-yelp1) lucid; urgency=low
 
   * paasta status returns jenkins pipeline url 
