@@ -77,10 +77,21 @@ class PaastaColors:
     """Collection of static variables and methods to assist in coloring text."""
     # ANSI colour codes
     DEFAULT = '\033[0m'
+    BOLD = '\033[1m'
     RED = '\033[31m'
     GREEN = '\033[32m'
     BLUE = '\033[34m'
     CYAN = '\033[36m'
+    YELLOW = '\033[33m'
+
+    @staticmethod
+    def bold(text):
+        """Return bolded text.
+
+        :param text: a string
+        :return: text colour coded with ANSI bold
+        """
+        return PaastaColors.color_text(PaastaColors.BOLD, text)
 
     @staticmethod
     def blue(text):
@@ -123,6 +134,14 @@ class PaastaColors:
         :param text: a string
         :return: text colour coded with ANSI cyan"""
         return PaastaColors.color_text(PaastaColors.CYAN, text)
+
+    @staticmethod
+    def yellow(text):
+        """Return text that can be printed yellow.
+
+        :param text: a string
+        :return: text colour coded with ANSI yellow"""
+        return PaastaColors.color_text(PaastaColors.YELLOW, text)
 
 
 class PaastaCheckMessages:
