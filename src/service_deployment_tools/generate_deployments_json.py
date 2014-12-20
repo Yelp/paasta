@@ -198,13 +198,7 @@ def get_desired_state(mygit, service, branch, sha):
 
 
 def get_deployments_dict_from_branch_mappings(branch_mappings):
-    deployments_dict = {}
-    deployments_dict['v1'] = branch_mappings
-
-    for branch, info in branch_mappings.items():
-        deployments_dict[branch] = info['docker_image']
-
-    return deployments_dict
+    return {'v1': branch_mappings}
 
 
 def get_branch_mappings_from_deployments_dict(deployments_dict):

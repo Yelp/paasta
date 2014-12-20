@@ -183,7 +183,7 @@ def test_main():
         open_patch.assert_any_call('JOIN', 'w')
         open_patch.assert_any_call('JOIN', 'r')
         assert open_patch.call_count == 2
-        json_dump_patch.assert_called_once_with({'MAP': 'PINGS', 'v1': {'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}}, file_mock.__enter__())
+        json_dump_patch.assert_called_once_with({'v1': {'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}}, file_mock.__enter__())
         json_load_patch.assert_called_once_with(file_mock.__enter__())
 
 
@@ -202,8 +202,6 @@ def test_get_deployments_dict():
     }
 
     assert generate_deployments_json.get_deployments_dict_from_branch_mappings(branch_mappings) == {
-        'app1': 'image1',
-        'app2': 'image2',
         'v1': {
             'app1': {
                 'docker_image': 'image1',
