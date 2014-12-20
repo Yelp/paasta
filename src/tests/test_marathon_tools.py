@@ -110,7 +110,7 @@ class TestMarathonTools:
         }
         with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
             actual = marathon_tools.get_deployed_images()
-            expected = set(['test_rocker:9.9', 'this:guy'])
+            expected = set(['test_rocker:9.9'])
             assert actual == expected
 
     def test_read_monitoring_config(self):

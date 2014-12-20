@@ -308,7 +308,11 @@ def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
     doesn't exist in soa_dir
     """
     deployments_json = _get_deployments_json(soa_dir)
-    return set([d['docker_image'] for d in deployments_json.values() if 'docker_image' in d])
+    images = set()
+    for d in deployments_json.values():
+        if 'docker_image' in d and d['desired_state'] == 'start':
+            images.add(d['docker_image'])
+    return images
 
 
 def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
