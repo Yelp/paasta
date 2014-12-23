@@ -25,7 +25,7 @@ def add_subparser(subparsers):
 
 def missing_deployments_message(service_name):
     jenkins_url = PaastaColors.cyan(
-        'https://jenkins.yelpcorp.com/view/%s' % service_name)
+        'https://jenkins.yelpcorp.com/view/services-%s' % service_name)
     message = "%s No deployments in deployments.json yet.\n  " \
               "Has Jenkins run?\n  " \
               "Check: %s" % (x_mark(), jenkins_url)
