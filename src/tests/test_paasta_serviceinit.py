@@ -47,7 +47,7 @@ class TestPaastaServiceinit:
         app_id = 'mock_app_id'
         normal_instance_count = 5
         service_deployment_tools.paasta_serviceinit.start_marathon_job(service, instance, app_id, normal_instance_count, client)
-        client.scale_app.assert_called_once_with(app_id, instances=normal_instance_count)
+        client.scale_app.assert_called_once_with(app_id, instances=normal_instance_count, force=True)
 
     def test_stop_marathon_job(self):
         client = mock.create_autospec(marathon.MarathonClient)
@@ -55,7 +55,7 @@ class TestPaastaServiceinit:
         instance = 'my_instance'
         app_id = 'mock_app_id'
         service_deployment_tools.paasta_serviceinit.stop_marathon_job(service, instance, app_id, client)
-        client.scale_app.assert_called_once_with(app_id, instances=0)
+        client.scale_app.assert_called_once_with(app_id, instances=0, force=True)
 
 
 class TestPaastaServiceStatus:
