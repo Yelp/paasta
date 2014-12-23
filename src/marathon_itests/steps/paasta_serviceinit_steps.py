@@ -43,10 +43,11 @@ def step_impl(context):
 
     old_tasks = context.client.get_app(app_id).tasks
     paasta_serviceinit.restart_marathon_job(service, instance, app_id, normal_instance_count, client)
+    print "Sleeping 5 seconds to wait for test-service to be restarted."
     time.sleep(5)
     new_tasks = context.client.get_app(app_id).tasks
-    print old_tasks
-    print new_tasks
+    print "Tasks before the restart: %s" % old_tasks
+    print "Tasks after  the restart: %s" % new_tasks
     assert old_tasks != new_tasks
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
