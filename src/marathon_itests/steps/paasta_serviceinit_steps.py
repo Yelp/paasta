@@ -7,7 +7,7 @@ sys.path.append('../')
 import service_deployment_tools
 from service_deployment_tools import paasta_serviceinit
 
-@given(u'a currently running job - test-service.main')
+@when(u'we run the job test-service.main')
 def step_impl(context):
     trivial_app_config = {
         'id': 'test-service.main',
@@ -16,7 +16,7 @@ def step_impl(context):
     with mock.patch('service_deployment_tools.bounce_lib.create_app_lock'):
         service_deployment_tools.bounce_lib.create_marathon_app('test-service.main', trivial_app_config, context.client)
 
-@when(u'we wait a bit for it to be deployed')
+@when(u'we wait for it to be deployed')
 def step_impl(context):
     print "Sleeping 10 seconds to wait for test-service to be deployed."
     time.sleep(10)
