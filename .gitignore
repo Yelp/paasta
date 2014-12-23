@@ -9,12 +9,12 @@
 /docs/build
 src/debian/files
 
-service-deployment-tools_*.dsc
-service-deployment-tools_*.tar.gz
-service-deployment-tools_*_amd64.changes
-service-deployment-tools_*_amd64.deb
-src/debian/service-deployment-tools.debhelper.log
-src/debian/service-deployment-tools.substvars
-src/debian/service-deployment-tools/
+paasta-tools_*.dsc
+paasta-tools_*.tar.gz
+paasta-tools_*_amd64.changes
+paasta-tools_*_amd64.deb
+src/debian/paasta-tools.debhelper.log
+src/debian/paasta-tools.substvars
+src/debian/paasta-tools/
 src/virtualenv_run/
 tags

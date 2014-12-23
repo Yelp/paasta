@@ -46,7 +46,7 @@ quick_start:
 clean:
 	rm -rf dist/
 	rm -rf src/.tox
-	rm -rf src/service_deployment_tools.egg-info
+	rm -rf src/paasta_tools.egg-info
 	rm -rf src/build
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete

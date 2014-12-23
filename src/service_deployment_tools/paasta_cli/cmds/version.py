@@ -14,4 +14,4 @@ def add_subparser(subparsers):
 def paasta_version(args):
     """Print the current version of the PaaSTA client.
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
-    print pkg_resources.require("service-deployment-tools")[0].version
+    print pkg_resources.require("paasta-tools")[0].version

@@ -4,7 +4,7 @@ Usage: ./setup_marathon_job.py <service_name.instance_name> [options]
 
 Deploy a service instance to Marathon from a configuration file.
 Attempts to load the marathon configuration at
-/etc/service_deployment_tools/marathon_config.json, and read
+/etc/paasta_tools/marathon_config.json, and read
 from the soa_dir /nail/etc/services by default.
 
 This script will attempt to load a service's configuration
@@ -34,9 +34,9 @@ import pysensu_yelp
 import service_configuration_lib
 import sys
 
-from service_deployment_tools import bounce_lib
-from service_deployment_tools import marathon_tools
-from service_deployment_tools import monitoring_tools
+from paasta_tools import bounce_lib
+from paasta_tools import marathon_tools
+from paasta_tools import monitoring_tools
 
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps

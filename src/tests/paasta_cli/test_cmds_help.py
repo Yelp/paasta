@@ -1,7 +1,7 @@
 from mock import patch
 from StringIO import StringIO
 
-from service_deployment_tools.paasta_cli.cmds.help import paasta_help
+from paasta_tools.paasta_cli.cmds.help import paasta_help
 
 
 @patch('sys.stdout', new_callable=StringIO)

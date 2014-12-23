@@ -5,9 +5,9 @@ from ordereddict import OrderedDict
 import os
 
 from service_configuration_lib import read_deploy
-from service_deployment_tools.marathon_tools import \
+from paasta_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
-from service_deployment_tools.paasta_cli.utils import \
+from paasta_tools.paasta_cli.utils import \
     guess_service_name, NoSuchService, PaastaColors, PaastaCheckMessages, \
     validate_service_name, x_mark
 

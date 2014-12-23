@@ -1,5 +1,5 @@
 utils
 =========================
 
-.. automodule:: service_deployment_tools.paasta_cli.utils
+.. automodule:: paasta_tools.paasta_cli.utils
    :members:

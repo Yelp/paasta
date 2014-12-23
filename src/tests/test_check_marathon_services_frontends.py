@@ -62,20 +62,20 @@ def test_send_event():
         'source': 'mesos-fake_cluster'
     }
     with contextlib.nested(
-        mock.patch("service_deployment_tools.monitoring_tools.get_team",
+        mock.patch("paasta_tools.monitoring_tools.get_team",
                    return_value=fake_team),
-        mock.patch("service_deployment_tools.monitoring_tools.get_runbook",
+        mock.patch("paasta_tools.monitoring_tools.get_runbook",
                    return_value=fake_runbook),
-        mock.patch("service_deployment_tools.monitoring_tools.get_tip",
+        mock.patch("paasta_tools.monitoring_tools.get_tip",
                    return_value=fake_tip),
-        mock.patch("service_deployment_tools.monitoring_tools.get_notification_email",
+        mock.patch("paasta_tools.monitoring_tools.get_notification_email",
                    return_value=fake_notification_email),
-        mock.patch("service_deployment_tools.monitoring_tools.get_page",
+        mock.patch("paasta_tools.monitoring_tools.get_page",
                    return_value=fake_page),
-        mock.patch("service_deployment_tools.monitoring_tools.get_irc_channels",
+        mock.patch("paasta_tools.monitoring_tools.get_irc_channels",
                    return_value=fake_irc),
         mock.patch("pysensu_yelp.send_event"),
-        mock.patch('service_deployment_tools.marathon_tools.get_cluster',
+        mock.patch('paasta_tools.marathon_tools.get_cluster',
                    return_value=fake_cluster)
     ) as (
         monitoring_tools_get_team_patch,
@@ -120,9 +120,9 @@ def test_check_service_instance():
     fake_soa_dir = '/zelda/link'
     expected_check_name = 'check_marathon_services_frontends.%s.%s' % (fake_service_name, fake_instance_name)
     with contextlib.nested(
-        mock.patch("service_deployment_tools.marathon_tools.get_mode_for_instance",
+        mock.patch("paasta_tools.marathon_tools.get_mode_for_instance",
                    return_value=fake_mode),
-        mock.patch("service_deployment_tools.marathon_tools.get_proxy_port_for_instance",
+        mock.patch("paasta_tools.marathon_tools.get_proxy_port_for_instance",
                    return_value=fake_port),
         mock.patch("check_marathon_services_frontends.send_event"),
         mock.patch("check_marathon_services_frontends.check_service", return_value=(fake_status, fake_output))
@@ -153,9 +153,9 @@ def test_check_service_instance_invalid_mode():
     fake_soa_dir = '/zelda/link'
     expected_check_name = 'check_marathon_services_frontends.%s.%s' % (fake_service_name, fake_instance_name)
     with contextlib.nested(
-        mock.patch("service_deployment_tools.marathon_tools.get_mode_for_instance",
+        mock.patch("paasta_tools.marathon_tools.get_mode_for_instance",
                    return_value=fake_mode),
-        mock.patch("service_deployment_tools.marathon_tools.get_proxy_port_for_instance",
+        mock.patch("paasta_tools.marathon_tools.get_proxy_port_for_instance",
                    return_value=fake_port),
         mock.patch("check_marathon_services_frontends.send_event"),
         mock.patch("check_marathon_services_frontends.check_service", return_value=(fake_status, fake_output))
@@ -183,7 +183,7 @@ def test_main():
     fake_service_list = [('fake_service1', 'fake_instance1'), ('fake_service2', 'fake_instance2')]
     with contextlib.nested(
             mock.patch("check_marathon_services_frontends.parse_args", return_value=fake_args),
-            mock.patch("service_deployment_tools.marathon_tools.get_marathon_services_for_cluster",
+            mock.patch("paasta_tools.marathon_tools.get_marathon_services_for_cluster",
                        return_value=fake_service_list),
             mock.patch("check_marathon_services_frontends.check_service_instance"),
     ) as (

@@ -32,7 +32,7 @@ import json
 import logging
 import os
 import service_configuration_lib
-from service_deployment_tools import marathon_tools
+from paasta_tools import marathon_tools
 import sys
 import tempfile
 

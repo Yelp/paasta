@@ -17,7 +17,7 @@ import argparse
 import sys
 
 import service_configuration_lib
-from service_deployment_tools import marathon_tools
+from paasta_tools import marathon_tools
 
 
 def parse_args():

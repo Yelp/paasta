@@ -11,7 +11,7 @@ Example output: mumble.canary:5019,mumble.main:111,zookeeper.devc:4921
 This is nice to use as a facter fact for Synapse stuff!
 """
 import sys
-from service_deployment_tools import marathon_tools
+from paasta_tools import marathon_tools
 
 
 def main():

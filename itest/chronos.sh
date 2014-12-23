@@ -16,7 +16,7 @@ else
 fi
 
 
-/usr/share/python/service-deployment-tools/bin/setup_chronos_jobs.py --chronos-dir=/chronos-config --soa-dir=/yelpsoa-configs --ecosystem=testecosystem
+/usr/share/python/paasta-tools/bin/setup_chronos_jobs.py --chronos-dir=/chronos-config --soa-dir=/yelpsoa-configs --ecosystem=testecosystem
 
 /usr/bin/chronos-sync.rb --uri http://chronos:8080 --config /chronos-config
 mkdir /running-chronos-config

@@ -24,7 +24,7 @@ Contract with services
 The `Paasta Contract <http://y/paasta-contract>`_ describes the
 responsibilities of services that wish to work with PaaSTA.
 
-service_deployment_tools contains the implementation of several of these rules.
+paasta_tools contains the implementation of several of these rules.
 For example, `generate_deployments_json <generate_deployments_json.html>`_ is
 the piece that checks each service's git repo for the specially-named branch
 that tells PaaSTA which versions of the service should go to which clusters.
@@ -44,9 +44,9 @@ the right state -- cluster X should be running version Y of service Z.
 How PaaSTA runs Docker images
 -----------------------------
 Marathon launches the Docker containers that comprise a PaaSTA service. The
-default configuration is managed by puppet in the `service_deployment_tools
+default configuration is managed by puppet in the `paasta_tools
 module
-<https://opengrok.yelpcorp.com/xref/sysgit/puppet/modules/service_deployment_tools/manifests/init.pp>`_.
+<https://opengrok.yelpcorp.com/xref/sysgit/puppet/modules/paasta_tools/manifests/init.pp>`_.
 
 Docker images are run by Mesos's native Docker executor. PaaSTA composes the
 configuration for the running image:
@@ -73,7 +73,7 @@ configuration for the running image:
 
 * ``--tty``: Mesos containers are *not* given a tty.
 
-* ``--volume``: Volume mapping is controlled via the service_deployment_tools
+* ``--volume``: Volume mapping is controlled via the paasta_tools
   configuration. This is not user-controlled for security reasons. The default
   mappings include common configuration folders (like `srv-configs
   <https://trac.yelpcorp.com/wiki/HowToService/Configuration>`_) and key files

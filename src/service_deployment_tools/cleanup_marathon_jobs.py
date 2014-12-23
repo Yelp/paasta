@@ -23,8 +23,8 @@ import logging
 import sys
 
 import service_configuration_lib
-from service_deployment_tools import marathon_tools
-from service_deployment_tools import bounce_lib
+from paasta_tools import marathon_tools
+from paasta_tools import bounce_lib
 
 
 ID_SPACER = marathon_tools.ID_SPACER

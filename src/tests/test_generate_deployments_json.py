@@ -99,9 +99,9 @@ def test_get_branch_mappings():
                    side_effect=lambda a, b: fake_branches.pop()),
         mock.patch('generate_deployments_json.get_remote_branches_for_service',
                    side_effect=lambda a, b: fake_remotes.pop()),
-        mock.patch('service_deployment_tools.marathon_tools.get_docker_registry',
+        mock.patch('paasta_tools.marathon_tools.get_docker_registry',
                    return_value=fake_registry),
-        mock.patch('service_deployment_tools.marathon_tools.get_docker_url',
+        mock.patch('paasta_tools.marathon_tools.get_docker_url',
                    return_value="not empty"),
         mock.patch('os.rmdir')
     ) as (

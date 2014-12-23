@@ -4,7 +4,7 @@ import argparse
 import isodate
 import os
 import service_configuration_lib
-from service_deployment_tools import marathon_tools
+from paasta_tools import marathon_tools
 import setup_marathon_job
 import json
 import yaml

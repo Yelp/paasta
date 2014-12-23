@@ -164,7 +164,7 @@ class TestMarathonTools:
             json_patch
         ):
             assert marathon_tools.get_config() == expected
-            open_file_patch.assert_called_once_with('/etc/service_deployment_tools/marathon_config.json')
+            open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(file_mock.read())
 

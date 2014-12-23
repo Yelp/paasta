@@ -11,7 +11,7 @@ from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
 
 import marathon_tools
-from service_deployment_tools.monitoring.replication_utils import get_replication_for_services
+from paasta_tools.monitoring.replication_utils import get_replication_for_services
 
 log = logging.getLogger('__main__')
 DEFAULT_SYNAPSE_HOST = 'localhost:3212'

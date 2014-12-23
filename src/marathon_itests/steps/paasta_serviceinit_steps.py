@@ -4,8 +4,8 @@ import time
 import mock
 
 sys.path.append('../')
-import service_deployment_tools
-from service_deployment_tools import paasta_serviceinit
+import paasta_tools
+from paasta_tools import paasta_serviceinit
 
 @when(u'we run the job test-service.main')
 def step_impl(context):
@@ -13,8 +13,8 @@ def step_impl(context):
         'id': 'test-service.main',
         'cmd': '/bin/sleep 1m',
     }
-    with mock.patch('service_deployment_tools.bounce_lib.create_app_lock'):
-        service_deployment_tools.bounce_lib.create_marathon_app('test-service.main', trivial_app_config, context.client)
+    with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
+        paasta_tools.bounce_lib.create_marathon_app('test-service.main', trivial_app_config, context.client)
 
 @when(u'we wait for it to be deployed')
 def step_impl(context):

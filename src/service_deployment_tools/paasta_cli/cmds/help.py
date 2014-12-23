@@ -44,7 +44,7 @@ Developing PaaSTA Itself
 Want to help make paasta better? Great!
 
 The code is in:
-    git@git.yelpcorp.com:service_deployment_tools
+    git@git.yelpcorp.com:paasta_tools
 
 It is almost all python and all under test.
 """

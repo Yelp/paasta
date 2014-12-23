@@ -3,14 +3,14 @@ from mock import patch
 from pytest import raises
 from StringIO import StringIO
 
-from service_deployment_tools.paasta_cli.utils import \
+from paasta_tools.paasta_cli.utils import \
     NoSuchService, PaastaColors, PaastaCheckMessages
-from service_deployment_tools.paasta_cli.cmds.status import paasta_status, \
+from paasta_tools.paasta_cli.cmds.status import paasta_status, \
     missing_deployments_message
-from service_deployment_tools.paasta_cli.paasta_cli import parse_args
+from paasta_tools.paasta_cli.paasta_cli import parse_args
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.status.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_service_not_found_error(mock_stdout,
                                         mock_validate_service_name):
@@ -31,8 +31,8 @@ def test_status_service_not_found_error(mock_stdout,
     assert output == expected_output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.status.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.guess_service_name')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
                                       mock_validate_service_name):
@@ -55,9 +55,9 @@ def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
     assert output == expected_output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.status.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.guess_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status._get_deployments_json')
+@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status._get_deployments_json')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_missing_deployments_err(
         mock_stdout, mock_get_deployments_json, mock_guess_service_name,
@@ -82,9 +82,9 @@ def test_status_missing_deployments_err(
     assert output == expected_output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.status.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.guess_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.read_deploy')
+@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.read_deploy')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_missing_deploy_err(
         mock_stdout, mock_read_deploy, mock_guess_service_name,
@@ -108,10 +108,10 @@ def test_status_missing_deploy_err(
     assert output == expected_output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.status.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.guess_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.get_deploy_yaml')
-@patch('service_deployment_tools.paasta_cli.cmds.status._get_deployments_json')
+@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.get_deploy_yaml')
+@patch('paasta_tools.paasta_cli.cmds.status._get_deployments_json')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_displays_deployed_service(
         mock_stdout, mock_get_deployments, mock_get_deploy_yaml,
@@ -140,10 +140,10 @@ def test_status_displays_deployed_service(
     assert expected_output in output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.status.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.guess_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.get_deploy_yaml')
-@patch('service_deployment_tools.paasta_cli.cmds.status._get_deployments_json')
+@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.get_deploy_yaml')
+@patch('paasta_tools.paasta_cli.cmds.status._get_deployments_json')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_sorts_in_deploy_order(
         mock_stdout, mock_get_deployments, mock_get_deploy_yaml,
@@ -183,10 +183,10 @@ def test_status_sorts_in_deploy_order(
     assert expected_output in output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.status.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.guess_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.get_deploy_yaml')
-@patch('service_deployment_tools.paasta_cli.cmds.status._get_deployments_json')
+@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.get_deploy_yaml')
+@patch('paasta_tools.paasta_cli.cmds.status._get_deployments_json')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_missing_deploys_in_red(
         mock_stdout, mock_get_deployments, mock_get_deploy_yaml,
@@ -225,10 +225,10 @@ def test_status_missing_deploys_in_red(
     assert expected_output in output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.status.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.guess_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.status.get_deploy_yaml')
-@patch('service_deployment_tools.paasta_cli.cmds.status._get_deployments_json')
+@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.status.get_deploy_yaml')
+@patch('paasta_tools.paasta_cli.cmds.status._get_deployments_json')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_pending_pipeline_build_message(
         mock_stdout, mock_get_deployments, mock_get_deploy_yaml,
