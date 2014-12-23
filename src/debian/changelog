@@ -1,3 +1,9 @@
+service-deployment-tools (0.7.27-yelp1) lucid; urgency=low
+
+  * New serviceinit primatives and new app_id generation.
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 15:22:36 -0800
+
 service-deployment-tools (0.7.26-yelp1) lucid; urgency=low
 
   * Docs about how Docker containers are run
