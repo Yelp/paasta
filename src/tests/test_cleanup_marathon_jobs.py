@@ -51,8 +51,11 @@ class TestCleanupMarathonJobs:
         fake_config_two = {'docker_image': 'tree:1.0'}
         fake_configs = [fake_config_two, fake_config_one]
         fake_full_configs = ['not_actually', 'a_dictionary']
-        expected = ['fake-app.one.%s' % str(hash('a_dictionary')),
-                    'really-fake.two.%s' % str(hash('not_actually'))]
+        fake_code_sha = 'abc123'
+        expected = ['fake-app.one.%s.%s' % (fake_code_sha, str(hash('a_dictionary'))),
+                    'really-fake.two.%s.%s' % (fake_code_sha, str(hash('not_actually')))]
+        fake_tag1 = "%s.%s" % (fake_code_sha, str(hash('a_dictionary')))
+        fake_tag2 = "%s.%s" % (fake_code_sha, str(hash('not_actually')))
 
         def compose_helper(name, instance, hashtag=None):
             if hashtag:
@@ -72,22 +75,25 @@ class TestCleanupMarathonJobs:
             mock.patch('service_deployment_tools.marathon_tools.create_complete_config',
                        side_effect=lambda a, b, c, d: fake_full_configs.pop()),
             mock.patch('service_deployment_tools.marathon_tools.get_config_hash',
-                       side_effect=lambda a: hash(str(a)))
+                       side_effect=lambda a: hash(str(a))),
+            mock.patch('service_deployment_tools.marathon_tools.get_code_sha_from_dockerurl',
+                       return_value=fake_code_sha),
         ) as (
             get_srvs_patch,
             compose_patch,
             read_config_patch,
             docker_url_patch,
             complete_config_patch,
-            hash_patch
+            hash_patch,
+            code_sha_patch
         ):
             actual = cleanup_marathon_jobs.get_valid_app_list(self.fake_marathon_config, soa_dir)
             assert expected == actual
             get_srvs_patch.assert_called_once_with(soa_dir=soa_dir)
             compose_patch.assert_any_call('fake-app', 'one')
-            compose_patch.assert_any_call('fake-app', 'one', hash('a_dictionary'))
+            compose_patch.assert_any_call('fake-app', 'one', fake_tag1)
             compose_patch.assert_any_call('really-fake', 'two')
-            compose_patch.assert_any_call('really-fake', 'two', hash('not_actually'))
+            compose_patch.assert_any_call('really-fake', 'two', fake_tag2)
             assert compose_patch.call_count == 4
             read_config_patch.assert_any_call('fake-app', 'one', soa_dir=soa_dir)
             read_config_patch.assert_any_call('really-fake', 'two', soa_dir=soa_dir)
@@ -143,3 +149,5 @@ class TestCleanupMarathonJobs:
             remove_patch.assert_called_once_with('not-here.oh.no')
             bounce_patch.assert_called_once_with('a_location')
             delete_patch.assert_called_once_with('not-here.oh.no', self.fake_marathon_client)
+
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
