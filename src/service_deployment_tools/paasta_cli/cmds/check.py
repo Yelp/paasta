@@ -2,6 +2,7 @@
 """Contains methods used by the paasta client to check whether Yelp service
 passes all the markers required to be considered paasta ready."""
 import os
+import re
 import subprocess
 import urllib2
 
@@ -31,17 +32,32 @@ def deploy_check(service_path):
         print PaastaCheckMessages.DEPLOY_YAML_MISSING
 
 
-def docker_file_valid(path):
+def expose_8888_in_dockerfile(path):
+    """Ensure Dockerfile contains line 'EXPOSE 8888'.
+
+    :param path : path to a Dockerfile
+    :return : A boolean that is True if the Dockerfile contains 'EXPOSE 8888'
+    """
+    pattern = re.compile('/EXPOSE\s+8888.*/')
+    with open(path, 'r') as dockerfile:
+        for line in dockerfile.readlines():
+            if pattern.match(line):
+                return True
+        return False
+
+
+def docker_file_reads_from_yelpcorp(path):
     """Ensure Dockerfile is valid.
 
     :param path : path to a Dockerfile
     :return : A boolean that is True if the Dockerfile reads from yelpcorp"""
-    dockerfile = open(path, 'r')
-    first_line = dockerfile.readline()
-    if first_line.startswith("FROM docker-dev.yelpcorp.com"):
-        return True
-    else:
-        return False
+
+    with open(path, 'r') as dockerfile:
+        first_line = dockerfile.readline()
+        if first_line.startswith("FROM docker-dev.yelpcorp.com"):
+            return True
+        else:
+            return False
 
 
 def docker_check():
@@ -50,10 +66,16 @@ def docker_check():
     docker_file_path = is_file_in_dir('Dockerfile', os.getcwd())
     if docker_file_path:
         print PaastaCheckMessages.DOCKERFILE_FOUND
-        if docker_file_valid(docker_file_path):
-            print PaastaCheckMessages.DOCKERFILE_VALID
+
+        if docker_file_reads_from_yelpcorp(docker_file_path):
+            print PaastaCheckMessages.DOCKERFILE_YELPCORP
         else:
-            print PaastaCheckMessages.DOCKERFILE_INVALID
+            print PaastaCheckMessages.DOCKERFILE_NOT_YELPCORP
+
+        if expose_8888_in_dockerfile(docker_file_path):
+            print PaastaCheckMessages.DOCKERFILE_EXPOSES_8888
+        else:
+            print PaastaCheckMessages.DOCKERFILE_DOESNT_EXPOSE_8888
     else:
         print PaastaCheckMessages.DOCKERFILE_MISSING
 

@@ -161,10 +161,17 @@ class PaastaCheckMessages:
         "Dockerfile not found. Create a Dockerfile and try again.\n  "
         "More info:", "http://y/paasta-runbook-dockerfile")
 
-    DOCKERFILE_VALID = success(
+    DOCKERFILE_EXPOSES_8888 = success("Found 'EXPOSE 8888' in Dockerfile")
+
+    DOCKERFILE_DOESNT_EXPOSE_8888 = failure(
+        "Couldn't find 'EXPOSE 8888' in Dockerfile. Your service must respond\n"
+        "  to 8888. The Dockerfile should expose that per the doc linked "
+        "below.\n  More info:", "http://y/paasta-contract")
+
+    DOCKERFILE_YELPCORP = success(
         "Your Dockerfile pulls from the standard Yelp images.")
 
-    DOCKERFILE_INVALID = failure(
+    DOCKERFILE_NOT_YELPCORP = failure(
         "Your Dockerfile does not use the standard Yelp images.\n  "
         "This is bad because your `docker pulls` will be slow and you won't be "
         "using the local mirrors.\n  "
