@@ -211,13 +211,14 @@ def get_bounce_method(service_config):
 
 def get_config_hash(config):
     """Create an MD5 hash of the configuration dictionary to be sent to
-    Marathon. Or anything really, so long as str(config) works.
+    Marathon. Or anything really, so long as str(config) works. Returns
+    the first 8 characters so things are not really long.
 
     :param config: The configuration to hash
     :returns: A MD5 hash of str(config)"""
     hasher = hashlib.md5()
     hasher.update(str(config))
-    return hasher.hexdigest()
+    return hasher.hexdigest()[:8]
 
 
 def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_config):
@@ -697,6 +698,15 @@ def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     complete_config = create_complete_config(partial_id, docker_url,
                                              marathon_config['docker_volumes'],
                                              config)
+    code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(complete_config)
-    full_id = compose_job_id(name, instance, config_hash)
+    tag = "%s.%s" % (code_sha, config_hash)
+    full_id = compose_job_id(name, instance, tag)
     return full_id
+
+
+def get_code_sha_from_dockerurl(docker_url):
+    """We encode the sha of the code that built a docker image *in* the docker
+    url. This function takes that url as input and outputs the partial sha"""
+    parts = docker_url.split('-')
+    return parts[-1][:8]
