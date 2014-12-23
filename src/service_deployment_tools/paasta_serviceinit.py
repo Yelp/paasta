@@ -40,13 +40,18 @@ def validate_service_instance(service, instance, cluster):
 def start_marathon_job(service, instance, app_id, normal_instance_count, client):
     name = PaastaColors.cyan("%s.%s" % (service, instance))
     print "Scaling %s up to %d instances" % (name, normal_instance_count)
-    client.scale_app(app_id, instances=normal_instance_count)
+    client.scale_app(app_id, instances=normal_instance_count, force=True)
 
 
 def stop_marathon_job(service, instance, app_id, client):
     name = PaastaColors.cyan("%s.%s" % (service, instance))
     print "Scaling %s down to 0 instances" % (name)
-    client.scale_app(app_id, instances=0)
+    client.scale_app(app_id, instances=0, force=True)
+
+
+def restart_marathon_job(service, instance, app_id, normal_instance_count, client):
+    stop_marathon_job(service, instance, app_id, client)
+    start_marathon_job(service, instance, app_id, normal_instance_count, client)
 
 
 def status_marathon_job(service, instance, app_id, normal_instance_count, client):
@@ -99,8 +104,7 @@ def main():
     elif command == 'stop':
         stop_marathon_job(service, instance, app_id, client)
     elif command == 'restart':
-        start_marathon_job(service, instance, app_id, normal_instance_count, client)
-        stop_marathon_job(service, instance, app_id, client)
+        restart_marathon_job(service, instance, app_id, normal_instance_count, client)
     elif command == 'status':
         status_marathon_job(service, instance, app_id, normal_instance_count, client)
     else:

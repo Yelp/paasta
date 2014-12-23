@@ -33,4 +33,20 @@ def step_impl(context):
         paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
         sys_exit_patch.assert_called_once_with(0)
 
+@then(u'paasta_serviceinit restart should get new task_ids')
+def step_impl(context):
+    normal_instance_count = 1
+    client = context.client
+    app_id = 'test-service.main'
+    service = 'test-service'
+    instance = 'main'
+
+    old_tasks = context.client.get_app(app_id).tasks
+    paasta_serviceinit.restart_marathon_job(service, instance, app_id, normal_instance_count, client)
+    time.sleep(5)
+    new_tasks = context.client.get_app(app_id).tasks
+    print old_tasks
+    print new_tasks
+    assert old_tasks != new_tasks
+
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
