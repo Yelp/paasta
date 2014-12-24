@@ -1,3 +1,9 @@
+paasta-tools (0.7.28-yelp2) lucid; urgency=low
+
+  * Conflict with service_deployment_tools 
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 17:14:11 -0800
+
 paasta-tools (0.7.28-yelp1) lucid; urgency=low
 
   * New release on paasta-tools
