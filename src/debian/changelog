@@ -1,3 +1,9 @@
+paasta-tools (0.7.28-yelp1) lucid; urgency=low
+
+  * New release on paasta-tools
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 15:59:50 -0800
+
 paasta-tools (0.7.27-yelp1) lucid; urgency=low
 
   * New serviceinit primatives and new app_id generation.
