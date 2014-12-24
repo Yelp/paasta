@@ -218,7 +218,7 @@ def get_config_hash(config):
     :returns: A MD5 hash of str(config)"""
     hasher = hashlib.md5()
     hasher.update(str(config))
-    return hasher.hexdigest()[:8]
+    return "config%s" % hasher.hexdigest()[:8]
 
 
 def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_config):
@@ -709,4 +709,4 @@ def get_code_sha_from_dockerurl(docker_url):
     """We encode the sha of the code that built a docker image *in* the docker
     url. This function takes that url as input and outputs the partial sha"""
     parts = docker_url.split('-')
-    return parts[-1][:8]
+    return "git%s" % parts[-1][:8]
