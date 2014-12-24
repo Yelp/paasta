@@ -110,7 +110,7 @@ def get_clusternames_from_deploy_stanza(deploy_stanza):
 
 def get_marathon_stanza():
     """Produce a marathon-*.yaml a la
-    http://servicedocs.yelpcorp.com/docs/service_deployment_tools/yelpsoa_configs.html#marathon-clustername-yaml
+    http://servicedocs.yelpcorp.com/docs/paasta_tools/yelpsoa_configs.html#marathon-clustername-yaml
 
     We want to default to The Simplest Thing That Can Possibly Work. This
     allows new services to hit the ground running, but forces developers to
