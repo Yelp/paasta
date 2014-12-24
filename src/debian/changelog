@@ -1,3 +1,9 @@
+paasta-tools (0.7.29-yelp1) lucid; urgency=low
+
+  * Annotate app_id with git and config hashes 
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 17:50:04 -0800
+
 paasta-tools (0.7.28-yelp2) lucid; urgency=low
 
   * Conflict with service_deployment_tools 
