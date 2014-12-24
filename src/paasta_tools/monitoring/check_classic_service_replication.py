@@ -3,13 +3,13 @@ import sys
 import logging
 
 from service_configuration_lib import read_services_configuration
-from service_deployment_tools.monitoring.replication_utils import (
+from paasta_tools.monitoring.replication_utils import (
     get_replication_for_services
 )
-from service_deployment_tools.monitoring.check_synapse_replication import (
+from paasta_tools.monitoring.check_synapse_replication import (
     check_replication,
 )
-from service_deployment_tools.monitoring.config_providers import (
+from paasta_tools.monitoring.config_providers import (
     extract_monitoring_info
 )
 

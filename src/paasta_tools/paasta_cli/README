@@ -6,7 +6,7 @@ A command line utility for interacting with the Yelp PaaSTA stack
 
 Adding a new PaaSTA command:
 
-1)  Create a file in src/service_deployment_tools/paasta_cli/cmds.  Name it
+1)  Create a file in src/paasta_tools/paasta_cli/cmds.  Name it
     after the command you wish to write.  If you wish to create 'paasta foo',
     create a file called 'foo.py'.  Line 48 in paasta_cli.py will discover
     command plugins every time "paasta" is called and execute them.

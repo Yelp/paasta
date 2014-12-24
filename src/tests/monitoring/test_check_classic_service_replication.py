@@ -3,7 +3,7 @@ from contextlib import nested
 import mock
 import pytest
 
-from service_deployment_tools.monitoring.check_classic_service_replication\
+from paasta_tools.monitoring.check_classic_service_replication\
     import (
         report_event,
         do_replication_check,
@@ -22,7 +22,7 @@ def test_report_event():
 
 
 def test_do_replication_check():
-    base_module = 'service_deployment_tools.monitoring'
+    base_module = 'paasta_tools.monitoring'
     check_classic_module = base_module + '.check_classic_service_replication'
 
     check_method = check_classic_module + '.check_replication'
@@ -82,7 +82,7 @@ def test_do_replication_check():
 
 
 def test_extract_replication_info_valid_data():
-    base_module = 'service_deployment_tools.monitoring'
+    base_module = 'paasta_tools.monitoring'
     check_classic_module = base_module + '.check_classic_service_replication'
     extract_method = check_classic_module + '.extract_monitoring_info'
 
@@ -97,7 +97,7 @@ def test_extract_replication_info_valid_data():
 
 
 def test_extract_replication_info_non_classic_data():
-    base_module = 'service_deployment_tools.monitoring'
+    base_module = 'paasta_tools.monitoring'
     check_classic_module = base_module + '.check_classic_service_replication'
     extract_method = check_classic_module + '.extract_monitoring_info'
     mock_valid_non_classic_data = {
@@ -111,7 +111,7 @@ def test_extract_replication_info_non_classic_data():
 
 
 def test_extract_replication_info_valid_team_no_email():
-    base_module = 'service_deployment_tools.monitoring'
+    base_module = 'paasta_tools.monitoring'
     check_classic_module = base_module + '.check_classic_service_replication'
     extract_method = check_classic_module + '.extract_monitoring_info'
     mock_valid_team_no_email = {
@@ -126,7 +126,7 @@ def test_extract_replication_info_valid_team_no_email():
 
 
 def test_extract_replication_info_invalid_data():
-    base_module = 'service_deployment_tools.monitoring'
+    base_module = 'paasta_tools.monitoring'
     check_classic_module = base_module + '.check_classic_service_replication'
     extract_method = check_classic_module + '.extract_monitoring_info'
     mock_invalid_data = {
@@ -140,7 +140,7 @@ def test_extract_replication_info_invalid_data():
 
 
 def test_classic_replication_check():
-    base_module = 'service_deployment_tools.monitoring'
+    base_module = 'paasta_tools.monitoring'
     check_classic_module = base_module + '.check_classic_service_replication'
 
     read_config_method = check_classic_module + '.read_services_configuration'

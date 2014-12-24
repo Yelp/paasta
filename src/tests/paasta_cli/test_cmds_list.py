@@ -2,11 +2,11 @@ import sys
 from mock import patch, MagicMock
 from StringIO import StringIO
 
-from service_deployment_tools.paasta_cli.cmds.list import paasta_list
-from service_deployment_tools.paasta_cli.paasta_cli import parse_args
+from paasta_tools.paasta_cli.cmds.list import paasta_list
+from paasta_tools.paasta_cli.paasta_cli import parse_args
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.list.read_services_configuration')
+@patch('paasta_tools.paasta_cli.cmds.list.read_services_configuration')
 @patch('sys.stdout', new_callable=StringIO)
 def test_list_paasta_list(mock_stdout, mock_read_services):
     # paasta_list print each service returned by get_services

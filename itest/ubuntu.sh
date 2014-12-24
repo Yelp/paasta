@@ -31,8 +31,8 @@ version"
 mkdir -p /nail/etc
 [ -L /nail/etc/services ] || ln -s /work/itest/fake_services /nail/etc/services
 
-mkdir -p /etc/service_deployment_tools
-[ -L /etc/service_deployment_tools/marathon_config.json ] || ln -s /work/itest/marathon_config.json /etc/service_deployment_tools/marathon_config.json
+mkdir -p /etc/paasta_tools
+[ -L /etc/paasta_tools/marathon_config.json ] || ln -s /work/itest/marathon_config.json /etc/paasta_tools/marathon_config.json
 
 if dpkg -i /work/dist/*.deb; then
   echo "Looks like it installed correctly"

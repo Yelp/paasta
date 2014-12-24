@@ -5,7 +5,7 @@
 import sys
 
 import yaml
-from service_deployment_tools.marathon_tools import get_all_namespaces
+from paasta_tools.marathon_tools import get_all_namespaces
 
 
 # CEP 337 address for accessing services

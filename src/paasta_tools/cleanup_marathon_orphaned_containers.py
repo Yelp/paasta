@@ -20,7 +20,7 @@ import sys
 
 import docker
 
-from service_deployment_tools.marathon_tools import get_deployed_images
+from paasta_tools.marathon_tools import get_deployed_images
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))

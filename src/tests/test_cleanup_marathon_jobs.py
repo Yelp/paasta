@@ -64,19 +64,19 @@ class TestCleanupMarathonJobs:
                 return '%s.%s' % (name, instance)
 
         with contextlib.nested(
-            mock.patch('service_deployment_tools.marathon_tools.get_marathon_services_for_cluster',
+            mock.patch('paasta_tools.marathon_tools.get_marathon_services_for_cluster',
                        return_value=fake_app_list),
-            mock.patch('service_deployment_tools.marathon_tools.compose_job_id',
+            mock.patch('paasta_tools.marathon_tools.compose_job_id',
                        side_effect=compose_helper),
-            mock.patch('service_deployment_tools.marathon_tools.read_service_config',
+            mock.patch('paasta_tools.marathon_tools.read_service_config',
                        side_effect=lambda a, b, **kwargs: fake_configs.pop()),
-            mock.patch('service_deployment_tools.marathon_tools.get_docker_url',
+            mock.patch('paasta_tools.marathon_tools.get_docker_url',
                        side_effect=lambda a, b, **kwargs: '%s/%s' % (a, b)),
-            mock.patch('service_deployment_tools.marathon_tools.create_complete_config',
+            mock.patch('paasta_tools.marathon_tools.create_complete_config',
                        side_effect=lambda a, b, c, d: fake_full_configs.pop()),
-            mock.patch('service_deployment_tools.marathon_tools.get_config_hash',
+            mock.patch('paasta_tools.marathon_tools.get_config_hash',
                        side_effect=lambda a: hash(str(a))),
-            mock.patch('service_deployment_tools.marathon_tools.get_code_sha_from_dockerurl',
+            mock.patch('paasta_tools.marathon_tools.get_code_sha_from_dockerurl',
                        return_value=fake_code_sha),
         ) as (
             get_srvs_patch,
@@ -125,13 +125,13 @@ class TestCleanupMarathonJobs:
         self.fake_marathon_client.list_apps = mock.Mock(return_value=fake_app_ids)
         with contextlib.nested(
             mock.patch('cleanup_marathon_jobs.get_valid_app_list', return_value=fake_valid_apps),
-            mock.patch('service_deployment_tools.marathon_tools.get_config',
+            mock.patch('paasta_tools.marathon_tools.get_config',
                        return_value=self.fake_marathon_config),
-            mock.patch('service_deployment_tools.marathon_tools.remove_tag_from_job_id',
+            mock.patch('paasta_tools.marathon_tools.remove_tag_from_job_id',
                        return_value='a_location'),
-            mock.patch('service_deployment_tools.bounce_lib.bounce_lock_zookeeper', spec=contextmanager),
-            mock.patch('service_deployment_tools.marathon_tools.get_marathon_client', return_value=self.fake_marathon_client),
-            mock.patch('service_deployment_tools.bounce_lib.delete_marathon_app')
+            mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', spec=contextmanager),
+            mock.patch('paasta_tools.marathon_tools.get_marathon_client', return_value=self.fake_marathon_client),
+            mock.patch('paasta_tools.bounce_lib.delete_marathon_app')
         ) as (
             get_valid_patch,
             config_patch,

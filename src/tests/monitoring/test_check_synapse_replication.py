@@ -4,7 +4,7 @@ from contextlib import nested
 import mock
 import pytest
 
-from service_deployment_tools.monitoring.check_synapse_replication import (
+from paasta_tools.monitoring.check_synapse_replication import (
     check_replication,
     parse_range,
     run_synapse_check
@@ -44,7 +44,7 @@ def test_parse_range():
 
 
 def test_run_synapse_check():
-    module = 'service_deployment_tools.monitoring.check_synapse_replication'
+    module = 'paasta_tools.monitoring.check_synapse_replication'
     parse_method = module + '.parse_synapse_check_options'
     replication_method = module + '.get_replication_for_services'
     check_replication_method = module + '.check_replication'

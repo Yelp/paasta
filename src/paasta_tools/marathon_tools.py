@@ -37,7 +37,7 @@ class MarathonConfig:
     def __init__(self):
         self.__dict__ = self.__shared_state
         if not self.config:
-            self.config = json.loads(open('/etc/service_deployment_tools/marathon_config.json').read())
+            self.config = json.loads(open('/etc/paasta_tools/marathon_config.json').read())
 
     def get(self):
         return self.config
@@ -48,7 +48,7 @@ def get_config():
     a default configuration if the config file isn't deployed here.
 
     The configuration file is managed by puppet, and is called
-    /etc/service_deployment_tools/marathon_config.json.
+    /etc/paasta_tools/marathon_config.json.
 
     :returns: A dict of the marathon configuration"""
     return MarathonConfig().get()

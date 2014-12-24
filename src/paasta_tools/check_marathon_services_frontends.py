@@ -19,8 +19,8 @@ import subprocess
 import sys
 
 import service_configuration_lib
-from service_deployment_tools import marathon_tools
-from service_deployment_tools import monitoring_tools
+from paasta_tools import marathon_tools
+from paasta_tools import monitoring_tools
 import pysensu_yelp
 
 

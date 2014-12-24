@@ -4,7 +4,7 @@ pipeline."""
 import subprocess
 import sys
 
-from service_deployment_tools.paasta_cli.utils import \
+from paasta_tools.paasta_cli.utils import \
     guess_service_name, NoSuchService, validate_service_name
 
 

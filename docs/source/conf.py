@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 #
-# service_deployment_tools documentation build configuration file, created by
+# paasta_tools documentation build configuration file, created by
 # sphinx-quickstart on Tue Aug  5 17:43:04 2014.
 #
 # This file is execfile()d with the current directory set to its containing dir.
@@ -16,7 +16,7 @@ import sys, os
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
 # documentation root, use os.path.abspath to make it absolute, like shown here.
-sys.path.append(os.path.abspath('./../../src/service_deployment_tools'))
+sys.path.append(os.path.abspath('./../../src/paasta_tools'))
 
 # -- General configuration -----------------------------------------------------
 
@@ -37,7 +37,7 @@ source_suffix = '.rst'
 master_doc = 'index'
 
 # General information about the project.
-project = u'service_deployment_tools'
+project = u'paasta_tools'
 copyright = u'2014, James McGuinness'
 
 # The version info for the project you're documenting, acts as replacement for
@@ -158,7 +158,7 @@ html_static_path = ['_static']
 #html_file_suffix = ''
 
 # Output file base name for HTML help builder.
-htmlhelp_basename = 'service_deployment_toolsdoc'
+htmlhelp_basename = 'paasta_toolsdoc'
 
 
 # -- Options for LaTeX output --------------------------------------------------
@@ -172,7 +172,7 @@ htmlhelp_basename = 'service_deployment_toolsdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'service_deployment_tools.tex', u'service\\_deployment\\_tools Documentation',
+  ('index', 'paasta_tools.tex', u'service\\_deployment\\_tools Documentation',
    u'James McGuinness', 'manual'),
 ]
 

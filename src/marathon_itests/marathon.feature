@@ -1,4 +1,4 @@
-Feature: service_deployment_tools can create marathon apps
+Feature: paasta_tools can create marathon apps
 
   Scenario: Trivial apps can be deployed
     Given a working marathon instance

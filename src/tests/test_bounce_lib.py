@@ -100,7 +100,7 @@ class TestBounceLib:
 
     def test_wait_for_create_slow(self):
         fake_id = 'my_created'
-        fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
+        fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [False, False, True]
         with contextlib.nested(
             mock.patch('marathon_tools.is_app_id_running'),
@@ -116,7 +116,7 @@ class TestBounceLib:
 
     def test_wait_for_create_fast(self):
         fake_id = 'my_created'
-        fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
+        fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [True]
         with contextlib.nested(
             mock.patch('marathon_tools.is_app_id_running'),
@@ -132,7 +132,7 @@ class TestBounceLib:
 
     def test_wait_for_delete_slow(self):
         fake_id = 'my_deleted'
-        fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
+        fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [True, True, False]
         with contextlib.nested(
             mock.patch('marathon_tools.is_app_id_running'),
@@ -148,7 +148,7 @@ class TestBounceLib:
 
     def test_wait_for_delete_fast(self):
         fake_id = 'my_deleted'
-        fake_client = mock.Mock(spec='service_deployment_tools.setup_marathon_job.MarathonClient')
+        fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [False]
         with contextlib.nested(
             mock.patch('marathon_tools.is_app_id_running'),

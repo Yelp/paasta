@@ -3,7 +3,7 @@ import sys
 
 import argparse
 
-from service_deployment_tools.monitoring.replication_utils import (
+from paasta_tools.monitoring.replication_utils import (
     get_replication_for_services
 )
 

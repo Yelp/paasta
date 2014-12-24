@@ -7,8 +7,8 @@ import subprocess
 import urllib2
 
 from service_configuration_lib import read_extra_service_information
-from service_deployment_tools.monitoring_tools import get_team
-from service_deployment_tools.paasta_cli.utils import \
+from paasta_tools.monitoring_tools import get_team
+from paasta_tools.paasta_cli.utils import \
     guess_service_name, is_file_in_dir, PaastaCheckMessages, \
     NoSuchService, validate_service_name
 

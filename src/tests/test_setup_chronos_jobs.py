@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from service_deployment_tools import setup_chronos_jobs
+from paasta_tools import setup_chronos_jobs
 from mock import patch
 import json
 
@@ -41,7 +41,7 @@ def mock_read_chronos_soa_configs(service_name, ecosystem, soa_dir):
         return []
 
 
-@patch('service_deployment_tools.setup_chronos_jobs.read_chronos_soa_configs', mock_read_chronos_soa_configs)
+@patch('paasta_tools.setup_chronos_jobs.read_chronos_soa_configs', mock_read_chronos_soa_configs)
 def test_extract_chronos_jobs():
     services = {'test_service_1': None, 'test_service_2': None}
     ecosystem = 'testecosystem'
@@ -103,7 +103,7 @@ def mock_get_docker_url_for_image(docker_image):
     return 'test-repository/%s' % docker_image
 
 
-@patch('service_deployment_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
+@patch('paasta_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
 def test_get_executor_flags():
     job_config = {
         'docker_image': 'test_docker_image',
@@ -252,7 +252,7 @@ def test_not_disabled():
     assert actual == expected
 
 
-@patch('service_deployment_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
+@patch('paasta_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
 def test_uris():
     job_config = {
         'docker_image': 'test_docker_image',
@@ -269,7 +269,7 @@ def test_schedule():
     assert expected == actual
 
 
-@patch('service_deployment_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
+@patch('paasta_tools.setup_chronos_jobs.get_docker_url_for_image', mock_get_docker_url_for_image)
 def test_parse_job_config():
     job_config = {
         'name': 'my_test_job',

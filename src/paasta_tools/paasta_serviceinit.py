@@ -9,8 +9,8 @@ import argparse
 import sys
 import logging
 
-from service_deployment_tools import marathon_tools
-from service_deployment_tools.paasta_cli.utils import PaastaColors
+from paasta_tools import marathon_tools
+from paasta_tools.paasta_cli.utils import PaastaColors
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))

@@ -4,8 +4,8 @@
 import argcomplete
 import argparse
 
-from service_deployment_tools.paasta_cli import cmds
-from service_deployment_tools.paasta_cli.utils \
+from paasta_tools.paasta_cli import cmds
+from paasta_tools.paasta_cli.utils \
     import file_names_in_dir as paasta_commands_dir, load_method
 
 
@@ -20,7 +20,7 @@ def add_subparser(command, subparsers):
 
     :param command: a simple string - e.g. 'list'
     :param subparsers: an ArgumentParser object"""
-    module_name = 'service_deployment_tools.paasta_cli.cmds.%s' % command
+    module_name = 'paasta_tools.paasta_cli.cmds.%s' % command
     add_subparser_fn = load_method(module_name, 'add_subparser')
     add_subparser_fn(subparsers)
 
