@@ -42,14 +42,14 @@ def missing_deployments_message(service_name):
 
 def get_deploy_info(service_name):
     deploy_file_path = join(DEFAULT_SOA_DIR, service_name, "deploy.yaml")
-    deploy_file = read_deploy(deploy_file_path)
-    if not deploy_file:
+    deploy_info = read_deploy(deploy_file_path)
+    if not deploy_info:
         print PaastaCheckMessages.DEPLOY_YAML_MISSING
         exit(1)
-    return deploy_file
+    return deploy_info
 
 
-def planned_deployments(deploy_file):
+def planned_deployments(deploy_info):
     """Yield deployment environments in the form 'cluster.instance' in the order
     they appear in the deploy.yaml file for service service_name.
     :param service_name : name of the service for we wish to inspect
@@ -59,7 +59,7 @@ def planned_deployments(deploy_file):
 
     # Store cluster names in the order in which they are read
     # Clusters map to an ordered list of instances
-    for entry in deploy_file['pipeline']:
+    for entry in deploy_info['pipeline']:
         namespace = entry['instancename']
         if (namespace != 'itest') and (namespace != 'registry'):
             cluster, instance = namespace.split('.')
@@ -106,13 +106,10 @@ def paasta_status(args):
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
     service_name = figure_out_service_name(args)
-
     actual_deployments = get_actual_deployments(service_name)
-
     deploy_info = get_deploy_info(service_name)
 
     if actual_deployments:
-
         jenkins_url = PaastaColors.cyan(
             'https://jenkins.yelpcorp.com/view/%s' % service_name)
 
