@@ -253,15 +253,25 @@ def test_get_deploy_info_does_not_exist(mock_stdout, mock_read_deploy, mock_join
 @patch('paasta_tools.paasta_cli.cmds.status.figure_out_service_name')
 @patch('paasta_tools.paasta_cli.cmds.status.get_deploy_info')
 @patch('paasta_tools.paasta_cli.cmds.status.get_actual_deployments')
+@patch('paasta_tools.paasta_cli.cmds.status.get_planned_deployments')
+@patch('paasta_tools.paasta_cli.cmds.status.report_status')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_calls_sergeants(
-        mock_stdout, mock_get_actual_deployments, mock_get_deploy_info,
-        mock_figure_out_service_name):
+        mock_stdout,
+        mock_report_status,
+        mock_get_planned_deployments,
+        mock_get_actual_deployments,
+        mock_get_deploy_info,
+        mock_figure_out_service_name
+    ):
     service_name = 'fake_service'
     mock_figure_out_service_name.return_value = service_name
 
     pipeline = [{'instancename': 'cluster.instance'}]
-    mock_get_deploy_info.return_value = {'pipeline': pipeline}
+    deploy_info = {'pipeline': pipeline}
+    planned_deployments = ['cluster1.instance1', 'cluster1.instance2', 'cluster2.instance1']
+    mock_get_deploy_info.return_value = deploy_info
+    mock_get_planned_deployments.return_value = planned_deployments
 
     actual_deployments = {
         'fake_service:paasta-cluster.instance': 'this_is_a_sha'
@@ -276,6 +286,7 @@ def test_status_calls_sergeants(
     mock_figure_out_service_name.assert_called_once_with(parsed_args)
     mock_get_actual_deployments.assert_called_once_with(service_name)
     mock_get_deploy_info.assert_called_once_with(service_name)
+    mock_report_status.assert_called_once_with(service_name, planned_deployments, actual_deployments)
 
 
 #@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')

@@ -49,7 +49,7 @@ def get_deploy_info(service_name):
     return deploy_info
 
 
-def planned_deployments(deploy_info):
+def get_planned_deployments(deploy_info):
     """Yield deployment environments in the form 'cluster.instance' in the order
     they appear in the deploy.yaml file for service service_name.
     :param service_name : name of the service for we wish to inspect
@@ -102,6 +102,37 @@ def get_actual_deployments(service_name):
     return actual_deployments
 
 
+def report_status(service_name, deployments, actual_deployments):
+    jenkins_url = PaastaColors.cyan(
+        'https://jenkins.yelpcorp.com/view/%s' % service_name)
+
+    print "Pipeline: %s" % jenkins_url
+
+    previous_cluster = ''
+
+    # Get cluster.instance in the order in which they appear in deploy.yaml
+    for namespace in deployments:
+        cluster_name, instance = namespace.split('.')
+
+        # Previous deploy cluster printed isn't this, so print the name
+        if cluster_name != previous_cluster:
+            print "cluster: %s" % cluster_name
+            previous_cluster = cluster_name
+
+        # Case: service deployed to cluster.instance
+        if namespace in actual_deployments:
+            instance = PaastaColors.green(instance)
+            version = actual_deployments[namespace]
+
+        # Case: service NOT deployed to cluster.instance
+        else:
+            instance = PaastaColors.red(instance)
+            version = 'None'
+
+        print '\tinstance: %s' % instance
+        print '\t\tversion: %s\n' % version
+
+
 def paasta_status(args):
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
@@ -110,35 +141,7 @@ def paasta_status(args):
     deploy_info = get_deploy_info(service_name)
 
     if actual_deployments:
-        jenkins_url = PaastaColors.cyan(
-            'https://jenkins.yelpcorp.com/view/%s' % service_name)
-
-        print "Pipeline: %s" % jenkins_url
-
-        previous_cluster = ''
-
-        # Get cluster.instance in the order in which they appear in deploy.yaml
-        for namespace in planned_deployments(deploy_info):
-            cluster_name, instance = namespace.split('.')
-
-            # Previous deploy cluster printed isn't this, so print the name
-            if cluster_name != previous_cluster:
-                print "cluster: %s" % cluster_name
-                previous_cluster = cluster_name
-
-            # Case: service deployed to cluster.instance
-            if namespace in actual_deployments:
-                instance = PaastaColors.green(instance)
-                version = actual_deployments[namespace]
-
-            # Case: service NOT deployed to cluster.instance
-            else:
-                instance = PaastaColors.red(instance)
-                version = 'None'
-
-            print '\tinstance: %s' % instance
-            print '\t\tversion: %s\n' % version
-
-    # No deployments of SERVICE currently exist in deployments.json
+        deployments = get_planned_deployments(deploy_info)
+        report_status(service_name, deployments, actual_deployments)
     else:
         print missing_deployments_message(service_name)
