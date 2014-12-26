@@ -67,16 +67,26 @@ def planned_deployments(deploy_file):
         for instance in cluster_dict[cluster]:
             yield "%s.%s" % (cluster, instance)
 
+def get_remote_status(service, instance):
+    """Remotely executes a command"""
+    return "BLA"
 
-def paasta_status(args):
-    """Print the status of a Yelp service running on PaaSTA.
-    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
+
+def figure_out_service_name(args):
+    """Figures out and validates the input service name"""
     service_name = args.service or guess_service_name()
     try:
         validate_service_name(service_name)
     except NoSuchService as service_not_found:
         print service_not_found
         exit(1)
+    return service_name
+
+
+def paasta_status(args):
+    """Print the status of a Yelp service running on PaaSTA.
+    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
+    service_name = figure_out_service_name(args)
 
     deployments_json = _get_deployments_json(DEFAULT_SOA_DIR)
     if not deployments_json:
