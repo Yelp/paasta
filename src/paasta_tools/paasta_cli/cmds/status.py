@@ -2,7 +2,7 @@
 """Contains methods used by the paasta client to check the status of the service
 on the PaaSTA stack"""
 from ordereddict import OrderedDict
-import os
+from os.path import join
 
 from argcomplete.completers import ChoicesCompleter
 
@@ -40,9 +40,12 @@ def missing_deployments_message(service_name):
     return message
 
 
-def get_deploy_yaml(service_name):
-    deploy_file_path = os.path.join(DEFAULT_SOA_DIR, service_name, "deploy.yaml")
+def get_deploy_info(service_name):
+    deploy_file_path = join(DEFAULT_SOA_DIR, service_name, "deploy.yaml")
     deploy_file = read_deploy(deploy_file_path)
+    if not deploy_file:
+        print PaastaCheckMessages.DEPLOY_YAML_MISSING
+        exit(1)
     return deploy_file
 
 
@@ -106,10 +109,7 @@ def paasta_status(args):
 
     actual_deployments = get_actual_deployments(service_name)
 
-    deploy_file = get_deploy_yaml(service_name)
-    if not deploy_file:
-        print PaastaCheckMessages.DEPLOY_YAML_MISSING
-        exit(1)
+    deploy_info = get_deploy_info(service_name)
 
     if actual_deployments:
 
@@ -121,7 +121,7 @@ def paasta_status(args):
         previous_cluster = ''
 
         # Get cluster.instance in the order in which they appear in deploy.yaml
-        for namespace in planned_deployments(deploy_file):
+        for namespace in planned_deployments(deploy_info):
             cluster_name, instance = namespace.split('.')
 
             # Previous deploy cluster printed isn't this, so print the name
