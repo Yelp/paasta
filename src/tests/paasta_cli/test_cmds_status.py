@@ -257,7 +257,8 @@ def test_get_deploy_info_does_not_exist(mock_stdout, mock_read_deploy, mock_join
 def test_status_calls_sergeants(
         mock_stdout, mock_get_actual_deployments, mock_get_deploy_info,
         mock_figure_out_service_name):
-    mock_figure_out_service_name.return_value = 'fake_service'
+    service_name = 'fake_service'
+    mock_figure_out_service_name.return_value = service_name
 
     pipeline = [{'instancename': 'cluster.instance'}]
     mock_get_deploy_info.return_value = {'pipeline': pipeline}
@@ -268,12 +269,13 @@ def test_status_calls_sergeants(
     mock_get_actual_deployments.return_value = actual_deployments
 
     sys.argv = [
-        './paasta_cli', 'status', '-s', 'fake_service']
+        './paasta_cli', 'status', '-s', service_name]
     parsed_args = parse_args()
     paasta_status(parsed_args)
 
     mock_figure_out_service_name.assert_called_once_with(parsed_args)
-
+    mock_get_actual_deployments.assert_called_once_with(service_name)
+    mock_get_deploy_info.assert_called_once_with(service_name)
 
 
 #@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
