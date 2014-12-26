@@ -2,6 +2,8 @@ import fnmatch
 import glob
 import os
 
+from service_configuration_lib import read_services_configuration
+
 
 def load_method(module_name, method_name):
     """Return a function given a module and method name.
@@ -292,3 +294,8 @@ def validate_service_name(service_name):
     service_path = os.path.join('/nail/etc/services', service_name)
     if not os.path.isdir(service_path):
         raise NoSuchService(service_name)
+
+
+def list_services():
+    """Returns a sorted list of all services"""
+    return sorted(read_services_configuration().keys())

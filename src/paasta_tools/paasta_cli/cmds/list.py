@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """Contains methods used by the paasta client to list Yelp services"""
-from service_configuration_lib import read_services_configuration
+from paasta_tools.paasta_cli.utils import list_services
 
 
 def add_subparser(subparsers):
@@ -14,7 +14,7 @@ def add_subparser(subparsers):
 def paasta_list(args):
     """Print a list of Yelp services currently running
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
-    services = sorted(read_services_configuration().keys())
+    services = list_services()
 
     for service in services:
         print service
