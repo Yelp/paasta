@@ -4,12 +4,18 @@ on the PaaSTA stack"""
 from ordereddict import OrderedDict
 import os
 
+from argcomplete.completers import ChoicesCompleter
+
 from service_configuration_lib import read_deploy
 from paasta_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
-from paasta_tools.paasta_cli.utils import \
-    guess_service_name, NoSuchService, PaastaColors, PaastaCheckMessages, \
-    validate_service_name, x_mark
+from paasta_tools.paasta_cli.utils import guess_service_name
+from paasta_tools.paasta_cli.utils import list_services
+from paasta_tools.paasta_cli.utils import NoSuchService
+from paasta_tools.paasta_cli.utils import PaastaCheckMessages
+from paasta_tools.paasta_cli.utils import PaastaColors
+from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.paasta_cli.utils import x_mark
 
 
 def add_subparser(subparsers):
@@ -18,8 +24,10 @@ def add_subparser(subparsers):
         description="PaaSTA client will attempt to deduce the SERVICE option if"
                     " none is provided.",
         help="Display the status of a Yelp service running on PaaSTA.")
-    status_parser.add_argument('-s', '--service', help='The name of the service '
-                                                       'you wish to inspect')
+    status_parser.add_argument(
+        '-s', '--service',
+        help='The name of the service you wish to inspect'
+    ).completer = ChoicesCompleter(list_services())
     status_parser.set_defaults(command=paasta_status)
 
 
