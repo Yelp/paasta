@@ -83,21 +83,11 @@ def figure_out_service_name(args):
     return service_name
 
 
-def paasta_status(args):
-    """Print the status of a Yelp service running on PaaSTA.
-    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
-    service_name = figure_out_service_name(args)
-
+def get_actual_deployments(service_name):
     deployments_json = _get_deployments_json(DEFAULT_SOA_DIR)
     if not deployments_json:
         print 'Failed to locate deployments.json in default SOA directory'
         exit(1)
-
-    deploy_file = get_deploy_yaml(service_name)
-    if not deploy_file:
-        print PaastaCheckMessages.DEPLOY_YAML_MISSING
-        exit(1)
-
     # Create a dictionary of actual $service_name Jenkins deployments
     actual_deployments = {}
     for key in deployments_json:
@@ -106,6 +96,20 @@ def paasta_status(args):
             value = deployments_json[key].encode('utf8')
             sha = value[value.rfind('-') + 1:]
             actual_deployments[namespace.replace('paasta-', '', 1)] = sha
+    return actual_deployments
+
+
+def paasta_status(args):
+    """Print the status of a Yelp service running on PaaSTA.
+    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
+    service_name = figure_out_service_name(args)
+
+    actual_deployments = get_actual_deployments(service_name)
+
+    deploy_file = get_deploy_yaml(service_name)
+    if not deploy_file:
+        print PaastaCheckMessages.DEPLOY_YAML_MISSING
+        exit(1)
 
     if actual_deployments:
 
