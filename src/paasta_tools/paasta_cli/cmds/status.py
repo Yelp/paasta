@@ -102,7 +102,7 @@ def get_actual_deployments(service_name):
     return actual_deployments
 
 
-def report_status(service_name, deployments, actual_deployments):
+def report_status(service_name, deploy_pipeline, actual_deployments):
     jenkins_url = PaastaColors.cyan(
         'https://jenkins.yelpcorp.com/view/%s' % service_name)
 
@@ -111,7 +111,7 @@ def report_status(service_name, deployments, actual_deployments):
     previous_cluster = ''
 
     # Get cluster.instance in the order in which they appear in deploy.yaml
-    for namespace in deployments:
+    for namespace in deploy_pipeline:
         cluster_name, instance = namespace.split('.')
 
         # Previous deploy cluster printed isn't this, so print the name
@@ -141,7 +141,7 @@ def paasta_status(args):
     deploy_info = get_deploy_info(service_name)
 
     if actual_deployments:
-        deployments = get_planned_deployments(deploy_info)
-        report_status(service_name, deployments, actual_deployments)
+        deploy_pipeline = get_planned_deployments(deploy_info)
+        report_status(service_name, deploy_pipeline, actual_deployments)
     else:
         print missing_deployments_message(service_name)

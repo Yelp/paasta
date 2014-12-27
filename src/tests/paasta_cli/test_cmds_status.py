@@ -76,56 +76,38 @@ def test_status_missing_deployments_err(
     assert output == expected_output
 
 
-@patch('paasta_tools.paasta_cli.cmds.status.figure_out_service_name')
-@patch('paasta_tools.paasta_cli.cmds.status.get_deploy_info')
-@patch('paasta_tools.paasta_cli.cmds.status.get_actual_deployments')
 @patch('sys.stdout', new_callable=StringIO)
-def test_status_displays_deployed_service(
-        mock_stdout, mock_get_actual_deployments, mock_get_deploy_info,
-        mock_figure_out_service_name):
+def test_status_displays_deployed_service(mock_stdout):
     # paasta_status with no args displays deploy info - vanilla case
-    mock_figure_out_service_name.return_value = 'fake_service'
-    pipeline = [{'instancename': 'cluster.instance'}]
-    mock_get_deploy_info.return_value = {'pipeline': pipeline}
-
+    service_name = 'fake_service'
+    planned_deployments = ['cluster.instance']
     actual_deployments = {
         'cluster.instance': 'this_is_a_sha'
     }
-    mock_get_actual_deployments.return_value = actual_deployments
     expected_output = "cluster: cluster\n" \
                       "\tinstance: %s\n" \
                       "\t\tversion: this_is_a_sha\n\n" \
                       % PaastaColors.green('instance')
 
-    sys.argv = [
-        './paasta_cli', 'status', '-s', 'fake_service']
-    parsed_args = parse_args()
-    paasta_status(parsed_args)
-
+    status.report_status(service_name, planned_deployments, actual_deployments)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
 
-@patch('paasta_tools.paasta_cli.cmds.status.figure_out_service_name')
-@patch('paasta_tools.paasta_cli.cmds.status.get_deploy_info')
-@patch('paasta_tools.paasta_cli.cmds.status.get_actual_deployments')
 @patch('sys.stdout', new_callable=StringIO)
-def test_status_sorts_in_deploy_order(
-        mock_stdout, mock_get_actual_deployments, mock_get_deploy_info,
-        mock_figure_out_service_name):
+def test_status_sorts_in_deploy_order(mock_stdout):
     # paasta_status with no args displays deploy info
-    mock_figure_out_service_name.return_value = 'fake_service'
-    pipeline = [{'instancename': 'a_cluster.a_instance'},
-                {'instancename': 'a_cluster.b_instance'},
-                {'instancename': 'b_cluster.b_instance'}]
-    mock_get_deploy_info.return_value = {'pipeline': pipeline}
-
+    service_name = 'fake_service'
+    planned_deployments = [
+       'a_cluster.a_instance',
+       'a_cluster.b_instance',
+       'b_cluster.b_instance',
+    ]
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
         'a_cluster.b_instance': 'this_is_a_sha',
         'b_cluster.b_instance': 'this_is_a_sha',
     }
-    mock_get_actual_deployments.return_value = actual_deployments
     expected_output = "cluster: a_cluster\n" \
                       "\tinstance: %s\n" \
                       "\t\tversion: this_is_a_sha\n\n" \
@@ -138,34 +120,24 @@ def test_status_sorts_in_deploy_order(
                          PaastaColors.green('b_instance'),
                          PaastaColors.green('b_instance'))
 
-    sys.argv = [
-        './paasta_cli', 'status', '-s', 'fake_service']
-    parsed_args = parse_args()
-    paasta_status(parsed_args)
-
+    status.report_status(service_name, planned_deployments, actual_deployments)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
 
-@patch('paasta_tools.paasta_cli.cmds.status.figure_out_service_name')
-@patch('paasta_tools.paasta_cli.cmds.status.get_deploy_info')
-@patch('paasta_tools.paasta_cli.cmds.status.get_actual_deployments')
 @patch('sys.stdout', new_callable=StringIO)
-def test_status_missing_deploys_in_red(
-        mock_stdout, mock_get_actual_deployments, mock_get_deploy_info,
-        mock_figure_out_service_name):
+def test_status_missing_deploys_in_red(mock_stdout):
     # paasta_status displays missing deploys in red
-    mock_figure_out_service_name.return_value = 'fake_service'
-    pipeline = [{'instancename': 'a_cluster.a_instance'},
-                {'instancename': 'a_cluster.b_instance'},
-                {'instancename': 'b_cluster.b_instance'}]
-    mock_get_deploy_info.return_value = {'pipeline': pipeline}
-
+    service_name = 'fake_service'
+    planned_deployments = [
+        'a_cluster.a_instance',
+        'a_cluster.b_instance',
+        'b_cluster.b_instance',
+    ]
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
         'b_cluster.b_instance': 'this_is_a_sha',
     }
-    mock_get_actual_deployments.return_value = actual_deployments
     expected_output = "cluster: a_cluster\n" \
                       "\tinstance: %s\n" \
                       "\t\tversion: this_is_a_sha\n\n" \
@@ -178,11 +150,7 @@ def test_status_missing_deploys_in_red(
                          PaastaColors.red('b_instance'),
                          PaastaColors.green('b_instance'))
 
-    sys.argv = [
-        './paasta_cli', 'status', '-s', 'fake_service']
-    parsed_args = parse_args()
-    paasta_status(parsed_args)
-
+    status.report_status(service_name, planned_deployments, actual_deployments)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
