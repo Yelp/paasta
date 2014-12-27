@@ -299,3 +299,8 @@ def validate_service_name(service_name):
 def list_services():
     """Returns a sorted list of all services"""
     return sorted(read_services_configuration().keys())
+
+
+def execute_on_remote_master(cluster_name):
+    raise Exception
+    pass

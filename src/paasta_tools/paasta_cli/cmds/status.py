@@ -9,6 +9,7 @@ from argcomplete.completers import ChoicesCompleter
 from service_configuration_lib import read_deploy
 from paasta_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
+from paasta_tools.paasta_cli.utils import execute_on_remote_master
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import NoSuchService
@@ -112,6 +113,7 @@ def report_status(service_name, deploy_pipeline, actual_deployments):
 
         # Previous deploy cluster printed isn't this, so print the name
         if cluster_name != previous_cluster:
+            print
             print "cluster: %s" % cluster_name
             previous_cluster = cluster_name
 
@@ -119,14 +121,18 @@ def report_status(service_name, deploy_pipeline, actual_deployments):
         if namespace in actual_deployments:
             instance = PaastaColors.green(instance)
             version = actual_deployments[namespace]
+            status = execute_on_remote_master(cluster_name)
 
         # Case: service NOT deployed to cluster.instance
         else:
             instance = PaastaColors.red(instance)
             version = 'None'
+            status = None
 
         print '\tinstance: %s' % instance
-        print '\t\tversion: %s\n' % version
+        print '\t\tversion: %s' % version
+        if status is not None:
+            print '\t\t%s' % status.rstrip()
 
 
 def paasta_status(args):

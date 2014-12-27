@@ -74,26 +74,43 @@ def test_status_missing_deployments_err(mock_stdout, mock_get_deployments_json):
     assert output == expected_output
 
 
+@patch('paasta_tools.paasta_cli.cmds.status.execute_on_remote_master')
 @patch('sys.stdout', new_callable=StringIO)
-def test_report_status_displays_deployed_service(mock_stdout):
+def test_report_status_displays_deployed_service(
+    mock_stdout,
+    mock_execute_on_remote_master,
+):
     # paasta_status with no args displays deploy info - vanilla case
     service_name = 'fake_service'
     planned_deployments = ['cluster.instance']
     actual_deployments = {
         'cluster.instance': 'this_is_a_sha'
     }
-    expected_output = "cluster: cluster\n" \
-                      "\tinstance: %s\n" \
-                      "\t\tversion: this_is_a_sha\n\n" \
-                      % PaastaColors.green('instance')
+    fake_status = 'status: SOMETHING FAKE'
+    mock_execute_on_remote_master.return_value = fake_status
+    expected_output = (
+        "\n"
+        "cluster: cluster\n"
+        "\tinstance: %s\n"
+        "\t\tversion: this_is_a_sha\n"
+        "\t\t%s\n"
+        % (
+            PaastaColors.green('instance'),
+            fake_status,
+        )
+    )
 
     status.report_status(service_name, planned_deployments, actual_deployments)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
 
+@patch('paasta_tools.paasta_cli.cmds.status.execute_on_remote_master')
 @patch('sys.stdout', new_callable=StringIO)
-def test_report_status_sorts_in_deploy_order(mock_stdout):
+def test_report_status_sorts_in_deploy_order(
+    mock_stdout,
+    mock_execute_on_remote_master,
+):
     # paasta_status with no args displays deploy info
     service_name = 'fake_service'
     planned_deployments = [
@@ -106,25 +123,43 @@ def test_report_status_sorts_in_deploy_order(mock_stdout):
         'a_cluster.b_instance': 'this_is_a_sha',
         'b_cluster.b_instance': 'this_is_a_sha',
     }
-    expected_output = "cluster: a_cluster\n" \
-                      "\tinstance: %s\n" \
-                      "\t\tversion: this_is_a_sha\n\n" \
-                      "\tinstance: %s\n" \
-                      "\t\tversion: this_is_a_sha\n\n" \
-                      "cluster: b_cluster\n" \
-                      "\tinstance: %s\n" \
-                      "\t\tversion: this_is_a_sha\n\n" \
-                      % (PaastaColors.green('a_instance'),
-                         PaastaColors.green('b_instance'),
-                         PaastaColors.green('b_instance'))
+    fake_status = 'status: SOMETHING FAKE'
+    mock_execute_on_remote_master.return_value = fake_status
+    expected_output = (
+        "\n"
+        "cluster: a_cluster\n"
+        "\tinstance: %s\n"
+        "\t\tversion: this_is_a_sha\n"
+        "\t\t%s\n"
+        "\tinstance: %s\n"
+        "\t\tversion: this_is_a_sha\n"
+        "\t\t%s\n"
+        "\n"
+        "cluster: b_cluster\n"
+        "\tinstance: %s\n"
+        "\t\tversion: this_is_a_sha\n"
+        "\t\t%s\n"
+        % (
+            PaastaColors.green('a_instance'),
+            fake_status,
+            PaastaColors.green('b_instance'),
+            fake_status,
+            PaastaColors.green('b_instance'),
+            fake_status,
+        )
+    )
 
     status.report_status(service_name, planned_deployments, actual_deployments)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
 
+@patch('paasta_tools.paasta_cli.cmds.status.execute_on_remote_master')
 @patch('sys.stdout', new_callable=StringIO)
-def test_report_status_missing_deploys_in_red(mock_stdout):
+def test_report_status_missing_deploys_in_red(
+    mock_stdout,
+    mock_execute_on_remote_master,
+):
     # paasta_status displays missing deploys in red
     service_name = 'fake_service'
     planned_deployments = [
@@ -136,19 +171,62 @@ def test_report_status_missing_deploys_in_red(mock_stdout):
         'a_cluster.a_instance': 'this_is_a_sha',
         'b_cluster.b_instance': 'this_is_a_sha',
     }
-    expected_output = "cluster: a_cluster\n" \
-                      "\tinstance: %s\n" \
-                      "\t\tversion: this_is_a_sha\n\n" \
-                      "\tinstance: %s\n" \
-                      "\t\tversion: None\n\n" \
-                      "cluster: b_cluster\n" \
-                      "\tinstance: %s\n" \
-                      "\t\tversion: this_is_a_sha\n\n" \
-                      % (PaastaColors.green('a_instance'),
-                         PaastaColors.red('b_instance'),
-                         PaastaColors.green('b_instance'))
+    fake_status = 'status: SOMETHING FAKE'
+    mock_execute_on_remote_master.return_value = fake_status
+    expected_output = (
+        "\n"
+        "cluster: a_cluster\n"
+        "\tinstance: %s\n"
+        "\t\tversion: this_is_a_sha\n"
+        "\t\t%s\n"
+        "\tinstance: %s\n"
+        "\t\tversion: None\n"
+        # No status line when there's no deployment
+        "\n"
+        "cluster: b_cluster\n"
+        "\tinstance: %s\n"
+        "\t\tversion: this_is_a_sha\n"
+        "\t\t%s\n"
+        % (
+            PaastaColors.green('a_instance'),
+            fake_status,
+            PaastaColors.red('b_instance'),
+            PaastaColors.green('b_instance'),
+            fake_status,
+        )
+    )
 
     status.report_status(service_name, planned_deployments, actual_deployments)
+    output = mock_stdout.getvalue()
+    assert expected_output in output
+
+
+@patch('paasta_tools.paasta_cli.cmds.status.execute_on_remote_master', autospec=True)
+@patch('sys.stdout', new_callable=StringIO)
+def test_report_status_calls_execute_on_remote_master(
+    mock_stdout,
+    mock_execute_on_remote_master,
+):
+    service_name = 'fake_service'
+    planned_deployments = [
+        'a_cluster.a_instance',
+        'a_cluster.b_instance',
+        'b_cluster.b_instance',
+    ]
+    actual_deployments = {
+        'a_cluster.a_instance': 'this_is_a_sha',
+        'b_cluster.b_instance': 'this_is_a_sha',
+        'c_cluster.c_instance': 'this_is_a_sha',
+    }
+    fake_execute_on_remote_master_output = "Marathon: 5 instances"
+    mock_execute_on_remote_master.return_value = fake_execute_on_remote_master_output
+    expected_output = "\t\t%s\n" % fake_execute_on_remote_master_output
+
+    status.report_status(service_name, planned_deployments, actual_deployments)
+    assert mock_execute_on_remote_master.call_count == 2
+    mock_execute_on_remote_master.assert_any_call('a_cluster')
+    mock_execute_on_remote_master.assert_any_call('b_cluster')
+
     output = mock_stdout.getvalue()
     assert expected_output in output
 
