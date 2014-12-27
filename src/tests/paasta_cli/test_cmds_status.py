@@ -9,7 +9,6 @@ from paasta_tools.paasta_cli.utils import \
 from paasta_tools.paasta_cli.cmds.status import paasta_status, \
     missing_deployments_message
 from paasta_tools.paasta_cli.cmds import status
-#from paasta_tools.paasta_cli.cmds.status import remote_execute
 from paasta_tools.paasta_cli.paasta_cli import parse_args
 
 
@@ -19,7 +18,7 @@ def test_figure_out_service_name_not_found(mock_stdout,
                                            mock_validate_service_name):
     # paasta_status with invalid -s service_name arg results in error
     mock_validate_service_name.side_effect = NoSuchService(None)
-    parsed_args = Mock() 
+    parsed_args = Mock()
     parsed_args.service = 'fake_service'
 
     expected_output = '%s\n' % NoSuchService.GUESS_ERROR_MSG
@@ -98,9 +97,9 @@ def test_report_status_sorts_in_deploy_order(mock_stdout):
     # paasta_status with no args displays deploy info
     service_name = 'fake_service'
     planned_deployments = [
-       'a_cluster.a_instance',
-       'a_cluster.b_instance',
-       'b_cluster.b_instance',
+           'a_cluster.a_instance',
+           'a_cluster.b_instance',
+           'b_cluster.b_instance',
     ]
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
@@ -224,13 +223,13 @@ def test_get_deploy_info_does_not_exist(mock_stdout, mock_read_deploy, mock_join
 @patch('paasta_tools.paasta_cli.cmds.status.report_status')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_calls_sergeants(
-        mock_stdout,
-        mock_report_status,
-        mock_get_planned_deployments,
-        mock_get_actual_deployments,
-        mock_get_deploy_info,
-        mock_figure_out_service_name
-    ):
+    mock_stdout,
+    mock_report_status,
+    mock_get_planned_deployments,
+    mock_get_actual_deployments,
+    mock_get_deploy_info,
+    mock_figure_out_service_name,
+):
     service_name = 'fake_service'
     mock_figure_out_service_name.return_value = service_name
 
@@ -254,4 +253,3 @@ def test_status_calls_sergeants(
     mock_get_actual_deployments.assert_called_once_with(service_name)
     mock_get_deploy_info.assert_called_once_with(service_name)
     mock_report_status.assert_called_once_with(service_name, planned_deployments, actual_deployments)
-
