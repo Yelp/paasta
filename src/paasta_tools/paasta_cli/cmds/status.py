@@ -71,11 +71,6 @@ def get_planned_deployments(deploy_info):
             yield "%s.%s" % (cluster, instance)
 
 
-def get_remote_status(service, instance):
-    """Remotely executes a command"""
-    return "BLA"
-
-
 def figure_out_service_name(args):
     """Figures out and validates the input service name"""
     service_name = args.service or guess_service_name()
