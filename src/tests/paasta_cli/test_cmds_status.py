@@ -107,6 +107,31 @@ def test_report_status_displays_deployed_service(
 
 @patch('paasta_tools.paasta_cli.cmds.status.execute_on_remote_master')
 @patch('sys.stdout', new_callable=StringIO)
+def test_report_status_displays_multiple_lines_from_execute_on_remote_master(
+    mock_stdout,
+    mock_execute_on_remote_master,
+):
+    # paasta_status with no args displays deploy info - vanilla case
+    service_name = 'fake_service'
+    planned_deployments = ['cluster.instance']
+    actual_deployments = {
+        'cluster.instance': 'this_is_a_sha'
+    }
+    fake_status = 'status: SOMETHING FAKE\nand then something fake\non another line!\n\n\n'
+    mock_execute_on_remote_master.return_value = fake_status
+    expected_output = (
+        "\t\tstatus: SOMETHING FAKE\n"
+        "\t\tand then something fake\n"
+        "\t\ton another line!\n"
+    )
+
+    status.report_status(service_name, planned_deployments, actual_deployments)
+    output = mock_stdout.getvalue()
+    assert expected_output in output
+
+
+@patch('paasta_tools.paasta_cli.cmds.status.execute_on_remote_master')
+@patch('sys.stdout', new_callable=StringIO)
 def test_report_status_sorts_in_deploy_order(
     mock_stdout,
     mock_execute_on_remote_master,

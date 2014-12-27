@@ -132,7 +132,8 @@ def report_status(service_name, deploy_pipeline, actual_deployments):
         print '\tinstance: %s' % instance
         print '\t\tversion: %s' % version
         if status is not None:
-            print '\t\t%s' % status.rstrip()
+            for line in status.rstrip().split('\n'):
+                print '\t\t%s' % line
 
 
 def paasta_status(args):

@@ -302,5 +302,5 @@ def list_services():
 
 
 def execute_on_remote_master(cluster_name):
-    raise Exception
-    pass
+    #raise Exception
+    return "STATUSSSSSSSSSSSSSSSSSSSSSS:\n\n\nhi kwa\n\n\n"
