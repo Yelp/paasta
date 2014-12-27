@@ -70,6 +70,7 @@ def get_planned_deployments(deploy_info):
         for instance in cluster_dict[cluster]:
             yield "%s.%s" % (cluster, instance)
 
+
 def get_remote_status(service, instance):
     """Remotely executes a command"""
     return "BLA"

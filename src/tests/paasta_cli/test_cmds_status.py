@@ -59,8 +59,7 @@ def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
 
 @patch('paasta_tools.paasta_cli.cmds.status._get_deployments_json')
 @patch('sys.stdout', new_callable=StringIO)
-def test_status_missing_deployments_err(
-		mock_stdout, mock_get_deployments_json):
+def test_status_missing_deployments_err(mock_stdout, mock_get_deployments_json):
     # paasta_status exits on error if deployments.json missing
     mock_get_deployments_json.return_value = {}
 
@@ -77,7 +76,7 @@ def test_status_missing_deployments_err(
 
 
 @patch('sys.stdout', new_callable=StringIO)
-def test_status_displays_deployed_service(mock_stdout):
+def test_report_status_displays_deployed_service(mock_stdout):
     # paasta_status with no args displays deploy info - vanilla case
     service_name = 'fake_service'
     planned_deployments = ['cluster.instance']
@@ -95,7 +94,7 @@ def test_status_displays_deployed_service(mock_stdout):
 
 
 @patch('sys.stdout', new_callable=StringIO)
-def test_status_sorts_in_deploy_order(mock_stdout):
+def test_report_status_sorts_in_deploy_order(mock_stdout):
     # paasta_status with no args displays deploy info
     service_name = 'fake_service'
     planned_deployments = [
@@ -126,7 +125,7 @@ def test_status_sorts_in_deploy_order(mock_stdout):
 
 
 @patch('sys.stdout', new_callable=StringIO)
-def test_status_missing_deploys_in_red(mock_stdout):
+def test_report_status_missing_deploys_in_red(mock_stdout):
     # paasta_status displays missing deploys in red
     service_name = 'fake_service'
     planned_deployments = [
