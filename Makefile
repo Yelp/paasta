@@ -1,5 +1,5 @@
 # Edit this release and run "make release"
-RELEASE=0.7.30-yelp1
+RELEASE=0.7.30-yelp2
 
 UID:=`id -u`
 GID:=`id -g`
@@ -89,7 +89,7 @@ VERSION = $(firstword $(subst -, ,$(RELEASE) ))
 LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B )
 release:
 	dch -v $(RELEASE) --changelog src/debian/changelog "$(LAST_COMMIT_MSG)"
-	sed -i -e "s/version.*=.*/version        = '$(VERSION)'/" src/setup.py
+	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" src/setup.py
 	git tag --force v$(VERSION)
 	echo "$(RELEASE) is tagged and changelog set."
 	git diff
