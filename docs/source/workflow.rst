@@ -82,6 +82,12 @@ configuration for the running image:
 * ``--workdir``: Mesos containers are launched in a temporary "workspace"
   directory on disk. Use the workdir sparingly and try not to output files.
 
+Mesos is the actual system that runs the docker images. In Mesos land these are
+called "TASKS". PaaSTA-configured tasks use exponential backoff to prevent
+unhealthy tasks from continuously filling up disks and logs -- the more times
+that your service has failed to start, the longer Mesos will wait before 
+trying to start it again.
+
 Monitoring
 ----------
 `check_marathon_services_replication <check_marathon_services_replication.html>`_
