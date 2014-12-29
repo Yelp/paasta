@@ -571,8 +571,8 @@ class TestMarathonTools:
             'cpus': fake_cpus,
             'instances': fake_instances,
             'args': fake_args,
-            'backoffSeconds': 1,
-            'backoffFactor': 2,
+            'backoff_seconds': 1,
+            'backoff_factor': 2,
         }
         with contextlib.nested(
             mock.patch('marathon_tools.get_mem', return_value=fake_mem),
