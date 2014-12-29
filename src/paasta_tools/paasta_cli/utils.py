@@ -2,6 +2,7 @@ import fnmatch
 import glob
 import os
 
+from plumbum import SshMachine
 from service_configuration_lib import read_services_configuration
 
 
@@ -302,4 +303,5 @@ def list_services():
 
 
 def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename):
-    raise Exception
+    with SshMachine('some_master_yet_to_be_calculated'):
+        pass
