@@ -1,3 +1,9 @@
+paasta-tools (0.7.31-yelp1) lucid; urgency=low
+
+  * Fix backoff_factor
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 29 Dec 2014 13:00:54 -0800
+
 paasta-tools (0.7.30-yelp2) lucid; urgency=low
 
   * Released 0.7.30-yelp1 via emake release

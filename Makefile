@@ -1,5 +1,5 @@
 # Edit this release and run "make release"
-RELEASE=0.7.30-yelp2
+RELEASE=0.7.31-yelp1
 
 UID:=`id -u`
 GID:=`id -g`
@@ -93,5 +93,5 @@ release:
 	git tag --force v$(VERSION)
 	echo "$(RELEASE) is tagged and changelog set."
 	git diff
-	echo 'git commit -a -m "Released $(RELEASE) via make release'
+	echo 'git commit -a -m "Released $(RELEASE) via make release"'
 	echo 'git push --tags origin master'
