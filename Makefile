@@ -1,3 +1,5 @@
+# Edit this release and run "make release"
+RELEASE=0.7.29-yelp1
 
 UID:=`id -u`
 GID:=`id -g`
@@ -69,8 +71,6 @@ cleanup_chronos_itest:
 	docker rm chronos_itest_mesos
 	docker rm chronos_itest_chronos
 
-
-
 build_chronos_itest: build_chronos_itest_zookeeper_docker build_chronos_itest_mesos_docker build_chronos_itest_chronos_docker build_chronos_itest_itest_docker
 
 build_chronos_itest_zookeeper_docker:
@@ -84,3 +84,11 @@ build_chronos_itest_chronos_docker:
 
 build_chronos_itest_itest_docker:
 	cd dockerfiles/itest/itest/ && docker build -t "chronos_itest/itest" .
+
+VERSION = $(firstword $(subst -, ,$(RELEASE) ))
+LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B )
+release:
+	dch -v $(RELEASE) --changelog src/debian/changelog "$(LAST_COMMIT_MSG)"
+	sed -i -e "s/version.*=.*/version        = '$(VERSION)'/" src/setup.py
+	git tag v$(VERSION)
+	echo "$(RELEASE) is tagged and changelog set. Push to origin/master to have a package distributed"
