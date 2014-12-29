@@ -1,8 +1,10 @@
 import fnmatch
 import glob
 import os
+from socket import gaierror
+from socket import gethostbyname_ex
+import sys
 
-from plumbum import SshMachine
 from service_configuration_lib import read_services_configuration
 
 
@@ -302,6 +304,21 @@ def list_services():
     return sorted(read_services_configuration().keys())
 
 
+def calculate_remote_masters(cluster_name):
+    cluster_fqdn = "mesos-%s.yelpcorp.com" % cluster_name
+    try:
+        _, _, ips = gethostbyname_ex(cluster_fqdn)
+    except gaierror as e:
+        sys.stderr.write('ERROR while doing DNS lookup of %s: ' % cluster_fqdn)
+        sys.stderr.write('%s\n' % e.strerror)
+        ips = []
+    return set(ips)
+
+
 def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename):
-    with SshMachine('some_master_yet_to_be_calculated'):
-        pass
+    masters = calculate_remote_masters(cluster_name)
+    # calculate remote masters from cluster name
+    # connectivity check
+    # sudo check
+    # calculate remote command
+    # run remote command
