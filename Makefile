@@ -1,5 +1,5 @@
 # Edit this release and run "make release"
-RELEASE=0.7.29-yelp1
+RELEASE=0.7.30-yelp1
 
 UID:=`id -u`
 GID:=`id -g`
@@ -90,5 +90,8 @@ LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B )
 release:
 	dch -v $(RELEASE) --changelog src/debian/changelog "$(LAST_COMMIT_MSG)"
 	sed -i -e "s/version.*=.*/version        = '$(VERSION)'/" src/setup.py
-	git tag v$(VERSION)
-	echo "$(RELEASE) is tagged and changelog set. Push to origin/master to have a package distributed"
+	git tag --force v$(VERSION)
+	echo "$(RELEASE) is tagged and changelog set."
+	git diff
+	echo 'git commit -a -m "Released $(RELEASE) via make release'
+	echo 'git push --tags origin master'
