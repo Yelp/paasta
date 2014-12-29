@@ -301,6 +301,5 @@ def list_services():
     return sorted(read_services_configuration().keys())
 
 
-def execute_on_remote_master(cluster_name):
-    #raise Exception
-    return "STATUSSSSSSSSSSSSSSSSSSSSSS:\n\n\nhi kwa\n\n\n"
+def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename):
+    raise Exception

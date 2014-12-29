@@ -9,7 +9,7 @@ from argcomplete.completers import ChoicesCompleter
 from service_configuration_lib import read_deploy
 from paasta_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
-from paasta_tools.paasta_cli.utils import execute_on_remote_master
+from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import NoSuchService
@@ -119,9 +119,10 @@ def report_status(service_name, deploy_pipeline, actual_deployments):
 
         # Case: service deployed to cluster.instance
         if namespace in actual_deployments:
+            unformatted_instance = instance
             instance = PaastaColors.green(instance)
             version = actual_deployments[namespace]
-            status = execute_on_remote_master(cluster_name)
+            status = execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, unformatted_instance)
 
         # Case: service NOT deployed to cluster.instance
         else:
