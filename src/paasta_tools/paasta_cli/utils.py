@@ -326,6 +326,8 @@ def find_connectable_master(masters):
     """
     port = 22
     timeout = 1.0  # seconds
+
+    connectable_master = None
     for master in masters:
         try:
             create_connection((master, port), timeout)
@@ -336,7 +338,6 @@ def find_connectable_master(masters):
         except error as e:
             sys.stderr.write('ERROR cannot connect to %s port %s: ' % (master, port))
             sys.stderr.write('%s\n' % e.strerror)
-            connectable_master = None
     return connectable_master
 
 
