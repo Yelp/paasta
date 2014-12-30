@@ -90,7 +90,7 @@ def test_find_connectable_master_all_failures(mock_create_connection):
     ]
     port = 22
     timeout = 1.0
-    create_connection_side_effects = error('fake socket.error')
+    create_connection_side_effects = error('EAI_ERROR', 'fake socket.error')
     mock_create_connection.side_effect = create_connection_side_effects
 
     actual = utils.find_connectable_master(masters)
@@ -98,7 +98,8 @@ def test_find_connectable_master_all_failures(mock_create_connection):
     mock_create_connection.assert_any_call((masters[0], port), timeout)
     mock_create_connection.assert_any_call((masters[1], port), timeout)
     mock_create_connection.assert_any_call((masters[2], port), timeout)
-    assert actual == (None, None)
+    assert actual[0] is None
+    assert 'fake socket.error' in actual[1]
 
 
 @patch('paasta_tools.paasta_cli.utils._run', autospec=True)

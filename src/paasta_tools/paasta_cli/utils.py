@@ -9,7 +9,6 @@ from socket import gethostbyname_ex
 from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
-import sys
 
 from service_configuration_lib import read_services_configuration
 
@@ -341,9 +340,7 @@ def find_connectable_master(masters):
             output = None
             break
         except error as e:
-            output = None
-            sys.stderr.write('ERROR cannot connect to %s port %s: ' % (master, port))
-            sys.stderr.write('%s\n' % e.strerror)
+            output = 'ERROR cannot connect to %s port %s:\n%s ' % (master, port, e.strerror)
     return (connectable_master, output)
 
 
