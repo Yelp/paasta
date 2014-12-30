@@ -393,7 +393,7 @@ def run_paasta_serviceinit_status(master, service_name, instancename):
     return output
 
 
-def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename):
+def execute_paasta_serviceinit_status_on_remote_master(cluster_name, service_name, instancename):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the return value of run_paasta_serviceinit_status().
     """
