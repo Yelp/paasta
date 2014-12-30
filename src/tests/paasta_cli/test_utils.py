@@ -51,30 +51,33 @@ def test_find_connectable_master_happy_path(mock_create_connection):
     assert actual == masters[0]
 
 
-#@patch('paasta_tools.paasta_cli.utils.create_connection', autospec=True)
-#def test_find_connectable_master_one_failure(mock_create_connection):
-#    masters = [
-#        '192.0.2.1',
-#        '192.0.2.2',
-#        '192.0.2.3',
-#    ]
-#    port = 22
-#    timeout = 1.0
-#    create_connection_side_effects = [
-#        #error('fake socket.error'),
-#        'unused',
-#        'unused',
-#    ]
-#    mock_create_connection.side_effect = create_connection_side_effects
-#    mock_create_connection.return_value = True
-#
-#    actual = utils.find_connectable_master(masters)
-#    assert mock_create_connection.call_count == 2
-#    mock_create_connection.assert_any_call((masters[0], port), timeout)
-#    mock_create_connection.assert_any_call((masters[1], port), timeout)
-#    assert actual == '192.0.2.2'
-#
-#
+@patch('paasta_tools.paasta_cli.utils.create_connection', autospec=True)
+def test_find_connectable_master_one_failure(mock_create_connection):
+    masters = [
+        '192.0.2.1',
+        '192.0.2.2',
+        '192.0.2.3',
+    ]
+    port = 22
+    timeout = 1.0
+    # iter() is a workaround
+    # (http://lists.idyll.org/pipermail/testing-in-python/2013-April/005527.html)
+    # for a bug in mock (http://bugs.python.org/issue17826)
+    create_connection_side_effects = iter([
+        error('fake socket.error'),
+        'unused',
+        'unused',
+    ])
+    mock_create_connection.side_effect = create_connection_side_effects
+    mock_create_connection.return_value = True
+
+    actual = utils.find_connectable_master(masters)
+    assert mock_create_connection.call_count == 2
+    mock_create_connection.assert_any_call((masters[0], port), timeout)
+    mock_create_connection.assert_any_call((masters[1], port), timeout)
+    assert actual == '192.0.2.2'
+
+
 @patch('paasta_tools.paasta_cli.utils.create_connection', autospec=True)
 def test_find_connectable_master_all_failures(mock_create_connection):
     masters = [
