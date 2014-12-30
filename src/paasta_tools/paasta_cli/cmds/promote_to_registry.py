@@ -41,12 +41,10 @@ def paasta_promote_to_registry(args):
         print service_not_found
         sys.exit(1)
 
+    cmd = build_promote_command()
     try:
-        cmd = build_promote_command()
-
         print "INFO: Executing fab_repo %s" % cmd
         subprocess.check_call([cmd])
-
     except subprocess.CalledProcessError as subprocess_error:
         print "%s\nFailed to promote image" % subprocess_error
         sys.exit(1)
