@@ -1,6 +1,8 @@
 import fnmatch
 import glob
 import os
+from socket import create_connection
+from socket import error
 from socket import gaierror
 from socket import gethostbyname_ex
 import sys
@@ -312,13 +314,35 @@ def calculate_remote_masters(cluster_name):
         sys.stderr.write('ERROR while doing DNS lookup of %s: ' % cluster_fqdn)
         sys.stderr.write('%s\n' % e.strerror)
         ips = []
-    return set(ips)
+    return ips
+
+
+def find_connectable_master(masters):
+    """For each host in the iterable 'masters', try various connectivity
+    checks. For each master that fails, emit an error message about which check
+    failed and move on to the next master. If a master passes all checks,
+    return it as the connectable master. If no masters pass all checks, return
+    None.
+    """
+    port = 22
+    timeout = 1.0  # seconds
+    for master in masters:
+        try:
+            create_connection((master, port), timeout)
+            # If that succeeded, the connection was successful and we've found
+            # our master.
+            connectable_master = master
+            break
+        except error as e:
+            sys.stderr.write('ERROR cannot connect to %s port %s: ' % (master, port))
+            sys.stderr.write('%s\n' % e.strerror)
+            connectable_master = None
+    return connectable_master
 
 
 def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename):
     masters = calculate_remote_masters(cluster_name)
-    # calculate remote masters from cluster name
-    # connectivity check
+    master = find_connectable_master(masters)
     # sudo check
     # calculate remote command
     # run remote command
