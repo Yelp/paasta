@@ -90,8 +90,8 @@ LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B )
 release:
 	dch -v $(RELEASE) --changelog src/debian/changelog "$(LAST_COMMIT_MSG)"
 	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" src/setup.py
-	git tag --force v$(VERSION)
-	echo "$(RELEASE) is tagged and changelog set."
-	git diff
-	echo 'git commit -a -m "Released $(RELEASE) via make release"'
-	echo 'git push --tags origin master'
+	@git tag --force v$(VERSION)
+	@echo "$(RELEASE) is tagged and changelog set."
+	@git diff
+	@echo 'git commit -a -m "Released $(RELEASE) via make release"'
+	@echo 'git push --tags origin master'
