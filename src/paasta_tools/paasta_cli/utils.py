@@ -387,8 +387,10 @@ def check_ssh_and_sudo_on_master(master):
         return False
 
 
-def run_paasta_serviceinit_status(master):
-    raise Exception
+def run_paasta_serviceinit_status(master, service_name, instancename):
+    command = 'ssh -A -n %s sudo paasta_serviceinit status -s %s.%s' % (master, service_name, instancename)
+    _, output = _run(command)
+    return output
 
 
 def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename):
@@ -402,4 +404,4 @@ def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, inst
     check = check_ssh_and_sudo_on_master(master)
     if not check:
         return 'ERROR ssh or sudo check failed for master %s' % master
-    run_paasta_serviceinit_status(master)
+    run_paasta_serviceinit_status(master, service_name, instancename)
