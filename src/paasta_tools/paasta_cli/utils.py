@@ -341,8 +341,26 @@ def find_connectable_master(masters):
     return connectable_master
 
 
+def _run(command):
+    """Given a command, run it. Return a tuple of the return code and any
+    output.
+    """
+    rc = 0
+    output = 'hi'
+    return (rc, output)
+
+
 def check_ssh_and_sudo_on_master(master):
-    pass
+    check_command = 'ssh -A -n %s sudo -n paasta_serviceinit -h' % master
+    rc, output = _run(check_command)
+    if rc != 0:
+        sys.stderr.write('ERROR cannot run check command "%s" on %s\n' % (check_command, master))
+        sys.stderr.write('Output from check command: ')
+        sys.stderr.write('%s\n' % output)
+        return False
+    return True
+    # if rc == 255: ssh error
+    # if rc == 1: sudo error
 
 
 def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename):
