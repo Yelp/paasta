@@ -356,9 +356,13 @@ def _run(command):
     https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
     magic.
     """
-    process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
-    output, _ = process.communicate()    # execute it, the output goes to the stdout
-    rc = process.wait()    # when finished, get the exit code
+    try:
+        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+        output, _ = process.communicate()    # execute it, the output goes to the stdout
+        rc = process.wait()    # when finished, get the exit code
+    except OSError as e:
+        output = e.strerror
+        rc = e.errno
     return (rc, output)
 
 
