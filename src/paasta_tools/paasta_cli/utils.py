@@ -1,6 +1,16 @@
 import fnmatch
 import glob
 import os
+import shlex
+from socket import create_connection
+from socket import error
+from socket import gaierror
+from socket import gethostbyname_ex
+from subprocess import PIPE
+from subprocess import Popen
+from subprocess import STDOUT
+
+from service_configuration_lib import read_services_configuration
 
 
 def load_method(module_name, method_name):
@@ -292,3 +302,113 @@ def validate_service_name(service_name):
     service_path = os.path.join('/nail/etc/services', service_name)
     if not os.path.isdir(service_path):
         raise NoSuchService(service_name)
+
+
+def list_services():
+    """Returns a sorted list of all services"""
+    return sorted(read_services_configuration().keys())
+
+
+def calculate_remote_masters(cluster_name):
+    cluster_fqdn = "mesos-%s.yelpcorp.com" % cluster_name
+    try:
+        _, _, ips = gethostbyname_ex(cluster_fqdn)
+        output = None
+    except gaierror as e:
+        output = 'ERROR while doing DNS lookup of %s:\n%s\n ' % (cluster_fqdn, e.strerror)
+        ips = []
+    return (ips, output)
+
+
+def find_connectable_master(masters):
+    """For each host in the iterable 'masters', try various connectivity
+    checks. For each master that fails, emit an error message about which check
+    failed and move on to the next master. If a master passes all checks,
+    return it as the connectable master. If no masters pass all checks, return
+    None.
+    """
+    port = 22
+    timeout = 1.0  # seconds
+
+    connectable_master = None
+    for master in masters:
+        try:
+            create_connection((master, port), timeout)
+            # If that succeeded, the connection was successful and we've found
+            # our master.
+            connectable_master = master
+            output = None
+            break
+        except error as e:
+            output = 'ERROR cannot connect to %s port %s:\n%s ' % (master, port, e.strerror)
+    return (connectable_master, output)
+
+
+def _run(command):
+    """Given a command, run it. Return a tuple of the return code and any
+    output.
+
+    We wanted to use plumbum instead of rolling our own thing with
+    subprocess.Popen but were blocked by
+    https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
+    magic.
+    """
+    try:
+        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+        output, _ = process.communicate()    # execute it, the output goes to the stdout
+        rc = process.wait()    # when finished, get the exit code
+    except OSError as e:
+        output = e.strerror
+        rc = e.errno
+    return (rc, output)
+
+
+def check_ssh_and_sudo_on_master(master):
+    check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
+    rc, output = _run(check_command)
+    if rc == 0:
+        return (True, None)
+    if rc == 255:  # ssh error
+        reason = 'Return code was %d which probably means an ssh failure.' % rc
+        hint = 'HINT: Are you allowed to ssh to this machine %s?' % master
+    if rc == 1:  # sudo error
+        reason = 'Return code was %d which probably means a sudo failure.' % rc
+        hint = 'HINT: Is your ssh agent forwarded? (ssh-add -l)'
+    else:  # unknown error
+        reason = 'Return code was %d which is an unknown failure.' % rc
+        hint = 'HINT: Talk to #operations and pastebin this output'
+    output = ('ERROR cannot run check command %(check_command)s\n'
+              '%(reason)s\n'
+              '%(hint)s\n'
+              'Output from check command: %(output)s' %
+              {
+                  'check_command': check_command,
+                  'reason': reason,
+                  'hint': hint,
+                  'output': output,
+              })
+    return (False, output)
+
+
+def run_paasta_serviceinit_status(master, service_name, instancename):
+    command = 'ssh -A -n %s sudo paasta_serviceinit %s.%s status' % (master, service_name, instancename)
+    _, output = _run(command)
+    return output
+
+
+def execute_paasta_serviceinit_status_on_remote_master(cluster_name, service_name, instancename):
+    """Returns a string containing an error message if an error occurred.
+    Otherwise returns the return value of run_paasta_serviceinit_status().
+    """
+    masters, output = calculate_remote_masters(cluster_name)
+    if masters == []:
+        return 'ERROR: %s' % output
+    master, output = find_connectable_master(masters)
+    if not master:
+        return (
+            'ERROR could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
+        )
+    check, output = check_ssh_and_sudo_on_master(master)
+    if not check:
+        return 'ERROR ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
+    return run_paasta_serviceinit_status(master, service_name, instancename)

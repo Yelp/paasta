@@ -13,7 +13,7 @@ lives (``norcal-prod``), but not always (``mesosstage``).
 
 The yaml where marathon jobs are actually defined.
 
-Top level keys are namespaces, e.g. ``main`` and ``canary``. Each namespace MAY have:
+Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancename MAY have:
 
   * ``cpu``: Number of CPUs an instance needs
 

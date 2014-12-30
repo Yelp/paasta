@@ -2,14 +2,21 @@
 """Contains methods used by the paasta client to check the status of the service
 on the PaaSTA stack"""
 from ordereddict import OrderedDict
-import os
+from os.path import join
+
+from argcomplete.completers import ChoicesCompleter
 
 from service_configuration_lib import read_deploy
 from paasta_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
-from paasta_tools.paasta_cli.utils import \
-    guess_service_name, NoSuchService, PaastaColors, PaastaCheckMessages, \
-    validate_service_name, x_mark
+from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_status_on_remote_master
+from paasta_tools.paasta_cli.utils import guess_service_name
+from paasta_tools.paasta_cli.utils import list_services
+from paasta_tools.paasta_cli.utils import NoSuchService
+from paasta_tools.paasta_cli.utils import PaastaCheckMessages
+from paasta_tools.paasta_cli.utils import PaastaColors
+from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.paasta_cli.utils import x_mark
 
 
 def add_subparser(subparsers):
@@ -18,8 +25,10 @@ def add_subparser(subparsers):
         description="PaaSTA client will attempt to deduce the SERVICE option if"
                     " none is provided.",
         help="Display the status of a Yelp service running on PaaSTA.")
-    status_parser.add_argument('-s', '--service', help='The name of the service '
-                                                       'you wish to inspect')
+    status_parser.add_argument(
+        '-s', '--service',
+        help='The name of the service you wish to inspect'
+    ).completer = ChoicesCompleter(list_services())
     status_parser.set_defaults(command=paasta_status)
 
 
@@ -32,13 +41,16 @@ def missing_deployments_message(service_name):
     return message
 
 
-def get_deploy_yaml(service_name):
-    deploy_file_path = os.path.join(DEFAULT_SOA_DIR, service_name, "deploy.yaml")
-    deploy_file = read_deploy(deploy_file_path)
-    return deploy_file
+def get_deploy_info(service_name):
+    deploy_file_path = join(DEFAULT_SOA_DIR, service_name, "deploy.yaml")
+    deploy_info = read_deploy(deploy_file_path)
+    if not deploy_info:
+        print PaastaCheckMessages.DEPLOY_YAML_MISSING
+        exit(1)
+    return deploy_info
 
 
-def planned_deployments(deploy_file):
+def get_planned_deployments(deploy_info):
     """Yield deployment environments in the form 'cluster.instance' in the order
     they appear in the deploy.yaml file for service service_name.
     :param service_name : name of the service for we wish to inspect
@@ -48,7 +60,7 @@ def planned_deployments(deploy_file):
 
     # Store cluster names in the order in which they are read
     # Clusters map to an ordered list of instances
-    for entry in deploy_file['pipeline']:
+    for entry in deploy_info['pipeline']:
         namespace = entry['instancename']
         if (namespace != 'itest') and (namespace != 'registry'):
             cluster, instance = namespace.split('.')
@@ -60,26 +72,22 @@ def planned_deployments(deploy_file):
             yield "%s.%s" % (cluster, instance)
 
 
-def paasta_status(args):
-    """Print the status of a Yelp service running on PaaSTA.
-    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
+def figure_out_service_name(args):
+    """Figures out and validates the input service name"""
     service_name = args.service or guess_service_name()
     try:
         validate_service_name(service_name)
     except NoSuchService as service_not_found:
         print service_not_found
         exit(1)
+    return service_name
 
+
+def get_actual_deployments(service_name):
     deployments_json = _get_deployments_json(DEFAULT_SOA_DIR)
     if not deployments_json:
         print 'Failed to locate deployments.json in default SOA directory'
         exit(1)
-
-    deploy_file = get_deploy_yaml(service_name)
-    if not deploy_file:
-        print PaastaCheckMessages.DEPLOY_YAML_MISSING
-        exit(1)
-
     # Create a dictionary of actual $service_name Jenkins deployments
     actual_deployments = {}
     for key in deployments_json:
@@ -88,38 +96,56 @@ def paasta_status(args):
             value = deployments_json[key].encode('utf8')
             sha = value[value.rfind('-') + 1:]
             actual_deployments[namespace.replace('paasta-', '', 1)] = sha
+    return actual_deployments
+
+
+def report_status(service_name, deploy_pipeline, actual_deployments):
+    jenkins_url = PaastaColors.cyan(
+        'https://jenkins.yelpcorp.com/view/%s' % service_name)
+
+    print "Pipeline: %s" % jenkins_url
+
+    previous_cluster = ''
+
+    # Get cluster.instance in the order in which they appear in deploy.yaml
+    for namespace in deploy_pipeline:
+        cluster_name, instance = namespace.split('.')
+
+        # Previous deploy cluster printed isn't this, so print the name
+        if cluster_name != previous_cluster:
+            print
+            print "cluster: %s" % cluster_name
+            previous_cluster = cluster_name
+
+        # Case: service deployed to cluster.instance
+        if namespace in actual_deployments:
+            unformatted_instance = instance
+            instance = PaastaColors.green(instance)
+            version = actual_deployments[namespace]
+            status = execute_paasta_serviceinit_status_on_remote_master(cluster_name, service_name, unformatted_instance)
+
+        # Case: service NOT deployed to cluster.instance
+        else:
+            instance = PaastaColors.red(instance)
+            version = 'None'
+            status = None
+
+        print '\tinstance: %s' % instance
+        print '\t\tversion: %s' % version
+        if status is not None:
+            for line in status.rstrip().split('\n'):
+                print '\t\t%s' % line
+
+
+def paasta_status(args):
+    """Print the status of a Yelp service running on PaaSTA.
+    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
+    service_name = figure_out_service_name(args)
+    actual_deployments = get_actual_deployments(service_name)
+    deploy_info = get_deploy_info(service_name)
 
     if actual_deployments:
-
-        jenkins_url = PaastaColors.cyan(
-            'https://jenkins.yelpcorp.com/view/%s' % service_name)
-
-        print "Pipeline: %s" % jenkins_url
-
-        previous_cluster = ''
-
-        # Get cluster.instance in the order in which they appear in deploy.yaml
-        for namespace in planned_deployments(deploy_file):
-            cluster_name, instance = namespace.split('.')
-
-            # Previous deploy cluster printed isn't this, so print the name
-            if cluster_name != previous_cluster:
-                print "cluster: %s" % cluster_name
-                previous_cluster = cluster_name
-
-            # Case: service deployed to cluster.instance
-            if namespace in actual_deployments:
-                instance = PaastaColors.green(instance)
-                version = actual_deployments[namespace]
-
-            # Case: service NOT deployed to cluster.instance
-            else:
-                instance = PaastaColors.red(instance)
-                version = 'None'
-
-            print '\tinstance: %s' % instance
-            print '\t\tversion: %s\n' % version
-
-    # No deployments of SERVICE currently exist in deployments.json
+        deploy_pipeline = get_planned_deployments(deploy_info)
+        report_status(service_name, deploy_pipeline, actual_deployments)
     else:
         print missing_deployments_message(service_name)
