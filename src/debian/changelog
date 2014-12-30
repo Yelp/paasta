@@ -1,3 +1,9 @@
+paasta-tools (0.7.33-yelp1) lucid; urgency=low
+
+  * Merge branch 'MESOS-177'
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 30 Dec 2014 14:09:05 -0800
+
 paasta-tools (0.7.32-yelp1) lucid; urgency=low
 
   * Added paasta_servceinit as a script to be run in the path
