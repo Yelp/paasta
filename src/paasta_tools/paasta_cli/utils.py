@@ -1,10 +1,14 @@
 import fnmatch
 import glob
 import os
+import shlex
 from socket import create_connection
 from socket import error
 from socket import gaierror
 from socket import gethostbyname_ex
+from subprocess import PIPE
+from subprocess import Popen
+from subprocess import STDOUT
 import sys
 
 from service_configuration_lib import read_services_configuration
@@ -344,33 +348,39 @@ def find_connectable_master(masters):
 def _run(command):
     """Given a command, run it. Return a tuple of the return code and any
     output.
+
+    We wanted to use plumbum instead of rolling our own thing with
+    subprocess.Popen but were blocked by
+    https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
+    magic.
     """
-    rc = 0
-    output = 'hi'
+    process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+    output, _ = process.communicate()    # execute it, the output goes to the stdout
+    rc = process.wait()    # when finished, get the exit code
     return (rc, output)
 
 
 def check_ssh_and_sudo_on_master(master):
-    check_command = 'ssh -A -n %s sudo -n paasta_serviceinit -h' % master
+    check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
     rc, output = _run(check_command)
     if rc == 0:
         return True
     if rc == 255:  # ssh error
-        sys.stderr.write('ERROR cannot run check command "%s" on %s\n' % (check_command, master))
+        sys.stderr.write('ERROR cannot run check command "%s"\n' % check_command)
         sys.stderr.write('Return code was %d which probably means an ssh failure.\n' % rc)
-        sys.stderr.write('HINT: Are you allowed to ssh to this machine (%s)?' % master)
+        sys.stderr.write('HINT: Are you allowed to ssh to this machine (%s)?\n' % master)
         sys.stderr.write('Output from check command: ')
         sys.stderr.write('%s\n' % output)
         return False
     if rc == 1:  # sudo error
-        sys.stderr.write('ERROR cannot run check command "%s" on %s\n' % (check_command, master))
+        sys.stderr.write('ERROR cannot run check command "%s"\n' % check_command)
         sys.stderr.write('Return code was %d which probably means a sudo failure.\n' % rc)
         sys.stderr.write('HINT: Is your ssh agent forwarded? (ssh-add -l)\n')
         sys.stderr.write('Output from check command: ')
         sys.stderr.write('%s\n' % output)
         return False
     else:  # unknown error
-        sys.stderr.write('ERROR cannot run check command "%s" on %s\n' % (check_command, master))
+        sys.stderr.write('ERROR cannot run check command "%s"\n' % check_command)
         sys.stderr.write('Return code was %d which is an unknown failure.\n' % rc)
         sys.stderr.write('Output from check command: ')
         sys.stderr.write('%s\n' % output)
