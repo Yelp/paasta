@@ -341,9 +341,14 @@ def find_connectable_master(masters):
     return connectable_master
 
 
+def check_ssh_and_sudo_on_master(master):
+    pass
+
+
 def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename):
     masters = calculate_remote_masters(cluster_name)
     master = find_connectable_master(masters)
-    # sudo check
+    check_ssh_and_sudo_on_master(master)
+    # ssh+sudo check
     # calculate remote command
     # run remote command

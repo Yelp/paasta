@@ -100,7 +100,9 @@ def test_find_connectable_master_all_failures(mock_create_connection):
 
 @patch('paasta_tools.paasta_cli.utils.calculate_remote_masters', autospec=True)
 @patch('paasta_tools.paasta_cli.utils.find_connectable_master', autospec=True)
+@patch('paasta_tools.paasta_cli.utils.check_ssh_and_sudo_on_master', autospec=True)
 def test_execute_paasta_serviceinit_on_remote_master_happy_path(
+    mock_check_ssh_and_sudo_on_master,
     mock_find_connectable_master,
     mock_calculate_remote_masters,
 ):
@@ -113,8 +115,10 @@ def test_execute_paasta_serviceinit_on_remote_master_happy_path(
         'fake_master3',
     )
     mock_calculate_remote_masters.return_value = remote_masters
+    mock_find_connectable_master.return_value = 'fake_connectable_master'
 
     actual = utils.execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename)
     mock_calculate_remote_masters.assert_called_once_with(cluster_name)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
+    mock_check_ssh_and_sudo_on_master.assert_called_once_with('fake_connectable_master')
     assert actual is None
