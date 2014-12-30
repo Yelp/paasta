@@ -130,8 +130,10 @@ def test_check_ssh_and_sudo_on_master_check_sudo_failure(mock_run):
 @patch('paasta_tools.paasta_cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
+    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit fake_service_name.fake_instancename status'
 
     actual = utils.run_paasta_serviceinit_status('fake_master', 'fake_service_name', 'fake_instancename')
+    mock_run.assert_called_once_with(expected_command)
     assert actual == mock_run.return_value[1]
 
 
@@ -161,7 +163,7 @@ def test_execute_paasta_serviceinit_on_remote_master_happy_path(
     mock_find_connectable_master.assert_called_once_with(remote_masters)
     mock_check_ssh_and_sudo_on_master.assert_called_once_with('fake_connectable_master')
     mock_run_paasta_serviceinit_status.assert_called_once_with('fake_connectable_master', service_name, instancename)
-    assert actual is None
+    assert actual == mock_run_paasta_serviceinit_status.return_value
 
 
 @patch('paasta_tools.paasta_cli.utils.calculate_remote_masters', autospec=True)
