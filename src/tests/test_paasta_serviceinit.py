@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 
 import contextlib
-from StringIO import StringIO
 
 import marathon
 import mock
@@ -34,11 +33,11 @@ class TestPaastaServiceinit:
             mock.patch('sys.exit'),
         ) as (
             get_marathon_services_patch,
-            sys_exit_patch
+            sys_exit_patch,
         ):
             assert paasta_tools.paasta_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
-            get_marathon_services_patch.assert_called_once_with(fake_cluster)
             sys_exit_patch.assert_called_once_with(3)
+            get_marathon_services_patch.assert_called_once_with(fake_cluster)
 
     def test_start_marathon_job(self):
         client = mock.create_autospec(marathon.MarathonClient)
@@ -72,14 +71,11 @@ class TestPaastaServiceStatus:
         app.deployments = []
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
-            mock.patch('sys.exit'),
         ) as (
             is_app_id_running_patch,
-            sys_exit_patch,
         ):
             paasta_tools.paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
             is_app_id_running_patch.assert_called_once_with(app_id, client)
-            sys_exit_patch.assert_called_once_with(0)
 
     def tests_status_marathon_job_when_running_running_no_tasks(self):
         client = mock.create_autospec(marathon.MarathonClient)
@@ -94,14 +90,11 @@ class TestPaastaServiceStatus:
         app.deployments = []
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
-            mock.patch('sys.exit'),
         ) as (
             is_app_id_running_patch,
-            sys_exit_patch,
         ):
             paasta_tools.paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
             is_app_id_running_patch.assert_called_once_with(app_id, client)
-            sys_exit_patch.assert_called_once_with(1)
 
     def tests_status_marathon_job_when_running_not_running(self):
         client = mock.create_autospec(marathon.MarathonClient)
@@ -111,14 +104,11 @@ class TestPaastaServiceStatus:
         normal_instance_count = 5
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
-            mock.patch('sys.exit'),
         ) as (
             is_app_id_running_patch,
-            sys_exit_patch,
         ):
             paasta_tools.paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
             is_app_id_running_patch.assert_called_once_with(app_id, client)
-            sys_exit_patch.assert_called_once_with(0)
 
     def tests_status_marathon_job_when_running_running_tasks_with_deployments(self):
         client = mock.create_autospec(marathon.MarathonClient)
@@ -133,18 +123,65 @@ class TestPaastaServiceStatus:
         app.deployments = ['test_deployment']
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
-            mock.patch('sys.exit'),
-            mock.patch('sys.stdout', new_callable=StringIO)
         ) as (
             is_app_id_running_patch,
-            sys_exit_patch,
-            std_out_patch,
         ):
-            paasta_tools.paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
+            output = paasta_tools.paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
             is_app_id_running_patch.assert_called_once_with(app_id, client)
-            sys_exit_patch.assert_called_once_with(1)
-            output = std_out_patch.getvalue()
             assert 'Deploying' in output
+
+    def test_status_smartstack_backends_different_nerve_ns(self):
+        service = 'my_service'
+        instance = 'my_instance'
+        cluster = 'fake_cluster'
+        different_ns = 'other_instance'
+        normal_count = 10
+        with mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance') as read_ns_mock:
+            read_ns_mock.return_value = different_ns
+            actual = paasta_tools.paasta_serviceinit.status_smartstack_backends(service, instance, normal_count, cluster)
+            assert "is announced in the" in actual
+            assert different_ns in actual
+
+    def test_status_smartstack_backends_working(self):
+        service = 'my_service'
+        instance = 'my_instance'
+        service_instance = "%s.%s" % (service, instance)
+        cluster = 'fake_cluster'
+        normal_count = 10
+        fake_up_backends = 11
+        with contextlib.nested(
+            mock.patch('paasta_tools.paasta_serviceinit.get_replication_for_services'),
+            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
+            mock.patch('paasta_tools.paasta_serviceinit.haproxy_backend_report'),
+        ) as (
+            get_replication_for_services_patch,
+            read_ns_patch,
+            backend_report_patch,
+        ):
+            read_ns_patch.return_value = instance
+            backend_report_patch.return_value = "fake_report"
+            get_replication_for_services_patch.return_value = {service_instance: fake_up_backends}
+            actual = paasta_tools.paasta_serviceinit.status_smartstack_backends(service, instance, normal_count, cluster)
+            backend_report_patch.assert_called_once_with(normal_count, fake_up_backends)
+            assert "Smartstack: fake_report" in actual
+
+    def test_haproxy_backend_report_healthy(self):
+        normal_count = 10
+        actual_count = 11
+        status = paasta_tools.paasta_serviceinit.haproxy_backend_report(normal_count, actual_count)
+        assert "Healthy" in status
+
+    def test_haproxy_backend_report_warning(self):
+        normal_count = 10
+        actual_count = 1
+        status = paasta_tools.paasta_serviceinit.haproxy_backend_report(normal_count, actual_count)
+        assert "Warning" in status
+
+    def test_haproxy_backend_report_critical(self):
+        normal_count = 10
+        actual_count = 0
+        status = paasta_tools.paasta_serviceinit.haproxy_backend_report(normal_count, actual_count)
+        assert "Critical" in status
 
     def test_main(self):
         pass

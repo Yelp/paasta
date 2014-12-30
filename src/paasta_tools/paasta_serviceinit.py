@@ -11,9 +11,12 @@ import logging
 
 from paasta_tools import marathon_tools
 from paasta_tools.paasta_cli.utils import PaastaColors
+from paasta_tools.monitoring.replication_utils import get_replication_for_services
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
+
+SYNAPSE_HOST_PORT = "localhost:3212"
 
 
 def parse_args():
@@ -60,21 +63,51 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
         app = client.get_app(app_id)
         running_instances = app.tasks_running
         if len(app.deployments) == 0:
-            status = PaastaColors.bold("Running")
+            deploy_status = PaastaColors.bold("Running")
         else:
-            status = PaastaColors.yellow("Deploying")
+            deploy_status = PaastaColors.yellow("Deploying")
         if running_instances >= normal_instance_count:
+            status = PaastaColors.green("Healthy")
             instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
-            print "%s exists in marathon with %s instances. Status: %s" % (name, instance_count, status)
-            sys.exit(0)
         else:
+            status = PaastaColors.green("Warning")
             instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
-            print "%s exists in marathon with %s instances Status: %s." % (name, instance_count, status)
-            sys.exit(1)
+        return "Marathon:   %s - up with %s instances. Status: %s." % (status, instance_count, deploy_status)
     else:
         red_not = PaastaColors.red("NOT")
-        print "CRIT: %s (app %s) is %s running in Marathon." % (name, app_id, red_not)
-        sys.exit(1)
+        status = PaastaColors.green("Critical")
+        return "Marathon:   %s: - %s (app %s) is %s running in Marathon." % (status, name, app_id, red_not)
+
+
+def haproxy_backend_report(normal_instance_count, up_backends):
+    """ Given that a service is in smartstack, this returns a human readable
+    report of the up backends """
+    if up_backends >= normal_instance_count:
+        status = PaastaColors.green("Healthy")
+        count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
+    elif up_backends == 0:
+        status = PaastaColors.green("Critical")
+        count = PaastaColors.red("(%d/%d)" % (up_backends, normal_instance_count))
+    else:
+        status = PaastaColors.green("Warning")
+        count = PaastaColors.yellow("(%d/%d)" % (up_backends, normal_instance_count))
+    return "%s - in haproxy with %s backends UP" % (status, count)
+
+
+def status_smartstack_backends(service, instance, normal_instance_count, cluster):
+    nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
+    if instance != nerve_ns:
+        ns_string = PaastaColors.bold(nerve_ns)
+        return "Smartstack: N/A - %s is announced in the %s namespace." % (instance, ns_string)
+    else:
+        try:
+            service_instance = "%s.%s" % (service, instance)
+            up_backends = get_replication_for_services(SYNAPSE_HOST_PORT, [service_instance])
+            up_backend_count = up_backends[service_instance]
+            report = haproxy_backend_report(normal_instance_count, up_backend_count)
+            return "Smartstack: %s" % report
+        except KeyError:
+            return "Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance
 
 
 def main():
@@ -106,7 +139,8 @@ def main():
     elif command == 'restart':
         restart_marathon_job(service, instance, app_id, normal_instance_count, client)
     elif command == 'status':
-        status_marathon_job(service, instance, app_id, normal_instance_count, client)
+        print status_marathon_job(service, instance, app_id, normal_instance_count, client)
+        print status_smartstack_backends(service, instance, normal_instance_count, cluster)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
@@ -115,5 +149,6 @@ def main():
 
 if __name__ == "__main__":
     main()
+
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
