@@ -314,11 +314,11 @@ def calculate_remote_masters(cluster_name):
     cluster_fqdn = "mesos-%s.yelpcorp.com" % cluster_name
     try:
         _, _, ips = gethostbyname_ex(cluster_fqdn)
+        output = None
     except gaierror as e:
-        sys.stderr.write('ERROR while doing DNS lookup of %s: ' % cluster_fqdn)
-        sys.stderr.write('%s\n' % e.strerror)
+        output = 'ERROR while doing DNS lookup of %s:\n%s\n ' % (cluster_fqdn, e.strerror)
         ips = []
-    return ips
+    return (ips, output)
 
 
 def find_connectable_master(masters):
@@ -338,11 +338,13 @@ def find_connectable_master(masters):
             # If that succeeded, the connection was successful and we've found
             # our master.
             connectable_master = master
+            output = None
             break
         except error as e:
+            output = None
             sys.stderr.write('ERROR cannot connect to %s port %s: ' % (master, port))
             sys.stderr.write('%s\n' % e.strerror)
-    return connectable_master
+    return (connectable_master, output)
 
 
 def _run(command):
@@ -364,27 +366,27 @@ def check_ssh_and_sudo_on_master(master):
     check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
     rc, output = _run(check_command)
     if rc == 0:
-        return True
+        return (True, None)
     if rc == 255:  # ssh error
-        sys.stderr.write('ERROR cannot run check command "%s"\n' % check_command)
-        sys.stderr.write('Return code was %d which probably means an ssh failure.\n' % rc)
-        sys.stderr.write('HINT: Are you allowed to ssh to this machine (%s)?\n' % master)
-        sys.stderr.write('Output from check command: ')
-        sys.stderr.write('%s\n' % output)
-        return False
+        reason = 'Return code was %d which probably means an ssh failure.' % rc
+        hint = 'HINT: Are you allowed to ssh to this machine %s?' % master
     if rc == 1:  # sudo error
-        sys.stderr.write('ERROR cannot run check command "%s"\n' % check_command)
-        sys.stderr.write('Return code was %d which probably means a sudo failure.\n' % rc)
-        sys.stderr.write('HINT: Is your ssh agent forwarded? (ssh-add -l)\n')
-        sys.stderr.write('Output from check command: ')
-        sys.stderr.write('%s\n' % output)
-        return False
+        reason = 'Return code was %d which probably means a sudo failure.' % rc
+        hint = 'HINT: Is your ssh agent forwarded? (ssh-add -l)'
     else:  # unknown error
-        sys.stderr.write('ERROR cannot run check command "%s"\n' % check_command)
-        sys.stderr.write('Return code was %d which is an unknown failure.\n' % rc)
-        sys.stderr.write('Output from check command: ')
-        sys.stderr.write('%s\n' % output)
-        return False
+        reason = 'Return code was %d which is an unknown failure.' % rc
+        hint = 'HINT: Talk to #operations and pastebin this output'
+    output = ('ERROR cannot run check command %(check_command)s\n'
+              '%(reason)s\n'
+              '%(hint)s\n'
+              'Output from check command: %(output)s' %
+              {
+                  'check_command': check_command,
+                  'reason': reason,
+                  'hint': hint,
+                  'output': output,
+              })
+    return (False, output)
 
 
 def run_paasta_serviceinit_status(master, service_name, instancename):
@@ -397,11 +399,15 @@ def execute_paasta_serviceinit_status_on_remote_master(cluster_name, service_nam
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the return value of run_paasta_serviceinit_status().
     """
-    masters = calculate_remote_masters(cluster_name)
-    master = find_connectable_master(masters)
+    masters, output = calculate_remote_masters(cluster_name)
+    if masters == []:
+        return 'ERROR: %s' % output
+    master, output = find_connectable_master(masters)
     if not master:
-        return 'ERROR could not find connectable master in cluster %s' % cluster_name
-    check = check_ssh_and_sudo_on_master(master)
+        return (
+            'ERROR could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
+        )
+    check, output = check_ssh_and_sudo_on_master(master)
     if not check:
-        return 'ERROR ssh or sudo check failed for master %s' % master
+        return 'ERROR ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
     return run_paasta_serviceinit_status(master, service_name, instancename)
