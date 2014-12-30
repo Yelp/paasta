@@ -12,7 +12,8 @@ deploy_marathon_services
 generate_deployments_json
 check_marathon_services_replication
 generate_services_yaml
-cleanup_marathon_orphaned_containers"
+cleanup_marathon_orphaned_containers
+paasta_serviceinit"
 
 MARATHON_SERVICES="fake_service_uno.main
 fake_service_dos.niam"
