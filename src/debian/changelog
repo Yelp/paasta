@@ -1,3 +1,9 @@
+paasta-tools (0.7.34-yelp1) lucid; urgency=low
+
+  * Merge branch 'MESOS-195'
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 30 Dec 2014 14:11:16 -0800
+
 paasta-tools (0.7.33-yelp1) lucid; urgency=low
 
   * Merge branch 'MESOS-177'
