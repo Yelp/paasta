@@ -5,104 +5,73 @@ from subprocess import CalledProcessError
 from mock import patch
 from pytest import raises
 
-from paasta_tools.paasta_cli.cmds.generate_pipeline \
-    import paasta_generate_pipeline
+from paasta_tools.paasta_cli.cmds.promote_to_registry import paasta_promote_to_registry
 from paasta_tools.paasta_cli.paasta_cli import parse_args
 from paasta_tools.paasta_cli.utils import NoSuchService
 
 
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.validate_service_name', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
-def test_generate_pipeline_service_not_found(
-        mock_stdout, mock_guess_service_name, mock_validate_service_name):
-    # paasta generate cannot guess service name and none is provided
-
-    mock_guess_service_name.return_value = 'not_a_service'
+def test_promote_to_registry_service_not_found(
+    mock_stdout,
+    mock_validate_service_name,
+):
     mock_validate_service_name.side_effect = NoSuchService(None)
 
-    sys.argv = ['./paasta_cli', 'generate-pipeline']
+    sys.argv = ['./paasta_cli', 'promote-to-registry']
     parsed_args = parse_args()
     expected_output = "%s\n" % NoSuchService.GUESS_ERROR_MSG
 
-    # Fail if exit(1) does not get called
     with raises(SystemExit) as sys_exit:
-        paasta_generate_pipeline(parsed_args)
+        paasta_promote_to_registry(parsed_args)
 
     output = mock_stdout.getvalue()
     assert sys_exit.value.code == 1
     assert output == expected_output
 
 
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
-def test_generate_pipeline_subprocess1_fail_no_opt_args(
-        mock_subprocess, mock_guess_service_name, mock_validate_service_name):
-    # paasta generate fails on the first subprocess call
-    # service name has to be guessed
-
-    mock_guess_service_name.return_value = 'fake_service'
-    mock_validate_service_name.return_value = None
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.validate_service_name', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.subprocess', autospec=True)
+def test_promote_to_registry_subprocess_fail(
+    mock_subprocess,
+    mock_validate_service_name,
+):
     mock_subprocess.check_call.side_effect = [
         CalledProcessError(1, 'jenkins cmd 1'), 0]
-    sys.argv = ['./paasta_cli', 'generate-pipeline']
+    sys.argv = [
+        './paasta_cli', 'promote-to-registry', '--service', 'unused', '--sha', 'unused',
+    ]
     parsed_args = parse_args()
 
     with raises(CalledProcessError):
-        paasta_generate_pipeline(parsed_args)
+        paasta_promote_to_registry(parsed_args)
 
 
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
-def test_generate_pipeline_subprocess2_fail_with_opt_args(
-        mock_subprocess, mock_guess_service_name, mock_validate_service_name):
-    # paasta generate fails on the second subprocess call
-    # service name provided as arg
-
-    mock_guess_service_name.return_value = 'fake_service'
-    mock_validate_service_name.return_value = None
-    mock_subprocess.check_call.side_effect = [
-        0, CalledProcessError(1, 'jenkins cmd 2')]
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.validate_service_name', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.subprocess', autospec=True)
+def test_promote_to_registry_success(
+    mock_subprocess,
+    mock_validate_service_name,
+):
+    mock_subprocess.check_call.return_value = 0
 
     sys.argv = [
-        './paasta_cli', 'generate-pipeline', '--service', 'fake_service']
+        './paasta_cli', 'promote-to-registry', '--service', 'unused', '--sha', 'unused',
+    ]
     parsed_args = parse_args()
-
-    with raises(CalledProcessError):
-        paasta_generate_pipeline(parsed_args)
+    assert paasta_promote_to_registry(parsed_args) is None
 
 
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
-def test_generate_pipeline_success_no_opts(
-        mock_subprocess, mock_guess_service_name, mock_validate_service_name):
-    # paasta generate succeeds when service name must be guessed
-
-    mock_guess_service_name.return_value = 'fake_service'
-    mock_validate_service_name.return_value = None
-    mock_subprocess.check_call.side_effect = [
-        0, 0]
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.validate_service_name', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.subprocess', autospec=True)
+def test_promote_to_registry_success_with_opts(
+    mock_subprocess,
+    mock_validate_service_name,
+):
+    mock_subprocess.check_call.return_value = 0
 
     sys.argv = [
-        './paasta_cli', 'generate-pipeline']
+        './paasta_cli', 'promote-to-registry', '--service', 'fake_service', '--sha', 'deadbeef',
+    ]
     parsed_args = parse_args()
-    assert paasta_generate_pipeline(parsed_args) is None
-
-
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
-def test_generate_pipeline_success_with_opts(
-        mock_subprocess, mock_validate_service_name):
-    # paasta generate succeeds when service name provided as arg
-
-    mock_validate_service_name.return_value = None
-    mock_subprocess.check_call.side_effect = [
-        0, 0]
-
-    sys.argv = [
-        './paasta_cli', 'generate-pipeline', '--service', 'fake_service']
-    parsed_args = parse_args()
-    assert paasta_generate_pipeline(parsed_args) is None
+    assert paasta_promote_to_registry(parsed_args) is None
