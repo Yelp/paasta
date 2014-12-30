@@ -353,14 +353,28 @@ def _run(command):
 def check_ssh_and_sudo_on_master(master):
     check_command = 'ssh -A -n %s sudo -n paasta_serviceinit -h' % master
     rc, output = _run(check_command)
-    if rc != 0:
+    if rc == 0:
+        return True
+    if rc == 255:  # ssh error
         sys.stderr.write('ERROR cannot run check command "%s" on %s\n' % (check_command, master))
+        sys.stderr.write('Return code was %d which probably means an ssh failure.\n' % rc)
+        sys.stderr.write('HINT: Are you allowed to ssh to this machine (%s)?' % master)
         sys.stderr.write('Output from check command: ')
         sys.stderr.write('%s\n' % output)
         return False
-    return True
-    # if rc == 255: ssh error
-    # if rc == 1: sudo error
+    if rc == 1:  # sudo error
+        sys.stderr.write('ERROR cannot run check command "%s" on %s\n' % (check_command, master))
+        sys.stderr.write('Return code was %d which probably means a sudo failure.\n' % rc)
+        sys.stderr.write('HINT: Is your ssh agent forwarded? (ssh-add -l)\n')
+        sys.stderr.write('Output from check command: ')
+        sys.stderr.write('%s\n' % output)
+        return False
+    else:  # unknown error
+        sys.stderr.write('ERROR cannot run check command "%s" on %s\n' % (check_command, master))
+        sys.stderr.write('Return code was %d which is an unknown failure.\n' % rc)
+        sys.stderr.write('Output from check command: ')
+        sys.stderr.write('%s\n' % output)
+        return False
 
 
 def execute_paasta_serviceinit_on_remote_master(cluster_name, service_name, instancename):

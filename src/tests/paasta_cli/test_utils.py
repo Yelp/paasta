@@ -99,13 +99,36 @@ def test_find_connectable_master_all_failures(mock_create_connection):
 
 
 @patch('paasta_tools.paasta_cli.utils._run', autospec=True)
-def test_check_ssh_and_sudo_on_master(mock_run):
+def test_check_ssh_and_sudo_on_master_check_successful(mock_run):
     master = 'fake_master'
-    mock_run.return_value = ('fake_rc', 'fake_output')
+    mock_run.return_value = (0, 'fake_output')
     expected_command = 'ssh -A -n %s sudo -n paasta_serviceinit -h' % master
 
-    utils.check_ssh_and_sudo_on_master(master)
+    actual = utils.check_ssh_and_sudo_on_master(master)
     mock_run.assert_called_once_with(expected_command)
+    assert actual is True
+
+
+@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+def test_check_ssh_and_sudo_on_master_check_ssh_failure(mock_run):
+    master = 'fake_master'
+    mock_run.return_value = (255, 'fake_output')
+    expected_command = 'ssh -A -n %s sudo -n paasta_serviceinit -h' % master
+
+    actual = utils.check_ssh_and_sudo_on_master(master)
+    mock_run.assert_called_once_with(expected_command)
+    assert actual is False
+
+
+@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+def test_check_ssh_and_sudo_on_master_check_sudo_failure(mock_run):
+    master = 'fake_master'
+    mock_run.return_value = (1, 'fake_output')
+    expected_command = 'ssh -A -n %s sudo -n paasta_serviceinit -h' % master
+
+    actual = utils.check_ssh_and_sudo_on_master(master)
+    mock_run.assert_called_once_with(expected_command)
+    assert actual is False
 
 
 @patch('paasta_tools.paasta_cli.utils.calculate_remote_masters', autospec=True)
