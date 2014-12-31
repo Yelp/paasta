@@ -47,5 +47,5 @@ def paasta_promote_to_registry(args):
     try:
         subprocess.check_output(cmd, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
-        print "ERROR: Failed to promote image. Output:\n%s" % exc.output
+        print "ERROR: Failed to promote image. Output:\n%sReturn code was: %d" % (exc.output, exc.returncode)
         sys.exit(exc.returncode)
