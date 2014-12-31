@@ -1,3 +1,4 @@
+import shlex
 import sys
 from subprocess import CalledProcessError
 
@@ -16,6 +17,7 @@ def test_build_promote_command():
         upstream_job_name,
         upstream_git_commit,
     )
+    expected = shlex.split(expected)
     actual = build_promote_command(upstream_job_name, upstream_git_commit)
     assert actual == expected
 
@@ -26,8 +28,8 @@ def test_promote_to_registry_subprocess_fail(
     mock_subprocess,
     mock_validate_service_name,
 ):
-    mock_subprocess.check_call.side_effect = [
-        CalledProcessError(1, 'jenkins cmd 1'), 0]
+    mock_subprocess.check_output.side_effect = [
+        CalledProcessError(1, 'fake_cmd'), 0]
     sys.argv = [
         './paasta_cli', 'promote-to-registry', '--service', 'unused', '--commit', 'unused',
     ]

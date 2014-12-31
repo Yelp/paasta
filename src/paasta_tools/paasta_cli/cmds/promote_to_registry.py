@@ -3,6 +3,7 @@
 image to a registry.
 """
 
+import shlex
 import subprocess
 import sys
 
@@ -29,10 +30,11 @@ def add_subparser(subparsers):
 
 
 def build_promote_command(upstream_job_name, upstream_git_commit):
-    return "docker push docker-paasta.yelpcorp.com:443/%s:paasta-%s" % (
+    cmd = "docker push docker-paasta.yelpcorp.com:443/%s:paasta-%s" % (
         upstream_job_name,
         upstream_git_commit,
     )
+    return shlex.split(cmd)
 
 
 def paasta_promote_to_registry(args):
@@ -41,9 +43,9 @@ def paasta_promote_to_registry(args):
     validate_service_name(service_name)
 
     cmd = build_promote_command(service_name, args.commit)
+    print "INFO: Executing promote command '%s'" % cmd
     try:
-        print "INFO: Executing promote command '%s'" % cmd
-        subprocess.check_call([cmd])
-    except subprocess.CalledProcessError as subprocess_error:
-        print "ERROR: Failed to promote image:\n%s" % subprocess_error
-        sys.exit(1)
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as exc:
+        print "ERROR: Failed to promote image. Output:\n%s" % exc.output
+        sys.exit(exc.returncode)
