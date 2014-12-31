@@ -4,7 +4,7 @@ Feature: paasta_serviceinit can control marathon tasks
     Given a working marathon instance
     When we run the job test-service.main
     And we wait for it to be deployed
-    Then paasta_serviceinit status should try to exit 0
+    Then paasta_serviceinit status_marathon_job should return "Healthy"
 
   Scenario: paasta_serviceinit can restart tasks
     Given a working marathon instance

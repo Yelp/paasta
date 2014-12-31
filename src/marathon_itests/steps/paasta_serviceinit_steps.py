@@ -21,7 +21,7 @@ def step_impl(context):
     print "Sleeping 10 seconds to wait for test-service to be deployed."
     time.sleep(10)
 
-@then(u'paasta_serviceinit status should try to exit 0')
+@then(u'paasta_serviceinit status_marathon_job should return "Healthy"')
 def step_impl(context):
     normal_instance_count = 1
     client = context.client
@@ -29,9 +29,8 @@ def step_impl(context):
     service = 'test-service'
     instance = 'main'
 
-    with mock.patch('sys.exit') as sys_exit_patch:
-        paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
-        sys_exit_patch.assert_called_once_with(0)
+    output = paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
+    assert "Healthy" in output
 
 @then(u'paasta_serviceinit restart should get new task_ids')
 def step_impl(context):
