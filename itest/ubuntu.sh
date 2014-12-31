@@ -26,6 +26,9 @@ PAASTA_COMMANDS="list
 check
 generate-pipeline
 help
+itest
+mark-for-deployment
+promote-to-registry
 status
 version"
 
