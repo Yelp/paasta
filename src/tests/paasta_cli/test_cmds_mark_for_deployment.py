@@ -13,16 +13,14 @@ from paasta_tools.paasta_cli.paasta_cli import parse_args
 def test_build_command():
     upstream_git_url = 'fake_upstream_git_url'
     upstream_git_commit = 'fake_upstream_git_commit'
-    clustername = 'fake_clustername'
-    instancename = 'fake_instancename'
-    expected = 'git push %s %s:refs/heads/paasta-%s.%s' % (
+    clusterinstance = 'fake_clusterinstance'
+    expected = 'git push %s %s:refs/heads/paasta-%s' % (
         upstream_git_url,
         upstream_git_commit,
-        clustername,
-        instancename,
+        clusterinstance,
     )
     expected = shlex.split(expected)
-    actual = build_command(upstream_git_url, upstream_git_commit, clustername, instancename)
+    actual = build_command(upstream_git_url, upstream_git_commit, clusterinstance)
     assert actual == expected
 
 
@@ -36,8 +34,7 @@ def test_mark_for_deployment_subprocess_fail(
         './paasta_cli', 'mark-for-deployment',
         '--git-url', 'unused',
         '--commit', 'unused',
-        '--clustername', 'unused',
-        '--instancename', 'unused',
+        '--clusterinstance', 'unused',
     ]
     parsed_args = parse_args()
 
@@ -55,8 +52,7 @@ def test_mark_for_deployment_success(
         './paasta_cli', 'mark-for-deployment',
         '--git-url', 'unused',
         '--commit', 'unused',
-        '--clustername', 'unused',
-        '--instancename', 'unused',
+        '--clusterinstance', 'unused',
     ]
     parsed_args = parse_args()
     assert paasta_mark_for_deployment(parsed_args) is None
@@ -72,8 +68,7 @@ def test_mark_for_deployment_success_with_opts(
         './paasta_cli', 'mark-for-deployment',
         '--git-url', 'unused',
         '--commit', 'unused',
-        '--clustername', 'unused',
-        '--instancename', 'unused',
+        '--clusterinstance', 'unused',
     ]
     parsed_args = parse_args()
     assert paasta_mark_for_deployment(parsed_args) is None

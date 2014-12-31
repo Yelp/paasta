@@ -22,12 +22,8 @@ def add_subparser(subparsers):
                              help='Git sha to mark for deployment',
                              required=True,
                              )
-    list_parser.add_argument('-l', '--clustername',
-                             help='Mark the service ready for deployment in this clustername',
-                             required=True,
-                             )
-    list_parser.add_argument('-i', '--instancename',
-                             help='Mark the service ready for deployment in this instancename',
+    list_parser.add_argument('-l', '--clusterinstance',
+                             help='Mark the service ready for deployment in this clusterinstance (e.g. norcal-devc.canary, nova-prod.main)',
                              required=True,
                              )
 
@@ -37,21 +33,19 @@ def add_subparser(subparsers):
 def build_command(
     upstream_git_url,
     upstream_git_commit,
-    clustername,
-    instancename,
+    clusterinstance,
 ):
-    cmd = 'git push %s %s:refs/heads/paasta-%s.%s' % (
+    cmd = 'git push %s %s:refs/heads/paasta-%s' % (
         upstream_git_url,
         upstream_git_commit,
-        clustername,
-        instancename,
+        clusterinstance,
     )
     return shlex.split(cmd)
 
 
 def paasta_mark_for_deployment(args):
     """Mark a docker image for deployment"""
-    cmd = build_command(args.git_url, args.commit, args.clustername, args.instancename)
+    cmd = build_command(args.git_url, args.commit, args.clusterinstance)
     print "INFO: Executing command '%s'" % cmd
     try:
         subprocess.check_output(cmd, stderr=subprocess.STDOUT)
