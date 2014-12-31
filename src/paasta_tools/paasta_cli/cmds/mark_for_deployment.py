@@ -40,7 +40,7 @@ def build_command(
     clustername,
     instancename,
 ):
-    cmd = "git push %s %s:refs/heads/paasta-%s.%s" % (
+    cmd = 'git push %s %s:refs/heads/paasta-%s.%s' % (
         upstream_git_url,
         upstream_git_commit,
         clustername,
@@ -56,5 +56,5 @@ def paasta_mark_for_deployment(args):
     try:
         subprocess.check_output(cmd, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
-        print "ERROR: Failed to promote image. Output:\n%sReturn code was: %d" % (exc.output, exc.returncode)
+        print 'ERROR: Failed to promote image. Output:\n%sReturn code was: %d' % (exc.output, exc.returncode)
         sys.exit(exc.returncode)

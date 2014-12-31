@@ -11,11 +11,11 @@ from paasta_tools.paasta_cli.paasta_cli import parse_args
 
 
 def test_build_command():
-    upstream_git_url = "fake_upstream_git_url"
-    upstream_git_commit = "fake_upstream_git_commit"
-    clustername = "fake_clustername"
-    instancename = "fake_instancename"
-    expected = "git push %s %s:refs/heads/paasta-%s.%s" % (
+    upstream_git_url = 'fake_upstream_git_url'
+    upstream_git_commit = 'fake_upstream_git_commit'
+    clustername = 'fake_clustername'
+    instancename = 'fake_instancename'
+    expected = 'git push %s %s:refs/heads/paasta-%s.%s' % (
         upstream_git_url,
         upstream_git_commit,
         clustername,

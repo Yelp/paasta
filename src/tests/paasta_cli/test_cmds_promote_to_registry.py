@@ -11,9 +11,9 @@ from paasta_tools.paasta_cli.paasta_cli import parse_args
 
 
 def test_build_command():
-    upstream_job_name = "fake_upstream_job_name"
-    upstream_git_commit = "fake_upstream_git_commit"
-    expected = "docker push docker-paasta.yelpcorp.com:443/%s:paasta-%s" % (
+    upstream_job_name = 'fake_upstream_job_name'
+    upstream_git_commit = 'fake_upstream_git_commit'
+    expected = 'docker push docker-paasta.yelpcorp.com:443/%s:paasta-%s' % (
         upstream_job_name,
         upstream_git_commit,
     )

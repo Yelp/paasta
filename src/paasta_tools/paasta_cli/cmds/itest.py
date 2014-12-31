@@ -27,7 +27,7 @@ def add_subparser(subparsers):
 
 
 def build_command(upstream_job_name, upstream_git_commit):
-    cmd = 'DOCKER_TAG="docker-paasta.yelpcorp.com:443/%s:paasta-%s" make itest' % (
+    cmd = 'DOCKER_TAG="docker-paasta.yelpcorp.com:443/services-%s:paasta-%s" make itest' % (
         upstream_job_name,
         upstream_git_commit,
     )
@@ -40,9 +40,9 @@ def paasta_itest(args):
     validate_service_name(service_name)
 
     cmd = build_command(service_name, args.commit)
-    print "INFO: Executing promote command '%s'" % cmd
+    print 'INFO: Executing promote command "%s"' % cmd
     try:
         subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
     except subprocess.CalledProcessError as exc:
-        print "ERROR: Failed to promote image. Output:\n%sReturn code was: %d" % (exc.output, exc.returncode)
+        print 'ERROR: Failed to promote image. Output:\n%sReturn code was: %d' % (exc.output, exc.returncode)
         sys.exit(exc.returncode)
