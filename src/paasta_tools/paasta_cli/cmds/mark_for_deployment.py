@@ -1,6 +1,6 @@
 #!/usr/bin/env python
-"""Contains methods used by the paasta client to upload a docker
-image to a registry.
+"""Contains methods used by the paasta client to mark a docker image for
+deployment to a cluster.instance.
 """
 
 import shlex
@@ -11,8 +11,8 @@ import sys
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'mark-for-deployment',
-        description='Uploads a docker image to a registry',
-        help='Uploads a docker image to a registry')
+        description='Mark a docker image for deployment',
+        help='Mark a docker image for deployment')
 
     list_parser.add_argument('-u', '--git-url',
                              help='Git url for service -- where magic mark-for-deployment branches are pushed',
@@ -23,11 +23,11 @@ def add_subparser(subparsers):
                              required=True,
                              )
     list_parser.add_argument('-l', '--clustername',
-                             help='Mark this service ready for deployment in this clustername',
+                             help='Mark the service ready for deployment in this clustername',
                              required=True,
                              )
     list_parser.add_argument('-i', '--instancename',
-                             help='Mark this service ready for deployment in this instancename',
+                             help='Mark the service ready for deployment in this instancename',
                              required=True,
                              )
 
@@ -50,11 +50,11 @@ def build_command(
 
 
 def paasta_mark_for_deployment(args):
-    """Upload a docker image to a registry"""
+    """Mark a docker image for deployment"""
     cmd = build_command(args.git_url, args.commit, args.clustername, args.instancename)
-    print "INFO: Executing promote command '%s'" % cmd
+    print "INFO: Executing command '%s'" % cmd
     try:
         subprocess.check_output(cmd, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
-        print 'ERROR: Failed to promote image. Output:\n%sReturn code was: %d' % (exc.output, exc.returncode)
+        print 'ERROR: Failed to mark image for deployment. Output:\n%sReturn code was: %d' % (exc.output, exc.returncode)
         sys.exit(exc.returncode)

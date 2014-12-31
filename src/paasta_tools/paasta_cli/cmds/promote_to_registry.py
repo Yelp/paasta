@@ -18,11 +18,11 @@ def add_subparser(subparsers):
 
     list_parser.add_argument('-s', '--service',
                              help='Name of service for which you wish to '
-                                  'generate a Jenkins pipeline',
+                                  'upload a docker image',
                              required=True,
                              )
     list_parser.add_argument('-c', '--commit',
-                             help='Git sha to name the remote image',
+                             help='Git sha after which to name the remote image',
                              required=True,
                              )
 
@@ -43,7 +43,7 @@ def paasta_promote_to_registry(args):
     validate_service_name(service_name)
 
     cmd = build_command(service_name, args.commit)
-    print 'INFO: Executing promote command "%s"' % cmd
+    print 'INFO: Executing command "%s"' % cmd
     try:
         subprocess.check_output(cmd, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as exc:
