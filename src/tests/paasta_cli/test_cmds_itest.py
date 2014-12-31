@@ -12,7 +12,7 @@ from paasta_tools.paasta_cli.paasta_cli import parse_args
 def test_build_command():
     upstream_job_name = 'fake_upstream_job_name'
     upstream_git_commit = 'fake_upstream_git_commit'
-    expected = 'DOCKER_TAG="docker-paasta.yelpcorp.com:443/%s:paasta-%s" make itest' % (
+    expected = 'DOCKER_TAG="docker-paasta.yelpcorp.com:443/services-%s:paasta-%s" make itest' % (
         upstream_job_name,
         upstream_git_commit,
     )
@@ -65,3 +65,19 @@ def test_itest_success_with_opts(
     ]
     parsed_args = parse_args()
     assert paasta_itest(parsed_args) is None
+
+
+@patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.itest.subprocess', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.itest.build_command', autospec=True)
+def test_itest_works_when_service_name_starts_with_services_dash(
+    mock_build_command,
+    mock_subprocess,
+    mock_validate_service_name,
+):
+    sys.argv = [
+        './paasta_cli', 'itest', '--service', 'services-fake_service', '--commit', 'unused',
+    ]
+    parsed_args = parse_args()
+    assert paasta_itest(parsed_args) is None
+    mock_build_command.assert_called_once_with('fake_service', 'unused')

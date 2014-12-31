@@ -14,7 +14,7 @@ def add_subparser(subparsers):
         help='Builds and tests a docker image')
 
     list_parser.add_argument('-s', '--service',
-                             help='Test and build docker image for this service',
+                             help='Test and build docker image for this service. Leading "services-", as included in a Jenkins job name, will be stripped.',
                              required=True,
                              )
     list_parser.add_argument('-c', '--commit',
@@ -36,6 +36,8 @@ def build_command(upstream_job_name, upstream_git_commit):
 def paasta_itest(args):
     """Build and test a docker image"""
     service_name = args.service
+    if service_name and service_name.startswith('services-'):
+        service_name = service_name.split('services-', 1)[1]
     validate_service_name(service_name)
 
     cmd = build_command(service_name, args.commit)
