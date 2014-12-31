@@ -67,3 +67,19 @@ def test_promote_to_registry_success_with_opts(
     ]
     parsed_args = parse_args()
     assert paasta_promote_to_registry(parsed_args) is None
+
+
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.validate_service_name', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.subprocess', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.promote_to_registry.build_command', autospec=True)
+def test_promote_to_registry_works_when_service_name_starts_with_services_dash(
+    mock_build_command,
+    mock_subprocess,
+    mock_validate_service_name,
+):
+    sys.argv = [
+        './paasta_cli', 'promote-to-registry', '--service', 'services-fake_service', '--commit', 'unused',
+    ]
+    parsed_args = parse_args()
+    assert paasta_promote_to_registry(parsed_args) is None
+    mock_build_command.assert_called_once_with('fake_service', 'unused')

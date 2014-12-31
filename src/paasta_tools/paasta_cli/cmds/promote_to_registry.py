@@ -17,8 +17,7 @@ def add_subparser(subparsers):
         help='Uploads a docker image to a registry')
 
     list_parser.add_argument('-s', '--service',
-                             help='Name of service for which you wish to '
-                                  'upload a docker image',
+                             help='Name of service for which you wish to upload a docker image. Leading "services-", as included in a Jenkins job name, will be stripped.',
                              required=True,
                              )
     list_parser.add_argument('-c', '--commit',
@@ -40,6 +39,8 @@ def build_command(upstream_job_name, upstream_git_commit):
 def paasta_promote_to_registry(args):
     """Upload a docker image to a registry"""
     service_name = args.service
+    if service_name and service_name.startswith('services-'):
+        service_name = service_name.split('services-', 1)[1]
     validate_service_name(service_name)
 
     cmd = build_command(service_name, args.commit)
