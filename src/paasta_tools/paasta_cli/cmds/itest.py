@@ -1,9 +1,6 @@
 #!/usr/bin/env python
-"""Contains methods used by the paasta client to upload a docker
-image to a registry.
-"""
+"""Contains methods used by the paasta client to build and test a docker image."""
 
-import shlex
 import subprocess
 import sys
 
@@ -12,7 +9,7 @@ from paasta_tools.paasta_cli.utils import validate_service_name
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'promote-to-registry',
+        'itest',
         description='Uploads a docker image to a registry',
         help='Uploads a docker image to a registry')
 
@@ -26,18 +23,18 @@ def add_subparser(subparsers):
                              required=True,
                              )
 
-    list_parser.set_defaults(command=paasta_promote_to_registry)
+    list_parser.set_defaults(command=paasta_itest)
 
 
 def build_command(upstream_job_name, upstream_git_commit):
-    cmd = "docker push docker-paasta.yelpcorp.com:443/%s:paasta-%s" % (
+    cmd = 'DOCKER_TAG="docker-paasta.yelpcorp.com:443/%s:paasta-%s" make itest' % (
         upstream_job_name,
         upstream_git_commit,
     )
-    return shlex.split(cmd)
+    return cmd
 
 
-def paasta_promote_to_registry(args):
+def paasta_itest(args):
     """Upload a docker image to a registry"""
     service_name = args.service
     validate_service_name(service_name)
@@ -45,7 +42,7 @@ def paasta_promote_to_registry(args):
     cmd = build_command(service_name, args.commit)
     print "INFO: Executing promote command '%s'" % cmd
     try:
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT)
+        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
     except subprocess.CalledProcessError as exc:
         print "ERROR: Failed to promote image. Output:\n%sReturn code was: %d" % (exc.output, exc.returncode)
         sys.exit(exc.returncode)
