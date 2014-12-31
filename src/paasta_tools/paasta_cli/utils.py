@@ -299,8 +299,7 @@ def validate_service_name(service_name):
     :param service_name: a string of the name of the service you wish to check exists
     :return : boolean True
     :raises: NoSuchService exception"""
-    service_path = os.path.join('/nail/etc/services', service_name)
-    if not os.path.isdir(service_path):
+    if not service_name or not os.path.isdir(os.path.join('/nail/etc/services', service_name)):
         raise NoSuchService(service_name)
 
 
