@@ -70,12 +70,12 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
             status = PaastaColors.green("Healthy")
             instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
         else:
-            status = PaastaColors.green("Warning")
+            status = PaastaColors.yellow("Warning")
             instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
         return "Marathon:   %s - up with %s instances. Status: %s." % (status, instance_count, deploy_status)
     else:
         red_not = PaastaColors.red("NOT")
-        status = PaastaColors.green("Critical")
+        status = PaastaColors.red("Critical")
         return "Marathon:   %s: - %s (app %s) is %s running in Marathon." % (status, name, app_id, red_not)
 
 
@@ -86,10 +86,10 @@ def haproxy_backend_report(normal_instance_count, up_backends):
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
     elif up_backends == 0:
-        status = PaastaColors.green("Critical")
+        status = PaastaColors.red("Critical")
         count = PaastaColors.red("(%d/%d)" % (up_backends, normal_instance_count))
     else:
-        status = PaastaColors.green("Warning")
+        status = PaastaColors.yellow("Warning")
         count = PaastaColors.yellow("(%d/%d)" % (up_backends, normal_instance_count))
     return "%s - in haproxy with %s backends UP" % (status, count)
 
