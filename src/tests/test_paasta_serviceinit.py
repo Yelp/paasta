@@ -183,6 +183,31 @@ class TestPaastaServiceStatus:
         status = paasta_tools.paasta_serviceinit.haproxy_backend_report(normal_count, actual_count)
         assert "Critical" in status
 
+    def test_status_mesos_tasks_working(self):
+        with mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service') as mock_tasks:
+            mock_tasks.return_value = [
+                {'id': 1}, {'id': 2}
+            ]
+            normal_count = 2
+            actual = paasta_tools.paasta_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
+            assert 'Healthy' in actual
+
+    def test_status_mesos_tasks_warning(self):
+        with mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service') as mock_tasks:
+            mock_tasks.return_value = [
+                {'id': 1}, {'id': 2}
+            ]
+            normal_count = 4
+            actual = paasta_tools.paasta_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
+            assert 'Warning' in actual
+
+    def test_status_mesos_tasks_critical(self):
+        with mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service') as mock_tasks:
+            mock_tasks.return_value = []
+            normal_count = 10
+            actual = paasta_tools.paasta_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
+            assert 'Critical' in actual
+
     def test_main(self):
         pass
 
