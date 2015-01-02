@@ -77,7 +77,8 @@ configuration for the running image:
   configuration. This is not user-controlled for security reasons. The default
   mappings include common configuration folders (like `srv-configs
   <https://trac.yelpcorp.com/wiki/HowToService/Configuration>`_) and key files
-  in ``/nail/etc`` (``habitat``, ``ecosystem``, etc).
+  in ``/nail/etc`` (``habitat``, ``ecosystem``, etc). The aws keys in
+  `/etc/boto_cfg` are also included by default.
 
 * ``--workdir``: Mesos containers are launched in a temporary "workspace"
   directory on disk. Use the workdir sparingly and try not to output files.
