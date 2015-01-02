@@ -38,7 +38,7 @@ def expose_8888_in_dockerfile(path):
     :param path : path to a Dockerfile
     :return : A boolean that is True if the Dockerfile contains 'EXPOSE 8888'
     """
-    pattern = re.compile('/EXPOSE\s+8888.*/')
+    pattern = re.compile('EXPOSE\s+8888.*')
     with open(path, 'r') as dockerfile:
         for line in dockerfile.readlines():
             if pattern.match(line):
