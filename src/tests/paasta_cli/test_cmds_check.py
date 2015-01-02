@@ -2,10 +2,18 @@ import sys
 from mock import patch, MagicMock
 from StringIO import StringIO
 
-from paasta_tools.paasta_cli.cmds.check import \
-    paasta_check, deploy_check, docker_check, marathon_check, \
-    sensu_check, smartstack_check, NoSuchService, service_dir_check, \
-    pipeline_check, git_repo_check
+from paasta_tools.paasta_cli.cmds.check import deploy_check
+from paasta_tools.paasta_cli.cmds.check import deploy_has_security_check
+from paasta_tools.paasta_cli.cmds.check import deploy_has_performance_check
+from paasta_tools.paasta_cli.cmds.check import docker_check
+from paasta_tools.paasta_cli.cmds.check import git_repo_check
+from paasta_tools.paasta_cli.cmds.check import marathon_check
+from paasta_tools.paasta_cli.cmds.check import NoSuchService
+from paasta_tools.paasta_cli.cmds.check import paasta_check
+from paasta_tools.paasta_cli.cmds.check import pipeline_check
+from paasta_tools.paasta_cli.cmds.check import sensu_check
+from paasta_tools.paasta_cli.cmds.check import service_dir_check
+from paasta_tools.paasta_cli.cmds.check import smartstack_check
 from paasta_tools.paasta_cli.paasta_cli import parse_args
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 
@@ -16,15 +24,26 @@ from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 @patch('paasta_tools.paasta_cli.cmds.check.validate_service_name')
 @patch('paasta_tools.paasta_cli.cmds.check.guess_service_name')
 @patch('paasta_tools.paasta_cli.cmds.check.deploy_check')
+@patch('paasta_tools.paasta_cli.cmds.check.deploy_has_performance_check')
+@patch('paasta_tools.paasta_cli.cmds.check.deploy_has_security_check')
 @patch('paasta_tools.paasta_cli.cmds.check.docker_check')
 @patch('paasta_tools.paasta_cli.cmds.check.marathon_check')
 @patch('paasta_tools.paasta_cli.cmds.check.sensu_check')
 @patch('paasta_tools.paasta_cli.cmds.check.smartstack_check')
-def test_check_paasta_check(
-        mock_smartstart_check, mock_sensu_check, mock_marathon_check,
-        mock_docker_check, mock_deploy_check,
-        mock_guess_service_name, mock_validate_service_name,
-        mock_service_dir_check, mock_pipeline_check, mock_git_repo_check):
+def test_check_paasta_check_calls_everything(
+        mock_smartstart_check,
+        mock_sensu_check,
+        mock_marathon_check,
+        mock_docker_check,
+        mock_deploy_check,
+        mock_deploy_security_check,
+        mock_deploy_performance_check,
+        mock_guess_service_name,
+        mock_validate_service_name,
+        mock_service_dir_check,
+        mock_pipeline_check,
+        mock_git_repo_check
+):
     # Ensure each check in 'paasta_check' is called
 
     mock_guess_service_name.return_value = 'servicedocs'
@@ -38,6 +57,8 @@ def test_check_paasta_check(
     assert mock_pipeline_check.called
     assert mock_service_dir_check.called
     assert mock_deploy_check.called
+    assert mock_deploy_security_check.called
+    assert mock_deploy_performance_check.called
     assert mock_docker_check.called
     assert mock_marathon_check.called
     assert mock_sensu_check.called
@@ -415,3 +436,57 @@ def test_check_git_repo_check_fail(mock_stdout, mock_subprocess):
     output = mock_stdout.getvalue()
 
     assert output == expected_output
+
+
+@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.paasta_cli.cmds.check.get_pipeline_config')
+def test_deploy_has_security_check_false(mock_pipeline_config, mock_stdout):
+    mock_pipeline_config.return_value = [
+        {'instancename': 'itest', },
+        {'instancename': 'registry', },
+        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'devc.main', },
+    ]
+    actual = deploy_has_security_check('fake_service')
+    assert actual is False
+
+
+@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.paasta_cli.cmds.check.get_pipeline_config')
+def test_deploy_has_security_check_true(mock_pipeline_config, mock_stdout):
+    mock_pipeline_config.return_value = [
+        {'instancename': 'itest', },
+        {'instancename': 'security-check', },
+        {'instancename': 'registry', },
+        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'devc.main', },
+    ]
+    actual = deploy_has_security_check('fake_service')
+    assert actual is True
+
+
+@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.paasta_cli.cmds.check.get_pipeline_config')
+def test_deploy_has_performance_check_false(mock_pipeline_config, mock_stdout):
+    mock_pipeline_config.return_value = [
+        {'instancename': 'itest', },
+        {'instancename': 'registry', },
+        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'devc.main', },
+    ]
+    actual = deploy_has_performance_check('fake_service')
+    assert actual is False
+
+
+@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.paasta_cli.cmds.check.get_pipeline_config')
+def test_deploy_has_performance_check_true(mock_pipeline_config, mock_stdout):
+    mock_pipeline_config.return_value = [
+        {'instancename': 'itest', },
+        {'instancename': 'performance-check', },
+        {'instancename': 'registry', },
+        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'devc.main', },
+    ]
+    actual = deploy_has_performance_check('fake_service')
+    assert actual is True
