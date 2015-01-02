@@ -192,6 +192,8 @@ class GetDeployStanzaTestCase(QuestionsTestCase):
 
         for expected_entry in (
             { "instancename": "itest" },
+            { "instancename": "security-check" },
+            { "instancename": "performance-check" },
             { "instancename": "pnw-stagea.main" },
             {
                 "instancename": "pnw-prod.canary",
