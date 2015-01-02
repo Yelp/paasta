@@ -147,23 +147,23 @@ def get_docker_url(registry_uri, docker_image, verify=True):
 def get_mem(service_config):
     """Gets the memory required from the service's marathon configuration.
 
-    Defaults to 100 if no value specified in the config.
+    Defaults to 1000 (1G) if no value specified in the config.
 
     :param service_config: The service instance's configuration dictionary
-    :returns: The amount of memory specified by the config, 100 if not specified"""
+    :returns: The amount of memory specified by the config, 1000 if not specified"""
     mem = service_config.get('mem')
-    return int(mem) if mem else 100
+    return int(mem) if mem else 1000
 
 
 def get_cpus(service_config):
     """Gets the number of cpus required from the service's marathon configuration.
 
-    Defaults to 1 if no value specified in the config.
+    Defaults to .25 (1/4 of a cpu) if no value specified in the config.
 
     :param service_config: The service instance's configuration dictionary
-    :returns: The number of cpus specified in the config, 1 if not specified"""
+    :returns: The number of cpus specified in the config, .25 if not specified"""
     cpus = service_config.get('cpus')
-    return int(cpus) if cpus else 1
+    return float(cpus) if cpus else .25
 
 
 def get_constraints(service_config):
@@ -182,12 +182,12 @@ def get_constraints(service_config):
 def get_instances(service_config):
     """Get the number of instances specified in the service's marathon configuration.
 
-    Defaults to 1 if not specified in the config.
+    Defaults to 0 if not specified in the config.
 
     :param service_config: The service instance's configuration dictionary
-    :returns: The number of instances specified in the config, 1 if not specified"""
-    instances = service_config.get('instances')
-    return int(instances) if instances else 1
+    :returns: The number of instances specified in the config, 0 if not specified"""
+    instances = service_config.get('instances', 1)
+    return int(instances)
 
 
 def get_args(service_config):
