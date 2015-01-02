@@ -116,13 +116,13 @@ def get_marathon_stanza():
     allows new services to hit the ground running, but forces developers to
     think about their resource needs and tune as they move toward production.
     So:
-    - 1 cpu
-    - 100MB of memory.
-        - kwa: There are plenty of workers on srv1 right now that are >100M
-          RES, and there are *no* processes under 100M VSZ, and docker
-          processes will not be sharing virt across containers.  I'm pretty
-          sure in practice 100M going to be a crippling default for most
-          services, but I think it is ok to start low, instead of start high.
+    - .1 cpu
+        - This is a good starting place. Most services use a very small
+          percentage of a core.
+    - 500MB of memory.
+        - Docker processes will *not* be sharing virt across containers.
+          I'm pretty sure in practice 500M going to be a sane starting point for
+          most services. It is ok to start low and let them go high.
     - 3 instances, including 1 canary. Why 2+1 instead of 1+1?
         - Three Of Everything (http://opsprincipl.es/principles/three_of_everything/)
         - If we reboot the dev box running that single main instance, the
@@ -133,13 +133,14 @@ def get_marathon_stanza():
     """
     stanza = {}
     stanza["main"] = {
-        "cpu": 1,
-        "mem": 100,
+        "cpu": .1,
+        "mem": 500,
         "instances": 3,
     }
     stanza["canary"] = {
-        "cpu": 1,
-        "mem": 100,
+        "cpu": .1,
+        "mem": 500,
         "nerve_ns": "main",
+        "instances": 1,
     }
     return stanza
