@@ -562,7 +562,7 @@ class TestMarathonTools:
                                    spacer, fake_instance.replace('_', '--'))
         assert marathon_tools.compose_job_id(fake_name, fake_id, fake_instance) == expected
 
-    def test_create_complete_config(self):
+    def test_create_incomplete_config(self):
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
@@ -618,8 +618,8 @@ class TestMarathonTools:
             get_instances_patch,
             get_args_patch
         ):
-            actual = marathon_tools.create_complete_config(fake_id, fake_url, fake_volumes,
-                                                           self.fake_marathon_job_config)
+            actual = marathon_tools.create_incomplete_config(fake_id, fake_url, fake_volumes,
+                                                             self.fake_marathon_job_config)
             assert actual == expected_conf
             get_mem_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_cpus_patch.assert_called_once_with(self.fake_marathon_job_config)
@@ -763,13 +763,13 @@ class TestMarathonTools:
             mock.patch('marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_docker_url', return_value=fake_url),
-            mock.patch('marathon_tools.create_complete_config',
+            mock.patch('marathon_tools.create_incomplete_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_config_hash', return_value=fake_hash),
         ) as (
             read_service_config_patch,
             docker_url_patch,
-            create_complete_config_patch,
+            create_incomplete_config_patch,
             hash_patch,
         ):
             assert marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config) == 'fakeapp.fakeinstance.abc123'

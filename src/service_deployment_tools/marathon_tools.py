@@ -220,7 +220,7 @@ def get_config_hash(config):
     return hasher.hexdigest()
 
 
-def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_config):
+def create_incomplete_config(job_id, docker_url, docker_volumes, service_marathon_config):
     """Create the configuration that will be passed to the Marathon REST API.
 
     Currently compiles the following keys into one nice dict:
@@ -688,19 +688,24 @@ def is_app_id_running(app_id, client):
     return app_id in all_app_ids
 
 
-def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
-    """Composes a predicatable marathon app_id from the service's docker image and
-    marathon configuration. Editing this function *will* cause a bounce of all
-    services because they will see an "old" version of the marathon app deployed,
-    and a new one with the new hash will try to be deployed"""
+def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR, verify_docker=True):
     partial_id = compose_job_id(name, instance)
     config = read_service_config(name, instance, soa_dir=soa_dir)
     docker_url = get_docker_url(marathon_config['docker_registry'],
                                 config['docker_image'],
-                                verify=False)
-    complete_config = create_complete_config(partial_id, docker_url,
-                                             marathon_config['docker_volumes'],
-                                             config)
+                                verify=verify_docker)
+    complete_config = create_incomplete_config(partial_id, docker_url,
+                                               marathon_config['docker_volumes'],
+                                               config)
     config_hash = get_config_hash(complete_config)
     full_id = compose_job_id(name, instance, config_hash)
-    return full_id
+    complete_config['id'] = full_id
+    return complete_config
+
+
+def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
+    """Composes a predictable marathon app_id from the service's docker image and
+    marathon configuration. Editing this function *will* cause a bounce of all
+    services because they will see an "old" version of the marathon app deployed,
+    and a new one with the new hash will try to be deployed"""
+    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir, verify_docker=False)['id']

@@ -141,21 +141,20 @@ def setup_service(service_name, instance_name, client, marathon_config,
     :param marathon_config: The marathon configuration dict
     :param service_marathon_config: The service instance's configuration dict
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
-    partial_id = marathon_tools.compose_job_id(service_name, instance_name)
+
     log.info("Setting up instance %s for service %s", instance_name, service_name)
-    docker_url = marathon_tools.get_docker_url(marathon_config['docker_registry'],
-                                               service_marathon_config['docker_image'])
-    if not docker_url:
-        error_msg = "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?".format(
-                  service_name, instance_name)
-        log.error(error_msg)
-        return (1, error_msg)
-    complete_config = marathon_tools.create_complete_config(partial_id, docker_url,
-                                                            marathon_config['docker_volumes'],
-                                                            service_marathon_config)
-    full_id = marathon_tools.get_app_id(service_name, instance_name, marathon_config)
+    # docker_url = marathon_tools.get_docker_url(marathon_config['docker_registry'],
+    #                                            service_marathon_config['docker_image'])
+    # if not docker_url:
+    #     error_msg = "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?".format(
+    #               service_name, instance_name)
+    #     log.error(error_msg)
+    #     return (1, error_msg)
+
+    complete_config = marathon_tools.create_complete_config(service_name, instance_name, marathon_config)
     namespace = service_marathon_config.get('nerve_ns', instance_name)
-    complete_config['id'] = full_id
+    full_id = complete_config['id']
+
     log.info("Desired Marathon instance id: %s", full_id)
     try:
         log.info("Checking if an app already exists with id: %s", full_id)
