@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import socket
+import glob
 from StringIO import StringIO
 
 from marathon import MarathonClient
@@ -414,6 +415,48 @@ def get_mode_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR)
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('mode', 'http')
+
+
+def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
+    """Returns a sorted list of all clusters that appear to be in use. This
+    is useful for cli tools.
+
+    :param service: Optional. If provided will only list clusters that
+    the particular service is using
+    """
+    clusters = set()
+    if service is None:
+        services = service_configuration_lib.read_services_configuration().keys()
+    else:
+        services = [service]
+
+    for service in services:
+        clusters = clusters.union(set(get_clusters_deployed_to(service)))
+    return sorted(clusters)
+
+
+def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
+    """Looks at the clusters that a service is probably deployed to
+    by looking at marathon-*.yaml's and returns a sorted list of clusters.
+    """
+    clusters = set()
+    srv_path = os.path.join(soa_dir, service)
+    if os.path.isdir(srv_path):
+        marathon_files = "%s/marathon-*.yaml" % srv_path
+        for marathon_file in glob.glob(marathon_files):
+            basename = os.path.basename(marathon_file)
+            cluster = re.search('marathon-(.*).yaml', basename).group(1)
+            clusters.add(cluster)
+    clusters.discard('SHARED')
+    return sorted(clusters)
+
+
+def list_all_marathon_instances_for_service(service):
+    instances = set()
+    for cluster in list_clusters(service):
+        for service_instance in get_service_instance_list(service, cluster):
+            instances.add(service_instance[1])
+    return instances
 
 
 def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):

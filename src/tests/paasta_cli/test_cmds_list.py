@@ -21,3 +21,20 @@ def test_list_paasta_list(mock_list_services, mock_stdout):
 
     output = mock_stdout.getvalue()
     assert output == 'service_1\nservice_2\n'
+
+
+@mock.patch('sys.stdout', new_callable=StringIO)
+@mock.patch('paasta_tools.paasta_cli.cmds.list.list_service_instances', autospec=True)
+def test_list_paasta_list_instances(mock_list_service_instances, mock_stdout):
+    """ paasta_list print each service.instance """
+
+    mock_services = ['service_1.main', 'service_2.canary']
+
+    mock_list_service_instances.return_value = mock_services
+    sys.argv = ['./paasta_cli', 'list', '--print-instances']
+    parsed_args = parse_args()
+
+    paasta_list(parsed_args)
+
+    output = mock_stdout.getvalue()
+    assert output == 'service_1.main\nservice_2.canary\n'

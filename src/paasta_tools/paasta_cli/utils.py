@@ -12,6 +12,8 @@ from subprocess import STDOUT
 
 from service_configuration_lib import read_services_configuration
 
+from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
+
 
 def load_method(module_name, method_name):
     """Return a function given a module and method name.
@@ -304,9 +306,24 @@ def validate_service_name(service_name):
         raise NoSuchService(service_name)
 
 
+def list_instances_for_service(service):
+    """Returns all instances for a service. Currently enumarates
+    all instances, currently just from marathon."""
+    return list_all_marathon_instances_for_service(service)
+
+
 def list_services():
     """Returns a sorted list of all services"""
     return sorted(read_services_configuration().keys())
+
+
+def list_service_instances():
+    """Returns a sorted list of service.instance names"""
+    the_list = []
+    for service_name in list_services():
+        for instance in list_instances_for_service(service_name):
+            the_list.append("%s.%s" % (service_name, instance))
+    return the_list
 
 
 def calculate_remote_masters(cluster_name):
