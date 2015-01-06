@@ -28,6 +28,7 @@ from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 @patch('paasta_tools.paasta_cli.cmds.check.deploy_has_performance_check')
 @patch('paasta_tools.paasta_cli.cmds.check.deploy_has_security_check')
 @patch('paasta_tools.paasta_cli.cmds.check.docker_check')
+@patch('paasta_tools.paasta_cli.cmds.check.makefile_check')
 @patch('paasta_tools.paasta_cli.cmds.check.marathon_check')
 @patch('paasta_tools.paasta_cli.cmds.check.sensu_check')
 @patch('paasta_tools.paasta_cli.cmds.check.smartstack_check')
@@ -35,6 +36,7 @@ def test_check_paasta_check_calls_everything(
         mock_smartstart_check,
         mock_sensu_check,
         mock_marathon_check,
+        mock_makefile_check,
         mock_docker_check,
         mock_deploy_check,
         mock_deploy_security_check,
@@ -61,6 +63,7 @@ def test_check_paasta_check_calls_everything(
     assert mock_deploy_security_check.called
     assert mock_deploy_performance_check.called
     assert mock_docker_check.called
+    assert mock_makefile_check.called
     assert mock_marathon_check.called
     assert mock_sensu_check.called
     assert mock_smartstart_check.called
