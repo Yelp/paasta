@@ -810,3 +810,45 @@ class TestMarathonTools:
         expected = 'configdd63dafc'
         assert actual == expected
         assert len(actual) == 14
+
+    def test_id_changes_when_force_bounce_changes(self):
+        fake_name = 'fakeapp'
+        fake_instance = 'fakeinstance'
+        fake_url = 'fake_url'
+        fake_url = 'dockervania_from_konami'
+        fake_mem = 1000000000000000000000
+        fake_cpus = -1
+        fake_instances = 101
+        fake_args = ['arg1', 'arg2']
+
+        fake_service_config_1 = dict(self.fake_marathon_job_config)
+        fake_service_config_1['force_bounce'] = '88888'
+        fake_service_config_2 = dict(self.fake_marathon_job_config)
+        fake_service_config_2['force_bounce'] = '99999'
+
+        with contextlib.nested(
+            mock.patch('marathon_tools.get_mem', return_value=fake_mem),
+            mock.patch('marathon_tools.get_cpus', return_value=fake_cpus),
+            mock.patch('marathon_tools.get_constraints', return_value=[]),
+            mock.patch('marathon_tools.get_instances', return_value=fake_instances),
+            mock.patch('marathon_tools.get_args', return_value=fake_args),
+            mock.patch('marathon_tools.read_service_config'),
+            mock.patch('marathon_tools.get_docker_url', return_value=fake_url),
+        ) as (
+            get_mem_patch,
+            get_cpus_patch,
+            get_constraints_patch,
+            get_instances_patch,
+            get_args_patch,
+            read_service_config_patch,
+            docker_url_patch,
+        ):
+            read_service_config_patch.return_value = fake_service_config_1
+            first_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            first_id_2 = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            # just for sanity, make sure that get_app_id is idempotent.
+            assert first_id == first_id_2
+
+            read_service_config_patch.return_value = fake_service_config_2
+            second_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            assert first_id != second_id
