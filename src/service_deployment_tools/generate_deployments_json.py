@@ -31,6 +31,7 @@ import git
 import json
 import logging
 import os
+import re
 import service_configuration_lib
 from service_deployment_tools import marathon_tools
 import sys
@@ -108,7 +109,28 @@ def get_branches_for_service(soa_dir, service):
     return valid_branches
 
 
-def get_remote_branches_for_service(mygit, service):
+def get_remote_refs_for_service(mygit, service, tags=False):
+    """Use a git.Git object from GitPython to retrieve all remote refs of the given type
+    that exist on a service's git repository.
+
+    :param mygit: An initialized git.Git object
+    :param service: The service name to get branches for
+    :returns: A list of tuples of (ref_name, HEAD), where HEAD
+              is the complete SHA at the HEAD of the paired ref_name"""
+    try:
+        git_url = get_git_url(service)
+        branches = mygit.ls_remote(('--tags' if tags else '-h'), git_url).split('\n')
+        # Each branch has the form HEAD_HASH\trefs/heads/BRANCH_NAME; we want
+        # a tuple of (HEAD_HASH, BRANCH_NAME).
+        remote_branches = [(branch.split('\t')[0], branch.split('\t')[1].split('refs/%s/' % ('tags' if tags else 'heads'))[1])
+                           for branch in branches]
+        return remote_branches
+    except git.errors.GitCommandError:
+        log.warning('Service %s has branches, but the remote git repo is not named %s', service, service)
+        return []
+
+
+def get_remote_branches_for_service(mygit, service, tags=False):
     """Use a git.Git object from GitPython to retrieve all remote branches
     that exist on a service's git repository.
 
@@ -116,17 +138,18 @@ def get_remote_branches_for_service(mygit, service):
     :param service: The service name to get branches for
     :returns: A list of tuples of (branch_name, HEAD), where HEAD
               is the complete SHA at the HEAD of the paired branch_name"""
-    try:
-        git_url = get_git_url(service)
-        branches = mygit.ls_remote('-h', git_url).split('\n')
-        # Each branch has the form HEAD_HASH\trefs/heads/BRANCH_NAME; we want
-        # a tuple of (HEAD_HASH, BRANCH_NAME).
-        remote_branches = [(branch.split('\t')[0], branch.split('\t')[1].split('refs/heads/')[1])
-                           for branch in branches]
-        return remote_branches
-    except git.errors.GitCommandError:
-        log.warning('Service %s has branches, but the remote git repo is not named %s', service, service)
-        return []
+    return get_remote_refs_for_service(mygit, service, tags=False)
+
+
+def get_remote_tags_for_service(mygit, service):
+    """Use a git.Git object from GitPython to retrieve all remote tags
+    that exist on a service's git repository.
+
+    :param mygit: An initialized git.Git object
+    :param service: The service name to get tags for
+    :returns: A list of tuples of (tag_name, HEAD), where HEAD
+              is the complete SHA at the HEAD of the paired tag_name"""
+    return get_remote_refs_for_service(mygit, service, tags=True)
 
 
 def get_service_directories(soa_dir):
@@ -191,10 +214,28 @@ def get_branch_mappings(soa_dir, old_mappings):
     return mappings
 
 
-def get_desired_state(mygit, service, branch, sha):
-    """Gets the desired state (start or stop) from the given repo
+def get_desired_state(mygit, service, branch, head_sha):
+    """Gets the desired state (start or stop) from the given repo, as well as
+    an arbitrary value (which may be None) that will change when a restart is
+    desired.
     """
-    return ('start', None)
+    sha_tags = get_remote_tags_for_service(mygit, service)
+    tag_pattern = r'^paasta-%s-(?P<force_bounce>[^-]+)-(?P<state>.*)$' % branch
+
+    states = []
+    for sha, tag in sha_tags:
+        if sha == head_sha:
+            match = re.match(tag_pattern, tag)
+            if match:
+                gd = match.groupdict()
+                states.append((gd['state'], gd['force_bounce']))
+
+    # there may be more than one that matches, so take the one that sorts last
+    # by the force_bounce key.
+    if states:
+        return sorted(states, key=lambda x: x[1])[-1]
+    else:
+        return ('start', None)
 
 
 def get_deployments_dict_from_branch_mappings(branch_mappings):

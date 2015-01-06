@@ -215,3 +215,38 @@ def test_get_deployments_dict():
             },
         },
     }
+
+
+def test_get_remote_tags_for_service():
+    test_branches = '\n'.join([
+        'somehash\trefs/tags/sometag',
+        'otherhash\trefs/tags/othertag',
+    ])
+    fake_srv = 'srv_fake'
+    mygit = mock.Mock(ls_remote=mock.Mock(return_value=test_branches))
+    expected = [('somehash', 'sometag'), ('otherhash', 'othertag')]
+    with mock.patch('generate_deployments_json.get_git_url', return_value='test_url') as url_patch:
+        actual = generate_deployments_json.get_remote_tags_for_service(mygit, fake_srv)
+        assert expected == actual
+        url_patch.assert_called_once_with(fake_srv)
+        mygit.ls_remote.assert_called_once_with('--tags', 'test_url')
+
+
+def test_get_desired_state():
+    ls_remote_output = '\n'.join([
+        'somehash\trefs/tags/paasta-prod-1-start',
+        'somehash\trefs/tags/paasta-prod-2-stop',
+        'somehash\trefs/tags/paasta-prod-3-start',
+        'diffhash\trefs/tags/paasta-prod-4-start',
+        'othersha\trefs/tags/paasta-stage-12345-stop'
+    ])
+    fake_srv = 'srv_fake'
+    mygit = mock.Mock(ls_remote=mock.Mock(return_value=ls_remote_output))
+
+    # Make sure that if there are no tags that say otherwise, we assume it should be started.
+    assert ('start', None) == generate_deployments_json.get_desired_state(mygit, fake_srv, 'branchthatdoesntexist', 'c0ffee')
+
+    # We should get status for a specific version, not other versions.
+    assert ('start', '3') == generate_deployments_json.get_desired_state(mygit, fake_srv, 'prod', 'somehash')
+    assert ('start', '4') == generate_deployments_json.get_desired_state(mygit, fake_srv, 'prod', 'diffhash')
+    assert ('stop', '12345') == generate_deployments_json.get_desired_state(mygit, fake_srv, 'stage', 'othersha')
