@@ -643,6 +643,29 @@ class TestMarathonTools:
             get_instances_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_args_patch.assert_called_once_with(self.fake_marathon_job_config)
 
+    def test_instances_is_zero_when_desired_state_is_stop(self):
+        fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
+        fake_url = 'dockervania_from_konami'
+        fake_volumes = [
+            {
+                'hostPath': '/var/data/a',
+                'containerPath': '/etc/a',
+                'mode': 'RO',
+            },
+            {
+                'hostPath': '/var/data/b',
+                'containerPath': '/etc/b',
+                'mode': 'RW',
+            },
+        ]
+
+        fake_marathon_job_config = dict(self.fake_marathon_job_config)
+        fake_marathon_job_config['desired_state'] = 'stop'
+
+        config = marathon_tools.create_incomplete_config(fake_id, fake_url, fake_volumes,
+                                                         fake_marathon_job_config)
+        assert config['instances'] == 0
+
     def test_get_bounce_method_in_config(self):
         fake_method = 'aaargh'
         fake_conf = {'bounce_method': fake_method}
@@ -652,11 +675,11 @@ class TestMarathonTools:
         assert marathon_tools.get_bounce_method({}) == 'brutal'
 
     def test_get_instances_in_config(self):
-        fake_conf = {'instances': -10}
+        fake_conf = {'instances': -10, 'desired_state': 'start'}
         assert marathon_tools.get_instances(fake_conf) == -10
 
     def test_get_instances_default(self):
-        assert marathon_tools.get_instances({}) == 1
+        assert marathon_tools.get_instances({'desired_state': 'start'}) == 1
 
     def test_get_constraints_in_config(self):
         fake_conf = {'constraints': 'so_many_walls'}

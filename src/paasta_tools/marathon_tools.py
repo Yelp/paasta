@@ -186,8 +186,11 @@ def get_instances(service_config):
 
     :param service_config: The service instance's configuration dictionary
     :returns: The number of instances specified in the config, 1 if not specified"""
-    instances = service_config.get('instances')
-    return int(instances) if instances else 1
+    if service_config['desired_state'] == 'start':
+        instances = service_config.get('instances')
+        return int(instances) if instances else 1
+    else:
+        return 0
 
 
 def get_args(service_config):
