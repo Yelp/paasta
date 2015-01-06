@@ -1,3 +1,10 @@
+paasta-tools (0.7.37-yelp1) lucid; urgency=low
+
+  * 0.7.37 tagged with 'make release'
+    Commit: Released 0.7.36-yelp1 via make release
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 05 Jan 2015 16:44:56 -0800
+
 paasta-tools (0.7.36-yelp1) lucid; urgency=low
 
   * Released 0.7.35-yelp1 via make release
