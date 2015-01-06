@@ -1,3 +1,9 @@
+paasta-tools (0.7.36-yelp1) lucid; urgency=low
+
+  * Released 0.7.35-yelp1 via make release
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 05 Jan 2015 16:34:28 -0800
+
 paasta-tools (0.7.35-yelp1) lucid; urgency=low
 
   * Merge branch 'mention_boto'
