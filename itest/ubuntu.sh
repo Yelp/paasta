@@ -26,6 +26,7 @@ PAASTA_COMMANDS="list
 check
 generate-pipeline
 help
+emergency-stop
 status
 version"
 
