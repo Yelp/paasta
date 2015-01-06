@@ -120,7 +120,7 @@ def report_status(service_name, deploy_pipeline, actual_deployments):
         # Case: service deployed to cluster.instance
         if namespace in actual_deployments:
             unformatted_instance = instance
-            instance = PaastaColors.green(instance)
+            instance = PaastaColors.blue(instance)
             version = actual_deployments[namespace]
             status = execute_paasta_serviceinit_on_remote_master('status', cluster_name, service_name, unformatted_instance)
 
