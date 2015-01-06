@@ -545,7 +545,7 @@ class TestMarathonTools:
             },
         ]
         fake_mem = 1000000000000000000000
-        fake_cpus = -1
+        fake_cpus = .42
         fake_instances = 101
         fake_args = ['arg1', 'arg2']
         expected_conf = {
@@ -611,6 +611,10 @@ class TestMarathonTools:
     def test_get_instances_default(self):
         assert marathon_tools.get_instances({}) == 1
 
+    def test_get_instances_respects_false(self):
+        fake_conf = {'instances': False}
+        assert marathon_tools.get_instances(fake_conf) == 0
+
     def test_get_constraints_in_config(self):
         fake_conf = {'constraints': 'so_many_walls'}
         assert marathon_tools.get_constraints(fake_conf) == 'so_many_walls'
@@ -622,15 +626,19 @@ class TestMarathonTools:
         fake_conf = {'cpus': -5}
         assert marathon_tools.get_cpus(fake_conf) == -5
 
+    def test_get_cpus_in_config_float(self):
+        fake_conf = {'cpus': .66}
+        assert marathon_tools.get_cpus(fake_conf) == .66
+
     def test_get_cpus_default(self):
-        assert marathon_tools.get_cpus({}) == 1
+        assert marathon_tools.get_cpus({}) == .25
 
     def test_get_mem_in_config(self):
         fake_conf = {'mem': -999}
         assert marathon_tools.get_mem(fake_conf) == -999
 
     def test_get_mem_default(self):
-        assert marathon_tools.get_mem({}) == 100
+        assert marathon_tools.get_mem({}) == 1000
 
     def test_get_args_default(self):
         assert marathon_tools.get_args({}) == []
