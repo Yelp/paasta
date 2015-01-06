@@ -97,6 +97,42 @@ class TestMarathonTools:
             actual = marathon_tools.get_docker_from_branch(fake_srv, fake_branch, fake_dir)
             assert actual == 'test_rocker:9.9'
 
+    def test_get_force_bounce_from_branch(self):
+        fake_dir = '/var/dir_of_fake'
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'no_soap:radio': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': '12345',
+            },
+        }
+        with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
+            assert None is marathon_tools.get_force_bounce_from_branch('no_srv', 'blaster', fake_dir)
+            assert '12345' == marathon_tools.get_force_bounce_from_branch('no_soap', 'radio', fake_dir)
+
+    def test_get_desired_state_from_branch(self):
+        fake_dir = '/var/dir_of_fake'
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'no_soap:radio': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': '12345',
+            },
+        }
+        with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
+            assert 'start' == marathon_tools.get_desired_state_from_branch('no_srv', 'blaster', fake_dir)
+            assert 'stop' == marathon_tools.get_desired_state_from_branch('no_soap', 'radio', fake_dir)
+
     def test_get_deployed_images(self):
         fake_json = {
             'no_srv:blaster': {

@@ -316,7 +316,9 @@ def get_desired_state_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA
     :param soa_dir: The SOA Configuration directory with deployments.json
     :returns: The desired state for the branch, or '' if
               deployments.json doesn't exist in soa_dir"""
-    return 'start'
+    full_branch = '%s:%s' % (service_name, branch_name)
+    deployments_json = _get_deployments_json(soa_dir)
+    return deployments_json.get(full_branch, {}).get('desired_state', 'start')
 
 
 def get_force_bounce_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
@@ -331,7 +333,9 @@ def get_force_bounce_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_
     :param soa_dir: The SOA Configuration directory with deployments.json
     :returns: The force_bounce token for the branch, or None if
               deployments.json doesn't exist in soa_dir"""
-    return None
+    full_branch = '%s:%s' % (service_name, branch_name)
+    deployments_json = _get_deployments_json(soa_dir)
+    return deployments_json.get(full_branch, {}).get('force_bounce', None)
 
 
 def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
