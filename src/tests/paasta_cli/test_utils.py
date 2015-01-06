@@ -218,3 +218,16 @@ def test_execute_paasta_serviceinit_on_remote_check_ssh_and_sudo_failed(
     assert mock_run_paasta_serviceinit.call_count == 0
     assert 'ERROR ssh or sudo check failed for master %s' % master_name in actual
     assert 'err_msg' in actual
+
+
+@patch('paasta_tools.paasta_cli.utils.list_instances_for_service')
+@patch('paasta_tools.paasta_cli.utils.list_services')
+def test_list_service_instances(
+    mock_list_services,
+    mock_list_instances,
+):
+    mock_list_services.return_value = ['fake_service']
+    mock_list_instances.return_value = ['canary', 'main']
+    expected = ['fake_service.canary', 'fake_service.main']
+    actual = utils.list_service_instances()
+    assert actual == expected
