@@ -349,6 +349,22 @@ def list_service_instances():
     return the_list
 
 
+def list_instances():
+    """Returns a sorted list of all possible instance names
+    for tab completion. We try to guess what service you might be
+    operating on, otherwise we just provide *all* of them"""
+    all_instances = set()
+    service_name = guess_service_name()
+    try:
+        validate_service_name(service_name)
+        all_instances = set(list_instances_for_service(service_name))
+    except NoSuchService:
+        for service_name in list_services():
+            for instance in list_instances_for_service(service_name):
+                all_instances.add(instance)
+    return sorted(all_instances)
+
+
 def calculate_remote_masters(cluster_name):
     """Given a cluster_name, do a DNS lookup of that cluster_name (which
     happens to point, eventually, to the Mesos masters in that cluster_name).

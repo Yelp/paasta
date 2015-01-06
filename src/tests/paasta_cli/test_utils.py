@@ -231,3 +231,42 @@ def test_list_service_instances(
     expected = ['fake_service.canary', 'fake_service.main']
     actual = utils.list_service_instances()
     assert actual == expected
+
+
+@patch('paasta_tools.paasta_cli.utils.guess_service_name')
+@patch('paasta_tools.paasta_cli.utils.validate_service_name')
+@patch('paasta_tools.paasta_cli.utils.list_instances_for_service')
+def test_list_instances_with_autodetect(
+    mock_list_instance_for_service,
+    mock_validate_service_name,
+    mock_guess_service_name,
+):
+    expected = ['instance1', 'instance2', 'instance3']
+    mock_guess_service_name.return_value = 'fake_service'
+    mock_validate_service_name.return_value = None
+    mock_list_instance_for_service.return_value = expected
+    actual = utils.list_instances()
+    assert actual == expected
+    mock_validate_service_name.assert_called_once_with('fake_service')
+    mock_list_instance_for_service.assert_called_once_with('fake_service')
+
+
+@patch('paasta_tools.paasta_cli.utils.guess_service_name')
+@patch('paasta_tools.paasta_cli.utils.validate_service_name')
+@patch('paasta_tools.paasta_cli.utils.list_instances_for_service')
+@patch('paasta_tools.paasta_cli.utils.list_services')
+def test_list_instances_no_service(
+    mock_list_services,
+    mock_list_instance_for_service,
+    mock_validate_service_name,
+    mock_guess_service_name,
+):
+    expected = ['instance1', 'instance2', 'instance3']
+    mock_guess_service_name.return_value = 'unused'
+    mock_list_services.return_value = ['fake_service1']
+    mock_validate_service_name.side_effect = utils.NoSuchService(None)
+    mock_list_instance_for_service.return_value = expected
+    actual = utils.list_instances()
+    mock_validate_service_name.assert_called_once_with('unused')
+    mock_list_instance_for_service.assert_called_once_with('fake_service1')
+    assert actual == expected

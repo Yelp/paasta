@@ -6,14 +6,8 @@ from argcomplete.completers import ChoicesCompleter
 
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.paasta_cli.utils import list_services
-
-
-def list_instances():
-    return []
-
-
-def list_clusters():
-    return []
+from paasta_tools.paasta_cli.utils import list_instances
+from paasta_tools.marathon_tools import list_clusters
 
 
 def add_subparser(subparsers):
