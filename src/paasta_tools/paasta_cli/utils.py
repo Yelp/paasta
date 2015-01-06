@@ -196,6 +196,16 @@ class PaastaCheckMessages:
         "Push a marathon-[ecosystem].yaml and run `paasta build-deploy-pipline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
+    MAKEFILE_FOUND = success("A Makefile is present")
+    MAKEFILE_MISSING = failure(
+            "No Makefile available. Please make a Makefile that responds\n"
+            "to the proper targets. More info:", "http://y/paasta-contract")
+    MAKEFILE_RESPONDS_ITEST = success("The Makefile responds to `make itest`")
+    MAKEFILE_RESPONDS_ITEST_FAIL = failure(
+            "The Makefile does not have a `make itest` target. Jenkins needs\n"
+            "this and expects it to build and itest your docker image. More info:",
+            "http://y/paasta-contract")
+
     PIPELINE_FOUND = success("Jenkins build pipeline found")
 
     PIPELINE_MISSING = failure("Jenkins build pipeline missing. Please run "
@@ -390,13 +400,13 @@ def check_ssh_and_sudo_on_master(master):
     return (False, output)
 
 
-def run_paasta_serviceinit_status(master, service_name, instancename):
-    command = 'ssh -A -n %s sudo paasta_serviceinit %s.%s status' % (master, service_name, instancename)
+def run_paasta_serviceinit(subcommand, master, service_name, instancename):
+    command = 'ssh -A -n %s sudo paasta_serviceinit %s.%s %s' % (master, service_name, instancename, subcommand)
     _, output = _run(command)
     return output
 
 
-def execute_paasta_serviceinit_status_on_remote_master(cluster_name, service_name, instancename):
+def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, service_name, instancename):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the return value of run_paasta_serviceinit_status().
     """
@@ -411,4 +421,4 @@ def execute_paasta_serviceinit_status_on_remote_master(cluster_name, service_nam
     check, output = check_ssh_and_sudo_on_master(master)
     if not check:
         return 'ERROR ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
-    return run_paasta_serviceinit_status(master, service_name, instancename)
+    return run_paasta_serviceinit(subcommand, master, service_name, instancename)

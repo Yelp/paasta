@@ -7,6 +7,7 @@ from paasta_tools.paasta_cli.cmds.check import \
     sensu_check, smartstack_check, NoSuchService, service_dir_check, \
     pipeline_check, git_repo_check
 from paasta_tools.paasta_cli.paasta_cli import parse_args
+from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 
 
@@ -415,3 +416,17 @@ def test_check_git_repo_check_fail(mock_stdout, mock_subprocess):
     output = mock_stdout.getvalue()
 
     assert output == expected_output
+
+
+@patch('paasta_tools.paasta_cli.cmds.check.subprocess')
+def test_makefile_responds_to_itest_good(mock_subprocess):
+    mock_subprocess.call.return_value = 1
+    actual = makefile_responds_to_itest()
+    assert actual is True
+
+
+@patch('paasta_tools.paasta_cli.cmds.check.subprocess')
+def test_makefile_responds_to_itest_bad(mock_subprocess):
+    mock_subprocess.call.return_value = 2
+    actual = makefile_responds_to_itest()
+    assert actual is False
