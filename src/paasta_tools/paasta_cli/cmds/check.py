@@ -80,6 +80,37 @@ def docker_check():
         print PaastaCheckMessages.DOCKERFILE_MISSING
 
 
+def makefile_responds_to_itest():
+    """Runs `make -q itest` to detect if a makefile responds to an itest
+    target."""
+    args = ['make', '-q', 'itest']
+    with open(os.devnull, 'w') as devnull:
+        # Per the docs
+        # http://www.gnu.org/software/make/manual/make.html#index-exit-status-of-make
+        # 0 and 1 are ok. 2 Means Error
+        # In question mode:
+        # http://linux.die.net/man/1/make (see Exit Status)
+        # 0 - Nothing to do
+        # 1 - Things to do
+        # 2 - Don't know what you are talking about
+        rc = subprocess.call(args, stdout=devnull, stderr=devnull)
+        return rc in [0, 1]
+
+
+def makefile_check():
+    """Detects if you have a makefile and runs some sanity tests against
+    it to ensure it is paasta-ready"""
+    makefile_path = is_file_in_dir('Makefile', os.getcwd())
+    if makefile_path:
+        print PaastaCheckMessages.MAKEFILE_FOUND
+        if makefile_responds_to_itest():
+            print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST
+        else:
+            print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST_FAIL
+    else:
+        print PaastaCheckMessages.MAKEFILE_MISSING
+
+
 def git_repo_check(service_name):
     devnull = open(os.devnull, 'w')
     cmd = 'git'
@@ -179,6 +210,7 @@ def paasta_check(args):
     pipeline_check(service_name)
     git_repo_check(service_name)
     docker_check()
+    makefile_check()
     marathon_check(service_path)
     sensu_check(service_name, service_path)
     smartstack_check(service_name, service_path)
