@@ -834,7 +834,7 @@ class TestMarathonTools:
         assert actual == expected
         assert len(actual) == 14
 
-    def test_id_changes_when_force_bounce_changes(self):
+    def test_id_changes_when_force_bounce_or_desired_state_changes(self):
         fake_name = 'fakeapp'
         fake_instance = 'fakeinstance'
         fake_url = 'fake_url'
@@ -845,9 +845,16 @@ class TestMarathonTools:
         fake_args = ['arg1', 'arg2']
 
         fake_service_config_1 = dict(self.fake_marathon_job_config)
+        fake_service_config_1['desired_state'] = 'start'
         fake_service_config_1['force_bounce'] = '88888'
+
         fake_service_config_2 = dict(self.fake_marathon_job_config)
+        fake_service_config_2['desired_state'] = 'start'
         fake_service_config_2['force_bounce'] = '99999'
+
+        fake_service_config_3 = dict(self.fake_marathon_job_config)
+        fake_service_config_3['desired_state'] = 'stop'
+        fake_service_config_3['force_bounce'] = '99999'
 
         with contextlib.nested(
             mock.patch('marathon_tools.get_mem', return_value=fake_mem),
@@ -875,3 +882,7 @@ class TestMarathonTools:
             read_service_config_patch.return_value = fake_service_config_2
             second_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
             assert first_id != second_id
+
+            read_service_config_patch.return_value = fake_service_config_3
+            third_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            assert second_id != third_id
