@@ -70,9 +70,12 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
             instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
+        elif running_instances == 0:
+            status = PaastaColors.yellow("Critical")
+            instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
         else:
             status = PaastaColors.yellow("Warning")
-            instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
+            instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
         return "Marathon:   %s - up with %s instances. Status: %s." % (status, instance_count, deploy_status)
     else:
         red_not = PaastaColors.red("NOT")
