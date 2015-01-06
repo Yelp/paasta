@@ -323,8 +323,7 @@ def validate_service_name(service_name):
     :param service_name: a string of the name of the service you wish to check exists
     :return : boolean True
     :raises: NoSuchService exception"""
-    service_path = os.path.join('/nail/etc/services', service_name)
-    if not os.path.isdir(service_path):
+    if not service_name or not os.path.isdir(os.path.join('/nail/etc/services', service_name)):
         raise NoSuchService(service_name)
 
 
@@ -334,6 +333,10 @@ def list_services():
 
 
 def calculate_remote_masters(cluster_name):
+    """Given a cluster_name, do a DNS lookup of that cluster_name (which
+    happens to point, eventually, to the Mesos masters in that cluster_name).
+    Return IPs of those Mesos masters.
+    """
     cluster_fqdn = "mesos-%s.yelpcorp.com" % cluster_name
     try:
         _, _, ips = gethostbyname_ex(cluster_fqdn)
@@ -347,9 +350,11 @@ def calculate_remote_masters(cluster_name):
 def find_connectable_master(masters):
     """For each host in the iterable 'masters', try various connectivity
     checks. For each master that fails, emit an error message about which check
-    failed and move on to the next master. If a master passes all checks,
-    return it as the connectable master. If no masters pass all checks, return
-    None.
+    failed and move on to the next master.
+
+    If a master passes all checks, return a tuple of the connectable master and
+    None. If no masters pass all checks, return a tuple of None and the output
+    from the DNS lookup.
     """
     port = 22
     timeout = 1.0  # seconds
@@ -388,6 +393,10 @@ def _run(command):
 
 
 def check_ssh_and_sudo_on_master(master):
+    """Given a master, attempt to ssh to the master and run a simple command
+    with sudo to verify that ssh and sudo work properly. Return a tuple of the
+    success status (True or False) and any output from attempting the check.
+    """
     check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
     rc, output = _run(check_command)
     if rc == 0:
@@ -415,6 +424,7 @@ def check_ssh_and_sudo_on_master(master):
 
 
 def run_paasta_serviceinit(subcommand, master, service_name, instancename):
+    """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     command = 'ssh -A -n %s sudo paasta_serviceinit %s.%s %s' % (master, service_name, instancename, subcommand)
     _, output = _run(command)
     return output
@@ -422,7 +432,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename):
 
 def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, service_name, instancename):
     """Returns a string containing an error message if an error occurred.
-    Otherwise returns the return value of run_paasta_serviceinit_status().
+    Otherwise returns the output of run_paasta_serviceinit_status().
     """
     masters, output = calculate_remote_masters(cluster_name)
     if masters == []:

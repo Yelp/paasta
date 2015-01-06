@@ -27,6 +27,9 @@ check
 generate-pipeline
 help
 emergency-stop
+itest
+mark-for-deployment
+promote-to-registry
 status
 version"
 
