@@ -762,12 +762,14 @@ class TestMarathonTools:
         fake_url = 'fake_url'
         fake_hash = 'CONFIGHASH'
         fake_code_sha = 'CODESHA'
+        fake_config = {}
+
         with contextlib.nested(
             mock.patch('marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_docker_url', return_value=fake_url),
             mock.patch('marathon_tools.create_incomplete_config',
-                       return_value=self.fake_marathon_job_config),
+                       return_value=fake_config),
             mock.patch('marathon_tools.get_config_hash', return_value=fake_hash),
             mock.patch('marathon_tools.get_code_sha_from_dockerurl', return_value=fake_code_sha),
         ) as (
@@ -779,7 +781,7 @@ class TestMarathonTools:
         ):
             assert marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
             read_service_config_patch.assert_called_once_with(fake_name, fake_instance, soa_dir='/nail/etc/services')
-            hash_patch.assert_called_once_with(self.fake_marathon_job_config)
+            hash_patch.assert_called_once_with(fake_config)
             code_sha_patch.assert_called_once_with(fake_url)
 
     def test_get_code_sha_from_dockerurl(self):
