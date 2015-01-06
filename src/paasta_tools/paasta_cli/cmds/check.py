@@ -7,10 +7,16 @@ import subprocess
 import urllib2
 
 from service_configuration_lib import read_extra_service_information
+from service_configuration_lib import read_service_configuration
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.utils import \
     guess_service_name, is_file_in_dir, PaastaCheckMessages, \
     NoSuchService, validate_service_name
+
+
+def get_pipeline_config(service_name):
+    service_configuration = read_service_configuration(service_name)
+    return service_configuration.get('deploy', {}).get('pipeline', [])
 
 
 def add_subparser(subparsers):
@@ -30,6 +36,28 @@ def deploy_check(service_path):
         print PaastaCheckMessages.DEPLOY_YAML_FOUND
     else:
         print PaastaCheckMessages.DEPLOY_YAML_MISSING
+
+
+def deploy_has_security_check(service_name):
+    pipeline = get_pipeline_config(service_name)
+    steps = [step['instancename'] for step in pipeline]
+    if 'security-check' in steps:
+        print PaastaCheckMessages.DEPLOY_SECURITY_FOUND
+        return True
+    else:
+        print PaastaCheckMessages.DEPLOY_SECURITY_MISSING
+        return False
+
+
+def deploy_has_performance_check(service_name):
+    pipeline = get_pipeline_config(service_name)
+    steps = [step['instancename'] for step in pipeline]
+    if 'performance-check' in steps:
+        print PaastaCheckMessages.DEPLOY_PERFORMANCE_FOUND
+        return True
+    else:
+        print PaastaCheckMessages.DEPLOY_PERFORMANCE_MISSING
+        return False
 
 
 def expose_8888_in_dockerfile(path):
@@ -207,6 +235,8 @@ def paasta_check(args):
 
     service_dir_check(service_name)
     deploy_check(service_path)
+    deploy_has_security_check(service_name)
+    deploy_has_performance_check(service_name)
     pipeline_check(service_name)
     git_repo_check(service_name)
     docker_check()
