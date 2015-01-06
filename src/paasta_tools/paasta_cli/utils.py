@@ -196,6 +196,16 @@ class PaastaCheckMessages:
         "Push a marathon-[ecosystem].yaml and run `paasta build-deploy-pipline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
+    MAKEFILE_FOUND = success("A Makefile is present")
+    MAKEFILE_MISSING = failure(
+            "No Makefile available. Please make a Makefile that responds\n"
+            "to the proper targets. More info:", "http://y/paasta-contract")
+    MAKEFILE_RESPONDS_ITEST = success("The Makefile responds to `make itest`")
+    MAKEFILE_RESPONDS_ITEST_FAIL = failure(
+            "The Makefile does not have a `make itest` target. Jenkins needs\n"
+            "this and expects it to build and itest your docker image. More info:",
+            "http://y/paasta-contract")
+
     PIPELINE_FOUND = success("Jenkins build pipeline found")
 
     PIPELINE_MISSING = failure("Jenkins build pipeline missing. Please run "
