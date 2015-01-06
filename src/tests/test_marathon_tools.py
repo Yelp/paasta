@@ -592,6 +592,7 @@ class TestMarathonTools:
         fake_cpus = -1
         fake_instances = 101
         fake_args = ['arg1', 'arg2']
+
         expected_conf = {
             'id': fake_id,
             'container': {
@@ -617,6 +618,8 @@ class TestMarathonTools:
             'args': fake_args,
             'backoff_seconds': 1,
             'backoff_factor': 2,
+            'desired_state': 'start',
+            'force_bounce': None,
         }
         with contextlib.nested(
             mock.patch('marathon_tools.get_mem', return_value=fake_mem),
@@ -629,7 +632,7 @@ class TestMarathonTools:
             get_cpus_patch,
             get_constraints_patch,
             get_instances_patch,
-            get_args_patch
+            get_args_patch,
         ):
             actual = marathon_tools.create_incomplete_config(fake_id, fake_url, fake_volumes,
                                                              self.fake_marathon_job_config)

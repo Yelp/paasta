@@ -264,6 +264,8 @@ def create_incomplete_config(job_id, docker_url, docker_volumes, service_maratho
         'uris': ['file:///root/.dockercfg', ],
         'backoff_seconds': 1,
         'backoff_factor': 2,
+        'desired_state': service_marathon_config['desired_state'],
+        'force_bounce': service_marathon_config['force_bounce'],
     }
     complete_config['mem'] = get_mem(service_marathon_config)
     complete_config['cpus'] = get_cpus(service_marathon_config)
