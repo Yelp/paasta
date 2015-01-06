@@ -12,6 +12,8 @@ class TestMarathonTools:
         'mem': 100,
         'docker_image': 'test_docker:1.0',
         'branch': 'master',
+        'desired_state': 'start',
+        'force_bounce': None,
     }
     fake_srv_config = {
         'runs_on': ['some-box'],
@@ -153,14 +155,23 @@ class TestMarathonTools:
 
         expected = dict(self.fake_srv_config.items() + self.fake_marathon_job_config.items())
         expected['docker_image'] = fake_docker
+        expected['desired_state'] = 'stop'
+        expected['force_bounce'] = '12345'
+
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_extra_service_information',
                        side_effect=conf_helper),
             mock.patch('marathon_tools.get_docker_from_branch',
-                       return_value=fake_docker)
+                       return_value=fake_docker),
+            mock.patch('marathon_tools.get_desired_state_from_branch',
+                       return_value='stop'),
+            mock.patch('marathon_tools.get_force_bounce_from_branch',
+                       return_value='12345')
         ) as (
             read_extra_info_patch,
-            get_docker_patch
+            get_docker_patch,
+            get_desired_state_patch,
+            get_force_bounce_patch,
         ):
             actual = marathon_tools.read_service_config(fake_name, fake_instance,
                                                         fake_cluster, fake_dir)

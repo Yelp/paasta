@@ -302,6 +302,33 @@ def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
     return deployments_json.get(full_branch, {}).get('docker_image', '')
 
 
+def get_desired_state_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
+    """Get the desired state (either 'start' or 'stop') for a given service
+    branch from a generated deployments.json file.
+
+    :param service_name: The name of the service
+    :param branch_name: The name of the remote branch to get state for
+    :param soa_dir: The SOA Configuration directory with deployments.json
+    :returns: The desired state for the branch, or '' if
+              deployments.json doesn't exist in soa_dir"""
+    return 'start'
+
+
+def get_force_bounce_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
+    """Get the force_bounce token for a given service branch from a generated
+    deployments.json file. This is a token that, when changed, indicates that
+    the marathon job should be recreated and bounced, even if no other
+    parameters have changed. This may be None or a string, generally a
+    timestamp.
+
+    :param service_name: The name of the service
+    :param branch_name: The name of the remote branch to get token for
+    :param soa_dir: The SOA Configuration directory with deployments.json
+    :returns: The force_bounce token for the branch, or None if
+              deployments.json doesn't exist in soa_dir"""
+    return None
+
+
 def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
     """Get the docker images that are supposed/allowed to be deployed here
     according to deployments.json.
@@ -364,6 +391,8 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         else:
             branch = general_config['branch']
         general_config['docker_image'] = get_docker_from_branch(name, branch, soa_dir)
+        general_config['desired_state'] = get_desired_state_from_branch(name, branch, soa_dir)
+        general_config['force_bounce'] = get_force_bounce_from_branch(name, branch, soa_dir)
         return general_config
     else:
         log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
