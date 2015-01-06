@@ -2,10 +2,10 @@ import sys
 
 from mock import patch
 
-from service_deployment_tools.paasta_cli import paasta_cli
+from paasta_tools.paasta_cli import paasta_cli
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.list.paasta_list')
+@patch('paasta_tools.paasta_cli.cmds.list.paasta_list')
 def test_paasta_list(mock_paasta_list):
 
     sys.argv = ['./paasta_cli', 'list']
@@ -13,7 +13,7 @@ def test_paasta_list(mock_paasta_list):
     assert mock_paasta_list.called
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.check.paasta_check')
+@patch('paasta_tools.paasta_cli.cmds.check.paasta_check')
 def test_paasta_check(mock_paasta_check):
 
     sys.argv = ['./paasta_cli', 'check']
@@ -21,7 +21,7 @@ def test_paasta_check(mock_paasta_check):
     assert mock_paasta_check.called
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.'
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.'
        'paasta_generate_pipeline')
 def test_paasta_generate_pipeline(mock_paasta_generate_pipeline):
 
@@ -30,7 +30,7 @@ def test_paasta_generate_pipeline(mock_paasta_generate_pipeline):
     assert mock_paasta_generate_pipeline.called
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.status.paasta_status')
+@patch('paasta_tools.paasta_cli.cmds.status.paasta_status')
 def test_paasta_status(mock_paasta_status):
 
     sys.argv = ['./paasta_cli', 'status']

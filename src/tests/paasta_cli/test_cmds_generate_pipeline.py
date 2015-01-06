@@ -5,14 +5,14 @@ from subprocess import CalledProcessError
 from mock import patch
 from pytest import raises
 
-from service_deployment_tools.paasta_cli.cmds.generate_pipeline \
+from paasta_tools.paasta_cli.cmds.generate_pipeline \
     import paasta_generate_pipeline
-from service_deployment_tools.paasta_cli.paasta_cli import parse_args
-from service_deployment_tools.paasta_cli.utils import NoSuchService
+from paasta_tools.paasta_cli.paasta_cli import parse_args
+from paasta_tools.paasta_cli.utils import NoSuchService
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
 @patch('sys.stdout', new_callable=StringIO)
 def test_generate_pipeline_service_not_found(
         mock_stdout, mock_guess_service_name, mock_validate_service_name):
@@ -34,9 +34,9 @@ def test_generate_pipeline_service_not_found(
     assert output == expected_output
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.subprocess')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
 def test_generate_pipeline_subprocess1_fail_no_opt_args(
         mock_subprocess, mock_guess_service_name, mock_validate_service_name):
     # paasta generate fails on the first subprocess call
@@ -53,9 +53,9 @@ def test_generate_pipeline_subprocess1_fail_no_opt_args(
         paasta_generate_pipeline(parsed_args)
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.subprocess')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
 def test_generate_pipeline_subprocess2_fail_with_opt_args(
         mock_subprocess, mock_guess_service_name, mock_validate_service_name):
     # paasta generate fails on the second subprocess call
@@ -74,9 +74,9 @@ def test_generate_pipeline_subprocess2_fail_with_opt_args(
         paasta_generate_pipeline(parsed_args)
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.subprocess')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
 def test_generate_pipeline_success_no_opts(
         mock_subprocess, mock_guess_service_name, mock_validate_service_name):
     # paasta generate succeeds when service name must be guessed
@@ -92,8 +92,8 @@ def test_generate_pipeline_success_no_opts(
     assert paasta_generate_pipeline(parsed_args) is None
 
 
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('service_deployment_tools.paasta_cli.cmds.generate_pipeline.subprocess')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
 def test_generate_pipeline_success_with_opts(
         mock_subprocess, mock_validate_service_name):
     # paasta generate succeeds when service name provided as arg

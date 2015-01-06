@@ -4,8 +4,9 @@ import mock
 from fig.cli import command
 
 sys.path.append('../')
-import service_deployment_tools
-from service_deployment_tools import setup_marathon_job
+import paasta_tools
+from paasta_tools import setup_marathon_job
+from paasta_tools import marathon_tools
 
 def get_service_connection_string(service_name, port):
     """Given a desired internal port and container name this function returns
@@ -33,7 +34,7 @@ def working_marathon(context):
       'pass': None,
       'docker_registry': u'docker-dev.yelpcorp.com'
     }
-    context.client = setup_marathon_job.get_marathon_client(marathon_config['url'], marathon_config['user'],
+    context.client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
                                  marathon_config['pass'])
     context.marathon_config = marathon_config
 
@@ -43,10 +44,10 @@ def step_impl(context):
         'id': 'behavetest',
         'cmd': '/bin/true',
     }
-    with mock.patch('service_deployment_tools.bounce_lib.create_app_lock'):
-        service_deployment_tools.bounce_lib.create_marathon_app('behavetest', trivial_app_config, context.client)
+    with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
+        paasta_tools.bounce_lib.create_marathon_app('behavetest', trivial_app_config, context.client)
 
 @then(u'we should see it running via the marathon api')
 def step_impl(context):
-    assert 'behavetest' in service_deployment_tools.marathon_tools.list_all_marathon_app_ids(context.client)
+    assert 'behavetest' in paasta_tools.marathon_tools.list_all_marathon_app_ids(context.client)
 

@@ -1,3 +1,5 @@
+# Edit this release and run "make release"
+RELEASE=0.7.37-yelp1
 
 UID:=`id -u`
 GID:=`id -g`
@@ -46,7 +48,7 @@ quick_start:
 clean:
 	rm -rf dist/
 	rm -rf src/.tox
-	rm -rf src/service_deployment_tools.egg-info
+	rm -rf src/paasta_tools.egg-info
 	rm -rf src/build
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete
@@ -69,8 +71,6 @@ cleanup_chronos_itest:
 	docker rm chronos_itest_mesos
 	docker rm chronos_itest_chronos
 
-
-
 build_chronos_itest: build_chronos_itest_zookeeper_docker build_chronos_itest_mesos_docker build_chronos_itest_chronos_docker build_chronos_itest_itest_docker
 
 build_chronos_itest_zookeeper_docker:
@@ -84,3 +84,15 @@ build_chronos_itest_chronos_docker:
 
 build_chronos_itest_itest_docker:
 	cd dockerfiles/itest/itest/ && docker build -t "chronos_itest/itest" .
+
+VERSION = $(firstword $(subst -, ,$(RELEASE) ))
+LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B )
+release:
+	dch -v $(RELEASE) --changelog src/debian/changelog "$(VERSION) tagged with 'make release'Commit: $(LAST_COMMIT_MSG)"
+	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" src/setup.py
+	@echo "$(RELEASE) has the changelog set."
+	@git diff
+	@echo "Now Run:"
+	@echo 'git commit -a -m "Released $(RELEASE) via make release"'
+	@echo 'git tag --force v$(VERSION)'
+	@echo 'git push --tags origin master'

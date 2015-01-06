@@ -1,7 +1,7 @@
-Preparation: service_deployment_tools and yelpsoa-configs
+Preparation: paasta_tools and yelpsoa-configs
 =========================================================
 
-service_deployment_tools reads configuration about services from several YAML
+paasta_tools reads configuration about services from several YAML
 files in `yelpsoa-configs <http://y/cep319>`_:
 
 marathon-[clustername].yaml
@@ -13,7 +13,7 @@ lives (``norcal-prod``), but not always (``mesosstage``).
 
 The yaml where marathon jobs are actually defined.
 
-Top level keys are namespaces, e.g. ``main`` and ``canary``. Each namespace MAY have:
+Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancename MAY have:
 
   * ``cpu``: Number of CPUs an instance needs
 
@@ -45,9 +45,9 @@ See `the wiki
 <https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml>`_
 
 
-Where does service_deployment_tools look for yelpsoa-configs?
+Where does paasta_tools look for yelpsoa-configs?
 -------------------------------------------------------------
 
-By default, service_deployment_tools uses the system yelpsoa-configs dir,
+By default, paasta_tools uses the system yelpsoa-configs dir,
 ``/nail/etc/services``. Scripts should allow this to be overridden with ``-d``
 or ``--soa-dir``. Normally you would only do this for testing or debugging.

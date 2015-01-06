@@ -1,7 +1,7 @@
 import mock
 import pytest
 
-from service_deployment_tools.monitoring.config_providers import (
+from paasta_tools.monitoring.config_providers import (
     extract_classic_monitoring_info,
     extract_monitoring_info,
     monitoring_keys
@@ -27,7 +27,7 @@ def test_extract_classic_monitoring_info():
 
 
 def test_extract_monitoring_info():
-    module = 'service_deployment_tools.monitoring.config_providers'
+    module = 'paasta_tools.monitoring.config_providers'
     extract_method = module + '.extract_classic_monitoring_info'
 
     with mock.patch(extract_method, return_value=-1):

@@ -32,20 +32,20 @@ def test_send_event():
     }
     expected_check_name = 'check_marathon_services_replication.%s.%s' % (fake_service_name, fake_namespace)
     with contextlib.nested(
-        mock.patch("service_deployment_tools.monitoring_tools.get_team",
+        mock.patch("paasta_tools.monitoring_tools.get_team",
                    return_value=fake_team),
-        mock.patch("service_deployment_tools.monitoring_tools.get_runbook",
+        mock.patch("paasta_tools.monitoring_tools.get_runbook",
                    return_value=fake_runbook),
-        mock.patch("service_deployment_tools.monitoring_tools.get_tip",
+        mock.patch("paasta_tools.monitoring_tools.get_tip",
                    return_value=fake_tip),
-        mock.patch("service_deployment_tools.monitoring_tools.get_notification_email",
+        mock.patch("paasta_tools.monitoring_tools.get_notification_email",
                    return_value=fake_notification_email),
-        mock.patch("service_deployment_tools.monitoring_tools.get_page",
+        mock.patch("paasta_tools.monitoring_tools.get_page",
                    return_value=fake_page),
-        mock.patch("service_deployment_tools.monitoring_tools.get_irc_channels",
+        mock.patch("paasta_tools.monitoring_tools.get_irc_channels",
                    return_value=fake_irc),
         mock.patch("pysensu_yelp.send_event"),
-        mock.patch('service_deployment_tools.marathon_tools.get_cluster',
+        mock.patch('paasta_tools.marathon_tools.get_cluster',
                    return_value=fake_cluster)
     ) as (
         monitoring_tools_get_team_patch,
@@ -101,11 +101,11 @@ def test_get_expected_instances():
             return {'nerve_ns': 'amarillo'}
 
     with contextlib.nested(
-        mock.patch('service_deployment_tools.marathon_tools.get_service_instance_list',
+        mock.patch('paasta_tools.marathon_tools.get_service_instance_list',
                    return_value=fake_instances),
-        mock.patch('service_deployment_tools.marathon_tools.read_service_config',
+        mock.patch('paasta_tools.marathon_tools.read_service_config',
                    side_effect=config_helper),
-        mock.patch('service_deployment_tools.marathon_tools.get_instances',
+        mock.patch('paasta_tools.marathon_tools.get_instances',
                    return_value=11)
     ) as (
         inst_list_patch,
@@ -160,9 +160,9 @@ def test_main():
     args = mock.Mock(soa_dir=soa_dir, warn=warn, crit=crit, synapse_host_port=synapse_host, verbose=False)
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.parse_args', return_value=args),
-        mock.patch('service_deployment_tools.marathon_tools.get_all_namespaces',
+        mock.patch('paasta_tools.marathon_tools.get_all_namespaces',
                    return_value=namespaces),
-        mock.patch('service_deployment_tools.monitoring.replication_utils.get_replication_for_services',
+        mock.patch('paasta_tools.monitoring.replication_utils.get_replication_for_services',
                    return_value=replication),
         mock.patch('check_marathon_services_replication.check_namespaces')
     ) as (

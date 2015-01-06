@@ -197,7 +197,7 @@ class TestMarathonTools:
             json_patch
         ):
             assert marathon_tools.get_config() == expected
-            open_file_patch.assert_called_once_with('/etc/service_deployment_tools/marathon_config.json')
+            open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(file_mock.read())
 
@@ -603,7 +603,9 @@ class TestMarathonTools:
             'mem': fake_mem,
             'cpus': fake_cpus,
             'instances': fake_instances,
-            'args': fake_args
+            'args': fake_args,
+            'backoff_seconds': 1,
+            'backoff_factor': 2,
         }
         with contextlib.nested(
             mock.patch('marathon_tools.get_mem', return_value=fake_mem),
@@ -758,7 +760,8 @@ class TestMarathonTools:
         fake_name = 'fakeapp'
         fake_instance = 'fakeinstance'
         fake_url = 'fake_url'
-        fake_hash = 'abc123'
+        fake_hash = 'CONFIGHASH'
+        fake_code_sha = 'CODESHA'
         with contextlib.nested(
             mock.patch('marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
@@ -766,12 +769,28 @@ class TestMarathonTools:
             mock.patch('marathon_tools.create_incomplete_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_config_hash', return_value=fake_hash),
+            mock.patch('marathon_tools.get_code_sha_from_dockerurl', return_value=fake_code_sha),
         ) as (
             read_service_config_patch,
             docker_url_patch,
             create_incomplete_config_patch,
             hash_patch,
+            code_sha_patch,
         ):
-            assert marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config) == 'fakeapp.fakeinstance.abc123'
+            assert marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
             read_service_config_patch.assert_called_once_with(fake_name, fake_instance, soa_dir='/nail/etc/services')
             hash_patch.assert_called_once_with(self.fake_marathon_job_config)
+            code_sha_patch.assert_called_once_with(fake_url)
+
+    def test_get_code_sha_from_dockerurl(self):
+        fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'
+        actual = marathon_tools.get_code_sha_from_dockerurl(fake_docker_url)
+        assert actual == 'git93340779'
+        assert len(actual) == 11
+
+    def test_get_config_hash(self):
+        test_input = {'foo': 'bar'}
+        actual = marathon_tools.get_config_hash(test_input)
+        expected = 'configdd63dafc'
+        assert actual == expected
+        assert len(actual) == 14

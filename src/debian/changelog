@@ -1,268 +1,359 @@
-service-deployment-tools (0.7.26-yelp1) lucid; urgency=low
+paasta-tools (0.7.37-yelp1) lucid; urgency=low
+
+  * 0.7.37 tagged with 'make release'
+    Commit: Released 0.7.36-yelp1 via make release
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 05 Jan 2015 16:44:56 -0800
+
+paasta-tools (0.7.36-yelp1) lucid; urgency=low
+
+  * Released 0.7.35-yelp1 via make release
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 05 Jan 2015 16:34:28 -0800
+
+paasta-tools (0.7.35-yelp1) lucid; urgency=low
+
+  * Merge branch 'mention_boto'
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 05 Jan 2015 16:32:48 -0800
+
+paasta-tools (0.7.34-yelp1) lucid; urgency=low
+
+  * Merge branch 'MESOS-195'
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 30 Dec 2014 14:11:16 -0800
+
+paasta-tools (0.7.33-yelp1) lucid; urgency=low
+
+  * Merge branch 'MESOS-177'
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 30 Dec 2014 14:09:05 -0800
+
+paasta-tools (0.7.32-yelp1) lucid; urgency=low
+
+  * Added paasta_servceinit as a script to be run in the path
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 29 Dec 2014 17:22:44 -0800
+
+paasta-tools (0.7.31-yelp1) lucid; urgency=low
+
+  * Fix backoff_factor
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 29 Dec 2014 13:00:54 -0800
+
+paasta-tools (0.7.30-yelp2) lucid; urgency=low
+
+  * Released 0.7.30-yelp1 via emake release
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 29 Dec 2014 12:16:22 -0800
+
+paasta-tools (0.7.30-yelp1) lucid; urgency=low
+
+  * Added make release target
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 29 Dec 2014 12:11:51 -0800
+
+paasta-tools (0.7.30-yelp1) lucid; urgency=low
+
+  * Added make release target
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 29 Dec 2014 12:11:13 -0800
+
+paasta-tools (0.7.30-yelp1) lucid; urgency=low
+
+  * Added make release target
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 29 Dec 2014 12:01:47 -0800
+
+paasta-tools (0.7.29-yelp1) lucid; urgency=low
+
+  * Annotate app_id with git and config hashes 
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 17:50:04 -0800
+
+paasta-tools (0.7.28-yelp2) lucid; urgency=low
+
+  * Conflict with service_deployment_tools 
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 17:14:11 -0800
+
+paasta-tools (0.7.28-yelp1) lucid; urgency=low
+
+  * New release on paasta-tools
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 15:59:50 -0800
+
+paasta-tools (0.7.27-yelp1) lucid; urgency=low
+
+  * New serviceinit primatives and new app_id generation.
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 15:22:36 -0800
+
+paasta-tools (0.7.26-yelp1) lucid; urgency=low
 
   * Docs about how Docker containers are run
 
  -- Tyler Roscoe <troscoe@yelp.com>  Fri, 19 Dec 2014 16:03:52 -0800
 
-service-deployment-tools (0.7.25-yelp1) lucid; urgency=low
+paasta-tools (0.7.25-yelp1) lucid; urgency=low
 
   * paasta status returns jenkins pipeline url 
 
  -- Karthig Balendran <karthig@yelp.com>  Thu, 18 Dec 2014 11:25:59 -0800
 
-service-deployment-tools (0.7.24-yelp1) lucid; urgency=low
+paasta-tools (0.7.24-yelp1) lucid; urgency=low
 
   * instance_name -> instancename
 
  -- Tyler Roscoe <troscoe@yelp.com>  Wed, 17 Dec 2014 12:17:09 -0800
 
-service-deployment-tools (0.7.23-yelp1) lucid; urgency=low
+paasta-tools (0.7.23-yelp1) lucid; urgency=low
 
   * Suppress output from paasta git repo check 
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 17 Dec 2014 12:06:15 -0800
 
-service-deployment-tools (0.7.22-yelp1) lucid; urgency=low
+paasta-tools (0.7.22-yelp1) lucid; urgency=low
 
   * Clean up 'paasta check' msg 
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 17 Dec 2014 11:06:10 -0800
 
-service-deployment-tools (0.7.21-yelp1) lucid; urgency=low
+paasta-tools (0.7.21-yelp1) lucid; urgency=low
 
   * Add new 'paasta check' checks 
 
  -- Karthig Balendran <karthig@yelp.com>  Tue, 16 Dec 2014 19:20:36 -0800
 
-service-deployment-tools (0.7.20-yelp1) lucid; urgency=low
+paasta-tools (0.7.20-yelp1) lucid; urgency=low
 
   * Update paasta_cli documentation and integration tests 
 
  -- Karthig Balendran <karthig@yelp.com>  Tue, 16 Dec 2014 11:51:30 -0800
 
-service-deployment-tools (0.7.19-yelp1) lucid; urgency=low
+paasta-tools (0.7.19-yelp1) lucid; urgency=low
 
   * Fix 'paasta status' bug + improve servicedocs documentation 
 
  -- Karthig Balendran <karthig@yelp.com>  Mon, 15 Dec 2014 17:30:31 -0800
 
-service-deployment-tools (0.7.18-yelp1) lucid; urgency=low
+paasta-tools (0.7.18-yelp1) lucid; urgency=low
 
   * Create servicedocs stubs for paasta_cli 
 
  -- Karthig Balendran <karthig@yelp.com>  Fri, 12 Dec 2014 17:23:56 -0800
 
-service-deployment-tools (0.7.17-yelp1) lucid; urgency=low
+paasta-tools (0.7.17-yelp1) lucid; urgency=low
 
   * 'paasta status' sorts according to deploy.yaml 
 
  -- Karthig Balendran <karthig@yelp.com>  Fri, 12 Dec 2014 16:12:54 -0800
 
-service-deployment-tools (0.7.16-yelp1) lucid; urgency=low
+paasta-tools (0.7.16-yelp1) lucid; urgency=low
 
   * Make 'paasta status' more readable 
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 10 Dec 2014 17:03:51 -0800
 
-service-deployment-tools (0.7.15-yelp1) lucid; urgency=low
+paasta-tools (0.7.15-yelp1) lucid; urgency=low
 
   * Add 'paasta version' command 
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 10 Dec 2014 14:11:46 -0800
 
-service-deployment-tools (0.7.14-yelp1) lucid; urgency=low
+paasta-tools (0.7.14-yelp1) lucid; urgency=low
 
   * Add 'paasta status' command 
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 10 Dec 2014 10:18:40 -0800
 
-service-deployment-tools (0.7.13-yelp1) lucid; urgency=low
+paasta-tools (0.7.13-yelp1) lucid; urgency=low
 
   * Add 'paasta generate-pipeline' method
 
  -- Karthig Balendran <karthig@yelp.com>  Tue, 09 Dec 2014 15:53:44 -0800
 
-service-deployment-tools (0.7.12-yelp1) lucid; urgency=low
+paasta-tools (0.7.12-yelp1) lucid; urgency=low
 
   * Pin to a correct version of the marathon package. 
 
  -- Kyle Anderson <kwa@yelp.com>  Mon, 08 Dec 2014 18:04:00 -0800
 
-service-deployment-tools (0.7.11-yelp1) lucid; urgency=low
+paasta-tools (0.7.11-yelp1) lucid; urgency=low
 
   * Fix create_app function, MESOS-164 
 
  -- Kyle Anderson <kwa@yelp.com>  Mon, 08 Dec 2014 12:42:44 -0800
 
-service-deployment-tools (0.7.10-yelp1) lucid; urgency=low
+paasta-tools (0.7.10-yelp1) lucid; urgency=low
 
   * Add tab completion script to /etc/bash_complete.d 
 
  -- Karthig Balendran <karthig@yelp.com>  Fri, 05 Dec 2014 11:21:42 -0800
 
-service-deployment-tools (0.7.9-yelp1) lucid; urgency=low
+paasta-tools (0.7.9-yelp1) lucid; urgency=low
 
   * Bump to python 2.7 to support new marathon packages 
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 16:55:43 -0800
 
-service-deployment-tools (0.7.8-yelp1) lucid; urgency=low
+paasta-tools (0.7.8-yelp1) lucid; urgency=low
 
   * Bump to the latest marathon package so we can force removal 
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 15:50:56 -0800
 
-service-deployment-tools (0.7.7-yelp1) lucid; urgency=low
+paasta-tools (0.7.7-yelp1) lucid; urgency=low
 
   * PaaSTA check command more thorough 
 
  -- Karthig Balendran <karthig@yelp.com>  Thu, 04 Dec 2014 15:43:08 -0800
 
-service-deployment-tools (0.7.6-yelp1) lucid; urgency=low
+paasta-tools (0.7.6-yelp1) lucid; urgency=low
 
   * Add README for paasta client 
 
  -- Karthig Balendran <karthig@yelp.com>  Thu, 04 Dec 2014 15:20:39 -0800
 
-service-deployment-tools (0.7.5-yelp1) lucid; urgency=low
+paasta-tools (0.7.5-yelp1) lucid; urgency=low
 
   * Fix scaling bug to also force marathon jobs to 0 when deleting. MESOS-138 
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 12:00:50 -0800
 
-service-deployment-tools (0.7.4-yelp1) lucid; urgency=low
+paasta-tools (0.7.4-yelp1) lucid; urgency=low
 
   * Fix bug where marathon jobs were not being deleted. MESOS-138. 
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 10:45:38 -0800
 
-service-deployment-tools (0.7.3-yelp1) lucid; urgency=low
+paasta-tools (0.7.3-yelp1) lucid; urgency=low
 
   * Stop announcing non-namespaced classic service names for Nerve.
 
  -- John Billings <billings@yelp.com>  Mon, 01 Dec 2014 22:12:00 -0800
 
-service-deployment-tools (0.7.2-yelp1) lucid; urgency=low
+paasta-tools (0.7.2-yelp1) lucid; urgency=low
 
   * Implement paasta check commend 
 
  -- Karthig Balendran <karthig@yelp.com>  Mon, 01 Dec 2014 14:43:50 -0800
 
-service-deployment-tools (0.7.1-yelp1) lucid; urgency=low
+paasta-tools (0.7.1-yelp1) lucid; urgency=low
 
   * Add integration tests for paasta list 
 
  -- Karthig Balendran <karthig@yelp.com>  Mon, 24 Nov 2014 11:38:07 -0800
 
-service-deployment-tools (0.7.0-yelp1) lucid; urgency=low
+paasta-tools (0.7.0-yelp1) lucid; urgency=low
 
   * Dynamically load module using absolute path 
 
  -- Karthig Balendran <karthig@yelp.com>  Fri, 21 Nov 2014 16:15:13 -0800
 
-service-deployment-tools (0.6.9-yelp1) lucid; urgency=low
+paasta-tools (0.6.9-yelp1) lucid; urgency=low
 
   * Fixed broken tests
  
  -- Karthig Balendran <karthig@yelp.com>  Fri, 21 Nov 2014 11:42:55 -0800
 
-service-deployment-tools (0.6.8-yelp1) lucid; urgency=low
+paasta-tools (0.6.8-yelp1) lucid; urgency=low
 
   * Added paasta cli command line utility
 
  -- Karthig Balendran <karthig@yelp.com>  Thu, 20 Nov 2014 16:37:41 -0800
 
-service-deployment-tools (0.6.7-yelp1) lucid; urgency=low
+paasta-tools (0.6.7-yelp1) lucid; urgency=low
 
   * Bump to use the latest service_configuration_lib with real caching 
 
  -- Kyle Anderson <kwa@yelp.com>  Tue, 18 Nov 2014 16:05:42 -0800
 
-service-deployment-tools (0.6.6-yelp1) lucid; urgency=low
+paasta-tools (0.6.6-yelp1) lucid; urgency=low
 
   * Fix more logging in runnable scripts
 
  -- Tyler Roscoe <troscoe@yelp.com>  Mon, 17 Nov 2014 16:55:21 -0800
 
-service-deployment-tools (0.6.5-yelp1) lucid; urgency=low
+paasta-tools (0.6.5-yelp1) lucid; urgency=low
 
   * Handle mesos cluster names containing hyphens
 
  -- Tyler Roscoe <troscoe@yelp.com>  Mon, 17 Nov 2014 16:42:56 -0800
 
-service-deployment-tools (0.6.4-yelp1) lucid; urgency=low
+paasta-tools (0.6.4-yelp1) lucid; urgency=low
 
   * Add cleanup_marathon_orphaned_containers
 
  -- Tyler Roscoe <troscoe@yelp.com>  Wed, 29 Oct 2014 12:21:22 -0700
 
-service-deployment-tools (0.6.3-yelp1) lucid; urgency=low
+paasta-tools (0.6.3-yelp1) lucid; urgency=low
 
   * Screwed up the tag/pypi for 0.6.2 :/
 
  -- Tyler Roscoe <troscoe@yelp.com>  Thu, 23 Oct 2014 16:40:45 -0700
 
-service-deployment-tools (0.6.2-yelp1) lucid; urgency=low
+paasta-tools (0.6.2-yelp1) lucid; urgency=low
 
   * Really fix the destroying of apps for MESOS-119
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 23 Oct 2014 16:05:50 -0700
 
-service-deployment-tools (0.6.1-yelp1) lucid; urgency=low
+paasta-tools (0.6.1-yelp1) lucid; urgency=low
 
   * Default bounce strategy back to 'brutal'
 
  -- Tyler Roscoe <troscoe@yelp.com>  Thu, 23 Oct 2014 14:02:59 -0700
 
-service-deployment-tools (0.6.0-yelp1) lucid; urgency=low
+paasta-tools (0.6.0-yelp1) lucid; urgency=low
 
   * Small PaaSTA API change for MESOS-108
 
  -- Tyler Roscoe <troscoe@yelp.com>  Wed, 22 Oct 2014 22:40:00 -0700
 
-service-deployment-tools (0.5.1-yelp1) lucid; urgency=low
+paasta-tools (0.5.1-yelp1) lucid; urgency=low
 
   * Work around un-dying marathon tasks by scaling them to 0 first.
 
  -- Kyle Anderson <kwa@yelp.com>  Tue, 21 Oct 2014 14:05:13 -0700
 
-service-deployment-tools (0.5.0-yelp1) lucid; urgency=low
+paasta-tools (0.5.0-yelp1) lucid; urgency=low
 
   * Only report marathon services that are currently TASK_RUNNING.
 
  -- Evan Krall <krall@yelp.com>  Tue, 21 Oct 2014 13:32:39 -0700
 
-service-deployment-tools (0.4.9-yelp1) lucid; urgency=low
+paasta-tools (0.4.9-yelp1) lucid; urgency=low
 
   * Fixed marathon app id detection. MESOS-115
 
  -- Kyle Anderson <kwa@yelp.com>  Tue, 14 Oct 2014 11:29:31 -0700
 
-service-deployment-tools (0.4.8-yelp1) lucid; urgency=low
+paasta-tools (0.4.8-yelp1) lucid; urgency=low
 
   * Allow marathon_tools to configure nerve using Puppet-deployed services
 
  -- Josh Snyder <josnyder@yelp.com>  Fri, 10 Oct 2014 17:06:12 -0700
 
-service-deployment-tools (0.4.7-yelp1) lucid; urgency=low
+paasta-tools (0.4.7-yelp1) lucid; urgency=low
 
   * More fixes on locks and timeouts to make it more marathon 7 compatible.
 
  -- Kyle Anderson <kwa@yelp.com>  Fri, 10 Oct 2014 11:23:42 -0700
 
-service-deployment-tools (0.4.6-yelp1) lucid; urgency=low
+paasta-tools (0.4.6-yelp1) lucid; urgency=low
 
   * Fix docker registry authentication
 
  -- Tyler Roscoe <troscoe@yelp.com>  Wed, 08 Oct 2014 17:48:08 -0700
 
-service-deployment-tools (0.4.5-yelp1) lucid; urgency=low
+paasta-tools (0.4.5-yelp1) lucid; urgency=low
 
   * Reorganize keys 'type' and 'volumes'
 
  -- Tyler Roscoe <troscoe@yelp.com>  Tue, 07 Oct 2014 17:06:29 -0700
 
-service-deployment-tools (0.4.4-yelp1) lucid; urgency=low
+paasta-tools (0.4.4-yelp1) lucid; urgency=low
 
   * Revert 0.4.3 as those changes were never tested for real
   * Add support for new Marathon API with support for native Docker launching
@@ -270,49 +361,49 @@ service-deployment-tools (0.4.4-yelp1) lucid; urgency=low
 
  -- Tyler Roscoe <troscoe@yelp.com>  Tue, 07 Oct 2014 14:30:41 -0700
 
-service-deployment-tools (0.4.2-yelp1) lucid; urgency=low
+paasta-tools (0.4.2-yelp1) lucid; urgency=low
 
   * Make notification_email an optional field with classic service sensu checks
 
  -- Kyle Anderson <kwa@yelp.com>  Wed, 17 Sep 2014 14:24:48 -0700
 
-service-deployment-tools (0.4.1-yelp1) lucid; urgency=low
+paasta-tools (0.4.1-yelp1) lucid; urgency=low
 
   * Fix monitoring check output messages
 
  -- Kyle Anderson <kwa@yelp.com>  Tue, 02 Sep 2014 11:22:38 -0700
 
-service-deployment-tools (0.4.0-yelp1) lucid; urgency=low
+paasta-tools (0.4.0-yelp1) lucid; urgency=low
 
   * Add generate_services_yaml script.
 
  -- John Billings <billings@yelp.com>  Thu, 28 Aug 2014 11:47:05 -0700
 
-service-deployment-tools (0.3.4-yelp1) lucid; urgency=low
+paasta-tools (0.3.4-yelp1) lucid; urgency=low
 
   * Make marathon deployment less verbose when using defaults.
 
  -- Kyle Anderson <kwa@yelp.com>  Mon, 25 Aug 2014 18:18:16 -0700
 
-service-deployment-tools (0.3.3-yelp1ubuntu1) lucid; urgency=low
+paasta-tools (0.3.3-yelp1ubuntu1) lucid; urgency=low
 
   * Fixing a bug in get_docker_url to return '' if no docker_image passed
 
  -- James McGuinness <jrm@yelp.com>  Tue, 19 Aug 2014 09:56:34 -0700
 
-service-deployment-tools (0.3.3-yelp1) lucid; urgency=low
+paasta-tools (0.3.3-yelp1) lucid; urgency=low
 
   * Changing MarathonClient timeouts
 
  -- James McGuinness <jrm@yelp.com>  Sun, 17 Aug 2014 17:19:20 -0700
 
-service-deployment-tools (0.3.2-yelp1) lucid; urgency=low
+paasta-tools (0.3.2-yelp1) lucid; urgency=low
 
   * Fixing a bug in replication check
 
  -- James McGuinness <jrm@yelp.com>  Sun, 17 Aug 2014 16:22:40 -0700
 
-service-deployment-tools (0.3.1-yelp1) lucid; urgency=low
+paasta-tools (0.3.1-yelp1) lucid; urgency=low
 
   * Fixing nerve function to skip entry if SOA config is gone
   * Changes to creation and deletion of Marathon apps to both wait
@@ -320,38 +411,38 @@ service-deployment-tools (0.3.1-yelp1) lucid; urgency=low
 
  -- James McGuinness <jrm@yelp.com>  Sun, 17 Aug 2014 14:06:19 -0700
 
-service-deployment-tools (0.3.0-yelp1) lucid; urgency=low
+paasta-tools (0.3.0-yelp1) lucid; urgency=low
 
   * Added zookeeper locks to create_app calls
   * Added source key to monitoring checks
 
  -- James McGuinness <jrm@yelp.com>  Fri, 15 Aug 2014 14:57:44 -0700
 
-service-deployment-tools (0.2.14-yelp1) lucid; urgency=low
+paasta-tools (0.2.14-yelp1) lucid; urgency=low
 
   * Added timeout=20 to MarathonClient objects
 
  -- James McGuinness <jrm@yelp.com>  Thu, 14 Aug 2014 18:19:43 -0700
 
-service-deployment-tools (0.2.13-yelp1) lucid; urgency=low
+paasta-tools (0.2.13-yelp1) lucid; urgency=low
 
   * version bump
 
  -- James McGuinness <jrm@yelp.com>  Thu, 14 Aug 2014 17:49:11 -0700
 
-service-deployment-tools (0.2.12-yelp1) lucid; urgency=low
+paasta-tools (0.2.12-yelp1) lucid; urgency=low
 
   * cleanup_marathon_jobs now uses zookeeper locks, locks on correct namespaces
 
  -- James McGuinness <jrm@yelp.com>  Thu, 14 Aug 2014 17:30:37 -0700
 
-service-deployment-tools (0.2.11-yelp1) lucid; urgency=low
+paasta-tools (0.2.11-yelp1) lucid; urgency=low
 
   * Fixing a bug in check_marathon_services_replication
 
  -- James McGuinness <jrm@yelp.com>  Wed, 13 Aug 2014 18:49:16 -0700
 
-service-deployment-tools (0.2.10-yelp1) lucid; urgency=low
+paasta-tools (0.2.10-yelp1) lucid; urgency=low
 
   * Updated docs
   * Added soa_dir support to monitoring_tools
@@ -361,13 +452,13 @@ service-deployment-tools (0.2.10-yelp1) lucid; urgency=low
 
  -- James McGuinness <jrm@yelp.com>  Wed, 13 Aug 2014 18:03:11 -0700
 
-service-deployment-tools (0.2.9-yelp1) lucid; urgency=low
+paasta-tools (0.2.9-yelp1) lucid; urgency=low
 
   * Changed default branch names again, put in a marathon_tools function now
 
  -- James McGuinness <jrm@yelp.com>  Wed, 13 Aug 2014 16:04:23 -0700
 
-service-deployment-tools (0.2.8-yelp1) lucid; urgency=low
+paasta-tools (0.2.8-yelp1) lucid; urgency=low
 
   * Added timeout_client_ms key support for smartstack.yaml
   * Implemented zookeeper bounce locking in bounce_lib
@@ -375,7 +466,7 @@ service-deployment-tools (0.2.8-yelp1) lucid; urgency=low
 
  -- James McGuinness <jrm@yelp.com>  Wed, 13 Aug 2014 15:16:55 -0700
 
-service-deployment-tools (0.2.7-yelp1) lucid; urgency=low
+paasta-tools (0.2.7-yelp1) lucid; urgency=low
 
   * check_marathon_services_http_frontends checks tcp too, renamed to check_marathon_services_frontends
   * New check_marathon_services_replication script to check service replication and send events
@@ -384,32 +475,32 @@ service-deployment-tools (0.2.7-yelp1) lucid; urgency=low
 
  -- James McGuinness <jrm@yelp.com>  Tue, 12 Aug 2014 17:25:10 -0700
 
-service-deployment-tools (0.2.6-yelp1) lucid; urgency=low
+paasta-tools (0.2.6-yelp1) lucid; urgency=low
 
   * Changing setup_marathon_job's check_every to 1m
   * Made generate_deployments_json verify docker urls and fallback if invalid
 
  -- James McGuinness <jrm@yelp.com>  Mon, 11 Aug 2014 18:55:11 -0700
 
-service-deployment-tools (0.2.5-yelp1) lucid; urgency=low
+paasta-tools (0.2.5-yelp1) lucid; urgency=low
 
   * Changing traceback string in setup_marathon_job
 
  -- James McGuinness <jrm@yelp.com>  Fri, 08 Aug 2014 19:53:10 -0700
 
-service-deployment-tools (0.2.4-yelp1) lucid; urgency=low
+paasta-tools (0.2.4-yelp1) lucid; urgency=low
 
   * Fixing a bug with namespaces in crossover_bounce
 
  -- James McGuinness <jrm@yelp.com>  Fri, 08 Aug 2014 19:47:40 -0700
 
-service-deployment-tools (0.2.3-yelp1) lucid; urgency=low
+paasta-tools (0.2.3-yelp1) lucid; urgency=low
 
   * Added a 'mode' key to read_service_namespace_config in marathon_tools
 
  -- James McGuinness <jrm@yelp.com>  Fri, 08 Aug 2014 15:14:01 -0700
 
-service-deployment-tools (0.2.2-yelp1) lucid; urgency=low
+paasta-tools (0.2.2-yelp1) lucid; urgency=low
 
   * Added a crossover_bounce method to bounce_lib, made it the default
   * Docs!
@@ -417,111 +508,111 @@ service-deployment-tools (0.2.2-yelp1) lucid; urgency=low
 
  -- James McGuinness <jrm@yelp.com>  Fri, 08 Aug 2014 12:00:25 -0700
 
-service-deployment-tools (0.2.1-yelp1) lucid; urgency=low
+paasta-tools (0.2.1-yelp1) lucid; urgency=low
 
   * updating chronos code to match changed marathon code
 
  -- Sophie Haskins <shaskins@yelp.com>  Sat, 02 Aug 2014 11:09:12 -0700
 
-service-deployment-tools (0.2.0-yelp1) lucid; urgency=low
+paasta-tools (0.2.0-yelp1) lucid; urgency=low
 
   * Changing replication_utils to count partial UP as UP
 
  -- Joseph Lynch <jlynch@yelp.com>  Fri, 01 Aug 2014 16:46:27 -0700
 
-service-deployment-tools (0.1.31-yelp1) lucid; urgency=low
+paasta-tools (0.1.31-yelp1) lucid; urgency=low
 
   * Adding timeout_connect_ms, timeout_server_ms keys to nerve_ns dictionaries
 
  -- James McGuinness <jrm@yelp.com>  Fri, 01 Aug 2014 11:49:45 -0700
 
-service-deployment-tools (0.1.30-yelp1) lucid; urgency=low
+paasta-tools (0.1.30-yelp1) lucid; urgency=low
 
   * Fixing a bug with marathon_service_running_on, _ now escaped to --
 
  -- James McGuinness <jrm@yelp.com>  Thu, 31 Jul 2014 19:34:30 -0700
 
-service-deployment-tools (0.1.29-yelp1) lucid; urgency=low
+paasta-tools (0.1.29-yelp1) lucid; urgency=low
 
   * Allow developers to override realert_every in their monitoring.yaml
 
  -- Joseph Lynch <jlynch@yelp.com>  Thu, 31 Jul 2014 17:59:21 -0700
 
-service-deployment-tools (0.1.28-yelp1) lucid; urgency=low
+paasta-tools (0.1.28-yelp1) lucid; urgency=low
 
   * Iterations are gone, replaced by hashes of configurations
   * Bugfix to marathon_services_running_on to use pycurl correctly
 
  -- James McGuinness <jrm@yelp.com>  Thu, 31 Jul 2014 17:38:31 -0700
 
-service-deployment-tools (0.1.27-yelp1) lucid; urgency=low
+paasta-tools (0.1.27-yelp1) lucid; urgency=low
 
   * Fixing a bug in monitoring_tools
 
  -- James McGuinness <jrm@yelp.com>  Thu, 31 Jul 2014 15:21:23 -0700
 
-service-deployment-tools (0.1.26-yelp1) lucid; urgency=low
+paasta-tools (0.1.26-yelp1) lucid; urgency=low
 
   * Fix to send_sensu_event in setup_marathon_job
 
  -- James McGuinness <jrm@yelp.com>  Thu, 31 Jul 2014 14:37:11 -0700
 
-service-deployment-tools (0.1.25-yelp1) lucid; urgency=low
+paasta-tools (0.1.25-yelp1) lucid; urgency=low
 
   *  Added a generate_deployments_json script for docker image aliasing
 
  -- James McGuinness <jrm@yelp.com>  Thu, 31 Jul 2014 14:06:31 -0700
 
-service-deployment-tools (0.1.24-yelp1) lucid; urgency=low
+paasta-tools (0.1.24-yelp1) lucid; urgency=low
 
   * Can now specify executor for chronos jobs
 
  -- Sophie Haskins <shaskins@yelp.com>  Wed, 30 Jul 2014 10:34:00 -0700
 
-service-deployment-tools (0.1.23-yelp1) lucid; urgency=low
+paasta-tools (0.1.23-yelp1) lucid; urgency=low
 
   * Adding replication monitoring scripts for all the services
 
  -- Joseph Lynch <jlynch@yelp.com>  Mon, 28 Jul 2014 11:51:53 -0700
 
-service-deployment-tools (0.1.22-yelp1) lucid; urgency=low
+paasta-tools (0.1.22-yelp1) lucid; urgency=low
 
   * Allow for new 'branch' field for marathon configs as an alternative to 'docker_image'
 
  -- James McGuinness <jrm@yelp.com>  Tue, 29 Jul 2014 12:50:04 -0700
 
-service-deployment-tools (0.1.21-yelp1) lucid; urgency=low
+paasta-tools (0.1.21-yelp1) lucid; urgency=low
 
   * Moving out bounce code, fixing check http frontends
 
  -- James McGuinness <jrm@yelp.com>  Mon, 28 Jul 2014 18:29:14 -0700
 
-service-deployment-tools (0.1.20-yelp1) lucid; urgency=low
+paasta-tools (0.1.20-yelp1) lucid; urgency=low
 
   * Fixing an import error with check http frontends script
 
  -- James McGuinness <jrm@yelp.com>  Mon, 28 Jul 2014 13:34:36 -0700
 
-service-deployment-tools (0.1.19-yelp1) lucid; urgency=low
+paasta-tools (0.1.19-yelp1) lucid; urgency=low
 
   * continuing to work on parameterizing the docker containers
 
  -- Sophie Haskins <shaskins@yelp.com>  Mon, 28 Jul 2014 13:02:46 -0700
 
-service-deployment-tools (0.1.18-yelp1) lucid; urgency=low
+paasta-tools (0.1.18-yelp1) lucid; urgency=low
 
   * Chronos executorFlags are supposed to be a string (hopefully this json
     gets passed on to Mesos)
 
  -- Sophie Haskins <shaskins@yelp.com>  Fri, 25 Jul 2014 08:58:00 -0700
 
-service-deployment-tools (0.1.17-yelp1) lucid; urgency=low
+paasta-tools (0.1.17-yelp1) lucid; urgency=low
 
   * specify executor params for chronos jobs
 
  -- Sophie Haskins <shaskins@yelp.com>  Thu, 24 Jul 2014 08:46:24 -0700
 
-service-deployment-tools (0.1.16-yelp1) lucid; urgency=low
+paasta-tools (0.1.16-yelp1) lucid; urgency=low
 
   * Fixing deploy_marathon_services to not execute setup if no services to deploy
   * Adding tests for cleanup_marathon_jobs
@@ -529,31 +620,31 @@ service-deployment-tools (0.1.16-yelp1) lucid; urgency=low
 
  -- James McGuinness <jrm@yelp.com>  Wed, 23 Jul 2014 17:55:10 -0700
 
-service-deployment-tools (0.1.15-yelp1) lucid; urgency=low
+paasta-tools (0.1.15-yelp1) lucid; urgency=low
 
   * Fixing cleanup script to have correct environment
 
  -- James McGuinness <jrm@yelp.com>  Wed, 23 Jul 2014 14:17:50 -0700
 
-service-deployment-tools (0.1.14-yelp1) lucid; urgency=low
+paasta-tools (0.1.14-yelp1) lucid; urgency=low
 
   * Version bump to repackage with working pysensu-yelp pkg
 
  -- James McGuinness <jrm@yelp.com>  Wed, 23 Jul 2014 10:59:16 -0700
 
-service-deployment-tools (0.1.13-yelp1) lucid; urgency=low
+paasta-tools (0.1.13-yelp1) lucid; urgency=low
 
   * Fixing another silly bug
 
  -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 14:48:21 -0700
 
-service-deployment-tools (0.1.12-yelp1) lucid; urgency=low
+paasta-tools (0.1.12-yelp1) lucid; urgency=low
 
   * Fixing a silly bug with iterations sometimes being ints
 
  -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 14:30:48 -0700
 
-service-deployment-tools (0.1.11-yelp1) lucid; urgency=low
+paasta-tools (0.1.11-yelp1) lucid; urgency=low
 
   * Added monitoring to setup_marathon_job
   * Changed marathon job ids to change _ to -
@@ -561,32 +652,32 @@ service-deployment-tools (0.1.11-yelp1) lucid; urgency=low
 
  -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 14:15:14 -0700
 
-service-deployment-tools (0.1.10-yelp1) lucid; urgency=low
+paasta-tools (0.1.10-yelp1) lucid; urgency=low
 
   * Adding verbosity to deploy_marathon_services
   * Fixing setup_marathon_job to not care about executor
 
  -- James McGuinness <jrm@yelp.com>  Tue, 22 Jul 2014 10:20:33 -0700
 
-service-deployment-tools (0.1.9-yelp1) lucid; urgency=low
+paasta-tools (0.1.9-yelp1) lucid; urgency=low
 
   * Fixing check_synapse_replication to be linked correctly
 
  -- Joseph Lynch <jlynch@yelp.com>  Mon, 21 Jul 2014 18:13:02 -0700
 
-service-deployment-tools (0.1.8-yelp1) lucid; urgency=low
+paasta-tools (0.1.8-yelp1) lucid; urgency=low
 
   * Fixing python requirements.txt
 
  -- Joseph Lynch <jlynch@yelp.com>  Mon, 21 Jul 2014 17:53:47 -0700
 
-service-deployment-tools (0.1.7-yelp1) lucid; urgency=low
+paasta-tools (0.1.7-yelp1) lucid; urgency=low
 
   * Adding a deploy_marathon_services script for puppet
 
  -- James McGuinness <jrm@yelp.com>  Mon, 21 Jul 2014 17:16:27 -0700
 
-service-deployment-tools (0.1.6-yelp1) lucid; urgency=low
+paasta-tools (0.1.6-yelp1) lucid; urgency=low
 
   * Adding a monitoring check for synapse replication
   * Exposed the monitoring as libraries so that an eventual sensu
@@ -594,7 +685,7 @@ service-deployment-tools (0.1.6-yelp1) lucid; urgency=low
 
  -- Joseph Lynch <jlynch@yelp.com>  Mon, 21 Jul 2014 15:13:55 -0700
 
-service-deployment-tools (0.1.5-yelp1) lucid; urgency=low
+paasta-tools (0.1.5-yelp1) lucid; urgency=low
 
   * Fix bug with file open mode
   * Also, note that 0.1.4 was me and not kwa, I just did a bad job
@@ -602,37 +693,37 @@ service-deployment-tools (0.1.5-yelp1) lucid; urgency=low
 
  -- Sophie Haskins <shaskisn@yelp.com>  Thurs, 18 Jul 2014 15:09:00 -0400
 
-service-deployment-tools (0.1.4-yelp1) lucid; urgency=low
+paasta-tools (0.1.4-yelp1) lucid; urgency=low
 
   * Small tweaks to make running setup_chronos_jobs.py easier
 
  -- Kyle Anderson <kwa@yelp.com>  Wed, 16 Jul 2014 15:22:19 -0700
 
-service-deployment-tools (0.1.3-yelp1) lucid; urgency=low
+paasta-tools (0.1.3-yelp1) lucid; urgency=low
 
   * Exposed the sensu check portopen as a "script" for real use.
 
  -- Kyle Anderson <kwa@yelp.com>  Wed, 16 Jul 2014 15:22:19 -0700
 
-service-deployment-tools (0.1.1-yelp1) lucid; urgency=low
+paasta-tools (0.1.1-yelp1) lucid; urgency=low
 
   * Fixed fact to output synapse_srv_namespaces=
 
  -- Kyle Anderson <kwa@yelp.com>  Mon, 14 Jul 2014 10:51:02 -0700
 
-service-deployment-tools (0.1.0-yelp1) lucid; urgency=low
+paasta-tools (0.1.0-yelp1) lucid; urgency=low
 
   * Added robust marathon_tools and scripts for nerve/synapse
 
  -- James McGuinness <jrm@yelp.com>  Thu, 10 Jul 2014 18:35:05 -0700
 
-service-deployment-tools (0.0.2-yelp1) lucid; urgency=low
+paasta-tools (0.0.2-yelp1) lucid; urgency=low
 
   * Adding functions to retrieve marathon service config info
 
  -- James McGuinness <jrm@yelp.com>  Mon, 07 Jul 2014 15:11:35 -0700
 
-service-deployment-tools (0.0.1-yelp1) lucid; urgency=low
+paasta-tools (0.0.1-yelp1) lucid; urgency=low
 
   * Initial release. (Closes: MESOS-23)
 
