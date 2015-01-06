@@ -89,7 +89,7 @@ def test_get_branch_mappings():
     fake_old_mappings = ['']
     fake_desired_states = {
         ('uno', 'no_thanks', '789009'): ('start', None),
-        ('dos', 'try_me', '123456'): ('stop', 123),
+        ('dos', 'try_me', '123456'): ('stop', '123'),
     }
     fake_git = mock.Mock()
     expected = {
@@ -101,7 +101,7 @@ def test_get_branch_mappings():
         'dos:try_me': {
             'docker_image': 'services-dos:paasta-123456',
             'desired_state': 'stop',
-            'force_bounce': 123,
+            'force_bounce': '123',
         },
     }
     with contextlib.nested(
@@ -192,12 +192,12 @@ def test_get_deployments_dict():
         'app1': {
             'docker_image': 'image1',
             'desired_state': 'start',
-            'force_bounce': 1418951213,
+            'force_bounce': '1418951213',
         },
         'app2': {
             'docker_image': 'image2',
             'desired_state': 'stop',
-            'force_bounce': 1412345678,
+            'force_bounce': '1412345678',
         },
     }
 
@@ -206,12 +206,12 @@ def test_get_deployments_dict():
             'app1': {
                 'docker_image': 'image1',
                 'desired_state': 'start',
-                'force_bounce': 1418951213,
+                'force_bounce': '1418951213',
             },
             'app2': {
                 'docker_image': 'image2',
                 'desired_state': 'stop',
-                'force_bounce': 1412345678,
+                'force_bounce': '1412345678',
             },
         },
     }

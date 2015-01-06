@@ -53,7 +53,7 @@ class TestMarathonTools:
             'dont_care:about': {
                 'docker_image': 'this:guy',
                 'desired_state': 'stop',
-                'force_bounce': 12345,
+                'force_bounce': '12345',
             },
         }
         with contextlib.nested(
@@ -88,7 +88,7 @@ class TestMarathonTools:
             'dont_care:about': {
                 'docker_image': 'this:guy',
                 'desired_state': 'stop',
-                'force_bounce': 12345,
+                'force_bounce': '12345',
             },
         }
         with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
@@ -105,7 +105,7 @@ class TestMarathonTools:
             'dont_care:about': {
                 'docker_image': 'this:guy',
                 'desired_state': 'stop',
-                'force_bounce': 12345,
+                'force_bounce': '12345',
             },
         }
         with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
