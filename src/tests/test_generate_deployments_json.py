@@ -202,18 +202,7 @@ def test_get_deployments_dict():
     }
 
     assert generate_deployments_json.get_deployments_dict_from_branch_mappings(branch_mappings) == {
-        'v1': {
-            'app1': {
-                'docker_image': 'image1',
-                'desired_state': 'start',
-                'force_bounce': '1418951213',
-            },
-            'app2': {
-                'docker_image': 'image2',
-                'desired_state': 'stop',
-                'force_bounce': '1412345678',
-            },
-        },
+        'v1': branch_mappings,
     }
 
 

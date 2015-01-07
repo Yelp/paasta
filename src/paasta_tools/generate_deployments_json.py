@@ -233,10 +233,11 @@ def get_desired_state(mygit, service, branch, head_sha):
                 gd = match.groupdict()
                 states.append((gd['state'], gd['force_bounce']))
 
-    # there may be more than one that matches, so take the one that sorts last
-    # by the force_bounce key.
     if states:
-        return sorted(states, key=lambda x: x[1])[-1]
+        # there may be more than one that matches, so take the one that sorts
+        # last by the force_bounce key.
+        sorted_states = sorted(states, key=lambda x: x[1])
+        return sorted_states[-1]
     else:
         return ('start', None)
 
