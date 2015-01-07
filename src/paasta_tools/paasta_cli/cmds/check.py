@@ -8,10 +8,20 @@ import urllib2
 
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
+from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.marathon_tools import get_service_instance_list
 from paasta_tools.monitoring_tools import get_team
-from paasta_tools.paasta_cli.utils import \
-    guess_service_name, is_file_in_dir, PaastaCheckMessages, \
-    NoSuchService, validate_service_name
+from paasta_tools.paasta_cli.utils import guess_service_name
+from paasta_tools.paasta_cli.utils import is_file_in_dir
+from paasta_tools.paasta_cli.utils import NoSuchService
+from paasta_tools.paasta_cli.utils import PaastaCheckMessages
+from paasta_tools.paasta_cli.utils import PaastaColors
+from paasta_tools.paasta_cli.utils import success
+from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.paasta_cli.utils import x_mark
+
+
+NON_MARATHON_PIPELINE_STEPS = ['itest', 'security-check', 'performance-check', 'registry']
 
 
 def get_pipeline_config(service_name):
@@ -161,6 +171,46 @@ def marathon_check(service_path):
         print PaastaCheckMessages.MARATHON_YAML_MISSING
 
 
+def get_marathon_steps(service_name):
+    """This is a kind of funny function that gets all the marathon instances
+    for a service and massages it into a form that matches up with what
+    deploy.yaml's steps look like. This is only so we can compare it 1-1
+    with what deploy.yaml has for linting."""
+    steps = []
+    for cluster in list_clusters(service_name):
+        for instance in get_service_instance_list(service_name, cluster):
+            steps.append("%s.%s" % (cluster, instance[1]))
+    return steps
+
+
+def marathon_deployments_check(service_name):
+    """Checks for consistency between deploy.yaml and the marathon yamls"""
+    the_return = True
+    pipeline_deployments = get_pipeline_config(service_name)
+    pipeline_steps = [step['instancename'] for step in pipeline_deployments]
+    pipeline_steps = [step for step in pipeline_steps if step not in NON_MARATHON_PIPELINE_STEPS]
+    marathon_steps = get_marathon_steps(service_name)
+    in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
+    if len(in_marathon_not_deploy) > 0:
+        print "%s There are some instance you have asked to run in marathon that" % x_mark()
+        print "  do not have a corresponding entry in deploy.yaml:"
+        print "  %s" % PaastaColors.bold(", ".join(in_marathon_not_deploy))
+        print "  You should probably add entries to deploy.yaml for them so they"
+        print "  are deployed to those clusters."
+        the_return = False
+    in_deploy_not_marathon = set(pipeline_steps) - set(marathon_steps)
+    if len(in_deploy_not_marathon) > 0:
+        print "%s There are some instances in deploy.yaml that are not referenced" % x_mark()
+        print "  by any marathon instance:"
+        print "  %s" % PaastaColors.bold((", ".join(in_deploy_not_marathon)))
+        print "  You should probably delete these deploy.yaml entries if they are unused."
+        the_return = False
+    if the_return is True:
+        print success("All entries in deploy.yaml correspond to a marathon entry")
+        print success("All marathon instances have a corresponding deploy.yaml entry")
+    return the_return
+
+
 def pipeline_check(service_name):
     url = "https://jenkins.yelpcorp.com/view/services-%s/api/xml" % service_name
     try:
@@ -242,5 +292,6 @@ def paasta_check(args):
     docker_check()
     makefile_check()
     marathon_check(service_path)
+    marathon_deployments_check(service_path)
     sensu_check(service_name, service_path)
     smartstack_check(service_name, service_path)

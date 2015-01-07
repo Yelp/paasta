@@ -2,18 +2,20 @@ from mock import patch, MagicMock
 from StringIO import StringIO
 
 from paasta_tools.paasta_cli.cmds.check import deploy_check
-from paasta_tools.paasta_cli.cmds.check import deploy_has_security_check
 from paasta_tools.paasta_cli.cmds.check import deploy_has_performance_check
+from paasta_tools.paasta_cli.cmds.check import deploy_has_security_check
 from paasta_tools.paasta_cli.cmds.check import docker_check
+from paasta_tools.paasta_cli.cmds.check import get_marathon_steps
 from paasta_tools.paasta_cli.cmds.check import git_repo_check
+from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
 from paasta_tools.paasta_cli.cmds.check import marathon_check
+from paasta_tools.paasta_cli.cmds.check import marathon_deployments_check
 from paasta_tools.paasta_cli.cmds.check import NoSuchService
 from paasta_tools.paasta_cli.cmds.check import paasta_check
 from paasta_tools.paasta_cli.cmds.check import pipeline_check
 from paasta_tools.paasta_cli.cmds.check import sensu_check
 from paasta_tools.paasta_cli.cmds.check import service_dir_check
 from paasta_tools.paasta_cli.cmds.check import smartstack_check
-from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 
 
@@ -28,11 +30,13 @@ from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 @patch('paasta_tools.paasta_cli.cmds.check.docker_check')
 @patch('paasta_tools.paasta_cli.cmds.check.makefile_check')
 @patch('paasta_tools.paasta_cli.cmds.check.marathon_check')
+@patch('paasta_tools.paasta_cli.cmds.check.marathon_deployments_check')
 @patch('paasta_tools.paasta_cli.cmds.check.sensu_check')
 @patch('paasta_tools.paasta_cli.cmds.check.smartstack_check')
 def test_check_paasta_check_calls_everything(
         mock_smartstart_check,
         mock_sensu_check,
+        mock_marathon_deployments_check,
         mock_marathon_check,
         mock_makefile_check,
         mock_docker_check,
@@ -503,3 +507,89 @@ def test_deploy_has_performance_check_true(mock_pipeline_config, mock_stdout):
     ]
     actual = deploy_has_performance_check('fake_service')
     assert actual is True
+
+
+@patch('paasta_tools.paasta_cli.cmds.check.list_clusters')
+@patch('paasta_tools.paasta_cli.cmds.check.get_service_instance_list')
+def test_get_marathon_steps(
+    mock_get_service_instance_list,
+    mock_list_clusters,
+):
+    mock_list_clusters.return_value = ['cluster1']
+    mock_get_service_instance_list.return_value = [('unused', 'instance1'), ('unused', 'instance2')]
+    expected = ['cluster1.instance1', 'cluster1.instance2']
+    actual = get_marathon_steps('unused')
+    assert actual == expected
+
+
+@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.paasta_cli.cmds.check.get_pipeline_config')
+@patch('paasta_tools.paasta_cli.cmds.check.get_marathon_steps')
+def test_marathon_deployments_check_good(
+    mock_get_marathon_steps,
+    mock_get_pipeline_config,
+    mock_stdout,
+):
+    mock_get_pipeline_config.return_value = [
+        {'instancename': 'itest', },
+        {'instancename': 'performance-check', },
+        {'instancename': 'registry', },
+        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'devc.main', },
+    ]
+    mock_get_marathon_steps.return_value = [
+        'devc.canary',
+        'devc.main',
+    ]
+    actual = marathon_deployments_check('fake_service')
+    assert actual is True
+
+
+@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.paasta_cli.cmds.check.get_pipeline_config')
+@patch('paasta_tools.paasta_cli.cmds.check.get_marathon_steps')
+def test_marathon_deployments_deploy_but_not_marathon(
+    mock_get_marathon_steps,
+    mock_get_pipeline_config,
+    mock_stdout,
+):
+    mock_get_pipeline_config.return_value = [
+        {'instancename': 'itest', },
+        {'instancename': 'performance-check', },
+        {'instancename': 'registry', },
+        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'devc.main', },
+        {'instancename': 'devc.EXTRA', },
+    ]
+    mock_get_marathon_steps.return_value = [
+        'devc.canary',
+        'devc.main',
+    ]
+    actual = marathon_deployments_check('fake_service')
+    assert actual is False
+    assert 'EXTRA' in mock_stdout.getvalue()
+
+
+@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.paasta_cli.cmds.check.get_pipeline_config')
+@patch('paasta_tools.paasta_cli.cmds.check.get_marathon_steps')
+def test_marathon_deployments_marathon_but_not_deploy(
+    mock_get_marathon_steps,
+    mock_get_pipeline_config,
+    mock_stdout,
+):
+    mock_get_pipeline_config.return_value = [
+        {'instancename': 'itest', },
+        {'instancename': 'performance-check', },
+        {'instancename': 'registry', },
+        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'devc.main', },
+    ]
+    mock_get_marathon_steps.return_value = [
+        'devc.canary',
+        'devc.main',
+        'devc.BOGUS',
+    ]
+    actual = marathon_deployments_check('fake_service')
+    assert actual is False
+    assert 'BOGUS' in mock_stdout.getvalue()
