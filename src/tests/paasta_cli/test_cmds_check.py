@@ -1,4 +1,3 @@
-import sys
 from mock import patch, MagicMock
 from StringIO import StringIO
 
@@ -14,7 +13,6 @@ from paasta_tools.paasta_cli.cmds.check import pipeline_check
 from paasta_tools.paasta_cli.cmds.check import sensu_check
 from paasta_tools.paasta_cli.cmds.check import service_dir_check
 from paasta_tools.paasta_cli.cmds.check import smartstack_check
-from paasta_tools.paasta_cli.paasta_cli import parse_args
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 
@@ -51,10 +49,7 @@ def test_check_paasta_check_calls_everything(
 
     mock_guess_service_name.return_value = 'servicedocs'
     mock_validate_service_name.return_value = None
-    sys.argv = ['./paasta_cli', 'check']
-    parsed_args = parse_args()
-
-    paasta_check(parsed_args)
+    paasta_check(None)
 
     assert mock_git_repo_check.called
     assert mock_pipeline_check.called
