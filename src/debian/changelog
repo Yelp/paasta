@@ -1,3 +1,11 @@
+paasta-tools (0.7.40-yelp1) lucid; urgency=low
+
+  * 0.7.40 tagged with 'make release'
+    Commit: Added security-check and performance check placeholders for
+    PAASTA-129
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 07 Jan 2015 13:10:57 -0800
+
 paasta-tools (0.7.39-yelp1) lucid; urgency=low
 
   * 0.7.39 tagged with 'make release'
