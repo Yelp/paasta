@@ -62,7 +62,7 @@ def test_get_remote_branches_for_service():
         actual = generate_deployments_json.get_remote_branches_for_service(mygit, fake_srv)
         assert expected == actual
         url_patch.assert_called_once_with(fake_srv)
-        mygit.ls_remote.assert_called_once_with('-h', 'test_url')
+        mygit.ls_remote.assert_called_once_with('--heads', 'test_url')
 
 
 def test_get_service_directories():

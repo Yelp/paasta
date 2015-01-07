@@ -117,12 +117,14 @@ def get_remote_refs_for_service(mygit, service, tags=False):
     :param service: The service name to get branches for
     :returns: A list of tuples of (ref_name, HEAD), where HEAD
               is the complete SHA at the HEAD of the paired ref_name"""
+
+    reftype = 'tags' if tags else 'heads'
     try:
         git_url = get_git_url(service)
-        branches = mygit.ls_remote(('--tags' if tags else '-h'), git_url).split('\n')
+        branches = mygit.ls_remote(('--%s' % reftype), git_url).split('\n')
         # Each branch has the form HEAD_HASH\trefs/heads/BRANCH_NAME; we want
         # a tuple of (HEAD_HASH, BRANCH_NAME).
-        remote_branches = [(branch.split('\t')[0], branch.split('\t')[1].split('refs/%s/' % ('tags' if tags else 'heads'))[1])
+        remote_branches = [(branch.split('\t')[0], branch.split('\t')[1].split('refs/%s/' % reftype)[1])
                            for branch in branches]
         return remote_branches
     except git.errors.GitCommandError:
@@ -198,11 +200,12 @@ def get_branch_mappings(soa_dir, old_mappings):
             docker_image = 'services-%s:paasta-%s' % (service, head)
             if marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
                 log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
-                mappings.setdefault(branch_alias, {})['docker_image'] = docker_image
+                mapping = mappings.setdefault(branch_alias, {})
+                mapping['docker_image'] = docker_image
 
                 desired_state, force_bounce = get_desired_state(mygit, service, branch, head)
-                mappings[branch_alias]['desired_state'] = desired_state
-                mappings[branch_alias]['force_bounce'] = force_bounce
+                mapping['desired_state'] = desired_state
+                mapping['force_bounce'] = force_bounce
             else:
                 log.error('Branch %s should be mapped to image %s, but that image isn\'t \
                            in the docker_registry %s', branch_alias, docker_image, docker_registry)
