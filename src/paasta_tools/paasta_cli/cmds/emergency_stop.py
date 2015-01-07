@@ -11,8 +11,7 @@ def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'emergency-stop',
         description="Stop a PaaSTA service",
-        help="Stops a PaaSTA service by asking Marathon to have 0 instances."),
-        required=True,
+        help="Stops a PaaSTA service by asking Marathon to have 0 instances.")
     status_parser.add_argument(
         '-s', '--service',
         help='Service that you want to stop. Like example_service.'
