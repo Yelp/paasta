@@ -1,9 +1,7 @@
-import sys
 import mock
 from StringIO import StringIO
 
 from paasta_tools.paasta_cli.cmds.list import paasta_list
-from paasta_tools.paasta_cli.paasta_cli import parse_args
 
 
 @mock.patch('sys.stdout', new_callable=StringIO)
@@ -14,10 +12,9 @@ def test_list_paasta_list(mock_list_services, mock_stdout):
     mock_services = ['service_1', 'service_2']
 
     mock_list_services.return_value = mock_services
-    sys.argv = ['./paasta_cli', 'list']
-    parsed_args = parse_args()
-
-    paasta_list(parsed_args)
+    args = mock.MagicMock()
+    args.print_instances = False
+    paasta_list(args)
 
     output = mock_stdout.getvalue()
     assert output == 'service_1\nservice_2\n'
@@ -31,10 +28,9 @@ def test_list_paasta_list_instances(mock_list_service_instances, mock_stdout):
     mock_services = ['service_1.main', 'service_2.canary']
 
     mock_list_service_instances.return_value = mock_services
-    sys.argv = ['./paasta_cli', 'list', '--print-instances']
-    parsed_args = parse_args()
-
-    paasta_list(parsed_args)
+    args = mock.MagicMock()
+    args.print_instances = True
+    paasta_list(args)
 
     output = mock_stdout.getvalue()
     assert output == 'service_1.main\nservice_2.canary\n'

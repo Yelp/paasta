@@ -1,6 +1,6 @@
-import sys
 from mock import patch
 from mock import Mock
+from mock import MagicMock
 from pytest import raises
 from StringIO import StringIO
 
@@ -9,7 +9,6 @@ from paasta_tools.paasta_cli.utils import \
 from paasta_tools.paasta_cli.cmds.status import paasta_status, \
     missing_deployments_message
 from paasta_tools.paasta_cli.cmds import status
-from paasta_tools.paasta_cli.paasta_cli import parse_args
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
@@ -41,15 +40,14 @@ def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
     mock_guess_service_name.return_value = 'not_a_service'
     error = NoSuchService('fake_service')
     mock_validate_service_name.side_effect = error
-    sys.argv = [
-        './paasta_cli', 'status']
-    parsed_args = parse_args()
-
     expected_output = str(error) + "\n"
+
+    args = MagicMock()
+    args.service = False
 
     # Fail if exit(1) does not get called
     with raises(SystemExit) as sys_exit:
-        paasta_status(parsed_args)
+        paasta_status(args)
 
     output = mock_stdout.getvalue()
     assert sys_exit.value.code == 1
@@ -273,11 +271,10 @@ def test_status_pending_pipeline_build_message(
     mock_get_actual_deployments.return_value = actual_deployments
     expected_output = missing_deployments_message(service_name)
 
-    sys.argv = [
-        './paasta_cli', 'status', '-s', service_name]
-    parsed_args = parse_args()
-    paasta_status(parsed_args)
+    args = MagicMock()
+    args.service = service_name
 
+    paasta_status(args)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
@@ -347,12 +344,11 @@ def test_status_calls_sergeants(
     }
     mock_get_actual_deployments.return_value = actual_deployments
 
-    sys.argv = [
-        './paasta_cli', 'status', '-s', service_name]
-    parsed_args = parse_args()
-    paasta_status(parsed_args)
+    args = MagicMock()
+    args.service = service_name
+    paasta_status(args)
 
-    mock_figure_out_service_name.assert_called_once_with(parsed_args)
+    mock_figure_out_service_name.assert_called_once_with(args)
     mock_get_actual_deployments.assert_called_once_with(service_name)
     mock_get_deploy_info.assert_called_once_with(service_name)
     mock_report_status.assert_called_once_with(service_name, planned_deployments, actual_deployments)
