@@ -879,11 +879,7 @@ class TestMarathonTools:
     def test_id_changes_when_force_bounce_or_desired_state_changes(self):
         fake_name = 'fakeapp'
         fake_instance = 'fakeinstance'
-        fake_url = 'fake_url'
         fake_url = 'dockervania_from_konami'
-        fake_mem = 1000000000000000000000
-        fake_cpus = -1
-        fake_args = ['arg1', 'arg2']
 
         fake_service_config_1 = dict(self.fake_marathon_job_config)
         fake_service_config_1['desired_state'] = 'start'
@@ -898,17 +894,9 @@ class TestMarathonTools:
         fake_service_config_3['force_bounce'] = '99999'
 
         with contextlib.nested(
-            mock.patch('marathon_tools.get_mem', return_value=fake_mem),
-            mock.patch('marathon_tools.get_cpus', return_value=fake_cpus),
-            mock.patch('marathon_tools.get_constraints', return_value=[]),
-            mock.patch('marathon_tools.get_args', return_value=fake_args),
             mock.patch('marathon_tools.read_service_config'),
             mock.patch('marathon_tools.get_docker_url', return_value=fake_url),
         ) as (
-            get_mem_patch,
-            get_cpus_patch,
-            get_constraints_patch,
-            get_args_patch,
             read_service_config_patch,
             docker_url_patch,
         ):
