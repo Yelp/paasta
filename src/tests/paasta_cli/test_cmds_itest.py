@@ -1,12 +1,11 @@
-import sys
 from subprocess import CalledProcessError
 
+from mock import MagicMock
 from mock import patch
 from pytest import raises
 
 from paasta_tools.paasta_cli.cmds.itest import build_command
 from paasta_tools.paasta_cli.cmds.itest import paasta_itest
-from paasta_tools.paasta_cli.paasta_cli import parse_args
 
 
 def test_build_command():
@@ -28,13 +27,9 @@ def test_itest_subprocess_fail(
 ):
     mock_subprocess.check_output.side_effect = [
         CalledProcessError(1, 'fake_cmd'), 0]
-    sys.argv = [
-        './paasta_cli', 'itest', '--service', 'unused', '--commit', 'unused',
-    ]
-    parsed_args = parse_args()
-
+    args = MagicMock()
     with raises(CalledProcessError):
-        paasta_itest(parsed_args)
+        paasta_itest(args)
 
 
 @patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
@@ -45,26 +40,8 @@ def test_itest_success(
 ):
     mock_subprocess.check_call.return_value = 0
 
-    sys.argv = [
-        './paasta_cli', 'itest', '--service', 'unused', '--commit', 'unused',
-    ]
-    parsed_args = parse_args()
-    assert paasta_itest(parsed_args) is None
-
-
-@patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest.subprocess', autospec=True)
-def test_itest_success_with_opts(
-    mock_subprocess,
-    mock_validate_service_name,
-):
-    mock_subprocess.check_call.return_value = 0
-
-    sys.argv = [
-        './paasta_cli', 'itest', '--service', 'fake_service', '--commit', 'deadbeef',
-    ]
-    parsed_args = parse_args()
-    assert paasta_itest(parsed_args) is None
+    args = MagicMock()
+    assert paasta_itest(args) is None
 
 
 @patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
@@ -75,9 +52,8 @@ def test_itest_works_when_service_name_starts_with_services_dash(
     mock_subprocess,
     mock_validate_service_name,
 ):
-    sys.argv = [
-        './paasta_cli', 'itest', '--service', 'services-fake_service', '--commit', 'unused',
-    ]
-    parsed_args = parse_args()
-    assert paasta_itest(parsed_args) is None
+    args = MagicMock()
+    args.service = 'services-fake_service'
+    args.commit = 'unused'
+    assert paasta_itest(args) is None
     mock_build_command.assert_called_once_with('fake_service', 'unused')
