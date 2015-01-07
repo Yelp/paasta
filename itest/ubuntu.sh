@@ -27,9 +27,13 @@ check
 generate-pipeline
 help
 emergency-stop
+emergency-start
+emergency-restart
 itest
 mark-for-deployment
+performance-check
 promote-to-registry
+security-check
 status
 version"
 
