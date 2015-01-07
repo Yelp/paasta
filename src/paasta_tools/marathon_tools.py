@@ -186,9 +186,13 @@ def get_instances(service_config):
     Defaults to 0 if not specified in the config.
 
     :param service_config: The service instance's configuration dictionary
-    :returns: The number of instances specified in the config, 0 if not specified"""
-    instances = service_config.get('instances', 1)
-    return int(instances)
+    :returns: The number of instances specified in the config, 0 if not
+              specified or if desired_state is not 'start'."""
+    if get_desired_state(service_config) == 'start':
+        instances = service_config.get('instances', 1)
+        return int(instances)
+    else:
+        return 0
 
 
 def get_args(service_config):
@@ -210,7 +214,23 @@ def get_bounce_method(service_config):
     return bounce_method if bounce_method else 'brutal'
 
 
-def get_config_hash(config):
+def get_desired_state(service_config):
+    """Get the desired_state specified in the service config.
+
+    :param service_config: The service instances's configuration dictionary
+    :returns: The desired state, either 'stop' or 'start'."""
+    return service_config['desired_state']
+
+
+def get_force_bounce(service_config):
+    """Get the force_bounce token specified in the service config.
+
+    :param service_config: The service instances's configuration dictionary
+    :returns: The force_bounce token, which may be a string or None."""
+    return service_config['force_bounce']
+
+
+def get_config_hash(config, force_bounce=None):
     """Create an MD5 hash of the configuration dictionary to be sent to
     Marathon. Or anything really, so long as str(config) works. Returns
     the first 8 characters so things are not really long.
@@ -218,11 +238,11 @@ def get_config_hash(config):
     :param config: The configuration to hash
     :returns: A MD5 hash of str(config)"""
     hasher = hashlib.md5()
-    hasher.update(str(config))
+    hasher.update(str(config) + (force_bounce or ''))
     return "config%s" % hasher.hexdigest()[:8]
 
 
-def create_complete_config(job_id, docker_url, docker_volumes, service_marathon_config):
+def create_partial_config(job_id, docker_url, docker_volumes, service_marathon_config):
     """Create the configuration that will be passed to the Marathon REST API.
 
     Currently compiles the following keys into one nice dict:
@@ -300,7 +320,38 @@ def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
               deployments.json doesn't exist in soa_dir"""
     full_branch = '%s:%s' % (service_name, branch_name)
     deployments_json = _get_deployments_json(soa_dir)
-    return deployments_json.get(full_branch, '')
+    return deployments_json.get(full_branch, {}).get('docker_image', '')
+
+
+def get_desired_state_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
+    """Get the desired state (either 'start' or 'stop') for a given service
+    branch from a generated deployments.json file.
+
+    :param service_name: The name of the service
+    :param branch_name: The name of the remote branch to get state for
+    :param soa_dir: The SOA Configuration directory with deployments.json
+    :returns: The desired state for the branch, or '' if
+              deployments.json doesn't exist in soa_dir"""
+    full_branch = '%s:%s' % (service_name, branch_name)
+    deployments_json = _get_deployments_json(soa_dir)
+    return deployments_json.get(full_branch, {}).get('desired_state', 'start')
+
+
+def get_force_bounce_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
+    """Get the force_bounce token for a given service branch from a generated
+    deployments.json file. This is a token that, when changed, indicates that
+    the marathon job should be recreated and bounced, even if no other
+    parameters have changed. This may be None or a string, generally a
+    timestamp.
+
+    :param service_name: The name of the service
+    :param branch_name: The name of the remote branch to get token for
+    :param soa_dir: The SOA Configuration directory with deployments.json
+    :returns: The force_bounce token for the branch, or None if
+              deployments.json doesn't exist in soa_dir"""
+    full_branch = '%s:%s' % (service_name, branch_name)
+    deployments_json = _get_deployments_json(soa_dir)
+    return deployments_json.get(full_branch, {}).get('force_bounce', None)
 
 
 def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
@@ -312,7 +363,11 @@ def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
     doesn't exist in soa_dir
     """
     deployments_json = _get_deployments_json(soa_dir)
-    return set(deployments_json.values())
+    images = set()
+    for d in deployments_json.values():
+        if 'docker_image' in d and d['desired_state'] == 'start':
+            images.add(d['docker_image'])
+    return images
 
 
 def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
@@ -361,6 +416,8 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         else:
             branch = general_config['branch']
         general_config['docker_image'] = get_docker_from_branch(name, branch, soa_dir)
+        general_config['desired_state'] = get_desired_state_from_branch(name, branch, soa_dir)
+        general_config['force_bounce'] = get_force_bounce_from_branch(name, branch, soa_dir)
         return general_config
     else:
         log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
@@ -730,24 +787,32 @@ def is_app_id_running(app_id, client):
     return app_id in all_app_ids
 
 
-def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
-    """Composes a predicatable marathon app_id from the service's docker image and
-    marathon configuration. Editing this function *will* cause a bounce of all
-    services because they will see an "old" version of the marathon app deployed,
-    and a new one with the new hash will try to be deployed"""
+def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR, verify_docker=True):
     partial_id = compose_job_id(name, instance)
     config = read_service_config(name, instance, soa_dir=soa_dir)
     docker_url = get_docker_url(marathon_config['docker_registry'],
                                 config['docker_image'],
-                                verify=False)
-    complete_config = create_complete_config(partial_id, docker_url,
-                                             marathon_config['docker_volumes'],
-                                             config)
+                                verify=verify_docker)
+    complete_config = create_partial_config(partial_id, docker_url,
+                                            marathon_config['docker_volumes'],
+                                            config)
     code_sha = get_code_sha_from_dockerurl(docker_url)
-    config_hash = get_config_hash(complete_config)
+    config_hash = get_config_hash(
+        complete_config,
+        force_bounce=get_force_bounce(config),
+    )
     tag = "%s.%s" % (code_sha, config_hash)
     full_id = compose_job_id(name, instance, tag)
-    return full_id
+    complete_config['id'] = full_id
+    return complete_config
+
+
+def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
+    """Composes a predictable marathon app_id from the service's docker image and
+    marathon configuration. Editing this function *will* cause a bounce of all
+    services because they will see an "old" version of the marathon app deployed,
+    and a new one with the new hash will try to be deployed"""
+    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir, verify_docker=False)['id']
 
 
 def get_code_sha_from_dockerurl(docker_url):

@@ -47,74 +47,31 @@ class TestCleanupMarathonJobs:
     def test_get_valid_app_list(self):
         soa_dir = 'never_a_dir'
         fake_app_list = [('fake-app', 'one'), ('really-fake', 'two')]
-        fake_config_one = {'docker_image': 'srv:9.1'}
-        fake_config_two = {'docker_image': 'tree:1.0'}
-        fake_configs = [fake_config_two, fake_config_one]
-        fake_full_configs = ['not_actually', 'a_dictionary']
         fake_code_sha = 'abc123'
-        expected = ['fake-app.one.%s.%s' % (fake_code_sha, str(hash('a_dictionary'))),
-                    'really-fake.two.%s.%s' % (fake_code_sha, str(hash('not_actually')))]
-        fake_tag1 = "%s.%s" % (fake_code_sha, str(hash('a_dictionary')))
-        fake_tag2 = "%s.%s" % (fake_code_sha, str(hash('not_actually')))
+        expected = ['fake-app.one.abc123.SOMEHASH', 'really-fake.two.abc123.SOMEOTHERHASH']
+        app_ids = {
+            ('fake-app', 'one'): 'fake-app.one.abc123.SOMEHASH',
+            ('really-fake', 'two'): 'really-fake.two.abc123.SOMEOTHERHASH',
+        }
 
-        def compose_helper(name, instance, hashtag=None):
-            if hashtag:
-                return '%s.%s.%s' % (name, instance, hashtag)
-            else:
-                return '%s.%s' % (name, instance)
+        def get_app_id_helper(name, instance, marathon_config, soa_dir=None):
+            return app_ids[(name, instance)]
 
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.get_marathon_services_for_cluster',
                        return_value=fake_app_list),
-            mock.patch('paasta_tools.marathon_tools.compose_job_id',
-                       side_effect=compose_helper),
-            mock.patch('paasta_tools.marathon_tools.read_service_config',
-                       side_effect=lambda a, b, **kwargs: fake_configs.pop()),
-            mock.patch('paasta_tools.marathon_tools.get_docker_url',
-                       side_effect=lambda a, b, **kwargs: '%s/%s' % (a, b)),
-            mock.patch('paasta_tools.marathon_tools.create_complete_config',
-                       side_effect=lambda a, b, c, d: fake_full_configs.pop()),
-            mock.patch('paasta_tools.marathon_tools.get_config_hash',
-                       side_effect=lambda a: hash(str(a))),
+            mock.patch('paasta_tools.marathon_tools.get_app_id',
+                       side_effect=get_app_id_helper),
             mock.patch('paasta_tools.marathon_tools.get_code_sha_from_dockerurl',
                        return_value=fake_code_sha),
         ) as (
             get_srvs_patch,
-            compose_patch,
-            read_config_patch,
-            docker_url_patch,
-            complete_config_patch,
-            hash_patch,
+            get_app_id_patch,
             code_sha_patch
         ):
             actual = cleanup_marathon_jobs.get_valid_app_list(self.fake_marathon_config, soa_dir)
             assert expected == actual
             get_srvs_patch.assert_called_once_with(soa_dir=soa_dir)
-            compose_patch.assert_any_call('fake-app', 'one')
-            compose_patch.assert_any_call('fake-app', 'one', fake_tag1)
-            compose_patch.assert_any_call('really-fake', 'two')
-            compose_patch.assert_any_call('really-fake', 'two', fake_tag2)
-            assert compose_patch.call_count == 4
-            read_config_patch.assert_any_call('fake-app', 'one', soa_dir=soa_dir)
-            read_config_patch.assert_any_call('really-fake', 'two', soa_dir=soa_dir)
-            assert read_config_patch.call_count == 2
-            docker_url_patch.assert_any_call(self.fake_docker_registry,
-                                             'tree:1.0', verify=False)
-            docker_url_patch.assert_any_call(self.fake_docker_registry,
-                                             'srv:9.1', verify=False)
-            assert docker_url_patch.call_count == 2
-            complete_config_patch.assert_any_call('fake-app.one',
-                                                  '%s/%s' % (self.fake_docker_registry, 'srv:9.1'),
-                                                  self.fake_marathon_config['docker_volumes'],
-                                                  fake_config_one)
-            complete_config_patch.assert_any_call('really-fake.two',
-                                                  '%s/%s' % (self.fake_docker_registry, 'tree:1.0'),
-                                                  self.fake_marathon_config['docker_volumes'],
-                                                  fake_config_two)
-            assert complete_config_patch.call_count == 2
-            hash_patch.assert_any_call('not_actually')
-            hash_patch.assert_any_call('a_dictionary')
-            assert hash_patch.call_count == 2
 
     def test_cleanup_apps(self):
         from contextlib import contextmanager

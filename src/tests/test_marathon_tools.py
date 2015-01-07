@@ -13,6 +13,8 @@ class TestMarathonTools:
         'mem': 100,
         'docker_image': 'test_docker:1.0',
         'branch': 'master',
+        'desired_state': 'start',
+        'force_bounce': None,
     }
     fake_srv_config = {
         'runs_on': ['some-box'],
@@ -45,7 +47,18 @@ class TestMarathonTools:
         file_mock.read = mock.Mock(return_value=fake_filedata)
         fake_path = '/etc/nope.json'
         fake_dir = '/var/dir_of_fake'
-        fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'dont_care:about': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': '12345',
+            },
+        }
         with contextlib.nested(
             mock.patch('marathon_tools.open', create=True, return_value=file_mock),
             mock.patch('os.path.join', return_value=fake_path),
@@ -69,16 +82,74 @@ class TestMarathonTools:
         fake_srv = 'no_srv'
         fake_branch = 'blaster'
         fake_dir = '/var/dir_of_fake'
-        fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'dont_care:about': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': '12345',
+            },
+        }
         with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
             actual = marathon_tools.get_docker_from_branch(fake_srv, fake_branch, fake_dir)
             assert actual == 'test_rocker:9.9'
 
+    def test_get_force_bounce_from_branch(self):
+        fake_dir = '/var/dir_of_fake'
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'no_soap:radio': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': '12345',
+            },
+        }
+        with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
+            assert None is marathon_tools.get_force_bounce_from_branch('no_srv', 'blaster', fake_dir)
+            assert '12345' == marathon_tools.get_force_bounce_from_branch('no_soap', 'radio', fake_dir)
+
+    def test_get_desired_state_from_branch(self):
+        fake_dir = '/var/dir_of_fake'
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'no_soap:radio': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': '12345',
+            },
+        }
+        with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
+            assert 'start' == marathon_tools.get_desired_state_from_branch('no_srv', 'blaster', fake_dir)
+            assert 'stop' == marathon_tools.get_desired_state_from_branch('no_soap', 'radio', fake_dir)
+
     def test_get_deployed_images(self):
-        fake_json = {'no_srv:blaster': 'test_rocker:9.9', 'dont_care:about': 'this:guy'}
+        fake_json = {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'dont_care:about': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': '12345',
+            },
+        }
         with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
             actual = marathon_tools.get_deployed_images()
-            expected = set(['test_rocker:9.9', 'this:guy'])
+            expected = set(['test_rocker:9.9'])
             assert actual == expected
 
     def test_read_monitoring_config(self):
@@ -121,14 +192,23 @@ class TestMarathonTools:
 
         expected = dict(self.fake_srv_config.items() + self.fake_marathon_job_config.items())
         expected['docker_image'] = fake_docker
+        expected['desired_state'] = 'stop'
+        expected['force_bounce'] = '12345'
+
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_extra_service_information',
                        side_effect=conf_helper),
             mock.patch('marathon_tools.get_docker_from_branch',
-                       return_value=fake_docker)
+                       return_value=fake_docker),
+            mock.patch('marathon_tools.get_desired_state_from_branch',
+                       return_value='stop'),
+            mock.patch('marathon_tools.get_force_bounce_from_branch',
+                       return_value='12345')
         ) as (
             read_extra_info_patch,
-            get_docker_patch
+            get_docker_patch,
+            get_desired_state_patch,
+            get_force_bounce_patch,
         ):
             actual = marathon_tools.read_service_config(fake_name, fake_instance,
                                                         fake_cluster, fake_dir)
@@ -596,7 +676,7 @@ class TestMarathonTools:
                                    spacer, fake_instance.replace('_', '--'))
         assert marathon_tools.compose_job_id(fake_name, fake_id, fake_instance) == expected
 
-    def test_create_complete_config(self):
+    def test_create_partial_config(self):
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
@@ -615,6 +695,7 @@ class TestMarathonTools:
         fake_cpus = .42
         fake_instances = 101
         fake_args = ['arg1', 'arg2']
+
         expected_conf = {
             'id': fake_id,
             'container': {
@@ -652,10 +733,10 @@ class TestMarathonTools:
             get_cpus_patch,
             get_constraints_patch,
             get_instances_patch,
-            get_args_patch
+            get_args_patch,
         ):
-            actual = marathon_tools.create_complete_config(fake_id, fake_url, fake_volumes,
-                                                           self.fake_marathon_job_config)
+            actual = marathon_tools.create_partial_config(fake_id, fake_url, fake_volumes,
+                                                          self.fake_marathon_job_config)
             assert actual == expected_conf
             get_mem_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_cpus_patch.assert_called_once_with(self.fake_marathon_job_config)
@@ -666,6 +747,29 @@ class TestMarathonTools:
             # Assert that the complete config can be inserted into the MarathonApp model
             assert MarathonApp(**actual)
 
+    def test_instances_is_zero_when_desired_state_is_stop(self):
+        fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
+        fake_url = 'dockervania_from_konami'
+        fake_volumes = [
+            {
+                'hostPath': '/var/data/a',
+                'containerPath': '/etc/a',
+                'mode': 'RO',
+            },
+            {
+                'hostPath': '/var/data/b',
+                'containerPath': '/etc/b',
+                'mode': 'RW',
+            },
+        ]
+
+        fake_marathon_job_config = dict(self.fake_marathon_job_config)
+        fake_marathon_job_config['desired_state'] = 'stop'
+
+        config = marathon_tools.create_partial_config(fake_id, fake_url, fake_volumes,
+                                                      fake_marathon_job_config)
+        assert config['instances'] == 0
+
     def test_get_bounce_method_in_config(self):
         fake_method = 'aaargh'
         fake_conf = {'bounce_method': fake_method}
@@ -675,14 +779,14 @@ class TestMarathonTools:
         assert marathon_tools.get_bounce_method({}) == 'brutal'
 
     def test_get_instances_in_config(self):
-        fake_conf = {'instances': -10}
+        fake_conf = {'instances': -10, 'desired_state': 'start'}
         assert marathon_tools.get_instances(fake_conf) == -10
 
     def test_get_instances_default(self):
-        assert marathon_tools.get_instances({}) == 1
+        assert marathon_tools.get_instances({'desired_state': 'start'}) == 1
 
     def test_get_instances_respects_false(self):
-        fake_conf = {'instances': False}
+        fake_conf = {'instances': False, 'desired_state': 'start'}
         assert marathon_tools.get_instances(fake_conf) == 0
 
     def test_get_constraints_in_config(self):
@@ -716,6 +820,14 @@ class TestMarathonTools:
     def test_get_args_in_config(self):
         fake_conf = {'args': ['arg1', 'arg2']}
         assert marathon_tools.get_args(fake_conf) == ['arg1', 'arg2']
+
+    def test_get_force_bounce(self):
+        fake_conf = {'force_bounce': 'blurp'}
+        assert marathon_tools.get_force_bounce(fake_conf) == 'blurp'
+
+    def test_get_desired_state(self):
+        fake_conf = {'desired_state': 'stop'}
+        assert marathon_tools.get_desired_state(fake_conf) == 'stop'
 
     def test_get_docker_url_no_error(self):
         fake_registry = "im.a-real.vm"
@@ -807,24 +919,26 @@ class TestMarathonTools:
         fake_url = 'fake_url'
         fake_hash = 'CONFIGHASH'
         fake_code_sha = 'CODESHA'
+        fake_config = {}
+
         with contextlib.nested(
             mock.patch('marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_docker_url', return_value=fake_url),
-            mock.patch('marathon_tools.create_complete_config',
-                       return_value=self.fake_marathon_job_config),
+            mock.patch('marathon_tools.create_partial_config',
+                       return_value=fake_config),
             mock.patch('marathon_tools.get_config_hash', return_value=fake_hash),
             mock.patch('marathon_tools.get_code_sha_from_dockerurl', return_value=fake_code_sha),
         ) as (
             read_service_config_patch,
             docker_url_patch,
-            create_complete_config_patch,
+            create_partial_config_patch,
             hash_patch,
             code_sha_patch,
         ):
             assert marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
             read_service_config_patch.assert_called_once_with(fake_name, fake_instance, soa_dir='/nail/etc/services')
-            hash_patch.assert_called_once_with(self.fake_marathon_job_config)
+            hash_patch.assert_called_once_with(fake_config, force_bounce=None)
             code_sha_patch.assert_called_once_with(fake_url)
 
     def test_get_code_sha_from_dockerurl(self):
@@ -839,3 +953,41 @@ class TestMarathonTools:
         expected = 'configdd63dafc'
         assert actual == expected
         assert len(actual) == 14
+
+    def test_id_changes_when_force_bounce_or_desired_state_changes(self):
+        fake_name = 'fakeapp'
+        fake_instance = 'fakeinstance'
+        fake_url = 'dockervania_from_konami'
+
+        fake_service_config_1 = dict(self.fake_marathon_job_config)
+        fake_service_config_1['desired_state'] = 'start'
+        fake_service_config_1['force_bounce'] = '88888'
+
+        fake_service_config_2 = dict(self.fake_marathon_job_config)
+        fake_service_config_2['desired_state'] = 'start'
+        fake_service_config_2['force_bounce'] = '99999'
+
+        fake_service_config_3 = dict(self.fake_marathon_job_config)
+        fake_service_config_3['desired_state'] = 'stop'
+        fake_service_config_3['force_bounce'] = '99999'
+
+        with contextlib.nested(
+            mock.patch('marathon_tools.read_service_config'),
+            mock.patch('marathon_tools.get_docker_url', return_value=fake_url),
+        ) as (
+            read_service_config_patch,
+            docker_url_patch,
+        ):
+            read_service_config_patch.return_value = fake_service_config_1
+            first_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            first_id_2 = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            # just for sanity, make sure that get_app_id is idempotent.
+            assert first_id == first_id_2
+
+            read_service_config_patch.return_value = fake_service_config_2
+            second_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            assert first_id != second_id
+
+            read_service_config_patch.return_value = fake_service_config_3
+            third_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            assert second_id != third_id
