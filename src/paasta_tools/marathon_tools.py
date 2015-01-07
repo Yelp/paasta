@@ -240,7 +240,7 @@ def get_config_hash(config, force_bounce=None):
     return "config%s" % hasher.hexdigest()[:8]
 
 
-def create_incomplete_config(job_id, docker_url, docker_volumes, service_marathon_config):
+def create_partial_config(job_id, docker_url, docker_volumes, service_marathon_config):
     """Create the configuration that will be passed to the Marathon REST API.
 
     Currently compiles the following keys into one nice dict:
@@ -749,9 +749,9 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     docker_url = get_docker_url(marathon_config['docker_registry'],
                                 config['docker_image'],
                                 verify=verify_docker)
-    complete_config = create_incomplete_config(partial_id, docker_url,
-                                               marathon_config['docker_volumes'],
-                                               config)
+    complete_config = create_partial_config(partial_id, docker_url,
+                                            marathon_config['docker_volumes'],
+                                            config)
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(
         complete_config,
