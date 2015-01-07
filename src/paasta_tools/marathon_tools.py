@@ -186,7 +186,7 @@ def get_instances(service_config):
 
     :param service_config: The service instance's configuration dictionary
     :returns: The number of instances specified in the config, 1 if not specified"""
-    if service_config['desired_state'] == 'start':
+    if get_desired_state(service_config) == 'start':
         instances = service_config.get('instances')
         return int(instances) if instances else 1
     else:
@@ -212,7 +212,23 @@ def get_bounce_method(service_config):
     return bounce_method if bounce_method else 'brutal'
 
 
-def get_config_hash(config):
+def get_desired_state(service_config):
+    """Get the desired_state specified in the service config.
+
+    :param service_config: The service instances's configuration dictionary
+    :returns: The desired state, either 'stop' or 'start'."""
+    return service_config['desired_state']
+
+
+def get_force_bounce(service_config):
+    """Get the force_bounce token specified in the service config.
+
+    :param service_config: The service instances's configuration dictionary
+    :returns: The force_bounce token, which may be a string or None."""
+    return service_config['force_bounce']
+
+
+def get_config_hash(config, force_bounce=None):
     """Create an MD5 hash of the configuration dictionary to be sent to
     Marathon. Or anything really, so long as str(config) works. Returns
     the first 8 characters so things are not really long.
@@ -220,7 +236,7 @@ def get_config_hash(config):
     :param config: The configuration to hash
     :returns: A MD5 hash of str(config)"""
     hasher = hashlib.md5()
-    hasher.update(str(config))
+    hasher.update(str(config) + (force_bounce or ''))
     return "config%s" % hasher.hexdigest()[:8]
 
 
@@ -267,8 +283,6 @@ def create_incomplete_config(job_id, docker_url, docker_volumes, service_maratho
         'uris': ['file:///root/.dockercfg', ],
         'backoff_seconds': 1,
         'backoff_factor': 2,
-        'desired_state': service_marathon_config['desired_state'],
-        'force_bounce': service_marathon_config['force_bounce'],
     }
     complete_config['mem'] = get_mem(service_marathon_config)
     complete_config['cpus'] = get_cpus(service_marathon_config)
@@ -739,7 +753,10 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
                                                marathon_config['docker_volumes'],
                                                config)
     code_sha = get_code_sha_from_dockerurl(docker_url)
-    config_hash = get_config_hash(complete_config)
+    config_hash = get_config_hash(
+        complete_config,
+        force_bounce=get_force_bounce(config),
+    )
     tag = "%s.%s" % (code_sha, config_hash)
     full_id = compose_job_id(name, instance, tag)
     complete_config['id'] = full_id

@@ -654,8 +654,6 @@ class TestMarathonTools:
             'args': fake_args,
             'backoff_seconds': 1,
             'backoff_factor': 2,
-            'desired_state': 'start',
-            'force_bounce': None,
         }
         with contextlib.nested(
             mock.patch('marathon_tools.get_mem', return_value=fake_mem),
@@ -744,6 +742,14 @@ class TestMarathonTools:
     def test_get_args_in_config(self):
         fake_conf = {'args': ['arg1', 'arg2']}
         assert marathon_tools.get_args(fake_conf) == ['arg1', 'arg2']
+
+    def test_get_force_bounce(self):
+        fake_conf = {'force_bounce': 'blurp'}
+        assert marathon_tools.get_force_bounce(fake_conf) == 'blurp'
+
+    def test_get_desired_state(self):
+        fake_conf = {'desired_state': 'stop'}
+        assert marathon_tools.get_desired_state(fake_conf) == 'stop'
 
     def test_get_docker_url_no_error(self):
         fake_registry = "im.a-real.vm"
@@ -854,7 +860,7 @@ class TestMarathonTools:
         ):
             assert marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
             read_service_config_patch.assert_called_once_with(fake_name, fake_instance, soa_dir='/nail/etc/services')
-            hash_patch.assert_called_once_with(fake_config)
+            hash_patch.assert_called_once_with(fake_config, force_bounce=None)
             code_sha_patch.assert_called_once_with(fake_url)
 
     def test_get_code_sha_from_dockerurl(self):
@@ -877,7 +883,6 @@ class TestMarathonTools:
         fake_url = 'dockervania_from_konami'
         fake_mem = 1000000000000000000000
         fake_cpus = -1
-        fake_instances = 101
         fake_args = ['arg1', 'arg2']
 
         fake_service_config_1 = dict(self.fake_marathon_job_config)
@@ -896,7 +901,6 @@ class TestMarathonTools:
             mock.patch('marathon_tools.get_mem', return_value=fake_mem),
             mock.patch('marathon_tools.get_cpus', return_value=fake_cpus),
             mock.patch('marathon_tools.get_constraints', return_value=[]),
-            mock.patch('marathon_tools.get_instances', return_value=fake_instances),
             mock.patch('marathon_tools.get_args', return_value=fake_args),
             mock.patch('marathon_tools.read_service_config'),
             mock.patch('marathon_tools.get_docker_url', return_value=fake_url),
@@ -904,7 +908,6 @@ class TestMarathonTools:
             get_mem_patch,
             get_cpus_patch,
             get_constraints_patch,
-            get_instances_patch,
             get_args_patch,
             read_service_config_patch,
             docker_url_patch,
