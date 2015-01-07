@@ -2,6 +2,7 @@ import marathon_tools
 import contextlib
 import mock
 import pycurl
+from marathon.models import MarathonApp
 
 
 class TestMarathonTools:
@@ -742,6 +743,9 @@ class TestMarathonTools:
             get_constraints_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_instances_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_args_patch.assert_called_once_with(self.fake_marathon_job_config)
+
+            # Assert that the complete config can be inserted into the MarathonApp model
+            assert MarathonApp(**actual)
 
     def test_instances_is_zero_when_desired_state_is_stop(self):
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
