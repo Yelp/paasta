@@ -14,15 +14,18 @@ def add_subparser(subparsers):
         help="Restarts a PaaSTA service by asking Marathon to suspend/resume.")
     status_parser.add_argument(
         '-s', '--service',
-        help='Service that you want to restart. Like example_service.'
+        help='Service that you want to restart. Like example_service.',
+        required=True,
     ).completer = ChoicesCompleter(list_services())
     status_parser.add_argument(
         '-i', '--instance',
-        help='Instance of the service that you want to restart. Like "main" or "canary".'
+        help='Instance of the service that you want to restart. Like "main" or "canary".',
+        required=True,
     ).completer = ChoicesCompleter(list_instances())
     status_parser.add_argument(
         '-c', '--cluster',
-        help='The PaaSTA cluster that has the service you want to restart. Like norcal-prod'
+        help='The PaaSTA cluster that has the service you want to restart. Like norcal-prod',
+        required=True,
     ).completer = ChoicesCompleter(list_clusters())
     status_parser.set_defaults(command=paasta_emergency_restart)
 
@@ -36,4 +39,4 @@ def paasta_emergency_restart(args):
     print "in an emergency."
     print ""
     print "Run this to see the status:"
-    print "paasta status --service %s --clusters %s" % (args.service, args.instance, args.cluster)
+    print "paasta status --service %s --clusters %s" % (args.service, args.cluster)

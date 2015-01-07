@@ -11,18 +11,21 @@ def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'emergency-stop',
         description="Stop a PaaSTA service",
-        help="Stops a PaaSTA service by asking Marathon to have 0 instances.")
+        help="Stops a PaaSTA service by asking Marathon to have 0 instances."),
+        required=True,
     status_parser.add_argument(
         '-s', '--service',
         help='Service that you want to stop. Like example_service.'
     ).completer = ChoicesCompleter(list_services())
     status_parser.add_argument(
         '-i', '--instance',
-        help='Instance of the service that you want to stop. Like "main" or "canary".'
+        help='Instance of the service that you want to stop. Like "main" or "canary".',
+        required=True,
     ).completer = ChoicesCompleter(list_instances())
     status_parser.add_argument(
         '-c', '--cluster',
-        help='The PaaSTA cluster that has the service you want to stop. Like norcal-prod'
+        help='The PaaSTA cluster that has the service you want to stop. Like norcal-prod',
+        required=True,
     ).completer = ChoicesCompleter(list_clusters())
     status_parser.set_defaults(command=paasta_emergency_stop)
 
