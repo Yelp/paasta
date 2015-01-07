@@ -1,3 +1,10 @@
+paasta-tools (0.8.0-yelp1) lucid; urgency=low
+
+  * 0.8.0 tagged with 'make release'
+    paasta_tools changes to allow start/stop control via git tags.
+
+ -- Evan Krall <krall@yelp.com>  Wed, 07 Jan 2015 14:52:15 -0800
+
 paasta-tools (0.7.40-yelp1) lucid; urgency=low
 
   * 0.7.40 tagged with 'make release'
@@ -89,13 +96,13 @@ paasta-tools (0.7.30-yelp1) lucid; urgency=low
 
 paasta-tools (0.7.29-yelp1) lucid; urgency=low
 
-  * Annotate app_id with git and config hashes 
+  * Annotate app_id with git and config hashes
 
  -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 17:50:04 -0800
 
 paasta-tools (0.7.28-yelp2) lucid; urgency=low
 
-  * Conflict with service_deployment_tools 
+  * Conflict with service_deployment_tools
 
  -- Kyle Anderson <kwa@yelp.com>  Tue, 23 Dec 2014 17:14:11 -0800
 
@@ -119,7 +126,7 @@ paasta-tools (0.7.26-yelp1) lucid; urgency=low
 
 paasta-tools (0.7.25-yelp1) lucid; urgency=low
 
-  * paasta status returns jenkins pipeline url 
+  * paasta status returns jenkins pipeline url
 
  -- Karthig Balendran <karthig@yelp.com>  Thu, 18 Dec 2014 11:25:59 -0800
 
@@ -131,61 +138,61 @@ paasta-tools (0.7.24-yelp1) lucid; urgency=low
 
 paasta-tools (0.7.23-yelp1) lucid; urgency=low
 
-  * Suppress output from paasta git repo check 
+  * Suppress output from paasta git repo check
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 17 Dec 2014 12:06:15 -0800
 
 paasta-tools (0.7.22-yelp1) lucid; urgency=low
 
-  * Clean up 'paasta check' msg 
+  * Clean up 'paasta check' msg
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 17 Dec 2014 11:06:10 -0800
 
 paasta-tools (0.7.21-yelp1) lucid; urgency=low
 
-  * Add new 'paasta check' checks 
+  * Add new 'paasta check' checks
 
  -- Karthig Balendran <karthig@yelp.com>  Tue, 16 Dec 2014 19:20:36 -0800
 
 paasta-tools (0.7.20-yelp1) lucid; urgency=low
 
-  * Update paasta_cli documentation and integration tests 
+  * Update paasta_cli documentation and integration tests
 
  -- Karthig Balendran <karthig@yelp.com>  Tue, 16 Dec 2014 11:51:30 -0800
 
 paasta-tools (0.7.19-yelp1) lucid; urgency=low
 
-  * Fix 'paasta status' bug + improve servicedocs documentation 
+  * Fix 'paasta status' bug + improve servicedocs documentation
 
  -- Karthig Balendran <karthig@yelp.com>  Mon, 15 Dec 2014 17:30:31 -0800
 
 paasta-tools (0.7.18-yelp1) lucid; urgency=low
 
-  * Create servicedocs stubs for paasta_cli 
+  * Create servicedocs stubs for paasta_cli
 
  -- Karthig Balendran <karthig@yelp.com>  Fri, 12 Dec 2014 17:23:56 -0800
 
 paasta-tools (0.7.17-yelp1) lucid; urgency=low
 
-  * 'paasta status' sorts according to deploy.yaml 
+  * 'paasta status' sorts according to deploy.yaml
 
  -- Karthig Balendran <karthig@yelp.com>  Fri, 12 Dec 2014 16:12:54 -0800
 
 paasta-tools (0.7.16-yelp1) lucid; urgency=low
 
-  * Make 'paasta status' more readable 
+  * Make 'paasta status' more readable
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 10 Dec 2014 17:03:51 -0800
 
 paasta-tools (0.7.15-yelp1) lucid; urgency=low
 
-  * Add 'paasta version' command 
+  * Add 'paasta version' command
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 10 Dec 2014 14:11:46 -0800
 
 paasta-tools (0.7.14-yelp1) lucid; urgency=low
 
-  * Add 'paasta status' command 
+  * Add 'paasta status' command
 
  -- Karthig Balendran <karthig@yelp.com>  Wed, 10 Dec 2014 10:18:40 -0800
 
@@ -197,55 +204,55 @@ paasta-tools (0.7.13-yelp1) lucid; urgency=low
 
 paasta-tools (0.7.12-yelp1) lucid; urgency=low
 
-  * Pin to a correct version of the marathon package. 
+  * Pin to a correct version of the marathon package.
 
  -- Kyle Anderson <kwa@yelp.com>  Mon, 08 Dec 2014 18:04:00 -0800
 
 paasta-tools (0.7.11-yelp1) lucid; urgency=low
 
-  * Fix create_app function, MESOS-164 
+  * Fix create_app function, MESOS-164
 
  -- Kyle Anderson <kwa@yelp.com>  Mon, 08 Dec 2014 12:42:44 -0800
 
 paasta-tools (0.7.10-yelp1) lucid; urgency=low
 
-  * Add tab completion script to /etc/bash_complete.d 
+  * Add tab completion script to /etc/bash_complete.d
 
  -- Karthig Balendran <karthig@yelp.com>  Fri, 05 Dec 2014 11:21:42 -0800
 
 paasta-tools (0.7.9-yelp1) lucid; urgency=low
 
-  * Bump to python 2.7 to support new marathon packages 
+  * Bump to python 2.7 to support new marathon packages
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 16:55:43 -0800
 
 paasta-tools (0.7.8-yelp1) lucid; urgency=low
 
-  * Bump to the latest marathon package so we can force removal 
+  * Bump to the latest marathon package so we can force removal
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 15:50:56 -0800
 
 paasta-tools (0.7.7-yelp1) lucid; urgency=low
 
-  * PaaSTA check command more thorough 
+  * PaaSTA check command more thorough
 
  -- Karthig Balendran <karthig@yelp.com>  Thu, 04 Dec 2014 15:43:08 -0800
 
 paasta-tools (0.7.6-yelp1) lucid; urgency=low
 
-  * Add README for paasta client 
+  * Add README for paasta client
 
  -- Karthig Balendran <karthig@yelp.com>  Thu, 04 Dec 2014 15:20:39 -0800
 
 paasta-tools (0.7.5-yelp1) lucid; urgency=low
 
-  * Fix scaling bug to also force marathon jobs to 0 when deleting. MESOS-138 
+  * Fix scaling bug to also force marathon jobs to 0 when deleting. MESOS-138
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 12:00:50 -0800
 
 paasta-tools (0.7.4-yelp1) lucid; urgency=low
 
-  * Fix bug where marathon jobs were not being deleted. MESOS-138. 
+  * Fix bug where marathon jobs were not being deleted. MESOS-138.
 
  -- Kyle Anderson <kwa@yelp.com>  Thu, 04 Dec 2014 10:45:38 -0800
 
@@ -257,26 +264,26 @@ paasta-tools (0.7.3-yelp1) lucid; urgency=low
 
 paasta-tools (0.7.2-yelp1) lucid; urgency=low
 
-  * Implement paasta check commend 
+  * Implement paasta check commend
 
  -- Karthig Balendran <karthig@yelp.com>  Mon, 01 Dec 2014 14:43:50 -0800
 
 paasta-tools (0.7.1-yelp1) lucid; urgency=low
 
-  * Add integration tests for paasta list 
+  * Add integration tests for paasta list
 
  -- Karthig Balendran <karthig@yelp.com>  Mon, 24 Nov 2014 11:38:07 -0800
 
 paasta-tools (0.7.0-yelp1) lucid; urgency=low
 
-  * Dynamically load module using absolute path 
+  * Dynamically load module using absolute path
 
  -- Karthig Balendran <karthig@yelp.com>  Fri, 21 Nov 2014 16:15:13 -0800
 
 paasta-tools (0.6.9-yelp1) lucid; urgency=low
 
   * Fixed broken tests
- 
+
  -- Karthig Balendran <karthig@yelp.com>  Fri, 21 Nov 2014 11:42:55 -0800
 
 paasta-tools (0.6.8-yelp1) lucid; urgency=low
@@ -287,7 +294,7 @@ paasta-tools (0.6.8-yelp1) lucid; urgency=low
 
 paasta-tools (0.6.7-yelp1) lucid; urgency=low
 
-  * Bump to use the latest service_configuration_lib with real caching 
+  * Bump to use the latest service_configuration_lib with real caching
 
  -- Kyle Anderson <kwa@yelp.com>  Tue, 18 Nov 2014 16:05:42 -0800
 
