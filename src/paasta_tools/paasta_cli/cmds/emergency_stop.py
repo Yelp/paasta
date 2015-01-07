@@ -1,19 +1,10 @@
 #!/usr/bin/env python
-"""Contains methods used by the paasta client to check the status of the service
-on the PaaSTA stack"""
-
 from argcomplete.completers import ChoicesCompleter
 
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.paasta_cli.utils import list_services
-
-
-def list_instances():
-    return []
-
-
-def list_clusters():
-    return []
+from paasta_tools.paasta_cli.utils import list_instances
+from paasta_tools.marathon_tools import list_clusters
 
 
 def add_subparser(subparsers):
@@ -44,7 +35,7 @@ def paasta_emergency_stop(args):
     print "config change happens, or deploy, or bounce, etc"
     print ""
     print "If you want this stop to be permanant, adjust the %s/marathon-%s.yaml" % (args.service, args.cluster)
-    print "file to reflect that."
+    print "file to reflect that. (set 'instances: 0', or perhaps rm the yaml entirely)"
     print ""
     print "To start this service again asap, run:"
     print "paasta emergency-start --service %s --instance %s --cluster %s" % (args.service, args.instance, args.cluster)

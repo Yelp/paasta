@@ -95,7 +95,7 @@ def test_report_status_displays_deployed_service(
         "\t\tversion: this_is_a_sha\n"
         "\t\t%s\n"
         % (
-            PaastaColors.green('instance'),
+            PaastaColors.blue('instance'),
             fake_status,
         )
     )
@@ -165,11 +165,11 @@ def test_report_status_sorts_in_deploy_order(
         "\t\tversion: this_is_a_sha\n"
         "\t\t%s\n"
         % (
-            PaastaColors.green('a_instance'),
+            PaastaColors.blue('a_instance'),
             fake_status,
-            PaastaColors.green('b_instance'),
+            PaastaColors.blue('b_instance'),
             fake_status,
-            PaastaColors.green('b_instance'),
+            PaastaColors.blue('b_instance'),
             fake_status,
         )
     )
@@ -213,10 +213,10 @@ def test_report_status_missing_deploys_in_red(
         "\t\tversion: this_is_a_sha\n"
         "\t\t%s\n"
         % (
-            PaastaColors.green('a_instance'),
+            PaastaColors.blue('a_instance'),
             fake_status,
             PaastaColors.red('b_instance'),
-            PaastaColors.green('b_instance'),
+            PaastaColors.blue('b_instance'),
             fake_status,
         )
     )

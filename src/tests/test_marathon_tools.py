@@ -248,6 +248,72 @@ class TestMarathonTools:
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(file_mock.read())
 
+    def test_list_clusters_no_service(self):
+        with contextlib.nested(
+            mock.patch('service_configuration_lib.read_services_configuration'),
+            mock.patch('marathon_tools.get_clusters_deployed_to'),
+        ) as (
+            mock_read_services,
+            mock_get_clusters_deployed_to,
+        ):
+            mock_read_services.return_value = {'service1': 'config'}
+            mock_get_clusters_deployed_to.return_value = ['cluster1', 'cluster2']
+            actual = marathon_tools.list_clusters()
+            expected = ['cluster1', 'cluster2']
+            assert actual == expected
+
+    def test_list_clusters_with_service(self):
+        with contextlib.nested(
+            mock.patch('service_configuration_lib.read_services_configuration'),
+            mock.patch('marathon_tools.get_clusters_deployed_to'),
+        ) as (
+            mock_read_services,
+            mock_get_clusters_deployed_to,
+        ):
+            fake_service = 'fake_service'
+            mock_read_services.return_value = {fake_service: 'config', 'fake_service2': 'config'}
+            mock_get_clusters_deployed_to.return_value = ['cluster1', 'cluster2']
+            actual = marathon_tools.list_clusters(fake_service)
+            expected = ['cluster1', 'cluster2']
+            assert actual == expected
+            mock_get_clusters_deployed_to.assert_called_once_with(fake_service)
+
+    def test_get_clusters_deployed_to(self):
+        service = 'fake_service'
+        fake_marathon_filenames = ['marathon-cluster1.yaml', 'marathon-cluster2.yaml',
+                                   'marathon-SHARED.yaml', 'marathon-cluster3.yaml']
+        expected = ['cluster1', 'cluster2', 'cluster3']
+        with contextlib.nested(
+            mock.patch('os.path.isdir'),
+            mock.patch('glob.glob'),
+        ) as (
+            mock_isdir,
+            mock_glob
+        ):
+            mock_isdir.return_value = True
+            mock_glob.return_value = fake_marathon_filenames
+            actual = marathon_tools.get_clusters_deployed_to(service)
+            assert expected == actual
+
+    def test_list_all_marathon_instance_for_service(self):
+        service = 'fake_service'
+        clusters = ['fake_cluster']
+        mock_instances = [(service, 'instance1'), (service, 'instance2')]
+        expected = set(['instance1', 'instance2'])
+        with contextlib.nested(
+            mock.patch('marathon_tools.list_clusters'),
+            mock.patch('marathon_tools.get_service_instance_list'),
+        ) as (
+            mock_list_clusters,
+            mock_service_instance_list,
+        ):
+            mock_list_clusters.return_value = clusters
+            mock_service_instance_list.return_value = mock_instances
+            actual = marathon_tools.list_all_marathon_instances_for_service(service)
+            assert actual == expected
+            mock_list_clusters.assert_called_once_with(service)
+            mock_service_instance_list.assert_called_once_with(service, clusters[0])
+
     def test_get_all_namespaces_for_service(self):
         name = 'vvvvvv'
         soa_dir = '^_^'
@@ -625,7 +691,7 @@ class TestMarathonTools:
             },
         ]
         fake_mem = 1000000000000000000000
-        fake_cpus = -1
+        fake_cpus = .42
         fake_instances = 101
         fake_args = ['arg1', 'arg2']
 
@@ -715,6 +781,10 @@ class TestMarathonTools:
     def test_get_instances_default(self):
         assert marathon_tools.get_instances({'desired_state': 'start'}) == 1
 
+    def test_get_instances_respects_false(self):
+        fake_conf = {'instances': False, 'desired_state': 'start'}
+        assert marathon_tools.get_instances(fake_conf) == 0
+
     def test_get_constraints_in_config(self):
         fake_conf = {'constraints': 'so_many_walls'}
         assert marathon_tools.get_constraints(fake_conf) == 'so_many_walls'
@@ -726,15 +796,19 @@ class TestMarathonTools:
         fake_conf = {'cpus': -5}
         assert marathon_tools.get_cpus(fake_conf) == -5
 
+    def test_get_cpus_in_config_float(self):
+        fake_conf = {'cpus': .66}
+        assert marathon_tools.get_cpus(fake_conf) == .66
+
     def test_get_cpus_default(self):
-        assert marathon_tools.get_cpus({}) == 1
+        assert marathon_tools.get_cpus({}) == .25
 
     def test_get_mem_in_config(self):
         fake_conf = {'mem': -999}
         assert marathon_tools.get_mem(fake_conf) == -999
 
     def test_get_mem_default(self):
-        assert marathon_tools.get_mem({}) == 100
+        assert marathon_tools.get_mem({}) == 1000
 
     def test_get_args_default(self):
         assert marathon_tools.get_args({}) == []

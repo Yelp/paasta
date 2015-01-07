@@ -1,5 +1,5 @@
 # Edit this release and run "make release"
-RELEASE=0.7.37-yelp1
+RELEASE=0.7.39-yelp1
 
 UID:=`id -u`
 GID:=`id -g`

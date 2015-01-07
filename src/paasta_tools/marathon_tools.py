@@ -9,6 +9,7 @@ import logging
 import os
 import re
 import socket
+import glob
 from StringIO import StringIO
 
 from marathon import MarathonClient
@@ -147,23 +148,23 @@ def get_docker_url(registry_uri, docker_image, verify=True):
 def get_mem(service_config):
     """Gets the memory required from the service's marathon configuration.
 
-    Defaults to 100 if no value specified in the config.
+    Defaults to 1000 (1G) if no value specified in the config.
 
     :param service_config: The service instance's configuration dictionary
-    :returns: The amount of memory specified by the config, 100 if not specified"""
+    :returns: The amount of memory specified by the config, 1000 if not specified"""
     mem = service_config.get('mem')
-    return int(mem) if mem else 100
+    return int(mem) if mem else 1000
 
 
 def get_cpus(service_config):
     """Gets the number of cpus required from the service's marathon configuration.
 
-    Defaults to 1 if no value specified in the config.
+    Defaults to .25 (1/4 of a cpu) if no value specified in the config.
 
     :param service_config: The service instance's configuration dictionary
-    :returns: The number of cpus specified in the config, 1 if not specified"""
+    :returns: The number of cpus specified in the config, .25 if not specified"""
     cpus = service_config.get('cpus')
-    return int(cpus) if cpus else 1
+    return float(cpus) if cpus else .25
 
 
 def get_constraints(service_config):
@@ -182,13 +183,14 @@ def get_constraints(service_config):
 def get_instances(service_config):
     """Get the number of instances specified in the service's marathon configuration.
 
-    Defaults to 1 if not specified in the config.
+    Defaults to 0 if not specified in the config.
 
     :param service_config: The service instance's configuration dictionary
-    :returns: The number of instances specified in the config, 1 if not specified"""
+    :returns: The number of instances specified in the config, 0 if not
+              specified or if desired_state is not 'start'."""
     if get_desired_state(service_config) == 'start':
-        instances = service_config.get('instances')
-        return int(instances) if instances else 1
+        instances = service_config.get('instances', 1)
+        return int(instances)
     else:
         return 0
 
@@ -470,6 +472,48 @@ def get_mode_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR)
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('mode', 'http')
+
+
+def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
+    """Returns a sorted list of all clusters that appear to be in use. This
+    is useful for cli tools.
+
+    :param service: Optional. If provided will only list clusters that
+    the particular service is using
+    """
+    clusters = set()
+    if service is None:
+        services = service_configuration_lib.read_services_configuration().keys()
+    else:
+        services = [service]
+
+    for service in services:
+        clusters = clusters.union(set(get_clusters_deployed_to(service)))
+    return sorted(clusters)
+
+
+def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
+    """Looks at the clusters that a service is probably deployed to
+    by looking at marathon-*.yaml's and returns a sorted list of clusters.
+    """
+    clusters = set()
+    srv_path = os.path.join(soa_dir, service)
+    if os.path.isdir(srv_path):
+        marathon_files = "%s/marathon-*.yaml" % srv_path
+        for marathon_file in glob.glob(marathon_files):
+            basename = os.path.basename(marathon_file)
+            cluster = re.search('marathon-(.*).yaml', basename).group(1)
+            clusters.add(cluster)
+    clusters.discard('SHARED')
+    return sorted(clusters)
+
+
+def list_all_marathon_instances_for_service(service):
+    instances = set()
+    for cluster in list_clusters(service):
+        for service_instance in get_service_instance_list(service, cluster):
+            instances.add(service_instance[1])
+    return instances
 
 
 def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):

@@ -12,6 +12,7 @@ import logging
 from paasta_tools import marathon_tools
 from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.monitoring.replication_utils import get_replication_for_services
+from paasta_tools.mesos_tools import get_running_mesos_tasks_for_service
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -69,9 +70,12 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
         if running_instances >= normal_instance_count:
             status = PaastaColors.green("Healthy")
             instance_count = PaastaColors.green("(%d/%d)" % (running_instances, normal_instance_count))
+        elif running_instances == 0:
+            status = PaastaColors.yellow("Critical")
+            instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
         else:
             status = PaastaColors.yellow("Warning")
-            instance_count = PaastaColors.red("(%d/%d)" % (running_instances, normal_instance_count))
+            instance_count = PaastaColors.yellow("(%d/%d)" % (running_instances, normal_instance_count))
         return "Marathon:   %s - up with %s instances. Status: %s." % (status, instance_count, deploy_status)
     else:
         red_not = PaastaColors.red("NOT")
@@ -91,7 +95,8 @@ def haproxy_backend_report(normal_instance_count, up_backends):
     else:
         status = PaastaColors.yellow("Warning")
         count = PaastaColors.yellow("(%d/%d)" % (up_backends, normal_instance_count))
-    return "%s - in haproxy with %s backends UP" % (status, count)
+    up_string = PaastaColors.bold('UP')
+    return "%s - in haproxy with %s backends %s." % (status, count, up_string)
 
 
 def status_smartstack_backends(service, instance, normal_instance_count, cluster):
@@ -108,6 +113,22 @@ def status_smartstack_backends(service, instance, normal_instance_count, cluster
             return "Smartstack: %s" % report
         except KeyError:
             return "Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance
+
+
+def status_mesos_tasks(service, instance, normal_instance_count):
+    running_tasks = get_running_mesos_tasks_for_service(service, instance)
+    count = len(running_tasks)
+    if count >= normal_instance_count:
+        status = PaastaColors.green("Healthy")
+        count = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
+    elif count == 0:
+        status = PaastaColors.red("Critical")
+        count = PaastaColors.red("(%d/%d)" % (count, normal_instance_count))
+    else:
+        status = PaastaColors.yellow("Warning")
+        count = PaastaColors.yellow("(%d/%d)" % (count, normal_instance_count))
+    running_string = PaastaColors.bold('TASK_RUNNING')
+    return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
 
 
 def main():
@@ -140,6 +161,7 @@ def main():
         restart_marathon_job(service, instance, app_id, normal_instance_count, client)
     elif command == 'status':
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
+        print status_mesos_tasks(service, instance, normal_instance_count)
         print status_smartstack_backends(service, instance, normal_instance_count, cluster)
     else:
         # The command parser shouldn't have let us get this far...

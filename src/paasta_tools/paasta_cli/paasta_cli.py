@@ -34,7 +34,7 @@ def parse_args():
 
     subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help")
 
-    for command in paasta_commands_dir(cmds):
+    for command in sorted(paasta_commands_dir(cmds)):
         add_subparser(command, subparsers)
 
     argcomplete.autocomplete(parser)
