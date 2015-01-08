@@ -1,3 +1,9 @@
+paasta-tools (0.8.4-yelp1) lucid; urgency=low
+
+  * Move NON_MARATHON_PIPELINE_STEPS to utils
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 08 Jan 2015 13:12:47 -0800
+
 paasta-tools (0.8.3-yelp1) lucid; urgency=low
 
   * 0.8.3 tagged with 'make release'
