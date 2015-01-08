@@ -1,3 +1,10 @@
+paasta-tools (0.8.3-yelp1) lucid; urgency=low
+
+  * 0.8.3 tagged with 'make release'
+    Commit: Fix paasta status
+
+ -- Evan Krall <krall@yelp.com>  Wed, 07 Jan 2015 21:33:13 -0800
+
 paasta-tools (0.8.2-yelp1) lucid; urgency=low
 
   * 0.8.2 tagged with 'make release'
