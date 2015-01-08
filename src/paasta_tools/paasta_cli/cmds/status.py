@@ -62,7 +62,7 @@ def get_planned_deployments(deploy_info):
     # Clusters map to an ordered list of instances
     for entry in deploy_info['pipeline']:
         namespace = entry['instancename']
-        if (namespace != 'itest') and (namespace != 'registry'):
+        if namespace not in ('itest', 'security-check', 'performance-check', 'registry'):
             cluster, instance = namespace.split('.')
             cluster_dict.setdefault(cluster, []).append(instance)
 
@@ -90,10 +90,10 @@ def get_actual_deployments(service_name):
         exit(1)
     # Create a dictionary of actual $service_name Jenkins deployments
     actual_deployments = {}
-    for key in deployments_json:
+    for key in deployments_json['v1']:
         service, namespace = key.encode('utf8').split(':')
         if service == service_name:
-            value = deployments_json[key].encode('utf8')
+            value = deployments_json['v1'][key]['docker_image'].encode('utf8')
             sha = value[value.rfind('-') + 1:]
             actual_deployments[namespace.replace('paasta-', '', 1)] = sha
     return actual_deployments

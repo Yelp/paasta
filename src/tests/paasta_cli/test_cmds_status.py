@@ -282,8 +282,14 @@ def test_status_pending_pipeline_build_message(
 @patch('paasta_tools.paasta_cli.cmds.status._get_deployments_json')
 def test_get_actual_deployments(mock_get_deployments,):
     mock_get_deployments.return_value = {
-        'fake_service:paasta-b_cluster.b_instance': 'this_is_a_sha',
-        'fake_service:paasta-a_cluster.a_instance': 'this_is_a_sha'
+        'v1': {
+            'fake_service:paasta-b_cluster.b_instance': {
+                'docker_image': 'this_is_a_sha',
+            },
+            'fake_service:paasta-a_cluster.a_instance': {
+                'docker_image': 'this_is_a_sha',
+            }
+        }
     }
     expected = {
         'a_cluster.a_instance': 'this_is_a_sha',
