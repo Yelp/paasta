@@ -13,6 +13,7 @@ from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_m
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import NoSuchService
+from paasta_tools.paasta_cli.utils import NON_MARATHON_PIPELINE_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import validate_service_name
@@ -62,7 +63,7 @@ def get_planned_deployments(deploy_info):
     # Clusters map to an ordered list of instances
     for entry in deploy_info['pipeline']:
         namespace = entry['instancename']
-        if namespace not in ('itest', 'security-check', 'performance-check', 'registry'):
+        if namespace not in NON_MARATHON_PIPELINE_STEPS:
             cluster, instance = namespace.split('.')
             cluster_dict.setdefault(cluster, []).append(instance)
 
