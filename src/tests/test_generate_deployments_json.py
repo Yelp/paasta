@@ -65,6 +65,27 @@ def test_get_remote_branches_for_service():
         mygit.ls_remote.assert_called_once_with('--heads', 'test_url')
 
 
+def test_get_remote_refs_for_service():
+    ls_remote = mock.Mock()
+    mygit = mock.Mock(ls_remote=ls_remote)
+
+    ls_remote.return_value = ''
+    actual = generate_deployments_json.get_remote_refs_for_service(mygit, 'srv_fake')
+    expected = []
+    assert actual == expected
+
+    ls_remote.return_value = '\n'.join([
+        'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef\trefs/heads/foo',
+        'c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff\trefs/heads/bar',
+    ])
+    actual = generate_deployments_json.get_remote_refs_for_service(mygit, 'srv_fake')
+    expected = [
+        ('deadbeefdeadbeefdeadbeefdeadbeefdeadbeef', 'foo'),
+        ('c0ffeec0ffeec0ffeec0ffeec0ffeec0ffeec0ff', 'bar'),
+    ]
+    assert actual == expected
+
+
 def test_get_service_directories():
     fake_dir = '/red/version'
     fake_dir_entities = ['z', 'tier1', 't3', 'racks']

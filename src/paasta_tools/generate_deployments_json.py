@@ -125,7 +125,7 @@ def get_remote_refs_for_service(mygit, service, tags=False):
         # Each branch has the form HEAD_HASH\trefs/heads/BRANCH_NAME; we want
         # a tuple of (HEAD_HASH, BRANCH_NAME).
         remote_branches = [(branch.split('\t')[0], branch.split('\t')[1].split('refs/%s/' % reftype)[1])
-                           for branch in branches]
+                           for branch in branches if branch != '']
         return remote_branches
     except git.errors.GitCommandError:
         log.warning('Service %s has branches, but the remote git repo is not named %s', service, service)
