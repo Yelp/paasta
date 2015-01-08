@@ -14,14 +14,12 @@ from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import is_file_in_dir
 from paasta_tools.paasta_cli.utils import NoSuchService
+from paasta_tools.paasta_cli.utils import NON_MARATHON_PIPELINE_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import success
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import x_mark
-
-
-NON_MARATHON_PIPELINE_STEPS = ['itest', 'security-check', 'performance-check', 'registry']
 
 
 def get_pipeline_config(service_name):
