@@ -1,4 +1,7 @@
 import os
+import socket
+import requests
+import json
 
 from paasta_tools.marathon_tools import compose_job_id
 # mesos.cli.master reads its config file at *import* time, so we must have
@@ -20,3 +23,12 @@ def get_mesos_tasks_for_service(service, instance):
 def get_running_mesos_tasks_for_service(service, instance):
     all_tasks = get_mesos_tasks_for_service(service, instance)
     return [task for task in all_tasks if task['state'] == 'TASK_RUNNING']
+
+
+def fetch_mesos_stats():
+    """Queries the mesos stats api and returns a dictionary of the results"""
+    # We make mesos bind on the "primary" of the server
+    my_ip = socket.getfqdn()
+    stats_uri = 'http://%s:5050/master/stats.json' % my_ip
+    response = requests.get(stats_uri, timeout=5)
+    return json.loads(response.text)
