@@ -309,6 +309,12 @@ def _get_deployments_json(soa_dir):
         return {}
 
 
+def get_branch_dict(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
+    full_branch = '%s:%s' % (service_name, branch_name)
+    deployments_json = _get_deployments_json(soa_dir)
+    return deployments_json['v1'].get(full_branch, {})
+
+
 def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
     """Get the docker image name (with tag) for a given service branch from
     a generated deployments.json file.
@@ -318,9 +324,8 @@ def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
     :param soa_dir: The SOA Configuration directory with deployments.json
     :returns: The name and tag of the docker image for the branch, or '' if
               deployments.json doesn't exist in soa_dir"""
-    full_branch = '%s:%s' % (service_name, branch_name)
-    deployments_json = _get_deployments_json(soa_dir)
-    return deployments_json.get(full_branch, {}).get('docker_image', '')
+    return get_branch_dict(service_name, branch_name, soa_dir=soa_dir) \
+        .get('docker_image', '')
 
 
 def get_desired_state_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
@@ -332,9 +337,8 @@ def get_desired_state_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA
     :param soa_dir: The SOA Configuration directory with deployments.json
     :returns: The desired state for the branch, or '' if
               deployments.json doesn't exist in soa_dir"""
-    full_branch = '%s:%s' % (service_name, branch_name)
-    deployments_json = _get_deployments_json(soa_dir)
-    return deployments_json.get(full_branch, {}).get('desired_state', 'start')
+    return get_branch_dict(service_name, branch_name, soa_dir=soa_dir) \
+        .get('desired_state', 'start')
 
 
 def get_force_bounce_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
@@ -349,9 +353,8 @@ def get_force_bounce_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_
     :param soa_dir: The SOA Configuration directory with deployments.json
     :returns: The force_bounce token for the branch, or None if
               deployments.json doesn't exist in soa_dir"""
-    full_branch = '%s:%s' % (service_name, branch_name)
-    deployments_json = _get_deployments_json(soa_dir)
-    return deployments_json.get(full_branch, {}).get('force_bounce', None)
+    return get_branch_dict(service_name, branch_name, soa_dir=soa_dir) \
+        .get('force_bounce', None)
 
 
 def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
