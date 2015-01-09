@@ -1,20 +1,50 @@
 #!/usr/bin/env python
 from argcomplete.completers import ChoicesCompleter
+import contextlib
 import datetime
 import dulwich.client
 import fnmatch
+import git
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.generate_deployments_json import get_branches_for_service
+from paasta_tools.generate_deployments_json import (
+    get_remote_branches_for_service,
+    get_branches_for_service
+)
 from paasta_tools import utils
 import re
+import shutil
 import sys
+import tempfile
 
 SOA_DIR = '/nail/etc/services'
 
 
+@contextlib.contextmanager
+def why_isnt_mkdtemp_already_a_contextmanager():
+    # seriously though this is so easy. Why is this not in the stdlib?
+    d = tempfile.mkdtemp()
+    try:
+        yield d
+    finally:
+        shutil.rmtree(d)
+
+
+def get_branches(service):
+    paasta_branches = set(get_branches_for_service(SOA_DIR, service))
+    with why_isnt_mkdtemp_already_a_contextmanager() as temp_dir:
+        mygit = git.Git(temp_dir)
+        for sha, branch in get_remote_branches_for_service(mygit, service):
+            if branch in paasta_branches:
+                yield branch
+
+
 def completer_branches(prefix, parsed_args, **kwargs):
-    branches = get_branches_for_service(SOA_DIR, parsed_args.service)
-    return (b for b in branches if b.startswith(prefix))
+    try:
+        branches = get_branches(parsed_args.service)
+        return (b for b in branches if b.startswith(prefix))
+    except Exception as e:
+        from argcomplete import warn
+        warn(e)
 
 
 def add_subparser(subparsers):
@@ -69,6 +99,15 @@ def format_tag(branch, force_bounce, desired_state):
 
 
 def make_determine_wants_func(branches, force_bounce, desired_state):
+    """Create a function that will inform send_pack that we want to create tags
+    corresponding to the set of branches passed, with the given force_bounce
+    and desired_state parameters. These tags will point at the current tip of
+    the branch they associate with.
+
+    dulwich's send_pack wants a function that takes a dictionary of ref name
+    to sha and returns a modified version of that dictionary. send_pack will
+    then diff what is returned versus what was passed in, and inform the remote
+    git repo of our desires."""
     def determine_wants(refs):
         for branch in branches:
             refs[format_tag(branch, force_bounce, desired_state)] = \
@@ -98,7 +137,7 @@ def paasta_start(args):
     """Issues a start for given branches of a service."""
     service = args.service
     branch_patterns = args.branch  # this is a list because of action='append'
-    all_branches = get_branches_for_service(SOA_DIR, service)
+    all_branches = get_branches(service)
     try:
         branches = match_branches(all_branches, branch_patterns)
     except NoBranchesMatchException as e:
