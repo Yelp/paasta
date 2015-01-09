@@ -10,6 +10,7 @@ usr/share/python/paasta-tools/bin/check_classic_service_replication.py usr/bin/c
 usr/share/python/paasta-tools/bin/deploy_marathon_services usr/bin/deploy_marathon_services
 usr/share/python/paasta-tools/bin/generate_deployments_json.py usr/bin/generate_deployments_json
 usr/share/python/paasta-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
+usr/share/python/paasta-tools/bin/check_mesos_resource_utilization.py usr/bin/check_mesos_resource_utilization
 usr/share/python/paasta-tools/bin/generate_services_yaml.py usr/bin/generate_services_yaml
 usr/share/python/paasta-tools/bin/cleanup_marathon_orphaned_containers.py usr/bin/cleanup_marathon_orphaned_containers
 usr/share/python/paasta-tools/bin/paasta_serviceinit.py usr/bin/paasta_serviceinit
