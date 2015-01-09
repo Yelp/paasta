@@ -1,41 +1,24 @@
 #!/usr/bin/env python
 from argcomplete.completers import ChoicesCompleter
-import contextlib
 import datetime
-import dulwich.client
 import fnmatch
-import git
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.generate_deployments_json import (
     get_remote_branches_for_service,
     get_branches_for_service
 )
-from paasta_tools import utils
+from paasta_tools import utils, remote_git
 import re
-import shutil
 import sys
-import tempfile
 
 SOA_DIR = '/nail/etc/services'
 
 
-@contextlib.contextmanager
-def why_isnt_mkdtemp_already_a_contextmanager():
-    # seriously though this is so easy. Why is this not in the stdlib?
-    d = tempfile.mkdtemp()
-    try:
-        yield d
-    finally:
-        shutil.rmtree(d)
-
-
 def get_branches(service):
     paasta_branches = set(get_branches_for_service(SOA_DIR, service))
-    with why_isnt_mkdtemp_already_a_contextmanager() as temp_dir:
-        mygit = git.Git(temp_dir)
-        for sha, branch in get_remote_branches_for_service(mygit, service):
-            if branch in paasta_branches:
-                yield branch
+    for sha, branch in get_remote_branches_for_service(service):
+        if branch in paasta_branches:
+            yield branch
 
 
 def completer_branches(prefix, parsed_args, **kwargs):
@@ -98,7 +81,7 @@ def format_tag(branch, force_bounce, desired_state):
     return 'refs/tags/paasta-%s-%s-%s' % (branch, force_bounce, desired_state)
 
 
-def make_determine_wants_func(branches, force_bounce, desired_state):
+def make_mutate_refs_func(branches, force_bounce, desired_state):
     """Create a function that will inform send_pack that we want to create tags
     corresponding to the set of branches passed, with the given force_bounce
     and desired_state parameters. These tags will point at the current tip of
@@ -108,29 +91,21 @@ def make_determine_wants_func(branches, force_bounce, desired_state):
     to sha and returns a modified version of that dictionary. send_pack will
     then diff what is returned versus what was passed in, and inform the remote
     git repo of our desires."""
-    def determine_wants(refs):
+    def mutate_refs(refs):
         for branch in branches:
             refs[format_tag(branch, force_bounce, desired_state)] = \
                 refs['refs/heads/%s' % branch]
         return refs
-
-    return determine_wants
+    return mutate_refs
 
 
 def issue_start_for_branches(service, branches, force_bounce):
-    client, path = dulwich.client.get_transport_and_path(
-        utils.get_git_url(service)
+    ref_mutator = make_mutate_refs_func(
+        branches=branches,
+        force_bounce=force_bounce,
+        desired_state='start'
     )
-
-    client.send_pack(
-        path,
-        make_determine_wants_func(
-            branches=branches,
-            force_bounce=force_bounce,
-            desired_state='start'
-        ),
-        lambda have, want: []  # We know we don't need to push any objects.
-    )
+    remote_git.create_remote_refs(utils.get_git_url(service), ref_mutator)
 
 
 def paasta_start(args):

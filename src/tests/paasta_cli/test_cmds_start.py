@@ -47,9 +47,9 @@ def test_issue_start_for_branches(get_transport_and_path, get_git_url):
                                                       mock.ANY)
 
 
-def test_make_determine_wants_func():
+def test_make_mutate_refs_func():
 
-    determine_wants = start.make_determine_wants_func(
+    mutate_refs = start.make_mutate_refs_func(
         branches=['a', 'b'],
         force_bounce='FORCEBOUNCE',
         desired_state='stop',
@@ -68,5 +68,5 @@ def test_make_determine_wants_func():
         'refs/tags/paasta-b-FORCEBOUNCE-stop': 'hash_for_b',
     })
 
-    actual = determine_wants(old_refs)
+    actual = mutate_refs(old_refs)
     assert actual == expected

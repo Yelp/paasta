@@ -27,16 +27,14 @@ Command line options:
 - -v, --verbose: Verbose output
 """
 import argparse
-import git
 import json
 import logging
 import os
 import re
 import service_configuration_lib
-from paasta_tools import marathon_tools
+from paasta_tools import marathon_tools, remote_git
 from paasta_tools.utils import get_git_url
 import sys
-import tempfile
 
 
 log = logging.getLogger(__name__)
@@ -99,49 +97,45 @@ def get_branches_for_service(soa_dir, service):
     return valid_branches
 
 
-def get_remote_refs_for_service(mygit, service, tags=False):
-    """Use a git.Git object from GitPython to retrieve all remote refs of the given type
-    that exist on a service's git repository.
+def get_remote_refs_for_service(service, tags=False):
+    """Retrieve all remote refs of the given type that exist on a service's git
+    repository.
 
-    :param mygit: An initialized git.Git object
     :param service: The service name to get branches for
-    :returns: A list of tuples of (ref_name, HEAD), where HEAD
+    :param tags: Whether to look for tags only (True) or branches only (False).
+    :returns: A list of tuples of (HEAD, ref_name), where HEAD
               is the complete SHA at the HEAD of the paired ref_name"""
 
-    reftype = 'tags' if tags else 'heads'
+    reftype = 'refs/tags/' if tags else 'refs/heads/'
+
     try:
-        git_url = get_git_url(service)
-        branches = mygit.ls_remote(('--%s' % reftype), git_url).split('\n')
-        # Each branch has the form HEAD_HASH\trefs/heads/BRANCH_NAME; we want
-        # a tuple of (HEAD_HASH, BRANCH_NAME).
-        remote_branches = [(branch.split('\t')[0], branch.split('\t')[1].split('refs/%s/' % reftype)[1])
-                           for branch in branches if branch != '']
+        refs = remote_git.list_remote_refs(get_git_url(service))
+        remote_branches = []
+        for refname, sha in refs.items():
+            if refname.startswith(reftype):
+                remote_branches.append((sha, refname.split(reftype, 1)[1]))
         return remote_branches
-    except git.errors.GitCommandError:
-        log.warning('Service %s has branches, but the remote git repo is not named %s', service, service)
+    except remote_git.LSRemoteException:
+        log.warning('Could not get remote refs for service %s', service)
         return []
 
 
-def get_remote_branches_for_service(mygit, service, tags=False):
-    """Use a git.Git object from GitPython to retrieve all remote branches
-    that exist on a service's git repository.
+def get_remote_branches_for_service(service):
+    """Retrieve all remote branches that exist on a service's git repository.
 
-    :param mygit: An initialized git.Git object
     :param service: The service name to get branches for
     :returns: A list of tuples of (branch_name, HEAD), where HEAD
               is the complete SHA at the HEAD of the paired branch_name"""
-    return get_remote_refs_for_service(mygit, service, tags=False)
+    return get_remote_refs_for_service(service, tags=False)
 
 
-def get_remote_tags_for_service(mygit, service):
-    """Use a git.Git object from GitPython to retrieve all remote tags
-    that exist on a service's git repository.
+def get_remote_tags_for_service(service):
+    """Retrieve all remote tags that exist on a service's git repository.
 
-    :param mygit: An initialized git.Git object
     :param service: The service name to get tags for
     :returns: A list of tuples of (tag_name, HEAD), where HEAD
               is the complete SHA at the HEAD of the paired tag_name"""
-    return get_remote_refs_for_service(mygit, service, tags=True)
+    return get_remote_refs_for_service(service, tags=True)
 
 
 def get_service_directories(soa_dir):
@@ -168,8 +162,6 @@ def get_branch_mappings(soa_dir, old_mappings):
         - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if the
             other properties of this app have not changed.
     """
-    tmp_dir = tempfile.mkdtemp()
-    mygit = git.Git(tmp_dir)
     mappings = {}
     docker_registry = marathon_tools.get_docker_registry()
     for service in get_service_directories(soa_dir):
@@ -178,7 +170,7 @@ def get_branch_mappings(soa_dir, old_mappings):
         if not valid_branches:
             log.info('Service %s has no valid branches. Skipping.', service)
             continue
-        remote_branches = get_remote_branches_for_service(mygit, service)
+        remote_branches = get_remote_branches_for_service(service)
         head_and_branch_from_valid_remote_branches = filter(lambda (head, branch): branch in valid_branches, remote_branches)
 
         if not head_and_branch_from_valid_remote_branches:
@@ -193,26 +185,22 @@ def get_branch_mappings(soa_dir, old_mappings):
                 mapping = mappings.setdefault(branch_alias, {})
                 mapping['docker_image'] = docker_image
 
-                desired_state, force_bounce = get_desired_state(mygit, service, branch, head)
+                desired_state, force_bounce = get_desired_state(service, branch, head)
                 mapping['desired_state'] = desired_state
                 mapping['force_bounce'] = force_bounce
             else:
                 log.error('Branch %s should be mapped to image %s, but that image isn\'t \
                            in the docker_registry %s', branch_alias, docker_image, docker_registry)
                 mappings[branch_alias] = old_mappings.get(branch_alias, None)
-    try:
-        os.rmdir(tmp_dir)
-    except OSError:
-        log.error("Failed to remove temporary directory %s", tmp_dir)
     return mappings
 
 
-def get_desired_state(mygit, service, branch, head_sha):
+def get_desired_state(service, branch, head_sha):
     """Gets the desired state (start or stop) from the given repo, as well as
     an arbitrary value (which may be None) that will change when a restart is
     desired.
     """
-    sha_tags = get_remote_tags_for_service(mygit, service)
+    sha_tags = get_remote_tags_for_service(service)
     tag_pattern = r'^paasta-%s-(?P<force_bounce>[^-]+)-(?P<state>.*)$' % branch
 
     states = []
