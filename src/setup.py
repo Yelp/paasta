@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'paasta-tools',
-    version        = '0.8.6',
+    version        = '0.8.7',
     provides       = ["paasta_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -41,12 +41,11 @@ setup(
         'paasta_tools/deploy_marathon_services',
         'paasta_tools/generate_deployments_json.py',
         'paasta_tools/check_marathon_services_replication.py',
+        'paasta_tools/check_mesos_resource_utilization.py',
         'paasta_tools/generate_services_yaml.py',
         'paasta_tools/cleanup_marathon_orphaned_containers.py',
         'paasta_tools/paasta_serviceinit.py',
         'paasta_tools/paasta_cli/paasta_cli.py',
-        'paasta_tools/paasta_cli/cmds/check.py',
-        'paasta_tools/paasta_cli/cmds/list.py',
         'paasta_tools/paasta_cli/paasta_tabcomplete.sh',
     ]
 )
