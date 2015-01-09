@@ -3,12 +3,6 @@ import mock
 import contextlib
 
 
-def test_get_git_url():
-    service = 'giiiiiiiiiiit'
-    expected = 'git@git.yelpcorp.com:services/%s.git' % service
-    assert generate_deployments_json.get_git_url(service) == expected
-
-
 def test_get_branches_from_marathon_file():
     fake_dir = '/nail/etc/soa/dir'
     fake_fname = 'marathon-boston-devc-with-extra-dashes.yaml'

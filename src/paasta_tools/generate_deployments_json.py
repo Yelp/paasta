@@ -34,6 +34,7 @@ import os
 import re
 import service_configuration_lib
 from paasta_tools import marathon_tools
+from paasta_tools.utils import get_git_url
 import sys
 import tempfile
 
@@ -52,17 +53,6 @@ def parse_args():
                         dest="verbose", default=False)
     args = parser.parse_args()
     return args
-
-
-def get_git_url(service):
-    """Get the git url for a service. Assumes that the service's
-    repo matches its name, and that it lives in services- i.e.
-    if this is called with the string 'test', the returned
-    url will be git@git.yelpcorp.com:services/test.git.
-
-    :param service: The service name to get a URL for
-    :returns: A git url to the service's repository"""
-    return 'git@git.yelpcorp.com:services/%s.git' % service
 
 
 def get_branches_from_marathon_file(file_dir, filename):
