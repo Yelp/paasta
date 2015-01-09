@@ -1,27 +1,27 @@
 import mock
-from paasta_tools.paasta_cli.cmds import start
+from paasta_tools.paasta_cli.cmds import start_stop_restart
 from pytest import raises
 
 
 def test_match_branches():
     # simple case
-    assert start.match_branches(['foo'], ['foo']) == set(['foo'])
+    assert start_stop_restart.match_branches(['foo'], ['foo']) == set(['foo'])
 
-    assert start.match_branches(
+    assert start_stop_restart.match_branches(
         ['foo', 'bar', 'baz'],
         ['b*']
     ) == set(['bar', 'baz'])
 
-    with raises(start.NoBranchesMatchException):
-        start.match_branches(['foo'], ['bar'])
+    with raises(start_stop_restart.NoBranchesMatchException):
+        start_stop_restart.match_branches(['foo'], ['bar'])
 
-    with raises(start.NoBranchesMatchException):
-        start.match_branches(['foo'], ['foo', 'bar'])
+    with raises(start_stop_restart.NoBranchesMatchException):
+        start_stop_restart.match_branches(['foo'], ['foo', 'bar'])
 
 
 def test_format_tag():
     expected = 'refs/tags/paasta-BRANCHNAME-TIMESTAMP-stop'
-    actual = start.format_tag(
+    actual = start_stop_restart.format_tag(
         branch='BRANCHNAME',
         force_bounce='TIMESTAMP',
         desired_state='stop'
@@ -31,7 +31,7 @@ def test_format_tag():
 
 @mock.patch('paasta_tools.utils.get_git_url', autospec=True)
 @mock.patch('dulwich.client.get_transport_and_path', autospec=True)
-def test_issue_start_for_branches(get_transport_and_path, get_git_url):
+def test_issue_state_change_for_branches(get_transport_and_path, get_git_url):
     fake_git_url = 'BLOORGRGRGRGR'
     fake_path = 'somepath'
 
@@ -40,7 +40,12 @@ def test_issue_start_for_branches(get_transport_and_path, get_git_url):
     mock_git_client = mock.Mock()
     get_transport_and_path.return_value = (mock_git_client, fake_path)
 
-    start.issue_start_for_branches('fake_service', ['branch1', 'branch2'], '0')
+    start_stop_restart.issue_state_change_for_branches(
+        'fake_service',
+        ['branch1', 'branch2'],
+        '0',
+        'stop'
+    )
 
     get_transport_and_path.assert_called_once_with(fake_git_url)
     mock_git_client.send_pack.assert_called_once_with(fake_path, mock.ANY,
@@ -49,7 +54,7 @@ def test_issue_start_for_branches(get_transport_and_path, get_git_url):
 
 def test_make_mutate_refs_func():
 
-    mutate_refs = start.make_mutate_refs_func(
+    mutate_refs = start_stop_restart.make_mutate_refs_func(
         branches=['a', 'b'],
         force_bounce='FORCEBOUNCE',
         desired_state='stop',

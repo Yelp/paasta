@@ -31,24 +31,30 @@ def completer_branches(prefix, parsed_args, **kwargs):
 
 
 def add_subparser(subparsers):
-    status_parser = subparsers.add_parser(
-        'start',
-        description="Starts a PaaSTA service",
-        help="Restarts a PaaSTA service by asking Marathon to suspend/resume.")
-    status_parser.add_argument(
-        '-s', '--service',
-        help='Service that you want to start. Like example_service.',
-        required=True,
-    ).completer = ChoicesCompleter(list_services())
-    status_parser.add_argument(
-        '-b', '--branch',
-        help="""Branch of the service that you want to restart. Like
-                "norcal-prod.main" or "pnw-stagea.canary". This can be a
-                glob-style pattern to match multiple branches.""",
-        action='append',
-        required=True,
-    ).completer = completer_branches
-    status_parser.set_defaults(command=paasta_start)
+    for command, lower, upper, cmd_func in [
+        ('start', 'start or restart', 'Start or restart', paasta_start),
+        ('restart', 'start or restart', 'Start or restart', paasta_start),
+        ('stop', 'stop', 'Stop', paasta_stop)
+    ]:
+        status_parser = subparsers.add_parser(
+            command,
+            description="%ss a PaaSTA service by creating a specially-formed git tag." % upper,
+            help="%ss a PaaSTA service" % upper,
+        )
+        status_parser.add_argument(
+            '-s', '--service',
+            help='Service that you want to %s. Like example_service.' % lower,
+            required=True,
+        ).completer = ChoicesCompleter(list_services())
+        status_parser.add_argument(
+            '-b', '--branch',
+            help="""Branch of the service that you want to %s. Like
+                    "norcal-prod.main" or "pnw-stagea.canary". This can be a
+                    glob-style pattern to match multiple branches.""" % lower,
+            action='append',
+            required=True,
+        ).completer = completer_branches
+        status_parser.set_defaults(command=cmd_func)
 
 
 class NoBranchesMatchException(Exception):
@@ -99,16 +105,17 @@ def make_mutate_refs_func(branches, force_bounce, desired_state):
     return mutate_refs
 
 
-def issue_start_for_branches(service, branches, force_bounce):
+def issue_state_change_for_branches(service, branches, force_bounce,
+                                    desired_state):
     ref_mutator = make_mutate_refs_func(
         branches=branches,
         force_bounce=force_bounce,
-        desired_state='start'
+        desired_state=desired_state
     )
     remote_git.create_remote_refs(utils.get_git_url(service), ref_mutator)
 
 
-def paasta_start(args):
+def paasta_start_or_stop(args, desired_state):
     """Issues a start for given branches of a service."""
     service = args.service
     branch_patterns = args.branch  # this is a list because of action='append'
@@ -121,4 +128,13 @@ def paasta_start(args):
         sys.exit(1)
 
     force_bounce = format_timestamp(datetime.datetime.utcnow())
-    issue_start_for_branches(service, branches, force_bounce)
+    issue_state_change_for_branches(service, branches, force_bounce,
+                                    desired_state)
+
+
+def paasta_start(args):
+    return paasta_start_or_stop(args, 'start')
+
+
+def paasta_stop(args):
+    return paasta_start_or_stop(args, 'stop')
