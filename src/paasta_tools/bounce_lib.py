@@ -189,7 +189,7 @@ def brutal_bounce(old_ids, new_config, client, namespace):
     with bounce_lock_zookeeper(service_namespace):
         kill_old_ids(old_ids, client)
         log.info("Creating %s", new_config['id'])
-        create_marathon_app(new_config, client)
+        create_marathon_app(new_config['id'], new_config, client)
 
 
 def scale_apps(scalable_apps, remove_count, client):
@@ -248,7 +248,7 @@ def crossover_bounce(old_ids, new_config, client, namespace):
     try:
         with nested(bounce_lock_zookeeper(service_namespace), time_limit(CROSSOVER_MAX_TIME_M)):
             # Okay, deploy the new job!
-            create_marathon_app(new_config, client)
+            create_marathon_app(new_config['id'], new_config, client)
             # Sleep once to give the stack some time to spin up.
             time.sleep(CROSSOVER_SLEEP_INTERVAL_S)
             # If we run of out stuff to kill, we're just as completed

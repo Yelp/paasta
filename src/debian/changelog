@@ -1,3 +1,17 @@
+paasta-tools (0.8.5-yelp1) lucid; urgency=low
+
+  * 0.8.5 tagged with 'make release'
+    Commit: Fix calls to create_marathon_app in bounce_lib to have right
+    arguments.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 08 Jan 2015 17:50:10 -0800
+
+paasta-tools (0.8.4-yelp1) lucid; urgency=low
+
+  * Move NON_MARATHON_PIPELINE_STEPS to utils
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 08 Jan 2015 13:12:47 -0800
+
 paasta-tools (0.8.3-yelp1) lucid; urgency=low
 
   * 0.8.3 tagged with 'make release'
