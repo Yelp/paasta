@@ -170,7 +170,7 @@ class TestBounceLib:
         fake_client = mock.MagicMock()
         with contextlib.nested(
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_marathon_app'),
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
             mock.patch('bounce_lib.kill_old_ids'),
         ) as (
             lock_patch,
@@ -179,7 +179,7 @@ class TestBounceLib:
         ):
             bounce_lib.brutal_bounce(old_ids, new_config, fake_client, fake_namespace)
             lock_patch.assert_called_once_with('sockem.boppers')
-            create_app_patch.assert_called_once_with(new_config, fake_client)
+            create_app_patch.assert_called_once_with(new_config['id'], new_config, fake_client)
             kill_patch.assert_called_once_with(old_ids, fake_client)
 
     def test_scale_apps_delta_valid(self):
@@ -232,7 +232,7 @@ class TestBounceLib:
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['shake.wake'])
             assert replication_patch.call_count == 2
             lock_patch.assert_called_once_with('shake.wake')
-            create_app_patch.assert_called_once_with(fake_new_config, fake_client)
+            create_app_patch.assert_called_once_with(fake_new_config['id'], fake_new_config, fake_client)
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
             fake_client.get_app.assert_any_call('fake.make')
@@ -276,7 +276,7 @@ class TestBounceLib:
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['hello.world'])
             assert replication_patch.call_count == 3
             lock_patch.assert_called_once_with('hello.world')
-            create_app_patch.assert_called_once_with(fake_new_config, fake_client)
+            create_app_patch.assert_called_once_with(fake_new_config['id'], fake_new_config, fake_client)
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
             fake_client.get_app.assert_any_call('pen.hen')
