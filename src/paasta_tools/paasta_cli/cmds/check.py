@@ -14,7 +14,7 @@ from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import is_file_in_dir
 from paasta_tools.paasta_cli.utils import NoSuchService
-from paasta_tools.paasta_cli.utils import NON_MARATHON_PIPELINE_STEPS
+from paasta_tools.utils import NON_MARATHON_PIPELINE_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import success
