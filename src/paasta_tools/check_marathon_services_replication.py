@@ -25,6 +25,7 @@ import service_configuration_lib
 import sys
 
 from paasta_tools.monitoring import replication_utils
+from paasta_tools.monitoring.context import get_context
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 
@@ -139,6 +140,8 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
         if full_name not in available_backends:
             output = 'Service namespace entry %s not found! No instances available!' % full_name
             log.error(output)
+            context = get_context(service_name, namespace)
+            output = '%s\n%s' % (output, context)
             send_event(service_name, namespace, soa_dir, pysensu_yelp.Status.CRITICAL, output)
             continue
         num_available = available_backends[full_name]
@@ -162,6 +165,9 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
             status = pysensu_yelp.Status.OK
             status_str = 'OK'
         output = '%s: %s' % (status_str, output)
+        if status_str != 'OK':
+            context = get_context(service_name, namespace)
+            output = '%s\n%s' % (output, context)
         send_event(service_name, namespace, soa_dir, status, output)
 
 

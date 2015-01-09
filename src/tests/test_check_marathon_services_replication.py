@@ -131,9 +131,11 @@ def test_check_namespaces():
         mock.patch('check_marathon_services_replication.get_expected_instances',
                    side_effect=lambda a, b, c: expected.pop()),
         mock.patch('check_marathon_services_replication.send_event'),
+        mock.patch('check_marathon_services_replication.get_context'),
     ) as (
         expected_patch,
-        event_patch
+        event_patch,
+        context_patch,
     ):
         check_marathon_services_replication.check_namespaces(namespaces, available, soa_dir, crit, warn)
         expected_patch.assert_any_call('test', 'one', soa_dir)
@@ -147,6 +149,11 @@ def test_check_namespaces():
         event_patch.assert_any_call('test', 'three', soa_dir, pysensu_yelp.Status.WARNING, mock.ANY)
         event_patch.assert_any_call('test', 'four', soa_dir, pysensu_yelp.Status.OK, mock.ANY)
         assert event_patch.call_count == 4
+        # Context should have been requested for anything not ok
+        context_patch.assert_any_call('test', 'one')
+        context_patch.assert_any_call('test', 'two')
+        context_patch.assert_any_call('test', 'three')
+        assert context_patch.call_count == 3
 
 
 def test_main():
