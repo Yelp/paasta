@@ -11,6 +11,10 @@ from service_wizard.prompt import ask
 from service_wizard.autosuggest import suggest_smartstack_proxy_port
 
 
+# TODO: from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
+DEPLOY_PIPELINE_NON_DEPLOY_STEPS = ('itest', 'security-check', 'performance-check', 'push-to-registry')
+
+
 def _yamlize(contents):
     return yaml.dump(contents, explicit_start=True, default_flow_style=False)
 
@@ -74,7 +78,7 @@ def get_deploy_stanza():
         { "instancename": "itest", },
         { "instancename": "security-check", },
         { "instancename": "performance-check", },
-        { "instancename": "registry", },
+        { "instancename": "push-to-registry", },
         { "instancename": "pnw-stagea.canary", },
         { "instancename": "pnw-stagea.main", },
         { "instancename": "norcal-stageb.canary", },
@@ -100,7 +104,7 @@ def get_clusternames_from_deploy_stanza(deploy_stanza):
     clusternames = set()
     for entry in deploy_stanza.get("pipeline", []):
         instancename = entry["instancename"]
-        if instancename in ("itest", "registry"):
+        if instancename in DEPLOY_PIPELINE_NON_DEPLOY_STEPS:
             continue
         # Usually clustername will be instancename.namespace, so lop off
         # namespace. (If there's no namespace, this just returns clustername,
