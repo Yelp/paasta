@@ -32,7 +32,7 @@ emergency-restart
 itest
 mark-for-deployment
 performance-check
-promote-to-registry
+push-to-registry
 security-check
 status
 version"
