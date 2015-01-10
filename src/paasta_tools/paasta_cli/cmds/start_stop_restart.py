@@ -22,12 +22,8 @@ def get_branches(service):
 
 
 def completer_branches(prefix, parsed_args, **kwargs):
-    try:
-        branches = get_branches(parsed_args.service)
-        return (b for b in branches if b.startswith(prefix))
-    except Exception as e:
-        from argcomplete import warn
-        warn(e)
+    branches = get_branches(parsed_args.service)
+    return (b for b in branches if b.startswith(prefix))
 
 
 def add_subparser(subparsers):
