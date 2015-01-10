@@ -1,3 +1,12 @@
+paasta-tools (0.8.8-yelp1) lucid; urgency=low
+
+  * 0.8.8 tagged with 'make release'
+    Commit: Merge branch troscoe_PAASTA-109
+    https://reviewboard.yelpcorp.com/r/81760/
+    Rename promote_to_* to push-to-registry and deploy-to-*.
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Fri, 09 Jan 2015 16:27:55 -0800
+
 paasta-tools (0.8.7-yelp1) lucid; urgency=low
 
   * 0.8.7 tagged with 'make release'
