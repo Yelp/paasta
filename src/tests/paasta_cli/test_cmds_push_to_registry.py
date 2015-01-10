@@ -12,7 +12,7 @@ from paasta_tools.paasta_cli.cmds.push_to_registry import paasta_push_to_registr
 def test_build_command():
     upstream_job_name = 'fake_upstream_job_name'
     upstream_git_commit = 'fake_upstream_git_commit'
-    expected = 'docker push docker-paasta.yelpcorp.com:443/%s:paasta-%s' % (
+    expected = 'docker push docker-paasta.yelpcorp.com:443/services-%s:paasta-%s' % (
         upstream_job_name,
         upstream_git_commit,
     )
