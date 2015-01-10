@@ -1,7 +1,6 @@
 #!/usr/bin/env python
-from argcomplete.completers import ChoicesCompleter
-
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.marathon_tools import list_clusters
@@ -16,17 +15,17 @@ def add_subparser(subparsers):
         '-s', '--service',
         help='Service that you want to start. Like example_service.',
         required=True,
-    ).completer = ChoicesCompleter(list_services())
+    ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
         '-i', '--instance',
         help='Instance of the service that you want to start. Like "main" or "canary".',
         required=True,
-    ).completer = ChoicesCompleter(list_instances())
+    ).completer = lazy_choices_completer(list_instances)
     status_parser.add_argument(
         '-c', '--cluster',
         help='The PaaSTA cluster that has the service you want to start. Like norcal-prod',
         required=True,
-    ).completer = ChoicesCompleter(list_clusters())
+    ).completer = lazy_choices_completer(list_clusters)
     status_parser.set_defaults(command=paasta_emergency_start)
 
 
