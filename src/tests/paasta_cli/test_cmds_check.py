@@ -460,7 +460,7 @@ def test_makefile_responds_to_itest_bad(mock_subprocess):
 def test_deploy_has_security_check_false(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'instancename': 'itest', },
-        {'instancename': 'registry', },
+        {'instancename': 'push-to-registry', },
         {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'devc.main', },
     ]
@@ -474,7 +474,7 @@ def test_deploy_has_security_check_true(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'instancename': 'itest', },
         {'instancename': 'security-check', },
-        {'instancename': 'registry', },
+        {'instancename': 'push-to-registry', },
         {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'devc.main', },
     ]
@@ -487,7 +487,7 @@ def test_deploy_has_security_check_true(mock_pipeline_config, mock_stdout):
 def test_deploy_has_performance_check_false(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'instancename': 'itest', },
-        {'instancename': 'registry', },
+        {'instancename': 'push-to-registry', },
         {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'devc.main', },
     ]
@@ -501,7 +501,7 @@ def test_deploy_has_performance_check_true(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'instancename': 'itest', },
         {'instancename': 'performance-check', },
-        {'instancename': 'registry', },
+        {'instancename': 'push-to-registry', },
         {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'devc.main', },
     ]
@@ -533,7 +533,7 @@ def test_marathon_deployments_check_good(
     mock_get_pipeline_config.return_value = [
         {'instancename': 'itest', },
         {'instancename': 'performance-check', },
-        {'instancename': 'registry', },
+        {'instancename': 'push-to-registry', },
         {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'devc.main', },
     ]
@@ -556,7 +556,7 @@ def test_marathon_deployments_deploy_but_not_marathon(
     mock_get_pipeline_config.return_value = [
         {'instancename': 'itest', },
         {'instancename': 'performance-check', },
-        {'instancename': 'registry', },
+        {'instancename': 'push-to-registry', },
         {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'devc.main', },
         {'instancename': 'devc.EXTRA', },
@@ -581,7 +581,7 @@ def test_marathon_deployments_marathon_but_not_deploy(
     mock_get_pipeline_config.return_value = [
         {'instancename': 'itest', },
         {'instancename': 'performance-check', },
-        {'instancename': 'registry', },
+        {'instancename': 'push-to-registry', },
         {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'devc.main', },
     ]
