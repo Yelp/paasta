@@ -55,8 +55,11 @@ def get_valid_app_list(marathon_config, soa_dir):
     cluster_app_list = marathon_tools.get_marathon_services_for_cluster(soa_dir=soa_dir)
     valid_app_list = []
     for name, instance in cluster_app_list:
-        app_id = marathon_tools.get_app_id(name, instance, marathon_config, soa_dir=soa_dir)
-        valid_app_list.append(app_id)
+        try:
+            app_id = marathon_tools.get_app_id(name, instance, marathon_config, soa_dir=soa_dir)
+            valid_app_list.append(app_id)
+        except: NameError
+            pass
     return valid_app_list
 
 

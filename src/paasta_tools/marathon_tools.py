@@ -127,7 +127,7 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     :param verify: Set to False to not verify the composed docker url
     :returns: '<registry_uri>/<docker_image>', or '' if URL didn't verify"""
     if not docker_image:
-        return ''
+        raise NameError('Docker url not available because there is no docker_image')
     if verify:
         s = StringIO()
         c = pycurl.Curl()
