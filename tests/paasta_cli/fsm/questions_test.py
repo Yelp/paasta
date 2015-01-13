@@ -214,7 +214,7 @@ class GetClusternamesFromDeployStanzaTestCase(QuestionsTestCase):
         deploy_stanza = {}
         deploy_stanza["pipeline"] = [
             { "instancename": "itest", },
-            { "instancename": "registry", },
+            { "instancename": "push-to-registry", },
             { "instancename": "mesosstage.canary", },
             { "instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
             { "instancename": "nova-prod.main.with.extra.dots", },
