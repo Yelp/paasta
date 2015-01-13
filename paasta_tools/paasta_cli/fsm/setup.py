@@ -5,7 +5,7 @@ from setuptools import setup, find_packages
 
 setup(
     name='service-wizard',
-    version='0.0.1',
+    version='0.0.2',
     provides=['service_wizard'],
     author='troscoe',
     author_email='troscoe@yelp.com',
