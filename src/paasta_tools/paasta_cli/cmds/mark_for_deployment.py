@@ -35,6 +35,12 @@ def build_command(
     upstream_git_commit,
     clusterinstance,
 ):
+    """upstream_git_url is the Git URL where the service lives (e.g.
+    git@git.yelpcorp.com:services/foo)
+
+    instancename is where you want to deploy. E.g. norcal-devc.canary indicates
+    a Mesos cluster (norcal-devc) and an instance within that cluster (canary)
+    """
     cmd = 'git push %s %s:refs/heads/paasta-%s' % (
         upstream_git_url,
         upstream_git_commit,
