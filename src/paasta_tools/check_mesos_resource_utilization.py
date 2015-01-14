@@ -11,8 +11,8 @@ import argparse
 import logging
 import sys
 
-import marathon_tools
 import pysensu_yelp
+import paasta_tools.marathon_tools
 from paasta_tools.mesos_tools import fetch_mesos_stats
 
 
@@ -42,7 +42,7 @@ def send_event(status, output):
         'realert_every': -1,
         'status': status,
         'output': output,
-        'source': 'mesos-%s' % marathon_tools.get_cluster()
+        'source': 'mesos-%s' % paasta_tools.marathon_tools.get_cluster()
     }
     pysensu_yelp.send_event(**result_dict)
 
@@ -87,7 +87,7 @@ def main():
 
 
 if __name__ == "__main__":
-    if marathon_tools.is_mesos_leader():
+    if paasta_tools.marathon_tools.is_mesos_leader():
         main()
     else:
         print "No the leader. Exiting 0."
