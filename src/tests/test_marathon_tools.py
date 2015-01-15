@@ -257,6 +257,35 @@ class TestMarathonTools:
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(file_mock.read())
 
+    def test_get_cluster(self):
+        fake_config = {
+            'cluster': 'peanut',
+        }
+        expected = 'peanut'
+        with mock.patch(
+            'marathon_tools.get_config',
+            return_value=fake_config,
+        ):
+            actual = marathon_tools.get_cluster()
+            assert actual == expected
+
+    def test_get_cluster_dne(self):
+        fake_config = {}
+        with mock.patch(
+            'marathon_tools.get_config',
+            return_value=fake_config,
+        ):
+            with raises(marathon_tools.NoMarathonClusterFoundException):
+                marathon_tools.get_cluster()
+
+    def test_get_cluster_other_exception(self):
+        with mock.patch(
+            'marathon_tools.get_config',
+            side_effect=SyntaxError,
+        ):
+            with raises(SyntaxError):
+                marathon_tools.get_cluster()
+
     def test_list_clusters_no_service(self):
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_services_configuration'),

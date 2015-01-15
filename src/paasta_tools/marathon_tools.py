@@ -27,6 +27,7 @@ MESOS_SLAVE_PORT = 5051
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
 
+PATH_TO_MARATHON_CONFIG = '/etc/paasta_tools/marathon_config.json'
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 
@@ -38,7 +39,7 @@ class MarathonConfig:
     def __init__(self):
         self.__dict__ = self.__shared_state
         if not self.config:
-            self.config = json.loads(open('/etc/paasta_tools/marathon_config.json').read())
+            self.config = json.loads(open(PATH_TO_MARATHON_CONFIG).read())
 
     def get(self):
         return self.config
@@ -63,7 +64,12 @@ def get_cluster():
     """Get the cluster defined in this host's marathon config file.
 
     :returns: The name of the cluster defined in the marathon configuration"""
-    return get_config()['cluster']
+    try:
+        config = get_config()
+        return config['cluster']
+    except KeyError:
+        log.warning('Could not find marathon cluster in marathon config at %s' % PATH_TO_MARATHON_CONFIG)
+        raise NoMarathonClusterFoundException
 
 
 def get_marathon_client(url, user, passwd):

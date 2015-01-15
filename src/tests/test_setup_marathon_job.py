@@ -53,6 +53,8 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=(0, 'it_is_finished')),
+            mock.patch('setup_marathon_job.marathon_tools.get_cluster',
+                       return_value=self.fake_marathon_config['cluster']),
             mock.patch('setup_marathon_job.send_event'),
             mock.patch('sys.exit'),
         ) as (
@@ -61,6 +63,7 @@ class TestSetupMarathonJob:
             get_client_patch,
             read_service_conf_patch,
             setup_service_patch,
+            get_cluster_patch,
             sensu_patch,
             sys_exit_patch,
         ):
@@ -93,6 +96,8 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=(1, 'NEVER')),
+            mock.patch('setup_marathon_job.marathon_tools.get_cluster',
+                       return_value=self.fake_marathon_config['cluster']),
             mock.patch('setup_marathon_job.send_event'),
             mock.patch('sys.exit'),
         ) as (
@@ -101,6 +106,7 @@ class TestSetupMarathonJob:
             get_client_patch,
             read_service_conf_patch,
             setup_service_patch,
+            get_cluster_patch,
             sensu_patch,
             sys_exit_patch,
         ):
