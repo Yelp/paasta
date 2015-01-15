@@ -1,7 +1,9 @@
-import marathon_tools
 import contextlib
 import mock
 import pycurl
+from pytest import raises
+
+import marathon_tools
 from marathon.models import MarathonApp
 
 
@@ -586,6 +588,44 @@ class TestMarathonTools:
             read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
             read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
             assert read_ns_config_patch.call_count == 2
+
+    def test_get_marathon_services_running_here_for_nerve_when_get_cluster_raises_custom_exception(self):
+        cluster = None
+        soa_dir = 'the_sound_of_music'
+        with contextlib.nested(
+            mock.patch(
+                'marathon_tools.get_cluster',
+                side_effect=marathon_tools.NoMarathonClusterFoundException,
+            ),
+            mock.patch(
+                'marathon_tools.marathon_services_running_here',
+                return_value=[],
+            ),
+        ) as (
+            get_cluster_patch,
+            marathon_services_running_here_patch,
+        ):
+            actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
+            assert actual == []
+
+    def test_get_marathon_services_running_here_for_nerve_when_get_cluster_raises_other_exception(self):
+        cluster = None
+        soa_dir = 'the_sound_of_music'
+        with contextlib.nested(
+            mock.patch(
+                'marathon_tools.get_cluster',
+                side_effect=Exception,
+            ),
+            mock.patch(
+                'marathon_tools.marathon_services_running_here',
+                return_value=[],
+            ),
+        ) as (
+            get_cluster_patch,
+            marathon_services_running_here_patch,
+        ):
+            with raises(Exception):
+                marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
 
     def test_get_classic_service_information_for_nerve(self):
         with contextlib.nested(

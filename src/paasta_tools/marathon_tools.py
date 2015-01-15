@@ -44,6 +44,10 @@ class MarathonConfig:
         return self.config
 
 
+class NoMarathonClusterFoundException(Exception):
+    pass
+
+
 def get_config():
     """Get the general marathon configuration information, or load
     a default configuration if the config file isn't deployed here.
@@ -683,7 +687,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     if not cluster:
         try:
             cluster = get_cluster()
-        except:
+        except NoMarathonClusterFoundException:
             return []
     # When a cluster is defined in mesos, lets iterate through marathon services
     marathon_services = marathon_services_running_here()
