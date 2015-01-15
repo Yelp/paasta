@@ -1,3 +1,11 @@
+paasta-tools (0.8.13-yelp1) lucid; urgency=low
+
+  * 0.8.13 tagged with 'make release'
+    Commit: Merge branch PAASTA-213  Conflicts:
+    src/paasta_tools/marathon_tools.py  src/tests/test_marathon_tools.py
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 15 Jan 2015 15:34:59 -0800
+
 paasta-tools (0.8.12-yelp1) lucid; urgency=low
 
   * 0.8.12 tagged with 'make release'
