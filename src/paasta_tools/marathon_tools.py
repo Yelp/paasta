@@ -44,6 +44,10 @@ class MarathonConfig:
         return self.config
 
 
+class NoDockerImageError(Exception):
+    pass
+
+
 def get_config():
     """Get the general marathon configuration information, or load
     a default configuration if the config file isn't deployed here.
@@ -127,7 +131,7 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     :param verify: Set to False to not verify the composed docker url
     :returns: '<registry_uri>/<docker_image>', or '' if URL didn't verify"""
     if not docker_image:
-        raise NameError('Docker url not available because there is no docker_image')
+        raise NoDockerImageError('Docker url not available because there is no docker_image')
     if verify:
         s = StringIO()
         c = pycurl.Curl()

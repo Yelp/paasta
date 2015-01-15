@@ -58,7 +58,7 @@ def get_valid_app_list(marathon_config, soa_dir):
         try:
             app_id = marathon_tools.get_app_id(name, instance, marathon_config, soa_dir=soa_dir)
             valid_app_list.append(app_id)
-        except: NameError
+        except NameError:
             pass
     return valid_app_list
 

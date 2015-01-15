@@ -2,6 +2,7 @@ import marathon_tools
 import contextlib
 import mock
 import pycurl
+from pytest import raises
 from marathon.models import MarathonApp
 
 
@@ -885,6 +886,10 @@ class TestMarathonTools:
             fake_curl.setopt.assert_any_call(pycurl.TIMEOUT, 30)
             fake_curl.perform.assert_called_once_with()
             fake_stringio.getvalue.assert_called_once_with()
+
+    def test_get_docker_url_with_no_docker_image(self):
+        with raises(marathon_tools.NoDockerImageError):
+            marathon_tools.get_docker_url('fake_registry', None)
 
     def test_get_marathon_client(self):
         fake_url = "nothing_for_me_to_do_but_dance"

@@ -145,7 +145,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
     log.info("Setting up instance %s for service %s", instance_name, service_name)
     try:
         complete_config = marathon_tools.create_complete_config(service_name, instance_name, marathon_config)
-    except: NameError
+    except NameError:
         error_msg = "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?".format(
                   service_name, instance_name)
         log.error(error_msg)
