@@ -17,7 +17,7 @@ setup(
     install_requires = [
         'isodate >= 0.5.0',
         'service-configuration-lib == 0.8.2',
-        'marathon == 0.6.8',
+        'marathon == 0.6.10',
         'argparse',
         'pycurl',
         'requests',
