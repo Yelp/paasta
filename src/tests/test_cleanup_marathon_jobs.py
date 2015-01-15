@@ -73,6 +73,17 @@ class TestCleanupMarathonJobs:
             assert expected == actual
             get_srvs_patch.assert_called_once_with(soa_dir=soa_dir)
 
+    def test_get_valid_app_list_no_docker_image(self):
+        with contextlib.nested(
+            mock.patch('cleanup_marathon_jobs.marathon_tools.get_marathon_services_for_cluster',
+                       return_value=[('app1', 'main')]),
+            mock.patch('cleanup_marathon_jobs.marathon_tools.get_app_id',
+                       side_effect=cleanup_marathon_jobs.marathon_tools.NoDockerImageError),
+        ):
+            expected = []
+            actual = cleanup_marathon_jobs.get_valid_app_list({}, None)
+            assert actual == expected
+
     def test_cleanup_apps(self):
         from contextlib import contextmanager
         soa_dir = 'not_really_a_dir'
