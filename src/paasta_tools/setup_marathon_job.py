@@ -198,7 +198,7 @@ def main():
                                                 marathon_config['pass'])
 
     service_instance_config = marathon_tools.read_service_config(service_name, instance_name,
-                                                                 marathon_config['cluster'], soa_dir)
+                                                                 marathon_tools.get_cluster(), soa_dir)
 
     if service_instance_config:
         try:
@@ -215,7 +215,7 @@ def main():
             sys.exit(1)
     else:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
-                    (args.service_instance, marathon_config['cluster'])
+                    (args.service_instance, marathon_tools.get_cluster())
         log.error(error_msg)
         send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)
