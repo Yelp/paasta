@@ -96,7 +96,7 @@ def haproxy_backend_report(normal_instance_count, up_backends):
         status = PaastaColors.yellow("Warning")
         count = PaastaColors.yellow("(%d/%d)" % (up_backends, normal_instance_count))
     up_string = PaastaColors.bold('UP')
-    return "%s - in haproxy with %s backends %s." % (status, count, up_string)
+    return "%s - in haproxy with %s total backends %s in this namespace." % (status, count, up_string)
 
 
 def status_smartstack_backends(service, instance, normal_instance_count, cluster):
@@ -150,6 +150,7 @@ def main():
     complete_job_config = marathon_tools.read_service_config(service, instance, cluster)
     app_id = marathon_tools.get_app_id(service, instance, marathon_config)
     normal_instance_count = marathon_tools.get_instances(complete_job_config)
+    normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
 
     client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
                                                 marathon_config['pass'])
@@ -162,7 +163,7 @@ def main():
     elif command == 'status':
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         print status_mesos_tasks(service, instance, normal_instance_count)
-        print status_smartstack_backends(service, instance, normal_instance_count, cluster)
+        print status_smartstack_backends(service, instance, normal_smartstack_count, cluster)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
