@@ -87,39 +87,6 @@ def test_split_id():
     assert check_marathon_services_replication.split_id(fake_id) == expected
 
 
-def test_get_expected_instances():
-    service_name = 'red'
-    namespace = 'rojo'
-    soa_dir = 'que_esta'
-    fake_instances = [(service_name, 'blue'), (service_name, 'green')]
-    fake_srv_config = {'nerve_ns': 'rojo'}
-
-    def config_helper(name, inst, soa_dir=None):
-        if inst == 'blue':
-            return fake_srv_config
-        else:
-            return {'nerve_ns': 'amarillo'}
-
-    with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.get_service_instance_list',
-                   return_value=fake_instances),
-        mock.patch('paasta_tools.marathon_tools.read_service_config',
-                   side_effect=config_helper),
-        mock.patch('paasta_tools.marathon_tools.get_instances',
-                   return_value=11)
-    ) as (
-        inst_list_patch,
-        read_config_patch,
-        get_inst_patch
-    ):
-        actual = check_marathon_services_replication.get_expected_instances(service_name, namespace, soa_dir)
-        assert actual == 11
-        inst_list_patch.assert_called_once_with(service_name, soa_dir=soa_dir)
-        read_config_patch.assert_any_call(service_name, 'blue', soa_dir=soa_dir)
-        read_config_patch.assert_any_call(service_name, 'green', soa_dir=soa_dir)
-        get_inst_patch.assert_called_once_with(fake_srv_config)
-
-
 def test_check_namespaces():
     namespaces = ['test.one', 'test.two', 'test.three', 'test.four', 'test.five']
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
@@ -128,7 +95,7 @@ def test_check_namespaces():
     warn = 50
     crit = 12.5
     with contextlib.nested(
-        mock.patch('check_marathon_services_replication.get_expected_instances',
+        mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instances',
                    side_effect=lambda a, b, c: expected.pop()),
         mock.patch('check_marathon_services_replication.send_event'),
         mock.patch('check_marathon_services_replication.get_context'),
