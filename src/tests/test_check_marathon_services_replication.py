@@ -95,7 +95,7 @@ def test_check_namespaces():
     warn = 50
     crit = 12.5
     with contextlib.nested(
-        mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instances',
+        mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
                    side_effect=lambda a, b, c: expected.pop()),
         mock.patch('check_marathon_services_replication.send_event'),
         mock.patch('check_marathon_services_replication.get_context'),

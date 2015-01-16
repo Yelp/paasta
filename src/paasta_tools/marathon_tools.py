@@ -839,7 +839,7 @@ def get_code_sha_from_dockerurl(docker_url):
     return "git%s" % parts[-1][:8]
 
 
-def get_expected_instances(service_name, namespace, soa_dir):
+def get_expected_instance_count_for_namespace(service_name, namespace, soa_dir):
     """Get the number of expected instances for a namespace, based on the number
     of instances set to run on that namespace as specified in Marathon service
     configuration files.
