@@ -1072,7 +1072,7 @@ class TestMarathonTools:
             third_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
             assert second_id != third_id
 
-    def test_get_expected_instances(self):
+    def test_get_expected_instance_count_for_namespace(self):
         service_name = 'red'
         namespace = 'rojo'
         soa_dir = 'que_esta'
@@ -1097,7 +1097,7 @@ class TestMarathonTools:
             read_config_patch,
             get_inst_patch
         ):
-            actual = marathon_tools.get_expected_instances(service_name, namespace, soa_dir)
+            actual = marathon_tools.get_expected_instance_count_for_namespace(service_name, namespace, soa_dir)
             assert actual == 11
             inst_list_patch.assert_called_once_with(service_name, soa_dir=soa_dir)
             read_config_patch.assert_any_call(service_name, 'blue', soa_dir=soa_dir)
