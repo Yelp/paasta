@@ -3,6 +3,9 @@ import dulwich.errors
 
 
 def _make_determine_wants_func(ref_mutator):
+    """Returns a safer version of ref_mutator, suitable for passing as the
+    determine_wants argument to dulwich's send_pack method. The returned
+    function will not delete or modify any existing refs."""
     def determine_wants(old_refs):
         refs = dict(old_refs)
         new_refs = ref_mutator(refs)
