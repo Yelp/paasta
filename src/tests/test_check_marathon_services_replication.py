@@ -92,8 +92,7 @@ def test_check_namespaces():
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
     expected = [0, 8, 8, 8, 8]
     soa_dir = 'test_dir'
-    warn = 50
-    crit = 12.5
+    crit = 90
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
                    side_effect=lambda a, b, c: expected.pop()),
@@ -104,7 +103,7 @@ def test_check_namespaces():
         event_patch,
         context_patch,
     ):
-        check_marathon_services_replication.check_namespaces(namespaces, available, soa_dir, crit, warn)
+        check_marathon_services_replication.check_namespaces(namespaces, available, soa_dir, crit)
         expected_patch.assert_any_call('test', 'one', soa_dir)
         expected_patch.assert_any_call('test', 'two', soa_dir)
         expected_patch.assert_any_call('test', 'three', soa_dir)
@@ -113,7 +112,7 @@ def test_check_namespaces():
         assert expected_patch.call_count == 5
         event_patch.assert_any_call('test', 'one', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
         event_patch.assert_any_call('test', 'two', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
-        event_patch.assert_any_call('test', 'three', soa_dir, pysensu_yelp.Status.WARNING, mock.ANY)
+        event_patch.assert_any_call('test', 'three', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
         event_patch.assert_any_call('test', 'four', soa_dir, pysensu_yelp.Status.OK, mock.ANY)
         assert event_patch.call_count == 4
         # Context should have been requested for anything not ok
@@ -125,13 +124,12 @@ def test_check_namespaces():
 
 def test_main():
     soa_dir = 'anw'
-    warn = 0
     crit = 1
     synapse_host = 'hammer:time'
     namespaces = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
     actual_namespaces = ['a', 'b', 'c', 'd']
     replication = 'reeeeeeeeeeeplicated'
-    args = mock.Mock(soa_dir=soa_dir, warn=warn, crit=crit, synapse_host_port=synapse_host, verbose=False)
+    args = mock.Mock(soa_dir=soa_dir, crit=crit, synapse_host_port=synapse_host, verbose=False)
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.parse_args', return_value=args),
         mock.patch('paasta_tools.marathon_tools.get_all_namespaces',
@@ -149,4 +147,4 @@ def test_main():
         args_patch.assert_called_once_with()
         namespaces_patch.assert_called_once_with()
         replication_patch.assert_called_once_with(synapse_host, actual_namespaces)
-        check_patch.assert_called_once_with(actual_namespaces, replication, soa_dir, crit, warn)
+        check_patch.assert_called_once_with(actual_namespaces, replication, soa_dir, crit)
