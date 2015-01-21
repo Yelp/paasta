@@ -752,7 +752,7 @@ class TestMarathonTools:
                                    spacer, fake_instance.replace('_', '--'))
         assert marathon_tools.compose_job_id(fake_name, fake_id, fake_instance) == expected
 
-    def test_create_partial_config(self):
+    def test_format_marathon_app_dict(self):
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
@@ -771,6 +771,17 @@ class TestMarathonTools:
         fake_cpus = .42
         fake_instances = 101
         fake_args = ['arg1', 'arg2']
+        fake_healthchecks = [
+            {
+                "protocol": "HTTP",
+                "path": "/health",
+                "gracePeriodSeconds": 3,
+                "intervalSeconds": 10,
+                "portIndex": 0,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 3
+            },
+        ]
 
         expected_conf = {
             'id': fake_id,
@@ -795,6 +806,7 @@ class TestMarathonTools:
             'cpus': fake_cpus,
             'instances': fake_instances,
             'args': fake_args,
+            'health_checks': fake_healthchecks,
             'backoff_seconds': 1,
             'backoff_factor': 2,
         }
@@ -811,14 +823,14 @@ class TestMarathonTools:
             get_instances_patch,
             get_args_patch,
         ):
-            actual = marathon_tools.create_partial_config(fake_id, fake_url, fake_volumes,
-                                                          self.fake_marathon_job_config)
-            assert actual == expected_conf
+            actual = marathon_tools.format_marathon_app_dict(fake_id, fake_url, fake_volumes,
+                                                             self.fake_marathon_job_config, fake_healthchecks)
             get_mem_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_cpus_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_constraints_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_instances_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_args_patch.assert_called_once_with(self.fake_marathon_job_config)
+            assert actual == expected_conf
 
             # Assert that the complete config can be inserted into the MarathonApp model
             assert MarathonApp(**actual)
@@ -842,8 +854,8 @@ class TestMarathonTools:
         fake_marathon_job_config = dict(self.fake_marathon_job_config)
         fake_marathon_job_config['desired_state'] = 'stop'
 
-        config = marathon_tools.create_partial_config(fake_id, fake_url, fake_volumes,
-                                                      fake_marathon_job_config)
+        config = marathon_tools.format_marathon_app_dict(fake_id, fake_url, fake_volumes,
+                                                         fake_marathon_job_config, [])
         assert config['instances'] == 0
 
     def test_get_bounce_method_in_config(self):
@@ -1005,14 +1017,14 @@ class TestMarathonTools:
             mock.patch('marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_docker_url', return_value=fake_url),
-            mock.patch('marathon_tools.create_partial_config',
+            mock.patch('marathon_tools.format_marathon_app_dict',
                        return_value=fake_config),
             mock.patch('marathon_tools.get_config_hash', return_value=fake_hash),
             mock.patch('marathon_tools.get_code_sha_from_dockerurl', return_value=fake_code_sha),
         ) as (
             read_service_config_patch,
             docker_url_patch,
-            create_partial_config_patch,
+            format_marathon_app_dict_patch,
             hash_patch,
             code_sha_patch,
         ):
@@ -1103,3 +1115,68 @@ class TestMarathonTools:
             read_config_patch.assert_any_call(service_name, 'blue', soa_dir=soa_dir)
             read_config_patch.assert_any_call(service_name, 'green', soa_dir=soa_dir)
             get_inst_patch.assert_called_once_with(fake_srv_config)
+
+    def test_get_healthchecks_http_overrides(self):
+        fake_path = '/mycoolstatus'
+        fake_config = {
+            'mode': 'http',
+            'healthcheck_uri': fake_path,
+        }
+        expected = [
+            {
+                "protocol": "HTTP",
+                "path": fake_path,
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "portIndex": 0,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 6
+            },
+        ]
+        with mock.patch('marathon_tools.read_service_namespace_config') as mock_read_service_namespace_config:
+            mock_read_service_namespace_config.return_value = fake_config
+            actual = marathon_tools.get_healthchecks('fake_service', 'fake_instance')
+            assert mock_read_service_namespace_config.called_once_with('fake_service', 'fake_instance')
+            assert actual == expected
+
+    def test_get_healthchecks_http_defaults(self):
+        fake_config = {}
+        expected = [
+            {
+                "protocol": "HTTP",
+                "path": '/status',
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "portIndex": 0,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 6
+            },
+        ]
+        with mock.patch('marathon_tools.read_service_namespace_config') as mock_read_service_namespace_config:
+            mock_read_service_namespace_config.return_value = fake_config
+            actual = marathon_tools.get_healthchecks('fake_service', 'fake_instance')
+            assert actual == expected
+
+    def test_get_healthchecks_tcp(self):
+        fake_config = {'mode': 'tcp'}
+        expected = [
+            {
+                "protocol": "TCP",
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "portIndex": 0,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 6
+            },
+        ]
+        with mock.patch('marathon_tools.read_service_namespace_config') as mock_read_service_namespace_config:
+            mock_read_service_namespace_config.return_value = fake_config
+            actual = marathon_tools.get_healthchecks('fake_service', 'fake_instance')
+            assert actual == expected
+
+    def test_get_healthchecks_other(self):
+        fake_config = {'mode': 'other'}
+        with mock.patch('marathon_tools.read_service_namespace_config') as mock_read_service_namespace_config:
+            mock_read_service_namespace_config.return_value = fake_config
+            with raises(marathon_tools.InvalidSmartstackMode):
+                marathon_tools.get_healthchecks('fake_service', 'fake_instance')

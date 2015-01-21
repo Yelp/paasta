@@ -53,6 +53,10 @@ class NoDockerImageError(Exception):
     pass
 
 
+class InvalidSmartstackMode(Exception):
+    pass
+
+
 def get_config():
     """Get the general marathon configuration information, or load
     a default configuration if the config file isn't deployed here.
@@ -256,7 +260,61 @@ def get_config_hash(config, force_bounce=None):
     return "config%s" % hasher.hexdigest()[:8]
 
 
-def create_partial_config(job_id, docker_url, docker_volumes, service_marathon_config):
+def get_healthchecks(service, instance):
+    """Returns a list of healthchecks per the spec:
+    https://mesosphere.github.io/marathon/docs/health-checks.html
+    Tries to be very conservative. Currently uses the same configuration
+    that smartstack uses, regarding mode (tcp/http) and http status uri.
+
+    If you have an http service, it uses the default endpoint that smartstack uses.
+    (/status currently)
+
+    Otherwise these do *not* use the same thresholds as smarstack in order to not
+    produce a negative feedback loop, where mesos agressivly kills tasks because they
+    are slow, which causes other things to be slow, etc.
+
+    :param service_config: service config hash
+    :returns: list of healthcheck defines for marathon"""
+
+    smartstack_config = read_service_namespace_config(service, instance)
+    mode = smartstack_config.get('mode', 'http')
+    # We wait for a minute for a service to come up
+    graceperiodseconds = 60
+    intervalseconds = 10
+    timeoutseconds = 10
+    # And kill it after it has been failing for a minute
+    maxconsecutivefailures = 6
+
+    if mode == 'http':
+        http_path = smartstack_config.get('healthcheck_uri', '/status')
+        healthchecks = [
+            {
+                "protocol": "HTTP",
+                "path": http_path,
+                "gracePeriodSeconds": graceperiodseconds,
+                "intervalSeconds": intervalseconds,
+                "portIndex": 0,
+                "timeoutSeconds": timeoutseconds,
+                "maxConsecutiveFailures": maxconsecutivefailures
+            },
+        ]
+    elif mode == 'tcp':
+        healthchecks = [
+            {
+                "protocol": "TCP",
+                "gracePeriodSeconds": graceperiodseconds,
+                "intervalSeconds": intervalseconds,
+                "portIndex": 0,
+                "timeoutSeconds": timeoutseconds,
+                "maxConsecutiveFailures": maxconsecutivefailures
+            },
+        ]
+    else:
+        raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+    return healthchecks
+
+
+def format_marathon_app_dict(job_id, docker_url, docker_volumes, service_marathon_config, healthchecks):
     """Create the configuration that will be passed to the Marathon REST API.
 
     Currently compiles the following keys into one nice dict:
@@ -299,6 +357,7 @@ def create_partial_config(job_id, docker_url, docker_volumes, service_marathon_c
         'uris': ['file:///root/.dockercfg', ],
         'backoff_seconds': 1,
         'backoff_factor': 2,
+        'health_checks': healthchecks,
     }
     complete_config['mem'] = get_mem(service_marathon_config)
     complete_config['cpus'] = get_cpus(service_marathon_config)
@@ -810,9 +869,10 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     docker_url = get_docker_url(marathon_config['docker_registry'],
                                 config['docker_image'],
                                 verify=verify_docker)
-    complete_config = create_partial_config(partial_id, docker_url,
-                                            marathon_config['docker_volumes'],
-                                            config)
+    healthchecks = get_healthchecks(name, instance)
+    complete_config = format_marathon_app_dict(partial_id, docker_url,
+                                               marathon_config['docker_volumes'],
+                                               config, healthchecks)
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(
         complete_config,
