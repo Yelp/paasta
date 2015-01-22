@@ -1103,3 +1103,18 @@ class TestMarathonTools:
             read_config_patch.assert_any_call(service_name, 'blue', soa_dir=soa_dir)
             read_config_patch.assert_any_call(service_name, 'green', soa_dir=soa_dir)
             get_inst_patch.assert_called_once_with(fake_srv_config)
+
+    def test_get_matching_appids(self):
+        fakeapp1 = mock.Mock(id='/fake--service.fake--instance---bouncingold')
+        fakeapp2 = mock.Mock(id='/fake--service.fake--instance---bouncingnew')
+        fakeapp3 = mock.Mock(id='/fake--service.other--instance--bla')
+        fakeapp4 = mock.Mock(id='/other--service')
+        apps = [fakeapp1, fakeapp2, fakeapp3, fakeapp4]
+        list_apps_mock = mock.Mock(return_value=apps)
+        fake_client = mock.Mock(list_apps=list_apps_mock)
+        expected = [
+            '/fake--service.fake--instance---bouncingold',
+            '/fake--service.fake--instance---bouncingnew',
+        ]
+        actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
+        assert actual == expected
