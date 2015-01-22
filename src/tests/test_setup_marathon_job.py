@@ -1,10 +1,13 @@
 #!/usr/bin/env python
 
-import setup_marathon_job
-import marathon
-from paasta_tools import marathon_tools
-import mock
 import contextlib
+import mock
+from pytest import raises
+
+import marathon
+
+from paasta_tools import marathon_tools
+import setup_marathon_job
 
 
 class TestSetupMarathonJob:
@@ -53,6 +56,8 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=(0, 'it_is_finished')),
+            mock.patch('setup_marathon_job.marathon_tools.get_cluster',
+                       return_value=self.fake_marathon_config['cluster']),
             mock.patch('setup_marathon_job.send_event'),
             mock.patch('sys.exit'),
         ) as (
@@ -61,6 +66,7 @@ class TestSetupMarathonJob:
             get_client_patch,
             read_service_conf_patch,
             setup_service_patch,
+            get_cluster_patch,
             sensu_patch,
             sys_exit_patch,
         ):
@@ -93,6 +99,8 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
             mock.patch('setup_marathon_job.setup_service', return_value=(1, 'NEVER')),
+            mock.patch('setup_marathon_job.marathon_tools.get_cluster',
+                       return_value=self.fake_marathon_config['cluster']),
             mock.patch('setup_marathon_job.send_event'),
             mock.patch('sys.exit'),
         ) as (
@@ -101,6 +109,7 @@ class TestSetupMarathonJob:
             get_client_patch,
             read_service_conf_patch,
             setup_service_patch,
+            get_cluster_patch,
             sensu_patch,
             sys_exit_patch,
         ):
@@ -245,6 +254,17 @@ class TestSetupMarathonJob:
             deploy_service_patch.assert_called_once_with(full_id, fake_complete, fake_client,
                                                          self.fake_marathon_job_config['nerve_ns'],
                                                          fake_bounce)
+
+    def test_setup_service_srv_complete_config_raises(self):
+        fake_name = 'test_service'
+        fake_instance = 'test_instance'
+        with mock.patch('setup_marathon_job.marathon_tools.create_complete_config',
+                        side_effect=marathon_tools.NoDockerImageError):
+            with raises(marathon_tools.NoDockerImageError):
+                status, output = setup_marathon_job.setup_service(fake_name, fake_instance, None,
+                                                                  None, None)
+                assert status == 1
+                assert "Docker image for test_service.test_instance not in" in output
 
     def test_deploy_service_unknown_bounce(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'

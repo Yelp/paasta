@@ -26,6 +26,16 @@ def add_subparser(subparsers):
 
 
 def build_command(upstream_job_name, upstream_git_commit):
+    """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
+    will look for your images.
+
+    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
+    service’s path in git. E.g. For git.yelpcorp.com:services/foo the
+    upstream_job_name is services-foo.
+
+    upstream_git_commit is the SHA that we’re building. Usually this is the
+    tip of origin/master.
+    """
     cmd = 'DOCKER_TAG="docker-paasta.yelpcorp.com:443/services-%s:paasta-%s" make itest' % (
         upstream_job_name,
         upstream_git_commit,

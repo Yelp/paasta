@@ -1,3 +1,11 @@
+DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
+    'itest',
+    'security-check',
+    'performance-check',
+    'push-to-registry'
+)
+
+
 def get_git_url(service):
     """Get the git url for a service. Assumes that the service's
     repo matches its name, and that it lives in services- i.e.

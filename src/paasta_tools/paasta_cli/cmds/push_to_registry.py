@@ -12,7 +12,7 @@ from paasta_tools.paasta_cli.utils import validate_service_name
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'promote-to-registry',
+        'push-to-registry',
         description='Uploads a docker image to a registry',
         help='Uploads a docker image to a registry')
 
@@ -25,18 +25,21 @@ def add_subparser(subparsers):
                              required=True,
                              )
 
-    list_parser.set_defaults(command=paasta_promote_to_registry)
+    list_parser.set_defaults(command=paasta_push_to_registry)
 
 
 def build_command(upstream_job_name, upstream_git_commit):
-    cmd = 'docker push docker-paasta.yelpcorp.com:443/%s:paasta-%s' % (
+    # This is kinda dumb since we just cleaned the 'services-' off of the
+    # service so we could validate it, but the Docker image will have the full
+    # name with 'services-' so add it back.
+    cmd = 'docker push docker-paasta.yelpcorp.com:443/services-%s:paasta-%s' % (
         upstream_job_name,
         upstream_git_commit,
     )
     return shlex.split(cmd)
 
 
-def paasta_promote_to_registry(args):
+def paasta_push_to_registry(args):
     """Upload a docker image to a registry"""
     service_name = args.service
     if service_name and service_name.startswith('services-'):

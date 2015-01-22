@@ -87,48 +87,14 @@ def test_split_id():
     assert check_marathon_services_replication.split_id(fake_id) == expected
 
 
-def test_get_expected_instances():
-    service_name = 'red'
-    namespace = 'rojo'
-    soa_dir = 'que_esta'
-    fake_instances = [(service_name, 'blue'), (service_name, 'green')]
-    fake_srv_config = {'nerve_ns': 'rojo'}
-
-    def config_helper(name, inst, soa_dir=None):
-        if inst == 'blue':
-            return fake_srv_config
-        else:
-            return {'nerve_ns': 'amarillo'}
-
-    with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.get_service_instance_list',
-                   return_value=fake_instances),
-        mock.patch('paasta_tools.marathon_tools.read_service_config',
-                   side_effect=config_helper),
-        mock.patch('paasta_tools.marathon_tools.get_instances',
-                   return_value=11)
-    ) as (
-        inst_list_patch,
-        read_config_patch,
-        get_inst_patch
-    ):
-        actual = check_marathon_services_replication.get_expected_instances(service_name, namespace, soa_dir)
-        assert actual == 11
-        inst_list_patch.assert_called_once_with(service_name, soa_dir=soa_dir)
-        read_config_patch.assert_any_call(service_name, 'blue', soa_dir=soa_dir)
-        read_config_patch.assert_any_call(service_name, 'green', soa_dir=soa_dir)
-        get_inst_patch.assert_called_once_with(fake_srv_config)
-
-
 def test_check_namespaces():
     namespaces = ['test.one', 'test.two', 'test.three', 'test.four', 'test.five']
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
     expected = [0, 8, 8, 8, 8]
     soa_dir = 'test_dir'
-    warn = 50
-    crit = 12.5
+    crit = 90
     with contextlib.nested(
-        mock.patch('check_marathon_services_replication.get_expected_instances',
+        mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
                    side_effect=lambda a, b, c: expected.pop()),
         mock.patch('check_marathon_services_replication.send_event'),
         mock.patch('check_marathon_services_replication.get_context'),
@@ -137,7 +103,7 @@ def test_check_namespaces():
         event_patch,
         context_patch,
     ):
-        check_marathon_services_replication.check_namespaces(namespaces, available, soa_dir, crit, warn)
+        check_marathon_services_replication.check_namespaces(namespaces, available, soa_dir, crit)
         expected_patch.assert_any_call('test', 'one', soa_dir)
         expected_patch.assert_any_call('test', 'two', soa_dir)
         expected_patch.assert_any_call('test', 'three', soa_dir)
@@ -146,7 +112,7 @@ def test_check_namespaces():
         assert expected_patch.call_count == 5
         event_patch.assert_any_call('test', 'one', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
         event_patch.assert_any_call('test', 'two', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
-        event_patch.assert_any_call('test', 'three', soa_dir, pysensu_yelp.Status.WARNING, mock.ANY)
+        event_patch.assert_any_call('test', 'three', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
         event_patch.assert_any_call('test', 'four', soa_dir, pysensu_yelp.Status.OK, mock.ANY)
         assert event_patch.call_count == 4
         # Context should have been requested for anything not ok
@@ -158,13 +124,12 @@ def test_check_namespaces():
 
 def test_main():
     soa_dir = 'anw'
-    warn = 0
     crit = 1
     synapse_host = 'hammer:time'
     namespaces = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
     actual_namespaces = ['a', 'b', 'c', 'd']
     replication = 'reeeeeeeeeeeplicated'
-    args = mock.Mock(soa_dir=soa_dir, warn=warn, crit=crit, synapse_host_port=synapse_host, verbose=False)
+    args = mock.Mock(soa_dir=soa_dir, crit=crit, synapse_host_port=synapse_host, verbose=False)
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.parse_args', return_value=args),
         mock.patch('paasta_tools.marathon_tools.get_all_namespaces',
@@ -182,4 +147,4 @@ def test_main():
         args_patch.assert_called_once_with()
         namespaces_patch.assert_called_once_with()
         replication_patch.assert_called_once_with(synapse_host, actual_namespaces)
-        check_patch.assert_called_once_with(actual_namespaces, replication, soa_dir, crit, warn)
+        check_patch.assert_called_once_with(actual_namespaces, replication, soa_dir, crit)

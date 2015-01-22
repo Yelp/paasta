@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'paasta-tools',
-    version        = '0.8.7',
+    version        = '0.8.14',
     provides       = ["paasta_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -17,7 +17,7 @@ setup(
     install_requires = [
         'isodate >= 0.5.0',
         'service-configuration-lib == 0.8.2',
-        'marathon == 0.6.8',
+        'marathon == 0.6.10',
         'argparse',
         'pycurl',
         'requests',

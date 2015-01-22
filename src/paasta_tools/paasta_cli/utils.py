@@ -15,9 +15,6 @@ from service_configuration_lib import read_services_configuration
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
 
 
-NON_MARATHON_PIPELINE_STEPS = ['itest', 'security-check', 'performance-check', 'registry']
-
-
 def load_method(module_name, method_name):
     """Return a function given a module and method name.
 

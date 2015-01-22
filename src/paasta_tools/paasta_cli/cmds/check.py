@@ -14,7 +14,7 @@ from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import is_file_in_dir
 from paasta_tools.paasta_cli.utils import NoSuchService
-from paasta_tools.paasta_cli.utils import NON_MARATHON_PIPELINE_STEPS
+from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import success
@@ -186,11 +186,11 @@ def marathon_deployments_check(service_name):
     the_return = True
     pipeline_deployments = get_pipeline_config(service_name)
     pipeline_steps = [step['instancename'] for step in pipeline_deployments]
-    pipeline_steps = [step for step in pipeline_steps if step not in NON_MARATHON_PIPELINE_STEPS]
+    pipeline_steps = [step for step in pipeline_steps if step not in DEPLOY_PIPELINE_NON_DEPLOY_STEPS]
     marathon_steps = get_marathon_steps(service_name)
     in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
     if len(in_marathon_not_deploy) > 0:
-        print "%s There are some instance you have asked to run in marathon that" % x_mark()
+        print "%s There are some instance(s) you have asked to run in marathon that" % x_mark()
         print "  do not have a corresponding entry in deploy.yaml:"
         print "  %s" % PaastaColors.bold(", ".join(in_marathon_not_deploy))
         print "  You should probably add entries to deploy.yaml for them so they"
@@ -198,7 +198,7 @@ def marathon_deployments_check(service_name):
         the_return = False
     in_deploy_not_marathon = set(pipeline_steps) - set(marathon_steps)
     if len(in_deploy_not_marathon) > 0:
-        print "%s There are some instances in deploy.yaml that are not referenced" % x_mark()
+        print "%s There are some instance(s) in deploy.yaml that are not referenced" % x_mark()
         print "  by any marathon instance:"
         print "  %s" % PaastaColors.bold((", ".join(in_deploy_not_marathon)))
         print "  You should probably delete these deploy.yaml entries if they are unused."

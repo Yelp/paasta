@@ -1,3 +1,55 @@
+paasta-tools (0.8.14-yelp1) lucid; urgency=low
+
+  * 0.8.14 tagged with 'make release'
+    Commit: Merge branch PAASTA-131
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 15 Jan 2015 17:56:22 -0800
+
+paasta-tools (0.8.13-yelp1) lucid; urgency=low
+
+  * 0.8.13 tagged with 'make release'
+    Commit: Merge branch PAASTA-213  Conflicts:
+    src/paasta_tools/marathon_tools.py  src/tests/test_marathon_tools.py
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 15 Jan 2015 15:34:59 -0800
+
+paasta-tools (0.8.12-yelp1) lucid; urgency=low
+
+  * 0.8.12 tagged with 'make release'
+    Commit: Merge branch troscoe_PAASTA-166
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 15 Jan 2015 14:43:41 -0800
+
+paasta-tools (0.8.11-yelp1) lucid; urgency=low
+
+  * 0.8.11 tagged with 'make release'
+    Commit: Extract some docstrings from y/paasta-contract
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 13 Jan 2015 17:56:58 -0800
+
+paasta-tools (0.8.10-yelp1) lucid; urgency=low
+
+  * 0.8.10 tagged with 'make release'
+    Commit: Bring back services- in docker image name
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Fri, 09 Jan 2015 17:47:14 -0800
+
+paasta-tools (0.8.9-yelp1) lucid; urgency=low
+
+  * 0.8.9 tagged with 'make release'
+    Commit: Argh, missed promote-to-registry in itest
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Fri, 09 Jan 2015 16:46:53 -0800
+
+paasta-tools (0.8.8-yelp1) lucid; urgency=low
+
+  * 0.8.8 tagged with 'make release'
+    Commit: Merge branch troscoe_PAASTA-109
+    https://reviewboard.yelpcorp.com/r/81760/
+    Rename promote_to_* to push-to-registry and deploy-to-*.
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Fri, 09 Jan 2015 16:27:55 -0800
+
 paasta-tools (0.8.7-yelp1) lucid; urgency=low
 
   * 0.8.7 tagged with 'make release'

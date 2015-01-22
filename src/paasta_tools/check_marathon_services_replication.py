@@ -12,12 +12,11 @@ are expected to be available for that namespace based on the number of instances
 on that namespace.
 
 After retrieving that information, a fraction of available instances is calculated
-(available/expected), and then compared against two thresholds- one for emitting a
-warning status to sensu, and one for emitting a critical status to sensu. The
-default thresholds are .75/.50, meaning if fewer than 75% of a service's backends are
-available, the script sends WARNING, and if fewer than 50% are available, it sends
-CRITICAL.
+(available/expected), and then compared against a threshold. The default threshold
+is .50, meaning if fewer than 50 of a service's backends are available, the script
+sends CRITICAL.
 """
+
 import argparse
 import logging
 import pysensu_yelp
@@ -71,11 +70,7 @@ def parse_args():
                         dest='synapse_host_port', type=str,
                         help='The host and port to check synapse on',
                         default='localhost:3212')
-    parser.add_argument('-w', '--warn', dest='warn', type=int,
-                        metavar='PERCENTAGE', default=75,
-                        help="Generate warning state if fraction of instances \
-                        available is less than this percentage")
-    parser.add_argument('-c', '--critcal', dest='crit', type=int,
+    parser.add_argument('-c', '--critical', dest='crit', type=int,
                         metavar='PERCENTAGE', default=50,
                         help="Generate critical state if fraction of instances \
                         available is less than this percentage")
@@ -98,25 +93,7 @@ def split_id(fid):
     return (fid.split(ID_SPACER)[0], fid.split(ID_SPACER)[1])
 
 
-def get_expected_instances(service_name, namespace, soa_dir):
-    """Get the number of expected instances for a namespace, based on the number
-    of instances set to run on that namespace as specified in Marathon service
-    configuration files.
-
-    :param service_name: The service's name
-    :param namespace: The namespace for that service to check
-    :param soa_dir: The SOA configuration directory to read from
-    :returns: An integer value of the # of expected instances for the namespace"""
-    total_expected = 0
-    for name, instance in marathon_tools.get_service_instance_list(service_name, soa_dir=soa_dir):
-        srv_config = marathon_tools.read_service_config(name, instance, soa_dir=soa_dir)
-        instance_ns = srv_config['nerve_ns'] if 'nerve_ns' in srv_config else instance
-        if namespace == instance_ns:
-            total_expected += marathon_tools.get_instances(srv_config)
-    return total_expected
-
-
-def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold, warn_threshold):
+def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold):
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds given.
 
@@ -124,12 +101,12 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
     :param available_backends: A dictionary mapping namespaces to the number of available_backends
     :param soa_dir: The SOA configuration directory to read from
     :param crit_threshold: The fraction of instances that need to be up to avoid a CRITICAL event
-    :param warn_threshold: The fraction of instances that need to be up to avoid a WARNING event"""
+    """
     for full_name in all_namespaces:
         log.info('Checking namespace %s', full_name)
         try:
             service_name, namespace = split_id(full_name)
-            num_expected = get_expected_instances(service_name, namespace, soa_dir)
+            num_expected = marathon_tools.get_expected_instance_count_for_namespace(service_name, namespace, soa_dir)
         except (IndexError, KeyError, OSError, ValueError, AttributeError):
             log.info('Namespace %s isn\'t a marathon service', full_name)
             continue  # This isn't a Marathon service
@@ -147,19 +124,11 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
         num_available = available_backends[full_name]
         ratio = (num_available / float(num_expected)) * 100
         output = ('Service %s has %d out of %d expected instances available!\n' +
-                  'Thresholds are WARN <= %d%%, CRITICAL <= %d%%') % (full_name,
-                                                                      num_available,
-                                                                      num_expected,
-                                                                      warn_threshold,
-                                                                      crit_threshold)
-        if ratio <= crit_threshold:
+                  '(below %d%%)') % (full_name, num_available, num_expected, crit_threshold)
+        if ratio < crit_threshold:
             log.error(output)
             status = pysensu_yelp.Status.CRITICAL
             status_str = 'CRITICAL'
-        elif ratio <= warn_threshold:
-            log.warning(output)
-            status = pysensu_yelp.Status.WARNING
-            status_str = 'WARNING'
         else:
             log.info(output)
             status = pysensu_yelp.Status.OK
@@ -174,7 +143,6 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
 def main():
     args = parse_args()
     soa_dir = args.soa_dir
-    warn_threshold = args.warn
     crit_threshold = args.crit
     synapse_host = args.synapse_host_port
     logging.basicConfig()
@@ -184,7 +152,7 @@ def main():
         log.setLevel(logging.WARNING)
     all_namespaces = [name for name, config in marathon_tools.get_all_namespaces()]
     all_available = replication_utils.get_replication_for_services(synapse_host, all_namespaces)
-    check_namespaces(all_namespaces, all_available, soa_dir, crit_threshold, warn_threshold)
+    check_namespaces(all_namespaces, all_available, soa_dir, crit_threshold)
 
 
 if __name__ == "__main__":

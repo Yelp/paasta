@@ -1,8 +1,11 @@
-import marathon_tools
 import contextlib
+
+from marathon.models import MarathonApp
 import mock
 import pycurl
-from marathon.models import MarathonApp
+from pytest import raises
+
+import marathon_tools
 
 
 class TestMarathonTools:
@@ -254,6 +257,35 @@ class TestMarathonTools:
             open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(file_mock.read())
+
+    def test_get_cluster(self):
+        fake_config = {
+            'cluster': 'peanut',
+        }
+        expected = 'peanut'
+        with mock.patch(
+            'marathon_tools.get_config',
+            return_value=fake_config,
+        ):
+            actual = marathon_tools.get_cluster()
+            assert actual == expected
+
+    def test_get_cluster_dne(self):
+        fake_config = {}
+        with mock.patch(
+            'marathon_tools.get_config',
+            return_value=fake_config,
+        ):
+            with raises(marathon_tools.NoMarathonClusterFoundException):
+                marathon_tools.get_cluster()
+
+    def test_get_cluster_other_exception(self):
+        with mock.patch(
+            'marathon_tools.get_config',
+            side_effect=SyntaxError,
+        ):
+            with raises(SyntaxError):
+                marathon_tools.get_cluster()
 
     def test_list_clusters_no_service(self):
         with contextlib.nested(
@@ -587,6 +619,44 @@ class TestMarathonTools:
             read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
             assert read_ns_config_patch.call_count == 2
 
+    def test_get_marathon_services_running_here_for_nerve_when_get_cluster_raises_custom_exception(self):
+        cluster = None
+        soa_dir = 'the_sound_of_music'
+        with contextlib.nested(
+            mock.patch(
+                'marathon_tools.get_cluster',
+                side_effect=marathon_tools.NoMarathonClusterFoundException,
+            ),
+            mock.patch(
+                'marathon_tools.marathon_services_running_here',
+                return_value=[],
+            ),
+        ) as (
+            get_cluster_patch,
+            marathon_services_running_here_patch,
+        ):
+            actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
+            assert actual == []
+
+    def test_get_marathon_services_running_here_for_nerve_when_get_cluster_raises_other_exception(self):
+        cluster = None
+        soa_dir = 'the_sound_of_music'
+        with contextlib.nested(
+            mock.patch(
+                'marathon_tools.get_cluster',
+                side_effect=Exception,
+            ),
+            mock.patch(
+                'marathon_tools.marathon_services_running_here',
+                return_value=[],
+            ),
+        ) as (
+            get_cluster_patch,
+            marathon_services_running_here_patch,
+        ):
+            with raises(Exception):
+                marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
+
     def test_get_classic_service_information_for_nerve(self):
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_port', return_value=101),
@@ -886,6 +956,10 @@ class TestMarathonTools:
             fake_curl.perform.assert_called_once_with()
             fake_stringio.getvalue.assert_called_once_with()
 
+    def test_get_docker_url_with_no_docker_image(self):
+        with raises(marathon_tools.NoDockerImageError):
+            marathon_tools.get_docker_url('fake_registry', None)
+
     def test_get_marathon_client(self):
         fake_url = "nothing_for_me_to_do_but_dance"
         fake_user = "the_boogie"
@@ -997,3 +1071,35 @@ class TestMarathonTools:
             read_service_config_patch.return_value = fake_service_config_3
             third_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
             assert second_id != third_id
+
+    def test_get_expected_instance_count_for_namespace(self):
+        service_name = 'red'
+        namespace = 'rojo'
+        soa_dir = 'que_esta'
+        fake_instances = [(service_name, 'blue'), (service_name, 'green')]
+        fake_srv_config = {'nerve_ns': 'rojo'}
+
+        def config_helper(name, inst, soa_dir=None):
+            if inst == 'blue':
+                return fake_srv_config
+            else:
+                return {'nerve_ns': 'amarillo'}
+
+        with contextlib.nested(
+            mock.patch('marathon_tools.get_service_instance_list',
+                       return_value=fake_instances),
+            mock.patch('marathon_tools.read_service_config',
+                       side_effect=config_helper),
+            mock.patch('marathon_tools.get_instances',
+                       return_value=11)
+        ) as (
+            inst_list_patch,
+            read_config_patch,
+            get_inst_patch
+        ):
+            actual = marathon_tools.get_expected_instance_count_for_namespace(service_name, namespace, soa_dir)
+            assert actual == 11
+            inst_list_patch.assert_called_once_with(service_name, soa_dir=soa_dir)
+            read_config_patch.assert_any_call(service_name, 'blue', soa_dir=soa_dir)
+            read_config_patch.assert_any_call(service_name, 'green', soa_dir=soa_dir)
+            get_inst_patch.assert_called_once_with(fake_srv_config)

@@ -143,15 +143,14 @@ def setup_service(service_name, instance_name, client, marathon_config,
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
 
     log.info("Setting up instance %s for service %s", instance_name, service_name)
-    # docker_url = marathon_tools.get_docker_url(marathon_config['docker_registry'],
-    #                                            service_marathon_config['docker_image'])
-    # if not docker_url:
-    #     error_msg = "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?".format(
-    #               service_name, instance_name)
-    #     log.error(error_msg)
-    #     return (1, error_msg)
+    try:
+        complete_config = marathon_tools.create_complete_config(service_name, instance_name, marathon_config)
+    except NameError:
+        error_msg = "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?".format(
+                  service_name, instance_name)
+        log.error(error_msg)
+        return (1, error_msg)
 
-    complete_config = marathon_tools.create_complete_config(service_name, instance_name, marathon_config)
     namespace = service_marathon_config.get('nerve_ns', instance_name)
     full_id = complete_config['id']
 
@@ -198,7 +197,7 @@ def main():
                                                 marathon_config['pass'])
 
     service_instance_config = marathon_tools.read_service_config(service_name, instance_name,
-                                                                 marathon_config['cluster'], soa_dir)
+                                                                 marathon_tools.get_cluster(), soa_dir)
 
     if service_instance_config:
         try:
@@ -215,7 +214,7 @@ def main():
             sys.exit(1)
     else:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
-                    (args.service_instance, marathon_config['cluster'])
+                    (args.service_instance, marathon_tools.get_cluster())
         log.error(error_msg)
         send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)

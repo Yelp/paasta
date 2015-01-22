@@ -27,6 +27,7 @@ MESOS_SLAVE_PORT = 5051
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
 
+PATH_TO_MARATHON_CONFIG = '/etc/paasta_tools/marathon_config.json'
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 
@@ -38,10 +39,18 @@ class MarathonConfig:
     def __init__(self):
         self.__dict__ = self.__shared_state
         if not self.config:
-            self.config = json.loads(open('/etc/paasta_tools/marathon_config.json').read())
+            self.config = json.loads(open(PATH_TO_MARATHON_CONFIG).read())
 
     def get(self):
         return self.config
+
+
+class NoMarathonClusterFoundException(Exception):
+    pass
+
+
+class NoDockerImageError(Exception):
+    pass
 
 
 def get_config():
@@ -59,7 +68,12 @@ def get_cluster():
     """Get the cluster defined in this host's marathon config file.
 
     :returns: The name of the cluster defined in the marathon configuration"""
-    return get_config()['cluster']
+    try:
+        config = get_config()
+        return config['cluster']
+    except KeyError:
+        log.warning('Could not find marathon cluster in marathon config at %s' % PATH_TO_MARATHON_CONFIG)
+        raise NoMarathonClusterFoundException
 
 
 def get_marathon_client(url, user, passwd):
@@ -127,7 +141,7 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     :param verify: Set to False to not verify the composed docker url
     :returns: '<registry_uri>/<docker_image>', or '' if URL didn't verify"""
     if not docker_image:
-        return ''
+        raise NoDockerImageError('Docker url not available because there is no docker_image')
     if verify:
         s = StringIO()
         c = pycurl.Curl()
@@ -683,7 +697,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     if not cluster:
         try:
             cluster = get_cluster()
-        except:
+        except NoMarathonClusterFoundException:
             return []
     # When a cluster is defined in mesos, lets iterate through marathon services
     marathon_services = marathon_services_running_here()
@@ -823,3 +837,21 @@ def get_code_sha_from_dockerurl(docker_url):
     url. This function takes that url as input and outputs the partial sha"""
     parts = docker_url.split('-')
     return "git%s" % parts[-1][:8]
+
+
+def get_expected_instance_count_for_namespace(service_name, namespace, soa_dir=DEFAULT_SOA_DIR):
+    """Get the number of expected instances for a namespace, based on the number
+    of instances set to run on that namespace as specified in Marathon service
+    configuration files.
+
+    :param service_name: The service's name
+    :param namespace: The namespace for that service to check
+    :param soa_dir: The SOA configuration directory to read from
+    :returns: An integer value of the # of expected instances for the namespace"""
+    total_expected = 0
+    for name, instance in get_service_instance_list(service_name, soa_dir=soa_dir):
+        srv_config = read_service_config(name, instance, soa_dir=soa_dir)
+        instance_ns = srv_config['nerve_ns'] if 'nerve_ns' in srv_config else instance
+        if namespace == instance_ns:
+            total_expected += get_instances(srv_config)
+    return total_expected
