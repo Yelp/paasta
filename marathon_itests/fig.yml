@@ -1,5 +1,5 @@
 zookeeper:
-  build: ../../dockerfiles/itest/zookeeper/
+  build: ../yelp_package/dockerfiles/itest/zookeeper/
   ports:
     - 2181
 

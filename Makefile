@@ -4,7 +4,7 @@ docs:
 	tox -e docs
 
 test:
-	tox -r
+	tox
 
 itest: test
 	tox -e marathon_integration
