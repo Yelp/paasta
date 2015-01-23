@@ -21,4 +21,7 @@ clean:
 	rm -f ./dist
 	make -C yelp_package clean
 	rm -rf docs/build
+	find . -name '*.pyc' -delete
+	find . -name '__pycache__' -delete
+	rm -rf .tox
 
