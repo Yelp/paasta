@@ -10,24 +10,13 @@ DOCKER_RUN_TRUSTY:=docker run -t -v  $(CURDIR):/work:rw soatools_trusty_containe
 DOCKER_RUN_CHRONOS:=docker run -t -i --link=chronos_itest_chronos:chronos -v  $(CURDIR):/work:rw chronos_itest/itest
 DOCKER_QUICK_START:=docker run -t -i -v $(CURDIR):/work:rw soatools_lucid_container
 
-.PHONY: all docs
-
-all:
-
-docs:
-	cd src && tox -e docs
-
 itest_lucid: package_lucid
 	$(DOCKER_RUN_LUCID) /work/itest/ubuntu.sh
 
-package_lucid: test build_lucid_docker
+package_lucid: build_lucid_docker
 	$(DOCKER_RUN_LUCID) /bin/bash -c "cd src && dpkg-buildpackage -d && mv ../*.deb ../dist/"
 	$(DOCKER_RUN_LUCID) chown -R $(UID):$(GID) /work
 
-test:
-	find . -name "*.pyc" -exec rm -rf {} \;
-	cd src && tox -r
-	cd src && tox -e marathon_integration
 
 build_lucid_docker:
 	[ -d dist ] || mkdir dist
@@ -49,9 +38,6 @@ quick_start:
 
 clean:
 	rm -rf dist/
-	rm -rf src/.tox
-	rm -rf src/paasta_tools.egg-info
-	rm -rf src/build
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete
 
@@ -90,8 +76,8 @@ build_chronos_itest_itest_docker:
 VERSION = $(firstword $(subst -, ,$(RELEASE) ))
 LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B )
 release:
-	dch -v $(RELEASE) --changelog src/debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
-	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" src/setup.py
+	dch -v $(RELEASE) --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
+	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" ../setup.py
 	@echo "$(RELEASE) has the changelog set."
 	@git diff
 	@echo "Now Run:"
