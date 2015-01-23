@@ -38,10 +38,10 @@ status
 version"
 
 mkdir -p /nail/etc
-[ -L /nail/etc/services ] || ln -s /work/itest/fake_services /nail/etc/services
+[ -L /nail/etc/services ] || ln -s /work/yelp_package/itest/fake_services /nail/etc/services
 
 mkdir -p /etc/paasta_tools
-[ -L /etc/paasta_tools/marathon_config.json ] || ln -s /work/itest/marathon_config.json /etc/paasta_tools/marathon_config.json
+[ -L /etc/paasta_tools/marathon_config.json ] || ln -s /work/yelp_package/itest/marathon_config.json /etc/paasta_tools/marathon_config.json
 
 if dpkg -i /work/dist/*.deb; then
   echo "Looks like it installed correctly"

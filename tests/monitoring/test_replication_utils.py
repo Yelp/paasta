@@ -17,12 +17,12 @@ def test_get_replication_for_service():
     with mock.patch('requests.get', return_value=mock_response):
         replication_result = get_replication_for_services(
             'foo',
-            ['wordtime', 'video', 'lucy', 'query_lm']
+            ['service1', 'service2', 'service3', 'service4']
         )
         expected = {
-            'wordtime': 18,
-            'video': 19,
-            'lucy': 0,
-            'query_lm': 3
+            'service1': 18,
+            'service2': 19,
+            'service3': 0,
+            'service4': 3
         }
         assert expected == replication_result

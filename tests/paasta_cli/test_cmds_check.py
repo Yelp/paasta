@@ -461,8 +461,8 @@ def test_deploy_has_security_check_false(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'instancename': 'itest', },
         {'instancename': 'push-to-registry', },
-        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'devc.main', },
+        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'hab.main', },
     ]
     actual = deploy_has_security_check('fake_service')
     assert actual is False
@@ -475,8 +475,8 @@ def test_deploy_has_security_check_true(mock_pipeline_config, mock_stdout):
         {'instancename': 'itest', },
         {'instancename': 'security-check', },
         {'instancename': 'push-to-registry', },
-        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'devc.main', },
+        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'hab.main', },
     ]
     actual = deploy_has_security_check('fake_service')
     assert actual is True
@@ -488,8 +488,8 @@ def test_deploy_has_performance_check_false(mock_pipeline_config, mock_stdout):
     mock_pipeline_config.return_value = [
         {'instancename': 'itest', },
         {'instancename': 'push-to-registry', },
-        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'devc.main', },
+        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'hab.main', },
     ]
     actual = deploy_has_performance_check('fake_service')
     assert actual is False
@@ -502,8 +502,8 @@ def test_deploy_has_performance_check_true(mock_pipeline_config, mock_stdout):
         {'instancename': 'itest', },
         {'instancename': 'performance-check', },
         {'instancename': 'push-to-registry', },
-        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'devc.main', },
+        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'hab.main', },
     ]
     actual = deploy_has_performance_check('fake_service')
     assert actual is True
@@ -534,12 +534,12 @@ def test_marathon_deployments_check_good(
         {'instancename': 'itest', },
         {'instancename': 'performance-check', },
         {'instancename': 'push-to-registry', },
-        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'devc.main', },
+        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'hab.main', },
     ]
     mock_get_marathon_steps.return_value = [
-        'devc.canary',
-        'devc.main',
+        'hab.canary',
+        'hab.main',
     ]
     actual = marathon_deployments_check('fake_service')
     assert actual is True
@@ -557,13 +557,13 @@ def test_marathon_deployments_deploy_but_not_marathon(
         {'instancename': 'itest', },
         {'instancename': 'performance-check', },
         {'instancename': 'push-to-registry', },
-        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'devc.main', },
-        {'instancename': 'devc.EXTRA', },
+        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'hab.main', },
+        {'instancename': 'hab.EXTRA', },
     ]
     mock_get_marathon_steps.return_value = [
-        'devc.canary',
-        'devc.main',
+        'hab.canary',
+        'hab.main',
     ]
     actual = marathon_deployments_check('fake_service')
     assert actual is False
@@ -582,13 +582,13 @@ def test_marathon_deployments_marathon_but_not_deploy(
         {'instancename': 'itest', },
         {'instancename': 'performance-check', },
         {'instancename': 'push-to-registry', },
-        {'instancename': 'devc.canary', 'trigger_next_step_manually': True, },
-        {'instancename': 'devc.main', },
+        {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
+        {'instancename': 'hab.main', },
     ]
     mock_get_marathon_steps.return_value = [
-        'devc.canary',
-        'devc.main',
-        'devc.BOGUS',
+        'hab.canary',
+        'hab.main',
+        'hab.BOGUS',
     ]
     actual = marathon_deployments_check('fake_service')
     assert actual is False
