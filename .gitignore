@@ -3,3 +3,4 @@ dist/
 .tox
 *.py?
 .*.swp
+paasta_tools.egg-info/
