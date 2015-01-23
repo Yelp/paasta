@@ -15,3 +15,10 @@ itest_%: itest
 
 release:
 	make -C yelp_package release
+
+
+clean:
+	rm -f ./dist
+	make -C yelp_package clean
+	rm -rf docs/build
+

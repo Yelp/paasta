@@ -1,4 +1,0 @@
-pkg_resources
-easy_install
-setuptools
-_markerlib

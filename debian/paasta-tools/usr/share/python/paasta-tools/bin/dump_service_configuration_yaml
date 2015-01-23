@@ -1,9 +1,0 @@
-#!/usr/share/python/paasta-tools/bin/python
-
-import sys
-import yaml
-sys.path.append('/nail/sys/srv-deploy/lib/')
-import service_configuration_lib
-
-print yaml.dump(service_configuration_lib.read_services_configuration(), default_flow_style=False)
-

@@ -1,8 +1,0 @@
-#!/usr/share/python/paasta-tools/bin/python
-
-import sys
-sys.path.append('/nail/sys/srv-deploy/lib/')
-import service_configuration_lib
-
-for service in service_configuration_lib.services_needing_puppet_help_here():
-    print service

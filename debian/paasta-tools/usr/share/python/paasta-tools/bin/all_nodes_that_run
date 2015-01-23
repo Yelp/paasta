@@ -1,8 +1,0 @@
-#!/usr/share/python/paasta-tools/bin/python
-
-import sys
-sys.path.append('/nail/sys/srv-deploy/lib/')
-import service_configuration_lib
-
-for service in service_configuration_lib.all_nodes_that_run(sys.argv[1]):
-    print service
