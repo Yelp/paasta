@@ -5,3 +5,4 @@ dist/
 .*.swp
 paasta_tools.egg-info/
 debian/paasta-tools/
+debian/files
