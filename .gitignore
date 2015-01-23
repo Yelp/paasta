@@ -4,3 +4,4 @@ dist/
 *.py?
 .*.swp
 paasta_tools.egg-info/
+debian/paasta-tools/
