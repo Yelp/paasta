@@ -1,0 +1,130 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>PycURL Documentation</title>
+  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+  <meta name="revisit-after" content="30 days" />
+  <meta name="robots" content="noarchive, index, follow" />
+</head>
+<body>
+
+<h1><tt>pycurl</tt> &mdash; A Python interface to the cURL library</h1>
+
+<p>The pycurl package is a Python interface to libcurl (<a
+href="http://curl.haxx.se/libcurl/">http://curl.haxx.se/libcurl/</a>). pycurl
+has been successfully built and tested with Python versions from
+2.4 to 2.7.</p>
+
+<p>libcurl is a client-side URL transfer library supporting FTP, FTPS,
+HTTP, HTTPS, GOPHER, TELNET, DICT, FILE and LDAP.  libcurl
+also supports HTTPS certificates, HTTP POST, HTTP PUT, FTP uploads, proxies,
+cookies, basic authentication, file transfer resume of FTP sessions, HTTP
+proxy tunneling and more.</p>
+
+<p>All the functionality provided by libcurl can used through the
+pycurl interface. The following subsections describe how to use the
+pycurl interface, and assume familiarity with how libcurl works.  For
+information on how libcurl works, please consult the curl library web pages
+(<a href="http://curl.haxx.se/libcurl/c/">http://curl.haxx.se/libcurl/c/</a>).</p>
+
+<hr/>
+
+<h1>Module Functionality</h1>
+
+<dl>
+<dt><code>pycurl.global_init(</code><em>option</em><code>)</code> -&gt;<em>None</em></dt>
+
+<dd><p><em>option</em> is one of the constants
+pycurl.GLOBAL_SSL, pycurl.GLOBAL_WIN32, pycurl.GLOBAL_ALL,
+pycurl.GLOBAL_NOTHING, pycurl.GLOBAL_DEFAULT.  Corresponds to
+<a href="http://curl.haxx.se/libcurl/c/curl_global_init.html"><code>curl_global_init()</code></a> in libcurl.</p>
+</dd>
+
+<dt><code>pycurl.global_cleanup()</code> -&gt; <em>None</em></dt>
+<dd>
+<p>Corresponds to
+<a href="http://curl.haxx.se/libcurl/c/curl_global_cleanup.html"><code>curl_global_cleanup()</code></a> in libcurl.</p>
+</dd>
+
+<dt><code>pycurl.version</code></dt>
+
+<dd><p>This is a string with version information on libcurl,
+corresponding to
+<a href="http://curl.haxx.se/libcurl/c/curl_version.html"><code>curl_version()</code></a> in libcurl.</p>
+
+<p>Example usage:</p>
+<pre>
+>>> import pycurl
+>>> pycurl.version
+'libcurl/7.12.3 OpenSSL/0.9.7e zlib/1.2.2.1 libidn/0.5.12'
+</pre>
+</dd>
+
+<dt><code>pycurl.version_info()</code> -&gt; <em>Tuple</em></dt>
+<dd>
+<p>Corresponds to
+<a href="http://curl.haxx.se/libcurl/c/curl_version_info.html"><code>curl_version_info()</code></a> in libcurl.
+Returns a tuple of information which is similar to the
+<code>curl_version_info_data</code> struct returned by
+<code>curl_version_info()</code> in libcurl.</p>
+
+<p>Example usage:</p>
+<pre>
+>>> import pycurl
+>>> pycurl.version_info()
+(2, '7.12.3', 461827, 'i586-pc-linux-gnu', 1565, 'OpenSSL/0.9.7e', 9465951,
+'1.2.2.1', ('ftp', 'gopher', 'telnet', 'dict', 'ldap', 'http', 'file',
+'https', 'ftps'), None, 0, '0.5.12')
+</pre>
+</dd>
+
+<dt><code>pycurl.Curl()</code> -&gt; <em>Curl object</em></dt>
+<dd>
+<p>This function creates a new
+<a href="curlobject.html">Curl object</a> which corresponds to a
+<code>CURL</code> handle in libcurl. Curl objects automatically
+set CURLOPT_VERBOSE to 0, CURLOPT_NOPROGRESS to 1,
+provide a default CURLOPT_USERAGENT and setup
+CURLOPT_ERRORBUFFER to point to a private error buffer.</p>
+</dd>
+
+<dt><code>pycurl.CurlMulti()</code> -&gt; <em>CurlMulti object</em></dt>
+<dd>
+<p>This function creates a new
+<a href="curlmultiobject.html">CurlMulti object</a> which corresponds to
+a <code>CURLM</code> handle in libcurl.</p>
+</dd>
+
+<dt><code>pycurl.CurlShare()</code> -&gt; <em>CurlShare object</em></dt>
+<dd>
+<p>This function creates a new
+<a href="curlshareobject.html">CurlShare object</a> which corresponds to
+a <code>CURLSH</code> handle in libcurl.  CurlShare objects is what you
+pass as an argument to the SHARE option on Curl objects.</p>
+</dd>
+
+</dl>
+
+<hr/>
+
+<h1>Subsections</h1>
+
+<ul>
+  <li><a href="curlobject.html">Curl objects</a></li>
+  <li><a href="curlmultiobject.html">CurlMulti objects</a></li>
+  <li><a href="curlshareobject.html">CurlShare objects</a></li>
+  <li><a href="callbacks.html">Callbacks</a></li>
+</ul>
+
+<hr />
+<p>
+  <a href="http://validator.w3.org/check/referer"><img align="right"
+     src="http://www.w3.org/Icons/valid-xhtml10"
+     alt="Valid XHTML 1.0!" height="31" width="88" border="0" /></a>
+  $Id$
+</p>
+
+</body>
+</html>

@@ -1,0 +1,148 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>PyCurl: Callbacks</title>
+  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+  <meta name="revisit-after" content="30 days" />
+  <meta name="robots" content="noarchive, index, follow" />
+</head>
+<body>
+
+<h1>Callbacks</h1>
+
+<p>For more fine-grained control, libcurl allows a
+number of callbacks to be associated with each connection. In
+pycurl, callbacks are defined using the <code>setopt()</code> method for
+Curl objects with options WRITEFUNCTION, READFUNCTION, HEADERFUNCTION,
+PROGRESSFUNCTION, IOCTLFUNCTION, or DEBUGFUNCTION. These options
+correspond to the libcurl options with CURLOPT_* prefix removed.  A
+callback in pycurl must be either a regular Python function, a class
+method or an extension type function.</p>
+
+<p>There are some limitations to some of the options which can be used
+concurrently with the pycurl callbacks compared to the libcurl callbacks.
+This is to allow different callback functions to be associated with
+different Curl objects.  More specifically, WRITEDATA cannot
+be used with WRITEFUNCTION, READDATA cannot be used with READFUNCTION,
+WRITEHEADER cannot be used with HEADERFUNCTION, PROGRESSDATA cannot be
+used with PROGRESSFUNCTION, IOCTLDATA cannot be used with IOCTLFUNCTION,
+and DEBUGDATA cannot be used with DEBUGFUNCTION.
+In practice, these limitations can be overcome by having a callback
+function be a class instance method and rather use the class instance
+attributes to store per object data such as files used in the callbacks.
+</p>
+
+The signature of each callback used in pycurl is as follows:<br/>
+<br/>
+<code>WRITEFUNCTION(</code><em>string</em><code>) </code><em>-&gt; number of characters written<br/>
+</em>
+<br/>
+<code>READFUNCTION(</code><em>number of characters to read</em><code>)</code><em>-&gt;
+string</em><br/>
+<br/>
+<code>HEADERFUNCTION(</code><em>string</em><code>)</code><em> -&gt; number of characters written<br/>
+</em><br/>
+<code>PROGRESSFUNCTION(</code><em>download total, downloaded, upload total, uploaded</em><code>) </code><em>-&gt; status</em><br/>
+<br/>
+<code>DEBUGFUNCTION(</code><em>debug message type, debug message string</em><code>)</code>
+<em>-&gt; None<br/></em>
+<br/>
+<code>IOCTLFUNCTION(</code><em>ioctl cmd</em><code>)</code>
+<em>-&gt; status<br/></em>
+<br/>
+
+<p>In addition, <code>READFUNCTION</code> may return
+<code>READFUNC_ABORT</code> or <code>READFUNC_PAUSE</code>. See the libcurl
+documentation for an explanation of these values.
+The <code>WRITEFUNCTION</code> and <code>HEADERFUNCTION</code> callbacks
+may return <code>None</code>, which is an alternate way of indicating that
+the callback has consumed all of the string passed to it.</p>
+
+<hr/>
+
+<h2>Example: Callbacks for document header and body</h2>
+
+<p>This example prints the header data to stderr and the body data to
+stdout.  Also note that neither callback returns the number of bytes
+written.  For WRITEFUNCTION and HEADERFUNCTION callbacks, returning
+None implies that all bytes where written.</p>
+
+<pre>
+    ## Callback function invoked when body data is ready
+    def body(buf):
+        # Print body data to stdout
+        import sys
+        sys.stdout.write(buf)
+        # Returning None implies that all bytes were written
+
+    ## Callback function invoked when header data is ready
+    def header(buf):
+        # Print header data to stderr
+        import sys
+        sys.stderr.write(buf)
+        # Returning None implies that all bytes were written
+
+    c = pycurl.Curl()
+    c.setopt(pycurl.URL, "http://www.python.org/")
+    c.setopt(pycurl.WRITEFUNCTION, body)
+    c.setopt(pycurl.HEADERFUNCTION, header)
+    c.perform()
+</pre>
+
+<h2>Example: Download/upload progress callback</h2>
+
+<p>This example shows how to use the progress callback.  When downloading
+a document, the arguments related to uploads are zero, and vice versa.</p>
+
+<pre>
+    ## Callback function invoked when download/upload has progress
+    def progress(download_t, download_d, upload_t, upload_d):
+        print "Total to download", download_t
+        print "Total downloaded", download_d
+        print "Total to upload", upload_t
+        print "Total uploaded", upload_d
+
+    c.setopt(c.URL, "http://slashdot.org/")
+    c.setopt(c.NOPROGRESS, 0)
+    c.setopt(c.PROGRESSFUNCTION, progress)
+    c.perform()
+</pre>
+
+<h2>Example: Debug callbacks</h2>
+
+<p>This example shows how to use the debug callback.  The debug message
+type is an integer indicating the type of debug message.  The
+VERBOSE option must be enabled for this callback to be invoked.</p>
+
+<pre>
+    def test(debug_type, debug_msg):
+        print "debug(%d): %s" % (debug_type, debug_msg)
+
+    c = pycurl.Curl()
+    c.setopt(pycurl.URL, "http://curl.haxx.se/")
+    c.setopt(pycurl.VERBOSE, 1)
+    c.setopt(pycurl.DEBUGFUNCTION, test)
+    c.perform()
+</pre>
+
+<h2>Other examples</h2>
+<p>The pycurl distribution also contains a number of test scripts and
+examples which show how to use the various callbacks in libcurl.
+For instance, the file 'examples/file_upload.py' in the distribution contains
+example code for using READFUNCTION, 'tests/test_cb.py' shows
+WRITEFUNCTION and HEADERFUNCTION, 'tests/test_debug.py' shows DEBUGFUNCTION,
+and 'tests/test_getinfo.py' shows PROGRESSFUNCTION.</p>
+
+
+<hr />
+<p>
+  <a href="http://validator.w3.org/check/referer"><img align="right"
+     src="http://www.w3.org/Icons/valid-xhtml10"
+     alt="Valid XHTML 1.0!" height="31" width="88" border="0" /></a>
+  $Id$
+</p>
+
+</body>
+</html>

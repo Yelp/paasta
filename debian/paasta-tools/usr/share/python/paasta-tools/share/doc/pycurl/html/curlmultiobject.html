@@ -1,0 +1,136 @@
+<?xml version="1.0" encoding="iso-8859-1"?>
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <title>PycURL: CurlMulti Objects</title>
+  <meta http-equiv="content-type" content="text/html; charset=iso-8859-1" />
+  <meta name="revisit-after" content="30 days" />
+  <meta name="robots" content="noarchive, index, follow" />
+</head>
+<body>
+
+<h1>CurlMulti Object</h1>
+
+<p>CurlMulti objects have the following methods: </p>
+
+<dl>
+<dt><code>close()</code> -&gt; <em>None</em></dt>
+<dd>
+<p>Corresponds to
+<a href="http://curl.haxx.se/libcurl/c/curl_multi_cleanup.html"><code>curl_multi_cleanup()</code></a> in libcurl.
+This method is automatically called by pycurl when a CurlMulti object no
+longer has any references to it, but can also be called
+explicitly.</p>
+</dd>
+
+<dt><code>perform()</code> -&gt; <em>tuple of status and the number of active Curl objects</em></dt>
+<dd>
+<p>Corresponds to
+<a href="http://curl.haxx.se/libcurl/c/curl_multi_perform.html"><code>curl_multi_perform()</code></a> in libcurl.</p>
+</dd>
+
+<dt><code>add_handle(</code><em>Curl object</em><code>) </code>-&gt; <em>None</em></dt>
+<dd>
+<p>Corresponds to
+<a href="http://curl.haxx.se/libcurl/c/curl_multi_add_handle.html"><code>curl_multi_add_handle()</code></a> in libcurl.
+This method  adds an existing and valid Curl object to the CurlMulti
+object.</p>
+
+<p>IMPORTANT NOTE: add_handle does not implicitly add a Python reference
+to the Curl object (and thus does not increase the reference count on the Curl
+object).</p>
+</dd>
+
+<dt><code>remove_handle(</code><em>Curl object</em><code>)</code> -&gt; <em>None</em></dt>
+<dd>
+<p>Corresponds to
+<a href="http://curl.haxx.se/libcurl/c/curl_multi_remove_handle.html"><code>curl_multi_remove_handle()</code></a> in libcurl.
+This method removes an existing and valid Curl object from the CurlMulti
+object.</p>
+
+<p>IMPORTANT NOTE: remove_handle does not implicitly remove a Python reference
+from the Curl object (and thus does not decrease the reference count on the Curl
+object).</p>
+</dd>
+
+<dt><code>fdset()</code> -&gt;
+<em>triple of lists with active file descriptors,
+readable,  writeable, exceptions.</em></dt>
+<dd>
+<p>Corresponds to
+<a href="http://curl.haxx.se/libcurl/c/curl_multi_fdset.html"><code>curl_multi_fdset()</code></a> in libcurl.
+This method extracts  the file descriptor information from a CurlMulti object.
+The returned  lists can be used with the <code>select</code> module to
+poll for events.</p>
+
+<p>Example usage:</p>
+
+<pre>
+import pycurl
+c = pycurl.Curl()
+c.setopt(pycurl.URL, "http://curl.haxx.se")
+m = pycurl.CurlMulti()
+m.add_handle(c)
+while 1:
+    ret, num_handles = m.perform()
+    if ret != pycurl.E_CALL_MULTI_PERFORM: break
+while num_handles:
+    apply(select.select, m.fdset() + (1,))
+    while 1:
+        ret, num_handles = m.perform()
+        if ret != pycurl.E_CALL_MULTI_PERFORM: break
+</pre>
+</dd>
+
+<dt><code>select(</code><em>timeout</em><code>)</code> -&gt;
+<em>number of ready file descriptors or -1 on timeout</em></dt>
+<dd>
+<p>This is a convenience function which simplifies the combined
+use of <code>fdset()</code> and the <code>select</code> module.</p>
+
+<p>Example usage:</p>
+
+<pre>import pycurl
+c = pycurl.Curl()
+c.setopt(pycurl.URL, "http://curl.haxx.se")
+m = pycurl.CurlMulti()
+m.add_handle(c)
+while 1:
+    ret, num_handles = m.perform()
+    if ret != pycurl.E_CALL_MULTI_PERFORM: break
+while num_handles:
+    ret = m.select(1.0)
+    if ret == -1:  continue
+    while 1:
+        ret, num_handles = m.perform()
+        if ret != pycurl.E_CALL_MULTI_PERFORM: break
+</pre>
+</dd>
+
+<dt><code>info_read(</code><em>[max]</em><code>)</code> -&gt;
+<em>numberof queued messages, a list of successful objects, a list of
+failed objects</em></dt>
+<dd>
+<p>Corresponds to the
+<a href="http://curl.haxx.se/libcurl/c/curl_multi_info_read.html"><code>curl_multi_info_read()</code></a> function in libcurl.
+This method extracts at most <em>max</em> messages
+from the multi stack and returns them in two lists. The first
+list contains the handles which completed successfully and the second
+list contains a tuple <em>&lt;curl object, curl error number, curl
+error message&gt;</em> for each failed curl object. The number
+of queued messages after this method has been called is also
+returned.</p>
+</dd>
+</dl>
+
+<hr />
+<p>
+  <a href="http://validator.w3.org/check/referer"><img align="right"
+     src="http://www.w3.org/Icons/valid-xhtml10"
+     alt="Valid XHTML 1.0!" height="31" width="88" border="0" /></a>
+  $Id$
+</p>
+
+</body>
+</html>
