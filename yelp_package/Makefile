@@ -11,7 +11,7 @@ DOCKER_RUN_CHRONOS:=docker run -t -i --link=chronos_itest_chronos:chronos -v  $(
 DOCKER_QUICK_START:=docker run -t -i -v $(CURDIR)/../:/work:rw soatools_lucid_container
 
 itest_lucid: package_lucid
-	$(DOCKER_RUN_LUCID) /work/itest/ubuntu.sh
+	$(DOCKER_RUN_LUCID) /work/yelp_package/itest/ubuntu.sh
 
 package_lucid: build_lucid_docker
 	$(DOCKER_RUN_LUCID) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
@@ -23,7 +23,7 @@ build_lucid_docker:
 	cd dockerfiles/lucid/ && docker build -t "soatools_lucid_container" .
 
 itest_trusty: package_trusty
-	$(DOCKER_RUN_TRUSTY) /work/itest/ubuntu.sh
+	$(DOCKER_RUN_TRUSTY) /work/yelp_package/itest/ubuntu.sh
 
 package_trusty: test build_trusty_docker
 	$(DOCKER_RUN_TRUSTY) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
@@ -43,7 +43,7 @@ clean:
 
 #TODO: Move into fig
 test_chronos: package_lucid setup_chronos_itest
-	$(DOCKER_RUN_CHRONOS) /work/itest/chronos.sh
+	$(DOCKER_RUN_CHRONOS) /work/yelp_package/itest/chronos.sh
 	make cleanup_chronos_itest
 
 setup_chronos_itest: build_chronos_itest
