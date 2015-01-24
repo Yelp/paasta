@@ -11,13 +11,11 @@ from paasta_tools.marathon_tools import \
     DEFAULT_SOA_DIR, _get_deployments_json
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
-from paasta_tools.paasta_cli.utils import guess_service_name
+from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.paasta_cli.utils import NoSuchService
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
 from paasta_tools.paasta_cli.utils import PaastaColors
-from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import x_mark
 
 
@@ -80,17 +78,6 @@ def get_planned_deployments(deploy_info):
     for cluster in cluster_dict:
         for instance in cluster_dict[cluster]:
             yield "%s.%s" % (cluster, instance)
-
-
-def figure_out_service_name(args):
-    """Figures out and validates the input service name"""
-    service_name = args.service or guess_service_name()
-    try:
-        validate_service_name(service_name)
-    except NoSuchService as service_not_found:
-        print service_not_found
-        exit(1)
-    return service_name
 
 
 def list_deployed_clusters(pipeline, actual_deployments):
