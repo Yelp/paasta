@@ -23,7 +23,7 @@ def add_subparser(subparsers):
                              required=True,
                              )
     list_parser.add_argument('-l', '--clusterinstance',
-                             help='Mark the service ready for deployment in this clusterinstance (e.g. norcal-devc.canary, nova-prod.main)',
+                             help='Mark the service ready for deployment in this clusterinstance (e.g. cluster1.canary, cluster2.main)',
                              required=True,
                              )
 
@@ -38,8 +38,8 @@ def build_command(
     """upstream_git_url is the Git URL where the service lives (e.g.
     git@git.yelpcorp.com:services/foo)
 
-    instancename is where you want to deploy. E.g. norcal-devc.canary indicates
-    a Mesos cluster (norcal-devc) and an instance within that cluster (canary)
+    instancename is where you want to deploy. E.g. cluster1.canary indicates
+    a Mesos cluster (cluster1) and an instance within that cluster (canary)
     """
     cmd = 'git push %s %s:refs/heads/paasta-%s' % (
         upstream_git_url,

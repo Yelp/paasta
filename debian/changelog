@@ -1,3 +1,31 @@
+paasta-tools (0.8.18-yelp1) lucid; urgency=low
+
+  * 0.8.18 tagged with 'make release'
+    Commit: Merge branch PAASTA-225
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 23 Jan 2015 13:16:20 -0800
+
+paasta-tools (0.8.17-yelp1) lucid; urgency=low
+
+  * 0.8.17 tagged with 'make release'
+    Commit: Released 0.8.16-yelp1 via make release
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 23 Jan 2015 09:59:06 -0800
+
+paasta-tools (0.8.16-yelp1) lucid; urgency=low
+
+  * 0.8.16 tagged with 'make release'
+    Commit: Merge branch PAASTA-136
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 22 Jan 2015 16:52:02 -0800
+
+paasta-tools (0.8.15-yelp1) lucid; urgency=low
+
+  * 0.8.15 tagged with 'make release'
+    Commit: Removed warning from replication check
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 22 Jan 2015 15:20:56 -0800
+
 paasta-tools (0.8.14-yelp1) lucid; urgency=low
 
   * 0.8.14 tagged with 'make release'

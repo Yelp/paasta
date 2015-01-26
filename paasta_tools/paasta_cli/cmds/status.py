@@ -177,7 +177,7 @@ def report_bogus_filters(cluster_filter, deployed_clusters):
 
 def report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter):
     jenkins_url = PaastaColors.cyan(
-        'https://jenkins.yelpcorp.com/view/%s' % service_name)
+        'https://jenkins.yelpcorp.com/view/services-%s' % service_name)
 
     print "Pipeline: %s" % jenkins_url
 
