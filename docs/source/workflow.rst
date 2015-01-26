@@ -89,6 +89,11 @@ unhealthy tasks from continuously filling up disks and logs -- the more times
 that your service has failed to start, the longer Mesos will wait before 
 trying to start it again.
 
+Mesos *will* healthcheck the task based on the same healthcheck that Smarstack
+uses, in order to prune unhealthy tasks. This pruning is less agressive than
+smartstack's checking, so a dead task will go DOWN in smartstack before it is
+reaped by Mesos.
+
 Monitoring
 ----------
 `check_marathon_services_replication <check_marathon_services_replication.html>`_

@@ -1,0 +1,28 @@
+#!/usr/bin/make -f
+# -*- makefile -*-
+
+# Uncomment this to turn on verbose mode.
+#export DH_VERBOSE=1
+
+# This has to be exported to make some magic below work.
+export DH_OPTIONS
+
+
+%:
+	dh $@ --with python-virtualenv
+
+# do not call `make clean` as part of packaging
+override_dh_auto_clean:
+	true
+
+# do not call `make` as part of packaging
+override_dh_auto_build:
+	true
+
+# do not call `make test` as part of packaging
+override_dh_auto_test:
+	true
+
+
+override_dh_virtualenv:
+	dh_virtualenv --pypi-url='http://pypi.yelpcorp.com/simple' --python=/usr/bin/python2.7
