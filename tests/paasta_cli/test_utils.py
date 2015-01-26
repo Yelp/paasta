@@ -270,3 +270,8 @@ def test_list_instances_no_service(
     mock_validate_service_name.assert_called_once_with('unused')
     mock_list_instance_for_service.assert_called_once_with('fake_service1')
     assert actual == expected
+
+
+def test_lazy_choices_completer():
+    completer = utils.lazy_choices_completer(lambda: ['1', '2', '3'])
+    assert completer(prefix='') == ['1', '2', '3']

@@ -4,7 +4,6 @@ on the PaaSTA stack"""
 from ordereddict import OrderedDict
 from os.path import join
 
-from argcomplete.completers import ChoicesCompleter
 
 from service_configuration_lib import read_deploy
 from paasta_tools.marathon_tools import \
@@ -12,6 +11,7 @@ from paasta_tools.marathon_tools import \
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.paasta_cli.utils import guess_service_name
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import NoSuchService
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
@@ -30,7 +30,7 @@ def add_subparser(subparsers):
     status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect'
-    ).completer = ChoicesCompleter(list_services())
+    ).completer = lazy_choices_completer(list_services)
     clusters_help = (
         'A comma separated list of clusters to view. Defaults to view all clusters. '
         'Try: --clusters norcal-prod,nova-prod'
@@ -38,7 +38,7 @@ def add_subparser(subparsers):
     status_parser.add_argument(
         '-c', '--clusters',
         help=clusters_help,
-    ).completer = ChoicesCompleter(list_clusters())
+    ).completer = lazy_choices_completer(list_clusters)
     status_parser.set_defaults(command=paasta_status)
 
 
