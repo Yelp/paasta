@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
+from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import list_instances
@@ -14,7 +15,6 @@ def add_subparser(subparsers):
     status_parser.add_argument(
         '-s', '--service',
         help='Service that you want to start. Like example_service.',
-        required=True,
     ).completer = lazy_choices_completer(list_services)
     status_parser.add_argument(
         '-i', '--instance',
@@ -31,12 +31,13 @@ def add_subparser(subparsers):
 
 def paasta_emergency_start(args):
     """Performs an emergency start on a given service.instance on a given cluster"""
-    print "Performing an emergency start on %s.%s..." % (args.service, args.instance)
-    execute_paasta_serviceinit_on_remote_master('start', args.cluster, args.service, args.instance)
+    service = figure_out_service_name(args)
+    print "Performing an emergency start on %s.%s..." % (service, args.instance)
+    execute_paasta_serviceinit_on_remote_master('start', args.cluster, service, args.instance)
     print "Warning: this tool just asks Marathon to resume normal operation"
-    print "and run the 'normal' number of instances of this %s.%s" % (args.service, args.instance)
+    print "and run the 'normal' number of instances of this %s.%s" % (service, args.instance)
     print "It is not magic and cannot actually get a service to start if it"
     print "couldn't run before."
     print ""
     print "Run this to see the status:"
-    print "paasta status --service %s --clusters %s" % (args.service, args.cluster)
+    print "paasta status --service %s --clusters %s" % (service, args.cluster)

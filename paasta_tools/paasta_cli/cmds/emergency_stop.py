@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
+from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import list_instances
@@ -30,13 +31,14 @@ def add_subparser(subparsers):
 
 def paasta_emergency_stop(args):
     """Performs an emergency stop on a given service.instance on a given cluster"""
-    print "Performing an emergency stop on %s.%s..." % (args.service, args.instance)
-    execute_paasta_serviceinit_on_remote_master('stop', args.cluster, args.service, args.instance)
+    service = figure_out_service_name(args)
+    print "Performing an emergency stop on %s.%s..." % (service, args.instance)
+    execute_paasta_serviceinit_on_remote_master('stop', args.cluster, service, args.instance)
     print "Warning: This service will start back up again when the next"
     print "config change happens, or deploy, or bounce, etc"
     print ""
-    print "If you want this stop to be permanant, adjust the %s/marathon-%s.yaml" % (args.service, args.cluster)
+    print "If you want this stop to be permanant, adjust the %s/marathon-%s.yaml" % (service, args.cluster)
     print "file to reflect that. (set 'instances: 0', or perhaps rm the yaml entirely)"
     print ""
     print "To start this service again asap, run:"
-    print "paasta emergency-start --service %s --instance %s --cluster %s" % (args.service, args.instance, args.cluster)
+    print "paasta emergency-start --service %s --instance %s --cluster %s" % (service, args.instance, args.cluster)
