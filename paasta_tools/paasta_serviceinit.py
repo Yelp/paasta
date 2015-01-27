@@ -98,11 +98,11 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
 def get_verbose_status_of_marathon_app(app):
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
-    output = ""
+    output = []
     create_datetime = datetime.datetime.strptime(app.version, "%Y-%m-%dT%H:%M:%S.%fZ")
-    output += "  Marathon app ID: %s\n" % PaastaColors.bold(app.id)
-    output += "  App created: %s (%s)\n" % (str(create_datetime), humanize.naturaltime(create_datetime))
-    output += "  Tasks:  Mesos Task ID                                                                       Host deployed to                        Deployed at what localtime\n"
+    output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
+    output.append("  App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
+    output.append("  Tasks:  Mesos Task ID                                                                       Host deployed to                        Deployed at what localtime")
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
         format_tuple = (
@@ -111,8 +111,8 @@ def get_verbose_status_of_marathon_app(app):
             str(local_deployed_datetime),
             humanize.naturaltime(local_deployed_datetime),
         )
-        output += '    {0[0]:<90}{0[1]:<40}{0[2]:<27}({0[3]:})\n'.format(format_tuple)
-    return output
+        output.append('    {0[0]:<90}{0[1]:<40}{0[2]:<27}({0[3]:})'.format(format_tuple))
+    return "\n".join(output)
 
 
 def status_marathon_job_verbose(service, instance, client):
@@ -123,7 +123,7 @@ def status_marathon_job_verbose(service, instance, client):
     output = ""
     # For verbose mode, we want to see *any* matching app. As it may
     # not be the one that we think should be deployed. For example
-    # During a bounce we want to see the old and new ones.
+    # during a bounce we want to see the old and new ones.
     for appid in marathon_tools.get_matching_appids(service, instance, client):
         app = client.get_app(appid)
         output += get_verbose_status_of_marathon_app(app)

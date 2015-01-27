@@ -922,5 +922,4 @@ def get_matching_appids(servicename, instance, client):
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
     jobid = compose_job_id(servicename, instance)
-    regex = re.compile("^/%s" % jobid)
-    return [app.id for app in client.list_apps() if regex.match(app.id)]
+    return [app.id for app in client.list_apps() if app.id.startswith("/%s" % jobid)]
