@@ -145,9 +145,10 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
             service_replication = get_replication_for_services(
                 SYNAPSE_HOST_PORT, ['%s.main' % name for name in all_service_config.keys()]
             )
-        except Exception, e:
-            print 'CRITICAL: {0}'.format(e)
-            sys.exit(2)
+        except Exception:
+            self.log.debug("Unable to connect Synapse HAProxy on {0}".
+                format(SYNAPSE_HOST_PORT))
+            self.critical('Unable to connect Synapse HAProxy!')
         self.log.debug("Finished gathering replication information from {0}".
             format(SYNAPSE_HOST_PORT))
 
