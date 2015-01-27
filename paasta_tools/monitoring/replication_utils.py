@@ -20,11 +20,22 @@ def get_replication_for_services(synapse_host_port, service_names):
     :returns available_instances: A dictionary mapping the service names
                                   to an integer number of available
                                   replicas
+    :returns None: If it cannot connect to the specified synapse_host_port
     """
     synapse_uri = SYNAPSE_HAPROXY_PATH.format(synapse_host_port)
 
-    # timeout after 1 second
-    haproxy_response = requests.get(synapse_uri, timeout=1)
+    # timeout after 1 second and retry 3 times
+    haproxy_request = requests.Session()
+    haproxy_request.mount('http://',
+        requests.adapters.HTTPAdapter(max_retries=3))
+    haproxy_request.mount('https://',
+        requests.adapters.HTTPAdapter(max_retries=3))
+    try:
+        haproxy_response = haproxy_request.get(synapse_uri, timeout=1)
+    except requests.exceptions.ConnectionError:
+        # We were unable to connect to synapse haproxy
+        return None
+
     haproxy_data = haproxy_response.text
     reader = csv.DictReader(haproxy_data.splitlines())
 

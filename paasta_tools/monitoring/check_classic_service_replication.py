@@ -139,9 +139,31 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         all_service_config = read_services_configuration()
 
         # Get the replication data once for performance
+        self.log.debug("Gathering replication information from {0}".
+            format(SYNAPSE_HOST_PORT))
         service_replication = get_replication_for_services(
             SYNAPSE_HOST_PORT, ['%s.main' % name for name in all_service_config.keys()]
         )
+        # We were unable to connect to synapse haproxy
+        if service_replication is None:
+            self.log.debug("Unable to connect synapse at {0}".format(SYNAPSE_HOST_PORT))
+            event = {
+                      'name': "check_replication_{0}".format(SYNAPSE_HOST_PORT),
+                      'status': 2,
+                      'output': "Cannot connect to {0}".format(SYNAPSE_HOST_PORT),
+                      'team': "operations",
+                      'irc_channels': "operations-notifications",
+                      'notification_email': None,
+                      'runbook': 'no runbook',
+                      'tip': 'no tip',
+                      'page': True,
+                      'alert_after': '120s',
+                      'realert_every': -1,
+            }
+            report_event(event)
+            return()
+        self.log.debug("Finished gathering replication information from {0}".
+            format(SYNAPSE_HOST_PORT))
 
         checked_services = []
         for service_name, service_config in all_service_config.iteritems():
