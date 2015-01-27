@@ -1180,3 +1180,18 @@ class TestMarathonTools:
             mock_read_service_namespace_config.return_value = fake_config
             with raises(marathon_tools.InvalidSmartstackMode):
                 marathon_tools.get_healthchecks('fake_service', 'fake_instance')
+
+    def test_get_matching_appids(self):
+        fakeapp1 = mock.Mock(id='/fake--service.fake--instance---bouncingold')
+        fakeapp2 = mock.Mock(id='/fake--service.fake--instance---bouncingnew')
+        fakeapp3 = mock.Mock(id='/fake--service.other--instance--bla')
+        fakeapp4 = mock.Mock(id='/other--service')
+        apps = [fakeapp1, fakeapp2, fakeapp3, fakeapp4]
+        list_apps_mock = mock.Mock(return_value=apps)
+        fake_client = mock.Mock(list_apps=list_apps_mock)
+        expected = [
+            '/fake--service.fake--instance---bouncingold',
+            '/fake--service.fake--instance---bouncingnew',
+        ]
+        actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
+        assert actual == expected

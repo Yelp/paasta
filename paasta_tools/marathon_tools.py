@@ -915,3 +915,12 @@ def get_expected_instance_count_for_namespace(service_name, namespace, soa_dir=D
         if namespace == instance_ns:
             total_expected += get_instances(srv_config)
     return total_expected
+
+
+def get_matching_appids(servicename, instance, client):
+    """Returns a list of appids given a service and instance.
+    Useful for fuzzy matching if you think there are marathon
+    apps running but you don't know the full instance id"""
+    jobid = compose_job_id(servicename, instance)
+    regex = re.compile("^/%s" % jobid)
+    return [app.id for app in client.list_apps() if regex.match(app.id)]
