@@ -1,3 +1,11 @@
+paasta-tools (0.8.19-yelp1) lucid; urgency=low
+
+  * 0.8.19 tagged with 'make release'
+    Make tab complete faster by lazy-loading completions
+    Add CLI tools for stop/start via git tags
+
+ -- Evan Krall <krall@yelp.com>  Mon, 26 Jan 2015 16:40:40 -0800
+
 paasta-tools (0.8.18-yelp1) lucid; urgency=low
 
   * 0.8.18 tagged with 'make release'
