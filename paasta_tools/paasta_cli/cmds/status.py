@@ -25,6 +25,9 @@ def add_subparser(subparsers):
         description="PaaSTA client will attempt to deduce the SERVICE option if"
                     " none is provided.",
         help="Display the status of a Yelp service running on PaaSTA.")
+    status_parser.add_argument('-v', '--verbose', action='store_true',
+                               dest="verbose", default=False,
+                               help="Print out more output regarding the state of the service")
     status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect'
@@ -109,7 +112,7 @@ def get_actual_deployments(service_name):
     return actual_deployments
 
 
-def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments):
+def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, verbose=False):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     # Get cluster.instance in the order in which they appear in deploy.yaml
@@ -129,7 +132,7 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             instance = PaastaColors.blue(instance)
             version = actual_deployments[namespace]
             # TODO: Perform sanity checks once per cluster instead of for each namespace
-            status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, unformatted_instance)
+            status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, unformatted_instance, verbose)
 
         # Case: service NOT deployed to cluster.instance
         else:
@@ -162,7 +165,7 @@ def report_bogus_filters(cluster_filter, deployed_clusters):
     return return_string
 
 
-def report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter):
+def report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter, verbose=False):
     jenkins_url = PaastaColors.cyan(
         'https://jenkins.yelpcorp.com/view/services-%s' % service_name)
 
@@ -171,7 +174,7 @@ def report_status(service_name, deploy_pipeline, actual_deployments, cluster_fil
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     for cluster in deployed_clusters:
         if cluster_filter is None or cluster in cluster_filter:
-            report_status_for_cluster(service_name, cluster, deploy_pipeline, actual_deployments)
+            report_status_for_cluster(service_name, cluster, deploy_pipeline, actual_deployments, verbose)
 
     print report_bogus_filters(cluster_filter, deployed_clusters)
 
@@ -189,6 +192,6 @@ def paasta_status(args):
 
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(deploy_info))
-        report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter)
+        report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter, args.verbose)
     else:
         print missing_deployments_message(service_name)

@@ -456,14 +456,18 @@ def check_ssh_and_sudo_on_master(master):
     return (False, output)
 
 
-def run_paasta_serviceinit(subcommand, master, service_name, instancename):
+def run_paasta_serviceinit(subcommand, master, service_name, instancename, verbose=False):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
-    command = 'ssh -A -n %s sudo paasta_serviceinit %s.%s %s' % (master, service_name, instancename, subcommand)
+    if verbose:
+        verbose_flag = "-v "
+    else:
+        verbose_flag = ''
+    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s.%s %s' % (master, verbose_flag, service_name, instancename, subcommand)
     _, output = _run(command)
     return output
 
 
-def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, service_name, instancename):
+def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, service_name, instancename, verbose=False):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
@@ -478,7 +482,7 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, servic
     check, output = check_ssh_and_sudo_on_master(master)
     if not check:
         return 'ERROR ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
-    return run_paasta_serviceinit(subcommand, master, service_name, instancename)
+    return run_paasta_serviceinit(subcommand, master, service_name, instancename, verbose)
 
 
 def lazy_choices_completer(list_func):
