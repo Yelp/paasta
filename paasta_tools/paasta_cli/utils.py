@@ -486,3 +486,14 @@ def lazy_choices_completer(list_func):
         options = list_func()
         return [o for o in options if o.startswith(prefix)]
     return inner
+
+
+def figure_out_service_name(args):
+    """Figures out and validates the input service name"""
+    service_name = args.service or guess_service_name()
+    try:
+        validate_service_name(service_name)
+    except NoSuchService as service_not_found:
+        print service_not_found
+        exit(1)
+    return service_name

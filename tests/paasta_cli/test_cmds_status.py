@@ -13,7 +13,7 @@ from paasta_tools.paasta_cli.cmds.status import report_status
 from paasta_tools.paasta_cli.cmds import status
 
 
-@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
+@patch('paasta_tools.paasta_cli.utils.validate_service_name')
 @patch('sys.stdout', new_callable=StringIO)
 def test_figure_out_service_name_not_found(mock_stdout,
                                            mock_validate_service_name):
@@ -33,8 +33,8 @@ def test_figure_out_service_name_not_found(mock_stdout,
     assert output == expected_output
 
 
-@patch('paasta_tools.paasta_cli.cmds.status.validate_service_name')
-@patch('paasta_tools.paasta_cli.cmds.status.guess_service_name')
+@patch('paasta_tools.paasta_cli.utils.validate_service_name')
+@patch('paasta_tools.paasta_cli.utils.guess_service_name')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
                                       mock_validate_service_name):
