@@ -40,13 +40,6 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
     key_name = "main"
     smartstack_stanza[key_name] = {
         "proxy_port": int(port),
-        # Default routes for AWSPROD-42
-        # To be removed once AWSPROD has its own srv boxes
-        "routes": [
-            {'source': 'uswest1prod',
-             'destinations': ['sfo1', 'sfo2']},
-        ]
-
     }
     return smartstack_stanza
 

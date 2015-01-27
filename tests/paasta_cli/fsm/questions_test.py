@@ -63,10 +63,6 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         self.expected_stanza = {
             "main": {
                 "proxy_port": self.suggested_port,
-                "routes": [
-                    {'source': 'uswest1prod',
-                     'destinations': ['sfo1', 'sfo2']},
-                ]
         }}
 
     def test_arg_passed_in(self):
