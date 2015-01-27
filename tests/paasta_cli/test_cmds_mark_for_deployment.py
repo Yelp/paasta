@@ -13,7 +13,7 @@ def test_build_command():
     upstream_git_url = 'fake_upstream_git_url'
     upstream_git_commit = 'fake_upstream_git_commit'
     clusterinstance = 'fake_clusterinstance'
-    expected = 'git push %s %s:refs/heads/paasta-%s' % (
+    expected = 'git push -f %s %s:refs/heads/paasta-%s' % (
         upstream_git_url,
         upstream_git_commit,
         clusterinstance,

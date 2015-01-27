@@ -41,7 +41,7 @@ def build_command(
     instancename is where you want to deploy. E.g. cluster1.canary indicates
     a Mesos cluster (cluster1) and an instance within that cluster (canary)
     """
-    cmd = 'git push %s %s:refs/heads/paasta-%s' % (
+    cmd = 'git push -f %s %s:refs/heads/paasta-%s' % (
         upstream_git_url,
         upstream_git_commit,
         clusterinstance,
