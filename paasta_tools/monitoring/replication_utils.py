@@ -30,12 +30,7 @@ def get_replication_for_services(synapse_host_port, service_names):
         requests.adapters.HTTPAdapter(max_retries=3))
     haproxy_request.mount('https://',
         requests.adapters.HTTPAdapter(max_retries=3))
-    try:
-        haproxy_response = haproxy_request.get(synapse_uri, timeout=1)
-    except requests.exceptions.ConnectionError:
-        # We were unable to connect to synapse haproxy
-        return None
-
+    haproxy_response = haproxy_request.get(synapse_uri, timeout=1)
     haproxy_data = haproxy_response.text
     reader = csv.DictReader(haproxy_data.splitlines())
 
