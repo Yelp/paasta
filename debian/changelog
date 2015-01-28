@@ -1,3 +1,10 @@
+paasta-tools (0.8.21-yelp1) lucid; urgency=low
+
+  * 0.8.21 tagged with 'make release'
+    Commit: Merge branch fewer_git_ls_remotes
+
+ -- Evan Krall <krall@yelp.com>  Tue, 27 Jan 2015 23:27:51 -0800
+
 paasta-tools (0.8.20-yelp1) lucid; urgency=low
 
   * 0.8.20 tagged with 'make release'
