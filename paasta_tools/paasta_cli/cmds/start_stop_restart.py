@@ -4,7 +4,6 @@ import datetime
 import fnmatch
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.generate_deployments_json import (
-    get_remote_branches_for_service,
     get_branches_for_service
 )
 from paasta_tools import utils, remote_git
@@ -16,8 +15,10 @@ SOA_DIR = '/nail/etc/services'
 
 def get_branches(service):
     paasta_branches = set(get_branches_for_service(SOA_DIR, service))
-    for sha, branch in get_remote_branches_for_service(service):
-        if branch in paasta_branches:
+    remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
+
+    for branch in paasta_branches:
+        if 'refs/heads/%s' % branch in remote_refs:
             yield branch
 
 

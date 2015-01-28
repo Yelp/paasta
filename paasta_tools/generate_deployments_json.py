@@ -97,47 +97,6 @@ def get_branches_for_service(soa_dir, service):
     return valid_branches
 
 
-def get_remote_refs_for_service(service, tags=False):
-    """Retrieve all remote refs of the given type that exist on a service's git
-    repository.
-
-    :param service: The service name to get branches for
-    :param tags: Whether to look for tags only (True) or branches only (False).
-    :returns: A list of tuples of (HEAD, ref_name), where HEAD
-              is the complete SHA at the HEAD of the paired ref_name"""
-
-    reftype = 'refs/tags/' if tags else 'refs/heads/'
-
-    try:
-        refs = remote_git.list_remote_refs(get_git_url(service))
-        remote_branches = []
-        for refname, sha in refs.items():
-            if refname.startswith(reftype):
-                remote_branches.append((sha, refname.split(reftype, 1)[1]))
-        return remote_branches
-    except remote_git.LSRemoteException:
-        log.warning('Could not get remote refs for service %s', service)
-        return []
-
-
-def get_remote_branches_for_service(service):
-    """Retrieve all remote branches that exist on a service's git repository.
-
-    :param service: The service name to get branches for
-    :returns: A list of tuples of (branch_name, HEAD), where HEAD
-              is the complete SHA at the HEAD of the paired branch_name"""
-    return get_remote_refs_for_service(service, tags=False)
-
-
-def get_remote_tags_for_service(service):
-    """Retrieve all remote tags that exist on a service's git repository.
-
-    :param service: The service name to get tags for
-    :returns: A list of tuples of (tag_name, HEAD), where HEAD
-              is the complete SHA at the HEAD of the paired tag_name"""
-    return get_remote_refs_for_service(service, tags=True)
-
-
 def get_service_directories(soa_dir):
     """Get the service directories for a given soa directory.
 
@@ -170,43 +129,45 @@ def get_branch_mappings(soa_dir, old_mappings):
         if not valid_branches:
             log.info('Service %s has no valid branches. Skipping.', service)
             continue
-        remote_branches = get_remote_branches_for_service(service)
-        head_and_branch_from_valid_remote_branches = filter(lambda (head, branch): branch in valid_branches, remote_branches)
 
-        if not head_and_branch_from_valid_remote_branches:
-            log.info('Service %s has no remote branches which are valid. Skipping.', service)
-            continue
+        remote_refs = remote_git.list_remote_refs(get_git_url(service))
 
-        for head, branch in head_and_branch_from_valid_remote_branches:
-            branch_alias = '%s:%s' % (service, branch)
-            docker_image = 'services-%s:paasta-%s' % (service, head)
-            if marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
-                log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
-                mapping = mappings.setdefault(branch_alias, {})
-                mapping['docker_image'] = docker_image
+        for branch in valid_branches:
+            ref_name = 'refs/heads/%s' % branch
+            if ref_name in remote_refs:
+                commit_sha = remote_refs[ref_name]
+                branch_alias = '%s:%s' % (service, branch)
+                docker_image = 'services-%s:paasta-%s' % (service, commit_sha)
+                if marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
+                    log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
+                    mapping = mappings.setdefault(branch_alias, {})
+                    mapping['docker_image'] = docker_image
 
-                desired_state, force_bounce = get_desired_state(service, branch, head)
-                mapping['desired_state'] = desired_state
-                mapping['force_bounce'] = force_bounce
-            else:
-                log.error('Branch %s should be mapped to image %s, but that image isn\'t \
-                           in the docker_registry %s', branch_alias, docker_image, docker_registry)
-                mappings[branch_alias] = old_mappings.get(branch_alias, None)
+                    desired_state, force_bounce = get_desired_state(service, branch, remote_refs)
+                    mapping['desired_state'] = desired_state
+                    mapping['force_bounce'] = force_bounce
+                else:
+                    log.error('Branch %s should be mapped to image %s, but that image isn\'t \
+                               in the docker_registry %s', branch_alias, docker_image, docker_registry)
+                    mappings[branch_alias] = old_mappings.get(branch_alias, None)
+
     return mappings
 
 
-def get_desired_state(service, branch, head_sha):
+def get_desired_state(service, branch, remote_refs):
     """Gets the desired state (start or stop) from the given repo, as well as
     an arbitrary value (which may be None) that will change when a restart is
     desired.
     """
-    sha_tags = get_remote_tags_for_service(service)
-    tag_pattern = r'^paasta-%s-(?P<force_bounce>[^-]+)-(?P<state>.*)$' % branch
+
+    tag_pattern = r'^refs/tags/paasta-%s-(?P<force_bounce>[^-]+)-(?P<state>.*)$' % branch
 
     states = []
-    for sha, tag in sha_tags:
+    head_sha = remote_refs['refs/heads/%s' % branch]
+
+    for ref_name, sha in remote_refs.iteritems():
         if sha == head_sha:
-            match = re.match(tag_pattern, tag)
+            match = re.match(tag_pattern, ref_name)
             if match:
                 gd = match.groupdict()
                 states.append((gd['state'], gd['force_bounce']))
