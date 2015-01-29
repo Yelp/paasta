@@ -227,8 +227,18 @@ class TestPaastaServiceStatus:
         assert "Critical" in status
 
     def test_status_mesos_tasks_verbose(self):
-        actual = paasta_serviceinit.status_mesos_tasks_verbose('fake_service', 'fake_instance')
-        assert None is actual
+        with contextlib.nested(
+            mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service'),
+            mock.patch('paasta_tools.paasta_serviceinit.get_non_running_mesos_tasks_for_service'),
+        ) as (
+            get_running_mesos_tasks_for_service_patch,
+            get_non_running_mesos_tasks_for_service_patch,
+        ):
+            get_running_mesos_tasks_for_service_patch.return_value = []
+            get_non_running_mesos_tasks_for_service_patch.return_value = []
+            actual = paasta_serviceinit.status_mesos_tasks_verbose('fake_service', 'fake_instance')
+            assert 'Running Tasks' in actual
+            assert 'Non-Running Tasks' in actual
 
     def test_status_mesos_tasks_working(self):
         with mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service') as mock_tasks:

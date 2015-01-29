@@ -88,12 +88,13 @@ def failure(msg, link):
 class PaastaColors:
     """Collection of static variables and methods to assist in coloring text."""
     # ANSI colour codes
-    DEFAULT = '\033[0m'
-    BOLD = '\033[1m'
-    RED = '\033[31m'
-    GREEN = '\033[32m'
     BLUE = '\033[34m'
+    BOLD = '\033[1m'
     CYAN = '\033[36m'
+    DEFAULT = '\033[0m'
+    GREEN = '\033[32m'
+    GREY = '\033[30m'
+    RED = '\033[31m'
     YELLOW = '\033[33m'
 
     @staticmethod
@@ -154,6 +155,10 @@ class PaastaColors:
         :param text: a string
         :return: text colour coded with ANSI yellow"""
         return PaastaColors.color_text(PaastaColors.YELLOW, text)
+
+    @staticmethod
+    def grey(text):
+        return PaastaColors.color_text(PaastaColors.GREY, text)
 
 
 class PaastaCheckMessages:

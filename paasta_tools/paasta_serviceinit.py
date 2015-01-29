@@ -17,6 +17,7 @@ from paasta_tools import marathon_tools
 from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.monitoring.replication_utils import get_replication_for_services
 from paasta_tools.mesos_tools import get_running_mesos_tasks_for_service
+from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -183,9 +184,54 @@ def status_mesos_tasks(service, instance, normal_instance_count):
     return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
 
 
+def pretty_format_running_mesos_task(task):
+    """Returns a pretty formatted string of a running mesos task attributes"""
+    start_time_string = task['statuses'][0]['timestamp']
+    start_time = datetime.datetime.fromtimestamp(float(start_time_string))
+    mem_string = "%d/%dMB" % ((task.rss / 1024 / 1024), (task.mem_limit / 1024 / 1024))
+    cpu_string = "%d/%d" % ((task.rss / 1024 / 1024), (task.mem_limit / 1024 / 1024))
+    format_tuple = (
+        task['id'],
+        str(task.slave['hostname']),
+#        mem_string,
+#        cpu_string,
+        str(start_time),
+        humanize.naturaltime(start_time),
+    )
+    return '    {0[0]:<90}{0[1]:<40}{0[2]:<10}{0[2]:<10}{0[2]:<27}({0[3]:})'.format(format_tuple)
+
+
+def pretty_format_non_running_mesos_task(task):
+    """Returns a pretty formatted string of a running mesos task attributes"""
+    start_time_string = task['statuses'][0]['timestamp']
+    start_time = datetime.datetime.fromtimestamp(float(start_time_string))
+    try:
+        slave_hostname = task.slave['hostname']
+    except AttributeError:
+        slave_hostname = 'unknown'
+    format_tuple = (
+        task['id'],
+        str(slave_hostname),
+        str(start_time),
+        humanize.naturaltime(start_time),
+    )
+    return PaastaColors.grey('    {0[0]:<90}{0[1]:<40}{0[2]:<27}({0[3]:})'.format(format_tuple))
+
+
 def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
-    return None
+    output = []
+    running_tasks = get_running_mesos_tasks_for_service(service, instance)
+    output.append("  Running Tasks:  Mesos Task ID                                                                       Host deployed to                        Deployed at what localtime")
+    for task in running_tasks:
+        output.append(pretty_format_running_mesos_task(task))
+    non_running_tasks = reversed(get_non_running_mesos_tasks_for_service(service, instance))
+    output.append("  Non-Running Tasks:  Mesos Task ID                                                                       Host deployed to                        Deployed at what localtime")
+#    import IPython
+#    IPython.embed()
+    for task in non_running_tasks:
+        output.append(pretty_format_non_running_mesos_task(task))
+    return "\n".join(output)
 
 
 def main():
