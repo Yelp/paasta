@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import sys
+import requests
 import logging
 
 from service_configuration_lib import read_services_configuration
@@ -145,10 +146,16 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
             service_replication = get_replication_for_services(
                 SYNAPSE_HOST_PORT, ['%s.main' % name for name in all_service_config.keys()]
             )
-        except Exception:
-            self.log.debug("Unable to connect Synapse HAProxy on {0}".
+        except requests.exceptions.ConnectionError:
+            self.log.debug('Failed to connect synapse haproxy on {0}'.
                 format(SYNAPSE_HOST_PORT))
-            self.critical('Unable to connect Synapse HAProxy!')
+            self.critical('Failed to connect synapse haproxy on {0}'.
+                format(SYNAPSE_HOST_PORT))
+        except Exception as e:
+            self.log.debug('Unable to collect replication information on {0}: {1}'.
+                format(SYNAPSE_HOST_PORT, e.message))
+            self.critical('Unable to collect replication information: {0}'.
+                format(e.message))
         self.log.debug("Finished gathering replication information from {0}".
             format(SYNAPSE_HOST_PORT))
 

@@ -2,6 +2,9 @@ from contextlib import nested
 
 import mock
 import pytest
+import requests
+import sys
+from StringIO import StringIO
 
 from paasta_tools.monitoring.check_classic_service_replication\
     import (
@@ -164,3 +167,35 @@ def test_classic_replication_check():
             check.run()
             assert mcheck.assert_called_with('pow', {'wat': 1}, -1)
         assert error.value.code == 0
+
+def test_classic_replication_check_connectionerror():
+    base_module = 'paasta_tools.monitoring'
+    check_classic_module = base_module + '.check_classic_service_replication'
+    replication_method = check_classic_module + '.get_replication_for_services'
+
+    SYNAPSE_HOST_PORT = "localhost:3212"
+    connection_error_message = "ClassicServiceReplicationCheck CRITICAL: Failed to connect synapse haproxy on {0}".format(SYNAPSE_HOST_PORT)
+    sensu_critical = 2
+
+    with nested(
+        mock.patch(replication_method, side_effect=requests.exceptions.ConnectionError),
+        mock.patch('sys.stdout', new=StringIO()),
+        pytest.raises(SystemExit)) as (_,fake_out,error):
+            check = ClassicServiceReplicationCheck()
+            check.run()
+    assert fake_out.getvalue().strip() == connection_error_message
+    assert error.value.code == sensu_critical
+
+def test_classic_replication_check_unknownexception():
+    base_module = 'paasta_tools.monitoring'
+    check_classic_module = base_module + '.check_classic_service_replication'
+    replication_method = check_classic_module + '.get_replication_for_services'
+
+    sensu_critical = 2
+
+    with nested(
+            mock.patch(replication_method, side_effect=Exception),
+            pytest.raises(SystemExit)) as (_,error):
+        check = ClassicServiceReplicationCheck()
+        check.run()
+    assert error.value.code == sensu_critical
