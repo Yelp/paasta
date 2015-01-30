@@ -15,7 +15,7 @@ The yaml where marathon jobs are actually defined.
 
 Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancename MAY have:
 
-  * ``cpu``: Number of CPUs an instance needs
+  * ``cpus``: Number of CPUs an instance needs
 
   * ``mem``: Memory (in MB) an instance needs
 
