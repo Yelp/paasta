@@ -2,7 +2,7 @@ from paasta_tools.paasta_cli.utils import _run
 
 
 def get_serviceinit_status(service, namespace):
-    command = "paasta_serviceinit %s.%s status" % (service, namespace)
+    command = "paasta_serviceinit -v %s.%s status" % (service, namespace)
     return _run(command)[1]
 
 
