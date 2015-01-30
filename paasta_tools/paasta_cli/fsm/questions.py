@@ -115,7 +115,7 @@ def get_marathon_stanza():
     allows new services to hit the ground running, but forces developers to
     think about their resource needs and tune as they move toward production.
     So:
-    - .1 cpu
+    - .1 cpus
         - This is a good starting place. Most services use a very small
           percentage of a core.
     - 500MB of memory.
@@ -132,12 +132,12 @@ def get_marathon_stanza():
     """
     stanza = {}
     stanza["main"] = {
-        "cpu": .1,
+        "cpus": .1,
         "mem": 500,
         "instances": 3,
     }
     stanza["canary"] = {
-        "cpu": .1,
+        "cpus": .1,
         "mem": 500,
         "nerve_ns": "main",
         "instances": 1,
