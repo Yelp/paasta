@@ -2,6 +2,8 @@ from contextlib import nested
 
 import mock
 import pytest
+import requests
+import sys
 
 from paasta_tools.monitoring.check_classic_service_replication\
     import (
@@ -164,3 +166,33 @@ def test_classic_replication_check():
             check.run()
             assert mcheck.assert_called_with('pow', {'wat': 1}, -1)
         assert error.value.code == 0
+
+def test_classic_replication_check_connectionerror():
+    with nested(
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services'),
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__'),
+    ) as (
+        mock_get_replication_for_services,
+        mock_init,
+    ):
+        mock_get_replication_for_services.side_effect=requests.exceptions.ConnectionError
+        mock_init.return_value = None
+        check = ClassicServiceReplicationCheck()
+        check.critical = mock.Mock()
+        check.get_service_replication(['this', 'that'])
+        check.critical.assert_called_once_with('Failed to connect synapse haproxy on localhost:3212')
+
+def test_classic_replication_check_unknownexception():
+    with nested(
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.get_replication_for_services'),
+        mock.patch('paasta_tools.monitoring.check_classic_service_replication.ClassicServiceReplicationCheck.__init__'),
+    ) as (
+        mock_get_replication_for_services,
+        mock_init,
+    ):
+        mock_get_replication_for_services.side_effect=Exception
+        mock_init.return_value = None
+        check = ClassicServiceReplicationCheck()
+        check.critical = mock.Mock()
+        check.get_service_replication(['this', 'that'])
+        check.critical.assert_called_once_with(mock.ANY)
