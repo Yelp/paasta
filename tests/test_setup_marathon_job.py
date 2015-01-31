@@ -251,8 +251,7 @@ class TestSetupMarathonJob:
             create_config_patch.assert_called_once_with(fake_name, fake_instance, self.fake_marathon_config)
             fake_client.get_app.assert_called_once_with(full_id)
             get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
-            deploy_service_patch.assert_called_once_with(full_id, fake_complete, fake_client,
-                                                         self.fake_marathon_job_config['nerve_ns'],
+            deploy_service_patch.assert_called_once_with(fake_name, fake_instance, full_id, fake_complete, fake_client,
                                                          fake_bounce)
 
     def test_setup_service_srv_complete_config_raises(self):
@@ -270,13 +269,12 @@ class TestSetupMarathonJob:
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
-        fake_namespace = 'not_really'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         expected = (1, 'bounce_method not recognized: %s' % fake_bounce)
-        actual = setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
-                                                   fake_client, fake_namespace, fake_bounce)
+        actual = setup_marathon_job.deploy_service(fake_name, fake_instance, fake_id, self.fake_marathon_job_config,
+                                                   fake_client, fake_bounce)
         assert expected == actual
         fake_client.list_apps.assert_called_once_with()
         assert fake_client.create_app.call_count == 0
@@ -285,53 +283,35 @@ class TestSetupMarathonJob:
         fake_bounce = 'brutal'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
-        fake_namespace = 'over_9000'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         with mock.patch('paasta_tools.bounce_lib.brutal_bounce',
                         return_value=True) as brutal_bounce_patch:
-            assert setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
-                                                     fake_client, fake_namespace, fake_bounce)
+            assert setup_marathon_job.deploy_service(fake_name, fake_instance, fake_id, self.fake_marathon_job_config,
+                                                     fake_client, fake_bounce)
             fake_client.list_apps.assert_called_once_with()
             assert fake_client.create_app.call_count == 0
-            brutal_bounce_patch.assert_called_once_with([fake_id, '%s2' % fake_id],
+            brutal_bounce_patch.assert_called_once_with(fake_name, fake_instance, [fake_id, '%s2' % fake_id],
                                                         self.fake_marathon_job_config,
-                                                        fake_client, fake_namespace)
+                                                        fake_client)
 
     def test_deploy_service_known_bounce_crossover(self):
         fake_bounce = 'crossover'
         fake_name = 'friday_night_tox'
         fake_instance = 'a_new_bloodsport'
-        fake_namespace = 'featuring_snakes'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         with mock.patch('paasta_tools.bounce_lib.crossover_bounce',
                         return_value=True) as crossover_bounce_patch:
-            assert setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
-                                                     fake_client, fake_namespace, fake_bounce)
+            assert setup_marathon_job.deploy_service(fake_name, fake_instance, fake_id, self.fake_marathon_job_config,
+                                                     fake_client, fake_bounce)
             fake_client.list_apps.assert_called_once_with()
             assert fake_client.create_app.call_count == 0
-            crossover_bounce_patch.assert_called_once_with([fake_id, '%s2' % fake_id],
+            crossover_bounce_patch.assert_called_once_with(fake_name, fake_instance, [fake_id, '%s2' % fake_id],
                                                            self.fake_marathon_job_config,
-                                                           fake_client, fake_namespace)
-
-    def test_deploy_service_no_old_ids(self):
-        fake_bounce = 'trogdor'
-        fake_name = '20x6'
-        fake_instance = 'hsr_forever'
-        fake_namespace = 'its_comin_back'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
-        fake_apps = [mock.Mock(id='fake_id'), mock.Mock(id='ahahahahaahahahaha')]
-        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
-        expected = (0, 'Service deployed.')
-        with mock.patch('paasta_tools.bounce_lib.create_marathon_app') as create_app_patch:
-            actual = setup_marathon_job.deploy_service(fake_id, self.fake_marathon_job_config,
-                                                       fake_client, fake_namespace, fake_bounce)
-            assert expected == actual
-            fake_client.list_apps.assert_called_once_with()
-            create_app_patch.assert_called_once_with(fake_id, self.fake_marathon_job_config, fake_client)
+                                                           fake_client)
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}
