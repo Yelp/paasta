@@ -4,9 +4,11 @@ import contextlib
 import datetime
 
 import marathon
+import mesos
 import mock
 
 from paasta_tools import paasta_serviceinit
+from paasta_tools.paasta_cli.utils import PaastaColors
 
 
 class TestPaastaServiceinit:
@@ -227,8 +229,18 @@ class TestPaastaServiceStatus:
         assert "Critical" in status
 
     def test_status_mesos_tasks_verbose(self):
-        actual = paasta_serviceinit.status_mesos_tasks_verbose('fake_service', 'fake_instance')
-        assert None is actual
+        with contextlib.nested(
+            mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service'),
+            mock.patch('paasta_tools.paasta_serviceinit.get_non_running_mesos_tasks_for_service'),
+        ) as (
+            get_running_mesos_tasks_for_service_patch,
+            get_non_running_mesos_tasks_for_service_patch,
+        ):
+            get_running_mesos_tasks_for_service_patch.return_value = []
+            get_non_running_mesos_tasks_for_service_patch.return_value = []
+            actual = paasta_serviceinit.status_mesos_tasks_verbose('fake_service', 'fake_instance')
+            assert 'Running Tasks' in actual
+            assert 'Non-Running Tasks' in actual
 
     def test_status_mesos_tasks_working(self):
         with mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service') as mock_tasks:
@@ -255,7 +267,49 @@ class TestPaastaServiceStatus:
             actual = paasta_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
             assert 'Critical' in actual
 
-    def test_main(self):
-        pass
+    def test_get_cpu_usage_good(self):
+        fake_task = mock.create_autospec(mesos.cli.task.Task)
+        fake_task.cpu_limit = .35
+        fake_duration = 100
+        fake_task.stats = {
+            'cpus_system_time_secs': 2.5,
+            'cpus_user_time_secs': 0.0,
+        }
+        fake_task.__getitem__.return_value = [{
+               'state': 'TASK_RUNNING',
+               'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
+        }]
+        actual = paasta_serviceinit.get_cpu_usage(fake_task)
+        assert '10.0%' == actual
+
+    def test_get_cpu_usage_bad(self):
+        fake_task = mock.create_autospec(mesos.cli.task.Task)
+        fake_task.cpu_limit = 1.1
+        fake_duration = 100
+        fake_task.stats = {
+            'cpus_system_time_secs': 50.0,
+            'cpus_user_time_secs': 50.0,
+        }
+        fake_task.__getitem__.return_value = [{
+            'state': 'TASK_RUNNING',
+            'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
+        }]
+        actual = paasta_serviceinit.get_cpu_usage(fake_task)
+        assert PaastaColors.red('100.0%') in actual
+
+    def test_get_mem_usage_good(self):
+        fake_task = mock.create_autospec(mesos.cli.task.Task)
+        fake_task.rss = 1024 * 1024 * 10
+        fake_task.mem_limit = fake_task.rss * 10
+        actual = paasta_serviceinit.get_mem_usage(fake_task)
+        assert actual == '10/100MB'
+
+    def test_get_mem_usage_bad(self):
+        fake_task = mock.create_autospec(mesos.cli.task.Task)
+        fake_task.rss = 1024 * 1024 * 100
+        fake_task.mem_limit = fake_task.rss
+        actual = paasta_serviceinit.get_mem_usage(fake_task)
+        assert actual == PaastaColors.red('100/100MB')
+
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

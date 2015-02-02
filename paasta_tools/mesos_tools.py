@@ -25,6 +25,11 @@ def get_running_mesos_tasks_for_service(service, instance):
     return [task for task in all_tasks if task['state'] == 'TASK_RUNNING']
 
 
+def get_non_running_mesos_tasks_for_service(service, instance):
+    all_tasks = get_mesos_tasks_for_service(service, instance)
+    return [task for task in all_tasks if task['state'] != 'TASK_RUNNING']
+
+
 def fetch_mesos_stats():
     """Queries the mesos stats api and returns a dictionary of the results"""
     # We make mesos bind on the "primary" of the server

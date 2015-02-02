@@ -17,6 +17,7 @@ from paasta_tools import marathon_tools
 from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.monitoring.replication_utils import get_replication_for_services
 from paasta_tools.mesos_tools import get_running_mesos_tasks_for_service
+from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -102,16 +103,16 @@ def get_verbose_status_of_marathon_app(app):
     create_datetime = datetime.datetime.strptime(app.version, "%Y-%m-%dT%H:%M:%S.%fZ")
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("  App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
-    output.append("  Tasks:  Mesos Task ID                                                                       Host deployed to                        Deployed at what localtime")
+    output.append("  Tasks:  Mesos Task ID                  Host deployed to    Deployed at what localtime")
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
         format_tuple = (
-            task.id,
-            task.host,
-            str(local_deployed_datetime),
+            get_task_uuid(task.id),
+            task.host.split(".")[0],
+            local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
             humanize.naturaltime(local_deployed_datetime),
         )
-        output.append('    {0[0]:<90}{0[1]:<40}{0[2]:<27}({0[3]:})'.format(format_tuple))
+        output.append('    {0[0]:<37}{0[1]:<20}{0[2]:<17}({0[3]:})'.format(format_tuple))
     return "\n".join(output)
 
 
@@ -183,9 +184,113 @@ def status_mesos_tasks(service, instance, normal_instance_count):
     return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
 
 
+def get_cpu_usage(task):
+    """Calculates a metric of used_cpu/allocated_cpu
+    To do this, we take the total number of cpu-seconds the task has consumed,
+    (the sum of system and user time), OVER the total cpu time the task
+    has been allocated.
+
+    The total time a task has been allocated is the total time the task has
+    been running (https://github.com/mesosphere/mesos/blob/0b092b1b010d5a98616aa41a14ddc35a6217f2a1/src/webui/master/static/js/controllers.js#L140)
+    multiplied by the "shares" a task has.
+    """
+    try:
+        start_time = round(task['statuses'][0]['timestamp'])
+        current_time = int(datetime.datetime.now().strftime('%s'))
+        duration_seconds = current_time - start_time
+        # The CPU shares has an additional .1 allocated to it for executor overhead.
+        # We subtract this to the true number
+        # (https://github.com/apache/mesos/blob/dc7c4b6d0bcf778cc0cad57bb108564be734143a/src/slave/constants.hpp#L100)
+        cpu_shares = task.cpu_limit - .1
+        allocated_seconds = duration_seconds * cpu_shares
+        used_seconds = task.stats['cpus_system_time_secs'] + task.stats['cpus_user_time_secs']
+        if allocated_seconds == 0:
+            return "Undef"
+        percent = round(100 * (used_seconds / allocated_seconds), 1)
+        percent_string = "%s%%" % percent
+        if percent > 90:
+            return PaastaColors.red(percent_string)
+        else:
+            return percent_string
+    except AttributeError:
+        return "None"
+
+
+def get_mem_usage(task):
+    try:
+        if task.mem_limit == 0:
+            return "Undef"
+        mem_percent = task.rss / task.mem_limit * 100
+        mem_string = "%d/%dMB" % ((task.rss / 1024 / 1024), (task.mem_limit / 1024 / 1024))
+        if mem_percent > 90:
+            return PaastaColors.red(mem_string)
+        else:
+            return mem_string
+    except AttributeError:
+        return "None"
+
+
+def get_task_uuid(taskid):
+    """Return just the UUID part of a mesos task id"""
+    return taskid.split(".")[-1]
+
+
+def get_short_hostname_from_task(task):
+    try:
+        slave_hostname = task.slave['hostname']
+        return slave_hostname.split(".")[0]
+    except AttributeError:
+        return 'Unknown'
+
+
+def get_first_status_timestamp(task):
+    """Gets the first status timestamp from a task id and returns a human
+    readable string with the local time and a humanized duration:
+        2015-01-30 08:45:19.108820 (an hour ago)
+    """
+    try:
+        start_time_string = task['statuses'][0]['timestamp']
+        start_time = datetime.datetime.fromtimestamp(float(start_time_string))
+        return "%s (%s)" % (start_time.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(start_time))
+    except IndexError:
+        return "Unknown"
+
+
+def pretty_format_running_mesos_task(task):
+    """Returns a pretty formatted string of a running mesos task attributes"""
+    format_tuple = (
+        get_task_uuid(task['id']),
+        get_short_hostname_from_task(task),
+        get_mem_usage(task),
+        get_cpu_usage(task),
+        get_first_status_timestamp(task),
+    )
+    return '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'.format(format_tuple)
+
+
+def pretty_format_non_running_mesos_task(task):
+    """Returns a pretty formatted string of a running mesos task attributes"""
+    format_tuple = (
+        get_task_uuid(task['id']),
+        get_short_hostname_from_task(task),
+        get_first_status_timestamp(task),
+        task['state'],
+    )
+    return PaastaColors.grey('    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'.format(format_tuple))
+
+
 def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
-    return None
+    output = []
+    running_tasks = get_running_mesos_tasks_for_service(service, instance)
+    output.append("  Running Tasks:  Mesos Task ID          Host deployed to    Ram       CPU   Deployed at what localtime")
+    for task in running_tasks:
+        output.append(pretty_format_running_mesos_task(task))
+    non_running_tasks = list(reversed(get_non_running_mesos_tasks_for_service(service, instance)[-10:]))
+    output.append(PaastaColors.grey("  Non-Running Tasks:  Mesos Task ID      Host deployed to    Deployed at what localtime       Status"))
+    for task in non_running_tasks:
+        output.append(pretty_format_non_running_mesos_task(task))
+    return "\n".join(output)
 
 
 def main():
