@@ -5,6 +5,7 @@ import requests
 
 from paasta_tools.monitoring.replication_utils import get_replication_for_services
 
+
 def test_get_replication_for_service():
     testdir = os.path.dirname(os.path.realpath(__file__))
     testdata = os.path.join(testdir, 'haproxy_snapshot.txt')

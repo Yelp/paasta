@@ -135,9 +135,10 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
                                  action='store_true',
                                  help='Turn on debug output')
 
-    def get_service_replication(self,all_services):
+    def get_service_replication(self, all_services):
         # Get the replication data once for performance
-        self.log.debug("Gathering replication information from {0}".
+        self.log.debug(
+            "Gathering replication information from {0}".
             format(SYNAPSE_HOST_PORT))
         service_replication = {}
         try:
@@ -145,16 +146,21 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
                 SYNAPSE_HOST_PORT, ['%s.main' % name for name in all_services]
             )
         except requests.exceptions.ConnectionError:
-            self.log.error('Failed to connect synapse haproxy on {0}'.
+            self.log.error(
+                'Failed to connect synapse haproxy on {0}'.
                 format(SYNAPSE_HOST_PORT))
-            self.critical('Failed to connect synapse haproxy on {0}'.
+            self.critical(
+                'Failed to connect synapse haproxy on {0}'.
                 format(SYNAPSE_HOST_PORT))
         except Exception as e:
-            self.log.error('Unable to collect replication information on {0}: {1}'.
+            self.log.error(
+                'Unable to collect replication information on {0}: {1}'.
                 format(SYNAPSE_HOST_PORT, e.message))
-            self.critical('Unable to collect replication information: {0}'.
+            self.critical(
+                'Unable to collect replication information: {0}'.
                 format(e.message))
-        self.log.debug("Finished gathering replication information from {0}".
+        self.log.debug(
+            "Finished gathering replication information from {0}".
             format(SYNAPSE_HOST_PORT))
         return service_replication
 

@@ -26,9 +26,11 @@ def get_replication_for_services(synapse_host_port, service_names):
 
     # timeout after 1 second and retry 3 times
     haproxy_request = requests.Session()
-    haproxy_request.mount('http://',
+    haproxy_request.mount(
+        'http://',
         requests.adapters.HTTPAdapter(max_retries=3))
-    haproxy_request.mount('https://',
+    haproxy_request.mount(
+        'https://',
         requests.adapters.HTTPAdapter(max_retries=3))
     haproxy_response = haproxy_request.get(synapse_uri, timeout=1)
     haproxy_data = haproxy_response.text
