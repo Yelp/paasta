@@ -174,19 +174,19 @@ def kill_old_ids(old_ids, client):
             continue
 
 
-def brutal_bounce(old_ids, new_config, client, namespace):
+def brutal_bounce(service_name, instance_name, old_ids, new_config, client):
     """Brutally bounce the service by killing all old instances first.
 
     Kills all old_ids then spawns the new job/app.
 
+    :param service_name: service name
+    :param instance_name: instance name
     :param old_ids: Old job ids to kill off
     :param new_config: The complete marathon job configuration for the new job
     :param client: A marathon.MarathonClient object
-    :param namespace: The smartstack namespace of the service"""
-    target_service = marathon_tools.remove_tag_from_job_id(new_config['id']).replace('--', '_')
-    service_namespace = '%s%s%s' % (target_service.split(marathon_tools.ID_SPACER)[0],
-                                    marathon_tools.ID_SPACER, namespace)
-    with bounce_lock_zookeeper(service_namespace):
+    """
+    service_instance = '%s%s%s' % (service_name, marathon_tools.ID_SPACER, instance_name)
+    with bounce_lock_zookeeper(service_instance):
         kill_old_ids(old_ids, client)
         log.info("Creating %s", new_config['id'])
         create_marathon_app(new_config['id'], new_config, client)
@@ -226,7 +226,7 @@ def scale_apps(scalable_apps, remove_count, client):
     return total_remove_count
 
 
-def crossover_bounce(old_ids, new_config, client, namespace):
+def crossover_bounce(service_name, instance_name, old_ids, new_config, client):
     """Bounce the service via crossover: spin up the new instances
     first, and then kill old ones as they get registered in nerve.
 
@@ -234,9 +234,13 @@ def crossover_bounce(old_ids, new_config, client, namespace):
     :param new_config: The complete marathon job configuration for the new job
     :param client: A marathon.MarathonClient object
     :param namespace: The smartstack namespace of the service"""
-    target_service = marathon_tools.remove_tag_from_job_id(new_config['id']).replace('--', '_')
-    service_namespace = '%s%s%s' % (target_service.split(marathon_tools.ID_SPACER)[0],
-                                    marathon_tools.ID_SPACER, namespace)
+
+    # Because crossover bounce requires extra information, specifically the
+    # nerve_ns so it can communicate with haproxy, we must fetch more data
+    service_marathon_config = marathon_tools.read_service_config(service_name, instance_name)
+    namespace = service_marathon_config.get('nerve_ns', instance_name)
+
+    service_namespace = '%s%s%s' % (service_name, marathon_tools.ID_SPACER, namespace)
     scalable_apps = [(old_id, client.get_app(old_id).instances) for old_id in old_ids]
     # First, how many instances are currently UP in HAProxy?
     initial_instances = get_replication_for_services(DEFAULT_SYNAPSE_HOST,

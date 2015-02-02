@@ -166,7 +166,6 @@ class TestBounceLib:
         old_ids = ["bbounce", "the_best_bounce_method"]
         new_config = {"now_featuring": "no_gracefuls", "guaranteed": "or_your_money_back",
                       'id': 'sockem.fun'}
-        fake_namespace = 'boppers'
         fake_client = mock.MagicMock()
         with contextlib.nested(
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
@@ -177,8 +176,8 @@ class TestBounceLib:
             create_app_patch,
             kill_patch
         ):
-            bounce_lib.brutal_bounce(old_ids, new_config, fake_client, fake_namespace)
-            lock_patch.assert_called_once_with('sockem.boppers')
+            bounce_lib.brutal_bounce('fake_service', 'fake_instance', old_ids, new_config, fake_client)
+            lock_patch.assert_called_once_with('fake_service.fake_instance')
             create_app_patch.assert_called_once_with(new_config['id'], new_config, fake_client)
             kill_patch.assert_called_once_with(old_ids, fake_client)
 
@@ -205,12 +204,16 @@ class TestBounceLib:
             'instances': 10
         }
         fake_namespace = 'wake'
+        fake_service_config = {
+            'nerve_ns': fake_namespace,
+        }
         fake_old_ids = ['fake.make', 'lake.quake']
         fake_old_instance_counts = [mock.Mock(instances=4), mock.Mock(instances=15)]
         fake_client = mock.MagicMock(
                         get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()))
         haproxy_instance_count = [{'shake.wake': 18}, {'shake.wake': 9}]
         with contextlib.nested(
+            mock.patch('marathon_tools.read_service_config', return_value=fake_service_config),
             mock.patch('bounce_lib.get_replication_for_services',
                        side_effect=lambda a, b: haproxy_instance_count.pop()),
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
@@ -220,6 +223,7 @@ class TestBounceLib:
             mock.patch('bounce_lib.kill_old_ids'),
             mock.patch('time.sleep'),
         ) as (
+            read_service_config_patch,
             replication_patch,
             lock_patch,
             create_app_patch,
@@ -228,7 +232,7 @@ class TestBounceLib:
             kill_patch,
             sleep_patch
         ):
-            bounce_lib.crossover_bounce(fake_old_ids, fake_new_config, fake_client, fake_namespace)
+            bounce_lib.crossover_bounce('shake', 'bake', fake_old_ids, fake_new_config, fake_client)
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['shake.wake'])
             assert replication_patch.call_count == 2
             lock_patch.assert_called_once_with('shake.wake')
@@ -248,12 +252,16 @@ class TestBounceLib:
             'instances': 100
         }
         fake_namespace = 'world'
+        fake_service_config = {
+            'nerve_ns': fake_namespace,
+        }
         fake_old_ids = ['pen.hen', 'tool.rule']
         fake_old_instance_counts = [mock.Mock(instances=7), mock.Mock(instances=19)]
         fake_client = mock.MagicMock(
                         get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()))
         haproxy_instance_count = [{'hello.world': 16}, {'hello.world': 10}, {'hello.world': 5}]
         with contextlib.nested(
+            mock.patch('marathon_tools.read_service_config', return_value=fake_service_config),
             mock.patch('bounce_lib.get_replication_for_services',
                        side_effect=lambda a, b: haproxy_instance_count.pop()),
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
@@ -264,6 +272,7 @@ class TestBounceLib:
             mock.patch('bounce_lib.kill_old_ids'),
             mock.patch('time.sleep'),
         ) as (
+            read_service_config_patch,
             replication_patch,
             lock_patch,
             create_app_patch,
@@ -272,7 +281,7 @@ class TestBounceLib:
             kill_patch,
             sleep_patch
         ):
-            bounce_lib.crossover_bounce(fake_old_ids, fake_new_config, fake_client, fake_namespace)
+            bounce_lib.crossover_bounce('hello', 'everyone', fake_old_ids, fake_new_config, fake_client)
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['hello.world'])
             assert replication_patch.call_count == 3
             lock_patch.assert_called_once_with('hello.world')
@@ -293,6 +302,9 @@ class TestBounceLib:
             'instances': 6
         }
         fake_namespace = 'electricslide'
+        fake_service_config = {
+            'nerve_ns': fake_namespace,
+        }
         fake_old_ids = ['70s.disco', '80s.funk']
         fake_old_instance_counts = [mock.Mock(instances=77), mock.Mock(instances=55)]
         fake_client = mock.MagicMock(
@@ -303,6 +315,7 @@ class TestBounceLib:
             raise bounce_lib.TimeoutException
 
         with contextlib.nested(
+            mock.patch('marathon_tools.read_service_config', return_value=fake_service_config),
             mock.patch('bounce_lib.get_replication_for_services', return_value=haproxy_instance_count),
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.create_marathon_app'),
@@ -312,6 +325,7 @@ class TestBounceLib:
             mock.patch('bounce_lib.kill_old_ids'),
             mock.patch('time.sleep'),
         ) as (
+            read_service_config_patch,
             replication_patch,
             lock_patch,
             create_app_patch,
@@ -321,7 +335,7 @@ class TestBounceLib:
             sleep_patch
         ):
             with pytest.raises(bounce_lib.TimeoutException):
-                bounce_lib.crossover_bounce(fake_old_ids, fake_new_config, fake_client, fake_namespace)
+                bounce_lib.crossover_bounce('the', 'hustle', fake_old_ids, fake_new_config, fake_client)
             replication_patch.assert_called_once_with(bounce_lib.DEFAULT_SYNAPSE_HOST, ['the.electricslide'])
             lock_patch.assert_called_once_with('the.electricslide')
             assert create_app_patch.call_count == 0

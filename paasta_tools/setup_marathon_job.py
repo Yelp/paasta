@@ -94,7 +94,7 @@ def get_main_marathon_config():
     return marathon_config
 
 
-def deploy_service(name, config, client, namespace, bounce_method):
+def deploy_service(service_name, instance_name, marathon_jobid, config, client, bounce_method):
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
 
@@ -104,28 +104,23 @@ def deploy_service(name, config, client, namespace, bounce_method):
     :param namespace: The service's Smartstack namespace
     :param bounce_method: The bounce method to use, if needed
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
-    log.info("Deploying service instance %s with bounce_method %s", name, bounce_method)
+    log.info("Deploying service instance %s with bounce_method %s", service_name, bounce_method)
     log.debug("Searching for old service instance iterations")
-    filter_name = marathon_tools.remove_tag_from_job_id(name)
+    filter_name = marathon_tools.remove_tag_from_job_id(marathon_jobid)
     app_list = client.list_apps()
     old_app_ids = [app.id for app in app_list if filter_name in app.id]
-    if old_app_ids:  # there's a previous version; bounce
-        log.info("Old service instance iterations found: %s", old_app_ids)
-        try:
-            if bounce_method == "brutal":
-                bounce_lib.brutal_bounce(old_app_ids, config, client, namespace)
-            elif bounce_method == "crossover":
-                bounce_lib.crossover_bounce(old_app_ids, config, client, namespace)
-            else:
-                log.error("bounce_method not recognized: %s. Exiting", bounce_method)
-                return (1, "bounce_method not recognized: %s" % bounce_method)
-        except IOError:
-            log.error("Namespace %s already being bounced. Exiting", filter_name)
-            return (1, "Service is taking a while to bounce")
-    else:  # there wasn't a previous version; just deploy it
-        log.info("No old instances found. Deploying instance %s", name)
-        bounce_lib.create_marathon_app(name, config, client)
-    log.info("%s deployed. Exiting", name)
+    try:
+        if bounce_method == "brutal":
+            bounce_lib.brutal_bounce(service_name, instance_name, old_app_ids, config, client)
+        elif bounce_method == "crossover":
+            bounce_lib.crossover_bounce(service_name, instance_name, old_app_ids, config, client)
+        else:
+            log.error("bounce_method not recognized: %s. Exiting", bounce_method)
+            return (1, "bounce_method not recognized: %s" % bounce_method)
+    except IOError:
+        log.error("Namespace %s already being bounced. Exiting", filter_name)
+        return (1, "Service is taking a while to bounce")
+    log.info("%s deployed. Exiting", marathon_jobid)
     return (0, 'Service deployed.')
 
 
@@ -151,7 +146,6 @@ def setup_service(service_name, instance_name, client, marathon_config,
         log.error(error_msg)
         return (1, error_msg)
 
-    namespace = service_marathon_config.get('nerve_ns', instance_name)
     full_id = complete_config['id']
 
     log.info("Desired Marathon instance id: %s", full_id)
@@ -161,7 +155,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
         log.warning("App id %s already exists. Skipping configuration and exiting.", full_id)
         return (0, 'Service was already deployed.')
     except NotFoundError:
-        return deploy_service(full_id, complete_config, client, namespace,
+        return deploy_service(service_name, instance_name, full_id, complete_config, client,
                               marathon_tools.get_bounce_method(service_marathon_config))
     except InternalServerError as e:
         log.error('Marathon had an internal server error: %s' % str(e))
