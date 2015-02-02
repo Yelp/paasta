@@ -299,14 +299,14 @@ class TestPaastaServiceStatus:
 
     def test_get_mem_usage_good(self):
         fake_task = mock.create_autospec(mesos.cli.task.Task)
-        fake_task.rss = 10485760
+        fake_task.rss = 1024 * 1024 * 10
         fake_task.mem_limit = fake_task.rss * 10
         actual = paasta_serviceinit.get_mem_usage(fake_task)
         assert actual == '10/100MB'
 
     def test_get_mem_usage_bad(self):
         fake_task = mock.create_autospec(mesos.cli.task.Task)
-        fake_task.rss = 104857600
+        fake_task.rss = 1024 * 1024 * 100
         fake_task.mem_limit = fake_task.rss
         actual = paasta_serviceinit.get_mem_usage(fake_task)
         assert actual == PaastaColors.red('100/100MB')

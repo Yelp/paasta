@@ -9,7 +9,6 @@ import argparse
 import datetime
 import logging
 import time
-import re
 import sys
 
 import humanize
@@ -199,7 +198,7 @@ def get_cpu_usage(task):
         start_time = round(task['statuses'][0]['timestamp'])
         current_time = int(datetime.datetime.now().strftime('%s'))
         duration_seconds = current_time - start_time
-        # The shares has an additional .1 allocated to it for executor overhead.
+        # The CPU shares has an additional .1 allocated to it for executor overhead.
         # We subtract this to the true number
         # (https://github.com/apache/mesos/blob/dc7c4b6d0bcf778cc0cad57bb108564be734143a/src/slave/constants.hpp#L100)
         cpu_shares = task.cpu_limit - .1
@@ -233,7 +232,7 @@ def get_mem_usage(task):
 
 def get_task_uuid(taskid):
     """Return just the UUID part of a mesos task id"""
-    return re.sub('.*\.', '', taskid)
+    return taskid.split(".")[-1]
 
 
 def get_short_hostname_from_task(task):
@@ -241,7 +240,7 @@ def get_short_hostname_from_task(task):
         slave_hostname = task.slave['hostname']
         return slave_hostname.split(".")[0]
     except AttributeError:
-        return 'unknown'
+        return 'Unknown'
 
 
 def get_first_status_timestamp(task):
@@ -266,7 +265,7 @@ def pretty_format_running_mesos_task(task):
         get_cpu_usage(task),
         get_first_status_timestamp(task),
     )
-    return '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<5}{0[4]:}'.format(format_tuple)
+    return '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'.format(format_tuple)
 
 
 def pretty_format_non_running_mesos_task(task):
@@ -284,7 +283,7 @@ def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
     output = []
     running_tasks = get_running_mesos_tasks_for_service(service, instance)
-    output.append("  Running Tasks:  Mesos Task ID          Host deployed to    Ram       CPU  Deployed at what localtime")
+    output.append("  Running Tasks:  Mesos Task ID          Host deployed to    Ram       CPU   Deployed at what localtime")
     for task in running_tasks:
         output.append(pretty_format_running_mesos_task(task))
     non_running_tasks = list(reversed(get_non_running_mesos_tasks_for_service(service, instance)[-10:]))
