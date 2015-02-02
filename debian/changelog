@@ -1,3 +1,10 @@
+paasta-tools (0.8.23-yelp1) lucid; urgency=low
+
+  * 0.8.23 tagged with 'make release'
+    Commit: Merge branch bouncelib_cleanup
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 02 Feb 2015 14:46:38 -0800
+
 paasta-tools (0.8.22-yelp1) lucid; urgency=low
 
   * 0.8.22 tagged with 'make release'
