@@ -1,3 +1,5 @@
+from datetime import datetime as dt
+
 import clog
 import staticconf
 
@@ -26,8 +28,34 @@ def configure_log():
     staticconf.YamlConfiguration(clog_config_path, namespace='clog')
 
 
-def _log(service_name, line):
+def _now():
+    return str(dt.now())
+
+
+def format_log_line(cluster, instance, line):
+    """Accepts a string 'line'.
+
+    Returns an appropriately-formatted dictionary which can be serialized to
+    JSON for logging and which contains 'line'.
+    """
+    now = _now()
+    return {
+        'timestamp': now,
+        'cluster': cluster,
+        'instance': instance,
+        'message': line,
+    }
+
+
+def get_log_name_for_service(service_name):
+    return 'stream_paasta_%s' % service_name
+
+
+def _log(service_name, cluster, instance, line):
     """This expects someone (currently the paasta cli main()) to have already
     configured the log object. We'll just write things to it.
     """
-    clog.log_line("tmp_paasta_%s" % service_name, line)
+    line = format_log_line(cluster, instance, line)
+    line = str(line)
+    log_name = get_log_name_for_service(service_name)
+    clog.log_line(log_name, line)
