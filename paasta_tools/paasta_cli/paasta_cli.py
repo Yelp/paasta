@@ -44,8 +44,9 @@ def parse_args():
 
 
 def main():
-    """Perform a paasta call.  Read args from sys.argv and pass parsed args onto
-    appropriate command in paata_cli/cmds directory"""
+    """Perform a paasta call. Read args from sys.argv and pass parsed args onto
+    appropriate command in paata_cli/cmds directory.
+    """
     configure_log()
     args = parse_args()
     args.command(args)
