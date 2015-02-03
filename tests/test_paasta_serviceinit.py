@@ -168,12 +168,39 @@ class TestPaastaServiceStatus:
             is_app_id_running_patch.assert_called_once_with(app_id, client)
             assert 'Deploying' in output
 
-    def test_status_smartstack_backends_verbose(self):
+    def test_status_smartstack_backends_verbose_different_nerve_ns(self):
         service = 'my_service'
         instance = 'my_instance'
         cluster = 'fake_cluster'
-        actual = paasta_serviceinit.status_smartstack_backends_verbose(service, instance, cluster)
-        assert None is actual
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
+        ) as (
+            mock_read_namespace_for_service_instance,
+        ):
+            mock_read_namespace_for_service_instance.return_value = 'different_ns'
+            actual = paasta_serviceinit.status_smartstack_backends_verbose(service, instance, cluster)
+            assert actual == ""
+
+    def test_status_smartstack_backends_verbose_same_nerve_ns(self):
+        service = 'my_service'
+        instance = 'my_instance'
+        cluster = 'fake_cluster'
+        fake_backends = [
+            {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+             'check_code': '200', 'svname': 'ipaddress1:port1_hostname1',
+             'check_status': 'L7OK', 'check_duration': 1},
+        ]
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
+            mock.patch('paasta_tools.paasta_serviceinit.get_backends'),
+        ) as (
+            mock_read_namespace_for_service_instance,
+            mock_get_backends,
+        ):
+            mock_read_namespace_for_service_instance.return_value = instance
+            mock_get_backends.return_value = fake_backends
+            actual = paasta_serviceinit.status_smartstack_backends_verbose(service, instance, cluster)
+            assert "hostname1:port1" in actual
 
     def test_status_smartstack_backends_different_nerve_ns(self):
         service = 'my_service'
