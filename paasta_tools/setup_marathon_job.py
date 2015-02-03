@@ -110,7 +110,9 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client, 
     app_list = client.list_apps()
     old_app_ids = [app.id for app in app_list if filter_name in app.id]
     try:
-        if bounce_method == "brutal":
+        if bounce_method == "upthendown":
+            bounce_lib.upthendown_bounce(service_name, instance_name, old_app_ids, config, client)
+        elif bounce_method == "brutal":
             bounce_lib.brutal_bounce(service_name, instance_name, old_app_ids, config, client)
         elif bounce_method == "crossover":
             bounce_lib.crossover_bounce(service_name, instance_name, old_app_ids, config, client)
