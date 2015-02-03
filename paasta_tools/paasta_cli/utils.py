@@ -160,6 +160,10 @@ class PaastaColors:
     def grey(text):
         return PaastaColors.color_text(PaastaColors.GREY, text)
 
+    @staticmethod
+    def default(text):
+        return PaastaColors.color_text(PaastaColors.DEFAULT, text)
+
 
 class PaastaCheckMessages:
     """Collection of message printed out by 'paasta check'.

@@ -18,6 +18,7 @@ from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.monitoring.replication_utils import get_replication_for_services
 from paasta_tools.mesos_tools import get_running_mesos_tasks_for_service
 from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
+from paasta_tools.smartstack_tools import get_backends
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -163,9 +164,52 @@ def status_smartstack_backends(service, instance, normal_instance_count, cluster
             return "Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance
 
 
+def pretty_print_haproxy_backend(backend):
+    """Pretty Prints the status of a given haproxy backend
+    Takes the fields described in the CSV format of haproxy:
+    http://www.haproxy.org/download/1.5/doc/configuration.txt
+    And tries to make a good guess about how to represent them in text
+    """
+    backend_name = backend['svname']
+    backend_hostname = backend_name.split("_")[-1]
+    backend_port = backend_name.split("_")[0].split(":")[-1]
+    pretty_backend_name = "%s:%s" % (backend_hostname, backend_port)
+    if backend['status'] == "UP":
+        status = PaastaColors.default(backend['status'])
+    elif backend['status'] == 'DOWN' or backend['status'] == 'MAINT':
+        status = PaastaColors.red(backend['status'])
+    else:
+        status = PaastaColors.yellow(backend['status'])
+    lastcheck = "%s/%s in %sms" % (backend['check_status'], backend['check_code'], backend['check_duration'])
+    lastchange = humanize.naturaltime(datetime.timedelta(seconds=int(backend['lastchg'])))
+
+    format_tuple = (
+        pretty_backend_name,
+        lastcheck,
+        lastchange,
+        status,
+    )
+    return '    {0[0]:<32}{0[1]:<20}{0[2]:<16}{0[3]:}'.format(format_tuple)
+
+
 def status_smartstack_backends_verbose(service, instance, cluster):
-    """Returns detailed information about smartstack backends for a service instance"""
-    return None
+    """Returns detailed information about smartstack backends for a
+    service and instance"""
+    nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
+    output = []
+    # Only bother doing things if we are on the same namespace
+    if instance == nerve_ns:
+        service_instance = "%s.%s" % (service, instance)
+        output.append("  Haproxy Service Name: %s" % service_instance)
+        output.append("  Backends: Name                    LastCheck           LastChange      Status")
+        sorted_backends = sorted(get_backends(service_instance),
+                                 key=lambda backend: backend['status'],
+                                 reverse=True)
+        for backend in sorted_backends:
+            output.append(pretty_print_haproxy_backend(backend))
+        return "\n".join(output)
+    else:
+        return ""
 
 
 def status_mesos_tasks(service, instance, normal_instance_count):

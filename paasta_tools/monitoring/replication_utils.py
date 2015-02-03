@@ -1,9 +1,4 @@
-import csv
-
-import requests
-
-
-SYNAPSE_HAPROXY_PATH = "http://{0}/;csv;norefresh"
+from paasta_tools.smartstack_tools import retrieve_haproxy_csv
 
 
 def get_replication_for_services(synapse_host_port, service_names):
@@ -22,19 +17,7 @@ def get_replication_for_services(synapse_host_port, service_names):
                                   replicas
     :returns None: If it cannot connect to the specified synapse_host_port
     """
-    synapse_uri = SYNAPSE_HAPROXY_PATH.format(synapse_host_port)
-
-    # timeout after 1 second and retry 3 times
-    haproxy_request = requests.Session()
-    haproxy_request.mount(
-        'http://',
-        requests.adapters.HTTPAdapter(max_retries=3))
-    haproxy_request.mount(
-        'https://',
-        requests.adapters.HTTPAdapter(max_retries=3))
-    haproxy_response = haproxy_request.get(synapse_uri, timeout=1)
-    haproxy_data = haproxy_response.text
-    reader = csv.DictReader(haproxy_data.splitlines())
+    reader = retrieve_haproxy_csv(synapse_host_port)
 
     available_instances = dict([(service_name, 0) for
                                 service_name in service_names])
