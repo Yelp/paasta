@@ -1,4 +1,8 @@
+import shlex
 from datetime import datetime as dt
+from subprocess import Popen
+from subprocess import PIPE
+from subprocess import STDOUT
 
 import clog
 import staticconf
@@ -59,3 +63,24 @@ def _log(service_name, cluster, instance, line):
     line = str(line)
     log_name = get_log_name_for_service(service_name)
     clog.log_line(log_name, line)
+
+
+def _run(command):
+    """Given a command, run it. Return a tuple of the return code and any
+    output.
+
+    We wanted to use plumbum instead of rolling our own thing with
+    subprocess.Popen but were blocked by
+    https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
+    magic.
+    """
+    try:
+        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+        # execute it, the output goes to the stdout
+        output, _ = process.communicate()
+        # when finished, get the exit code
+        returncode = process.returncode
+    except OSError as e:
+        output = e.strerror
+        returncode = e.errno
+    return (returncode, output)

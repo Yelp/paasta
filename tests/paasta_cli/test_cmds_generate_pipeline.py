@@ -1,5 +1,4 @@
 from StringIO import StringIO
-from subprocess import CalledProcessError
 
 from mock import MagicMock
 from mock import patch
@@ -34,69 +33,35 @@ def test_generate_pipeline_service_not_found(
 
 
 @patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
-def test_generate_pipeline_subprocess1_fail_no_opt_args(
-        mock_subprocess, mock_guess_service_name, mock_validate_service_name):
-    # paasta generate fails on the first subprocess call
-    # service name has to be guessed
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline._run')
+@patch('sys.exit')
+def test_generate_pipeline_run_fails(
+        mock_exit,
+        mock_run,
+        mock_validate_service_name):
+    # paasta generate fails on the _run call
 
-    mock_guess_service_name.return_value = 'fake_service'
     mock_validate_service_name.return_value = None
-    mock_subprocess.check_call.side_effect = [
-        CalledProcessError(1, 'jenkins cmd 1'), 0]
+    mock_run.return_value = (1, 'Big bad wolf')
     args = MagicMock()
-    args.service = None
-    with raises(CalledProcessError):
-        paasta_generate_pipeline(args)
+    args.service = 'Fake servicename'
+    paasta_generate_pipeline(args)
+    mock_exit.assert_called_with(1)
 
 
 @patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
 @patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
-def test_generate_pipeline_subprocess2_fail_with_opt_args(
-        mock_subprocess, mock_guess_service_name, mock_validate_service_name):
-    # paasta generate fails on the second subprocess call
-    # service name provided as arg
-
-    mock_guess_service_name.return_value = 'fake_service'
-    mock_validate_service_name.return_value = None
-    mock_subprocess.check_call.side_effect = [
-        0, CalledProcessError(1, 'jenkins cmd 2')]
-
-    args = MagicMock()
-    args.service = 'fake_service'
-    with raises(CalledProcessError):
-        paasta_generate_pipeline(args)
-
-
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
-def test_generate_pipeline_success_no_opts(
-        mock_subprocess, mock_guess_service_name, mock_validate_service_name):
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline._run')
+def test_generate_pipeline_success(
+        mock_run,
+        mock_guess_service_name,
+        mock_validate_service_name):
     # paasta generate succeeds when service name must be guessed
 
     mock_guess_service_name.return_value = 'fake_service'
     mock_validate_service_name.return_value = None
-    mock_subprocess.check_call.side_effect = [
-        0, 0]
+    mock_run.return_value = (0, 'Everything OK')
 
     args = MagicMock()
     args.service = None
-    assert paasta_generate_pipeline(args) is None
-
-
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
-@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.subprocess')
-def test_generate_pipeline_success_with_opts(
-        mock_subprocess, mock_validate_service_name):
-    # paasta generate succeeds when service name provided as arg
-
-    mock_validate_service_name.return_value = None
-    mock_subprocess.check_call.side_effect = [
-        0, 0]
-
-    args = MagicMock()
-    args.service = 'fake_service'
     assert paasta_generate_pipeline(args) is None

@@ -15,12 +15,12 @@ Sends a sensu event for each service that it checks.
 
 import argparse
 import logging
-import subprocess
 import sys
 
 import service_configuration_lib
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.utils import _run
 import pysensu_yelp
 
 
@@ -80,9 +80,7 @@ def check_service(port, mode):
     :param port: The proxy_port defined in a service's smartstack namespace
     :returns: A tuple of (status, output) to be used with send_event"""
     command = build_check_command(port, mode)
-    child = subprocess.Popen(command.split(), stdout=subprocess.PIPE, stderr=subprocess.STDOUT)
-    output, _ = child.communicate()
-    status = child.returncode
+    status, output = _run(command)
     return (status, output)
 
 

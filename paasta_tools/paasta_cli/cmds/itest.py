@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """Contains methods used by the paasta client to build and test a docker image."""
 
-import subprocess
 import sys
 
 from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import _run
 
 
 def add_subparser(subparsers):
@@ -52,8 +52,7 @@ def paasta_itest(args):
 
     cmd = build_command(service_name, args.commit)
     print 'INFO: Executing command "%s"' % cmd
-    try:
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-    except subprocess.CalledProcessError as exc:
-        print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (exc.output, exc.returncode)
-        sys.exit(exc.returncode)
+    returncode, output = _run(cmd)
+    if returncode != 0:
+        print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (output, returncode)
+        sys.exit(returncode)

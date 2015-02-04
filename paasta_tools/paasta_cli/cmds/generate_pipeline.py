@@ -1,11 +1,11 @@
 #!/usr/bin/env python
 """Contains methods used by the paasta client to generate a Jenkins build
 pipeline."""
-import subprocess
 import sys
 
 from paasta_tools.paasta_cli.utils import \
     guess_service_name, NoSuchService, validate_service_name
+from paasta_tools.utils import _run
 
 
 def add_subparser(subparsers):
@@ -35,19 +35,17 @@ def paasta_generate_pipeline(args):
         sys.exit(1)
 
     # Build pipeline
-    try:
-        args1 = 'setup_jenkins:services/%s,' \
-                'profile=paasta,job_disabled=False' % service_name
+    cmds = [
+        'fab_repo setup_jenkins:services/%s,'
+        'profile=paasta,job_disabled=False' % service_name,
+        'fab_repo setup_jenkins:services/%s,'
+        'profile=paasta_boilerplate' % service_name,
+    ]
 
-        print "INFO: Executing fab_repo %s" % args1
-        subprocess.check_call(['fab_repo', args1])
-
-        args2 = 'setup_jenkins:services/%s,' \
-                'profile=paasta_boilerplate' % service_name
-
-        print "INFO: Executing fab_repo %s" % args2
-        subprocess.check_call(['fab_repo', args2])
-
-    except subprocess.CalledProcessError as subprocess_error:
-        print "%s\nFailed to generate Jenkins pipeline" % subprocess_error
-        sys.exit(1)
+    for cmd in cmds:
+        print "INFO: Executing %s" % cmd
+        returncode, output = _run(cmd)
+        if returncode != 0:
+            print "ERROR: Failed to run %s" % cmd
+            print output
+            sys.exit(returncode)

@@ -31,3 +31,17 @@ def test_get_log_name_for_service():
     service_name = 'foo'
     expected = 'stream_paasta_%s' % service_name
     assert utils.get_log_name_for_service(service_name) == expected
+
+
+def test_run():
+    with mock.patch('paasta_tools.utils.Popen') as mock_popen:
+        fake_cmd = 'command --with --options'
+        fake_rc = 0
+        fake_stdout = 'goooood'
+        fake_stderr = 'not gooood'
+        fake_output = (fake_stdout, fake_stderr)
+        mock_popen.return_value = mock.Mock()
+        mock_popen.return_value.returncode = fake_rc
+        mock_popen.return_value.communicate = mock.Mock()
+        mock_popen.return_value.communicate.return_value = fake_output
+        assert utils._run(fake_cmd) == (fake_rc, fake_stdout)
