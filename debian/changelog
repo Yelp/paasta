@@ -1,3 +1,10 @@
+paasta-tools (0.8.26-yelp1) lucid; urgency=low
+
+  * 0.8.26 tagged with 'make release'
+    Commit: get_all_backends
+
+ -- Benjamin Chess <bchess@yelp.com>  Thu, 05 Feb 2015 11:18:11 -0800
+
 paasta-tools (0.8.25-yelp1) lucid; urgency=low
 
   * 0.8.25 tagged with 'make release'
