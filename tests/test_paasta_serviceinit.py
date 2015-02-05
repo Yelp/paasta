@@ -93,7 +93,7 @@ class TestPaastaServiceStatus:
         actual = paasta_serviceinit.get_verbose_status_of_marathon_app(fake_app)
         assert 'fake_task_id' in actual
         assert '/fake--service' in actual
-        assert 'App created: 2015-01-15 05:30:49' in actual
+        assert 'App created: 2015-01-14 21:30:49' in actual
         assert 'fake_deployed_host' in actual
 
     def test_status_marathon_job_when_running(self):

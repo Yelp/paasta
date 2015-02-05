@@ -91,9 +91,9 @@ def test_report_status_for_cluster_displays_deployed_service(
     expected_output = (
         "\n"
         "cluster: cluster\n"
-        "\tinstance: %s\n"
-        "\t\tversion: this_is_a_sha\n"
-        "\t\t%s\n"
+        "  instance: %s\n"
+        "    version: this_is_a_sha\n"
+        "    %s\n"
         % (
             PaastaColors.blue('instance'),
             fake_status,
@@ -120,9 +120,9 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
     fake_status = 'status: SOMETHING FAKE\nand then something fake\non another line!\n\n\n'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
     expected_output = (
-        "\t\tstatus: SOMETHING FAKE\n"
-        "\t\tand then something fake\n"
-        "\t\ton another line!\n"
+        "    status: SOMETHING FAKE\n"
+        "    and then something fake\n"
+        "    on another line!\n"
     )
 
     status.report_status_for_cluster(service_name, 'cluster', planned_deployments, actual_deployments)
@@ -151,12 +151,12 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     expected_output = (
         "\n"
         "cluster: a_cluster\n"
-        "\tinstance: %s\n"
-        "\t\tversion: this_is_a_sha\n"
-        "\t\t%s\n"
-        "\tinstance: %s\n"
-        "\t\tversion: this_is_a_sha\n"
-        "\t\t%s\n"
+        "  instance: %s\n"
+        "    version: this_is_a_sha\n"
+        "    %s\n"
+        "  instance: %s\n"
+        "    version: this_is_a_sha\n"
+        "    %s\n"
         % (
             PaastaColors.blue('a_instance'),
             fake_status,
@@ -190,11 +190,11 @@ def test_print_cluster_status_missing_deploys_in_red(
     expected_output = (
         "\n"
         "cluster: a_cluster\n"
-        "\tinstance: %s\n"
-        "\t\tversion: this_is_a_sha\n"
-        "\t\t%s\n"
-        "\tinstance: %s\n"
-        "\t\tversion: None\n"
+        "  instance: %s\n"
+        "    version: this_is_a_sha\n"
+        "    %s\n"
+        "  instance: %s\n"
+        "    version: None\n"
         % (
             PaastaColors.blue('a_instance'),
             fake_status,
@@ -223,7 +223,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     }
     fake_execute_paasta_serviceinit_on_remote_master_output = "Marathon: 5 instances"
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_execute_paasta_serviceinit_on_remote_master_output
-    expected_output = "\t\t%s\n" % fake_execute_paasta_serviceinit_on_remote_master_output
+    expected_output = "    %s\n" % fake_execute_paasta_serviceinit_on_remote_master_output
 
     status.report_status_for_cluster(service_name, 'a_cluster', planned_deployments, actual_deployments)
     assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 1

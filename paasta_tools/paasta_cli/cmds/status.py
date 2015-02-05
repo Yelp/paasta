@@ -140,11 +140,11 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             version = 'None'
             status = None
 
-        print '\tinstance: %s' % instance
-        print '\t\tversion: %s' % version
+        print '  instance: %s' % instance
+        print '    version: %s' % version
         if status is not None:
             for line in status.rstrip().split('\n'):
-                print '\t\t%s' % line
+                print '    %s' % line
 
 
 def report_bogus_filters(cluster_filter, deployed_clusters):

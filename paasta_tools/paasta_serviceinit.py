@@ -101,10 +101,10 @@ def get_verbose_status_of_marathon_app(app):
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
     output = []
-    create_datetime = datetime.datetime.strptime(app.version, "%Y-%m-%dT%H:%M:%S.%fZ")
+    create_datetime = datetime_from_utc_to_local(datetime.datetime.strptime(app.version, "%Y-%m-%dT%H:%M:%S.%fZ"))
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
-    output.append("  App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
-    output.append("  Tasks:  Mesos Task ID                  Host deployed to    Deployed at what localtime")
+    output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
+    output.append("    Tasks:  Mesos Task ID                  Host deployed to    Deployed at what localtime")
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
         format_tuple = (
@@ -113,7 +113,9 @@ def get_verbose_status_of_marathon_app(app):
             local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
             humanize.naturaltime(local_deployed_datetime),
         )
-        output.append('    {0[0]:<37}{0[1]:<20}{0[2]:<17}({0[3]:})'.format(format_tuple))
+        output.append('      {0[0]:<37}{0[1]:<20}{0[2]:<17}({0[3]:})'.format(format_tuple))
+    if len(app.tasks) == 0:
+        output.append("      No tasks associated with this marathon app")
     return "\n".join(output)
 
 
@@ -122,14 +124,14 @@ def status_marathon_job_verbose(service, instance, client):
     and instance. Does not make assumptions about what the *exact*
     appid is, but instead does a fuzzy match on any marathon apps
     that match the given service.instance"""
-    output = ""
+    output = []
     # For verbose mode, we want to see *any* matching app. As it may
     # not be the one that we think should be deployed. For example
     # during a bounce we want to see the old and new ones.
     for appid in marathon_tools.get_matching_appids(service, instance, client):
         app = client.get_app(appid)
-        output += get_verbose_status_of_marathon_app(app)
-    return output
+        output.append(get_verbose_status_of_marathon_app(app))
+    return "\n".join(output)
 
 
 def haproxy_backend_report(normal_instance_count, up_backends):
