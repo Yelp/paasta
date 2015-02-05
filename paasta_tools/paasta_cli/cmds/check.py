@@ -10,7 +10,6 @@ from service_configuration_lib import read_service_configuration
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.marathon_tools import get_service_instance_list
 from paasta_tools.monitoring_tools import get_team
-# ###from paasta_tools.utils import _log
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import is_file_in_dir
 from paasta_tools.paasta_cli.utils import NoSuchService
@@ -241,7 +240,6 @@ def service_dir_check(service_name):
     """Check whether directory service_name exists in /nail/etc/services
     :param service_name: string of service name we wish to inspect
     """
-    # ###_log("troscoe", "fake cluster", "fake instance", "SERVICE DIR CHECKKKKKKKKKKKKKK")
     try:
         validate_service_name(service_name)
         print PaastaCheckMessages.service_dir_found(service_name)

@@ -34,9 +34,7 @@ def test_generate_pipeline_service_not_found(
 
 @patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
 @patch('paasta_tools.paasta_cli.cmds.generate_pipeline._run')
-@patch('sys.exit')
 def test_generate_pipeline_run_fails(
-        mock_exit,
         mock_run,
         mock_validate_service_name):
     # paasta generate fails on the _run call
@@ -45,8 +43,9 @@ def test_generate_pipeline_run_fails(
     mock_run.return_value = (1, 'Big bad wolf')
     args = MagicMock()
     args.service = 'Fake servicename'
-    paasta_generate_pipeline(args)
-    mock_exit.assert_called_with(1)
+    with raises(SystemExit) as sys_exit:
+        paasta_generate_pipeline(args)
+    assert sys_exit.value.code == 1
 
 
 @patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')

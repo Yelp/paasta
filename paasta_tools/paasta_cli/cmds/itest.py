@@ -4,6 +4,7 @@
 import sys
 
 from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 
 
@@ -30,10 +31,10 @@ def build_command(upstream_job_name, upstream_git_commit):
     will look for your images.
 
     upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
-    service’s path in git. E.g. For git.yelpcorp.com:services/foo the
+    service's path in git. E.g. For git.yelpcorp.com:services/foo the
     upstream_job_name is services-foo.
 
-    upstream_git_commit is the SHA that we’re building. Usually this is the
+    upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
     cmd = 'DOCKER_TAG="docker-paasta.yelpcorp.com:443/services-%s:paasta-%s" make itest' % (
@@ -45,14 +46,20 @@ def build_command(upstream_job_name, upstream_git_commit):
 
 def paasta_itest(args):
     """Build and test a docker image"""
+    component = 'jenkins'
     service_name = args.service
     if service_name and service_name.startswith('services-'):
         service_name = service_name.split('services-', 1)[1]
     validate_service_name(service_name)
 
     cmd = build_command(service_name, args.commit)
-    print 'INFO: Executing command "%s"' % cmd
+    _log(service_name, 'Executing command "%s"' % cmd, component=component)
     returncode, output = _run(cmd)
     if returncode != 0:
-        print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (output, returncode)
+        _log(service_name, 'Execution failed. Return code: %s' % str(returncode), component=component, level='ERROR')
+        for line in output.split('\n'):
+            _log(service_name, line, component=component, level='DEBUG')
         sys.exit(returncode)
+    _log(service_name, 'Execution successful.', component=component)
+    for line in output.split('\n'):
+        _log(service_name, line, component=component, level='DEBUG')
