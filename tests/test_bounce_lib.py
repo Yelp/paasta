@@ -170,7 +170,7 @@ class TestBounceLib:
         with contextlib.nested(
             mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
             mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids'),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
         ) as (
             lock_patch,
             create_app_patch,
@@ -181,11 +181,33 @@ class TestBounceLib:
             create_app_patch.assert_called_once_with(new_config['id'], new_config, fake_client)
             kill_patch.assert_called_once_with(old_ids, fake_client)
 
+    def test_upthendown_bounce(self):
+        old_ids = ["oldapp1", "oldapp2"]
+        new_config = {"now_featuring": "no_gracefuls", "guaranteed": "or_your_money_back",
+                      'id': 'sockem.fun'}
+        fake_client = mock.MagicMock()
+        with contextlib.nested(
+            mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+            mock.patch('bounce_lib.time.sleep', autospec=True),
+        ) as (
+            lock_patch,
+            create_app_patch,
+            kill_patch,
+            sleep_patch,
+        ):
+            bounce_lib.upthendown_bounce('fake_service', 'fake_instance', old_ids, new_config, fake_client)
+            lock_patch.assert_called_once_with('fake_service.fake_instance')
+            create_app_patch.assert_called_once_with(new_config['id'], new_config, fake_client)
+            kill_patch.assert_called_once_with(old_ids, fake_client)
+            sleep_patch.assert_called_once_with(120)
+
     def test_scale_apps_delta_valid(self):
         fake_scalable = [('poker.face', 10), ('roker.race', 5)]
         fake_delta = 14
         fake_client = mock.MagicMock()
-        with mock.patch('bounce_lib.delete_marathon_app') as delete_marathon_app_patch:
+        with mock.patch('bounce_lib.delete_marathon_app', autospec=True) as delete_marathon_app_patch:
             assert bounce_lib.scale_apps(fake_scalable, fake_delta, fake_client) == 14
             delete_marathon_app_patch.assert_called_once_with('roker.race', fake_client)
             fake_client.scale_app.assert_called_once_with('poker.face', delta=-9)
@@ -194,7 +216,7 @@ class TestBounceLib:
         fake_scalable = [('muh.mah.muh.mah', 9999), ('uh.huh.huh.uh.huh', 7777)]
         fake_delta = -9
         fake_client = mock.MagicMock()
-        with mock.patch('bounce_lib.delete_marathon_app') as delete_marathon_app_patch:
+        with mock.patch('bounce_lib.delete_marathon_app', autospec=True) as delete_marathon_app_patch:
             assert bounce_lib.scale_apps(fake_scalable, fake_delta, fake_client) == 0
             assert delete_marathon_app_patch.call_count == 0
 

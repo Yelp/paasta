@@ -192,6 +192,26 @@ def brutal_bounce(service_name, instance_name, old_ids, new_config, client):
         create_marathon_app(new_config['id'], new_config, client)
 
 
+def upthendown_bounce(service_name, instance_name, old_ids, new_config, client):
+    """Bounce the service by spawning a new app, waiting 2 minutes, then
+    killing the old app.
+
+    :param service_name: service name
+    :param instance_name: instance name
+    :param old_ids: Old job ids to kill off
+    :param new_config: The complete marathon job configuration for the new job
+    :param client: A marathon.MarathonClient object
+    """
+    service_instance = '%s%s%s' % (service_name, marathon_tools.ID_SPACER, instance_name)
+    with bounce_lock_zookeeper(service_instance):
+        log.info("Initiating upthendown bounce on %s, starting new app: %s", (service_instance, new_config['id']))
+        create_marathon_app(new_config['id'], new_config, client)
+        # 120 seconds should be plenty of time for the new service to pass
+        # healthchecks and be ready in smartstack
+        time.sleep(120)
+        kill_old_ids(old_ids, client)
+
+
 def scale_apps(scalable_apps, remove_count, client):
     """Kill off a number of apps from the scalable_apps list, composed of
     tuples of (old_job_id, instance_count), equal to remove_count.
