@@ -864,7 +864,7 @@ class TestMarathonTools:
         assert marathon_tools.get_bounce_method(fake_conf) == fake_method
 
     def test_get_bounce_method_default(self):
-        assert marathon_tools.get_bounce_method({}) == 'brutal'
+        assert marathon_tools.get_bounce_method({}) == 'upthendown'
 
     def test_get_instances_in_config(self):
         fake_conf = {'instances': -10, 'desired_state': 'start'}

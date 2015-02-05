@@ -227,9 +227,9 @@ def get_bounce_method(service_config):
     """Get the bounce method specified in the service's marathon configuration.
 
     :param service_config: The service instance's configuration dictionary
-    :returns: The bounce method specified in the config, or 'brutal' if not specified"""
+    :returns: The bounce method specified in the config, or 'upthendown' if not specified"""
     bounce_method = service_config.get('bounce_method')
-    return bounce_method if bounce_method else 'brutal'
+    return bounce_method if bounce_method else 'upthendown'
 
 
 def get_desired_state(service_config):
