@@ -287,4 +287,166 @@ class TestBounceLib:
                 client
             )
 
+    def test_upthendown_bounce_no_existing_apps(self):
+        """When marathon is unaware of a service, upthendown bounce should try to
+        create a marathon app."""
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+        ):
+            bounce_lib.upthendown_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[],
+                new_config=new_config,
+                client=client
+            )
+
+            create_marathon_app_patch.assert_called_once_with(
+                new_config['id'],
+                new_config,
+                client
+            )
+
+            assert kill_old_ids_patch.call_count == 0
+
+    def test_upthendown_bounce_old_but_no_new(self):
+        """When marathon has the desired app, but there are other copies of
+        the service running, upthendown bounce should stop the old ones and start
+        the new one."""
+
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+        old_app = mock.Mock(id='foo.bar.11111')
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+        ):
+            bounce_lib.upthendown_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[old_app],
+                new_config=new_config,
+                client=client
+            )
+
+            create_marathon_app_patch.assert_called_once_with(
+                new_config['id'],
+                new_config,
+                client
+            )
+
+            assert kill_old_ids_patch.call_count == 0
+
+    def test_upthendown_bounce_mid_bounce(self):
+        """When marathon has the desired app, and there are other copies of
+        the service running, but the new app is not fully up, upthendown bounce
+        should not stop the old ones."""
+
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+        new_app = mock.Mock(id='foo.bar.12345', tasks_running=5)
+        old_app = mock.Mock(id='foo.bar.11111')
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+        ):
+            bounce_lib.upthendown_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[new_app, old_app],
+                new_config=new_config,
+                client=client
+            )
+
+            assert create_marathon_app_patch.call_count == 0
+            assert kill_old_ids_patch.call_count == 0
+
+    def test_upthendown_bounce_cleanup(self):
+        """When marathon has the desired app, and there are other copies of
+        the service running, and the new app is fully up, upthendown bounce
+        should stop the old ones."""
+
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+        new_app = mock.Mock(id='foo.bar.12345', tasks_running=10)
+        old_app = mock.Mock(id='foo.bar.11111')
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+        ):
+            bounce_lib.upthendown_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[new_app, old_app],
+                new_config=new_config,
+                client=client
+            )
+
+            assert create_marathon_app_patch.call_count == 0
+            kill_old_ids_patch.assert_called_once_with(
+                set([old_app.id]),
+                client
+            )
+
+    def test_upthendown_bounce_done(self):
+        """When marathon has the desired app, and there are no other copies of
+        the service running, upthendown bounce should neither start nor stop
+        anything."""
+
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+        app = mock.Mock(id='foo.bar.12345')
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+        ):
+            bounce_lib.upthendown_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[app],
+                new_config=new_config,
+                client=client
+            )
+
+            assert create_marathon_app_patch.call_count == 0
+            kill_old_ids_patch.assert_called_once_with(set(), client)
+
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

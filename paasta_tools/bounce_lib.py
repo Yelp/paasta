@@ -224,3 +224,33 @@ def brutal_bounce(
 
     # Kill any old instances.
     kill_old_ids(existing_ids - set([new_id]), client)
+
+
+@bounce_method('upthendown')
+def upthendown_bounce(
+    service_name,
+    instance_name,
+    existing_apps,
+    new_config,
+    client,
+):
+    """Starts a new app if necessary; only kills old apps once all the
+    requested tasks for the new version are running.
+
+    :param service_name: service name
+    :param instance_name: instance name
+    :param existing_apps: Apps that marathon is already aware of.
+    :param new_config: The complete marathon job configuration for the new job
+    :param client: A marathon.MarathonClient object
+    """
+    new_id = new_config['id']
+    existing_ids = set(a.id for a in existing_apps)
+
+    # Start the app if it's not there
+    if new_id not in existing_ids:
+        create_marathon_app(new_id, new_config, client)
+    else:
+        (new_app,) = [a for a in existing_apps if a.id == new_id]
+        if new_app.tasks_running >= new_config['instances']:
+            # Kill any old instances.
+            kill_old_ids(existing_ids - set([new_id]), client)
