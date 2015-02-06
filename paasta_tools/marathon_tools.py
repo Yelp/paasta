@@ -8,6 +8,7 @@ import hashlib
 import logging
 import os
 import re
+import requests
 import socket
 import glob
 from StringIO import StringIO
@@ -134,7 +135,23 @@ def get_default_branch(cluster, instance):
     return 'paasta-%s.%s' % (cluster, instance)
 
 
-def get_docker_url(registry_uri, docker_image, verify=True):
+def verify_docker_image(registry_uri, docker_image):
+    """Verifies that a docker image exists in a registry.
+    Useful to run before we try to deploy something to prevent
+    setting up a job that has no docker image to use
+
+    :param docker_image: The docker image name, with tag if desired
+    :param verify: Set to False to not verify the composed docker url
+    :returns Bool of it exists or not
+    """
+    url = 'http://%s/v1/repositories/%s/tags/%s' % (registry_uri, docker_image.split(':')[0],
+                                                    docker_image.split(':')[1])
+    log.info("Verifying that the docker_image exists by fetching %s", url)
+    r = requests.get(url)
+    return r.status_code == 200
+
+
+def get_docker_url(registry_uri, docker_image):
     """Compose the docker url.
 
     If verify is true, checks if the URL will point to a
@@ -146,18 +163,6 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     :returns: '<registry_uri>/<docker_image>', or '' if URL didn't verify"""
     if not docker_image:
         raise NoDockerImageError('Docker url not available because there is no docker_image')
-    if verify:
-        s = StringIO()
-        c = pycurl.Curl()
-        c.setopt(pycurl.URL, str('http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
-                                                                           docker_image.split(':')[0],
-                                                                           docker_image.split(':')[1])))
-        c.setopt(pycurl.TIMEOUT, 30)
-        c.setopt(pycurl.WRITEFUNCTION, s.write)
-        c.perform()
-        if 'error' in s.getvalue():
-            log.error("Docker image not found: %s/%s", registry_uri, docker_image)
-            return ''
     docker_url = '%s/%s' % (registry_uri, docker_image)
     log.info("Docker URL: %s", docker_url)
     return docker_url
