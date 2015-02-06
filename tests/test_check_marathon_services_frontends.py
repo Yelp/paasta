@@ -1,7 +1,6 @@
 import check_marathon_services_frontends
 import mock
 import contextlib
-import subprocess
 import pysensu_yelp
 
 
@@ -11,30 +10,6 @@ def test_build_check_command():
     expected = '/usr/lib/nagios/plugins/check_%s -H localhost -p %d' % (mode, port)
     actual = check_marathon_services_frontends.build_check_command(port, mode)
     assert expected == actual
-
-
-def test_check_service():
-    fake_port = 19343
-    fake_command = '/usr/bin/check_sandwich working_girls'
-    fake_output = 'vader_nooooooo.jpg'
-    fake_mode = 'water'
-    fake_process = mock.Mock(returncode=11, communicate=mock.Mock(return_value=(fake_output, '42')))
-    expected = (11, fake_output)
-    with contextlib.nested(
-        mock.patch('check_marathon_services_frontends.build_check_command',
-                   return_value=fake_command),
-        mock.patch('subprocess.Popen',
-                   return_value=fake_process)
-    ) as (
-        build_cmd_patch,
-        popen_patch,
-    ):
-        actual = check_marathon_services_frontends.check_service(fake_port, fake_mode)
-        assert expected == actual
-        build_cmd_patch.assert_called_once_with(fake_port, fake_mode)
-        popen_patch.assert_called_once_with(fake_command.split(),
-                                            stdout=subprocess.PIPE,
-                                            stderr=subprocess.STDOUT)
 
 
 def test_send_event():

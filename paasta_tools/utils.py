@@ -1,3 +1,13 @@
+import shlex
+import datetime
+import json
+from subprocess import Popen
+from subprocess import PIPE
+from subprocess import STDOUT
+
+import clog
+
+
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -15,3 +25,65 @@ def get_git_url(service):
     :param service: The service name to get a URL for
     :returns: A git url to the service's repository"""
     return 'git@git.yelpcorp.com:services/%s.git' % service
+
+
+def configure_log():
+    """We will log to the yocalhost binded scribe.
+    """
+    clog.configure('169.254.255.254', 1463)
+
+
+def _now():
+    return datetime.datetime.utcnow().isoformat()
+
+
+def format_log_line(cluster, instance, component, line):
+    """Accepts a string 'line'.
+
+    Returns an appropriately-formatted dictionary which can be serialized to
+    JSON for logging and which contains 'line'.
+    """
+    now = _now()
+    message = json.dumps({
+        'timestamp': now,
+        'cluster': cluster,
+        'instance': instance,
+        'component': component,
+        'message': line,
+    }, sort_keys=True)
+    return message
+
+
+def get_log_name_for_service(service_name):
+    return 'stream_paasta_%s' % service_name
+
+
+def _log(service_name, line, component, cluster='N/A', instance='N/A'):
+    """This expects someone (currently the paasta cli main()) to have already
+    configured the log object. We'll just write things to it.
+    """
+    line = format_log_line(cluster, instance, component, line)
+    line = str(line)
+    log_name = get_log_name_for_service(service_name)
+    clog.log_line(log_name, line)
+
+
+def _run(command):
+    """Given a command, run it. Return a tuple of the return code and any
+    output.
+
+    We wanted to use plumbum instead of rolling our own thing with
+    subprocess.Popen but were blocked by
+    https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
+    magic.
+    """
+    try:
+        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+        # execute it, the output goes to the stdout
+        output, _ = process.communicate()
+        # when finished, get the exit code
+        returncode = process.returncode
+    except OSError as e:
+        output = e.strerror
+        returncode = e.errno
+    return returncode, output

@@ -1,18 +1,15 @@
 import fnmatch
 import glob
 import os
-import shlex
 from socket import create_connection
 from socket import error
 from socket import gaierror
 from socket import gethostbyname_ex
-from subprocess import PIPE
-from subprocess import Popen
-from subprocess import STDOUT
 
 from service_configuration_lib import read_services_configuration
 
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
+from paasta_tools.utils import _run
 
 
 def load_method(module_name, method_name):
@@ -413,25 +410,6 @@ def find_connectable_master(masters):
         except error as e:
             output = 'ERROR cannot connect to %s port %s:\n%s ' % (master, port, e.strerror)
     return (connectable_master, output)
-
-
-def _run(command):
-    """Given a command, run it. Return a tuple of the return code and any
-    output.
-
-    We wanted to use plumbum instead of rolling our own thing with
-    subprocess.Popen but were blocked by
-    https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
-    magic.
-    """
-    try:
-        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
-        output, _ = process.communicate()    # execute it, the output goes to the stdout
-        rc = process.wait()    # when finished, get the exit code
-    except OSError as e:
-        output = e.strerror
-        rc = e.errno
-    return (rc, output)
 
 
 def check_ssh_and_sudo_on_master(master):

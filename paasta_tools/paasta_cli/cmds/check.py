@@ -3,7 +3,6 @@
 passes all the markers required to be considered paasta ready."""
 import os
 import re
-import subprocess
 import urllib2
 
 from service_configuration_lib import read_extra_service_information
@@ -20,6 +19,7 @@ from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import success
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import x_mark
+from paasta_tools.utils import _run
 
 
 def get_pipeline_config(service_name):
@@ -119,18 +119,17 @@ def docker_check():
 def makefile_responds_to_itest():
     """Runs `make -q itest` to detect if a makefile responds to an itest
     target."""
-    args = ['make', '-q', 'itest']
-    with open(os.devnull, 'w') as devnull:
-        # Per the docs
-        # http://www.gnu.org/software/make/manual/make.html#index-exit-status-of-make
-        # 0 and 1 are ok. 2 Means Error
-        # In question mode:
-        # http://linux.die.net/man/1/make (see Exit Status)
-        # 0 - Nothing to do
-        # 1 - Things to do
-        # 2 - Don't know what you are talking about
-        rc = subprocess.call(args, stdout=devnull, stderr=devnull)
-        return rc in [0, 1]
+    cmd = 'make -q itest'
+    # Per the docs
+    # http://www.gnu.org/software/make/manual/make.html#index-exit-status-of-make
+    # 0 and 1 are ok. 2 Means Error
+    # In question mode:
+    # http://linux.die.net/man/1/make (see Exit Status)
+    # 0 - Nothing to do
+    # 1 - Things to do
+    # 2 - Don't know what you are talking about
+    returncode, _ = _run(cmd)
+    return returncode in [0, 1]
 
 
 def makefile_check():
@@ -148,10 +147,9 @@ def makefile_check():
 
 
 def git_repo_check(service_name):
-    devnull = open(os.devnull, 'w')
-    cmd = 'git'
-    args = [cmd, 'ls-remote', 'git@git.yelpcorp.com:services/%s' % service_name]
-    if subprocess.call(args, stdout=devnull, stderr=devnull) == 0:
+    cmd = 'git ls-remote git@git.yelpcorp.com:services/%s' % service_name
+    returncode, _ = _run(cmd)
+    if returncode == 0:
         print PaastaCheckMessages.GIT_REPO_FOUND
     else:
         print PaastaCheckMessages.git_repo_missing(service_name)
