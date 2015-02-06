@@ -12,7 +12,6 @@ from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
 
 import marathon_tools
-from paasta_tools.monitoring.replication_utils import get_replication_for_services
 
 log = logging.getLogger('__main__')
 DEFAULT_SYNAPSE_HOST = 'localhost:3212'
@@ -40,14 +39,14 @@ def bounce_method(name):
         """This decorator wraps a bounce function in a lock (so that we don't
             try to bounce the same service twice at the same time."""
         @wraps(bounce_func)
-        def bounce_wrapper(service_name, instance_name, old_ids, new_config,
-                           client):
+        def bounce_wrapper(service_name, instance_name, existing_apps,
+                           new_config, client):
             short_id = marathon_tools.compose_job_id(service_name,
                                                      instance_name)
             with bounce_lock_zookeeper(short_id):
                 log.info("Initiating upthendown bounce on %s,", short_id)
-                bounce_func(service_name, instance_name, old_ids, new_config,
-                            client)
+                bounce_func(service_name, instance_name, existing_apps,
+                            new_config, client)
         _bounce_method_funcs[name] = bounce_wrapper
         return bounce_wrapper
     return outer
@@ -203,118 +202,21 @@ def kill_old_ids(old_ids, client):
 
 
 @bounce_method('brutal')
-def brutal_bounce(service_name, instance_name, old_ids, new_config, client):
-    """Brutally bounce the service by killing all old instances first.
-
-    Kills all old_ids then spawns the new job/app.
-
-    :param service_name: service name
-    :param instance_name: instance name
-    :param old_ids: Old job ids to kill off
-    :param new_config: The complete marathon job configuration for the new job
-    :param client: A marathon.MarathonClient object
-    """
-    kill_old_ids(old_ids, client)
-    log.info("Creating %s", new_config['id'])
-    create_marathon_app(new_config['id'], new_config, client)
-
-
-@bounce_method('upthendown')
-def upthendown_bounce(service_name, instance_name, old_ids, new_config, client):
-    """Bounce the service by spawning a new app, waiting 2 minutes, then
-    killing the old app.
+def brutal_bounce(
+    service_name,
+    instance_name,
+    existing_apps,
+    new_config,
+    client,
+):
+    """Pays no regard to safety. Starts the new app if necessary, and kills any
+    old ones. Mostly meant as an example of the simplest working bounce method,
+    but might be tolerable for some services.
 
     :param service_name: service name
     :param instance_name: instance name
-    :param old_ids: Old job ids to kill off
+    :param existing_apps: Apps that marathon is already aware of.
     :param new_config: The complete marathon job configuration for the new job
     :param client: A marathon.MarathonClient object
     """
-    log.info("Starting new app: %s", new_config['id'])
-    create_marathon_app(new_config['id'], new_config, client)
-    # 120 seconds should be plenty of time for the new service to pass
-    # healthchecks and be ready in smartstack
-    time.sleep(120)
-    kill_old_ids(old_ids, client)
-
-
-def scale_apps(scalable_apps, remove_count, client):
-    """Kill off a number of apps from the scalable_apps list, composed of
-    tuples of (old_job_id, instance_count), equal to remove_count.
-
-    If an app is deleted because it was scaled, it is removed from the
-    scalable_apps list. If an app is scaled down, its instance_count
-    changes to reflect this.
-
-    If remove_count is <= 0, returns 0 immediately.
-
-    :param scalable_apps: A list of tuples of (old_job_id, instance_count)
-    :param remove_count: The number of instances to kill off
-    :param client: A marathon.MarathonClient object
-    :returns: The total number of removed instances"""
-    total_remove_count = remove_count
-    # We're scaling down- if there's a shortage of instances (the count
-    # is negative or 0), then we shouldn't scale back any more yet!
-    if remove_count <= 0:
-        return 0
-    # Okay, now scale down instances from old jobs.
-    while remove_count > 0:
-        app_id, remaining = scalable_apps.pop()
-        # If this app can be removed completely, do it!
-        if remove_count >= remaining:
-            delete_marathon_app(app_id, client)
-            remove_count -= remaining
-        # Otherwise, scale it down and add the app back into the list.
-        else:
-            client.scale_app(app_id, delta=(-1 * remove_count))
-            scalable_apps.append((app_id, remaining - remove_count))
-            remove_count = 0
-    return total_remove_count
-
-
-@bounce_method('crossover')
-def crossover_bounce(service_name, instance_name, old_ids, new_config, client):
-    """Bounce the service via crossover: spin up the new instances
-    first, and then kill old ones as they get registered in nerve.
-
-    :param old_ids: Old job ids to kill off
-    :param new_config: The complete marathon job configuration for the new job
-    :param client: A marathon.MarathonClient object
-    :param namespace: The smartstack namespace of the service"""
-
-    # Because crossover bounce requires extra information, specifically the
-    # nerve_ns so it can communicate with haproxy, we must fetch more data
-    service_marathon_config = marathon_tools.read_service_config(service_name, instance_name)
-    namespace = service_marathon_config.get('nerve_ns', instance_name)
-
-    service_namespace = '%s%s%s' % (service_name, marathon_tools.ID_SPACER, namespace)
-    scalable_apps = [(old_id, client.get_app(old_id).instances) for old_id in old_ids]
-    # First, how many instances are currently UP in HAProxy?
-    initial_instances = get_replication_for_services(DEFAULT_SYNAPSE_HOST,
-                                                     [service_namespace])[service_namespace]
-    # Alright, we want to get a fraction of the way there before
-    # we just cut off the rest of the instances.
-    target_delta = max(int(new_config['instances'] * CROSSOVER_FRACTION_REQUIRED), 1)
-    total_delta = 0
-    try:
-        with time_limit(CROSSOVER_MAX_TIME_M):
-            # Okay, deploy the new job!
-            create_marathon_app(new_config['id'], new_config, client)
-            # Sleep once to give the stack some time to spin up.
-            time.sleep(CROSSOVER_SLEEP_INTERVAL_S)
-            # If we run of out stuff to kill, we're just as completed
-            # as if we had reached the target_delta.
-            # This can happen if the # of instances is increased in a job.
-            while total_delta < target_delta and scalable_apps:
-                # How many instances are there now?
-                available_instances = get_replication_for_services(DEFAULT_SYNAPSE_HOST,
-                                                                   [service_namespace])[service_namespace]
-                total_delta += scale_apps(scalable_apps, available_instances - initial_instances, client)
-                # Wait for nerve/synapse to reconfigure.
-                time.sleep(CROSSOVER_SLEEP_INTERVAL_S)
-    finally:
-        # The reason we don't delete from scalable_apps is because it's possible to
-        # time out a bounce while a scalable app was being scaled down, and
-        # wasn't added back into the list yet. This'll make sure everything
-        # is gone and only the new job remains.
-        kill_old_ids(old_ids, client)
+    pass

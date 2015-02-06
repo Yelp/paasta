@@ -299,7 +299,7 @@ class TestSetupMarathonJob:
             fake_bounce_func.assert_called_once_with(
                 fake_name,
                 fake_instance,
-                [fake_id, '%s2' % fake_id],
+                fake_apps,
                 self.fake_marathon_job_config,
                 fake_client
             )

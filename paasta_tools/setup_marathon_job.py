@@ -109,7 +109,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     log.debug("Searching for old service instance iterations")
     filter_name = marathon_tools.remove_tag_from_job_id(marathon_jobid)
     app_list = client.list_apps()
-    existing_app_ids = [app.id for app in app_list if filter_name in app.id]
+    existing_apps = [app for app in app_list if filter_name in app.id]
     try:
         # TODO refactor this into a dictionary lookup.
         try:
@@ -118,7 +118,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
             log.error("bounce_method not recognized: %s. Exiting", bounce_method)
             return (1, "bounce_method not recognized: %s" % bounce_method)
 
-        bounce_func(service_name, instance_name, existing_app_ids, config, client)
+        bounce_func(service_name, instance_name, existing_apps, config, client)
     except IOError:
         log.error("Namespace %s already being bounced. Exiting", filter_name)
         return (1, "Service is taking a while to bounce")
