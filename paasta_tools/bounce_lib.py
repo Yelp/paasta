@@ -41,12 +41,8 @@ def bounce_method(name):
         @wraps(bounce_func)
         def bounce_wrapper(service_name, instance_name, existing_apps,
                            new_config, client):
-            short_id = marathon_tools.compose_job_id(service_name,
-                                                     instance_name)
-            with bounce_lock_zookeeper(short_id):
-                log.info("Initiating upthendown bounce on %s,", short_id)
-                bounce_func(service_name, instance_name, existing_apps,
-                            new_config, client)
+            bounce_func(service_name, instance_name, existing_apps,
+                        new_config, client)
         _bounce_method_funcs[name] = bounce_wrapper
         return bounce_wrapper
     return outer
@@ -219,4 +215,12 @@ def brutal_bounce(
     :param new_config: The complete marathon job configuration for the new job
     :param client: A marathon.MarathonClient object
     """
-    pass
+    new_id = new_config['id']
+    existing_ids = set(a.id for a in existing_apps)
+
+    # Start the app if it's not there
+    if new_id not in existing_ids:
+        create_marathon_app(new_id, new_config, client)
+
+    # Kill any old instances.
+    kill_old_ids(existing_ids - set([new_id]), client)

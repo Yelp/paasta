@@ -107,9 +107,9 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     log.info("Deploying service instance %s with bounce_method %s",
              service_name, bounce_method)
     log.debug("Searching for old service instance iterations")
-    filter_name = marathon_tools.remove_tag_from_job_id(marathon_jobid)
+    short_id = marathon_tools.remove_tag_from_job_id(marathon_jobid)
     app_list = client.list_apps()
-    existing_apps = [app for app in app_list if filter_name in app.id]
+    existing_apps = [app for app in app_list if short_id in app.id]
     try:
         # TODO refactor this into a dictionary lookup.
         try:
@@ -118,9 +118,17 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
             log.error("bounce_method not recognized: %s. Exiting", bounce_method)
             return (1, "bounce_method not recognized: %s" % bounce_method)
 
-        bounce_func(service_name, instance_name, existing_apps, config, client)
+        with bounce_lib.bounce_lock_zookeeper(short_id):
+            log.info("Initiating %s bounce on %s.", (bounce_method, short_id))
+            bounce_func(
+                service_name,
+                instance_name,
+                existing_apps,
+                config,
+                client
+            )
     except IOError:
-        log.error("Namespace %s already being bounced. Exiting", filter_name)
+        log.error("Namespace %s already being bounced. Exiting", short_id)
         return (1, "Service is taking a while to bounce")
     log.info("%s deployed. Exiting", marathon_jobid)
     return (0, 'Service deployed.')
