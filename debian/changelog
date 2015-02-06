@@ -1,3 +1,10 @@
+paasta-tools (0.8.28-yelp1) lucid; urgency=low
+
+  * 0.8.28 tagged with 'make release'
+    Commit: Make grey be bright black
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 06 Feb 2015 12:42:37 -0800
+
 paasta-tools (0.8.27-yelp1) lucid; urgency=low
 
   * 0.8.27 tagged with 'make release'
