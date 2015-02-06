@@ -280,61 +280,29 @@ class TestSetupMarathonJob:
         fake_client.list_apps.assert_called_once_with()
         assert fake_client.create_app.call_count == 0
 
-    def test_deploy_service_known_bounce_brutal(self):
-        fake_bounce = 'brutal'
+    def test_deploy_service_known_bounce(self):
+        fake_bounce = 'areallygoodbouncestrategy'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
-        with mock.patch('paasta_tools.bounce_lib.brutal_bounce',
-                        return_value=True) as brutal_bounce_patch:
+        fake_bounce_func = mock.MagicMock()
+        with mock.patch('paasta_tools.bounce_lib.get_bounce_method_func',
+                        return_value=fake_bounce_func):
             assert setup_marathon_job.deploy_service(
                 fake_name, fake_instance, fake_id,
                 self.fake_marathon_job_config, fake_client, fake_bounce,
             )
             fake_client.list_apps.assert_called_once_with()
             assert fake_client.create_app.call_count == 0
-            brutal_bounce_patch.assert_called_once_with(fake_name, fake_instance, [fake_id, '%s2' % fake_id],
-                                                        self.fake_marathon_job_config,
-                                                        fake_client)
-
-    def test_deploy_service_known_bounce_upthendown(self):
-        fake_bounce = 'upthendown'
-        fake_name = 'how_many_strings'
-        fake_instance = 'will_i_need_to_think_of'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
-        fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
-        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
-        with mock.patch('paasta_tools.bounce_lib.upthendown_bounce',
-                        return_value=True) as upthendown_bounce_patch:
-            assert setup_marathon_job.deploy_service(
-                fake_name, fake_instance, fake_id,
-                self.fake_marathon_job_config, fake_client, fake_bounce
+            fake_bounce_func.assert_called_once_with(
+                fake_name,
+                fake_instance,
+                [fake_id, '%s2' % fake_id],
+                self.fake_marathon_job_config,
+                fake_client
             )
-            fake_client.list_apps.assert_called_once_with()
-            assert fake_client.create_app.call_count == 0
-            upthendown_bounce_patch.assert_called_once_with(
-                fake_name, fake_instance, [fake_id, '%s2' % fake_id],
-                self.fake_marathon_job_config, fake_client
-            )
-
-    def test_deploy_service_known_bounce_crossover(self):
-        fake_bounce = 'crossover'
-        fake_name = 'friday_night_tox'
-        fake_instance = 'a_new_bloodsport'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
-        fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
-        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
-        with mock.patch('paasta_tools.bounce_lib.crossover_bounce',
-                        return_value=True) as crossover_bounce_patch:
-            assert setup_marathon_job.deploy_service(fake_name, fake_instance, fake_id, self.fake_marathon_job_config,
-                                                     fake_client, fake_bounce)
-            fake_client.list_apps.assert_called_once_with()
-            assert fake_client.create_app.call_count == 0
-            crossover_bounce_patch.assert_called_once_with(fake_name, fake_instance, [fake_id, '%s2' % fake_id],
-                                                           self.fake_marathon_job_config,
-                                                           fake_client)
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}

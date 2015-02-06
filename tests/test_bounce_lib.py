@@ -177,7 +177,7 @@ class TestBounceLib:
             kill_patch
         ):
             bounce_lib.brutal_bounce('fake_service', 'fake_instance', old_ids, new_config, fake_client)
-            lock_patch.assert_called_once_with('fake_service.fake_instance')
+            lock_patch.assert_called_once_with('fake--service.fake--instance')
             create_app_patch.assert_called_once_with(new_config['id'], new_config, fake_client)
             kill_patch.assert_called_once_with(old_ids, fake_client)
 
@@ -198,7 +198,7 @@ class TestBounceLib:
             sleep_patch,
         ):
             bounce_lib.upthendown_bounce('fake_service', 'fake_instance', old_ids, new_config, fake_client)
-            lock_patch.assert_called_once_with('fake_service.fake_instance')
+            lock_patch.assert_called_once_with('fake--service.fake--instance')
             create_app_patch.assert_called_once_with(new_config['id'], new_config, fake_client)
             kill_patch.assert_called_once_with(old_ids, fake_client)
             sleep_patch.assert_called_once_with(120)
@@ -257,7 +257,7 @@ class TestBounceLib:
             bounce_lib.crossover_bounce('shake', 'bake', fake_old_ids, fake_new_config, fake_client)
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['shake.wake'])
             assert replication_patch.call_count == 2
-            lock_patch.assert_called_once_with('shake.wake')
+            lock_patch.assert_called_once_with('shake.bake')
             create_app_patch.assert_called_once_with(fake_new_config['id'], fake_new_config, fake_client)
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
@@ -306,7 +306,7 @@ class TestBounceLib:
             bounce_lib.crossover_bounce('hello', 'everyone', fake_old_ids, fake_new_config, fake_client)
             replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['hello.world'])
             assert replication_patch.call_count == 3
-            lock_patch.assert_called_once_with('hello.world')
+            lock_patch.assert_called_once_with('hello.everyone')
             create_app_patch.assert_called_once_with(fake_new_config['id'], fake_new_config, fake_client)
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
@@ -359,7 +359,7 @@ class TestBounceLib:
             with pytest.raises(bounce_lib.TimeoutException):
                 bounce_lib.crossover_bounce('the', 'hustle', fake_old_ids, fake_new_config, fake_client)
             replication_patch.assert_called_once_with(bounce_lib.DEFAULT_SYNAPSE_HOST, ['the.electricslide'])
-            lock_patch.assert_called_once_with('the.electricslide')
+            lock_patch.assert_called_once_with('the.hustle')
             assert create_app_patch.call_count == 0
             time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
             assert sleep_patch.call_count == 0
