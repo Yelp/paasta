@@ -291,3 +291,11 @@ def crossover_bounce(service_name, instance_name, old_ids, new_config, client):
         # wasn't added back into the list yet. This'll make sure everything
         # is gone and only the new job remains.
         kill_old_ids(old_ids, client)
+
+
+def get_bounce_method_func(bounce_method):
+    return {
+        'brutal': brutal_bounce,
+        'upthendown': upthendown_bounce,
+        'crossover': crossover_bounce,
+    }[bounce_method]

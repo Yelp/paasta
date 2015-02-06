@@ -369,5 +369,9 @@ class TestBounceLib:
             assert scale_patch.call_count == 0
             kill_patch.assert_called_once_with(fake_old_ids, fake_client)
 
+    def test_get_bounce_method_func(self):
+        actual = bounce_lib.get_bounce_method_func('brutal')
+        expected = bounce_lib.brutal_bounce
+        assert actual == expected
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

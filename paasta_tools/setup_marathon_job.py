@@ -93,7 +93,8 @@ def get_main_marathon_config():
     return marathon_config
 
 
-def deploy_service(service_name, instance_name, marathon_jobid, config, client, bounce_method):
+def deploy_service(service_name, instance_name, marathon_jobid, config, client,
+                   bounce_method):
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
 
@@ -103,22 +104,21 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client, 
     :param namespace: The service's Smartstack namespace
     :param bounce_method: The bounce method to use, if needed
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
-    log.info("Deploying service instance %s with bounce_method %s", service_name, bounce_method)
+    log.info("Deploying service instance %s with bounce_method %s",
+             service_name, bounce_method)
     log.debug("Searching for old service instance iterations")
     filter_name = marathon_tools.remove_tag_from_job_id(marathon_jobid)
     app_list = client.list_apps()
-    old_app_ids = [app.id for app in app_list if filter_name in app.id]
+    existing_app_ids = [app.id for app in app_list if filter_name in app.id]
     try:
         # TODO refactor this into a dictionary lookup.
-        if bounce_method == "upthendown":
-            bounce_lib.upthendown_bounce(service_name, instance_name, old_app_ids, config, client)
-        elif bounce_method == "brutal":
-            bounce_lib.brutal_bounce(service_name, instance_name, old_app_ids, config, client)
-        elif bounce_method == "crossover":
-            bounce_lib.crossover_bounce(service_name, instance_name, old_app_ids, config, client)
-        else:
+        try:
+            bounce_func = bounce_lib.get_bounce_method_func(bounce_method)
+        except KeyError:
             log.error("bounce_method not recognized: %s. Exiting", bounce_method)
             return (1, "bounce_method not recognized: %s" % bounce_method)
+
+        bounce_func(service_name, instance_name, existing_app_ids, config, client)
     except IOError:
         log.error("Namespace %s already being bounced. Exiting", filter_name)
         return (1, "Service is taking a while to bounce")
