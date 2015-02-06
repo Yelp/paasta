@@ -6,7 +6,6 @@ from subprocess import PIPE
 from subprocess import STDOUT
 
 import clog
-import staticconf
 
 
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
@@ -37,8 +36,9 @@ def get_git_url(service):
 
 
 def configure_log():
-    clog_config_path = "/nail/srv/configs/clog.yaml"
-    staticconf.YamlConfiguration(clog_config_path, namespace='clog')
+    """We will log to the yocalhost binded scribe.
+    """
+    clog.configure('169.254.255.254', 1463)
 
 
 def _now():

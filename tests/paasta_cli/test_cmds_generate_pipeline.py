@@ -64,3 +64,36 @@ def test_generate_pipeline_success(
     args = MagicMock()
     args.service = None
     assert paasta_generate_pipeline(args) is None
+
+
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.guess_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline._run')
+def test_generate_pipeline_success_no_opts(
+        mock_run,
+        mock_guess_service_name,
+        mock_validate_service_name):
+    # paasta generate succeeds when service name must be guessed
+
+    mock_guess_service_name.return_value = 'fake_service'
+    mock_validate_service_name.return_value = None
+    mock_run.return_value = (0, 'Everything OK')
+
+    args = MagicMock()
+    args.service = None
+    assert paasta_generate_pipeline(args) is None
+
+
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.validate_service_name')
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline._run')
+def test_generate_pipeline_success_with_opts(
+        mock_run,
+        mock_validate_service_name):
+    # paasta generate succeeds when service name provided as arg
+
+    mock_validate_service_name.return_value = None
+    mock_run.return_value = (0, 'Everything OK')
+
+    args = MagicMock()
+    args.service = 'fake_service'
+    assert paasta_generate_pipeline(args) is None
