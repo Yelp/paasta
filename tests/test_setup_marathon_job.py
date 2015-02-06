@@ -196,17 +196,21 @@ class TestSetupMarathonJob:
         fake_name = 'if_trees_could_talk'
         fake_instance = 'would_they_scream'
         fake_client = mock.MagicMock(get_app=mock.Mock(return_value=True))
-        fake_url = 'what_is_a_test'
         full_id = marathon_tools.compose_job_id(fake_name, fake_instance)
-        fake_complete = {'seven': 'full', 'eight': 'frightened', 'nine': 'eaten', 'id': full_id}
+        fake_complete = {
+            'seven': 'full', 'eight': 'frightened', 'nine': 'eaten', 'id': full_id,
+            'docker_registry': 'fake_docker_registry',
+            'docker_image': 'fake_docker_image',
+        }
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.get_docker_url', return_value=fake_url),
             mock.patch('paasta_tools.marathon_tools.create_complete_config',
-                       return_value=fake_complete),
-            mock.patch('paasta_tools.marathon_tools.get_config', return_value=self.fake_marathon_config),
+                       return_value=fake_complete, autospec=True),
+            mock.patch('paasta_tools.marathon_tools.verify_docker_image', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.get_config', return_value=self.fake_marathon_config,
+                       autospec=True),
         ) as (
-            docker_url_patch,
             create_config_patch,
+            verify_docker_image_patch,
             get_config_patch,
         ):
             status, output = setup_marathon_job.setup_service(fake_name, fake_instance, fake_client,
@@ -216,6 +220,7 @@ class TestSetupMarathonJob:
                                                         self.fake_marathon_config,
                                                         )
             fake_client.get_app.assert_called_once_with(full_id)
+            verify_docker_image_patch.assert_called_once_with('fake_docker_registry', 'fake_docker_image')
 
     def test_setup_service_srv_does_not_exist(self):
         fake_name = 'if_talk_was_cheap'
@@ -224,20 +229,23 @@ class TestSetupMarathonJob:
         fake_client = mock.MagicMock(get_app=mock.Mock(
                         side_effect=marathon.exceptions.NotFoundError(fake_response)))
         full_id = marathon_tools.compose_job_id(fake_name, fake_instance, 'oogabooga')
-        fake_complete = {'do': 'you', 'even': 'dota', 'id': full_id}
-        fake_url = 'a_miserable_pile_of_mocks'
+        fake_complete = {
+            'do': 'you', 'even': 'dota', 'id': full_id,
+            'docker_registry': 'fake_docker_registry',
+            'docker_image': 'fake_docker_image',
+        }
         fake_bounce = 'trampoline'
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.get_docker_url', return_value=fake_url),
             mock.patch('paasta_tools.marathon_tools.create_complete_config',
                        return_value=fake_complete),
+            mock.patch('paasta_tools.marathon_tools.verify_docker_image', autospec=True),
             mock.patch('setup_marathon_job.deploy_service', return_value=(111, 'Never')),
             mock.patch('paasta_tools.marathon_tools.get_bounce_method', return_value=fake_bounce),
             mock.patch('paasta_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
         ) as (
-            docker_url_patch,
             create_config_patch,
+            verify_docker_image_patch,
             deploy_service_patch,
             get_bounce_patch,
             read_service_conf_patch,
@@ -253,6 +261,7 @@ class TestSetupMarathonJob:
             get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
             deploy_service_patch.assert_called_once_with(fake_name, fake_instance, full_id, fake_complete, fake_client,
                                                          fake_bounce)
+            verify_docker_image_patch.assert_called_once_with('fake_docker_registry', 'fake_docker_image')
 
     def test_setup_service_srv_complete_config_raises(self):
         fake_name = 'test_service'

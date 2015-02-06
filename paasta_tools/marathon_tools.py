@@ -868,12 +868,11 @@ def is_app_id_running(app_id, client):
     return app_id in all_app_ids
 
 
-def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR, verify_docker=True):
+def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
     config = read_service_config(name, instance, soa_dir=soa_dir)
     docker_url = get_docker_url(marathon_config['docker_registry'],
-                                config['docker_image'],
-                                verify=verify_docker)
+                                config['docker_image'])
     healthchecks = get_healthchecks(name, instance)
     complete_config = format_marathon_app_dict(partial_id, docker_url,
                                                marathon_config['docker_volumes'],
@@ -894,7 +893,7 @@ def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     marathon configuration. Editing this function *will* cause a bounce of all
     services because they will see an "old" version of the marathon app deployed,
     and a new one with the new hash will try to be deployed"""
-    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir, verify_docker=False)['id']
+    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir)['id']
 
 
 def get_code_sha_from_dockerurl(docker_url):
