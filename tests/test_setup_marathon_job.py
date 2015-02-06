@@ -204,10 +204,12 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.marathon_tools.create_complete_config',
                        return_value=fake_complete),
             mock.patch('paasta_tools.marathon_tools.get_config', return_value=self.fake_marathon_config),
+            mock.patch('setup_marathon_job.deploy_service', return_value=(0, 'Service deployed.')),
         ) as (
             docker_url_patch,
             create_config_patch,
             get_config_patch,
+            deploy_service_patch,
         ):
             status, output = setup_marathon_job.setup_service(fake_name, fake_instance, fake_client,
                                                               self.fake_marathon_config,
@@ -215,7 +217,7 @@ class TestSetupMarathonJob:
             create_config_patch.assert_called_once_with(fake_name, fake_instance,
                                                         self.fake_marathon_config,
                                                         )
-            fake_client.get_app.assert_called_once_with(full_id)
+            assert deploy_service_patch.call_count == 1
 
     def test_setup_service_srv_does_not_exist(self):
         fake_name = 'if_talk_was_cheap'
@@ -249,7 +251,6 @@ class TestSetupMarathonJob:
             assert output == 'Never'
 
             create_config_patch.assert_called_once_with(fake_name, fake_instance, self.fake_marathon_config)
-            fake_client.get_app.assert_called_once_with(full_id)
             get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
             deploy_service_patch.assert_called_once_with(fake_name, fake_instance, full_id, fake_complete, fake_client,
                                                          fake_bounce)

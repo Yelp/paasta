@@ -27,7 +27,6 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
-from marathon.exceptions import NotFoundError, InternalServerError
 import argparse
 import logging
 import pysensu_yelp
@@ -110,6 +109,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client, 
     app_list = client.list_apps()
     old_app_ids = [app.id for app in app_list if filter_name in app.id]
     try:
+        # TODO refactor this into a dictionary lookup.
         if bounce_method == "upthendown":
             bounce_lib.upthendown_bounce(service_name, instance_name, old_app_ids, config, client)
         elif bounce_method == "brutal":
@@ -151,17 +151,8 @@ def setup_service(service_name, instance_name, client, marathon_config,
     full_id = complete_config['id']
 
     log.info("Desired Marathon instance id: %s", full_id)
-    try:
-        log.info("Checking if an app already exists with id: %s", full_id)
-        client.get_app(full_id)
-        log.warning("App id %s already exists. Skipping configuration and exiting.", full_id)
-        return (0, 'Service was already deployed.')
-    except NotFoundError:
-        return deploy_service(service_name, instance_name, full_id, complete_config, client,
-                              marathon_tools.get_bounce_method(service_marathon_config))
-    except InternalServerError as e:
-        log.error('Marathon had an internal server error: %s' % str(e))
-        return(1, str(e))
+    return deploy_service(service_name, instance_name, full_id, complete_config, client,
+                          marathon_tools.get_bounce_method(service_marathon_config))
 
 
 def main():
@@ -182,9 +173,8 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service_name = args.service_instance.split(ID_SPACER)[0]
-        instance_name = args.service_instance.split(ID_SPACER)[1]
-    except IndexError:
+        service_name, instance_name = args.service_instance.split(ID_SPACER)
+    except ValueError:
         log.error("Invalid service instance specified. Format is service_name.instance_name.")
         sys.exit(1)
 
