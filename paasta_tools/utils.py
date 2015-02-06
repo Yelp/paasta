@@ -1,6 +1,6 @@
 import shlex
 import datetime
-import logging
+import json
 from subprocess import Popen
 from subprocess import PIPE
 from subprocess import STDOUT
@@ -14,14 +14,6 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'performance-check',
     'push-to-registry'
 )
-
-LOGLEVELS = {
-    'DEBUG': logging.DEBUG,
-    'INFO': logging.INFO,
-    'WARNING': logging.WARNING,
-    'ERROR': logging.ERROR,
-    'CRITICAL': logging.CRITICAL,
-}
 
 
 def get_git_url(service):
@@ -42,44 +34,35 @@ def configure_log():
 
 
 def _now():
-    return str(datetime.datetime.now())
+    return datetime.datetime.utcnow().isoformat()
 
 
-def format_log_line(cluster, instance, component, level, line):
+def format_log_line(cluster, instance, component, line):
     """Accepts a string 'line'.
 
     Returns an appropriately-formatted dictionary which can be serialized to
     JSON for logging and which contains 'line'.
     """
     now = _now()
-    return {
+    message = json.dumps({
         'timestamp': now,
         'cluster': cluster,
         'instance': instance,
         'component': component,
-        'level': level,
         'message': line,
-    }
+    }, sort_keys=True)
+    return message
 
 
 def get_log_name_for_service(service_name):
     return 'stream_paasta_%s' % service_name
 
 
-def get_loglevel(level):
-    try:
-        loglevel = LOGLEVELS[level]
-    except KeyError:
-        loglevel = 'INFO'
-    return loglevel
-
-
-def _log(service_name, line, cluster='UNKNOWN', instance='UNKNOWN', component='UNKNOWN', level='INFO'):
+def _log(service_name, line, component, cluster='N/A', instance='N/A'):
     """This expects someone (currently the paasta cli main()) to have already
     configured the log object. We'll just write things to it.
     """
-    loglevel = get_loglevel(level)
-    line = format_log_line(cluster, instance, component, loglevel, line)
+    line = format_log_line(cluster, instance, component, line)
     line = str(line)
     log_name = get_log_name_for_service(service_name)
     clog.log_line(log_name, line)
