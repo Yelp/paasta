@@ -184,7 +184,8 @@ class TestBounceLib:
                 instance_name='bar',
                 existing_apps=[],
                 new_config=new_config,
-                client=client
+                client=client,
+                nerve_ns='bar',
             )
 
             create_marathon_app_patch.assert_called_once_with(
@@ -216,7 +217,8 @@ class TestBounceLib:
                 instance_name='bar',
                 existing_apps=[app],
                 new_config=new_config,
-                client=client
+                client=client,
+                nerve_ns='bar',
             )
 
             assert create_marathon_app_patch.call_count == 0
@@ -243,7 +245,8 @@ class TestBounceLib:
                 instance_name='bar',
                 existing_apps=[new_app, old_app],
                 new_config=new_config,
-                client=client
+                client=client,
+                nerve_ns='bar',
             )
 
             assert create_marathon_app_patch.call_count == 0
@@ -273,7 +276,8 @@ class TestBounceLib:
                 instance_name='bar',
                 existing_apps=[old_app],
                 new_config=new_config,
-                client=client
+                client=client,
+                nerve_ns='bar',
             )
 
             create_marathon_app_patch.assert_called_once_with(
@@ -308,7 +312,8 @@ class TestBounceLib:
                 instance_name='bar',
                 existing_apps=[],
                 new_config=new_config,
-                client=client
+                client=client,
+                nerve_ns='bar',
             )
 
             create_marathon_app_patch.assert_called_once_with(
@@ -343,7 +348,8 @@ class TestBounceLib:
                 instance_name='bar',
                 existing_apps=[old_app],
                 new_config=new_config,
-                client=client
+                client=client,
+                nerve_ns='bar',
             )
 
             create_marathon_app_patch.assert_called_once_with(
@@ -379,7 +385,8 @@ class TestBounceLib:
                 instance_name='bar',
                 existing_apps=[new_app, old_app],
                 new_config=new_config,
-                client=client
+                client=client,
+                nerve_ns='bar',
             )
 
             assert create_marathon_app_patch.call_count == 0
@@ -410,7 +417,8 @@ class TestBounceLib:
                 instance_name='bar',
                 existing_apps=[new_app, old_app],
                 new_config=new_config,
-                client=client
+                client=client,
+                nerve_ns='bar',
             )
 
             assert create_marathon_app_patch.call_count == 0
@@ -443,10 +451,214 @@ class TestBounceLib:
                 instance_name='bar',
                 existing_apps=[app],
                 new_config=new_config,
-                client=client
+                client=client,
+                nerve_ns='bar',
             )
 
             assert create_marathon_app_patch.call_count == 0
             kill_old_ids_patch.assert_called_once_with(set(), client)
+
+    def test_crossover_bounce_no_existing_apps(self):
+        """When marathon is unaware of a service, crossover bounce should try to
+        create a marathon app."""
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+            mock.patch('bounce_lib.get_registered_marathon_tasks',
+                       side_effect=lambda _, __, x: x.tasks)
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+            get_registered_marathon_tasks_patch,
+        ):
+            bounce_lib.crossover_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[],
+                new_config=new_config,
+                client=client,
+                nerve_ns='bar',
+            )
+
+            create_marathon_app_patch.assert_called_once_with(
+                new_config['id'],
+                new_config,
+                client
+            )
+
+            assert kill_old_ids_patch.call_count == 0
+
+    def test_crossover_bounce_old_but_no_new(self):
+        """When marathon has the desired app, but there are other copies of
+        the service running, crossover bounce should stop the old ones and start
+        the new one."""
+
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+        old_app = mock.Mock(id='foo.bar.11111')
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+            mock.patch('bounce_lib.get_registered_marathon_tasks',
+                       side_effect=lambda _, __, x: x.tasks)
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+            get_registered_marathon_tasks_patch,
+        ):
+            bounce_lib.crossover_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[old_app],
+                new_config=new_config,
+                client=client,
+                nerve_ns='bar',
+            )
+
+            create_marathon_app_patch.assert_called_once_with(
+                new_config['id'],
+                new_config,
+                client
+            )
+
+            assert kill_old_ids_patch.call_count == 0
+            assert client.kill_task.call_count == 0
+
+    def test_crossover_bounce_mid_bounce(self):
+        """When marathon has the desired app, and there are other copies of
+        the service running, but the new app is not fully up, crossover bounce
+        should not stop the old ones."""
+
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+
+        new_app_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = [mock.Mock() for _ in xrange(10)]
+
+        new_app = mock.Mock(
+            id='foo.bar.12345',
+            tasks_running=5,
+            tasks=new_app_tasks,
+        )
+        old_app = mock.Mock(
+            id='foo.bar.11111',
+            tasks_running=10,
+            tasks=old_app_tasks,
+        )
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+            mock.patch('bounce_lib.get_registered_marathon_tasks',
+                       side_effect=lambda _, __, x: x.tasks),
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+            get_registered_marathon_tasks_patch,
+        ):
+            bounce_lib.crossover_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[new_app, old_app],
+                new_config=new_config,
+                client=client,
+                nerve_ns='bar',
+            )
+
+            assert create_marathon_app_patch.call_count == 0
+            kill_old_ids_patch.assert_called_once_with([], client)
+            assert client.kill_task.call_count == 5
+
+    def test_crossover_bounce_cleanup(self):
+        """When marathon has the desired app, and there are other copies of
+        the service running, which have no remaining tasks, those apps should
+        be killed."""
+
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+        new_app = mock.Mock(id='foo.bar.12345', tasks_running=10,
+                            tasks=[mock.Mock() for _ in xrange(10)])
+        old_app = mock.Mock(id='foo.bar.11111', tasks_running=0, tasks=[])
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+            mock.patch('bounce_lib.get_registered_marathon_tasks',
+                       side_effect=lambda _, __, x: x.tasks)
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+            get_registered_marathon_tasks_patch,
+        ):
+            bounce_lib.crossover_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[new_app, old_app],
+                new_config=new_config,
+                client=client,
+                nerve_ns='bar',
+            )
+
+            assert create_marathon_app_patch.call_count == 0
+            kill_old_ids_patch.assert_called_once_with(
+                [old_app.id],
+                client
+            )
+            assert client.kill_task.call_count == 0
+
+    def test_crossover_bounce_done(self):
+        """When marathon has the desired app, and there are no other copies of
+        the service running, crossover bounce should neither start nor stop
+        anything."""
+
+        new_config = {
+            'id': 'foo.bar.12345',
+            'instances': 10,
+        }
+        client = mock.Mock()
+        app = mock.Mock(
+            id='foo.bar.12345',
+            tasks=[mock.Mock() for _ in xrange(10)]
+        )
+
+        with contextlib.nested(
+            mock.patch('bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('bounce_lib.kill_old_ids', autospec=True),
+            mock.patch('bounce_lib.get_registered_marathon_tasks',
+                       side_effect=lambda _, __, x: x.tasks)
+        ) as (
+            create_marathon_app_patch,
+            kill_old_ids_patch,
+            get_registered_marathon_tasks_patch,
+        ):
+            bounce_lib.crossover_bounce(
+                service_name='foo',
+                instance_name='bar',
+                existing_apps=[app],
+                new_config=new_config,
+                client=client,
+                nerve_ns='bar',
+            )
+
+            assert create_marathon_app_patch.call_count == 0
+            kill_old_ids_patch.assert_called_once_with([], client)
+            assert client.kill_task.call_count == 0
+
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

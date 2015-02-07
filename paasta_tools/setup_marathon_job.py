@@ -94,7 +94,7 @@ def get_main_marathon_config():
 
 
 def deploy_service(service_name, instance_name, marathon_jobid, config, client,
-                   bounce_method):
+                   bounce_method, nerve_ns):
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
 
@@ -125,7 +125,8 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
                 instance_name,
                 existing_apps,
                 config,
-                client
+                client,
+                nerve_ns
             )
     except IOError:
         log.error("Namespace %s already being bounced. Exiting", short_id)
@@ -159,8 +160,15 @@ def setup_service(service_name, instance_name, client, marathon_config,
     full_id = complete_config['id']
 
     log.info("Desired Marathon instance id: %s", full_id)
-    return deploy_service(service_name, instance_name, full_id, complete_config, client,
-                          marathon_tools.get_bounce_method(service_marathon_config))
+    return deploy_service(
+        service_name,
+        instance_name,
+        full_id,
+        complete_config,
+        client,
+        marathon_tools.get_bounce_method(service_marathon_config),
+        service_marathon_config.get('nerve_ns', instance_name)
+    )
 
 
 def main():

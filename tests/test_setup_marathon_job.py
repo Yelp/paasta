@@ -244,16 +244,31 @@ class TestSetupMarathonJob:
             get_bounce_patch,
             read_service_conf_patch,
         ):
-            status, output = setup_marathon_job.setup_service(fake_name, fake_instance, fake_client,
-                                                              self.fake_marathon_config,
-                                                              self.fake_marathon_job_config)
+            status, output = setup_marathon_job.setup_service(
+                fake_name,
+                fake_instance,
+                fake_client,
+                self.fake_marathon_config,
+                self.fake_marathon_job_config,
+            )
             assert status == 111
             assert output == 'Never'
 
-            create_config_patch.assert_called_once_with(fake_name, fake_instance, self.fake_marathon_config)
+            create_config_patch.assert_called_once_with(
+                fake_name,
+                fake_instance,
+                self.fake_marathon_config
+            )
             get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
-            deploy_service_patch.assert_called_once_with(fake_name, fake_instance, full_id, fake_complete, fake_client,
-                                                         fake_bounce)
+            deploy_service_patch.assert_called_once_with(
+                fake_name,
+                fake_instance,
+                full_id,
+                fake_complete,
+                fake_client,
+                fake_bounce,
+                self.fake_marathon_job_config['nerve_ns'],
+            )
 
     def test_setup_service_srv_complete_config_raises(self):
         fake_name = 'test_service'
@@ -274,8 +289,15 @@ class TestSetupMarathonJob:
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
         fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         expected = (1, 'bounce_method not recognized: %s' % fake_bounce)
-        actual = setup_marathon_job.deploy_service(fake_name, fake_instance, fake_id, self.fake_marathon_job_config,
-                                                   fake_client, fake_bounce)
+        actual = setup_marathon_job.deploy_service(
+            fake_name,
+            fake_instance,
+            fake_id,
+            self.fake_marathon_job_config,
+            fake_client,
+            fake_bounce,
+            nerve_ns=fake_instance,
+        )
         assert expected == actual
         fake_client.list_apps.assert_called_once_with()
         assert fake_client.create_app.call_count == 0
@@ -294,8 +316,13 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper')
         ):
             result = setup_marathon_job.deploy_service(
-                fake_name, fake_instance, fake_id,
-                self.fake_marathon_job_config, fake_client, fake_bounce,
+                fake_name,
+                fake_instance,
+                fake_id,
+                self.fake_marathon_job_config,
+                fake_client,
+                fake_bounce,
+                nerve_ns=fake_instance,
             )
             assert result[0] == 0, result[1]
             fake_client.list_apps.assert_called_once_with()
@@ -305,7 +332,8 @@ class TestSetupMarathonJob:
                 fake_instance,
                 fake_apps,
                 self.fake_marathon_job_config,
-                fake_client
+                fake_client,
+                fake_instance,
             )
 
     def test_get_marathon_config(self):

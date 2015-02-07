@@ -10,6 +10,8 @@ from functools import wraps
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
+from paasta_tools.monitoring.replication_utils import \
+    get_registered_marathon_tasks
 
 import marathon_tools
 
@@ -40,9 +42,9 @@ def bounce_method(name):
             try to bounce the same service twice at the same time."""
         @wraps(bounce_func)
         def bounce_wrapper(service_name, instance_name, existing_apps,
-                           new_config, client):
+                           new_config, client, nerve_ns):
             bounce_func(service_name, instance_name, existing_apps,
-                        new_config, client)
+                        new_config, client, nerve_ns)
         _bounce_method_funcs[name] = bounce_wrapper
         return bounce_wrapper
     return outer
@@ -204,6 +206,7 @@ def brutal_bounce(
     existing_apps,
     new_config,
     client,
+    nerve_ns,
 ):
     """Pays no regard to safety. Starts the new app if necessary, and kills any
     old ones. Mostly meant as an example of the simplest working bounce method,
@@ -233,6 +236,7 @@ def upthendown_bounce(
     existing_apps,
     new_config,
     client,
+    nerve_ns,
 ):
     """Starts a new app if necessary; only kills old apps once all the
     requested tasks for the new version are running.
@@ -254,3 +258,63 @@ def upthendown_bounce(
         if new_app.tasks_running >= new_config['instances']:
             # Kill any old instances.
             kill_old_ids(existing_ids - set([new_id]), client)
+
+
+@bounce_method('crossover')
+def crossover_bounce(
+    service_name,
+    instance_name,
+    existing_apps,
+    new_config,
+    client,
+    nerve_ns,
+):
+    """Starts a new app if necessary; slowly kills old apps as instances of the
+    new app come up and register in the load balancer.
+
+    :param service_name: service name
+    :param instance_name: instance name
+    :param existing_apps: Apps that marathon is already aware of.
+    :param new_config: The complete marathon job configuration for the new job
+    :param client: A marathon.MarathonClient object
+    """
+
+    new_id = new_config['id']
+    existing_ids = set(a.id for a in existing_apps)
+
+    # Start the app if it's not there
+    if new_id not in existing_ids:
+        create_marathon_app(new_id, new_config, client)
+    else:
+        service_namespace = '%s%s%s' % (
+            service_name,
+            marathon_tools.ID_SPACER,
+            nerve_ns
+        )
+
+        (new_app,) = [a for a in existing_apps if a.id == new_id]
+        other_apps = [a for a in existing_apps if a.id != new_id]
+
+        happy_count = len(get_registered_marathon_tasks(
+            DEFAULT_SYNAPSE_HOST,
+            service_namespace,
+            new_app,
+        ))
+        needed_count = max(new_config['instances'] - happy_count, 0)
+
+        old_tasks = []
+        for app in other_apps:
+            for task in app.tasks:
+                old_tasks.append(task)
+
+        # don't kill the first needed_count
+        for task in old_tasks[needed_count:]:
+            client.kill_task(task.app_id, task.id, scale=True)
+
+        # clean up any old tasks that we've scaled all the way down
+        kill_old_ids(
+            [app.id for app in other_apps if app.tasks_running == 0],
+            client
+        )
+
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
