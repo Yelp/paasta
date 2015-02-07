@@ -17,9 +17,6 @@ import marathon_tools
 
 log = logging.getLogger('__main__')
 DEFAULT_SYNAPSE_HOST = 'localhost:3212'
-CROSSOVER_MAX_TIME_M = 30  # Max time in minutes to bounce
-CROSSOVER_FRACTION_REQUIRED = 0.9  # % of new instances needed in HAProxy for a successful bounce
-CROSSOVER_SLEEP_INTERVAL_S = 10  # seconds to sleep between scaling an app and checking HAProxy
 ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper
 ZK_LOCK_PATH = '/bounce'
 WAIT_CREATE_S = 3
