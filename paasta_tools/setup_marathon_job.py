@@ -148,6 +148,11 @@ def setup_service(service_name, instance_name, client, marathon_config,
         log.error(error_msg)
         return (1, error_msg)
 
+    if not marathon_tools.verify_docker_image(complete_config['docker_registry'],
+                                              complete_config['docker_image']):
+        error_msg = "Docker image %s/%s does not appear to be ready on the registry yet" % (complete_config['docker_registry'], complete_config['docker_image'])
+        return (1, error_msg)
+
     full_id = complete_config['id']
 
     log.info("Desired Marathon instance id: %s", full_id)

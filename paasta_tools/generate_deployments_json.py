@@ -138,7 +138,7 @@ def get_branch_mappings(soa_dir, old_mappings):
                 commit_sha = remote_refs[ref_name]
                 branch_alias = '%s:%s' % (service, branch)
                 docker_image = 'services-%s:paasta-%s' % (service, commit_sha)
-                if marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
+                if marathon_tools.verify_docker_image(docker_registry, docker_image):
                     log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
                     mapping = mappings.setdefault(branch_alias, {})
                     mapping['docker_image'] = docker_image

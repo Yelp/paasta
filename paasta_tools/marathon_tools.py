@@ -8,6 +8,7 @@ import hashlib
 import logging
 import os
 import re
+import requests
 import socket
 import glob
 from StringIO import StringIO
@@ -134,7 +135,23 @@ def get_default_branch(cluster, instance):
     return 'paasta-%s.%s' % (cluster, instance)
 
 
-def get_docker_url(registry_uri, docker_image, verify=True):
+def verify_docker_image(registry_uri, docker_image):
+    """Verifies that a docker image exists in a registry.
+    Useful to run before we try to deploy something to prevent
+    setting up a job that has no docker image to use
+
+    :param docker_image: The docker image name, with tag if desired
+    :param verify: Set to False to not verify the composed docker url
+    :returns Bool of it exists or not
+    """
+    url = 'http://%s/v1/repositories/%s/tags/%s' % (registry_uri, docker_image.split(':')[0],
+                                                    docker_image.split(':')[1])
+    log.info("Verifying that the docker_image exists by fetching %s", url)
+    r = requests.get(url)
+    return r.status_code == 200
+
+
+def get_docker_url(registry_uri, docker_image):
     """Compose the docker url.
 
     If verify is true, checks if the URL will point to a
@@ -146,18 +163,6 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     :returns: '<registry_uri>/<docker_image>', or '' if URL didn't verify"""
     if not docker_image:
         raise NoDockerImageError('Docker url not available because there is no docker_image')
-    if verify:
-        s = StringIO()
-        c = pycurl.Curl()
-        c.setopt(pycurl.URL, str('http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
-                                                                           docker_image.split(':')[0],
-                                                                           docker_image.split(':')[1])))
-        c.setopt(pycurl.TIMEOUT, 30)
-        c.setopt(pycurl.WRITEFUNCTION, s.write)
-        c.perform()
-        if 'error' in s.getvalue():
-            log.error("Docker image not found: %s/%s", registry_uri, docker_image)
-            return ''
     docker_url = '%s/%s' % (registry_uri, docker_image)
     log.info("Docker URL: %s", docker_url)
     return docker_url
@@ -863,12 +868,11 @@ def is_app_id_running(app_id, client):
     return app_id in all_app_ids
 
 
-def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR, verify_docker=True):
+def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
     config = read_service_config(name, instance, soa_dir=soa_dir)
     docker_url = get_docker_url(marathon_config['docker_registry'],
-                                config['docker_image'],
-                                verify=verify_docker)
+                                config['docker_image'])
     healthchecks = get_healthchecks(name, instance)
     complete_config = format_marathon_app_dict(partial_id, docker_url,
                                                marathon_config['docker_volumes'],
@@ -889,7 +893,7 @@ def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     marathon configuration. Editing this function *will* cause a bounce of all
     services because they will see an "old" version of the marathon app deployed,
     and a new one with the new hash will try to be deployed"""
-    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir, verify_docker=False)['id']
+    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir)['id']
 
 
 def get_code_sha_from_dockerurl(docker_url):
