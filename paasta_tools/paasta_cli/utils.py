@@ -8,6 +8,7 @@ from socket import gethostbyname_ex
 
 from service_configuration_lib import read_services_configuration
 
+from paasta_tools.marathon_tools import get_cluster
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
 from paasta_tools.utils import _run
 
@@ -488,3 +489,14 @@ def figure_out_service_name(args):
         print service_not_found
         exit(1)
     return service_name
+
+
+def figure_out_cluster(args):
+    """Figures out and validates the input cluster name"""
+    try:
+        cluster = args.cluster or get_cluster()
+    except IOError:
+        # TODO: Read the new global paasta.json
+        print "Sorry, could not detect the PaaSTA cluster. Please provide one"
+        exit(1)
+    return cluster

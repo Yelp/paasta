@@ -1,10 +1,14 @@
 #!/usskr/bin/env python
 """PaaSTA log reader for humans"""
+import sys
 import argparse
+import logging
 
 from argcomplete.completers import ChoicesCompleter
 
+from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
+from paasta_tools.paasta_cli.utils import figure_out_cluster
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import PaastaColors
 
@@ -14,6 +18,7 @@ LOG_COMPONENTS = {
         'color': PaastaColors.blue,
         'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
         'command': 'NA - TODO: tee jenkins build steps into scribe PAASTA-201',
+        'source_env': 'devc',
     },
     'deploy': {
         'color': PaastaColors.cyan,
@@ -52,6 +57,8 @@ LOG_COMPONENTS = {
     },
 }
 
+log = logging.getLogger('__main__')
+
 
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
@@ -68,14 +75,18 @@ def add_subparser(subparsers):
         '-c', '--components',
         help=components_help,
     ).completer = ChoicesCompleter(LOG_COMPONENTS.keys())
+    cluster_help = 'The cluster to see relevant logs for. Defaults to the local cluster.'
     status_parser.add_argument(
-        '-e', '--environment',
-        help="The scribereader 'environment'. TODO: list envs from scribreader",
-    )
+        '-l', '--cluster',
+        help=cluster_help,
+    ).completer = ChoicesCompleter(list_clusters())
     status_parser.add_argument(
         '-f', '-F', '--tail', dest='tail', action='store_true', default=True,
         help='Stream the logs and follow it for more data',
     )
+    status_parser.add_argument('-d', '--debug', action='store_true',
+                               dest='debug', default=False,
+                               help='Enable debug logging')
     default_component_string = ','.join(DEFAULT_COMPONENTS)
     component_descriptions = build_component_descriptions(LOG_COMPONENTS)
     epilog = 'COMPONENTS\n' \
@@ -103,16 +114,73 @@ def prefix(input_string, component):
     return "%s: %s" % (LOG_COMPONENTS[component]['color'](component), input_string)
 
 
+def determine_scribereader_envs(components, cluster):
+    """Returns a list of environments that scribereader needs to connect
+    to based on a given list of components and the cluster involved.
+
+    Some components are in certain environments, regardless of the cluster.
+    Some clusters do not match up with the scribe environment names, so
+    we figure that out here"""
+    envs = []
+    for component in components:
+        # If a component has a 'source_env', we use that
+        # otherwise we lookup what scribe env is associated with a given cluster
+        env = LOG_COMPONENTS[component].get('source_env', cluster_to_scribe_env(cluster))
+        envs.append(env)
+    return set(envs)
+
+
+def cluster_to_scribe_env(cluster):
+    """Looks up the particular scribe env associated with a given paasta
+    cluster."""
+    lookup_map = {
+        'paasta-cluster': 'scribe-environment',
+    }
+    env = lookup_map.get(cluster, None)
+    if env is None:
+        print "I don't know where scribe logs for %s live?" % cluster
+        sys.exit(1)
+    else:
+        return env
+
+
+def scribe_tail(env, service, components, cluster):
+    """Calls scribetailer for a particular environment.
+    outputs lines that match for the requested cluster and components
+    in a pretty way"""
+    log.info("Going to scribetail in %s" % env)
+    # TODO: Replace with real scribe-tailer
+    for component in components:
+        command_string = "Command: %s" % LOG_COMPONENTS[component]['command']
+        print prefix(command_string, component)
+
+
+def tail_paasta_logs(service, components, cluster):
+    """Sergeant function for spawning off all the right scribe tailing functions"""
+    envs = determine_scribereader_envs(components, cluster)
+    log.info("Would connect to these envs to tail scribe logs: %s" % envs)
+    for env in envs:
+        # TODO: do this in parallel
+        scribe_tail(env, service, components, cluster)
+
+
 def paasta_logs(args):
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
     service_name = figure_out_service_name(args)
+    cluster = figure_out_cluster(args)
     if args.components is not None:
-        components_list = args.clusters.split(",")
+        components = args.components.split(",")
     else:
-        components_list = DEFAULT_COMPONENTS
+        components = DEFAULT_COMPONENTS
 
-    print "Getting logs for %s" % service_name
-    for component in components_list:
-        command_string = "Command: %s" % LOG_COMPONENTS[component]['command']
-        print prefix(command_string, component)
+    if args.debug:
+        log.setLevel(logging.DEBUG)
+    else:
+        log.setLevel(logging.WARN)
+
+    log.info("Going to get logs for %s on cluster %s" % (service_name, cluster))
+    if args.tail:
+        tail_paasta_logs(service_name, components, cluster)
+    else:
+        print "Non-tailing actions are not yet supported"
