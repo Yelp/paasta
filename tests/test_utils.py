@@ -38,14 +38,14 @@ def test_get_log_name_for_service():
 
 
 def test_atomic_file_write():
-    with mock.patch('tempfile.NamedTemporaryFile', autospec=True) as NTF_patch:
-        file_patch = NTF_patch().__enter__()
+    with mock.patch('tempfile.NamedTemporaryFile', autospec=True) as ntf_patch:
+        file_patch = ntf_patch().__enter__()
         file_patch.name = '/hurp/.durp-AAA'
-        NTF_patch.reset_mock()
+        ntf_patch.reset_mock()
 
         with mock.patch('os.rename', autospec=True) as rename_patch:
             with utils.atomic_file_write('/hurp/durp'):
-                NTF_patch.assert_called_once_with(
+                ntf_patch.assert_called_once_with(
                     dir='/hurp',
                     prefix='.durp-',
                     delete=False,
