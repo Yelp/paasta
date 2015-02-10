@@ -166,6 +166,8 @@ class TestBounceLib:
         expected = bounce_lib.brutal_bounce
         assert actual == expected
 
+
+class TestBrutalBounce:
     def test_brutal_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, brutal bounce should try to
         create a marathon app."""
@@ -291,6 +293,8 @@ class TestBounceLib:
                 client
             )
 
+
+class TestUpthendownBounce:
     def test_upthendown_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, upthendown bounce should try to
         create a marathon app."""
@@ -458,6 +462,8 @@ class TestBounceLib:
             assert create_marathon_app_patch.call_count == 0
             kill_old_ids_patch.assert_called_once_with(set(), client)
 
+
+class TestCrossoverBounce:
     def test_crossover_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, crossover bounce should try to
         create a marathon app."""
