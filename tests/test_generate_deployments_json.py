@@ -78,7 +78,6 @@ def test_get_branch_mappings():
         },
     ]
 
-    fake_registry = 'super-docker'
     fake_old_mappings = ['']
     expected = {
         'uno:no_thanks': {
@@ -99,20 +98,13 @@ def test_get_branch_mappings():
                    side_effect=lambda a, b: fake_branches.pop()),
         mock.patch('paasta_tools.remote_git.list_remote_refs',
                    side_effect=lambda a: fake_remote_refs.pop()),
-        mock.patch('paasta_tools.marathon_tools.get_docker_registry',
-                   return_value=fake_registry),
-        mock.patch('paasta_tools.marathon_tools.verify_docker_image',
-                   return_value=True, autospec=True),
     ) as (
         get_dirs_patch,
         get_branches_patch,
         list_remote_refs_patch,
-        registry_patch,
-        verify_docker_image_patch
     ):
         actual = generate_deployments_json.get_branch_mappings(fake_soa_dir, fake_old_mappings)
         assert expected == actual
-        registry_patch.assert_called_once_with()
         get_dirs_patch.assert_called_once_with(fake_soa_dir)
         get_branches_patch.assert_any_call(fake_soa_dir, 'uno')
         get_branches_patch.assert_any_call(fake_soa_dir, 'dos')
@@ -120,10 +112,6 @@ def test_get_branch_mappings():
 
         # Each service should require exactly one call to list_remote_refs.
         assert list_remote_refs_patch.call_count == 2
-
-        verify_docker_image_patch.assert_any_call(fake_registry, 'services-uno:paasta-789009')
-        verify_docker_image_patch.assert_any_call(fake_registry, 'services-dos:paasta-123456')
-        assert verify_docker_image_patch.call_count == 2
 
 
 def test_main():

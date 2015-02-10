@@ -215,13 +215,10 @@ class TestSetupMarathonJob:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.create_complete_config',
                        return_value=fake_complete, autospec=True),
-            mock.patch(
-                'paasta_tools.marathon_tools.verify_docker_image', autospec=True),
             mock.patch('paasta_tools.marathon_tools.get_config', return_value=self.fake_marathon_config,
                        autospec=True),
         ) as (
             create_config_patch,
-            verify_docker_image_patch,
             get_config_patch,
         ):
             status, output = setup_marathon_job.setup_service(fake_name, fake_instance, fake_client,
@@ -231,7 +228,6 @@ class TestSetupMarathonJob:
                                                         self.fake_marathon_config,
                                                         )
             fake_client.get_app.assert_called_once_with(full_id)
-            verify_docker_image_patch.assert_called_once_with('remote_registry.com', 'test_docker:1.0')
 
     def test_setup_service_srv_does_not_exist(self):
         fake_name = 'if_talk_was_cheap'
@@ -251,8 +247,6 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.marathon_tools.create_complete_config',
                        return_value=fake_complete),
             mock.patch(
-                'paasta_tools.marathon_tools.verify_docker_image', autospec=True),
-            mock.patch(
                 'setup_marathon_job.deploy_service', return_value=(111, 'Never')),
             mock.patch(
                 'paasta_tools.marathon_tools.get_bounce_method', return_value=fake_bounce),
@@ -260,7 +254,6 @@ class TestSetupMarathonJob:
                        return_value=self.fake_marathon_job_config),
         ) as (
             create_config_patch,
-            verify_docker_image_patch,
             deploy_service_patch,
             get_bounce_patch,
             read_service_conf_patch,
@@ -278,7 +271,6 @@ class TestSetupMarathonJob:
                 self.fake_marathon_job_config)
             deploy_service_patch.assert_called_once_with(fake_name, fake_instance, full_id, fake_complete, fake_client,
                                                          fake_bounce)
-            verify_docker_image_patch.assert_called_once_with('remote_registry.com', 'test_docker:1.0')
 
     def test_setup_service_srv_complete_config_raises(self):
         fake_name = 'test_service'

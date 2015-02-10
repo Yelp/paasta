@@ -124,7 +124,6 @@ def get_branch_mappings(soa_dir, old_mappings):
             the other properties of this app have not changed.
     """
     mappings = {}
-    docker_registry = marathon_tools.get_docker_registry()
     for service in get_service_directories(soa_dir):
         log.info('Examining service %s', service)
         valid_branches = get_branches_for_service(soa_dir, service)
@@ -140,18 +139,13 @@ def get_branch_mappings(soa_dir, old_mappings):
                 commit_sha = remote_refs[ref_name]
                 branch_alias = '%s:%s' % (service, branch)
                 docker_image = 'services-%s:paasta-%s' % (service, commit_sha)
-                if marathon_tools.verify_docker_image(docker_registry, docker_image):
-                    log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
-                    mapping = mappings.setdefault(branch_alias, {})
-                    mapping['docker_image'] = docker_image
+                log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
+                mapping = mappings.setdefault(branch_alias, {})
+                mapping['docker_image'] = docker_image
 
-                    desired_state, force_bounce = get_desired_state(service, branch, remote_refs)
-                    mapping['desired_state'] = desired_state
-                    mapping['force_bounce'] = force_bounce
-                else:
-                    log.error('Branch %s should be mapped to image %s, but that image isn\'t \
-                               in the docker_registry %s', branch_alias, docker_image, docker_registry)
-                    mappings[branch_alias] = old_mappings.get(branch_alias, None)
+                desired_state, force_bounce = get_desired_state(service, branch, remote_refs)
+                mapping['desired_state'] = desired_state
+                mapping['force_bounce'] = force_bounce
 
     return mappings
 

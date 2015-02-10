@@ -22,11 +22,9 @@ def step_impl(context):
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.create_complete_config'),
         mock.patch('paasta_tools.marathon_tools.MarathonConfig'),
-        mock.patch('paasta_tools.marathon_tools.verify_docker_image'),
     ) as (
         mock_create_complete_config,
         mock_MarathonConfig,
-        mock_verify_docker_image,
     ):
         mock_MarathonConfig.return_value = mock.MagicMock(get=mock.Mock(return_value=context.marathon_config))
         mock_create_complete_config.return_value = fake_service_config
