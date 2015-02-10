@@ -32,3 +32,7 @@ def test_get_log_name_for_service():
     service_name = 'foo'
     expected = 'stream_paasta_%s' % service_name
     assert utils.get_log_name_for_service(service_name) == expected
+
+
+def test_configure_log():
+    utils.configure_log()
