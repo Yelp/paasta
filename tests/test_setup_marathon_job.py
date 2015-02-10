@@ -220,7 +220,7 @@ class TestSetupMarathonJob:
                                                         self.fake_marathon_config,
                                                         )
             fake_client.get_app.assert_called_once_with(full_id)
-            verify_docker_image_patch.assert_called_once_with('fake_docker_registry', 'fake_docker_image')
+            verify_docker_image_patch.assert_called_once_with('remote_registry.com', 'test_docker:1.0')
 
     def test_setup_service_srv_does_not_exist(self):
         fake_name = 'if_talk_was_cheap'
@@ -231,8 +231,7 @@ class TestSetupMarathonJob:
         full_id = marathon_tools.compose_job_id(fake_name, fake_instance, 'oogabooga')
         fake_complete = {
             'do': 'you', 'even': 'dota', 'id': full_id,
-            'docker_registry': 'fake_docker_registry',
-            'docker_image': 'fake_docker_image',
+            'docker_image': 'fake_docker_registry/fake_docker_image',
         }
         fake_bounce = 'trampoline'
         with contextlib.nested(
@@ -261,7 +260,7 @@ class TestSetupMarathonJob:
             get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
             deploy_service_patch.assert_called_once_with(fake_name, fake_instance, full_id, fake_complete, fake_client,
                                                          fake_bounce)
-            verify_docker_image_patch.assert_called_once_with('fake_docker_registry', 'fake_docker_image')
+            verify_docker_image_patch.assert_called_once_with('remote_registry.com', 'test_docker:1.0')
 
     def test_setup_service_srv_complete_config_raises(self):
         fake_name = 'test_service'
