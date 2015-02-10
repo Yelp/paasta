@@ -23,7 +23,7 @@ setup(
         'requests',
         'pysensu-yelp >= 0.1.5',
         'GitPython == 0.1.7',
-        'kazoo == 1.3.1',
+        'kazoo >= 2.0.0',
         'sensu-plugin == 0.1.0',
         'argcomplete == 0.8.1',
         'mesos.cli == 0.1.3',

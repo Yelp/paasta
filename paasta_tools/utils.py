@@ -28,9 +28,8 @@ def get_git_url(service):
 
 
 def configure_log():
-    """We will log to the yocalhost binded scribe.
-    """
-    clog.configure('169.254.255.254', 1463)
+    """We will log to the yocalhost binded scribe."""
+    clog.config.configure(scribe_host='169.254.255.254', scribe_port=1463)
 
 
 def _now():
