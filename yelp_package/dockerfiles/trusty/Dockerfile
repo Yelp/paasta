@@ -11,7 +11,6 @@ RUN apt-get -y install python-dev debhelper
 # Which at this time is in this package
 RUN apt-get -y install dh-virtualenv=0.6-yelp2
 RUN apt-get -y install python-yaml
-RUN apt-get -y install python-pycurl
 RUN apt-get -y install python-pytest
 RUN apt-get -y install pyflakes
 

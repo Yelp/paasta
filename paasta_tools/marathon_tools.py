@@ -11,11 +11,9 @@ import re
 import requests
 import socket
 import glob
-from StringIO import StringIO
 
 from marathon import MarathonClient
 import json
-import pycurl
 import service_configuration_lib
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -147,7 +145,7 @@ def verify_docker_image(registry_uri, docker_image):
     url = 'http://%s/v1/repositories/%s/tags/%s' % (registry_uri, docker_image.split(':')[0],
                                                     docker_image.split(':')[1])
     log.info("Verifying that the docker_image exists by fetching %s", url)
-    r = requests.get(url)
+    r = requests.get(url, timeout=10)
     return r.status_code == 200
 
 
@@ -726,15 +724,11 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
     :param port: The port to query mesos-slave on
     :timeout_s: The timeout, in seconds, for the mesos-slave state request
     :returns: A list of triples of (service_name, instance_name, port)"""
-    s = StringIO()
-    req = pycurl.Curl()
-    req.setopt(pycurl.TIMEOUT, timeout_s)
-    req.setopt(pycurl.URL, 'http://%s:%s/state.json' % (hostname, port))
-    req.setopt(pycurl.WRITEFUNCTION, s.write)
-    req.perform()
-    # If there's an I/O error here, we should fail and know about it, as
-    # we should be running is_mesos_slave(localhost) before hitting this
-    slave_state = json.loads(s.getvalue())
+    state_url = 'http://%s:%s/state.json' % (hostname, port)
+    r = requests.get(state_url, timeout=10)
+    # Raise something if we got something bad
+    r.raise_for_status()
+    slave_state = r.json()
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
@@ -825,12 +819,10 @@ def get_mesos_leader(hostname=MY_HOSTNAME):
 
     :param hostname: The hostname to query mesos-master on
     :returns: The current mesos-master hostname"""
-    curl = pycurl.Curl()
-    curl.setopt(pycurl.URL, 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT))
-    curl.setopt(pycurl.HEADER, True)
-    curl.setopt(pycurl.WRITEFUNCTION, lambda a: None)
-    curl.perform()
-    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', curl.getinfo(pycurl.REDIRECT_URL)).group(0)
+    redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
+    r = requests.get(redirect_url, timeout=10)
+    r.raise_for_status()
+    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
 
 
 def is_mesos_leader(hostname=MY_HOSTNAME):
