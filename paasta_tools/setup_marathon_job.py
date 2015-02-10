@@ -111,7 +111,6 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     app_list = client.list_apps()
     existing_apps = [app for app in app_list if short_id in app.id]
     try:
-        # TODO refactor this into a dictionary lookup.
         try:
             bounce_func = bounce_lib.get_bounce_method_func(bounce_method)
         except KeyError:
@@ -128,9 +127,9 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
                 client,
                 nerve_ns
             )
-    except IOError:
-        log.error("Namespace %s already being bounced. Exiting", short_id)
-        return (1, "Service is taking a while to bounce")
+    except bounce_lib.LockHeldException:
+        log.error("Instance %s already being bounced. Exiting", short_id)
+        return (1, "Instance %s is already being bounced.", short_id)
     log.info("%s deployed. Exiting", marathon_jobid)
     return (0, 'Service deployed.')
 

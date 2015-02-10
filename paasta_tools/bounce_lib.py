@@ -43,6 +43,10 @@ def get_bounce_method_func(name):
     return _bounce_method_funcs[name]
 
 
+class LockHeldException(Exception):
+    pass
+
+
 @contextmanager
 def bounce_lock(name):
     """Acquire a bounce lockfile for the name given. The name should generally
@@ -59,7 +63,7 @@ def bounce_lock(name):
         remove = True
         yield
     except IOError:
-        raise IOError("Service %s is already being bounced!" % name)
+        raise LockHeldException("Service %s is already being bounced!" % name)
     finally:
         fd.close()
         if remove:
@@ -83,7 +87,7 @@ def bounce_lock_zookeeper(name):
         acquired = True
         yield
     except LockTimeout:
-        raise IOError("Service %s is already being bounced!" % name)
+        raise LockHeldException("Service %s is already being bounced!" % name)
     finally:
         if acquired:
             lock.release()
@@ -103,7 +107,7 @@ def create_app_lock():
         lock.acquire(timeout=30)  # timeout=0 throws some other strange exception
         yield
     except LockTimeout:
-        raise IOError("Failed to acquire lock for creating marathon app!")
+        raise LockHeldException("Failed to acquire lock for creating marathon app!")
     finally:
         lock.release()
         zk.stop()
