@@ -131,13 +131,13 @@ def test_main():
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
         mock.patch('generate_deployments_json.parse_args',
-                   return_value=mock.Mock(verbose=False, soa_dir=fake_soa_dir)),
-        mock.patch('os.path.abspath', return_value='ABSOLUTE'),
-        mock.patch('generate_deployments_json.get_branch_mappings', return_value={'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}),
-        mock.patch('os.path.join', return_value='JOIN'),
+                   return_value=mock.Mock(verbose=False, soa_dir=fake_soa_dir), autospec=True),
+        mock.patch('os.path.abspath', return_value='ABSOLUTE', autospec=True),
+        mock.patch('generate_deployments_json.get_branch_mappings', return_value={'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}, autospec=True),
+        mock.patch('os.path.join', return_value='JOIN', autospec=True),
         mock.patch('generate_deployments_json.open', create=True, return_value=file_mock),
-        mock.patch('json.dump'),
-        mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'}),
+        mock.patch('json.dump', autospec=True),
+        mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'}, autospec=True),
         mock.patch('generate_deployments_json.atomic_file_write', autospec=True),
     ) as (
         parse_patch,
