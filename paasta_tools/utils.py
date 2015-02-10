@@ -2,6 +2,7 @@ import contextlib
 import datetime
 import json
 import shlex
+import tempfile
 import os
 
 from subprocess import Popen
@@ -93,11 +94,15 @@ def _run(command):
 
 
 @contextlib.contextmanager
-def atomic_file_write(target_path, pattern='.%s.temp'):
+def atomic_file_write(target_path):
     dirname = os.path.dirname(target_path)
     basename = os.path.basename(target_path)
-    temp_target_path = os.path.join(dirname, pattern % basename)
 
-    with open(temp_target_path, 'w') as f:
+    with tempfile.NamedTemporaryFile(
+        dir=dirname,
+        prefix=('.%s-' % basename),
+        delete=False
+    ) as f:
+        temp_target_path = f.name
         yield f
     os.rename(temp_target_path, target_path)
