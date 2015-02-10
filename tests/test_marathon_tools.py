@@ -943,27 +943,27 @@ class TestMarathonTools:
         with raises(marathon_tools.NoDockerImageError):
             marathon_tools.get_docker_url('fake_registry', None)
 
-    def test_verify_docker_image_good(self):
-        fake_registry = "im.a-real.vm"
-        fake_image = "and-i-can-run:1.0"
-        with mock.patch('requests.get') as mock_requests_get:
-            mock_requests_get.return_value = mock_response = mock.Mock()
-            mock_response.status_code = 200
-            actual = marathon_tools.verify_docker_image(fake_registry, fake_image)
-            assert actual is True
-            expected_url = 'http://im.a-real.vm/v1/repositories/and-i-can-run/tags/1.0'
-            mock_requests_get.assert_called_once_with(expected_url)
-
-    def test_verify_docker_image_bad(self):
-        fake_registry = "im.a-real.vm"
-        fake_image = "and-i-can-run:1.0"
-        with mock.patch('requests.get') as mock_requests_get:
-            mock_requests_get.return_value = mock_response = mock.Mock()
-            mock_response.status_code = 404
-            actual = marathon_tools.verify_docker_image(fake_registry, fake_image)
-            assert actual is False
-            expected_url = 'http://im.a-real.vm/v1/repositories/and-i-can-run/tags/1.0'
-            mock_requests_get.assert_called_once_with(expected_url)
+#    def test_verify_docker_image_good(self):
+#        fake_registry = "im.a-real.vm"
+#        fake_image = "and-i-can-run:1.0"
+#        with mock.patch('requests.get') as mock_requests_get:
+#            mock_requests_get.return_value = mock_response = mock.Mock()
+#            mock_response.status_code = 200
+#            actual = marathon_tools.verify_docker_image(fake_registry, fake_image)
+#            assert actual is True
+#            expected_url = 'http://im.a-real.vm/v1/repositories/and-i-can-run/tags/1.0'
+#            mock_requests_get.assert_called_once_with(expected_url)
+#
+#    def test_verify_docker_image_bad(self):
+#        fake_registry = "im.a-real.vm"
+#        fake_image = "and-i-can-run:1.0"
+#        with mock.patch('requests.get') as mock_requests_get:
+#            mock_requests_get.return_value = mock_response = mock.Mock()
+#            mock_response.status_code = 404
+#            actual = marathon_tools.verify_docker_image(fake_registry, fake_image)
+#            assert actual is False
+#            expected_url = 'http://im.a-real.vm/v1/repositories/and-i-can-run/tags/1.0'
+#            mock_requests_get.assert_called_once_with(expected_url)
 
     def test_get_marathon_client(self):
         fake_url = "nothing_for_me_to_do_but_dance"

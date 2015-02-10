@@ -144,6 +144,8 @@ def verify_docker_image(registry_uri, docker_image):
     :param verify: Set to False to not verify the composed docker url
     :returns Bool of it exists or not
     """
+    # TODO: Handle https, basic auth, etc
+    return True
     url = 'http://%s/v1/repositories/%s/tags/%s' % (registry_uri, docker_image.split(':')[0],
                                                     docker_image.split(':')[1])
     log.info("Verifying that the docker_image exists by fetching %s", url)
