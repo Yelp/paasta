@@ -306,7 +306,7 @@ def crossover_bounce(
 
         # clean up any old tasks that we've scaled all the way down
         kill_old_ids(
-            [app.id for app in other_apps if app.tasks_running == 0],
+            set([app.id for app in other_apps if app.tasks_running == 0]),
             client
         )
 

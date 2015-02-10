@@ -4,9 +4,9 @@ import mock
 import requests
 
 from paasta_tools.monitoring.replication_utils import (
-    get_replication_for_services,
     get_all_registered_ip_ports_for_services,
     get_registered_marathon_tasks,
+    get_replication_for_services,
 )
 
 

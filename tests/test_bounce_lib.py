@@ -579,7 +579,7 @@ class TestBounceLib:
             )
 
             assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with([], client)
+            kill_old_ids_patch.assert_called_once_with(set([]), client)
             assert client.kill_task.call_count == 5
 
     def test_crossover_bounce_cleanup(self):
@@ -617,7 +617,7 @@ class TestBounceLib:
 
             assert create_marathon_app_patch.call_count == 0
             kill_old_ids_patch.assert_called_once_with(
-                [old_app.id],
+                set([old_app.id]),
                 client
             )
             assert client.kill_task.call_count == 0
@@ -657,7 +657,7 @@ class TestBounceLib:
             )
 
             assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with([], client)
+            kill_old_ids_patch.assert_called_once_with(set([]), client)
             assert client.kill_task.call_count == 0
 
 
