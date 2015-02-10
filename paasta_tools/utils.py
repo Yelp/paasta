@@ -1,6 +1,9 @@
-import shlex
+import contextlib
 import datetime
 import json
+import shlex
+import os
+
 from subprocess import Popen
 from subprocess import PIPE
 from subprocess import STDOUT
@@ -87,3 +90,14 @@ def _run(command):
         output = e.strerror
         returncode = e.errno
     return returncode, output
+
+
+@contextlib.contextmanager
+def atomic_file_write(target_path, pattern='.%s.temp'):
+    dirname = os.path.dirname(target_path)
+    basename = os.path.basename(target_path)
+    temp_target_path = os.path.join(dirname, pattern % basename)
+
+    with open(temp_target_path, 'w') as f:
+        yield f
+    os.rename(temp_target_path, target_path)

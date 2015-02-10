@@ -137,7 +137,8 @@ def test_main():
         mock.patch('os.path.join', return_value='JOIN'),
         mock.patch('generate_deployments_json.open', create=True, return_value=file_mock),
         mock.patch('json.dump'),
-        mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'})
+        mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'}),
+        mock.patch('generate_deployments_json.atomic_file_write', autospec=True),
     ) as (
         parse_patch,
         abspath_patch,
@@ -145,18 +146,37 @@ def test_main():
         join_patch,
         open_patch,
         json_dump_patch,
-        json_load_patch
+        json_load_patch,
+        atomic_file_write_patch,
     ):
         generate_deployments_json.main()
         parse_patch.assert_called_once_with()
         abspath_patch.assert_called_once_with(fake_soa_dir)
-        mappings_patch.assert_called_once_with('ABSOLUTE', {'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS', 'force_bounce': None}}),
-        join_patch.assert_any_call('ABSOLUTE', generate_deployments_json.TARGET_FILE),
+        mappings_patch.assert_called_once_with(
+            'ABSOLUTE',
+            {
+                'OLD_MAP': {
+                    'desired_state': 'start',
+                    'docker_image': 'PINGS',
+                    'force_bounce': None
+                }
+            }
+        ),
+        join_patch.assert_any_call(
+            'ABSOLUTE',
+            generate_deployments_json.TARGET_FILE
+        ),
         assert join_patch.call_count == 2
-        open_patch.assert_any_call('JOIN', 'w')
-        open_patch.assert_any_call('JOIN', 'r')
-        assert open_patch.call_count == 2
-        json_dump_patch.assert_called_once_with({'v1': {'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}}, file_mock.__enter__())
+        atomic_file_write_patch.assert_called_once_with('JOIN')
+        open_patch.assert_called_once_with('JOIN', 'r')
+        json_dump_patch.assert_called_once_with(
+            {
+                'v1': {
+                    'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}
+                }
+            },
+            atomic_file_write_patch().__enter__()
+        )
         json_load_patch.assert_called_once_with(file_mock.__enter__())
 
 

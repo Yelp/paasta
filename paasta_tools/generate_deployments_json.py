@@ -33,7 +33,7 @@ import os
 import re
 import service_configuration_lib
 from paasta_tools import marathon_tools, remote_git
-from paasta_tools.utils import get_git_url
+from paasta_tools.utils import atomic_file_write, get_git_url
 import sys
 
 
@@ -217,7 +217,7 @@ def main():
 
     deployments_dict = get_deployments_dict_from_branch_mappings(mappings)
 
-    with open(os.path.join(soa_dir, TARGET_FILE), 'w') as f:
+    with atomic_file_write(os.path.join(soa_dir, TARGET_FILE)) as f:
         json.dump(deployments_dict, f)
 
 

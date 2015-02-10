@@ -1,5 +1,8 @@
 import json
 import mock
+import os
+import shutil
+import tempfile
 
 from paasta_tools import utils
 
@@ -32,3 +35,39 @@ def test_get_log_name_for_service():
     service_name = 'foo'
     expected = 'stream_paasta_%s' % service_name
     assert utils.get_log_name_for_service(service_name) == expected
+
+
+def test_atomic_file_write():
+    with mock.patch('paasta_tools.utils.open', create=True) as open_patch:
+        with mock.patch('os.rename', autospec=True) as rename_patch:
+            with utils.atomic_file_write('/hurp/durp'):
+                open_patch.assert_called_once_with('/hurp/.durp.temp', 'w')
+            rename_patch.assert_called_once_with(
+                '/hurp/.durp.temp',
+                '/hurp/durp'
+            )
+
+
+def test_atomic_file_write_itest():
+    tempdir = tempfile.mkdtemp()
+    target_file_name = os.path.join(tempdir, 'test_atomic_file_write_itest.txt')
+
+    try:
+        with open(target_file_name, 'w') as f_before:
+            f_before.write('old content')
+
+        with utils.atomic_file_write(target_file_name) as f_new:
+            f_new.write('new content')
+
+            with open(target_file_name) as f_existing:
+                # While in the middle of an atomic_file_write, the existing
+                # file should still contain the old content, and should not
+                # be truncated, etc.
+                assert f_existing.read() == 'old content'
+
+        with open(target_file_name) as f_done:
+            # once we're done, the content should be in place.
+            assert f_done.read() == 'new content'
+
+    finally:
+        shutil.rmtree(tempdir)

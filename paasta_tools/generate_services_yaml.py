@@ -6,6 +6,7 @@ import sys
 
 import yaml
 from paasta_tools.marathon_tools import get_all_namespaces
+from paasta_tools.utils import atomic_file_write
 
 
 # CEP 337 address for accessing services
@@ -36,7 +37,7 @@ def main():
     output_path = sys.argv[1]
     configuration = generate_configuration()
 
-    with open(output_path, 'w') as fp:
+    with atomic_file_write(output_path) as fp:
         yaml.dump(configuration,
                   fp,
                   indent=2,
