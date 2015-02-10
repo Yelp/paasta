@@ -310,4 +310,33 @@ def crossover_bounce(
             client
         )
 
+
+@register_bounce_method('downthenup')
+def downthenup_bounce(
+    service_name,
+    instance_name,
+    existing_apps,
+    new_config,
+    client,
+    nerve_ns,
+):
+    """Stops any old apps and waits for them to die before starting a new one.
+
+    :param service_name: service name
+    :param instance_name: instance name
+    :param existing_apps: Apps that marathon is already aware of.
+    :param new_config: The complete marathon job configuration for the new job
+    :param client: A marathon.MarathonClient object
+    """
+    new_id = new_config['id']
+    existing_ids = set(a.id for a in existing_apps)
+    old_ids = existing_ids - set([new_id])
+
+    # Only start an app if no previous apps exist.
+    if not existing_ids:
+        create_marathon_app(new_id, new_config, client)
+
+    # Kill any old instances.
+    kill_old_ids(old_ids, client)
+
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
