@@ -14,7 +14,9 @@ def add_subparser(subparsers):
         help='Builds and tests a docker image')
 
     list_parser.add_argument('-s', '--service',
-                             help='Test and build docker image for this service. Leading "services-", as included in a Jenkins job name, will be stripped.',
+                             help='Test and build docker image for this service. Leading '
+                                  '"services-", as included in a Jenkins job name, '
+                                  'will be stripped.',
                              required=True,
                              )
     list_parser.add_argument('-c', '--commit',

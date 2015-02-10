@@ -100,7 +100,8 @@ def test_report_status_for_cluster_displays_deployed_service(
         )
     )
 
-    status.report_status_for_cluster(service_name, 'cluster', planned_deployments, actual_deployments)
+    status.report_status_for_cluster(
+        service_name, 'cluster', planned_deployments, actual_deployments)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
@@ -125,7 +126,8 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
         "    on another line!\n"
     )
 
-    status.report_status_for_cluster(service_name, 'cluster', planned_deployments, actual_deployments)
+    status.report_status_for_cluster(
+        service_name, 'cluster', planned_deployments, actual_deployments)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
@@ -139,8 +141,8 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     # paasta_status with no args displays deploy info
     service_name = 'fake_service'
     planned_deployments = [
-           'a_cluster.a_instance',
-           'a_cluster.b_instance',
+        'a_cluster.a_instance',
+        'a_cluster.b_instance',
     ]
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
@@ -165,7 +167,8 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         )
     )
 
-    status.report_status_for_cluster(service_name, 'a_cluster', planned_deployments, actual_deployments)
+    status.report_status_for_cluster(
+        service_name, 'a_cluster', planned_deployments, actual_deployments)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
@@ -202,7 +205,8 @@ def test_print_cluster_status_missing_deploys_in_red(
         )
     )
 
-    status.report_status_for_cluster(service_name, 'a_cluster', planned_deployments, actual_deployments)
+    status.report_status_for_cluster(
+        service_name, 'a_cluster', planned_deployments, actual_deployments)
     output = mock_stdout.getvalue()
     assert expected_output in output
 
@@ -221,13 +225,15 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
     }
-    fake_execute_paasta_serviceinit_on_remote_master_output = "Marathon: 5 instances"
-    mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_execute_paasta_serviceinit_on_remote_master_output
-    expected_output = "    %s\n" % fake_execute_paasta_serviceinit_on_remote_master_output
+    fake_output = "Marathon: 5 instances"
+    mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_output
+    expected_output = "    %s\n" % fake_output
 
-    status.report_status_for_cluster(service_name, 'a_cluster', planned_deployments, actual_deployments)
+    status.report_status_for_cluster(
+        service_name, 'a_cluster', planned_deployments, actual_deployments)
     assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 1
-    mock_execute_paasta_serviceinit_on_remote_master.assert_any_call('status', 'a_cluster', service_name, 'a_instance', False)
+    mock_execute_paasta_serviceinit_on_remote_master.assert_any_call(
+        'status', 'a_cluster', service_name, 'a_instance', False)
 
     output = mock_stdout.getvalue()
     assert expected_output in output
@@ -320,7 +326,8 @@ def test_status_calls_sergeants(
 
     pipeline = [{'instancename': 'cluster.instance'}]
     deploy_info = {'pipeline': pipeline}
-    planned_deployments = ['cluster1.instance1', 'cluster1.instance2', 'cluster2.instance1']
+    planned_deployments = [
+        'cluster1.instance1', 'cluster1.instance2', 'cluster2.instance1']
     mock_get_deploy_info.return_value = deploy_info
     mock_get_planned_deployments.return_value = planned_deployments
 
@@ -338,7 +345,8 @@ def test_status_calls_sergeants(
     mock_figure_out_service_name.assert_called_once_with(args)
     mock_get_actual_deployments.assert_called_once_with(service_name)
     mock_get_deploy_info.assert_called_once_with(service_name)
-    mock_report_status.assert_called_once_with(service_name, planned_deployments, actual_deployments, None, False)
+    mock_report_status.assert_called_once_with(
+        service_name, planned_deployments, actual_deployments, None, False)
 
 
 def test_report_bogus_filters_nofilter():
@@ -365,10 +373,14 @@ def test_report_status_obeys_filter(
 ):
     service_name = 'fake_service'
     cluster_filter = ['cluster1']
-    deploy_pipeline = actual_deployments = ['cluster1.main', 'cluster2.main', 'cluster3.main']
-    report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter)
-    mock_report_bogus_filters.assert_called_once_with(cluster_filter, ['cluster1', 'cluster2', 'cluster3'])
-    mock_report_status_for_cluster.assert_called_once_with(service_name, 'cluster1', deploy_pipeline, actual_deployments, False)
+    deploy_pipeline = actual_deployments = [
+        'cluster1.main', 'cluster2.main', 'cluster3.main']
+    report_status(
+        service_name, deploy_pipeline, actual_deployments, cluster_filter)
+    mock_report_bogus_filters.assert_called_once_with(
+        cluster_filter, ['cluster1', 'cluster2', 'cluster3'])
+    mock_report_status_for_cluster.assert_called_once_with(service_name, 'cluster1', deploy_pipeline,
+                                                           actual_deployments, False)
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.report_status_for_cluster')
@@ -381,8 +393,13 @@ def test_report_status_handle_none_filter(
 ):
     service_name = 'fake_service'
     cluster_filter = None
-    deploy_pipeline = actual_deployments = ['cluster1.main', 'cluster2.main', 'cluster3.main']
-    report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter)
-    mock_report_status_for_cluster.assert_any_call(service_name, 'cluster1', deploy_pipeline, actual_deployments, False)
-    mock_report_status_for_cluster.assert_any_call(service_name, 'cluster2', deploy_pipeline, actual_deployments, False)
-    mock_report_status_for_cluster.assert_any_call(service_name, 'cluster3', deploy_pipeline, actual_deployments, False)
+    deploy_pipeline = actual_deployments = [
+        'cluster1.main', 'cluster2.main', 'cluster3.main']
+    report_status(
+        service_name, deploy_pipeline, actual_deployments, cluster_filter)
+    mock_report_status_for_cluster.assert_any_call(
+        service_name, 'cluster1', deploy_pipeline, actual_deployments, False)
+    mock_report_status_for_cluster.assert_any_call(
+        service_name, 'cluster2', deploy_pipeline, actual_deployments, False)
+    mock_report_status_for_cluster.assert_any_call(
+        service_name, 'cluster3', deploy_pipeline, actual_deployments, False)

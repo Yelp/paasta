@@ -552,22 +552,38 @@ class TestMarathonTools:
         timeout = -99
 
         stringio_patch.return_value.getvalue.return_value = 'curl_into_a_corner'
-        json_load_patch.return_value = {'frameworks': [
-                                            {'executors': [
-                                                {'id': id_1, 'resources': {'ports': ports_1}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
-                                                {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{u'state': u'TASK_RUNNING'}]}],
-                                             'name': 'marathon-1111111'},
-                                            {'executors': [
-                                                {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
-                                                {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{u'state': u'TASK_RUNNING'}]}],
-                                             'name': 'marathon-3145jgreoifd'},
-                                            {'executors': [
-                                                {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{u'state': u'TASK_STAGED'}]}],
-                                             'name': 'marathon-754rchoeurcho'},
-                                            {'executors': [
-                                                {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{u'state': u'TASK_RUNNING'}]}],
-                                             'name': 'super_bunk'}
-                                        ]}
+        json_load_patch.return_value = {
+            'frameworks': [
+                {
+                    'executors': [
+                        {'id': id_1, 'resources': {'ports': ports_1},
+                            'tasks': [{u'state': u'TASK_RUNNING'}]},
+                        {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{u'state': u'TASK_RUNNING'}]}
+                    ],
+                    'name': 'marathon-1111111'
+                },
+                {
+                    'executors': [
+                        {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                        {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                    ],
+                    'name': 'marathon-3145jgreoifd'
+                },
+                {
+                    'executors': [
+                        {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{u'state': u'TASK_STAGED'}]},
+                    ],
+                    'name': 'marathon-754rchoeurcho'
+                },
+                {
+                    'executors': [
+                        {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                    ],
+                    'name': 'super_bunk'
+                }
+            ]
+        }
+
         expected = [('klingon', 'ships', 111),
                     ('fire', 'photon', 222),
                     ('dota', 'axe', 333),
@@ -970,7 +986,10 @@ class TestMarathonTools:
         fake_id = 'fake_app1'
         fake_all_marathon_app_ids = ['fake_app1', 'fake_app2']
         fake_client = mock.Mock()
-        with mock.patch('marathon_tools.list_all_marathon_app_ids', return_value=fake_all_marathon_app_ids) as list_all_marathon_app_ids_patch:
+        with mock.patch(
+            'marathon_tools.list_all_marathon_app_ids',
+            return_value=fake_all_marathon_app_ids,
+        ) as list_all_marathon_app_ids_patch:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is True
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
 
@@ -978,7 +997,10 @@ class TestMarathonTools:
         fake_id = 'fake_app3'
         fake_all_marathon_app_ids = ['fake_app1', 'fake_app2']
         fake_client = mock.Mock()
-        with mock.patch('marathon_tools.list_all_marathon_app_ids', return_value=fake_all_marathon_app_ids) as list_all_marathon_app_ids_patch:
+        with mock.patch(
+            'marathon_tools.list_all_marathon_app_ids',
+            return_value=fake_all_marathon_app_ids,
+        ) as list_all_marathon_app_ids_patch:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is False
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
 
@@ -1005,7 +1027,11 @@ class TestMarathonTools:
             hash_patch,
             code_sha_patch,
         ):
-            assert marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
+            assert marathon_tools.get_app_id(
+                fake_name,
+                fake_instance,
+                self.fake_marathon_config
+            ) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
             read_service_config_patch.assert_called_once_with(fake_name, fake_instance, soa_dir='/nail/etc/services')
             hash_patch.assert_called_once_with(fake_config, force_bounce=None)
             code_sha_patch.assert_called_once_with(fake_url)

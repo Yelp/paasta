@@ -303,8 +303,8 @@ class TestPaastaServiceStatus:
             'cpus_user_time_secs': 0.0,
         }
         fake_task.__getitem__.return_value = [{
-               'state': 'TASK_RUNNING',
-               'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
+            'state': 'TASK_RUNNING',
+            'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
         }]
         actual = paasta_serviceinit.get_cpu_usage(fake_task)
         assert '10.0%' == actual

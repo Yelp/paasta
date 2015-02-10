@@ -50,12 +50,16 @@ class TestSetupMarathonJob:
     def test_main_success(self):
         fake_client = mock.MagicMock()
         with contextlib.nested(
-            mock.patch('setup_marathon_job.parse_args', return_value=self.fake_args),
-            mock.patch('setup_marathon_job.get_main_marathon_config', return_value=self.fake_marathon_config),
-            mock.patch('paasta_tools.marathon_tools.get_marathon_client', return_value=fake_client),
+            mock.patch(
+                'setup_marathon_job.parse_args', return_value=self.fake_args),
+            mock.patch('setup_marathon_job.get_main_marathon_config',
+                       return_value=self.fake_marathon_config),
+            mock.patch(
+                'paasta_tools.marathon_tools.get_marathon_client', return_value=fake_client),
             mock.patch('paasta_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
-            mock.patch('setup_marathon_job.setup_service', return_value=(0, 'it_is_finished')),
+            mock.patch(
+                'setup_marathon_job.setup_service', return_value=(0, 'it_is_finished')),
             mock.patch('setup_marathon_job.marathon_tools.get_cluster',
                        return_value=self.fake_marathon_config['cluster']),
             mock.patch('setup_marathon_job.send_event'),
@@ -74,31 +78,35 @@ class TestSetupMarathonJob:
             parse_args_patch.assert_called_once_with()
             get_main_conf_patch.assert_called_once_with()
             get_client_patch.assert_called_once_with(
-                    self.fake_marathon_config['url'],
-                    self.fake_marathon_config['user'],
-                    self.fake_marathon_config['pass'])
+                self.fake_marathon_config['url'],
+                self.fake_marathon_config['user'],
+                self.fake_marathon_config['pass'])
             read_service_conf_patch.assert_called_once_with(
-                    self.fake_args.service_instance.split('.')[0],
-                    self.fake_args.service_instance.split('.')[1],
-                    self.fake_marathon_config['cluster'],
-                    self.fake_args.soa_dir)
+                self.fake_args.service_instance.split('.')[0],
+                self.fake_args.service_instance.split('.')[1],
+                self.fake_marathon_config['cluster'],
+                self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
-                    self.fake_args.service_instance.split('.')[0],
-                    self.fake_args.service_instance.split('.')[1],
-                    fake_client,
-                    self.fake_marathon_config,
-                    self.fake_marathon_job_config)
+                self.fake_args.service_instance.split('.')[0],
+                self.fake_args.service_instance.split('.')[1],
+                fake_client,
+                self.fake_marathon_config,
+                self.fake_marathon_job_config)
             sys_exit_patch.assert_called_once_with(0)
 
     def test_main_failure(self):
         fake_client = mock.MagicMock()
         with contextlib.nested(
-            mock.patch('setup_marathon_job.parse_args', return_value=self.fake_args),
-            mock.patch('setup_marathon_job.get_main_marathon_config', return_value=self.fake_marathon_config),
-            mock.patch('paasta_tools.marathon_tools.get_marathon_client', return_value=fake_client),
+            mock.patch(
+                'setup_marathon_job.parse_args', return_value=self.fake_args),
+            mock.patch('setup_marathon_job.get_main_marathon_config',
+                       return_value=self.fake_marathon_config),
+            mock.patch(
+                'paasta_tools.marathon_tools.get_marathon_client', return_value=fake_client),
             mock.patch('paasta_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
-            mock.patch('setup_marathon_job.setup_service', return_value=(1, 'NEVER')),
+            mock.patch(
+                'setup_marathon_job.setup_service', return_value=(1, 'NEVER')),
             mock.patch('setup_marathon_job.marathon_tools.get_cluster',
                        return_value=self.fake_marathon_config['cluster']),
             mock.patch('setup_marathon_job.send_event'),
@@ -117,20 +125,20 @@ class TestSetupMarathonJob:
             parse_args_patch.assert_called_once_with()
             get_main_conf_patch.assert_called_once_with()
             get_client_patch.assert_called_once_with(
-                    self.fake_marathon_config['url'],
-                    self.fake_marathon_config['user'],
-                    self.fake_marathon_config['pass'])
+                self.fake_marathon_config['url'],
+                self.fake_marathon_config['user'],
+                self.fake_marathon_config['pass'])
             read_service_conf_patch.assert_called_once_with(
-                    self.fake_args.service_instance.split('.')[0],
-                    self.fake_args.service_instance.split('.')[1],
-                    self.fake_marathon_config['cluster'],
-                    self.fake_args.soa_dir)
+                self.fake_args.service_instance.split('.')[0],
+                self.fake_args.service_instance.split('.')[1],
+                self.fake_marathon_config['cluster'],
+                self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
-                    self.fake_args.service_instance.split('.')[0],
-                    self.fake_args.service_instance.split('.')[1],
-                    fake_client,
-                    self.fake_marathon_config,
-                    self.fake_marathon_job_config)
+                self.fake_args.service_instance.split('.')[0],
+                self.fake_args.service_instance.split('.')[1],
+                fake_client,
+                self.fake_marathon_config,
+                self.fake_marathon_job_config)
             sys_exit_patch.assert_called_once_with(1)
 
     def test_send_event(self):
@@ -145,7 +153,8 @@ class TestSetupMarathonJob:
         fake_soa_dir = '/fake/soa/dir'
         fake_cluster = 'fake_cluster'
         expected_runbook = 'y/rb-marathon'
-        expected_check_name = 'setup_marathon_job.%s.%s' % (fake_service_name, fake_instance_name)
+        expected_check_name = 'setup_marathon_job.%s.%s' % (
+            fake_service_name, fake_instance_name)
         expected_kwargs = {
             'tip': fake_tip,
             'notification_email': fake_notification_email,
@@ -205,7 +214,8 @@ class TestSetupMarathonJob:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.create_complete_config',
                        return_value=fake_complete, autospec=True),
-            mock.patch('paasta_tools.marathon_tools.verify_docker_image', autospec=True),
+            mock.patch(
+                'paasta_tools.marathon_tools.verify_docker_image', autospec=True),
             mock.patch('paasta_tools.marathon_tools.get_config', return_value=self.fake_marathon_config,
                        autospec=True),
         ) as (
@@ -225,10 +235,12 @@ class TestSetupMarathonJob:
     def test_setup_service_srv_does_not_exist(self):
         fake_name = 'if_talk_was_cheap'
         fake_instance = 'psychatrists_would_be_broke'
-        fake_response = mock.Mock(json=mock.Mock(return_value={'message': 'test'}))
+        fake_response = mock.Mock(
+            json=mock.Mock(return_value={'message': 'test'}))
         fake_client = mock.MagicMock(get_app=mock.Mock(
-                        side_effect=marathon.exceptions.NotFoundError(fake_response)))
-        full_id = marathon_tools.compose_job_id(fake_name, fake_instance, 'oogabooga')
+            side_effect=marathon.exceptions.NotFoundError(fake_response)))
+        full_id = marathon_tools.compose_job_id(
+            fake_name, fake_instance, 'oogabooga')
         fake_complete = {
             'do': 'you', 'even': 'dota', 'id': full_id,
             'docker_image': 'fake_docker_registry/fake_docker_image',
@@ -237,9 +249,12 @@ class TestSetupMarathonJob:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.create_complete_config',
                        return_value=fake_complete),
-            mock.patch('paasta_tools.marathon_tools.verify_docker_image', autospec=True),
-            mock.patch('setup_marathon_job.deploy_service', return_value=(111, 'Never')),
-            mock.patch('paasta_tools.marathon_tools.get_bounce_method', return_value=fake_bounce),
+            mock.patch(
+                'paasta_tools.marathon_tools.verify_docker_image', autospec=True),
+            mock.patch(
+                'setup_marathon_job.deploy_service', return_value=(111, 'Never')),
+            mock.patch(
+                'paasta_tools.marathon_tools.get_bounce_method', return_value=fake_bounce),
             mock.patch('paasta_tools.marathon_tools.read_service_config',
                        return_value=self.fake_marathon_job_config),
         ) as (
@@ -255,9 +270,11 @@ class TestSetupMarathonJob:
             assert status == 111
             assert output == 'Never'
 
-            create_config_patch.assert_called_once_with(fake_name, fake_instance, self.fake_marathon_config)
+            create_config_patch.assert_called_once_with(
+                fake_name, fake_instance, self.fake_marathon_config)
             fake_client.get_app.assert_called_once_with(full_id)
-            get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
+            get_bounce_patch.assert_called_once_with(
+                self.fake_marathon_job_config)
             deploy_service_patch.assert_called_once_with(fake_name, fake_instance, full_id, fake_complete, fake_client,
                                                          fake_bounce)
             verify_docker_image_patch.assert_called_once_with('remote_registry.com', 'test_docker:1.0')
@@ -279,7 +296,8 @@ class TestSetupMarathonJob:
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
-        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
+        fake_client = mock.MagicMock(
+            list_apps=mock.Mock(return_value=fake_apps))
         expected = (1, 'bounce_method not recognized: %s' % fake_bounce)
         actual = setup_marathon_job.deploy_service(fake_name, fake_instance, fake_id, self.fake_marathon_job_config,
                                                    fake_client, fake_bounce)
@@ -293,7 +311,8 @@ class TestSetupMarathonJob:
         fake_instance = 'will_i_need_to_think_of'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
-        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
+        fake_client = mock.MagicMock(
+            list_apps=mock.Mock(return_value=fake_apps))
         with mock.patch('paasta_tools.bounce_lib.brutal_bounce',
                         return_value=True) as brutal_bounce_patch:
             assert setup_marathon_job.deploy_service(
@@ -312,7 +331,8 @@ class TestSetupMarathonJob:
         fake_instance = 'will_i_need_to_think_of'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
-        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
+        fake_client = mock.MagicMock(
+            list_apps=mock.Mock(return_value=fake_apps))
         with mock.patch('paasta_tools.bounce_lib.upthendown_bounce',
                         return_value=True) as upthendown_bounce_patch:
             assert setup_marathon_job.deploy_service(
@@ -332,7 +352,8 @@ class TestSetupMarathonJob:
         fake_instance = 'a_new_bloodsport'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
-        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
+        fake_client = mock.MagicMock(
+            list_apps=mock.Mock(return_value=fake_apps))
         with mock.patch('paasta_tools.bounce_lib.crossover_bounce',
                         return_value=True) as crossover_bounce_patch:
             assert setup_marathon_job.deploy_service(fake_name, fake_instance, fake_id, self.fake_marathon_job_config,
