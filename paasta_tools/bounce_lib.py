@@ -6,7 +6,6 @@ import os
 import signal
 import time
 
-from functools import wraps
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
@@ -31,19 +30,12 @@ class TimeoutException(Exception):
 _bounce_method_funcs = {}
 
 
-def bounce_method(name):
-    """Returns a decorator that wraps a bounce function in a lock, and
-    registers that bounce function so get_bounce_method_func can find it."""
+def register_bounce_method(name):
+    """Returns a decorator that registers that bounce function at a given name
+    so get_bounce_method_func can find it."""
     def outer(bounce_func):
-        """This decorator wraps a bounce function in a lock (so that we don't
-            try to bounce the same service twice at the same time."""
-        @wraps(bounce_func)
-        def bounce_wrapper(service_name, instance_name, existing_apps,
-                           new_config, client, nerve_ns):
-            bounce_func(service_name, instance_name, existing_apps,
-                        new_config, client, nerve_ns)
-        _bounce_method_funcs[name] = bounce_wrapper
-        return bounce_wrapper
+        _bounce_method_funcs[name] = bounce_func
+        return bounce_func
     return outer
 
 
@@ -196,7 +188,7 @@ def kill_old_ids(old_ids, client):
             continue
 
 
-@bounce_method('brutal')
+@register_bounce_method('brutal')
 def brutal_bounce(
     service_name,
     instance_name,
@@ -226,7 +218,7 @@ def brutal_bounce(
     kill_old_ids(existing_ids - set([new_id]), client)
 
 
-@bounce_method('upthendown')
+@register_bounce_method('upthendown')
 def upthendown_bounce(
     service_name,
     instance_name,
@@ -257,7 +249,7 @@ def upthendown_bounce(
             kill_old_ids(existing_ids - set([new_id]), client)
 
 
-@bounce_method('crossover')
+@register_bounce_method('crossover')
 def crossover_bounce(
     service_name,
     instance_name,
