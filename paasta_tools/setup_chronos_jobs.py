@@ -44,7 +44,11 @@ def extract_chronos_jobs(services, ecosystem, soa_dir):
 
 
 def read_chronos_soa_configs(service_name, ecosystem, soa_dir):
-    service_chronos_config = service_configuration_lib.read_extra_service_information(service_name, 'chronos-%s' % ecosystem, soa_dir=soa_dir)
+    service_chronos_config = service_configuration_lib.read_extra_service_information(
+        service_name,
+        'chronos-%s' % ecosystem,
+        soa_dir=soa_dir
+    )
 
     # keeps the function returning lists when the yaml file is empty
     if service_chronos_config == {}:

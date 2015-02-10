@@ -114,12 +114,14 @@ def get_branch_mappings(soa_dir, old_mappings):
     This is done for all services in soa_dir.
 
     :param soa_dir: The SOA configuration directory to read from
-    :param old_mappings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new mapping.
+    :param old_mappings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new
+                         mapping.
     :returns: A dictionary mapping service_name:branch_name to a dictionary containing:
-        - 'docker_image': something like "services-service_name:paasta-hash". This is relative to the paasta docker registry.
+        - 'docker_image': something like "services-service_name:paasta-hash". This is relative to the paasta docker
+            registry.
         - 'desired_state': either 'start' or 'stop'. Says whether this branch should be running.
-        - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if the
-            other properties of this app have not changed.
+        - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if
+            the other properties of this app have not changed.
     """
     mappings = {}
     docker_registry = marathon_tools.get_docker_registry()

@@ -40,7 +40,10 @@ def test_tail_paasta_logs():
 def test_determine_scribereader_envs():
     cluster = 'fake_cluster'
     components = ['build', 'monitoring']
-    with mock.patch('paasta_tools.paasta_cli.cmds.logs.cluster_to_scribe_env', autospec=True) as cluster_to_scribe_env_patch:
+    with mock.patch(
+        'paasta_tools.paasta_cli.cmds.logs.cluster_to_scribe_env',
+        autospec=True
+    ) as cluster_to_scribe_env_patch:
         cluster_to_scribe_env_patch.return_value = 'fake_scribe_env'
         actual = logs.determine_scribereader_envs(components, cluster)
         cluster_to_scribe_env_patch.assert_called_with(cluster)

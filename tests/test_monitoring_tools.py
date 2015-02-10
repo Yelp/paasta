@@ -58,8 +58,9 @@ class TestMonitoring_Tools:
     def test_get_notification_email(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
             monitoring_tools.get_notification_email(self.framework, self.service_name, self.instance_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('notification_email', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('notification_email', self.framework,
+                                                                      self.service_name, self.instance_name,
+                                                                      self.soa_dir)
 
     def test_get_page(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
@@ -76,8 +77,9 @@ class TestMonitoring_Tools:
     def test_get_realert_every(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
             monitoring_tools.get_realert_every(self.framework, self.service_name, self.instance_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('realert_every', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('realert_every', self.framework,
+                                                                      self.service_name, self.instance_name,
+                                                                      self.soa_dir)
 
     def test_get_check_every(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:

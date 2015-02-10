@@ -23,7 +23,8 @@ def add_subparser(subparsers):
                              required=True,
                              )
     list_parser.add_argument('-l', '--clusterinstance',
-                             help='Mark the service ready for deployment in this clusterinstance (e.g. cluster1.canary, cluster2.main)',
+                             help='Mark the service ready for deployment in this clusterinstance (e.g. '
+                                  'cluster1.canary, cluster2.main)',
                              required=True,
                              )
 
