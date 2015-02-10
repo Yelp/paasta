@@ -4,6 +4,7 @@ docs:
 	tox -e docs
 
 test:
+	rm -rf .tox
 	tox
 
 itest: test

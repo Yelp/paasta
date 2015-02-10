@@ -9,7 +9,8 @@ def add_subparser(subparsers):
         help='Performs a performance check (not implemented)')
 
     list_parser.add_argument('-s', '--service',
-                             help='Name of service for which you wish to check. Leading "services-", as included in a Jenkins job name, will be stripped.',
+                             help='Name of service for which you wish to check. Leading "services-", as included in a '
+                                  'Jenkins job name, will be stripped.',
                              required=True,
                              )
     list_parser.add_argument('-c', '--commit',

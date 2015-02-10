@@ -1,3 +1,17 @@
+paasta-tools (0.8.31-yelp1) lucid; urgency=low
+
+  * 0.8.31 tagged with 'make release'
+    Commit: Disable image verification for now
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 10 Feb 2015 12:33:38 -0800
+
+paasta-tools (0.8.30-yelp1) lucid; urgency=low
+
+  * 0.8.30 tagged with 'make release'
+    Commit: Merge branch PAASTA-228
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 10 Feb 2015 11:58:16 -0800
+
 paasta-tools (0.8.29-yelp1) lucid; urgency=low
 
   * 0.8.29 tagged with 'make release'

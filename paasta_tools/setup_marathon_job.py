@@ -82,7 +82,8 @@ def send_event(name, instance, soa_dir, status, output):
         'alert_after': '6m',
         'check_every': '2m',
         'realert_every': -1,
-        'source': 'mesos-%s' % marathon_tools.get_cluster()
+        'source': 'mesos-%s' % marathon_tools.get_cluster(),
+        'command': 'N/A, but from setup_marathon_job.py',
     }
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 
@@ -144,13 +145,18 @@ def setup_service(service_name, instance_name, client, marathon_config,
         complete_config = marathon_tools.create_complete_config(service_name, instance_name, marathon_config)
     except NameError:
         error_msg = "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?".format(
-                  service_name, instance_name)
+            service_name,
+            instance_name
+        )
         log.error(error_msg)
         return (1, error_msg)
 
-    if not marathon_tools.verify_docker_image(complete_config['docker_registry'],
-                                              complete_config['docker_image']):
-        error_msg = "Docker image %s/%s does not appear to be ready on the registry yet" % (complete_config['docker_registry'], complete_config['docker_image'])
+    if not marathon_tools.verify_docker_image(marathon_config['docker_registry'],
+                                              service_marathon_config['docker_image']):
+        error_msg = "Docker image %s/%s does not appear to be ready on the registry yet" % (
+            marathon_config['docker_registry'],
+            service_marathon_config['docker_image']
+        )
         return (1, error_msg)
 
     full_id = complete_config['id']

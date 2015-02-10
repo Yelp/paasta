@@ -34,7 +34,7 @@ class TestBounceLib:
         fake_zk = mock.MagicMock(Lock=mock.Mock(return_value=fake_lock))
         fake_zk_hosts = 'awjti42ior'
         with contextlib.nested(
-            mock.patch('bounce_lib.KazooClient', return_value=fake_zk),
+            mock.patch('bounce_lib.KazooClient', return_value=fake_zk, autospec=True),
             mock.patch('marathon_tools.get_zk_hosts', return_value=fake_zk_hosts),
         ) as (
             client_patch,
@@ -232,7 +232,8 @@ class TestBounceLib:
         fake_old_ids = ['fake.make', 'lake.quake']
         fake_old_instance_counts = [mock.Mock(instances=4), mock.Mock(instances=15)]
         fake_client = mock.MagicMock(
-                        get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()))
+            get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop())
+        )
         haproxy_instance_count = [{'shake.wake': 18}, {'shake.wake': 9}]
         with contextlib.nested(
             mock.patch('marathon_tools.read_service_config', return_value=fake_service_config),
@@ -280,7 +281,8 @@ class TestBounceLib:
         fake_old_ids = ['pen.hen', 'tool.rule']
         fake_old_instance_counts = [mock.Mock(instances=7), mock.Mock(instances=19)]
         fake_client = mock.MagicMock(
-                        get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()))
+            get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop())
+        )
         haproxy_instance_count = [{'hello.world': 16}, {'hello.world': 10}, {'hello.world': 5}]
         with contextlib.nested(
             mock.patch('marathon_tools.read_service_config', return_value=fake_service_config),
@@ -330,7 +332,8 @@ class TestBounceLib:
         fake_old_ids = ['70s.disco', '80s.funk']
         fake_old_instance_counts = [mock.Mock(instances=77), mock.Mock(instances=55)]
         fake_client = mock.MagicMock(
-                        get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop()))
+            get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop())
+        )
         haproxy_instance_count = {'the.electricslide': 10}
 
         def raiser(a):

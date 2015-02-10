@@ -132,7 +132,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             instance = PaastaColors.blue(instance)
             version = actual_deployments[namespace]
             # TODO: Perform sanity checks once per cluster instead of for each namespace
-            status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, unformatted_instance, verbose)
+            status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, unformatted_instance,
+                                                                 verbose)
 
         # Case: service NOT deployed to cluster.instance
         else:

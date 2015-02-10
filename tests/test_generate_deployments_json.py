@@ -133,7 +133,11 @@ def test_main():
         mock.patch('generate_deployments_json.parse_args',
                    return_value=mock.Mock(verbose=False, soa_dir=fake_soa_dir), autospec=True),
         mock.patch('os.path.abspath', return_value='ABSOLUTE', autospec=True),
-        mock.patch('generate_deployments_json.get_branch_mappings', return_value={'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}, autospec=True),
+        mock.patch(
+            'generate_deployments_json.get_branch_mappings',
+            return_value={'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}},
+            autospec=True,
+        ),
         mock.patch('os.path.join', return_value='JOIN', autospec=True),
         mock.patch('generate_deployments_json.open', create=True, return_value=file_mock),
         mock.patch('json.dump', autospec=True),
@@ -154,19 +158,12 @@ def test_main():
         abspath_patch.assert_called_once_with(fake_soa_dir)
         mappings_patch.assert_called_once_with(
             'ABSOLUTE',
-            {
-                'OLD_MAP': {
-                    'desired_state': 'start',
-                    'docker_image': 'PINGS',
-                    'force_bounce': None
-                }
-            }
+            {'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS', 'force_bounce': None}},
         ),
-        join_patch.assert_any_call(
-            'ABSOLUTE',
-            generate_deployments_json.TARGET_FILE
-        ),
+
+        join_patch.assert_any_call('ABSOLUTE', generate_deployments_json.TARGET_FILE),
         assert join_patch.call_count == 2
+
         atomic_file_write_patch.assert_called_once_with('JOIN')
         open_patch.assert_called_once_with('JOIN', 'r')
         json_dump_patch.assert_called_once_with(

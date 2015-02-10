@@ -78,8 +78,10 @@ def __get_monitoring_config_value(key, framework, service_name, instance_name=No
 
 def monitoring_defaults(key):
     defaults = {
-        'runbook': 'Please set a `runbook` field in your monitoring.yaml. Like "y/rb-mesos". Docs: https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
-        'tip': 'Please set a `tip` field in your monitoring.yaml. Like "Tip: Frob the psi-trust modulator." Docs: https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
+        'runbook': 'Please set a `runbook` field in your monitoring.yaml. Like "y/rb-mesos". Docs: '
+                   'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
+        'tip': 'Please set a `tip` field in your monitoring.yaml. Docs: '
+               'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
         'command': 'N/A',
     }
     return defaults.get(key, False)

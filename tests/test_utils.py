@@ -80,3 +80,7 @@ def test_atomic_file_write_itest():
 
     finally:
         shutil.rmtree(tempdir)
+
+
+def test_configure_log():
+    utils.configure_log()

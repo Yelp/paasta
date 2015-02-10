@@ -144,6 +144,8 @@ def verify_docker_image(registry_uri, docker_image):
     :param verify: Set to False to not verify the composed docker url
     :returns Bool of it exists or not
     """
+    # TODO: Handle https, basic auth, etc
+    return True
     url = 'http://%s/v1/repositories/%s/tags/%s' % (registry_uri, docker_image.split(':')[0],
                                                     docker_image.split(':')[1])
     log.info("Verifying that the docker_image exists by fetching %s", url)
@@ -481,15 +483,17 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     log.info("Reading service configuration files from dir %s/ in %s", name, soa_dir)
     log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_extra_service_information(
-                            name,
-                            "service",
-                            soa_dir=soa_dir)
+        name,
+        "service",
+        soa_dir=soa_dir
+    )
     marathon_conf_file = "marathon-%s" % cluster
     log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
     instance_configs = service_configuration_lib.read_extra_service_information(
-                            name,
-                            marathon_conf_file,
-                            soa_dir=soa_dir)
+        name,
+        marathon_conf_file,
+        soa_dir=soa_dir
+    )
     if instance in instance_configs:
         general_config.update(instance_configs[instance])
         if 'branch' not in general_config:
@@ -511,7 +515,10 @@ def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DE
     if not cluster:
         cluster = get_cluster()
     srv_info = service_configuration_lib.read_extra_service_information(
-                    name, "marathon-%s" % cluster, soa_dir)[instance]
+        name,
+        "marathon-%s" % cluster,
+        soa_dir
+    )[instance]
     return srv_info['nerve_ns'] if 'nerve_ns' in srv_info else instance
 
 
@@ -609,9 +616,10 @@ def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     marathon_conf_file = "marathon-%s" % cluster
     log.info("Enumerating all instances for config file: %s/*/%s.yaml", soa_dir, marathon_conf_file)
     instances = service_configuration_lib.read_extra_service_information(
-                    name,
-                    marathon_conf_file,
-                    soa_dir=soa_dir)
+        name,
+        marathon_conf_file,
+        soa_dir=soa_dir
+    )
     instance_list = []
     for instance in instances:
         instance_list.append((name, instance))
@@ -642,8 +650,7 @@ def get_all_namespaces_for_service(name, soa_dir=DEFAULT_SOA_DIR):
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of the form (service_name.namespace, namespace_config)"""
     namespace_list = []
-    smartstack = service_configuration_lib.read_extra_service_information(
-                    name, 'smartstack', soa_dir)
+    smartstack = service_configuration_lib.read_extra_service_information(name, 'smartstack', soa_dir)
     for namespace in smartstack:
         full_name = '%s%s%s' % (name, ID_SPACER, namespace)
         namespace_list.append((full_name, smartstack[namespace]))
@@ -684,8 +691,7 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     :returns: A dict of the above keys, if they were defined
     """
     try:
-        smartstack = service_configuration_lib.read_extra_service_information(
-                            srv_name, 'smartstack', soa_dir)
+        smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
         ns_config = smartstack[namespace]
         ns_dict = {}
         # We can't really use .get, as we don't want the key to be in the returned
