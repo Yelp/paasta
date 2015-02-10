@@ -87,12 +87,12 @@ def test_get_registered_marathon_tasks():
 
     fake_marathon_app = mock.Mock(tasks=marathon_tasks)
     with mock.patch(
-        'paasta_tools.monitoring.replication_utils.' +
+        'paasta_tools.monitoring.replication_utils.'
             'get_all_registered_ip_ports_for_services',
         return_value=haproxy_ip_hosts
     ):
         with mock.patch(
-            'paasta_tools.monitoring.replication_utils.' +
+            'paasta_tools.monitoring.replication_utils.'
                 'socket.gethostbyname',
             side_effect=lambda x: hostnames[x],
         ):
