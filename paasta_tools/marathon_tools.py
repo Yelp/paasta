@@ -8,7 +8,6 @@ import hashlib
 import logging
 import os
 import re
-import requests
 import socket
 import glob
 from StringIO import StringIO
@@ -133,24 +132,6 @@ def remove_tag_from_job_id(job_id):
 
 def get_default_branch(cluster, instance):
     return 'paasta-%s.%s' % (cluster, instance)
-
-
-def verify_docker_image(registry_uri, docker_image):
-    """Verifies that a docker image exists in a registry.
-    Useful to run before we try to deploy something to prevent
-    setting up a job that has no docker image to use
-
-    :param docker_image: The docker image name, with tag if desired
-    :param verify: Set to False to not verify the composed docker url
-    :returns Bool of it exists or not
-    """
-    # TODO: Handle https, basic auth, etc
-    return True
-    url = 'http://%s/v1/repositories/%s/tags/%s' % (registry_uri, docker_image.split(':')[0],
-                                                    docker_image.split(':')[1])
-    log.info("Verifying that the docker_image exists by fetching %s", url)
-    r = requests.get(url)
-    return r.status_code == 200
 
 
 def get_docker_url(registry_uri, docker_image):

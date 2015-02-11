@@ -295,10 +295,6 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.verify_docker_image',
-                autospec=True,
-            ),
-            mock.patch(
                 'paasta_tools.marathon_tools.get_config',
                 return_value=self.fake_marathon_config,
                 autospec=True,
@@ -309,7 +305,6 @@ class TestSetupMarathonJob:
             ),
         ) as (
             create_config_patch,
-            verify_docker_image_patch,
             get_config_patch,
             deploy_service_patch,
         ):
@@ -326,7 +321,6 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config,
             )
             assert deploy_service_patch.call_count == 1
-            verify_docker_image_patch.assert_called_once_with('remote_registry.com', 'test_docker:1.0')
 
     def test_setup_service_srv_does_not_exist(self):
         fake_name = 'if_talk_was_cheap'
@@ -348,10 +342,6 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.verify_docker_image',
-                autospec=True
-            ),
-            mock.patch(
                 'setup_marathon_job.deploy_service',
                 return_value=(111, 'Never'),
                 autospec=True,
@@ -368,7 +358,6 @@ class TestSetupMarathonJob:
             ),
         ) as (
             create_config_patch,
-            verify_docker_image_patch,
             deploy_service_patch,
             get_bounce_patch,
             read_service_conf_patch,
@@ -398,7 +387,6 @@ class TestSetupMarathonJob:
                 fake_bounce,
                 self.fake_marathon_job_config['nerve_ns'],
             )
-            verify_docker_image_patch.assert_called_once_with('remote_registry.com', 'test_docker:1.0')
 
     def test_setup_service_srv_complete_config_raises(self):
         fake_name = 'test_service'
