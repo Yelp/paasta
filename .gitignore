@@ -6,3 +6,4 @@ dist/
 paasta_tools.egg-info/
 debian/paasta-tools/
 debian/files
+docs/man/

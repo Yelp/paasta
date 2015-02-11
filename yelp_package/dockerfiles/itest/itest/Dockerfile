@@ -16,6 +16,7 @@ RUN apt-get -y install python-yaml
 RUN apt-get -y install python-pycurl
 RUN apt-get -y install python-pytest
 RUN apt-get -y install pyflakes
+RUN apt-get -y install man
 
 RUN mkdir -p /chronos-config/dependent
 RUN mkdir -p /chronos-config/scheduled
