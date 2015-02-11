@@ -1,3 +1,12 @@
+paasta-tools (0.8.32-yelp1) lucid; urgency=low
+
+  * 0.8.32 tagged with 'make release'
+    Commit: Merge branch remove_verify
+    Commit: Fix pysensu_yelp send_event autospec
+    Commit: Merge branch 'master' of git.yelpcorp.com:paasta_tools into atomic_writes
+
+ -- Evan Krall <krall@yelp.com>  Wed, 11 Feb 2015 12:34:33 -0800
+
 paasta-tools (0.8.31-yelp1) lucid; urgency=low
 
   * 0.8.31 tagged with 'make release'
