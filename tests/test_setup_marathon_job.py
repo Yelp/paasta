@@ -62,7 +62,7 @@ class TestSetupMarathonJob:
                 'setup_marathon_job.setup_service', return_value=(0, 'it_is_finished')),
             mock.patch('setup_marathon_job.marathon_tools.get_cluster',
                        return_value=self.fake_marathon_config['cluster']),
-            mock.patch('setup_marathon_job.send_event'),
+            mock.patch('setup_marathon_job.send_event', autospec=True),
             mock.patch('sys.exit'),
         ) as (
             parse_args_patch,
@@ -109,7 +109,7 @@ class TestSetupMarathonJob:
                 'setup_marathon_job.setup_service', return_value=(1, 'NEVER')),
             mock.patch('setup_marathon_job.marathon_tools.get_cluster',
                        return_value=self.fake_marathon_config['cluster']),
-            mock.patch('setup_marathon_job.send_event'),
+            mock.patch('setup_marathon_job.send_event', autospec=True),
             mock.patch('sys.exit'),
         ) as (
             parse_args_patch,
@@ -163,7 +163,6 @@ class TestSetupMarathonJob:
             'check_every': '2m',
             'realert_every': -1,
             'source': 'mesos-fake_cluster',
-            'command': 'N/A, but from setup_marathon_job.py',
         }
         with contextlib.nested(
             mock.patch("paasta_tools.monitoring_tools.get_team",
@@ -174,7 +173,7 @@ class TestSetupMarathonJob:
                        return_value=fake_notification_email),
             mock.patch("paasta_tools.monitoring_tools.get_irc_channels",
                        return_value=fake_irc),
-            mock.patch("pysensu_yelp.send_event"),
+            mock.patch("pysensu_yelp.send_event", autospec=True),
             mock.patch('paasta_tools.marathon_tools.get_cluster',
                        return_value=fake_cluster)
         ) as (
