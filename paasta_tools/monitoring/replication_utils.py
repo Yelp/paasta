@@ -74,17 +74,13 @@ def get_all_registered_ip_ports_for_services(synapse_host_port, service_names):
 def get_registered_marathon_tasks(
     synapse_host_port,
     service_name,
-    marathon_app,
+    marathon_tasks,
 ):
-    """Returns the marathon tasks that are registered in haproxy under a given
-    service_name (nerve_ns).
+    """Returns the marathon tasks that are registered in haproxy under a given service_name (nerve_ns).
 
-    :param synapse_host_port: A string in host:port format that this check
-                              should contact for replication information.
-    :param service_names: A list of strings that are the service names
-                          that should be checked for replication.
-    :param marathon_app: A MarathonApp object, whose tasks we will check for in
-                         the HAProxy status.
+    :param synapse_host_port: A string in host:port format that this check should contact for replication information.
+    :param service_names: A list of strings that are the service names that should be checked for replication.
+    :param marathon_tasks: A list of MarathonTask objects, whose tasks we will check for in the HAProxy status.
     """
     haproxy_ip_ports = get_all_registered_ip_ports_for_services(
         synapse_host_port,
@@ -92,7 +88,7 @@ def get_registered_marathon_tasks(
     )
 
     healthy_tasks = []
-    for task in marathon_app.tasks:
+    for task in marathon_tasks:
         ip = socket.gethostbyname(task.host)
         if any(
             ((ip, port) in haproxy_ip_ports)

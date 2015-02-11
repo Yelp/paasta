@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from contextlib import contextmanager, nested
+import datetime
 import fcntl
 import logging
 import os
@@ -192,6 +193,43 @@ def kill_old_ids(old_ids, client):
             continue
 
 
+def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_haproxy=False):
+    """Given a list of MarathonTask objects, return the subset which are considered healthy. With the default options,
+    this is a noop - it just returns tasks. For it to do anything interesting, set min_task_uptime or check_haproxy.
+
+    :param tasks: A list of MarathonTask objects.
+    :param service_name: the name of the service.
+    :param nerve_ns: The nerve namespace
+    :param min_task_uptime: Minimum number of seconds that a task must be running before we consider it healthy. Useful
+                            if tasks take a while to start up.
+    :param check_haproxy: Whether to check the local haproxy to make sure this task has been registered and discovered.
+    """
+    happy = []
+    now = datetime.datetime.now()
+
+    if check_haproxy:
+        service_namespace = '%s%s%s' % (
+            service_name,
+            marathon_tools.ID_SPACER,
+            nerve_ns
+        )
+
+        tasks = get_registered_marathon_tasks(
+            DEFAULT_SYNAPSE_HOST,
+            service_namespace,
+            tasks,
+        )
+
+    for task in tasks:
+        if min_task_uptime is not None:
+            if (now - task.started_at).total_seconds() < min_task_uptime:
+                continue
+
+        happy.append(task)
+
+    return happy
+
+
 @register_bounce_method('brutal')
 def brutal_bounce(
     service_name,
@@ -200,6 +238,7 @@ def brutal_bounce(
     new_config,
     client,
     nerve_ns,
+    **get_happy_tasks_kwargs
 ):
     """Pays no regard to safety. Starts the new app if necessary, and kills any
     old ones. Mostly meant as an example of the simplest working bounce method,
@@ -210,6 +249,9 @@ def brutal_bounce(
     :param existing_apps: Apps that marathon is already aware of.
     :param new_config: The complete marathon job configuration for the new job
     :param client: A marathon.MarathonClient object
+    :param nerve_ns: The nerve namespace this service should be registered in.
+    :param get_happy_tasks_kwargs: Controls what tasks we consider happy. Passed as keyword arguments to
+                                   get_happy_tasks. Brutal bounce doesn't care about task happiness, so this is ignored.
     """
     new_id = new_config['id']
     existing_ids = set(a.id for a in existing_apps)
@@ -230,15 +272,19 @@ def upthendown_bounce(
     new_config,
     client,
     nerve_ns,
+    **get_happy_tasks_kwargs
 ):
-    """Starts a new app if necessary; only kills old apps once all the
-    requested tasks for the new version are running.
+    """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
     :param service_name: service name
     :param instance_name: instance name
     :param existing_apps: Apps that marathon is already aware of.
     :param new_config: The complete marathon job configuration for the new job
     :param client: A marathon.MarathonClient object
+    :param nerve_ns: The nerve namespace this service should be registered in.
+    :param get_happy_tasks_kwargs: Controls what tasks we consider happy. Passed as keyword arguments to
+                                   get_happy_tasks.
+
     """
     new_id = new_config['id']
     existing_ids = set(a.id for a in existing_apps)
@@ -261,6 +307,7 @@ def crossover_bounce(
     new_config,
     client,
     nerve_ns,
+    **get_happy_tasks_kwargs
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the
     new app come up and register in the load balancer.
@@ -270,6 +317,9 @@ def crossover_bounce(
     :param existing_apps: Apps that marathon is already aware of.
     :param new_config: The complete marathon job configuration for the new job
     :param client: A marathon.MarathonClient object
+    :param nerve_ns: The nerve namespace this service should be registered in.
+    :param get_happy_tasks_kwargs: Controls what tasks we consider happy. Passed as keyword arguments to
+                                   get_happy_tasks.
     """
 
     new_id = new_config['id']
@@ -279,20 +329,10 @@ def crossover_bounce(
     if new_id not in existing_ids:
         create_marathon_app(new_id, new_config, client)
     else:
-        service_namespace = '%s%s%s' % (
-            service_name,
-            marathon_tools.ID_SPACER,
-            nerve_ns
-        )
-
         (new_app,) = [a for a in existing_apps if a.id == new_id]
         other_apps = [a for a in existing_apps if a.id != new_id]
 
-        happy_count = len(get_registered_marathon_tasks(
-            DEFAULT_SYNAPSE_HOST,
-            service_namespace,
-            new_app,
-        ))
+        happy_count = len(get_happy_tasks(new_app.tasks, service_name, nerve_ns))
         needed_count = max(new_config['instances'] - happy_count, 0)
 
         old_tasks = []
@@ -319,6 +359,7 @@ def downthenup_bounce(
     new_config,
     client,
     nerve_ns,
+    **get_happy_tasks_kwargs
 ):
     """Stops any old apps and waits for them to die before starting a new one.
 
@@ -327,6 +368,9 @@ def downthenup_bounce(
     :param existing_apps: Apps that marathon is already aware of.
     :param new_config: The complete marathon job configuration for the new job
     :param client: A marathon.MarathonClient object
+    :param nerve_ns: The nerve namespace this service should be registered in.
+    :param get_happy_tasks_kwargs: Controls what tasks we consider happy. Passed as keyword arguments to
+                                   get_happy_tasks.
     """
     new_id = new_config['id']
     existing_ids = set(a.id for a in existing_apps)

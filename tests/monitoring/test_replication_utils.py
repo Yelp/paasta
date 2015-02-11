@@ -85,7 +85,6 @@ def test_get_registered_marathon_tasks():
         bad_task,
     ]
 
-    fake_marathon_app = mock.Mock(tasks=marathon_tasks)
     with mock.patch(
         'paasta_tools.monitoring.replication_utils.'
             'get_all_registered_ip_ports_for_services',
@@ -99,7 +98,7 @@ def test_get_registered_marathon_tasks():
             actual = get_registered_marathon_tasks(
                 'foo',
                 'servicename.main',
-                fake_marathon_app,
+                marathon_tasks,
             )
 
             expected = [good_task1, good_task2]

@@ -1,5 +1,6 @@
 import bounce_lib
 import contextlib
+import datetime
 import mock
 import marathon
 
@@ -165,6 +166,28 @@ class TestBounceLib:
         actual = bounce_lib.get_bounce_method_func('brutal')
         expected = bounce_lib.brutal_bounce
         assert actual == expected
+
+    def test_get_happy_tasks_identity(self):
+        """With the defaults, all tasks should be considered happy."""
+        tasks = [mock.Mock() for _ in xrange(5)]
+        assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks
+
+    def test_get_happy_tasks_min_task_uptime(self):
+        """If we specify a minimum task age, tasks newer than that should not be considered happy."""
+        now = datetime.datetime(2000, 1, 1, 0, 0, 0)
+        tasks = [mock.Mock(started_at=(now - datetime.timedelta(minutes=i))) for i in xrange(5)]
+
+        # I would have just mocked datetime.datetime.now, but that's apparently difficult; I have to mock
+        # datetime.datetime instead, and give it a now attribute.
+        with mock.patch('paasta_tools.bounce_lib.datetime.datetime', now=lambda: now, autospec=True):
+            assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', min_task_uptime=121) == tasks[3:]
+
+    def test_get_happy_tasks_check_haproxy(self):
+        """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
+
+        tasks = [mock.Mock() for i in xrange(5)]
+        with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
+            assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', check_haproxy=True) == tasks[2:]
 
 
 class TestBrutalBounce:
@@ -476,12 +499,9 @@ class TestCrossoverBounce:
         with contextlib.nested(
             mock.patch('bounce_lib.create_marathon_app', autospec=True),
             mock.patch('bounce_lib.kill_old_ids', autospec=True),
-            mock.patch('bounce_lib.get_registered_marathon_tasks',
-                       side_effect=lambda _, __, x: x.tasks)
         ) as (
             create_marathon_app_patch,
             kill_old_ids_patch,
-            get_registered_marathon_tasks_patch,
         ):
             bounce_lib.crossover_bounce(
                 service_name='foo',
@@ -515,12 +535,9 @@ class TestCrossoverBounce:
         with contextlib.nested(
             mock.patch('bounce_lib.create_marathon_app', autospec=True),
             mock.patch('bounce_lib.kill_old_ids', autospec=True),
-            mock.patch('bounce_lib.get_registered_marathon_tasks',
-                       side_effect=lambda _, __, x: x.tasks)
         ) as (
             create_marathon_app_patch,
             kill_old_ids_patch,
-            get_registered_marathon_tasks_patch,
         ):
             bounce_lib.crossover_bounce(
                 service_name='foo',
@@ -568,12 +585,9 @@ class TestCrossoverBounce:
         with contextlib.nested(
             mock.patch('bounce_lib.create_marathon_app', autospec=True),
             mock.patch('bounce_lib.kill_old_ids', autospec=True),
-            mock.patch('bounce_lib.get_registered_marathon_tasks',
-                       side_effect=lambda _, __, x: x.tasks),
         ) as (
             create_marathon_app_patch,
             kill_old_ids_patch,
-            get_registered_marathon_tasks_patch,
         ):
             bounce_lib.crossover_bounce(
                 service_name='foo',
@@ -605,12 +619,9 @@ class TestCrossoverBounce:
         with contextlib.nested(
             mock.patch('bounce_lib.create_marathon_app', autospec=True),
             mock.patch('bounce_lib.kill_old_ids', autospec=True),
-            mock.patch('bounce_lib.get_registered_marathon_tasks',
-                       side_effect=lambda _, __, x: x.tasks)
         ) as (
             create_marathon_app_patch,
             kill_old_ids_patch,
-            get_registered_marathon_tasks_patch,
         ):
             bounce_lib.crossover_bounce(
                 service_name='foo',
@@ -646,12 +657,9 @@ class TestCrossoverBounce:
         with contextlib.nested(
             mock.patch('bounce_lib.create_marathon_app', autospec=True),
             mock.patch('bounce_lib.kill_old_ids', autospec=True),
-            mock.patch('bounce_lib.get_registered_marathon_tasks',
-                       side_effect=lambda _, __, x: x.tasks)
         ) as (
             create_marathon_app_patch,
             kill_old_ids_patch,
-            get_registered_marathon_tasks_patch,
         ):
             bounce_lib.crossover_bounce(
                 service_name='foo',
