@@ -16,4 +16,3 @@ setup(
     install_requires=[
     ]
 )
-

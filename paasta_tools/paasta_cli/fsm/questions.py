@@ -89,28 +89,29 @@ def get_monitoring_stanza(auto, team, legacy_style=False):
         stanza["service_type"] = "classic"
     return stanza
 
+
 def get_deploy_stanza():
     """Produce a deploy.yaml a la http://y/cep319"""
     stanza = {}
     stanza["pipeline"] = [
-        { "instancename": "itest", },
-        { "instancename": "security-check", },
-        { "instancename": "performance-check", },
-        { "instancename": "push-to-registry", },
-        { "instancename": "pnw-stagea.canary", },
-        { "instancename": "pnw-stagea.main", },
-        { "instancename": "norcal-stageb.canary", },
-        { "instancename": "norcal-stageb.main", },
-        { "instancename": "norcal-devb.canary", },
-        { "instancename": "norcal-devb.main", },
-        { "instancename": "norcal-devc.canary", },
-        { "instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
-        { "instancename": "norcal-prod.canary", },
-        { "instancename": "nova-prod.canary", },
-        { "instancename": "pnw-prod.canary", "trigger_next_step_manually": True,},
-        { "instancename": "norcal-prod.main", },
-        { "instancename": "nova-prod.main", },
-        { "instancename": "pnw-prod.main", },
+        {"instancename": "itest", },
+        {"instancename": "security-check", },
+        {"instancename": "performance-check", },
+        {"instancename": "push-to-registry", },
+        {"instancename": "pnw-stagea.canary", },
+        {"instancename": "pnw-stagea.main", },
+        {"instancename": "norcal-stageb.canary", },
+        {"instancename": "norcal-stageb.main", },
+        {"instancename": "norcal-devb.canary", },
+        {"instancename": "norcal-devb.main", },
+        {"instancename": "norcal-devc.canary", },
+        {"instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
+        {"instancename": "norcal-prod.canary", },
+        {"instancename": "nova-prod.canary", },
+        {"instancename": "pnw-prod.canary", "trigger_next_step_manually": True, },
+        {"instancename": "norcal-prod.main", },
+        {"instancename": "nova-prod.main", },
+        {"instancename": "pnw-prod.main", },
     ]
     return stanza
 

@@ -10,6 +10,7 @@ class Service(object):
         self.paths = paths.SrvPathBuilder(name, yelpsoa_config_root)
         self.io = SrvReaderWriter(self.paths)
 
+
 class SrvReaderWriter(object):
 
     def __init__(self, path_builder):
@@ -63,5 +64,3 @@ class SrvReaderWriter(object):
             # Add trailing newline
             if not contents.endswith('\n'):
                 f.write('\n')
-
-

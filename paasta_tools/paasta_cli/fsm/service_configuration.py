@@ -15,6 +15,8 @@ PROD_RE = re.compile(r"-(sfo\d|iad\d)$")
 # Capture names like stagea and stagez but not stagespam, which is different.
 STAGE_RE = re.compile(r"^(stage[a-z])(?!pam)")
 DEV_RE = re.compile(r"-(dev[a-z])$")
+
+
 def get_habitat_from_fqdn(fqdn):
     """Tries to calculate a habitat given a fully qualified domain name.
     Returns None and prints a warning if it can't guess a habitat.
@@ -62,6 +64,7 @@ def get_habitat_from_fqdn(fqdn):
     print "WARNING: Could not find habitat for fqdn %s" % fqdn
     return None
 
+
 def load_service_yamls():
     """Walks config.YELPSOA_CONFIG_ROOT looking for service.yaml files. Returns
     a list of dicts representing the contents of those files.
@@ -72,6 +75,7 @@ def load_service_yamls():
 
     return _load_service_yamls_from_disk()
 
+
 def _load_service_yamls_from_disk():
     all_service_yamls = []
     for root, dirs, files in os.walk(config.YELPSOA_CONFIG_ROOT):
@@ -80,6 +84,7 @@ def _load_service_yamls_from_disk():
                 service_configuration_lib.read_service_information(
                     os.path.join(root, "service.yaml")))
     return all_service_yamls
+
 
 def collate_service_yamls(all_service_yamls):
     """Given a list containing dictionaries representing the contents of

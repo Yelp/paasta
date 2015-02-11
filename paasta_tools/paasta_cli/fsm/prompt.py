@@ -2,6 +2,7 @@
 import readline
 from contextlib import contextmanager
 
+
 @contextmanager
 def prepopulate(default):
     """Prepopluates the input with the default text for the user to edit"""
@@ -13,6 +14,7 @@ def prepopulate(default):
     yield
     readline.set_pre_input_hook(None)
 
+
 def ask(question, suggestion=None):
     """Prompt the user for input, with default text optionally pre-populated"""
     prompt_str = question
@@ -23,6 +25,7 @@ def ask(question, suggestion=None):
         prompt_str += ' '
     with prepopulate(suggestion):
         return raw_input(prompt_str).strip(' ')
+
 
 def yes_no(question):
     """Asks the user a yes or no question"""

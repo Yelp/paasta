@@ -4,7 +4,10 @@ import string
 
 from service_wizard import config
 
-class NoSuchTemplate(Exception): pass
+
+class NoSuchTemplate(Exception):
+    pass
+
 
 class Template(object):
     """A small convenience wrapper for the python string Template library

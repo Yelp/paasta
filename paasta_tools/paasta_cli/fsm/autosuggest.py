@@ -16,6 +16,7 @@ def _get_port_from_file(root, file):
         port = int(port) if port else 0
     return port
 
+
 def suggest_port():
     """Pick the next highest port from the 13000-14000 block"""
     max_port = 0
@@ -27,6 +28,7 @@ def suggest_port():
                     port = 0
                 max_port = max(port, max_port)
     return max_port + 1
+
 
 def _get_smartstack_proxy_port_from_file(root, file):
     """Given a root and file (as from os.walk), attempt to return a smartstack
@@ -42,6 +44,7 @@ def _get_smartstack_proxy_port_from_file(root, file):
             port = 0
     return int(port)
 
+
 def suggest_smartstack_proxy_port(yelpsoa_config_root):
     """Pick the next highest smartstack proxy port from the 20000-21000 block"""
     max_proxy_port = 0
@@ -54,19 +57,25 @@ def suggest_smartstack_proxy_port(yelpsoa_config_root):
                 max_proxy_port = max(proxy_port, max_proxy_port)
     return max_proxy_port + 1
 
+
 def is_stage_habitat(habitat):
     return habitat.startswith("stage")
+
 
 PROD_HABITATS = (
     "sfo1",
     "iad1",
     "sfo2",
 )
+
+
 def is_prod_habitat(habitat):
     return habitat in PROD_HABITATS
 
+
 def is_dev_habitat(habitat):
     return habitat.startswith("dev")
+
 
 def discover_habitats(collated_service_yamls):
     """Given a dictionary as returned by collate_service_yamls(), return a list
@@ -87,6 +96,7 @@ def discover_habitats(collated_service_yamls):
 
     return habitats
 
+
 def is_srv_machine(host, habitat):
     """Returns True if 'host' is eligible to run services in 'habitat'. If
     'habitat' is not known, return True (i.e. any machine is valid by default).
@@ -106,6 +116,7 @@ def is_srv_machine(host, habitat):
     else:
         return True
 
+
 def is_general_prod_srv_machine(host):
     """Returns True if 'host' is considered a general production srv machine that
     is eligible to run general service code.
@@ -121,18 +132,23 @@ def is_general_prod_srv_machine(host):
             return True
     return False
 
+
 def get_prod_srv_hosts(host_histogram):
     hosts = [host for host in host_histogram.keys() if is_general_prod_srv_machine(host)]
     return ",".join(hosts)
+
 
 def get_least_used_host(host_histogram, habitat=None):
     """'habitat' is used to determine an eligible host, e.g. service machines
     in stage are called stageXservicesN. We need this so we don't suggest
     running on a random search or dsu box.
     """
-    eligible_host_histogram = dict((host, count) for host, count in host_histogram.iteritems() if is_srv_machine(host, habitat))
+    eligible_host_histogram = dict(
+        (host, count) for host, count in host_histogram.iteritems() if is_srv_machine(host, habitat)
+    )
     least_used_host = min(eligible_host_histogram.items(), key=operator.itemgetter(1))
     return least_used_host[0]
+
 
 def suggest_hosts_for_habitat(collated_service_yamls, habitat):
     host_histogram = collated_service_yamls.get(habitat)
@@ -146,11 +162,13 @@ def suggest_hosts_for_habitat(collated_service_yamls, habitat):
     else:
         return get_least_used_host(host_histogram, habitat)
 
+
 def suggest_all_hosts(collated_service_yamls):
     suggested_hosts = []
     for habitat in discover_habitats(collated_service_yamls):
         suggested_hosts.append(suggest_hosts_for_habitat(collated_service_yamls, habitat))
     return ",".join(suggested_hosts)
+
 
 def suggest_runs_on(runs_on=None):
     """Suggest a set of machines for the service to run on.
@@ -174,6 +192,7 @@ def suggest_runs_on(runs_on=None):
         runs_on = "AUTO"
 
     collated_service_yamls = None
+
     def _get(collated_service_yamls):
         """A silly method to implement a memoized singleton."""
         if collated_service_yamls is None:

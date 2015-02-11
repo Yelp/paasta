@@ -63,7 +63,8 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         self.expected_stanza = {
             "main": {
                 "proxy_port": self.suggested_port,
-        }}
+            }
+        }
 
     def test_arg_passed_in(self):
         """If a port is specified, use it."""
@@ -187,10 +188,10 @@ class GetDeployStanzaTestCase(QuestionsTestCase):
         actual["pipeline"] = actual["pipeline"]
 
         for expected_entry in (
-            { "instancename": "itest" },
-            { "instancename": "security-check" },
-            { "instancename": "performance-check" },
-            { "instancename": "pnw-stagea.main" },
+            {"instancename": "itest"},
+            {"instancename": "security-check"},
+            {"instancename": "performance-check"},
+            {"instancename": "pnw-stagea.main"},
             {
                 "instancename": "pnw-prod.canary",
                 "trigger_next_step_manually": True,
@@ -209,12 +210,12 @@ class GetClusternamesFromDeployStanzaTestCase(QuestionsTestCase):
     def test_non_empty(self):
         deploy_stanza = {}
         deploy_stanza["pipeline"] = [
-            { "instancename": "itest", },
-            { "instancename": "push-to-registry", },
-            { "instancename": "mesosstage.canary", },
-            { "instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
-            { "instancename": "nova-prod.main.with.extra.dots", },
-            { "instancename": "clustername-without-namespace", },
+            {"instancename": "itest", },
+            {"instancename": "push-to-registry", },
+            {"instancename": "mesosstage.canary", },
+            {"instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
+            {"instancename": "nova-prod.main.with.extra.dots", },
+            {"instancename": "clustername-without-namespace", },
         ]
         expected = set([
             "mesosstage",

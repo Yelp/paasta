@@ -45,7 +45,7 @@ def parse_args():
         default=False,
         action="store_true",
         help="Automatically calculate and use sane defaults. Exit violently if "
-            "any values cannot be automatically calculated.",
+             "any values cannot be automatically calculated.",
     )
     parser.add_argument(
         "-p", "--port",
@@ -57,7 +57,7 @@ def parse_args():
         dest="team",
         default=None,
         help="Team responsible for the service. Used by various notification "
-            "systems. (--auto not available)",
+             "systems. (--auto not available)",
     )
 
     args = parser.parse_args()
@@ -91,7 +91,8 @@ def get_paasta_config(yelpsoa_config_root, srvname, auto, port, team, descriptio
     return (srvname, service_stanza, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team)
 
 
-def write_paasta_config(srv,
+def write_paasta_config(
+    srv,
     service_stanza,
     smartstack_stanza,
     monitoring_stanza,
@@ -118,7 +119,8 @@ def main(args):
             args.team,
             args.description,
             args.external_link,
-    ))
+        )
+    )
     srv = Service(srvname, args.yelpsoa_config_root)
     write_paasta_config(
         srv,
