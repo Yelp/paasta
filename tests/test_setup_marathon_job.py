@@ -6,7 +6,7 @@ from pytest import raises
 
 import marathon
 
-from paasta_tools import marathon_tools
+from paasta_tools import marathon_tools, bounce_lib
 import setup_marathon_job
 
 
@@ -424,15 +424,17 @@ class TestSetupMarathonJob:
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
-        fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
+        fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_apps))
+        fake_config = {'id': fake_id}
+
         expected = (1, 'bounce_method not recognized: %s' % fake_bounce)
         actual = setup_marathon_job.deploy_service(
             fake_name,
             fake_instance,
             fake_id,
-            self.fake_marathon_job_config,
+            fake_config,
             fake_client,
             fake_bounce,
             nerve_ns=fake_instance,
@@ -445,10 +447,27 @@ class TestSetupMarathonJob:
         fake_bounce = 'areallygoodbouncestrategy'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
-        fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
-        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
-        fake_bounce_func = mock.MagicMock()
+        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance, tag='blah')
+        fake_config = {'id': fake_id}
+
+        old_app_id = ('%s2' % fake_id)
+        old_task = mock.Mock(id="old_task_id", app_id=old_app_id)
+        old_app = mock.Mock(id=old_app_id, tasks=[old_task])
+
+        fake_client = mock.MagicMock(
+            list_apps=mock.Mock(return_value=[old_app]),
+            kill_task=mock.Mock(spec=lambda app_id, id, scale=False: None),
+        )
+
+        fake_bounce_func = mock.create_autospec(
+            bounce_lib.brutal_bounce,
+            return_value={
+                "create_app": True,
+                "tasks_to_kill": [old_task],
+                "apps_to_kill": [old_app_id],
+            }
+        )
+
         with contextlib.nested(
             mock.patch(
                 'paasta_tools.bounce_lib.get_bounce_method_func',
@@ -458,28 +477,37 @@ class TestSetupMarathonJob:
             mock.patch(
                 'paasta_tools.bounce_lib.bounce_lock_zookeeper',
                 autospec=True
-            )
-        ):
+            ),
+            mock.patch(
+                'paasta_tools.bounce_lib.get_happy_tasks',
+                autospec=True,
+                side_effect=lambda x, _, __, **kwargs: x,
+            ),
+            mock.patch('paasta_tools.bounce_lib.kill_old_ids', autospec=True),
+            mock.patch('paasta_tools.bounce_lib.create_marathon_app', autospec=True),
+        ) as (_, _, _, kill_old_ids_patch, create_marathon_app_patch):
             result = setup_marathon_job.deploy_service(
                 fake_name,
                 fake_instance,
                 fake_id,
-                self.fake_marathon_job_config,
+                fake_config,
                 fake_client,
                 fake_bounce,
                 nerve_ns=fake_instance,
             )
-            assert result[0] == 0, result[1]
+            assert result[0] == 0, "Expected successful result; got (%d, %s)" % result
             fake_client.list_apps.assert_called_once_with()
             assert fake_client.create_app.call_count == 0
             fake_bounce_func.assert_called_once_with(
-                fake_name,
-                fake_instance,
-                fake_apps,
-                self.fake_marathon_job_config,
-                fake_client,
-                fake_instance,
+                new_config=fake_config,
+                new_app_running=False,
+                happy_new_tasks=[],
+                old_app_tasks={old_app.id: set([old_task])},
             )
+
+            fake_client.kill_task.assert_called_once_with(old_app.id, old_task.id, scale=True)
+            create_marathon_app_patch.assert_called_once_with(fake_config['id'], fake_config, fake_client)
+            kill_old_ids_patch.assert_called_once_with([old_app_id], fake_client)
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}

@@ -232,155 +232,115 @@ def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_h
 
 @register_bounce_method('brutal')
 def brutal_bounce(
-    service_name,
-    instance_name,
-    existing_apps,
     new_config,
-    client,
-    nerve_ns,
-    **get_happy_tasks_kwargs
+    new_app_running,
+    happy_new_tasks,
+    old_app_tasks,
 ):
     """Pays no regard to safety. Starts the new app if necessary, and kills any
     old ones. Mostly meant as an example of the simplest working bounce method,
     but might be tolerable for some services.
 
-    :param service_name: service name
-    :param instance_name: instance name
-    :param existing_apps: Apps that marathon is already aware of.
-    :param new_config: The complete marathon job configuration for the new job
-    :param client: A marathon.MarathonClient object
-    :param nerve_ns: The nerve namespace this service should be registered in.
-    :param get_happy_tasks_kwargs: Controls what tasks we consider happy. Passed as keyword arguments to
-                                   get_happy_tasks. Brutal bounce doesn't care about task happiness, so this is ignored.
+    :param new_config: The configuration dictionary representing the desired new app.
+    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
+    :param happy_new_tasks: set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
+    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
     """
-    new_id = new_config['id']
-    existing_ids = set(a.id for a in existing_apps)
-
-    # Start the app if it's not there
-    if new_id not in existing_ids:
-        create_marathon_app(new_id, new_config, client)
-
-    # Kill any old instances.
-    kill_old_ids(existing_ids - set([new_id]), client)
+    return {
+        "create_app": not new_app_running,
+        "tasks_to_kill": set.union(set(), *old_app_tasks.values()),  # set.union doesn't like getting zero arguments
+        "apps_to_kill": set(old_app_tasks.keys()),
+    }
 
 
 @register_bounce_method('upthendown')
 def upthendown_bounce(
-    service_name,
-    instance_name,
-    existing_apps,
     new_config,
-    client,
-    nerve_ns,
-    **get_happy_tasks_kwargs
+    new_app_running,
+    happy_new_tasks,
+    old_app_tasks,
 ):
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
-    :param service_name: service name
-    :param instance_name: instance name
-    :param existing_apps: Apps that marathon is already aware of.
-    :param new_config: The complete marathon job configuration for the new job
-    :param client: A marathon.MarathonClient object
-    :param nerve_ns: The nerve namespace this service should be registered in.
-    :param get_happy_tasks_kwargs: Controls what tasks we consider happy. Passed as keyword arguments to
-                                   get_happy_tasks.
-
+    :param new_config: The configuration dictionary representing the desired new app.
+    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
+    :param happy_new_tasks: set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
+    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
     """
-    new_id = new_config['id']
-    existing_ids = set(a.id for a in existing_apps)
-
-    # Start the app if it's not there
-    if new_id not in existing_ids:
-        create_marathon_app(new_id, new_config, client)
+    if new_app_running and len(happy_new_tasks) == new_config['instances']:
+        return {
+            "create_app": False,
+            "tasks_to_kill": set.union(set(), *old_app_tasks.values()),  # set.union doesn't like getting zero arguments
+            "apps_to_kill": set(old_app_tasks.keys()),
+        }
     else:
-        (new_app,) = [a for a in existing_apps if a.id == new_id]
-        if new_app.tasks_running >= new_config['instances']:
-            # Kill any old instances.
-            kill_old_ids(existing_ids - set([new_id]), client)
+        return {
+            "create_app": not new_app_running,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
 
 
 @register_bounce_method('crossover')
 def crossover_bounce(
-    service_name,
-    instance_name,
-    existing_apps,
     new_config,
-    client,
-    nerve_ns,
-    **get_happy_tasks_kwargs
+    new_app_running,
+    happy_new_tasks,
+    old_app_tasks,
 ):
-    """Starts a new app if necessary; slowly kills old apps as instances of the
-    new app come up and register in the load balancer.
+    """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
-    :param service_name: service name
-    :param instance_name: instance name
-    :param existing_apps: Apps that marathon is already aware of.
-    :param new_config: The complete marathon job configuration for the new job
-    :param client: A marathon.MarathonClient object
-    :param nerve_ns: The nerve namespace this service should be registered in.
-    :param get_happy_tasks_kwargs: Controls what tasks we consider happy. Passed as keyword arguments to
-                                   get_happy_tasks.
+    :param new_config: The configuration dictionary representing the desired new app.
+    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
+    :param happy_new_tasks: set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
+    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
+
     """
 
-    new_id = new_config['id']
-    existing_ids = set(a.id for a in existing_apps)
-
-    # Start the app if it's not there
-    if new_id not in existing_ids:
-        create_marathon_app(new_id, new_config, client)
+    if not new_app_running:
+        return {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
     else:
-        (new_app,) = [a for a in existing_apps if a.id == new_id]
-        other_apps = [a for a in existing_apps if a.id != new_id]
-
-        happy_count = len(get_happy_tasks(new_app.tasks, service_name, nerve_ns))
+        happy_count = len(happy_new_tasks)
         needed_count = max(new_config['instances'] - happy_count, 0)
 
         old_tasks = []
-        for app in other_apps:
-            for task in app.tasks:
+        for app, tasks in old_app_tasks.items():
+            for task in tasks:
                 old_tasks.append(task)
 
-        # don't kill the first needed_count
-        for task in old_tasks[needed_count:]:
-            client.kill_task(task.app_id, task.id, scale=True)
-
-        # clean up any old tasks that we've scaled all the way down
-        kill_old_ids(
-            set([app.id for app in other_apps if app.tasks_running == 0]),
-            client
-        )
+        return {
+            "create_app": False,
+            "tasks_to_kill": set(set(old_tasks[needed_count:])),
+            "apps_to_kill": set(app_id for (app_id, tasks) in old_app_tasks.items() if len(tasks) == 0),
+        }
 
 
 @register_bounce_method('downthenup')
 def downthenup_bounce(
-    service_name,
-    instance_name,
-    existing_apps,
     new_config,
-    client,
-    nerve_ns,
-    **get_happy_tasks_kwargs
+    new_app_running,
+    happy_new_tasks,
+    old_app_tasks,
 ):
     """Stops any old apps and waits for them to die before starting a new one.
 
-    :param service_name: service name
-    :param instance_name: instance name
-    :param existing_apps: Apps that marathon is already aware of.
-    :param new_config: The complete marathon job configuration for the new job
-    :param client: A marathon.MarathonClient object
-    :param nerve_ns: The nerve namespace this service should be registered in.
-    :param get_happy_tasks_kwargs: Controls what tasks we consider happy. Passed as keyword arguments to
-                                   get_happy_tasks.
+    :param new_config: The configuration dictionary representing the desired new app.
+    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
+    :param happy_new_tasks: set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
+    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
     """
-    new_id = new_config['id']
-    existing_ids = set(a.id for a in existing_apps)
-    old_ids = existing_ids - set([new_id])
-
-    # Only start an app if no previous apps exist.
-    if not existing_ids:
-        create_marathon_app(new_id, new_config, client)
-
-    # Kill any old instances.
-    kill_old_ids(old_ids, client)
+    return {
+        "create_app": not old_app_tasks and not new_app_running,
+        "tasks_to_kill": set.union(set(), *old_app_tasks.values()),  # set.union doesn't like getting zero arguments,
+        "apps_to_kill": set(old_app_tasks.keys()),
+    }
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

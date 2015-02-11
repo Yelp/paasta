@@ -195,584 +195,354 @@ class TestBrutalBounce:
         """When marathon is unaware of a service, brutal bounce should try to
         create a marathon app."""
         new_config = {'id': 'foo.bar.12345'}
-        client = mock.Mock()
+        happy_tasks = []
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.brutal_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            create_marathon_app_patch.assert_called_once_with(
-                new_config['id'],
-                new_config,
-                client
-            )
-
-            kill_old_ids_patch.assert_called_once_with(set(), client)
+        assert bounce_lib.brutal_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks={},
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
 
     def test_brutal_bounce_done(self):
         """When marathon has the desired app, and there are no other copies of
         the service running, brutal bounce should neither start nor stop
         anything."""
 
-        new_config = {'id': 'foo.bar.12345'}
-        client = mock.Mock()
-        app = mock.Mock(id='foo.bar.12345')
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.brutal_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with(set(), client)
+        assert bounce_lib.brutal_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks={},
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
 
     def test_brutal_bounce_mid_bounce(self):
         """When marathon has the desired app, but there are other copies of
         the service running, brutal bounce should stop the old ones."""
 
-        new_config = {'id': 'foo.bar.12345'}
-        client = mock.Mock()
-        new_app = mock.Mock(id='foo.bar.12345')
-        old_app = mock.Mock(id='foo.bar.11111')
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.brutal_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[new_app, old_app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with(
-                set([old_app.id]),
-                client
-            )
+        assert bounce_lib.brutal_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "apps_to_kill": set(['app1', 'app2']),
+        }
 
     def test_brutal_bounce_old_but_no_new(self):
-        """When marathon has the desired app, but there are other copies of
+        """When marathon does not have the desired app, but there are other copies of
         the service running, brutal bounce should stop the old ones and start
         the new one."""
 
-        new_config = {'id': 'foo.bar.12345'}
-        client = mock.Mock()
-        old_app = mock.Mock(id='foo.bar.11111')
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.brutal_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[old_app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            create_marathon_app_patch.assert_called_once_with(
-                new_config['id'],
-                new_config,
-                client
-            )
-
-            kill_old_ids_patch.assert_called_once_with(
-                set([old_app.id]),
-                client
-            )
+        assert bounce_lib.brutal_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=[],
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "apps_to_kill": set(['app1', 'app2']),
+        }
 
 
 class TestUpthendownBounce:
     def test_upthendown_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, upthendown bounce should try to
         create a marathon app."""
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345'}
+        happy_tasks = []
+
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks={},
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        client = mock.Mock()
-
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.upthendown_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            create_marathon_app_patch.assert_called_once_with(
-                new_config['id'],
-                new_config,
-                client
-            )
-
-            assert kill_old_ids_patch.call_count == 0
 
     def test_upthendown_bounce_old_but_no_new(self):
         """When marathon has the desired app, but there are other copies of
         the service running, upthendown bounce should start the new one. but
         not stop the old one yet."""
 
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
         }
-        client = mock.Mock()
-        old_app = mock.Mock(id='foo.bar.11111')
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.upthendown_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[old_app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            create_marathon_app_patch.assert_called_once_with(
-                new_config['id'],
-                new_config,
-                client
-            )
-
-            assert kill_old_ids_patch.call_count == 0
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=[],
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
 
     def test_upthendown_bounce_mid_bounce(self):
         """When marathon has the desired app, and there are other copies of
         the service running, but the new app is not fully up, upthendown bounce
         should not stop the old ones."""
 
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(3)]
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
         }
-        client = mock.Mock()
-        new_app = mock.Mock(id='foo.bar.12345', tasks_running=5)
-        old_app = mock.Mock(id='foo.bar.11111')
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.upthendown_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[new_app, old_app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-            assert kill_old_ids_patch.call_count == 0
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
 
     def test_upthendown_bounce_cleanup(self):
         """When marathon has the desired app, and there are other copies of
         the service running, and the new app is fully up, upthendown bounce
         should stop the old ones."""
 
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
         }
-        client = mock.Mock()
-        new_app = mock.Mock(id='foo.bar.12345', tasks_running=10)
-        old_app = mock.Mock(id='foo.bar.11111')
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.upthendown_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[new_app, old_app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with(
-                set([old_app.id]),
-                client
-            )
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "apps_to_kill": set(['app1', 'app2']),
+        }
 
     def test_upthendown_bounce_done(self):
         """When marathon has the desired app, and there are no other copies of
         the service running, upthendown bounce should neither start nor stop
         anything."""
 
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {}
+
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        client = mock.Mock()
-        app = mock.Mock(id='foo.bar.12345')
-
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.upthendown_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with(set(), client)
 
 
 class TestCrossoverBounce:
     def test_crossover_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, crossover bounce should try to
         create a marathon app."""
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = []
+        old_app_tasks = {}
+
+        assert bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        client = mock.Mock()
-
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.crossover_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            create_marathon_app_patch.assert_called_once_with(
-                new_config['id'],
-                new_config,
-                client
-            )
-
-            assert kill_old_ids_patch.call_count == 0
 
     def test_crossover_bounce_old_but_no_new(self):
-        """When marathon has the desired app, but there are other copies of
-        the service running, crossover bounce should stop the old ones and start
-        the new one."""
+        """When marathon only has old apps for this service, crossover bounce should start the new one, but not kill any
+        old tasks yet."""
 
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = []
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
         }
-        client = mock.Mock()
-        old_app = mock.Mock(id='foo.bar.11111')
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.crossover_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[old_app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            create_marathon_app_patch.assert_called_once_with(
-                new_config['id'],
-                new_config,
-                client
-            )
-
-            assert kill_old_ids_patch.call_count == 0
-            assert client.kill_task.call_count == 0
+        assert bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
 
     def test_crossover_bounce_mid_bounce(self):
-        """When marathon has the desired app, and there are other copies of
-        the service running, but the new app is not fully up, crossover bounce
-        should not stop the old ones."""
+        """When marathon has the desired app, and there are other copies of the service running, but the new app is not
+        fully up, crossover bounce should only stop a few of the old instances."""
 
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(3)]
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
         }
-        client = mock.Mock()
 
-        new_app_tasks = [mock.Mock() for _ in xrange(5)]
-        old_app_tasks = [mock.Mock() for _ in xrange(10)]
-
-        new_app = mock.Mock(
-            id='foo.bar.12345',
-            tasks_running=5,
-            tasks=new_app_tasks,
-        )
-        old_app = mock.Mock(
-            id='foo.bar.11111',
-            tasks_running=10,
-            tasks=old_app_tasks,
+        actual = bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
         )
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.crossover_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[new_app, old_app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with(set([]), client)
-            assert client.kill_task.call_count == 5
+        assert actual['create_app'] is False
+        assert len(actual['tasks_to_kill']) == 3
+        assert actual['apps_to_kill'] == set()
 
     def test_crossover_bounce_cleanup(self):
         """When marathon has the desired app, and there are other copies of
         the service running, which have no remaining tasks, those apps should
         be killed."""
 
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {
+            'app1': set(),
+            'app2': set(),
         }
-        client = mock.Mock()
-        new_app = mock.Mock(id='foo.bar.12345', tasks_running=10,
-                            tasks=[mock.Mock() for _ in xrange(10)])
-        old_app = mock.Mock(id='foo.bar.11111', tasks_running=0, tasks=[])
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.crossover_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[new_app, old_app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with(
-                set([old_app.id]),
-                client
-            )
-            assert client.kill_task.call_count == 0
+        assert bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(['app1', 'app2']),
+        }
 
     def test_crossover_bounce_done(self):
         """When marathon has the desired app, and there are no other copies of
         the service running, crossover bounce should neither start nor stop
         anything."""
 
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {}
+
+        assert bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        client = mock.Mock()
-        app = mock.Mock(
-            id='foo.bar.12345',
-            tasks=[mock.Mock() for _ in xrange(10)]
-        )
-
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.crossover_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with(set([]), client)
-            assert client.kill_task.call_count == 0
 
 
 class TestDownThenUpBounce(object):
     def test_downthenup_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, downthenup bounce should try to
         create a marathon app."""
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = []
+        old_app_tasks = {}
+
+        assert bounce_lib.downthenup_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        client = mock.Mock()
-
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.downthenup_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            create_marathon_app_patch.assert_called_once_with(
-                new_config['id'],
-                new_config,
-                client
-            )
-
-            kill_old_ids_patch.assert_called_once_with(set(), client)
 
     def test_downthenup_bounce_old_but_no_new(self):
-        """When marathon has the desired app, but there are other copies of
-        the service running, downthenup bounce should stop the old ones and start
-        the new one."""
-
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        """When marathon has only old copies of the service, downthenup_bounce should kill them and not start a new one
+        yet."""
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = []
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
         }
-        client = mock.Mock()
-        old_app = mock.Mock(id='foo.bar.11111')
 
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.downthenup_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[old_app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-
-            kill_old_ids_patch.assert_called_once_with(
-                set([old_app.id]),
-                client
-            )
+        assert bounce_lib.downthenup_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "apps_to_kill": set(['app1', 'app2']),
+        }
 
     def test_downthenup_bounce_done(self):
-        """When marathon has the desired app, and there are no other copies of
-        the service running, downthenup bounce should neither start nor stop
-        anything."""
+        """When marathon has the desired app, and there are no other copies of the service running, downthenup bounce
+        should neither start nor stop anything."""
 
-        new_config = {
-            'id': 'foo.bar.12345',
-            'instances': 10,
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {}
+
+        assert bounce_lib.downthenup_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        client = mock.Mock()
-        app = mock.Mock(id='foo.bar.12345')
-
-        with contextlib.nested(
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            create_marathon_app_patch,
-            kill_old_ids_patch,
-        ):
-            bounce_lib.downthenup_bounce(
-                service_name='foo',
-                instance_name='bar',
-                existing_apps=[app],
-                new_config=new_config,
-                client=client,
-                nerve_ns='bar',
-            )
-
-            assert create_marathon_app_patch.call_count == 0
-            kill_old_ids_patch.assert_called_once_with(set(), client)
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

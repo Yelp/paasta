@@ -110,26 +110,48 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     short_id = marathon_tools.remove_tag_from_job_id(marathon_jobid)
     app_list = client.list_apps()
     existing_apps = [app for app in app_list if short_id in app.id]
-    try:
-        try:
-            bounce_func = bounce_lib.get_bounce_method_func(bounce_method)
-        except KeyError:
-            log.error("bounce_method not recognized: %s. Exiting", bounce_method)
-            return (1, "bounce_method not recognized: %s" % bounce_method)
 
+    new_app_list = [a for a in existing_apps if a.id == config['id']]
+    other_apps = [a for a in existing_apps if a.id != config['id']]
+
+    if new_app_list:
+        new_app = new_app_list[0]
+        if len(new_app_list) != 1:
+            raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
+        new_app_running = True
+        happy_new_tasks = bounce_lib.get_happy_tasks(new_app.tasks, service_name, nerve_ns)
+    else:
+        new_app_running = False
+        happy_new_tasks = []
+
+    old_app_tasks = dict([(a.id, set(a.tasks)) for a in other_apps])
+
+    try:
+        bounce_func = bounce_lib.get_bounce_method_func(bounce_method)
+    except KeyError:
+        log.error("bounce_method not recognized: %s. Exiting", bounce_method)
+        return (1, "bounce_method not recognized: %s" % bounce_method)
+
+    try:
         with bounce_lib.bounce_lock_zookeeper(short_id):
             log.info("Initiating %s bounce on %s.", (bounce_method, short_id))
-            bounce_func(
-                service_name,
-                instance_name,
-                existing_apps,
-                config,
-                client,
-                nerve_ns
+            actions = bounce_func(
+                new_config=config,
+                new_app_running=new_app_running,
+                happy_new_tasks=happy_new_tasks,
+                old_app_tasks=old_app_tasks,
             )
+
+            if actions['create_app'] and not new_app_running:
+                bounce_lib.create_marathon_app(marathon_jobid, config, client)
+            for task in actions['tasks_to_kill']:
+                client.kill_task(task.app_id, task.id, scale=True)
+            bounce_lib.kill_old_ids(actions['apps_to_kill'], client)
+
     except bounce_lib.LockHeldException:
         log.error("Instance %s already being bounced. Exiting", short_id)
         return (1, "Instance %s is already being bounced.", short_id)
+
     log.info("%s deployed. Exiting", marathon_jobid)
     return (0, 'Service deployed.')
 
