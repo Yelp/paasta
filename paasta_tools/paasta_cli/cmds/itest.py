@@ -1,10 +1,10 @@
 #!/usr/bin/env python
 """Contains methods used by the paasta client to build and test a docker image."""
 
-import subprocess
 import sys
 
 from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import _run
 
 
 def add_subparser(subparsers):
@@ -14,7 +14,9 @@ def add_subparser(subparsers):
         help='Builds and tests a docker image')
 
     list_parser.add_argument('-s', '--service',
-                             help='Test and build docker image for this service. Leading "services-", as included in a Jenkins job name, will be stripped.',
+                             help='Test and build docker image for this service. Leading '
+                                  '"services-", as included in a Jenkins job name, '
+                                  'will be stripped.',
                              required=True,
                              )
     list_parser.add_argument('-c', '--commit',
@@ -52,8 +54,7 @@ def paasta_itest(args):
 
     cmd = build_command(service_name, args.commit)
     print 'INFO: Executing command "%s"' % cmd
-    try:
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT, shell=True)
-    except subprocess.CalledProcessError as exc:
-        print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (exc.output, exc.returncode)
-        sys.exit(exc.returncode)
+    returncode, output = _run(cmd)
+    if returncode != 0:
+        print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (output, returncode)
+        sys.exit(returncode)

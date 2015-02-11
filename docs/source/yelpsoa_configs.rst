@@ -23,7 +23,7 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``nerve_ns``: Specifies that this namespace should be routed to by another namespace. E.g. ``canary`` instances have a different configuration but traffic from the ``main`` pool reaches them.
 
-  * ``bounce_method``: future placeholder; see `bounce_lib <bounce_lib.html>`_
+  * ``bounce_method``: Controls the bounce method; see `bounce_lib <bounce_lib.html>`_
 
   * ``constraints``: future placeholder; see https://github.com/mesosphere/marathon/wiki/Constraints
 

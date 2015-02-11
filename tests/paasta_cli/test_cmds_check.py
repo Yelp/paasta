@@ -6,7 +6,6 @@ from paasta_tools.paasta_cli.cmds.check import deploy_has_performance_check
 from paasta_tools.paasta_cli.cmds.check import deploy_has_security_check
 from paasta_tools.paasta_cli.cmds.check import docker_check
 from paasta_tools.paasta_cli.cmds.check import get_marathon_steps
-from paasta_tools.paasta_cli.cmds.check import git_repo_check
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
 from paasta_tools.paasta_cli.cmds.check import marathon_check
 from paasta_tools.paasta_cli.cmds.check import marathon_deployments_check
@@ -418,39 +417,16 @@ def test_check_pipeline_check_fail_httperr(mock_stdout, mock_urllib2, mock_error
     assert output == expected_output
 
 
-@patch('paasta_tools.paasta_cli.cmds.check.subprocess')
-@patch('sys.stdout', new_callable=StringIO)
-def test_check_git_repo_check_pass(mock_stdout, mock_subprocess):
-    mock_subprocess.call.return_value = 0
-    git_repo_check('fake_service')
-    expected_output = "%s\n" % PaastaCheckMessages.GIT_REPO_FOUND
-    output = mock_stdout.getvalue()
-
-    assert output == expected_output
-
-
-@patch('paasta_tools.paasta_cli.cmds.check.subprocess')
-@patch('sys.stdout', new_callable=StringIO)
-def test_check_git_repo_check_fail(mock_stdout, mock_subprocess):
-    mock_subprocess.call.return_value = 2
-    service = 'fake_service'
-    git_repo_check(service)
-    expected_output = "%s\n" % PaastaCheckMessages.git_repo_missing(service)
-    output = mock_stdout.getvalue()
-
-    assert output == expected_output
-
-
-@patch('paasta_tools.paasta_cli.cmds.check.subprocess')
-def test_makefile_responds_to_itest_good(mock_subprocess):
-    mock_subprocess.call.return_value = 1
+@patch('paasta_tools.paasta_cli.cmds.check._run')
+def test_makefile_responds_to_itest_good(mock_run):
+    mock_run.return_value = (1, 'Output')
     actual = makefile_responds_to_itest()
     assert actual is True
 
 
-@patch('paasta_tools.paasta_cli.cmds.check.subprocess')
-def test_makefile_responds_to_itest_bad(mock_subprocess):
-    mock_subprocess.call.return_value = 2
+@patch('paasta_tools.paasta_cli.cmds.check._run')
+def test_makefile_responds_to_itest_run(mock_run):
+    mock_run.return_value = (2, 'Output')
     actual = makefile_responds_to_itest()
     assert actual is False
 

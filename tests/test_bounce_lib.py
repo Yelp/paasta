@@ -33,7 +33,7 @@ class TestBounceLib:
         fake_zk = mock.MagicMock(Lock=mock.Mock(return_value=fake_lock))
         fake_zk_hosts = 'awjti42ior'
         with contextlib.nested(
-            mock.patch('bounce_lib.KazooClient', return_value=fake_zk),
+            mock.patch('bounce_lib.KazooClient', return_value=fake_zk, autospec=True),
             mock.patch('marathon_tools.get_zk_hosts', return_value=fake_zk_hosts),
         ) as (
             client_patch,

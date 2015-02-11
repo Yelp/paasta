@@ -111,7 +111,8 @@ class TestSetupMarathonJob:
                 self.fake_args.service_instance.split('.')[1],
                 fake_client,
                 self.fake_marathon_config,
-                self.fake_marathon_job_config)
+                self.fake_marathon_job_config
+            )
             sys_exit_patch.assert_called_once_with(0)
 
     def test_main_failure(self):
@@ -200,7 +201,8 @@ class TestSetupMarathonJob:
             'alert_after': '6m',
             'check_every': '2m',
             'realert_every': -1,
-            'source': 'mesos-fake_cluster'
+            'source': 'mesos-fake_cluster',
+            'command': 'N/A, but from setup_marathon_job.py',
         }
         with contextlib.nested(
             mock.patch(
@@ -280,7 +282,6 @@ class TestSetupMarathonJob:
         fake_name = 'if_trees_could_talk'
         fake_instance = 'would_they_scream'
         fake_client = mock.MagicMock(get_app=mock.Mock(return_value=True))
-        fake_url = 'what_is_a_test'
         full_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_complete = {
             'seven': 'full',
@@ -290,27 +291,26 @@ class TestSetupMarathonJob:
         }
         with contextlib.nested(
             mock.patch(
-                'paasta_tools.marathon_tools.get_docker_url',
-                return_value=fake_url,
-                autospec=True,
-            ),
-            mock.patch(
                 'paasta_tools.marathon_tools.create_complete_config',
                 return_value=fake_complete,
                 autospec=True,
             ),
             mock.patch(
+                'paasta_tools.marathon_tools.verify_docker_image',
+                autospec=True,
+            ),
+            mock.patch(
                 'paasta_tools.marathon_tools.get_config',
                 return_value=self.fake_marathon_config,
-                autospec=True
+                autospec=True,
             ),
             mock.patch(
                 'setup_marathon_job.deploy_service',
                 autospec=True,
             ),
         ) as (
-            docker_url_patch,
             create_config_patch,
+            verify_docker_image_patch,
             get_config_patch,
             deploy_service_patch,
         ):
@@ -327,6 +327,7 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config,
             )
             assert deploy_service_patch.call_count == 1
+            verify_docker_image_patch.assert_called_once_with('remote_registry.com', 'test_docker:1.0')
 
     def test_setup_service_srv_does_not_exist(self):
         fake_name = 'if_talk_was_cheap'
@@ -335,21 +336,21 @@ class TestSetupMarathonJob:
             json=mock.Mock(return_value={'message': 'test'}))
         fake_client = mock.MagicMock(get_app=mock.Mock(
             side_effect=marathon.exceptions.NotFoundError(fake_response)))
-        full_id = marathon_tools.compose_job_id(
-            fake_name, fake_instance, 'oogabooga')
-        fake_complete = {'do': 'you', 'even': 'dota', 'id': full_id}
-        fake_url = 'a_miserable_pile_of_mocks'
+        full_id = marathon_tools.compose_job_id(fake_name, fake_instance, 'oogabooga')
+        fake_complete = {
+            'do': 'you', 'even': 'dota', 'id': full_id,
+            'docker_image': 'fake_docker_registry/fake_docker_image',
+        }
         fake_bounce = 'trampoline'
         with contextlib.nested(
-            mock.patch(
-                'paasta_tools.marathon_tools.get_docker_url',
-                return_value=fake_url,
-                autospec=True,
-            ),
             mock.patch(
                 'paasta_tools.marathon_tools.create_complete_config',
                 return_value=fake_complete,
                 autospec=True,
+            ),
+            mock.patch(
+                'paasta_tools.marathon_tools.verify_docker_image',
+                autospec=True
             ),
             mock.patch(
                 'setup_marathon_job.deploy_service',
@@ -367,8 +368,8 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
         ) as (
-            docker_url_patch,
             create_config_patch,
+            verify_docker_image_patch,
             deploy_service_patch,
             get_bounce_patch,
             read_service_conf_patch,
@@ -388,8 +389,7 @@ class TestSetupMarathonJob:
                 fake_instance,
                 self.fake_marathon_config
             )
-            get_bounce_patch.assert_called_once_with(
-                self.fake_marathon_job_config)
+            get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
             deploy_service_patch.assert_called_once_with(
                 fake_name,
                 fake_instance,
@@ -399,6 +399,7 @@ class TestSetupMarathonJob:
                 fake_bounce,
                 self.fake_marathon_job_config['nerve_ns'],
             )
+            verify_docker_image_patch.assert_called_once_with('remote_registry.com', 'test_docker:1.0')
 
     def test_setup_service_srv_complete_config_raises(self):
         fake_name = 'test_service'
@@ -447,8 +448,7 @@ class TestSetupMarathonJob:
         fake_instance = 'will_i_need_to_think_of'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id), mock.Mock(id=('%s2' % fake_id))]
-        fake_client = mock.MagicMock(
-            list_apps=mock.Mock(return_value=fake_apps))
+        fake_client = mock.MagicMock(list_apps=mock.Mock(return_value=fake_apps))
         fake_bounce_func = mock.MagicMock()
         with contextlib.nested(
             mock.patch(

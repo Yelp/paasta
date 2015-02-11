@@ -101,14 +101,14 @@ def test_get_branch_mappings():
                    side_effect=lambda a: fake_remote_refs.pop()),
         mock.patch('paasta_tools.marathon_tools.get_docker_registry',
                    return_value=fake_registry),
-        mock.patch('paasta_tools.marathon_tools.get_docker_url',
-                   return_value="not empty"),
+        mock.patch('paasta_tools.marathon_tools.verify_docker_image',
+                   return_value=True, autospec=True),
     ) as (
         get_dirs_patch,
         get_branches_patch,
         list_remote_refs_patch,
         registry_patch,
-        docker_url_patch,
+        verify_docker_image_patch
     ):
         actual = generate_deployments_json.get_branch_mappings(fake_soa_dir, fake_old_mappings)
         assert expected == actual
@@ -121,9 +121,9 @@ def test_get_branch_mappings():
         # Each service should require exactly one call to list_remote_refs.
         assert list_remote_refs_patch.call_count == 2
 
-        docker_url_patch.assert_any_call(fake_registry, 'services-uno:paasta-789009', verify=True)
-        docker_url_patch.assert_any_call(fake_registry, 'services-dos:paasta-123456', verify=True)
-        assert docker_url_patch.call_count == 2
+        verify_docker_image_patch.assert_any_call(fake_registry, 'services-uno:paasta-789009')
+        verify_docker_image_patch.assert_any_call(fake_registry, 'services-dos:paasta-123456')
+        assert verify_docker_image_patch.call_count == 2
 
 
 def test_main():
@@ -131,13 +131,18 @@ def test_main():
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
         mock.patch('generate_deployments_json.parse_args',
-                   return_value=mock.Mock(verbose=False, soa_dir=fake_soa_dir)),
-        mock.patch('os.path.abspath', return_value='ABSOLUTE'),
-        mock.patch('generate_deployments_json.get_branch_mappings', return_value={'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}),
-        mock.patch('os.path.join', return_value='JOIN'),
+                   return_value=mock.Mock(verbose=False, soa_dir=fake_soa_dir), autospec=True),
+        mock.patch('os.path.abspath', return_value='ABSOLUTE', autospec=True),
+        mock.patch(
+            'generate_deployments_json.get_branch_mappings',
+            return_value={'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}},
+            autospec=True,
+        ),
+        mock.patch('os.path.join', return_value='JOIN', autospec=True),
         mock.patch('generate_deployments_json.open', create=True, return_value=file_mock),
-        mock.patch('json.dump'),
-        mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'})
+        mock.patch('json.dump', autospec=True),
+        mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'}, autospec=True),
+        mock.patch('generate_deployments_json.atomic_file_write', autospec=True),
     ) as (
         parse_patch,
         abspath_patch,
@@ -145,18 +150,30 @@ def test_main():
         join_patch,
         open_patch,
         json_dump_patch,
-        json_load_patch
+        json_load_patch,
+        atomic_file_write_patch,
     ):
         generate_deployments_json.main()
         parse_patch.assert_called_once_with()
         abspath_patch.assert_called_once_with(fake_soa_dir)
-        mappings_patch.assert_called_once_with('ABSOLUTE', {'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS', 'force_bounce': None}}),
+        mappings_patch.assert_called_once_with(
+            'ABSOLUTE',
+            {'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS', 'force_bounce': None}},
+        ),
+
         join_patch.assert_any_call('ABSOLUTE', generate_deployments_json.TARGET_FILE),
         assert join_patch.call_count == 2
-        open_patch.assert_any_call('JOIN', 'w')
-        open_patch.assert_any_call('JOIN', 'r')
-        assert open_patch.call_count == 2
-        json_dump_patch.assert_called_once_with({'v1': {'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}}}, file_mock.__enter__())
+
+        atomic_file_write_patch.assert_called_once_with('JOIN')
+        open_patch.assert_called_once_with('JOIN', 'r')
+        json_dump_patch.assert_called_once_with(
+            {
+                'v1': {
+                    'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}
+                }
+            },
+            atomic_file_write_patch().__enter__()
+        )
         json_load_patch.assert_called_once_with(file_mock.__enter__())
 
 

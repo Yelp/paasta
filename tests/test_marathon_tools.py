@@ -552,22 +552,38 @@ class TestMarathonTools:
         timeout = -99
 
         stringio_patch.return_value.getvalue.return_value = 'curl_into_a_corner'
-        json_load_patch.return_value = {'frameworks': [
-                                            {'executors': [
-                                                {'id': id_1, 'resources': {'ports': ports_1}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
-                                                {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{u'state': u'TASK_RUNNING'}]}],
-                                             'name': 'marathon-1111111'},
-                                            {'executors': [
-                                                {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
-                                                {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{u'state': u'TASK_RUNNING'}]}],
-                                             'name': 'marathon-3145jgreoifd'},
-                                            {'executors': [
-                                                {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{u'state': u'TASK_STAGED'}]}],
-                                             'name': 'marathon-754rchoeurcho'},
-                                            {'executors': [
-                                                {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{u'state': u'TASK_RUNNING'}]}],
-                                             'name': 'super_bunk'}
-                                        ]}
+        json_load_patch.return_value = {
+            'frameworks': [
+                {
+                    'executors': [
+                        {'id': id_1, 'resources': {'ports': ports_1},
+                            'tasks': [{u'state': u'TASK_RUNNING'}]},
+                        {'id': id_2, 'resources': {'ports': ports_2}, 'tasks': [{u'state': u'TASK_RUNNING'}]}
+                    ],
+                    'name': 'marathon-1111111'
+                },
+                {
+                    'executors': [
+                        {'id': id_3, 'resources': {'ports': ports_3}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                        {'id': id_4, 'resources': {'ports': ports_4}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                    ],
+                    'name': 'marathon-3145jgreoifd'
+                },
+                {
+                    'executors': [
+                        {'id': id_5, 'resources': {'ports': ports_5}, 'tasks': [{u'state': u'TASK_STAGED'}]},
+                    ],
+                    'name': 'marathon-754rchoeurcho'
+                },
+                {
+                    'executors': [
+                        {'id': 'bunk', 'resources': {'ports': '[65-65]'}, 'tasks': [{u'state': u'TASK_RUNNING'}]},
+                    ],
+                    'name': 'super_bunk'
+                }
+            ]
+        }
+
         expected = [('klingon', 'ships', 111),
                     ('fire', 'photon', 222),
                     ('dota', 'axe', 333),
@@ -864,7 +880,7 @@ class TestMarathonTools:
         assert marathon_tools.get_bounce_method(fake_conf) == fake_method
 
     def test_get_bounce_method_default(self):
-        assert marathon_tools.get_bounce_method({}) == 'brutal'
+        assert marathon_tools.get_bounce_method({}) == 'upthendown'
 
     def test_get_instances_in_config(self):
         fake_conf = {'instances': -10, 'desired_state': 'start'}
@@ -920,57 +936,34 @@ class TestMarathonTools:
     def test_get_docker_url_no_error(self):
         fake_registry = "im.a-real.vm"
         fake_image = "and-i-can-run:1.0"
-        fake_curl = mock.Mock()
-        fake_stringio = mock.Mock(getvalue=mock.Mock(return_value='483af83b81ee93ac930d'))
         expected = "%s/%s" % (fake_registry, fake_image)
-        with contextlib.nested(
-            mock.patch('pycurl.Curl', return_value=fake_curl),
-            mock.patch('marathon_tools.StringIO', return_value=fake_stringio)
-        ) as (
-            pycurl_patch,
-            stringio_patch
-        ):
-            assert marathon_tools.get_docker_url(fake_registry, fake_image) == expected
-            fake_curl.setopt.assert_any_call(pycurl.URL,
-                                             'http://%s/v1/repositories/%s/tags/%s' % (
-                                                    fake_registry,
-                                                    fake_image.split(':')[0],
-                                                    fake_image.split(':')[1]))
-            fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, fake_stringio.write)
-
-            assert fake_curl.setopt.call_count == 3
-            fake_curl.setopt.assert_any_call(pycurl.TIMEOUT, 30)
-            fake_curl.perform.assert_called_once_with()
-            fake_stringio.getvalue.assert_called_once_with()
-
-    def test_get_docker_url_has_error(self):
-        fake_registry = "youre.just.virtual"
-        fake_image = "just-a-shadow-of-reality:0.9"
-        fake_curl = mock.Mock()
-        fake_stringio = mock.Mock(getvalue=mock.Mock(return_value='all the errors ever'))
-        expected = ""
-        with contextlib.nested(
-            mock.patch('pycurl.Curl', return_value=fake_curl),
-            mock.patch('marathon_tools.StringIO', return_value=fake_stringio)
-        ) as (
-            pycurl_patch,
-            stringio_patch
-        ):
-            assert marathon_tools.get_docker_url(fake_registry, fake_image) == expected
-            fake_curl.setopt.assert_any_call(pycurl.URL,
-                                             'http://%s/v1/repositories/%s/tags/%s' % (
-                                                    fake_registry,
-                                                    fake_image.split(':')[0],
-                                                    fake_image.split(':')[1]))
-            fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, fake_stringio.write)
-            assert fake_curl.setopt.call_count == 3
-            fake_curl.setopt.assert_any_call(pycurl.TIMEOUT, 30)
-            fake_curl.perform.assert_called_once_with()
-            fake_stringio.getvalue.assert_called_once_with()
+        assert marathon_tools.get_docker_url(fake_registry, fake_image) == expected
 
     def test_get_docker_url_with_no_docker_image(self):
         with raises(marathon_tools.NoDockerImageError):
             marathon_tools.get_docker_url('fake_registry', None)
+
+#    def test_verify_docker_image_good(self):
+#        fake_registry = "im.a-real.vm"
+#        fake_image = "and-i-can-run:1.0"
+#        with mock.patch('requests.get') as mock_requests_get:
+#            mock_requests_get.return_value = mock_response = mock.Mock()
+#            mock_response.status_code = 200
+#            actual = marathon_tools.verify_docker_image(fake_registry, fake_image)
+#            assert actual is True
+#            expected_url = 'http://im.a-real.vm/v1/repositories/and-i-can-run/tags/1.0'
+#            mock_requests_get.assert_called_once_with(expected_url)
+#
+#    def test_verify_docker_image_bad(self):
+#        fake_registry = "im.a-real.vm"
+#        fake_image = "and-i-can-run:1.0"
+#        with mock.patch('requests.get') as mock_requests_get:
+#            mock_requests_get.return_value = mock_response = mock.Mock()
+#            mock_response.status_code = 404
+#            actual = marathon_tools.verify_docker_image(fake_registry, fake_image)
+#            assert actual is False
+#            expected_url = 'http://im.a-real.vm/v1/repositories/and-i-can-run/tags/1.0'
+#            mock_requests_get.assert_called_once_with(expected_url)
 
     def test_get_marathon_client(self):
         fake_url = "nothing_for_me_to_do_but_dance"
@@ -993,7 +986,10 @@ class TestMarathonTools:
         fake_id = 'fake_app1'
         fake_all_marathon_app_ids = ['fake_app1', 'fake_app2']
         fake_client = mock.Mock()
-        with mock.patch('marathon_tools.list_all_marathon_app_ids', return_value=fake_all_marathon_app_ids) as list_all_marathon_app_ids_patch:
+        with mock.patch(
+            'marathon_tools.list_all_marathon_app_ids',
+            return_value=fake_all_marathon_app_ids,
+        ) as list_all_marathon_app_ids_patch:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is True
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
 
@@ -1001,7 +997,10 @@ class TestMarathonTools:
         fake_id = 'fake_app3'
         fake_all_marathon_app_ids = ['fake_app1', 'fake_app2']
         fake_client = mock.Mock()
-        with mock.patch('marathon_tools.list_all_marathon_app_ids', return_value=fake_all_marathon_app_ids) as list_all_marathon_app_ids_patch:
+        with mock.patch(
+            'marathon_tools.list_all_marathon_app_ids',
+            return_value=fake_all_marathon_app_ids,
+        ) as list_all_marathon_app_ids_patch:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is False
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
 
@@ -1028,7 +1027,11 @@ class TestMarathonTools:
             hash_patch,
             code_sha_patch,
         ):
-            assert marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
+            assert marathon_tools.get_app_id(
+                fake_name,
+                fake_instance,
+                self.fake_marathon_config
+            ) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
             read_service_config_patch.assert_called_once_with(fake_name, fake_instance, soa_dir='/nail/etc/services')
             hash_patch.assert_called_once_with(fake_config, force_bounce=None)
             code_sha_patch.assert_called_once_with(fake_url)

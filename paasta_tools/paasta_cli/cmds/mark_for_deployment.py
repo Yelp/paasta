@@ -3,9 +3,9 @@
 deployment to a cluster.instance.
 """
 
-import shlex
-import subprocess
 import sys
+
+from paasta_tools.utils import _run
 
 
 def add_subparser(subparsers):
@@ -23,7 +23,8 @@ def add_subparser(subparsers):
                              required=True,
                              )
     list_parser.add_argument('-l', '--clusterinstance',
-                             help='Mark the service ready for deployment in this clusterinstance (e.g. cluster1.canary, cluster2.main)',
+                             help='Mark the service ready for deployment in this clusterinstance (e.g. '
+                                  'cluster1.canary, cluster2.main)',
                              required=True,
                              )
 
@@ -46,15 +47,14 @@ def build_command(
         upstream_git_commit,
         clusterinstance,
     )
-    return shlex.split(cmd)
+    return cmd
 
 
 def paasta_mark_for_deployment(args):
     """Mark a docker image for deployment"""
     cmd = build_command(args.git_url, args.commit, args.clusterinstance)
     print "INFO: Executing command '%s'" % cmd
-    try:
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as exc:
-        print 'ERROR: Failed to mark image for deployment. Output:\n%sReturn code was: %d' % (exc.output, exc.returncode)
-        sys.exit(exc.returncode)
+    returncode, output = _run(cmd)
+    if returncode != 0:
+        print 'ERROR: Failed to mark image for deployment. Output:\n%sReturn code was: %d' % (output, returncode)
+        sys.exit(returncode)

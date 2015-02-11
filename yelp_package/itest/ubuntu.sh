@@ -80,13 +80,14 @@ remove_fake_service_uno() {
   rm -rf fake_service_uno
 }
 
-(
-  cd fake_service_uno
-  for command in $PAASTA_COMMANDS
-  do
-    paasta $command -h >/dev/null || (echo "paasta $command failed to execute!"; exit 1)
-  done
-)
+cd fake_service_uno
+for command in $PAASTA_COMMANDS
+do
+  echo "Running 'paasta $command -h' to make sure it works"
+  paasta $command -h >/dev/null || (echo "paasta $command failed to execute!"; exit 1)
+done
+echo "Running 'paasta version', it should return non-zero"
+paasta version || (echo "paasta version failed to execute!"; exit 1)
 
 if check_synapse_replication --help >/dev/null; then
   echo "Looks like we can check_synapse_replication with --help"

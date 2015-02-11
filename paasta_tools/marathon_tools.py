@@ -8,6 +8,7 @@ import hashlib
 import logging
 import os
 import re
+import requests
 import socket
 import glob
 from StringIO import StringIO
@@ -134,7 +135,25 @@ def get_default_branch(cluster, instance):
     return 'paasta-%s.%s' % (cluster, instance)
 
 
-def get_docker_url(registry_uri, docker_image, verify=True):
+def verify_docker_image(registry_uri, docker_image):
+    """Verifies that a docker image exists in a registry.
+    Useful to run before we try to deploy something to prevent
+    setting up a job that has no docker image to use
+
+    :param docker_image: The docker image name, with tag if desired
+    :param verify: Set to False to not verify the composed docker url
+    :returns Bool of it exists or not
+    """
+    # TODO: Handle https, basic auth, etc
+    return True
+    url = 'http://%s/v1/repositories/%s/tags/%s' % (registry_uri, docker_image.split(':')[0],
+                                                    docker_image.split(':')[1])
+    log.info("Verifying that the docker_image exists by fetching %s", url)
+    r = requests.get(url)
+    return r.status_code == 200
+
+
+def get_docker_url(registry_uri, docker_image):
     """Compose the docker url.
 
     If verify is true, checks if the URL will point to a
@@ -146,18 +165,6 @@ def get_docker_url(registry_uri, docker_image, verify=True):
     :returns: '<registry_uri>/<docker_image>', or '' if URL didn't verify"""
     if not docker_image:
         raise NoDockerImageError('Docker url not available because there is no docker_image')
-    if verify:
-        s = StringIO()
-        c = pycurl.Curl()
-        c.setopt(pycurl.URL, str('http://%s/v1/repositories/%s/tags/%s' % (registry_uri,
-                                                                           docker_image.split(':')[0],
-                                                                           docker_image.split(':')[1])))
-        c.setopt(pycurl.TIMEOUT, 30)
-        c.setopt(pycurl.WRITEFUNCTION, s.write)
-        c.perform()
-        if 'error' in s.getvalue():
-            log.error("Docker image not found: %s/%s", registry_uri, docker_image)
-            return ''
     docker_url = '%s/%s' % (registry_uri, docker_image)
     log.info("Docker URL: %s", docker_url)
     return docker_url
@@ -227,9 +234,9 @@ def get_bounce_method(service_config):
     """Get the bounce method specified in the service's marathon configuration.
 
     :param service_config: The service instance's configuration dictionary
-    :returns: The bounce method specified in the config, or 'brutal' if not specified"""
+    :returns: The bounce method specified in the config, or 'upthendown' if not specified"""
     bounce_method = service_config.get('bounce_method')
-    return bounce_method if bounce_method else 'brutal'
+    return bounce_method if bounce_method else 'upthendown'
 
 
 def get_desired_state(service_config):
@@ -476,15 +483,17 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     log.info("Reading service configuration files from dir %s/ in %s", name, soa_dir)
     log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_extra_service_information(
-                            name,
-                            "service",
-                            soa_dir=soa_dir)
+        name,
+        "service",
+        soa_dir=soa_dir
+    )
     marathon_conf_file = "marathon-%s" % cluster
     log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
     instance_configs = service_configuration_lib.read_extra_service_information(
-                            name,
-                            marathon_conf_file,
-                            soa_dir=soa_dir)
+        name,
+        marathon_conf_file,
+        soa_dir=soa_dir
+    )
     if instance in instance_configs:
         general_config.update(instance_configs[instance])
         if 'branch' not in general_config:
@@ -506,7 +515,10 @@ def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DE
     if not cluster:
         cluster = get_cluster()
     srv_info = service_configuration_lib.read_extra_service_information(
-                    name, "marathon-%s" % cluster, soa_dir)[instance]
+        name,
+        "marathon-%s" % cluster,
+        soa_dir
+    )[instance]
     return srv_info['nerve_ns'] if 'nerve_ns' in srv_info else instance
 
 
@@ -604,9 +616,10 @@ def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     marathon_conf_file = "marathon-%s" % cluster
     log.info("Enumerating all instances for config file: %s/*/%s.yaml", soa_dir, marathon_conf_file)
     instances = service_configuration_lib.read_extra_service_information(
-                    name,
-                    marathon_conf_file,
-                    soa_dir=soa_dir)
+        name,
+        marathon_conf_file,
+        soa_dir=soa_dir
+    )
     instance_list = []
     for instance in instances:
         instance_list.append((name, instance))
@@ -637,8 +650,7 @@ def get_all_namespaces_for_service(name, soa_dir=DEFAULT_SOA_DIR):
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of the form (service_name.namespace, namespace_config)"""
     namespace_list = []
-    smartstack = service_configuration_lib.read_extra_service_information(
-                    name, 'smartstack', soa_dir)
+    smartstack = service_configuration_lib.read_extra_service_information(name, 'smartstack', soa_dir)
     for namespace in smartstack:
         full_name = '%s%s%s' % (name, ID_SPACER, namespace)
         namespace_list.append((full_name, smartstack[namespace]))
@@ -679,8 +691,7 @@ def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     :returns: A dict of the above keys, if they were defined
     """
     try:
-        smartstack = service_configuration_lib.read_extra_service_information(
-                            srv_name, 'smartstack', soa_dir)
+        smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
         ns_config = smartstack[namespace]
         ns_dict = {}
         # We can't really use .get, as we don't want the key to be in the returned
@@ -863,12 +874,11 @@ def is_app_id_running(app_id, client):
     return app_id in all_app_ids
 
 
-def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR, verify_docker=True):
+def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
     config = read_service_config(name, instance, soa_dir=soa_dir)
     docker_url = get_docker_url(marathon_config['docker_registry'],
-                                config['docker_image'],
-                                verify=verify_docker)
+                                config['docker_image'])
     healthchecks = get_healthchecks(name, instance)
     complete_config = format_marathon_app_dict(partial_id, docker_url,
                                                marathon_config['docker_volumes'],
@@ -889,7 +899,7 @@ def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     marathon configuration. Editing this function *will* cause a bounce of all
     services because they will see an "old" version of the marathon app deployed,
     and a new one with the new hash will try to be deployed"""
-    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir, verify_docker=False)['id']
+    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir)['id']
 
 
 def get_code_sha_from_dockerurl(docker_url):

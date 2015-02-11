@@ -94,6 +94,24 @@ uses, in order to prune unhealthy tasks. This pruning is less agressive than
 smartstack's checking, so a dead task will go DOWN in smartstack before it is
 reaped by Mesos.
 
+Bouncing
+--------
+PaaSTA supports pluggable bounce_methods to give service authors a choice
+on how to handle the transition between new and old versions of as service.
+
+There are two bounce methods currently available:
+
+* `upthendown <bounce_lib.html#bounce_lib.upthendown_bounce>`_ - Brings up a
+  service, waits two minutes for it to be fully available in the load
+  balancer, then removes the old service. This is the default method.
+* `brutal <bounce_lib.html#bounce_lib.brutal_bounce>`_ - Destroys
+  the old app first, then brings up the new one.
+
+A service author can select a bounce method by setting ``bounce_method`` in
+the marathon configuration file. (e.g. ``marathon-SHARED.yaml``) This setting
+is set per-instance. See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>_`
+file.
+
 Monitoring
 ----------
 `check_marathon_services_replication <check_marathon_services_replication.html>`_

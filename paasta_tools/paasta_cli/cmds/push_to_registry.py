@@ -3,11 +3,10 @@
 image to a registry.
 """
 
-import shlex
-import subprocess
 import sys
 
 from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import _run
 
 
 def add_subparser(subparsers):
@@ -17,7 +16,8 @@ def add_subparser(subparsers):
         help='Uploads a docker image to a registry')
 
     list_parser.add_argument('-s', '--service',
-                             help='Name of service for which you wish to upload a docker image. Leading "services-", as included in a Jenkins job name, will be stripped.',
+                             help='Name of service for which you wish to upload a docker image. Leading "services-", '
+                                  'as included in a Jenkins job name, will be stripped.',
                              required=True,
                              )
     list_parser.add_argument('-c', '--commit',
@@ -36,7 +36,7 @@ def build_command(upstream_job_name, upstream_git_commit):
         upstream_job_name,
         upstream_git_commit,
     )
-    return shlex.split(cmd)
+    return cmd
 
 
 def paasta_push_to_registry(args):
@@ -48,8 +48,7 @@ def paasta_push_to_registry(args):
 
     cmd = build_command(service_name, args.commit)
     print 'INFO: Executing command "%s"' % cmd
-    try:
-        subprocess.check_output(cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as exc:
-        print 'ERROR: Failed to promote image. Output:\n%sReturn code was: %d' % (exc.output, exc.returncode)
-        sys.exit(exc.returncode)
+    returncode, output = _run(cmd)
+    if returncode != 0:
+        print 'ERROR: Failed to promote image. Output:\n%sReturn code was: %d' % (output, returncode)
+        sys.exit(returncode)

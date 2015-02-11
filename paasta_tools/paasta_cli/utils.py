@@ -1,18 +1,16 @@
 import fnmatch
 import glob
 import os
-import shlex
 from socket import create_connection
 from socket import error
 from socket import gaierror
 from socket import gethostbyname_ex
-from subprocess import PIPE
-from subprocess import Popen
-from subprocess import STDOUT
 
 from service_configuration_lib import read_services_configuration
 
+from paasta_tools.marathon_tools import get_cluster
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
+from paasta_tools.utils import _run
 
 
 def load_method(module_name, method_name):
@@ -93,7 +91,7 @@ class PaastaColors:
     CYAN = '\033[36m'
     DEFAULT = '\033[0m'
     GREEN = '\033[32m'
-    GREY = '\033[30m'
+    GREY = '\033[1m\033[30m'
     RED = '\033[31m'
     YELLOW = '\033[33m'
 
@@ -223,13 +221,15 @@ class PaastaCheckMessages:
 
     MAKEFILE_FOUND = success("A Makefile is present")
     MAKEFILE_MISSING = failure(
-            "No Makefile available. Please make a Makefile that responds\n"
-            "to the proper targets. More info:", "http://y/paasta-contract")
+        "No Makefile available. Please make a Makefile that responds\n"
+        "to the proper targets. More info:", "http://y/paasta-contract"
+    )
     MAKEFILE_RESPONDS_ITEST = success("The Makefile responds to `make itest`")
     MAKEFILE_RESPONDS_ITEST_FAIL = failure(
-            "The Makefile does not have a `make itest` target. Jenkins needs\n"
-            "this and expects it to build and itest your docker image. More info:",
-            "http://y/paasta-contract")
+        "The Makefile does not have a `make itest` target. Jenkins needs\n"
+        "this and expects it to build and itest your docker image. More info:",
+        "http://y/paasta-contract"
+    )
 
     PIPELINE_FOUND = success("Jenkins build pipeline found")
 
@@ -415,25 +415,6 @@ def find_connectable_master(masters):
     return (connectable_master, output)
 
 
-def _run(command):
-    """Given a command, run it. Return a tuple of the return code and any
-    output.
-
-    We wanted to use plumbum instead of rolling our own thing with
-    subprocess.Popen but were blocked by
-    https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
-    magic.
-    """
-    try:
-        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
-        output, _ = process.communicate()    # execute it, the output goes to the stdout
-        rc = process.wait()    # when finished, get the exit code
-    except OSError as e:
-        output = e.strerror
-        rc = e.errno
-    return (rc, output)
-
-
 def check_ssh_and_sudo_on_master(master):
     """Given a master, attempt to ssh to the master and run a simple command
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
@@ -471,7 +452,13 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, verbo
         verbose_flag = "-v "
     else:
         verbose_flag = ''
-    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s.%s %s' % (master, verbose_flag, service_name, instancename, subcommand)
+    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s.%s %s' % (
+        master,
+        verbose_flag,
+        service_name,
+        instancename,
+        subcommand
+    )
     _, output = _run(command)
     return output
 
@@ -510,3 +497,14 @@ def figure_out_service_name(args):
         print service_not_found
         exit(1)
     return service_name
+
+
+def figure_out_cluster(args):
+    """Figures out and validates the input cluster name"""
+    try:
+        cluster = args.cluster or get_cluster()
+    except IOError:
+        # TODO: Read the new global paasta.json
+        print "Sorry, could not detect the PaaSTA cluster. Please provide one"
+        exit(1)
+    return cluster

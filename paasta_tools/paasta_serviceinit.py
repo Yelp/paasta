@@ -25,6 +25,9 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 SYNAPSE_HOST_PORT = "localhost:3212"
 
+RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
+NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'
+
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Runs start/stop/restart/status an existing Marathon service.')
@@ -237,7 +240,7 @@ def get_cpu_usage(task):
     has been allocated.
 
     The total time a task has been allocated is the total time the task has
-    been running (https://github.com/mesosphere/mesos/blob/0b092b1b010d5a98616aa41a14ddc35a6217f2a1/src/webui/master/static/js/controllers.js#L140)
+    been running (https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
     multiplied by the "shares" a task has.
     """
     try:
@@ -311,7 +314,7 @@ def pretty_format_running_mesos_task(task):
         get_cpu_usage(task),
         get_first_status_timestamp(task),
     )
-    return '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'.format(format_tuple)
+    return RUNNING_TASK_FORMAT.format(format_tuple)
 
 
 def pretty_format_non_running_mesos_task(task):
@@ -322,18 +325,29 @@ def pretty_format_non_running_mesos_task(task):
         get_first_status_timestamp(task),
         task['state'],
     )
-    return PaastaColors.grey('    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'.format(format_tuple))
+    return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
 
 
 def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
     output = []
     running_tasks = get_running_mesos_tasks_for_service(service, instance)
-    output.append("  Running Tasks:  Mesos Task ID          Host deployed to    Ram       CPU   Deployed at what localtime")
+    output.append(RUNNING_TASK_FORMAT.format((
+        "  Running Tasks:  Mesos Task ID",
+        "Host deployed to",
+        "Ram",
+        "CPU",
+        "Deployed at what localtime"
+    )))
     for task in running_tasks:
         output.append(pretty_format_running_mesos_task(task))
     non_running_tasks = list(reversed(get_non_running_mesos_tasks_for_service(service, instance)[-10:]))
-    output.append(PaastaColors.grey("  Non-Running Tasks:  Mesos Task ID      Host deployed to    Deployed at what localtime       Status"))
+    output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
+        "  Non-Running Tasks:  Mesos Task ID",
+        "Host deployed to",
+        "Deployed at what localtime",
+        "Status"
+    ))))
     for task in non_running_tasks:
         output.append(pretty_format_non_running_mesos_task(task))
     return "\n".join(output)

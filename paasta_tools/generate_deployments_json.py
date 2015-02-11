@@ -33,7 +33,7 @@ import os
 import re
 import service_configuration_lib
 from paasta_tools import marathon_tools, remote_git
-from paasta_tools.utils import get_git_url
+from paasta_tools.utils import atomic_file_write, get_git_url
 import sys
 
 
@@ -114,12 +114,14 @@ def get_branch_mappings(soa_dir, old_mappings):
     This is done for all services in soa_dir.
 
     :param soa_dir: The SOA configuration directory to read from
-    :param old_mappings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new mapping.
+    :param old_mappings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new
+                         mapping.
     :returns: A dictionary mapping service_name:branch_name to a dictionary containing:
-        - 'docker_image': something like "services-service_name:paasta-hash". This is relative to the paasta docker registry.
+        - 'docker_image': something like "services-service_name:paasta-hash". This is relative to the paasta docker
+            registry.
         - 'desired_state': either 'start' or 'stop'. Says whether this branch should be running.
-        - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if the
-            other properties of this app have not changed.
+        - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if
+            the other properties of this app have not changed.
     """
     mappings = {}
     docker_registry = marathon_tools.get_docker_registry()
@@ -138,7 +140,7 @@ def get_branch_mappings(soa_dir, old_mappings):
                 commit_sha = remote_refs[ref_name]
                 branch_alias = '%s:%s' % (service, branch)
                 docker_image = 'services-%s:paasta-%s' % (service, commit_sha)
-                if marathon_tools.get_docker_url(docker_registry, docker_image, verify=True):
+                if marathon_tools.verify_docker_image(docker_registry, docker_image):
                     log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
                     mapping = mappings.setdefault(branch_alias, {})
                     mapping['docker_image'] = docker_image
@@ -217,7 +219,7 @@ def main():
 
     deployments_dict = get_deployments_dict_from_branch_mappings(mappings)
 
-    with open(os.path.join(soa_dir, TARGET_FILE), 'w') as f:
+    with atomic_file_write(os.path.join(soa_dir, TARGET_FILE)) as f:
         json.dump(deployments_dict, f)
 
 

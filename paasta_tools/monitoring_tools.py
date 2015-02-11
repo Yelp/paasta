@@ -70,7 +70,18 @@ def __get_monitoring_config_value(key, framework, service_name, instance_name=No
     else:
         job_config = {}
     monitor_config = marathon_tools.read_monitoring_config(service_name, soa_dir=soa_dir)
-    service_default = general_config.get(key, False)
+    service_default = general_config.get(key, monitoring_defaults(key))
     service_default = general_config.get('monitoring', {key: service_default}).get(key, service_default)
     service_default = monitor_config.get(key, service_default)
     return job_config.get(key, service_default)
+
+
+def monitoring_defaults(key):
+    defaults = {
+        'runbook': 'Please set a `runbook` field in your monitoring.yaml. Like "y/rb-mesos". Docs: '
+                   'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
+        'tip': 'Please set a `tip` field in your monitoring.yaml. Docs: '
+               'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
+        'command': 'N/A',
+    }
+    return defaults.get(key, False)
