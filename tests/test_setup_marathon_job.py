@@ -202,7 +202,6 @@ class TestSetupMarathonJob:
             'check_every': '2m',
             'realert_every': -1,
             'source': 'mesos-fake_cluster',
-            'command': 'N/A, but from setup_marathon_job.py',
         }
         with contextlib.nested(
             mock.patch(
