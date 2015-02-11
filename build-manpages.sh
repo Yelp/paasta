@@ -11,10 +11,8 @@ VERSION=`./paasta_tools/paasta_cli/paasta_cli.py version`
 
 function build_man() {
     COMMAND=$1
-    help2man --name=$COMMAND --version-string=$VERSION "./paasta_tools/paasta_cli/paasta_cli.py $COMMAND" > docs/man/paasta-$COMMAND.1
+    help2man --name=$COMMAND --version-string=$VERSION "paasta $COMMAND" > docs/man/paasta-$COMMAND.1
 }
-
-
 
 for FILE in paasta_tools/paasta_cli/cmds/*.py
 do
