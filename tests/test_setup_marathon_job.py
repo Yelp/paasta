@@ -386,6 +386,7 @@ class TestSetupMarathonJob:
                 fake_client,
                 fake_bounce,
                 self.fake_marathon_job_config['nerve_ns'],
+                {},
             )
 
     def test_setup_service_srv_complete_config_raises(self):
@@ -426,6 +427,7 @@ class TestSetupMarathonJob:
             fake_client,
             fake_bounce,
             nerve_ns=fake_instance,
+            bounce_health_params={},
         )
         assert expected == actual
         fake_client.list_apps.assert_called_once_with()
@@ -482,6 +484,7 @@ class TestSetupMarathonJob:
                 fake_client,
                 fake_bounce,
                 nerve_ns=fake_instance,
+                bounce_health_params={},
             )
             assert result[0] == 0, "Expected successful result; got (%d, %s)" % result
             fake_client.list_apps.assert_called_once_with()

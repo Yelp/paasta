@@ -94,7 +94,7 @@ def get_main_marathon_config():
 
 
 def deploy_service(service_name, instance_name, marathon_jobid, config, client,
-                   bounce_method, nerve_ns):
+                   bounce_method, nerve_ns, bounce_health_params):
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
 
@@ -103,6 +103,8 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     :param client: A MarathonClient object
     :param namespace: The service's Smartstack namespace
     :param bounce_method: The bounce method to use, if needed
+    :param nerve_ns: The nerve namespace to look in.
+    :param bounce_health_params: A dictionary of options for bounce_lib.get_happy_tasks.
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
     log.info("Deploying service instance %s with bounce_method %s",
              service_name, bounce_method)
@@ -119,7 +121,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
         if len(new_app_list) != 1:
             raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
         new_app_running = True
-        happy_new_tasks = bounce_lib.get_happy_tasks(new_app.tasks, service_name, nerve_ns)
+        happy_new_tasks = bounce_lib.get_happy_tasks(new_app.tasks, service_name, nerve_ns, **bounce_health_params)
     else:
         new_app_running = False
         happy_new_tasks = []
@@ -190,7 +192,8 @@ def setup_service(service_name, instance_name, client, marathon_config,
         complete_config,
         client,
         marathon_tools.get_bounce_method(service_marathon_config),
-        service_marathon_config.get('nerve_ns', instance_name)
+        service_marathon_config.get('nerve_ns', instance_name),
+        service_marathon_config.get('bounce_health_params', {}),
     )
 
 
