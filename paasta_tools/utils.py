@@ -92,6 +92,13 @@ def _run(command):
     return returncode, output
 
 
+def get_umask():
+    """Get the current umask for this process. NOT THREAD SAFE."""
+    old_umask = os.umask(0022)
+    os.umask(old_umask)
+    return old_umask
+
+
 @contextlib.contextmanager
 def atomic_file_write(target_path):
     dirname = os.path.dirname(target_path)
@@ -104,4 +111,7 @@ def atomic_file_write(target_path):
     ) as f:
         temp_target_path = f.name
         yield f
+
+    mode = 0666 & (~get_umask())
+    os.chmod(temp_target_path, mode)
     os.rename(temp_target_path, target_path)
