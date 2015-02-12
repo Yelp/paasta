@@ -60,6 +60,14 @@ Submodules
    monitoring/index
    paasta_cli/index
 
+Development
+~~~~~~~~~~~
+
+.. toctree::
+   :maxdepth: 2
+
+   style_guide
+
 Indices and tables
 ------------------
 
