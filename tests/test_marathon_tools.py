@@ -2,7 +2,6 @@ import contextlib
 
 from marathon.models import MarathonApp
 import mock
-import pycurl
 from pytest import raises
 
 import marathon_tools
@@ -533,10 +532,8 @@ class TestMarathonTools:
         assert actual == instance
         read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
 
-    @mock.patch('marathon_tools.StringIO', return_value=mock.Mock(getvalue=mock.Mock()))
-    @mock.patch('pycurl.Curl', return_value=mock.Mock(setopt=mock.Mock(), perform=mock.Mock()))
-    @mock.patch('json.loads')
-    def test_marathon_services_running_on(self, json_load_patch, curl_patch, stringio_patch):
+    @mock.patch('requests.get')
+    def test_marathon_services_running_on(self, mock_requests_get):
         id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr'
         id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94'
         id_3 = 'dota.axe.cleave.482u9jyoi4wed'
@@ -549,10 +546,10 @@ class TestMarathonTools:
         ports_5 = '[555-555]'
         hostname = 'io-dev.oiio.io'
         port = 123456789
+        expected_url = 'http://%s:%s/state.json' % (hostname, port)
         timeout = -99
-
-        stringio_patch.return_value.getvalue.return_value = 'curl_into_a_corner'
-        json_load_patch.return_value = {
+        mock_requests_get.return_value = mock_response = mock.Mock()
+        mock_response.json.return_value = {
             'frameworks': [
                 {
                     'executors': [
@@ -583,18 +580,12 @@ class TestMarathonTools:
                 }
             ]
         }
-
         expected = [('klingon', 'ships', 111),
                     ('fire', 'photon', 222),
                     ('dota', 'axe', 333),
                     ('mesos', 'deployment', 444)]
         actual = marathon_tools.marathon_services_running_on(hostname, port, timeout)
-        curl_patch.return_value.setopt.assert_any_call(pycurl.URL,
-                                                       'http://%s:%s/state.json' % (hostname, port))
-        curl_patch.return_value.setopt.assert_any_call(pycurl.TIMEOUT, timeout)
-        curl_patch.return_value.setopt.assert_any_call(pycurl.WRITEFUNCTION,
-                                                       stringio_patch.return_value.write)
-        json_load_patch.assert_called_once_with(stringio_patch.return_value.getvalue.return_value)
+        mock_requests_get.assert_called_once_with(expected_url, timeout=10)
         assert expected == actual
 
     @mock.patch('marathon_tools.marathon_services_running_on', return_value='chipotle')
@@ -741,17 +732,12 @@ class TestMarathonTools:
     def test_get_mesos_leader(self):
         expected = 'mesos.master.yelpcorp.com'
         fake_master = 'false.authority.yelpcorp.com'
-        fake_curl = mock.Mock(setopt=mock.Mock(), perform=mock.Mock(),
-                              getinfo=mock.Mock(return_value='http://%s:999' % expected))
-        with mock.patch('pycurl.Curl', return_value=fake_curl) as curl_patch:
+        with mock.patch('requests.get') as mock_requests_get:
+            mock_requests_get.return_value = mock_response = mock.Mock()
+            mock_response.return_code = 307
+            mock_response.url = 'http://%s:999' % expected
             assert marathon_tools.get_mesos_leader(fake_master) == expected
-            curl_patch.assert_called_once_with()
-            fake_curl.setopt.assert_any_call(pycurl.URL, 'http://%s:5050/redirect' % fake_master)
-            fake_curl.setopt.assert_any_call(pycurl.HEADER, True)
-            fake_curl.setopt.assert_any_call(pycurl.WRITEFUNCTION, mock.ANY)
-            assert fake_curl.setopt.call_count == 3
-            fake_curl.perform.assert_called_once_with()
-            fake_curl.getinfo.assert_called_once_with(pycurl.REDIRECT_URL)
+            mock_requests_get.assert_called_once_with('http://%s:5050/redirect' % fake_master, timeout=10)
 
     def test_is_mesos_leader(self):
         fake_host = 'toast.host.roast'
