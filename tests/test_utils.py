@@ -2,6 +2,7 @@ import json
 import mock
 import os
 import shutil
+import stat
 import tempfile
 
 from paasta_tools import utils
@@ -44,12 +45,14 @@ def test_atomic_file_write():
         ntf_patch.reset_mock()
 
         with mock.patch('os.rename', autospec=True) as rename_patch:
-            with utils.atomic_file_write('/hurp/durp'):
-                ntf_patch.assert_called_once_with(
-                    dir='/hurp',
-                    prefix='.durp-',
-                    delete=False,
-                )
+            with mock.patch('os.chmod', autospec=True) as chmod_patch:
+                with utils.atomic_file_write('/hurp/durp'):
+                    ntf_patch.assert_called_once_with(
+                        dir='/hurp',
+                        prefix='.durp-',
+                        delete=False,
+                    )
+                chmod_patch.assert_called_once_with('/hurp/.durp-AAA', 0644)
 
             rename_patch.assert_called_once_with(
                 '/hurp/.durp-AAA',
@@ -62,6 +65,7 @@ def test_atomic_file_write_itest():
     target_file_name = os.path.join(tempdir, 'test_atomic_file_write_itest.txt')
 
     try:
+        old_umask = os.umask(0022)
         with open(target_file_name, 'w') as f_before:
             f_before.write('old content')
 
@@ -78,7 +82,12 @@ def test_atomic_file_write_itest():
             # once we're done, the content should be in place.
             assert f_done.read() == 'new content'
 
+        file_stat = os.stat(target_file_name)
+        assert stat.S_ISREG(file_stat.st_mode)
+        assert stat.S_IMODE(file_stat.st_mode) == 0644
+
     finally:
+        os.umask(old_umask)
         shutil.rmtree(tempdir)
 
 
