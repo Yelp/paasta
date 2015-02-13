@@ -71,7 +71,7 @@ def _log(service_name, line, component, cluster='N/A', instance='N/A'):
     clog.log_line(log_name, line)
 
 
-def _run(command):
+def _run(command, env=os.environ):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -81,7 +81,7 @@ def _run(command):
     magic.
     """
     try:
-        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, env=env)
         # execute it, the output goes to the stdout
         output, _ = process.communicate()
         # when finished, get the exit code
