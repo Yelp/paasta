@@ -430,7 +430,7 @@ class TestSetupMarathonJob:
             bounce_health_params={},
         )
         assert expected == actual
-        fake_client.list_apps.assert_called_once_with()
+        fake_client.list_apps.assert_called_once_with(embed_failures=True)
         assert fake_client.create_app.call_count == 0
 
     def test_deploy_service_known_bounce(self):
@@ -487,7 +487,7 @@ class TestSetupMarathonJob:
                 bounce_health_params={},
             )
             assert result[0] == 0, "Expected successful result; got (%d, %s)" % result
-            fake_client.list_apps.assert_called_once_with()
+            fake_client.list_apps.assert_called_once_with(embed_failures=True)
             assert fake_client.create_app.call_count == 0
             fake_bounce_func.assert_called_once_with(
                 new_config=fake_config,

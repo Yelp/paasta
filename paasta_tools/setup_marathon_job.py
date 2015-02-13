@@ -110,14 +110,17 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
              service_name, bounce_method)
     log.debug("Searching for old service instance iterations")
     short_id = marathon_tools.remove_tag_from_job_id(marathon_jobid)
-    app_list = client.list_apps()
-    existing_apps = [app for app in app_list if short_id in app.id]
 
-    new_app_list = [a for a in existing_apps if a.id == config['id']]
-    other_apps = [a for a in existing_apps if a.id != config['id']]
+    # would do embed_failures but we support versions of marathon where https://github.com/mesosphere/marathon/pull/1105
+    # isn't fixed.
+    app_list = client.list_apps(embed_failures=True)
+    existing_apps = [app for app in app_list if short_id in app.id]
+    new_app_list = [a for a in existing_apps if a.id == '/%s' % config['id']]
+    other_apps = [a for a in existing_apps if a.id != '/%s' % config['id']]
 
     if new_app_list:
         new_app = new_app_list[0]
+        log.info('DELETEME found running app %r with tasks %r', new_app, new_app.tasks)
         if len(new_app_list) != 1:
             raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
         new_app_running = True
@@ -125,6 +128,8 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     else:
         new_app_running = False
         happy_new_tasks = []
+
+    log.info('DELETEME found happy tasks %r', happy_new_tasks)
 
     old_app_tasks = dict([(a.id, set(a.tasks)) for a in other_apps])
 
@@ -136,7 +141,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
 
     try:
         with bounce_lib.bounce_lock_zookeeper(short_id):
-            log.info("Initiating %s bounce on %s.", (bounce_method, short_id))
+            log.info("Initiating %s bounce on %s.", bounce_method, short_id)
             actions = bounce_func(
                 new_config=config,
                 new_app_running=new_app_running,
@@ -145,9 +150,14 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
             )
 
             if actions['create_app'] and not new_app_running:
+                log.info('Bounce method %s requested new app to be created (id %s)', bounce_method, marathon_jobid)
                 bounce_lib.create_marathon_app(marathon_jobid, config, client)
             for task in actions['tasks_to_kill']:
+                log.info('Bounce method %s requested task %s to be killed (app id %s)', bounce_method, task.id,
+                         task.app_id)
                 client.kill_task(task.app_id, task.id, scale=True)
+            if actions['apps_to_kill']:
+                log.info('Bounce method %s requested apps %r to be killed', bounce_method, actions['apps_to_kill'])
             bounce_lib.kill_old_ids(actions['apps_to_kill'], client)
 
     except bounce_lib.LockHeldException:
