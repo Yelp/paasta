@@ -22,7 +22,7 @@ def step_impl(context):
     context.new_config = {
         'id': 'bounce.test1.newapp',
         'cmd': '/bin/sleep 300',
-        'instances': 5,
+        'instances': 2,
         'backoff_seconds': 0.1,
         'backoff_factor': 1,
     }
@@ -35,7 +35,7 @@ def step_impl(context):
     context.old_app_config = {
         'id': old_app_name,
         'cmd': '/bin/sleep 300',
-        'instances': 5,
+        'instances': 2,
         'backoff_seconds': 0.1,
         'backoff_factor': 1,
     }
