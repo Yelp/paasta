@@ -1,3 +1,10 @@
+paasta-tools (0.8.34-yelp1) lucid; urgency=low
+
+  * 0.8.34 tagged with 'make release'
+    Commit: Pass through check_every in via send_event for OPS-5227
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 13 Feb 2015 12:40:09 -0800
+
 paasta-tools (0.8.33-yelp1) lucid; urgency=low
 
   * 0.8.33 tagged with 'make release'
