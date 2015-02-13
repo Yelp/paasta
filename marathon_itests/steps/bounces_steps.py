@@ -7,6 +7,14 @@ from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
 
 
+def which_id(context, which):
+    config = {
+        'new': context.new_config,
+        'old': context.old_app_config,
+    }[which]
+    return config['id']
+
+
 @given(u'a new app to be deployed')
 def step_impl(context):
     context.service_name = 'bounce'
@@ -42,11 +50,7 @@ def step_impl(context):
 @when(u'there are {num} {which} tasks')
 def step_impl(context, num, which):
     context.max_happy_tasks = int(num)
-    config = {
-        'new': context.new_config,
-        'old': context.old_app_config,
-    }[which]
-    app_id = config['id']
+    app_id = which_id(context, which)
 
     while True:
         tasks = context.client.list_tasks(app_id)
@@ -80,19 +84,34 @@ def step_impl(context, bounce_method):
         )
 
 
-@then(u'the new app should be running')
-def step_impl(context):
-    assert marathon_tools.is_app_id_running(context.new_config['id'],
-                                            context.client) is True
+@when(u'the {which} app is down to {num} instances')
+def step_impl(context, which, num):
+    app_id = which_id(context, which)
+    while True:
+        tasks = context.client.list_tasks(app_id)
+        if len([t for t in tasks if t.started_at]) <= int(num):
+            return
+        time.sleep(0.5)
 
 
-@then(u'the old app should be running')
-def step_impl(context):
-    assert marathon_tools.is_app_id_running(context.old_ids[0],
-                                            context.client) is True
+@then(u'the {which} app should be running')
+def step_impl(context, which):
+    assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is True
 
 
-@then(u'the old app should be gone')
-def step_impl(context):
-    for old_app in context.old_ids:
-        assert marathon_tools.is_app_id_running(old_app, context.client) is False
+@then(u'the {which} app should be configured to have {num} instances')
+def check_instances(context, which, num, retries=10):
+    app_id = which_id(context, which)
+
+    for _ in xrange(retries):
+        app = context.client.get_app(app_id)
+        if app.instances == int(num):
+            return
+        time.sleep(0.5)
+
+    raise ValueError("Expected there to be %d instances, but there were %d", int(num), app.instances)
+
+
+@then(u'the {which} app should be gone')
+def step_impl(context, which):
+    assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is False

@@ -10,7 +10,7 @@ def after_scenario(context, scenario):
         while True:
             apps = context.client.list_apps()
             if not apps:
-                return
+                break
             for app in apps:
                 context.client.delete_app(app.id, force=True)
             time.sleep(0.5)
