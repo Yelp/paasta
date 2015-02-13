@@ -58,6 +58,7 @@ def test_do_replication_check():
             'runbook': 'no runbook',
             'tip': 'no tip',
             'page': False,
+            'check_every': '1m',
             'alert_after': '0s',
             'realert_every': -1
         }
@@ -74,6 +75,7 @@ def test_do_replication_check():
             'runbook': 'test_runbook',
             'tip': 'test_tip',
             'page': 'test_page',
+            'check_every': '1m',
             'alert_after': 'test_alert_after',
             'realert_every': 'test_realert_every'
         }

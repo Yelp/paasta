@@ -90,8 +90,9 @@ def do_replication_check(service_name, monitoring_config, service_replication):
         'runbook': monitoring_config['runbook'] or 'no runbook',
         'tip': monitoring_config['tip'] or 'no tip',
         'page': monitoring_config['page'] or False,
+        'check_every': '1m',
         'alert_after': monitoring_config['alert_after'] or '0s',
-        'realert_every': monitoring_config['realert_every'] or -1
+        'realert_every': monitoring_config['realert_every'] or -1,
     }
 
 
