@@ -120,7 +120,6 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
 
     if new_app_list:
         new_app = new_app_list[0]
-        log.info('DELETEME found running app %r with tasks %r', new_app, new_app.tasks)
         if len(new_app_list) != 1:
             raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
         new_app_running = True
@@ -128,8 +127,6 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     else:
         new_app_running = False
         happy_new_tasks = []
-
-    log.info('DELETEME found happy tasks %r', happy_new_tasks)
 
     old_app_tasks = dict([(a.id, set(a.tasks)) for a in other_apps])
 
