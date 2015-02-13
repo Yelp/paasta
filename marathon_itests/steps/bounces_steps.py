@@ -39,9 +39,21 @@ def step_impl(context):
         bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.client)
 
 
-@when(u'we consider at most {num} tasks happy')
-def step_impl(context, num):
+@when(u'there are {num} {which} tasks')
+def step_impl(context, num, which):
     context.max_happy_tasks = int(num)
+    config = {
+        'new': context.new_config,
+        'old': context.old_app_config,
+    }[which]
+    app_id = config['id']
+
+    while True:
+        tasks = context.client.list_tasks(app_id)
+        if len([t for t in tasks if t.started_at]) >= context.max_happy_tasks:
+            return
+        time.sleep(0.5)
+
 
 
 @when(u'deploy_service with bounce strategy "{bounce_method}" is initiated')
@@ -66,22 +78,6 @@ def step_impl(context, bounce_method):
             context.instance_name,
             {},
         )
-
-
-@when(u'we wait for marathon to finish launching the {which} app')
-def step_impl(context, which):
-    config = {
-        'new': context.new_config,
-        'old': context.old_app_config,
-    }[which]
-    app_id = config['id']
-    instances = config['instances']
-
-    while True:
-        tasks = context.client.list_tasks(app_id)
-        if len([t for t in tasks if t.started_at]) >= instances:
-            return
-        time.sleep(0.5)
 
 
 @then(u'the new app should be running')
