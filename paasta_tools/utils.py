@@ -1,8 +1,10 @@
 import contextlib
 import datetime
+import errno
 import json
 import shlex
 import tempfile
+import threading
 import os
 
 from subprocess import Popen
@@ -71,10 +73,29 @@ def _log(service_name, line, component, cluster='N/A', instance='N/A'):
     clog.log_line(log_name, line)
 
 
-def _run(command):
+def _timeout(process):
+    """Helper function for _run. It terminates the process.
+    Doesn't raise OSError, if we try to terminate a non-existing
+    process as there can be a very small window between poll() and kill()
+    """
+    if process.poll() is None:
+        try:
+            # sending SIGKILL to the process
+            process.kill()
+            print 'ERROR: Timeout running command: %s', process.name
+        except OSError as e:
+            # No such process error
+            # The process could have been terminated meanwhile
+            if e.errno != errno.ESRCH:
+                raise
+
+
+def _run(command, timeout=None):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
+    :param timeout: If specified, the command will be terminated after timout
+        seconds.
     We wanted to use plumbum instead of rolling our own thing with
     subprocess.Popen but were blocked by
     https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
@@ -82,6 +103,11 @@ def _run(command):
     """
     try:
         process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+        process.name = command
+        # start the timer if we specified a timeout
+        if timeout:
+            proctimer = threading.Timer(timeout, _timeout, (process,))
+            proctimer.start()
         # execute it, the output goes to the stdout
         output, _ = process.communicate()
         # when finished, get the exit code
@@ -89,6 +115,9 @@ def _run(command):
     except OSError as e:
         output = e.strerror
         returncode = e.errno
+    # Stop the timer
+    if timeout:
+        proctimer.cancel()
     return returncode, output
 
 

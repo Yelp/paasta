@@ -93,3 +93,10 @@ def test_atomic_file_write_itest():
 
 def test_configure_log():
     utils.configure_log()
+
+
+def test_run_with_timeout():
+    with mock.patch('paasta_tools.utils._timeout') as mock_timeout:
+        fake_cmd = 'sleep 3'
+        utils._run(fake_cmd, timeout=1)
+        mock_timeout.assert_called_once_with(mock.ANY)
