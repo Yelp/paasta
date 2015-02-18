@@ -97,6 +97,6 @@ def test_configure_log():
 
 def test_run_with_timeout():
     with mock.patch('paasta_tools.utils._timeout') as mock_timeout:
-        fake_cmd = 'sleep 3'
-        utils._run(fake_cmd, timeout=1)
+        fake_cmd = 'sleep 1'
+        utils._run(fake_cmd, timeout=0.01)
         mock_timeout.assert_called_once_with(mock.ANY)
