@@ -1,3 +1,11 @@
+paasta-tools (0.8.35-yelp1) lucid; urgency=low
+
+  * 0.8.35 tagged with 'make release'
+    Commit: Make itest properly set the docker tag in the environment
+    when it is sent in
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 18 Feb 2015 10:59:08 -0800
+
 paasta-tools (0.8.34-yelp1) lucid; urgency=low
 
   * 0.8.34 tagged with 'make release'
