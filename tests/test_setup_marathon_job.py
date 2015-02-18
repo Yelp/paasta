@@ -2,7 +2,6 @@
 
 import contextlib
 import mock
-from pytest import raises
 
 import marathon
 
@@ -276,11 +275,10 @@ class TestSetupMarathonJob:
         fake_instance = 'test_instance'
         with mock.patch('setup_marathon_job.marathon_tools.create_complete_config',
                         side_effect=marathon_tools.NoDockerImageError):
-            with raises(marathon_tools.NoDockerImageError):
-                status, output = setup_marathon_job.setup_service(fake_name, fake_instance, None,
-                                                                  None, None)
-                assert status == 1
-                assert "Docker image for test_service.test_instance not in" in output
+            status, output = setup_marathon_job.setup_service(fake_name, fake_instance, None,
+                                                              None, None)
+            assert status == 1
+            assert "Docker image for test_service.test_instance not in" in output
 
     def test_deploy_service_unknown_bounce(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
