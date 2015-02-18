@@ -61,6 +61,34 @@ class TestPaastaServiceinit:
 
 
 class TestPaastaServiceStatus:
+    def test_get_bouncing_status(self):
+        with contextlib.nested(
+            mock.patch('paasta_tools.paasta_serviceinit.marathon_tools.get_matching_appids', autospec=True),
+            mock.patch('paasta_tools.paasta_serviceinit.marathon_tools.get_bounce_method', autospec=True),
+        ) as (
+            mock_get_matching_appids,
+            mock_get_bounce_method,
+        ):
+            mock_get_matching_appids.return_value = ['a', 'b']
+            mock_get_bounce_method.return_value = 'fake_bounce'
+            actual = paasta_serviceinit.get_bouncing_status('fake_service', 'fake_instance', 'unused', 'unused')
+            assert 'fake_bounce' in actual
+            assert 'Bouncing' in actual
+
+    def test_status_desired_state(self):
+        with contextlib.nested(
+            mock.patch('paasta_tools.paasta_serviceinit.get_bouncing_status', autospec=True),
+            mock.patch('paasta_tools.paasta_serviceinit.get_desired_state_human', autospec=True),
+        ) as (
+            mock_get_bouncing_status,
+            mock_get_desired_state_human,
+        ):
+            mock_get_bouncing_status.return_value = 'Bouncing (fake_bounce)'
+            mock_get_desired_state_human.return_value = 'Started'
+            actual = paasta_serviceinit.status_desired_state('fake_service', 'fake_instance', 'unused', 'unused')
+            assert 'Started' in actual
+            assert 'Bouncing' in actual
+
     def test_status_marathon_job_verbose(self):
         client = mock.create_autospec(marathon.MarathonClient)
         app = mock.create_autospec(marathon.models.app.MarathonApp)
