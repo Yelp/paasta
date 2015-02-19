@@ -84,8 +84,8 @@ def get_registered_marathon_tasks(
     """
     haproxy_ip_ports = get_all_registered_ip_ports_for_services(
         synapse_host_port,
-        service_name
-    )
+        [service_name]
+    )[service_name]
 
     healthy_tasks = []
     for task in marathon_tasks:

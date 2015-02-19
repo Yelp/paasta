@@ -59,12 +59,12 @@ def test_get_all_registered_ip_ports_for_services():
 
 
 def test_get_registered_marathon_tasks():
-    haproxy_ip_hosts = [
-        ('10.50.2.4', 31000),
-        ('10.50.2.5', 31001),
-        ('10.50.2.6', 31001),
-        ('10.50.2.6', 31002),
-        ('10.50.2.8', 31000),
+    haproxy_csv = [
+        {"# pxname": "servicename.main", "svname": "10.50.2.4:31000_box4", "status": "UP", '': ''},
+        {"# pxname": "servicename.main", "svname": "10.50.2.5:31001_box5", "status": "UP", '': ''},
+        {"# pxname": "servicename.main", "svname": "10.50.2.6:31001_box6", "status": "UP", '': ''},
+        {"# pxname": "servicename.main", "svname": "10.50.2.6:31002_box7", "status": "UP", '': ''},
+        {"# pxname": "servicename.main", "svname": "10.50.2.8:31000_box8", "status": "UP", '': ''},
     ]
 
     hostnames = {
@@ -87,8 +87,8 @@ def test_get_registered_marathon_tasks():
 
     with mock.patch(
         'paasta_tools.monitoring.replication_utils.'
-            'get_all_registered_ip_ports_for_services',
-        return_value=haproxy_ip_hosts
+            'retrieve_haproxy_csv',
+        return_value=haproxy_csv
     ):
         with mock.patch(
             'paasta_tools.monitoring.replication_utils.'
