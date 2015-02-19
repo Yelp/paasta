@@ -1,3 +1,11 @@
+paasta-tools (0.9.3-yelp1) lucid; urgency=low
+
+  * 0.9.3 tagged with 'make release'
+    Commit: Marathon timestamps are UTC, use datetime.datetime.utcnow()
+    instead of .now()
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Feb 2015 14:59:15 -0800
+
 paasta-tools (0.9.2-yelp1) lucid; urgency=low
 
   * 0.9.2 tagged with 'make release'
