@@ -198,7 +198,7 @@ def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_h
     this is a noop - it just returns tasks. For it to do anything interesting, set min_task_uptime or check_haproxy.
 
     :param tasks: A list of MarathonTask objects.
-    :param service_name: the name of the service.
+    :param service_name: The name of the service.
     :param nerve_ns: The nerve namespace
     :param min_task_uptime: Minimum number of seconds that a task must be running before we consider it healthy. Useful
                             if tasks take a while to start up.
@@ -243,7 +243,7 @@ def brutal_bounce(
 
     :param new_config: The configuration dictionary representing the desired new app.
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
-    :param happy_new_tasks: set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
     :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
     """
@@ -265,7 +265,7 @@ def upthendown_bounce(
 
     :param new_config: The configuration dictionary representing the desired new app.
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
-    :param happy_new_tasks: set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
     :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
     """
@@ -294,7 +294,7 @@ def crossover_bounce(
 
     :param new_config: The configuration dictionary representing the desired new app.
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
-    :param happy_new_tasks: set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
     :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
 
@@ -333,7 +333,7 @@ def downthenup_bounce(
 
     :param new_config: The configuration dictionary representing the desired new app.
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
-    :param happy_new_tasks: set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
     :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
     """

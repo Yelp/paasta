@@ -2,6 +2,7 @@ import contextlib
 import mock
 import time
 
+from behave import given, when, then
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
@@ -16,7 +17,7 @@ def which_id(context, which):
 
 
 @given(u'a new app to be deployed')
-def step_impl(context):
+def given_a_new_app_to_be_deployed(context):
     context.service_name = 'bounce'
     context.instance_name = 'test1'
     context.new_config = {
@@ -29,7 +30,7 @@ def step_impl(context):
 
 
 @given(u'an old app to be destroyed')
-def step_impl(context):
+def given_an_old_app_to_be_destroyed(context):
     old_app_name = "bounce.test1.oldapp"
     context.old_ids = [old_app_name]
     context.old_app_config = {
@@ -48,20 +49,22 @@ def step_impl(context):
 
 
 @when(u'there are {num} {which} tasks')
-def step_impl(context, num, which):
+def when_there_are_num_which_tasks(context, num, which):
     context.max_happy_tasks = int(num)
     app_id = which_id(context, which)
 
-    while True:
+    # 120 * 0.5 = 60 seconds
+    for _ in xrange(120):
         tasks = context.client.list_tasks(app_id)
-        if len([t for t in tasks if t.started_at]) >= context.max_happy_tasks:
+        happy_count = len([t for t in tasks if t.started_at])
+        if happy_count >= context.max_happy_tasks:
             return
         time.sleep(0.5)
-
+    raise Exception("timed out waiting for %d tasks on %s; there are %d" % (context.max_happy_tasks, app_id, happy_count))
 
 
 @when(u'deploy_service with bounce strategy "{bounce_method}" is initiated')
-def step_impl(context, bounce_method):
+def when_deploy_service_initiated(context, bounce_method):
     with contextlib.nested(
         mock.patch(
             'paasta_tools.bounce_lib.get_happy_tasks',
@@ -85,7 +88,7 @@ def step_impl(context, bounce_method):
 
 
 @when(u'the {which} app is down to {num} instances')
-def step_impl(context, which, num):
+def when_the_which_app_is_down_to_num_instances(context, which, num):
     app_id = which_id(context, which)
     while True:
         tasks = context.client.list_tasks(app_id)
@@ -95,12 +98,12 @@ def step_impl(context, which, num):
 
 
 @then(u'the {which} app should be running')
-def step_impl(context, which):
+def then_the_which_app_should_be_running(context, which):
     assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is True
 
 
 @then(u'the {which} app should be configured to have {num} instances')
-def check_instances(context, which, num, retries=10):
+def then_the_which_app_should_be_configured_to_have_num_instances(context, which, num, retries=10):
     app_id = which_id(context, which)
 
     for _ in xrange(retries):
@@ -113,5 +116,5 @@ def check_instances(context, which, num, retries=10):
 
 
 @then(u'the {which} app should be gone')
-def step_impl(context, which):
+def then_the_which_app_should_be_gone(context, which):
     assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is False

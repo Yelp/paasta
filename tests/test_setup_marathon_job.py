@@ -98,20 +98,20 @@ class TestSetupMarathonJob:
             get_client_patch.assert_called_once_with(
                 self.fake_marathon_config['url'],
                 self.fake_marathon_config['user'],
-                self.fake_marathon_config['pass']
+                self.fake_marathon_config['pass'],
             )
             read_service_conf_patch.assert_called_once_with(
                 self.fake_args.service_instance.split('.')[0],
                 self.fake_args.service_instance.split('.')[1],
                 self.fake_marathon_config['cluster'],
-                self.fake_args.soa_dir
+                self.fake_args.soa_dir,
             )
             setup_service_patch.assert_called_once_with(
                 self.fake_args.service_instance.split('.')[0],
                 self.fake_args.service_instance.split('.')[1],
                 fake_client,
                 self.fake_marathon_config,
-                self.fake_marathon_job_config
+                self.fake_marathon_job_config,
             )
             sys_exit_patch.assert_called_once_with(0)
 
