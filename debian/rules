@@ -15,8 +15,9 @@ export DH_OPTIONS
 override_dh_auto_clean:
 	true
 
-# do not call `make` as part of packaging
 override_dh_auto_build:
+	# Don't let debian build stuff, but we do hook in here to make man pages
+	tox -e manpages
 	true
 
 # do not call `make test` as part of packaging

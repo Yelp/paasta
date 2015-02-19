@@ -15,6 +15,7 @@ RUN apt-get -y install dh-virtualenv=0.6-yelp2
 RUN apt-get -y install python-yaml
 RUN apt-get -y install python-pytest
 RUN apt-get -y install pyflakes
+RUN apt-get -y install man
 
 RUN mkdir -p /chronos-config/dependent
 RUN mkdir -p /chronos-config/scheduled
