@@ -205,7 +205,7 @@ def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_h
     :param check_haproxy: Whether to check the local haproxy to make sure this task has been registered and discovered.
     """
     happy = []
-    now = datetime.datetime.now()
+    now = datetime.datetime.utcnow()
 
     if check_haproxy:
         service_namespace = '%s%s%s' % (

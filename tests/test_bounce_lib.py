@@ -177,9 +177,9 @@ class TestBounceLib:
         now = datetime.datetime(2000, 1, 1, 0, 0, 0)
         tasks = [mock.Mock(started_at=(now - datetime.timedelta(minutes=i))) for i in xrange(5)]
 
-        # I would have just mocked datetime.datetime.now, but that's apparently difficult; I have to mock
-        # datetime.datetime instead, and give it a now attribute.
-        with mock.patch('paasta_tools.bounce_lib.datetime.datetime', now=lambda: now, autospec=True):
+        # I would have just mocked datetime.datetime.utcnow, but that's apparently difficult; I have to mock
+        # datetime.datetime instead, and give it a utcnow attribute.
+        with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
             assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', min_task_uptime=121) == tasks[3:]
 
     def test_get_happy_tasks_check_haproxy(self):
