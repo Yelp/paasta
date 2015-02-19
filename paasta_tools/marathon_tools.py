@@ -10,6 +10,7 @@ import os
 import re
 import requests
 import socket
+import sys
 import glob
 
 from marathon import MarathonClient
@@ -713,9 +714,14 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
     :timeout_s: The timeout, in seconds, for the mesos-slave state request
     :returns: A list of triples of (service_name, instance_name, port)"""
     state_url = 'http://%s:%s/state.json' % (hostname, port)
-    r = requests.get(state_url, timeout=10)
-    # Raise something if we got something bad
-    r.raise_for_status()
+    try:
+        r = requests.get(state_url, timeout=10)
+        r.raise_for_status()
+    except requests.ConnectionError as e:
+        sys.stderr.write('Could not connect to the mesos slave to see which services are running\n')
+        sys.stderr.write('on %s:%s. Is the mesos-slave running?\n' % (hostname, port))
+        sys.stderr.write('Error was: %s\n' % e.message)
+        sys.exit(1)
     slave_state = r.json()
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
