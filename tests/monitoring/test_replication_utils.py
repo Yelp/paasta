@@ -75,9 +75,9 @@ def test_get_registered_marathon_tasks():
         'box8': '10.50.2.8',
     }
 
-    good_task1 = mock.Mock(host='box4', service_ports=[31000])
-    good_task2 = mock.Mock(host='box5', service_ports=[31001])
-    bad_task = mock.Mock(host='box7', service_ports=[31000])
+    good_task1 = mock.Mock(host='box4', ports=[31000])
+    good_task2 = mock.Mock(host='box5', ports=[31001])
+    bad_task = mock.Mock(host='box7', ports=[31000])
 
     marathon_tasks = [
         good_task1,

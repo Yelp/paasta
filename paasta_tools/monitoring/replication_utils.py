@@ -93,7 +93,7 @@ def get_registered_marathon_tasks(
         if any(
             ((ip, port) in haproxy_ip_ports)
             for port
-            in task.service_ports
+            in task.ports
         ):
             healthy_tasks.append(task)
     return healthy_tasks
