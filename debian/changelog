@@ -1,3 +1,10 @@
+paasta-tools (0.9.2-yelp1) lucid; urgency=low
+
+  * 0.9.2 tagged with 'make release'
+    Commit: ports, not service_ports.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Feb 2015 14:46:15 -0800
+
 paasta-tools (0.9.1-yelp1) lucid; urgency=low
 
   * 0.9.1 tagged with 'make release'
