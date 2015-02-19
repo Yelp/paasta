@@ -1,7 +1,7 @@
 import bounce_lib
 import contextlib
+import datetime
 import mock
-import pytest
 import marathon
 
 
@@ -162,215 +162,387 @@ class TestBounceLib:
         assert sleep_patch.call_count == 0
         assert is_app_id_running_patch.call_count == 1
 
-    def test_brutal_bounce(self):
-        old_ids = ["bbounce", "the_best_bounce_method"]
-        new_config = {"now_featuring": "no_gracefuls", "guaranteed": "or_your_money_back",
-                      'id': 'sockem.fun'}
-        fake_client = mock.MagicMock()
-        with contextlib.nested(
-            mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-        ) as (
-            lock_patch,
-            create_app_patch,
-            kill_patch
-        ):
-            bounce_lib.brutal_bounce('fake_service', 'fake_instance', old_ids, new_config, fake_client)
-            lock_patch.assert_called_once_with('fake_service.fake_instance')
-            create_app_patch.assert_called_once_with(new_config['id'], new_config, fake_client)
-            kill_patch.assert_called_once_with(old_ids, fake_client)
+    def test_get_bounce_method_func(self):
+        actual = bounce_lib.get_bounce_method_func('brutal')
+        expected = bounce_lib.brutal_bounce
+        assert actual == expected
 
-    def test_upthendown_bounce(self):
-        old_ids = ["oldapp1", "oldapp2"]
-        new_config = {"now_featuring": "no_gracefuls", "guaranteed": "or_your_money_back",
-                      'id': 'sockem.fun'}
-        fake_client = mock.MagicMock()
-        with contextlib.nested(
-            mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('bounce_lib.kill_old_ids', autospec=True),
-            mock.patch('bounce_lib.time.sleep', autospec=True),
-        ) as (
-            lock_patch,
-            create_app_patch,
-            kill_patch,
-            sleep_patch,
-        ):
-            bounce_lib.upthendown_bounce('fake_service', 'fake_instance', old_ids, new_config, fake_client)
-            lock_patch.assert_called_once_with('fake_service.fake_instance')
-            create_app_patch.assert_called_once_with(new_config['id'], new_config, fake_client)
-            kill_patch.assert_called_once_with(old_ids, fake_client)
-            sleep_patch.assert_called_once_with(120)
+    def test_get_happy_tasks_identity(self):
+        """With the defaults, all tasks should be considered happy."""
+        tasks = [mock.Mock() for _ in xrange(5)]
+        assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks
 
-    def test_scale_apps_delta_valid(self):
-        fake_scalable = [('poker.face', 10), ('roker.race', 5)]
-        fake_delta = 14
-        fake_client = mock.MagicMock()
-        with mock.patch('bounce_lib.delete_marathon_app', autospec=True) as delete_marathon_app_patch:
-            assert bounce_lib.scale_apps(fake_scalable, fake_delta, fake_client) == 14
-            delete_marathon_app_patch.assert_called_once_with('roker.race', fake_client)
-            fake_client.scale_app.assert_called_once_with('poker.face', delta=-9)
+    def test_get_happy_tasks_min_task_uptime(self):
+        """If we specify a minimum task age, tasks newer than that should not be considered happy."""
+        now = datetime.datetime(2000, 1, 1, 0, 0, 0)
+        tasks = [mock.Mock(started_at=(now - datetime.timedelta(minutes=i))) for i in xrange(5)]
 
-    def test_scale_apps_delta_invalid(self):
-        fake_scalable = [('muh.mah.muh.mah', 9999), ('uh.huh.huh.uh.huh', 7777)]
-        fake_delta = -9
-        fake_client = mock.MagicMock()
-        with mock.patch('bounce_lib.delete_marathon_app', autospec=True) as delete_marathon_app_patch:
-            assert bounce_lib.scale_apps(fake_scalable, fake_delta, fake_client) == 0
-            assert delete_marathon_app_patch.call_count == 0
+        # I would have just mocked datetime.datetime.now, but that's apparently difficult; I have to mock
+        # datetime.datetime instead, and give it a now attribute.
+        with mock.patch('paasta_tools.bounce_lib.datetime.datetime', now=lambda: now, autospec=True):
+            assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', min_task_uptime=121) == tasks[3:]
 
-    def test_crossover_bounce_exact_delta(self):
-        fake_new_config = {
-            'id': 'shake.bake',
-            'instances': 10
+    def test_get_happy_tasks_check_haproxy(self):
+        """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
+
+        tasks = [mock.Mock() for i in xrange(5)]
+        with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
+            assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', check_haproxy=True) == tasks[2:]
+
+
+class TestBrutalBounce:
+    def test_brutal_bounce_no_existing_apps(self):
+        """When marathon is unaware of a service, brutal bounce should try to
+        create a marathon app."""
+        new_config = {'id': 'foo.bar.12345'}
+        happy_tasks = []
+
+        assert bounce_lib.brutal_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks={},
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        fake_namespace = 'wake'
-        fake_service_config = {
-            'nerve_ns': fake_namespace,
+
+    def test_brutal_bounce_done(self):
+        """When marathon has the desired app, and there are no other copies of
+        the service running, brutal bounce should neither start nor stop
+        anything."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+
+        assert bounce_lib.brutal_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks={},
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        fake_old_ids = ['fake.make', 'lake.quake']
-        fake_old_instance_counts = [mock.Mock(instances=4), mock.Mock(instances=15)]
-        fake_client = mock.MagicMock(
-            get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop())
+
+    def test_brutal_bounce_mid_bounce(self):
+        """When marathon has the desired app, but there are other copies of
+        the service running, brutal bounce should stop the old ones."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
+
+        assert bounce_lib.brutal_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "apps_to_kill": set(['app1', 'app2']),
+        }
+
+    def test_brutal_bounce_old_but_no_new(self):
+        """When marathon does not have the desired app, but there are other copies of
+        the service running, brutal bounce should stop the old ones and start
+        the new one."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
+
+        assert bounce_lib.brutal_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=[],
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "apps_to_kill": set(['app1', 'app2']),
+        }
+
+
+class TestUpthendownBounce:
+    def test_upthendown_bounce_no_existing_apps(self):
+        """When marathon is unaware of a service, upthendown bounce should try to
+        create a marathon app."""
+        new_config = {'id': 'foo.bar.12345'}
+        happy_tasks = []
+
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks={},
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
+
+    def test_upthendown_bounce_old_but_no_new(self):
+        """When marathon has the desired app, but there are other copies of
+        the service running, upthendown bounce should start the new one. but
+        not stop the old one yet."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
+
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=[],
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
+
+    def test_upthendown_bounce_mid_bounce(self):
+        """When marathon has the desired app, and there are other copies of
+        the service running, but the new app is not fully up, upthendown bounce
+        should not stop the old ones."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(3)]
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
+
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
+
+    def test_upthendown_bounce_cleanup(self):
+        """When marathon has the desired app, and there are other copies of
+        the service running, and the new app is fully up, upthendown bounce
+        should stop the old ones."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
+
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "apps_to_kill": set(['app1', 'app2']),
+        }
+
+    def test_upthendown_bounce_done(self):
+        """When marathon has the desired app, and there are no other copies of
+        the service running, upthendown bounce should neither start nor stop
+        anything."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {}
+
+        assert bounce_lib.upthendown_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
+
+
+class TestCrossoverBounce:
+    def test_crossover_bounce_no_existing_apps(self):
+        """When marathon is unaware of a service, crossover bounce should try to
+        create a marathon app."""
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = []
+        old_app_tasks = {}
+
+        assert bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
+
+    def test_crossover_bounce_old_but_no_new(self):
+        """When marathon only has old apps for this service, crossover bounce should start the new one, but not kill any
+        old tasks yet."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = []
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
+
+        assert bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
+
+    def test_crossover_bounce_mid_bounce(self):
+        """When marathon has the desired app, and there are other copies of the service running, but the new app is not
+        fully up, crossover bounce should only stop a few of the old instances."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(3)]
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
+
+        actual = bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
         )
-        haproxy_instance_count = [{'shake.wake': 18}, {'shake.wake': 9}]
-        with contextlib.nested(
-            mock.patch('marathon_tools.read_service_config', return_value=fake_service_config),
-            mock.patch('bounce_lib.get_replication_for_services',
-                       side_effect=lambda a, b: haproxy_instance_count.pop()),
-            mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_marathon_app'),
-            mock.patch('bounce_lib.time_limit', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.scale_apps', return_value=9),
-            mock.patch('bounce_lib.kill_old_ids'),
-            mock.patch('time.sleep'),
-        ) as (
-            read_service_config_patch,
-            replication_patch,
-            lock_patch,
-            create_app_patch,
-            time_limit_patch,
-            scale_patch,
-            kill_patch,
-            sleep_patch
-        ):
-            bounce_lib.crossover_bounce('shake', 'bake', fake_old_ids, fake_new_config, fake_client)
-            replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['shake.wake'])
-            assert replication_patch.call_count == 2
-            lock_patch.assert_called_once_with('shake.wake')
-            create_app_patch.assert_called_once_with(fake_new_config['id'], fake_new_config, fake_client)
-            time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
-            sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
-            fake_client.get_app.assert_any_call('fake.make')
-            fake_client.get_app.assert_any_call('lake.quake')
-            assert fake_client.get_app.call_count == 2
-            scale_patch.assert_called_once_with([('fake.make', 15), ('lake.quake', 4)], 9, fake_client)
-            assert fake_client.scale_app.call_count == 0
-            kill_patch.assert_called_once_with(fake_old_ids, fake_client)
 
-    def test_crossover_bounce_apps_scaled(self):
-        fake_new_config = {
-            'id': 'hello.everyone',
-            'instances': 100
+        assert actual['create_app'] is False
+        assert len(actual['tasks_to_kill']) == 3
+        assert actual['apps_to_kill'] == set()
+
+    def test_crossover_bounce_cleanup(self):
+        """When marathon has the desired app, and there are other copies of
+        the service running, which have no remaining tasks, those apps should
+        be killed."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {
+            'app1': set(),
+            'app2': set(),
         }
-        fake_namespace = 'world'
-        fake_service_config = {
-            'nerve_ns': fake_namespace,
+
+        assert bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(['app1', 'app2']),
         }
-        fake_old_ids = ['pen.hen', 'tool.rule']
-        fake_old_instance_counts = [mock.Mock(instances=7), mock.Mock(instances=19)]
-        fake_client = mock.MagicMock(
-            get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop())
-        )
-        haproxy_instance_count = [{'hello.world': 16}, {'hello.world': 10}, {'hello.world': 5}]
-        with contextlib.nested(
-            mock.patch('marathon_tools.read_service_config', return_value=fake_service_config),
-            mock.patch('bounce_lib.get_replication_for_services',
-                       side_effect=lambda a, b: haproxy_instance_count.pop()),
-            mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_marathon_app'),
-            mock.patch('bounce_lib.time_limit', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.scale_apps',
-                       side_effect=lambda apps, b, c: apps.pop()[1]),
-            mock.patch('bounce_lib.kill_old_ids'),
-            mock.patch('time.sleep'),
-        ) as (
-            read_service_config_patch,
-            replication_patch,
-            lock_patch,
-            create_app_patch,
-            time_limit_patch,
-            scale_patch,
-            kill_patch,
-            sleep_patch
-        ):
-            bounce_lib.crossover_bounce('hello', 'everyone', fake_old_ids, fake_new_config, fake_client)
-            replication_patch.assert_any_call(bounce_lib.DEFAULT_SYNAPSE_HOST, ['hello.world'])
-            assert replication_patch.call_count == 3
-            lock_patch.assert_called_once_with('hello.world')
-            create_app_patch.assert_called_once_with(fake_new_config['id'], fake_new_config, fake_client)
-            time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
-            sleep_patch.assert_any_call(bounce_lib.CROSSOVER_SLEEP_INTERVAL_S)
-            fake_client.get_app.assert_any_call('pen.hen')
-            fake_client.get_app.assert_any_call('tool.rule')
-            assert fake_client.get_app.call_count == 2
-            scale_patch.assert_any_call([], 5, fake_client)
-            scale_patch.assert_any_call([], 11, fake_client)
-            assert scale_patch.call_count == 2
-            kill_patch.assert_called_once_with(fake_old_ids, fake_client)
 
-    def test_crossover_bounce_immediate_timeout(self):
-        fake_new_config = {
-            'id': 'the.hustle',
-            'instances': 6
+    def test_crossover_bounce_done(self):
+        """When marathon has the desired app, and there are no other copies of
+        the service running, crossover bounce should neither start nor stop
+        anything."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {}
+
+        assert bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        fake_namespace = 'electricslide'
-        fake_service_config = {
-            'nerve_ns': fake_namespace,
+
+
+class TestDownThenUpBounce(object):
+    def test_downthenup_bounce_no_existing_apps(self):
+        """When marathon is unaware of a service, downthenup bounce should try to
+        create a marathon app."""
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = []
+        old_app_tasks = {}
+
+        assert bounce_lib.downthenup_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
         }
-        fake_old_ids = ['70s.disco', '80s.funk']
-        fake_old_instance_counts = [mock.Mock(instances=77), mock.Mock(instances=55)]
-        fake_client = mock.MagicMock(
-            get_app=mock.Mock(side_effect=lambda a: fake_old_instance_counts.pop())
-        )
-        haproxy_instance_count = {'the.electricslide': 10}
 
-        def raiser(a):
-            raise bounce_lib.TimeoutException
+    def test_downthenup_bounce_old_but_no_new(self):
+        """When marathon has only old copies of the service, downthenup_bounce should kill them and not start a new one
+        yet."""
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = []
+        old_app_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(3)),
+            'app2': set(mock.Mock() for _ in xrange(2)),
+        }
 
-        with contextlib.nested(
-            mock.patch('marathon_tools.read_service_config', return_value=fake_service_config),
-            mock.patch('bounce_lib.get_replication_for_services', return_value=haproxy_instance_count),
-            mock.patch('bounce_lib.bounce_lock_zookeeper', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.create_marathon_app'),
-            mock.patch('bounce_lib.time_limit', spec=contextlib.contextmanager,
-                       side_effect=raiser),
-            mock.patch('bounce_lib.scale_apps', return_value=9),
-            mock.patch('bounce_lib.kill_old_ids'),
-            mock.patch('time.sleep'),
-        ) as (
-            read_service_config_patch,
-            replication_patch,
-            lock_patch,
-            create_app_patch,
-            time_limit_patch,
-            scale_patch,
-            kill_patch,
-            sleep_patch
-        ):
-            with pytest.raises(bounce_lib.TimeoutException):
-                bounce_lib.crossover_bounce('the', 'hustle', fake_old_ids, fake_new_config, fake_client)
-            replication_patch.assert_called_once_with(bounce_lib.DEFAULT_SYNAPSE_HOST, ['the.electricslide'])
-            lock_patch.assert_called_once_with('the.electricslide')
-            assert create_app_patch.call_count == 0
-            time_limit_patch.assert_called_once_with(bounce_lib.CROSSOVER_MAX_TIME_M)
-            assert sleep_patch.call_count == 0
-            fake_client.get_app.assert_any_call('70s.disco')
-            fake_client.get_app.assert_any_call('80s.funk')
-            assert fake_client.get_app.call_count == 2
-            assert scale_patch.call_count == 0
-            kill_patch.assert_called_once_with(fake_old_ids, fake_client)
+        assert bounce_lib.downthenup_bounce(
+            new_config=new_config,
+            new_app_running=False,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "apps_to_kill": set(['app1', 'app2']),
+        }
 
+    def test_downthenup_bounce_done(self):
+        """When marathon has the desired app, and there are no other copies of the service running, downthenup bounce
+        should neither start nor stop anything."""
+
+        new_config = {'id': 'foo.bar.12345', 'instances': 5}
+        happy_tasks = [mock.Mock() for _ in xrange(5)]
+        old_app_tasks = {}
+
+        assert bounce_lib.downthenup_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_tasks=old_app_tasks,
+        ) == {
+            "create_app": False,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

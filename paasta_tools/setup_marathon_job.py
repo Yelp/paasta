@@ -27,7 +27,6 @@ Command line options:
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 - -v, --verbose: Verbose output
 """
-from marathon.exceptions import NotFoundError, InternalServerError
 import argparse
 import logging
 import pysensu_yelp
@@ -94,7 +93,8 @@ def get_main_marathon_config():
     return marathon_config
 
 
-def deploy_service(service_name, instance_name, marathon_jobid, config, client, bounce_method):
+def deploy_service(service_name, instance_name, marathon_jobid, config, client,
+                   bounce_method, nerve_ns, bounce_health_params):
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
 
@@ -103,25 +103,64 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client, 
     :param client: A MarathonClient object
     :param namespace: The service's Smartstack namespace
     :param bounce_method: The bounce method to use, if needed
+    :param nerve_ns: The nerve namespace to look in.
+    :param bounce_health_params: A dictionary of options for bounce_lib.get_happy_tasks.
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
-    log.info("Deploying service instance %s with bounce_method %s", service_name, bounce_method)
+    log.info("Deploying service instance %s with bounce_method %s",
+             service_name, bounce_method)
     log.debug("Searching for old service instance iterations")
-    filter_name = marathon_tools.remove_tag_from_job_id(marathon_jobid)
-    app_list = client.list_apps()
-    old_app_ids = [app.id for app in app_list if filter_name in app.id]
+    short_id = marathon_tools.remove_tag_from_job_id(marathon_jobid)
+
+    # would do embed_failures but we support versions of marathon where https://github.com/mesosphere/marathon/pull/1105
+    # isn't fixed.
+    app_list = client.list_apps(embed_failures=True)
+    existing_apps = [app for app in app_list if short_id in app.id]
+    new_app_list = [a for a in existing_apps if a.id == '/%s' % config['id']]
+    other_apps = [a for a in existing_apps if a.id != '/%s' % config['id']]
+
+    if new_app_list:
+        new_app = new_app_list[0]
+        if len(new_app_list) != 1:
+            raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
+        new_app_running = True
+        happy_new_tasks = bounce_lib.get_happy_tasks(new_app.tasks, service_name, nerve_ns, **bounce_health_params)
+    else:
+        new_app_running = False
+        happy_new_tasks = []
+
+    old_app_tasks = dict([(a.id, set(a.tasks)) for a in other_apps])
+
     try:
-        if bounce_method == "upthendown":
-            bounce_lib.upthendown_bounce(service_name, instance_name, old_app_ids, config, client)
-        elif bounce_method == "brutal":
-            bounce_lib.brutal_bounce(service_name, instance_name, old_app_ids, config, client)
-        elif bounce_method == "crossover":
-            bounce_lib.crossover_bounce(service_name, instance_name, old_app_ids, config, client)
-        else:
-            log.error("bounce_method not recognized: %s. Exiting", bounce_method)
-            return (1, "bounce_method not recognized: %s" % bounce_method)
-    except IOError:
-        log.error("Namespace %s already being bounced. Exiting", filter_name)
-        return (1, "Service is taking a while to bounce")
+        bounce_func = bounce_lib.get_bounce_method_func(bounce_method)
+    except KeyError:
+        log.error("bounce_method not recognized: %s. Exiting", bounce_method)
+        return (1, "bounce_method not recognized: %s" % bounce_method)
+
+    try:
+        with bounce_lib.bounce_lock_zookeeper(short_id):
+            log.info("Initiating %s bounce on %s.", bounce_method, short_id)
+            actions = bounce_func(
+                new_config=config,
+                new_app_running=new_app_running,
+                happy_new_tasks=happy_new_tasks,
+                old_app_tasks=old_app_tasks,
+            )
+
+            if actions['create_app'] and not new_app_running:
+                log.info('Bounce method %s requested new app to be created (id %s)', bounce_method, marathon_jobid)
+                bounce_lib.create_marathon_app(marathon_jobid, config, client)
+            for task in actions['tasks_to_kill']:
+                log.info('Bounce method %s requested task %s to be killed (app id %s)', bounce_method, task.id,
+                         task.app_id)
+                client.kill_task(task.app_id, task.id, scale=True)
+            if actions['apps_to_kill']:
+                log.info('Bounce method %s requested apps %r to be killed', bounce_method, actions['apps_to_kill'])
+            bounce_lib.kill_old_ids(actions['apps_to_kill'], client)
+
+    except bounce_lib.LockHeldException:
+        log.error("Instance %s already being bounced. Exiting", short_id)
+        return (1, "Instance %s is already being bounced.", short_id)
+
     log.info("%s deployed. Exiting", marathon_jobid)
     return (0, 'Service deployed.')
 
@@ -153,17 +192,16 @@ def setup_service(service_name, instance_name, client, marathon_config,
     full_id = complete_config['id']
 
     log.info("Desired Marathon instance id: %s", full_id)
-    try:
-        log.info("Checking if an app already exists with id: %s", full_id)
-        client.get_app(full_id)
-        log.warning("App id %s already exists. Skipping configuration and exiting.", full_id)
-        return (0, 'Service was already deployed.')
-    except NotFoundError:
-        return deploy_service(service_name, instance_name, full_id, complete_config, client,
-                              marathon_tools.get_bounce_method(service_marathon_config))
-    except InternalServerError as e:
-        log.error('Marathon had an internal server error: %s' % str(e))
-        return(1, str(e))
+    return deploy_service(
+        service_name,
+        instance_name,
+        full_id,
+        complete_config,
+        client,
+        marathon_tools.get_bounce_method(service_marathon_config),
+        service_marathon_config.get('nerve_ns', instance_name),
+        service_marathon_config.get('bounce_health_params', {}),
+    )
 
 
 def main():
@@ -184,9 +222,8 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service_name = args.service_instance.split(ID_SPACER)[0]
-        instance_name = args.service_instance.split(ID_SPACER)[1]
-    except IndexError:
+        service_name, instance_name = args.service_instance.split(ID_SPACER)
+    except ValueError:
         log.error("Invalid service instance specified. Format is service_name.instance_name.")
         sys.exit(1)
 

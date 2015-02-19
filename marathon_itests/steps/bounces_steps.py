@@ -1,58 +1,120 @@
 import contextlib
 import mock
+import time
 
+from behave import given, when, then
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
+from paasta_tools import setup_marathon_job
+
+
+def which_id(context, which):
+    config = {
+        'new': context.new_config,
+        'old': context.old_app_config,
+    }[which]
+    return config['id']
 
 
 @given(u'a new app to be deployed')
-def step_impl(context):
-    context.service_name = 'bouncetest1'
-    context.instance_name = 'newapp'
+def given_a_new_app_to_be_deployed(context):
+    context.service_name = 'bounce'
+    context.instance_name = 'test1'
     context.new_config = {
-        'id': 'bouncetest1-newapp',
-        'cmd': '/bin/true',
+        'id': 'bounce.test1.newapp',
+        'cmd': '/bin/sleep 300',
+        'instances': 2,
+        'backoff_seconds': 0.1,
+        'backoff_factor': 1,
     }
 
 
 @given(u'an old app to be destroyed')
-def step_impl(context):
-    old_app_name = "bouncetest1-oldapp"
+def given_an_old_app_to_be_destroyed(context):
+    old_app_name = "bounce.test1.oldapp"
     context.old_ids = [old_app_name]
-    old_app_config = {
+    context.old_app_config = {
         'id': old_app_name,
-        'cmd': '/bin/true',
+        'cmd': '/bin/sleep 300',
+        'instances': 2,
+        'backoff_seconds': 0.1,
+        'backoff_factor': 1,
     }
     with contextlib.nested(
         mock.patch('paasta_tools.bounce_lib.create_app_lock'),
     ) as (
         mock_creat_app_lock,
     ):
-        bounce_lib.create_marathon_app(old_app_name, old_app_config, context.client)
+        bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.client)
 
 
-@when(u'an upthendown_bounce is intitiated')
-def step_impl(context):
-     with contextlib.nested(
-        mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper'),
-        mock.patch('paasta_tools.bounce_lib.create_app_lock'),
-        mock.patch('paasta_tools.bounce_lib.time.sleep'),
-    ) as (
-        mock_bounce_lock_zookeeper,
-        mock_create_app_lock,
-        mock_sleep,
+@when(u'there are {num} {which} tasks')
+def when_there_are_num_which_tasks(context, num, which):
+    context.max_happy_tasks = int(num)
+    app_id = which_id(context, which)
+
+    # 120 * 0.5 = 60 seconds
+    for _ in xrange(120):
+        tasks = context.client.list_tasks(app_id)
+        happy_count = len([t for t in tasks if t.started_at])
+        if happy_count >= context.max_happy_tasks:
+            return
+        time.sleep(0.5)
+    raise Exception("timed out waiting for %d tasks on %s; there are %d" % (context.max_happy_tasks, app_id, happy_count))
+
+
+@when(u'deploy_service with bounce strategy "{bounce_method}" is initiated')
+def when_deploy_service_initiated(context, bounce_method):
+    with contextlib.nested(
+        mock.patch(
+            'paasta_tools.bounce_lib.get_happy_tasks',
+            autospec=True,
+            side_effect=lambda t, _, __, **kwargs: t[:context.max_happy_tasks],
+        ),
+        mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
+        mock.patch('paasta_tools.bounce_lib.create_app_lock', autospec=True),
+        mock.patch('paasta_tools.bounce_lib.time.sleep', autospec=True),
     ):
-       bounce_lib.upthendown_bounce(context.service_name, context.instance_name,
-                                    context.old_ids, context.new_config, context.client)
+        setup_marathon_job.deploy_service(
+            context.service_name,
+            context.instance_name,
+            context.new_config['id'],
+            context.new_config,
+            context.client,
+            bounce_method,
+            context.instance_name,
+            {},
+        )
 
 
-@then(u'the new app should be running')
-def step_impl(context):
-    assert marathon_tools.is_app_id_running(context.new_config['id'],
-                                            context.client) is True
+@when(u'the {which} app is down to {num} instances')
+def when_the_which_app_is_down_to_num_instances(context, which, num):
+    app_id = which_id(context, which)
+    while True:
+        tasks = context.client.list_tasks(app_id)
+        if len([t for t in tasks if t.started_at]) <= int(num):
+            return
+        time.sleep(0.5)
 
 
-@then(u'the old app should be gone')
-def step_impl(context):
-    for old_app in context.old_ids:
-        assert marathon_tools.is_app_id_running(old_app, context.client) is False
+@then(u'the {which} app should be running')
+def then_the_which_app_should_be_running(context, which):
+    assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is True
+
+
+@then(u'the {which} app should be configured to have {num} instances')
+def then_the_which_app_should_be_configured_to_have_num_instances(context, which, num, retries=10):
+    app_id = which_id(context, which)
+
+    for _ in xrange(retries):
+        app = context.client.get_app(app_id)
+        if app.instances == int(num):
+            return
+        time.sleep(0.5)
+
+    raise ValueError("Expected there to be %d instances, but there were %d", int(num), app.instances)
+
+
+@then(u'the {which} app should be gone')
+def then_the_which_app_should_be_gone(context, which):
+    assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is False
