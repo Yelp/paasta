@@ -508,3 +508,8 @@ def figure_out_cluster(args):
         print "Sorry, could not detect the PaaSTA cluster. Please provide one"
         exit(1)
     return cluster
+
+
+def get_pipeline_url(service):
+    return PaastaColors.cyan(
+        'https://jenkins.yelpcorp.com/view/services-%s' % service)
