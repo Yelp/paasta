@@ -12,6 +12,7 @@ import time
 import sys
 
 import humanize
+from mesos.cli.exceptions import SlaveDoesNotExist
 
 from paasta_tools import marathon_tools
 from paasta_tools.paasta_cli.utils import PaastaColors
@@ -261,7 +262,7 @@ def get_cpu_usage(task):
             return PaastaColors.red(percent_string)
         else:
             return percent_string
-    except AttributeError:
+    except (AttributeError, SlaveDoesNotExist):
         return "None"
 
 
@@ -275,7 +276,7 @@ def get_mem_usage(task):
             return PaastaColors.red(mem_string)
         else:
             return mem_string
-    except AttributeError:
+    except (AttributeError, SlaveDoesNotExist):
         return "None"
 
 
@@ -288,7 +289,7 @@ def get_short_hostname_from_task(task):
     try:
         slave_hostname = task.slave['hostname']
         return slave_hostname.split(".")[0]
-    except AttributeError:
+    except (AttributeError, SlaveDoesNotExist):
         return 'Unknown'
 
 
@@ -301,7 +302,7 @@ def get_first_status_timestamp(task):
         start_time_string = task['statuses'][0]['timestamp']
         start_time = datetime.datetime.fromtimestamp(float(start_time_string))
         return "%s (%s)" % (start_time.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(start_time))
-    except IndexError:
+    except (IndexError, SlaveDoesNotExist):
         return "Unknown"
 
 
