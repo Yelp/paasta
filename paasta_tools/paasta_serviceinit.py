@@ -76,6 +76,36 @@ def restart_marathon_job(service, instance, app_id, normal_instance_count, clien
     start_marathon_job(service, instance, app_id, normal_instance_count, client)
 
 
+def get_bouncing_status(service, instance, client, complete_job_config):
+    apps = marathon_tools.get_matching_appids(service, instance, client)
+    bounce_method = marathon_tools.get_bounce_method(complete_job_config)
+    app_count = len(apps)
+    if app_count == 0:
+        return PaastaColors.red("Stopped")
+    elif app_count == 1:
+        return PaastaColors.green("Running")
+    elif app_count > 1:
+        return PaastaColors.yellow("Bouncing (%s)" % bounce_method)
+    else:
+        return PaastaColors.red("Unknown (count: %s)" % app_count)
+
+
+def get_desired_state_human(complete_job_config):
+    desired_state = marathon_tools.get_desired_state(complete_job_config)
+    if desired_state == 'start':
+        return PaastaColors.bold('Started')
+    elif desired_state == 'stop':
+        return PaastaColors.red('Stopped')
+    else:
+        return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
+
+
+def status_desired_state(service, instance, client, complete_job_config):
+    status = get_bouncing_status(service, instance, client, complete_job_config)
+    desired_state = get_desired_state_human(complete_job_config)
+    return "State:      %s - Desired state: %s" % (status, desired_state)
+
+
 def status_marathon_job(service, instance, app_id, normal_instance_count, client):
     name = PaastaColors.cyan("%s.%s" % (service, instance))
     if marathon_tools.is_app_id_running(app_id, client):
@@ -98,7 +128,7 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
     else:
         red_not = PaastaColors.red("NOT")
         status = PaastaColors.red("Critical")
-        return "Marathon:   %s: - %s (app %s) is %s running in Marathon." % (status, name, app_id, red_not)
+        return "Marathon:   %s - %s (app %s) is %s running in Marathon." % (status, name, app_id, red_not)
 
 
 def get_verbose_status_of_marathon_app(app):
@@ -384,6 +414,7 @@ def main():
     elif command == 'restart':
         restart_marathon_job(service, instance, app_id, normal_instance_count, client)
     elif command == 'status':
+        print status_desired_state(service, instance, client, complete_job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         if args.verbose:
             print status_marathon_job_verbose(service, instance, client)
