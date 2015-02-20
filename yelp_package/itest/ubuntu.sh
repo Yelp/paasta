@@ -29,6 +29,7 @@ help
 emergency-stop
 emergency-start
 emergency-restart
+info
 itest
 mark-for-deployment
 performance-check

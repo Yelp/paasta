@@ -7,6 +7,7 @@ from paasta_tools.paasta_cli.utils import get_pipeline_url
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import PaastaColors
+from paasta_tools.utils import get_git_url
 from service_configuration_lib import read_service_configuration
 
 
@@ -42,7 +43,7 @@ def get_service_info(service):
     external_link = service_configuration.get('external_link', NO_EXTERNAL_LINK_MESSAGE)
     pipeline_url = get_pipeline_url(service)
     deployments = get_actual_deployments(service)
-    git_repo = 'git@git.yelpcorp.com:services/%s' % service
+    git_url = get_git_url(service)
 
     output = []
     output.append('Service Name: %s' % service)
@@ -50,7 +51,7 @@ def get_service_info(service):
     output.append('External Link (CEP/SCF): %s' % PaastaColors.cyan(external_link))
     output.append('Monitored By: team %s' % get_team(None, service))
     output.append('Runbook: %s' % PaastaColors.cyan(get_runbook(None, service)))
-    output.append('Git Repo: %s' % git_repo)
+    output.append('Git Repo: %s' % git_url)
     output.append('Jenkins Pipeline: %s' % pipeline_url)
     output.append('Deployed to the following clusters:')
     for cluster in deployments_to_clusters(deployments):
