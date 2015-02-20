@@ -9,6 +9,7 @@ from service_wizard.questions import get_clusternames_from_deploy_stanza
 from service_wizard.questions import get_deploy_stanza
 from service_wizard.questions import get_marathon_stanza
 from service_wizard.questions import get_monitoring_stanza
+from service_wizard.questions import get_service_stanza
 from service_wizard.questions import get_smartstack_stanza
 from service_wizard.questions import get_srvname
 from service_wizard.service import Service
@@ -27,6 +28,16 @@ def parse_args():
         dest="srvname",
         default=None,
         help="Name of service being configured (--auto not available)")
+    parser.add_argument(
+        "--description",
+        dest="description",
+        default=None,
+        help="One line description of the service. If AUTO will have placeholder text")
+    parser.add_argument(
+        "--external-link",
+        dest="external_link",
+        default=None,
+        help="Link to a CEP or SCF of the service. If AUTO will have placeholder text")
     parser.add_argument(
         "-a",
         "--auto",
@@ -70,21 +81,24 @@ def validate_args(parser, args):
         )
 
 
-def get_paasta_config(yelpsoa_config_root, srvname, auto, port, team):
+def get_paasta_config(yelpsoa_config_root, srvname, auto, port, team, description, external_link):
     srvname = get_srvname(srvname, auto)
     smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, auto, port)
     monitoring_stanza = get_monitoring_stanza(auto, team)
     deploy_stanza = get_deploy_stanza()
     marathon_stanza = get_marathon_stanza()
-    return (srvname, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team)
+    service_stanza = get_service_stanza(description, external_link, auto)
+    return (srvname, service_stanza, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team)
 
 
 def write_paasta_config(srv,
+    service_stanza,
     smartstack_stanza,
     monitoring_stanza,
     deploy_stanza,
     marathon_stanza,
 ):
+    srv.io.write_file("service.yaml", _yamlize(service_stanza))
     srv.io.write_file("smartstack.yaml", _yamlize(smartstack_stanza))
     srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
     srv.io.write_file("deploy.yaml", _yamlize(deploy_stanza))
@@ -95,17 +109,20 @@ def write_paasta_config(srv,
 
 
 def main(args):
-    (srvname, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team) = (
+    (srvname, service_stanza, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team) = (
         get_paasta_config(
             args.yelpsoa_config_root,
             args.srvname,
             args.auto,
             args.port,
             args.team,
+            args.description,
+            args.external_link,
     ))
     srv = Service(srvname, args.yelpsoa_config_root)
     write_paasta_config(
         srv,
+        service_stanza,
         smartstack_stanza,
         monitoring_stanza,
         deploy_stanza,

@@ -37,12 +37,14 @@ class GetPaastaConfigTestCase(T.TestCase):
     def setup_mocks(self):
         with contextlib.nested(
             mock.patch("fsm.get_srvname", autospec=True),
+            mock.patch("fsm.get_service_stanza", autospec=True),
             mock.patch("fsm.get_smartstack_stanza", autospec=True),
             mock.patch("fsm.get_marathon_stanza", autospec=True),
             mock.patch("fsm.get_monitoring_stanza", autospec=True),
             mock.patch("fsm.get_deploy_stanza", autospec=True),
         ) as (
             self.mock_get_srvname,
+            self.mock_get_service_stanza,
             self.mock_get_smartstack_stanza,
             self.mock_get_marathon_stanza,
             self.mock_get_monitoring_stanza,
@@ -60,9 +62,12 @@ class GetPaastaConfigTestCase(T.TestCase):
         auto = "UNUSED"
         port = 12345
         team = "america world police"
-        fsm.get_paasta_config(yelpsoa_config_root, srvname, auto, port, team)
+        description = 'a thing'
+        external_link = 'http://bla'
+        fsm.get_paasta_config(yelpsoa_config_root, srvname, auto, port, team, description, external_link)
 
         self.mock_get_srvname.assert_called_once_with(srvname, auto)
+        self.mock_get_service_stanza.assert_called_once_with(description, external_link, auto)
         self.mock_get_smartstack_stanza.assert_called_once_with(yelpsoa_config_root, auto, port)
         self.mock_get_marathon_stanza.assert_called_once_with()
         self.mock_get_monitoring_stanza.assert_called_once_with(auto, team)
@@ -83,10 +88,11 @@ class WritePaastaConfigTestCase(T.TestCase):
             yield
 
     def test(self):
-        smartstack_stanza = { "stack": "smrt" }
-        monitoring_stanza = { "team": "homer" }
-        deploy_stanza = { "otto": "dude" }
-        marathon_stanza = { "springfield": "2015-04-20" }
+        service_stanza = {"foo": "bar"}
+        smartstack_stanza = {"stack": "smrt"}
+        monitoring_stanza = {"team": "homer"}
+        deploy_stanza = {"otto": "dude"}
+        marathon_stanza = {"springfield": "2015-04-20"}
         clusternames = set([
             "flanders",
             "van-houten",
@@ -96,6 +102,7 @@ class WritePaastaConfigTestCase(T.TestCase):
         self.mock_get_clusternames_from_deploy_stanza.return_value = clusternames
         fsm.write_paasta_config(
             self.srv,
+            service_stanza,
             smartstack_stanza,
             monitoring_stanza,
             deploy_stanza,
@@ -105,6 +112,10 @@ class WritePaastaConfigTestCase(T.TestCase):
         self.srv.io.write_file.assert_any_call(
             "smartstack.yaml",
             _yamlize(smartstack_stanza),
+        )
+        self.srv.io.write_file.assert_any_call(
+            "service.yaml",
+            _yamlize(service_stanza),
         )
         self.srv.io.write_file.assert_any_call(
             "monitoring.yaml",

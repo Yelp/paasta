@@ -28,6 +28,24 @@ def get_srvname(srvname, auto):
     return srvname
 
 
+def get_description(description, auto):
+    if description is None:
+        if auto:
+            description = "Please fill in a one-line description of this service"
+        while not description:
+            description = ask('One line description of this service?')
+    return description
+
+
+def get_external_link(link, auto):
+    if link is None:
+        if auto:
+            link = "Please add a url to your CEP or SCF here"
+        while not link:
+            link = ask('Link to your CEP or SCF?')
+    return link
+
+
 def get_smartstack_stanza(yelpsoa_config_root, auto, port):
     """Produce a smartstack.yaml a la http://y/cep319"""
     if port is None:
@@ -42,6 +60,13 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
         "proxy_port": int(port),
     }
     return smartstack_stanza
+
+
+def get_service_stanza(description, external_link, auto):
+    stanza = {}
+    stanza["desciption"] = get_description(description, auto)
+    stanza["external_link"] = get_external_link(external_link, auto)
+    return stanza
 
 
 def get_monitoring_stanza(auto, team, legacy_style=False):
