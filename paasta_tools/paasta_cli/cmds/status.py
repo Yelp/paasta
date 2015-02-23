@@ -12,6 +12,7 @@ from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import figure_out_service_name
+from paasta_tools.paasta_cli.utils import get_pipeline_url
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
@@ -167,10 +168,8 @@ def report_bogus_filters(cluster_filter, deployed_clusters):
 
 
 def report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter, verbose=False):
-    jenkins_url = PaastaColors.cyan(
-        'https://jenkins.yelpcorp.com/view/services-%s' % service_name)
-
-    print "Pipeline: %s" % jenkins_url
+    pipeline_url = get_pipeline_url(service_name)
+    print "Pipeline: %s" % pipeline_url
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     for cluster in deployed_clusters:

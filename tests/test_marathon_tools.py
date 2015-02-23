@@ -3,6 +3,7 @@ import contextlib
 from marathon.models import MarathonApp
 import mock
 from pytest import raises
+import requests
 
 import marathon_tools
 
@@ -587,6 +588,13 @@ class TestMarathonTools:
         actual = marathon_tools.marathon_services_running_on(hostname, port, timeout)
         mock_requests_get.assert_called_once_with(expected_url, timeout=10)
         assert expected == actual
+
+    @mock.patch('requests.get', autospec=True)
+    def test_marathon_services_running_on_handles_connection_failures(self, mock_requests_get):
+        mock_requests_get.side_effect = requests.ConnectionError('Connection Failed')
+        with raises(SystemExit) as sys_exit:
+            marathon_tools.marathon_services_running_on()
+            assert sys_exit.value.code == 1
 
     @mock.patch('marathon_tools.marathon_services_running_on', return_value='chipotle')
     def test_marathon_services_running_here(self, mesos_on_patch):

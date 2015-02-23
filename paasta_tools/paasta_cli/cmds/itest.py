@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Contains methods used by the paasta client to build and test a docker image."""
 
+import os
 import sys
 
 from paasta_tools.paasta_cli.utils import validate_service_name
@@ -27,22 +28,22 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_itest)
 
 
-def build_command(upstream_job_name, upstream_git_commit):
+def build_docker_tag(upstream_job_name, upstream_git_commit):
     """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
     will look for your images.
 
     upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
-    service’s path in git. E.g. For git.yelpcorp.com:services/foo the
+    service's path in git. E.g. For git.yelpcorp.com:services/foo the
     upstream_job_name is services-foo.
 
-    upstream_git_commit is the SHA that we’re building. Usually this is the
+    upstream_git_commit is the SHA that we're building. Usually this is the
     tip of origin/master.
     """
-    cmd = 'DOCKER_TAG="docker-paasta.yelpcorp.com:443/services-%s:paasta-%s" make itest' % (
+    tag = 'docker-paasta.yelpcorp.com:443/services-%s:paasta-%s' % (
         upstream_job_name,
         upstream_git_commit,
     )
-    return cmd
+    return tag
 
 
 def paasta_itest(args):
@@ -52,9 +53,13 @@ def paasta_itest(args):
         service_name = service_name.split('services-', 1)[1]
     validate_service_name(service_name)
 
-    cmd = build_command(service_name, args.commit)
-    print 'INFO: Executing command "%s"' % cmd
-    returncode, output = _run(cmd)
+    tag = build_docker_tag(service_name, args.commit)
+    run_env = os.environ.copy()
+    run_env['DOCKER_TAG'] = tag
+    cmd = "make itest"
+
+    print 'INFO: Executing command "%s" with DOCKER_TAG set to %s' % (cmd, tag)
+    returncode, output = _run(cmd, env=run_env)
     if returncode != 0:
         print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (output, returncode)
         sys.exit(returncode)

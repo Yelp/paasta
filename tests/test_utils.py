@@ -6,6 +6,7 @@ import stat
 import tempfile
 
 from paasta_tools import utils
+from pytest import raises
 
 
 def test_get_git_url():
@@ -18,10 +19,12 @@ def test_format_log_line():
     input_line = 'foo'
     fake_cluster = 'fake_cluster'
     fake_instance = 'fake_instance'
-    fake_component = 'fake_component',
+    fake_component = 'fake_component'
+    fake_level = 'debug'
     fake_now = 'fake_now'
     expected = json.dumps({
         'timestamp': fake_now,
+        'level': fake_level,
         'cluster': fake_cluster,
         'instance': fake_instance,
         'component': fake_component,
@@ -29,7 +32,13 @@ def test_format_log_line():
     }, sort_keys=True)
     with mock.patch('paasta_tools.utils._now', autospec=True) as mock_now:
         mock_now.return_value = fake_now
-        assert utils.format_log_line(fake_cluster, fake_instance, fake_component, input_line) == expected
+        actual = utils.format_log_line(fake_level, fake_cluster, fake_instance, fake_component, input_line)
+        assert actual == expected
+
+
+def test_log_raise_on_unknown_level():
+    with raises(utils.NoSuchLogLevel):
+        utils._log('fake_service', 'fake_line', 'fake_component', 'BOGUS_LEVEL')
 
 
 def test_get_log_name_for_service():

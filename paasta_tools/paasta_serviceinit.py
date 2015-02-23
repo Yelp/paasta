@@ -12,6 +12,7 @@ import time
 import sys
 
 import humanize
+from mesos.cli.exceptions import SlaveDoesNotExist
 
 from paasta_tools import marathon_tools
 from paasta_tools.paasta_cli.utils import PaastaColors
@@ -75,6 +76,36 @@ def restart_marathon_job(service, instance, app_id, normal_instance_count, clien
     start_marathon_job(service, instance, app_id, normal_instance_count, client)
 
 
+def get_bouncing_status(service, instance, client, complete_job_config):
+    apps = marathon_tools.get_matching_appids(service, instance, client)
+    bounce_method = marathon_tools.get_bounce_method(complete_job_config)
+    app_count = len(apps)
+    if app_count == 0:
+        return PaastaColors.red("Stopped")
+    elif app_count == 1:
+        return PaastaColors.green("Running")
+    elif app_count > 1:
+        return PaastaColors.yellow("Bouncing (%s)" % bounce_method)
+    else:
+        return PaastaColors.red("Unknown (count: %s)" % app_count)
+
+
+def get_desired_state_human(complete_job_config):
+    desired_state = marathon_tools.get_desired_state(complete_job_config)
+    if desired_state == 'start':
+        return PaastaColors.bold('Started')
+    elif desired_state == 'stop':
+        return PaastaColors.red('Stopped')
+    else:
+        return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
+
+
+def status_desired_state(service, instance, client, complete_job_config):
+    status = get_bouncing_status(service, instance, client, complete_job_config)
+    desired_state = get_desired_state_human(complete_job_config)
+    return "State:      %s - Desired state: %s" % (status, desired_state)
+
+
 def status_marathon_job(service, instance, app_id, normal_instance_count, client):
     name = PaastaColors.cyan("%s.%s" % (service, instance))
     if marathon_tools.is_app_id_running(app_id, client):
@@ -97,7 +128,7 @@ def status_marathon_job(service, instance, app_id, normal_instance_count, client
     else:
         red_not = PaastaColors.red("NOT")
         status = PaastaColors.red("Critical")
-        return "Marathon:   %s: - %s (app %s) is %s running in Marathon." % (status, name, app_id, red_not)
+        return "Marathon:   %s - %s (app %s) is %s running in Marathon." % (status, name, app_id, red_not)
 
 
 def get_verbose_status_of_marathon_app(app):
@@ -261,7 +292,7 @@ def get_cpu_usage(task):
             return PaastaColors.red(percent_string)
         else:
             return percent_string
-    except AttributeError:
+    except (AttributeError, SlaveDoesNotExist):
         return "None"
 
 
@@ -275,7 +306,7 @@ def get_mem_usage(task):
             return PaastaColors.red(mem_string)
         else:
             return mem_string
-    except AttributeError:
+    except (AttributeError, SlaveDoesNotExist):
         return "None"
 
 
@@ -288,7 +319,7 @@ def get_short_hostname_from_task(task):
     try:
         slave_hostname = task.slave['hostname']
         return slave_hostname.split(".")[0]
-    except AttributeError:
+    except (AttributeError, SlaveDoesNotExist):
         return 'Unknown'
 
 
@@ -301,7 +332,7 @@ def get_first_status_timestamp(task):
         start_time_string = task['statuses'][0]['timestamp']
         start_time = datetime.datetime.fromtimestamp(float(start_time_string))
         return "%s (%s)" % (start_time.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(start_time))
-    except IndexError:
+    except (IndexError, SlaveDoesNotExist):
         return "Unknown"
 
 
@@ -383,6 +414,7 @@ def main():
     elif command == 'restart':
         restart_marathon_job(service, instance, app_id, normal_instance_count, client)
     elif command == 'status':
+        print status_desired_state(service, instance, client, complete_job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         if args.verbose:
             print status_marathon_job_verbose(service, instance, client)

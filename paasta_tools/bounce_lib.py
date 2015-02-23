@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from contextlib import contextmanager, nested
+import datetime
 import fcntl
 import logging
 import os
@@ -9,15 +10,13 @@ import time
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
+from paasta_tools.monitoring.replication_utils import \
+    get_registered_marathon_tasks
 
 import marathon_tools
-from paasta_tools.monitoring.replication_utils import get_replication_for_services
 
 log = logging.getLogger('__main__')
 DEFAULT_SYNAPSE_HOST = 'localhost:3212'
-CROSSOVER_MAX_TIME_M = 30  # Max time in minutes to bounce
-CROSSOVER_FRACTION_REQUIRED = 0.9  # % of new instances needed in HAProxy for a successful bounce
-CROSSOVER_SLEEP_INTERVAL_S = 10  # seconds to sleep between scaling an app and checking HAProxy
 ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper
 ZK_LOCK_PATH = '/bounce'
 WAIT_CREATE_S = 3
@@ -26,6 +25,26 @@ WAIT_DELETE_S = 5
 
 class TimeoutException(Exception):
     """An exception type used by time_limit."""
+    pass
+
+
+_bounce_method_funcs = {}
+
+
+def register_bounce_method(name):
+    """Returns a decorator that registers that bounce function at a given name
+    so get_bounce_method_func can find it."""
+    def outer(bounce_func):
+        _bounce_method_funcs[name] = bounce_func
+        return bounce_func
+    return outer
+
+
+def get_bounce_method_func(name):
+    return _bounce_method_funcs[name]
+
+
+class LockHeldException(Exception):
     pass
 
 
@@ -45,7 +64,7 @@ def bounce_lock(name):
         remove = True
         yield
     except IOError:
-        raise IOError("Service %s is already being bounced!" % name)
+        raise LockHeldException("Service %s is already being bounced!" % name)
     finally:
         fd.close()
         if remove:
@@ -69,7 +88,7 @@ def bounce_lock_zookeeper(name):
         acquired = True
         yield
     except LockTimeout:
-        raise IOError("Service %s is already being bounced!" % name)
+        raise LockHeldException("Service %s is already being bounced!" % name)
     finally:
         if acquired:
             lock.release()
@@ -89,7 +108,7 @@ def create_app_lock():
         lock.acquire(timeout=30)  # timeout=0 throws some other strange exception
         yield
     except LockTimeout:
-        raise IOError("Failed to acquire lock for creating marathon app!")
+        raise LockHeldException("Failed to acquire lock for creating marathon app!")
     finally:
         lock.release()
         zk.stop()
@@ -174,120 +193,154 @@ def kill_old_ids(old_ids, client):
             continue
 
 
-def brutal_bounce(service_name, instance_name, old_ids, new_config, client):
-    """Brutally bounce the service by killing all old instances first.
+def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_haproxy=False):
+    """Given a list of MarathonTask objects, return the subset which are considered healthy. With the default options,
+    this is a noop - it just returns tasks. For it to do anything interesting, set min_task_uptime or check_haproxy.
 
-    Kills all old_ids then spawns the new job/app.
-
-    :param service_name: service name
-    :param instance_name: instance name
-    :param old_ids: Old job ids to kill off
-    :param new_config: The complete marathon job configuration for the new job
-    :param client: A marathon.MarathonClient object
+    :param tasks: A list of MarathonTask objects.
+    :param service_name: The name of the service.
+    :param nerve_ns: The nerve namespace
+    :param min_task_uptime: Minimum number of seconds that a task must be running before we consider it healthy. Useful
+                            if tasks take a while to start up.
+    :param check_haproxy: Whether to check the local haproxy to make sure this task has been registered and discovered.
     """
-    service_instance = '%s%s%s' % (service_name, marathon_tools.ID_SPACER, instance_name)
-    with bounce_lock_zookeeper(service_instance):
-        kill_old_ids(old_ids, client)
-        log.info("Creating %s", new_config['id'])
-        create_marathon_app(new_config['id'], new_config, client)
+    happy = []
+    now = datetime.datetime.utcnow()
+
+    if check_haproxy:
+        service_namespace = '%s%s%s' % (
+            service_name,
+            marathon_tools.ID_SPACER,
+            nerve_ns
+        )
+
+        tasks = get_registered_marathon_tasks(
+            DEFAULT_SYNAPSE_HOST,
+            service_namespace,
+            tasks,
+        )
+
+    for task in tasks:
+        if min_task_uptime is not None:
+            if (now - task.started_at).total_seconds() < min_task_uptime:
+                continue
+
+        happy.append(task)
+
+    return happy
 
 
-def upthendown_bounce(service_name, instance_name, old_ids, new_config, client):
-    """Bounce the service by spawning a new app, waiting 2 minutes, then
-    killing the old app.
+@register_bounce_method('brutal')
+def brutal_bounce(
+    new_config,
+    new_app_running,
+    happy_new_tasks,
+    old_app_tasks,
+):
+    """Pays no regard to safety. Starts the new app if necessary, and kills any
+    old ones. Mostly meant as an example of the simplest working bounce method,
+    but might be tolerable for some services.
 
-    :param service_name: service name
-    :param instance_name: instance name
-    :param old_ids: Old job ids to kill off
-    :param new_config: The complete marathon job configuration for the new job
-    :param client: A marathon.MarathonClient object
+    :param new_config: The configuration dictionary representing the desired new app.
+    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
+    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
+    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
     """
-    service_instance = '%s%s%s' % (service_name, marathon_tools.ID_SPACER, instance_name)
-    with bounce_lock_zookeeper(service_instance):
-        log.info("Initiating upthendown bounce on %s, starting new app: %s", (service_instance, new_config['id']))
-        create_marathon_app(new_config['id'], new_config, client)
-        # 120 seconds should be plenty of time for the new service to pass
-        # healthchecks and be ready in smartstack
-        time.sleep(120)
-        kill_old_ids(old_ids, client)
+    return {
+        "create_app": not new_app_running,
+        "tasks_to_kill": set.union(set(), *old_app_tasks.values()),  # set.union doesn't like getting zero arguments
+        "apps_to_kill": set(old_app_tasks.keys()),
+    }
 
 
-def scale_apps(scalable_apps, remove_count, client):
-    """Kill off a number of apps from the scalable_apps list, composed of
-    tuples of (old_job_id, instance_count), equal to remove_count.
+@register_bounce_method('upthendown')
+def upthendown_bounce(
+    new_config,
+    new_app_running,
+    happy_new_tasks,
+    old_app_tasks,
+):
+    """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
-    If an app is deleted because it was scaled, it is removed from the
-    scalable_apps list. If an app is scaled down, its instance_count
-    changes to reflect this.
-
-    If remove_count is <= 0, returns 0 immediately.
-
-    :param scalable_apps: A list of tuples of (old_job_id, instance_count)
-    :param remove_count: The number of instances to kill off
-    :param client: A marathon.MarathonClient object
-    :returns: The total number of removed instances"""
-    total_remove_count = remove_count
-    # We're scaling down- if there's a shortage of instances (the count
-    # is negative or 0), then we shouldn't scale back any more yet!
-    if remove_count <= 0:
-        return 0
-    # Okay, now scale down instances from old jobs.
-    while remove_count > 0:
-        app_id, remaining = scalable_apps.pop()
-        # If this app can be removed completely, do it!
-        if remove_count >= remaining:
-            delete_marathon_app(app_id, client)
-            remove_count -= remaining
-        # Otherwise, scale it down and add the app back into the list.
-        else:
-            client.scale_app(app_id, delta=(-1 * remove_count))
-            scalable_apps.append((app_id, remaining - remove_count))
-            remove_count = 0
-    return total_remove_count
+    :param new_config: The configuration dictionary representing the desired new app.
+    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
+    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
+    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
+    """
+    if new_app_running and len(happy_new_tasks) == new_config['instances']:
+        return {
+            "create_app": False,
+            "tasks_to_kill": set.union(set(), *old_app_tasks.values()),  # set.union doesn't like getting zero arguments
+            "apps_to_kill": set(old_app_tasks.keys()),
+        }
+    else:
+        return {
+            "create_app": not new_app_running,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
 
 
-def crossover_bounce(service_name, instance_name, old_ids, new_config, client):
-    """Bounce the service via crossover: spin up the new instances
-    first, and then kill old ones as they get registered in nerve.
+@register_bounce_method('crossover')
+def crossover_bounce(
+    new_config,
+    new_app_running,
+    happy_new_tasks,
+    old_app_tasks,
+):
+    """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
-    :param old_ids: Old job ids to kill off
-    :param new_config: The complete marathon job configuration for the new job
-    :param client: A marathon.MarathonClient object
-    :param namespace: The smartstack namespace of the service"""
+    :param new_config: The configuration dictionary representing the desired new app.
+    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
+    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
+    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
 
-    # Because crossover bounce requires extra information, specifically the
-    # nerve_ns so it can communicate with haproxy, we must fetch more data
-    service_marathon_config = marathon_tools.read_service_config(service_name, instance_name)
-    namespace = service_marathon_config.get('nerve_ns', instance_name)
+    """
 
-    service_namespace = '%s%s%s' % (service_name, marathon_tools.ID_SPACER, namespace)
-    scalable_apps = [(old_id, client.get_app(old_id).instances) for old_id in old_ids]
-    # First, how many instances are currently UP in HAProxy?
-    initial_instances = get_replication_for_services(DEFAULT_SYNAPSE_HOST,
-                                                     [service_namespace])[service_namespace]
-    # Alright, we want to get a fraction of the way there before
-    # we just cut off the rest of the instances.
-    target_delta = max(int(new_config['instances'] * CROSSOVER_FRACTION_REQUIRED), 1)
-    total_delta = 0
-    try:
-        with nested(bounce_lock_zookeeper(service_namespace), time_limit(CROSSOVER_MAX_TIME_M)):
-            # Okay, deploy the new job!
-            create_marathon_app(new_config['id'], new_config, client)
-            # Sleep once to give the stack some time to spin up.
-            time.sleep(CROSSOVER_SLEEP_INTERVAL_S)
-            # If we run of out stuff to kill, we're just as completed
-            # as if we had reached the target_delta.
-            # This can happen if the # of instances is increased in a job.
-            while total_delta < target_delta and scalable_apps:
-                # How many instances are there now?
-                available_instances = get_replication_for_services(DEFAULT_SYNAPSE_HOST,
-                                                                   [service_namespace])[service_namespace]
-                total_delta += scale_apps(scalable_apps, available_instances - initial_instances, client)
-                # Wait for nerve/synapse to reconfigure.
-                time.sleep(CROSSOVER_SLEEP_INTERVAL_S)
-    finally:
-        # The reason we don't delete from scalable_apps is because it's possible to
-        # time out a bounce while a scalable app was being scaled down, and
-        # wasn't added back into the list yet. This'll make sure everything
-        # is gone and only the new job remains.
-        kill_old_ids(old_ids, client)
+    if not new_app_running:
+        return {
+            "create_app": True,
+            "tasks_to_kill": set(),
+            "apps_to_kill": set(),
+        }
+    else:
+        happy_count = len(happy_new_tasks)
+        needed_count = max(new_config['instances'] - happy_count, 0)
+
+        old_tasks = []
+        for app, tasks in old_app_tasks.items():
+            for task in tasks:
+                old_tasks.append(task)
+
+        return {
+            "create_app": False,
+            "tasks_to_kill": set(set(old_tasks[needed_count:])),
+            "apps_to_kill": set(app_id for (app_id, tasks) in old_app_tasks.items() if len(tasks) == 0),
+        }
+
+
+@register_bounce_method('downthenup')
+def downthenup_bounce(
+    new_config,
+    new_app_running,
+    happy_new_tasks,
+    old_app_tasks,
+):
+    """Stops any old apps and waits for them to die before starting a new one.
+
+    :param new_config: The configuration dictionary representing the desired new app.
+    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
+    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
+    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
+    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
+    """
+    return {
+        "create_app": not old_app_tasks and not new_app_running,
+        "tasks_to_kill": set.union(set(), *old_app_tasks.values()),  # set.union doesn't like getting zero arguments,
+        "apps_to_kill": set(old_app_tasks.keys()),
+    }
+
+# vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

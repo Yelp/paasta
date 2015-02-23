@@ -1,3 +1,68 @@
+paasta-tools (0.9.6-yelp1) lucid; urgency=low
+
+  * 0.9.6 tagged with 'make release'
+    Commit: Merge branch PAASTA-246
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 20 Feb 2015 13:28:45 -0800
+
+paasta-tools (0.9.5-yelp1) lucid; urgency=low
+
+  * 0.9.5 tagged with 'make release'
+    Commit: Merge branch PAASTA-254
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 20 Feb 2015 13:09:47 -0800
+
+paasta-tools (0.9.4-yelp1) lucid; urgency=low
+
+  * 0.9.4 tagged with 'make release'
+    Commit: Merge branch PAASTA-259
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 20 Feb 2015 11:29:19 -0800
+
+paasta-tools (0.9.3-yelp1) lucid; urgency=low
+
+  * 0.9.3 tagged with 'make release'
+    Commit: Marathon timestamps are UTC, use datetime.datetime.utcnow()
+    instead of .now()
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Feb 2015 14:59:15 -0800
+
+paasta-tools (0.9.2-yelp1) lucid; urgency=low
+
+  * 0.9.2 tagged with 'make release'
+    Commit: ports, not service_ports.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Feb 2015 14:46:15 -0800
+
+paasta-tools (0.9.1-yelp1) lucid; urgency=low
+
+  * 0.9.1 tagged with 'make release'
+    Commit: Fix bug in get_registered_marathon_tasks
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Feb 2015 13:58:01 -0800
+
+paasta-tools (0.9.0-yelp1) lucid; urgency=low
+
+  * 0.9.0 tagged with 'make release'
+    Commit: Merge branch async_bounces
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Feb 2015 11:56:41 -0800
+
+paasta-tools (0.8.36-yelp1) lucid; urgency=low
+
+  * 0.8.36 tagged with 'make release'
+    Commit: Merge branch PAASTA-229
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 18 Feb 2015 16:06:06 -0800
+
+paasta-tools (0.8.35-yelp1) lucid; urgency=low
+
+  * 0.8.35 tagged with 'make release'
+    Commit: Make itest properly set the docker tag in the environment
+    when it is sent in
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 18 Feb 2015 10:59:08 -0800
+
 paasta-tools (0.8.34-yelp1) lucid; urgency=low
 
   * 0.8.34 tagged with 'make release'

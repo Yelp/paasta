@@ -1,8 +1,10 @@
+from __future__ import print_function
 import contextlib
 import datetime
 import errno
 import json
 import shlex
+import sys
 import tempfile
 import threading
 import os
@@ -33,6 +35,10 @@ def get_git_url(service):
     return 'git@git.yelpcorp.com:services/%s.git' % service
 
 
+class NoSuchLogLevel(Exception):
+    pass
+
+
 def configure_log():
     """We will log to the yocalhost binded scribe."""
     clog.config.configure(scribe_host='169.254.255.254', scribe_port=1463)
@@ -42,7 +48,7 @@ def _now():
     return datetime.datetime.utcnow().isoformat()
 
 
-def format_log_line(cluster, instance, component, line):
+def format_log_line(level, cluster, instance, component, line):
     """Accepts a string 'line'.
 
     Returns an appropriately-formatted dictionary which can be serialized to
@@ -51,6 +57,7 @@ def format_log_line(cluster, instance, component, line):
     now = _now()
     message = json.dumps({
         'timestamp': now,
+        'level': level,
         'cluster': cluster,
         'instance': instance,
         'component': component,
@@ -63,11 +70,17 @@ def get_log_name_for_service(service_name):
     return 'stream_paasta_%s' % service_name
 
 
-def _log(service_name, line, component, cluster='N/A', instance='N/A'):
+def _log(service_name, line, component, level='event', cluster='N/A', instance='N/A'):
     """This expects someone (currently the paasta cli main()) to have already
     configured the log object. We'll just write things to it.
     """
-    line = format_log_line(cluster, instance, component, line)
+    line = format_log_line(level, cluster, instance, component, line)
+    if level == 'event':
+        print(line, file=sys.stdout)
+    elif level == 'debug':
+        print(line, file=sys.stderr)
+    else:
+        raise NoSuchLogLevel
     line = str(line)
     log_name = get_log_name_for_service(service_name)
     clog.log_line(log_name, line)
@@ -90,7 +103,7 @@ def _timeout(process):
                 raise
 
 
-def _run(command, timeout=None):
+def _run(command, env=os.environ, timeout=None):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -102,7 +115,7 @@ def _run(command, timeout=None):
     magic.
     """
     try:
-        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT)
+        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, env=env)
         process.name = command
         # start the timer if we specified a timeout
         if timeout:
