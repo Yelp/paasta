@@ -11,6 +11,7 @@ from service_configuration_lib import read_services_configuration
 from paasta_tools.marathon_tools import get_cluster
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
 from paasta_tools.utils import _run
+from paasta_tools.utils import PaastaColors
 
 
 def load_method(module_name, method_name):
@@ -81,86 +82,6 @@ def failure(msg, link):
     :param msg: a string
     :return: a beautiful string"""
     return "%s %s %s" % (x_mark(), msg, PaastaColors.blue(link))
-
-
-class PaastaColors:
-    """Collection of static variables and methods to assist in coloring text."""
-    # ANSI colour codes
-    BLUE = '\033[34m'
-    BOLD = '\033[1m'
-    CYAN = '\033[36m'
-    DEFAULT = '\033[0m'
-    GREEN = '\033[32m'
-    GREY = '\033[1m\033[30m'
-    RED = '\033[31m'
-    YELLOW = '\033[33m'
-
-    @staticmethod
-    def bold(text):
-        """Return bolded text.
-
-        :param text: a string
-        :return: text colour coded with ANSI bold
-        """
-        return PaastaColors.color_text(PaastaColors.BOLD, text)
-
-    @staticmethod
-    def blue(text):
-        """Return text that can be printed cyan.
-
-        :param text: a string
-        :return: text colour coded with ANSI blue
-        """
-        return PaastaColors.color_text(PaastaColors.BLUE, text)
-
-    @staticmethod
-    def green(text):
-        """Return text that can be printed cyan.
-
-        :param text: a string
-        :return: text colour coded with ANSI green"""
-        return PaastaColors.color_text(PaastaColors.GREEN, text)
-
-    @staticmethod
-    def red(text):
-        """Return text that can be printed cyan.
-
-        :param text: a string
-        :return: text colour coded with ANSI red"""
-        return PaastaColors.color_text(PaastaColors.RED, text)
-
-    @staticmethod
-    def color_text(color, text):
-        """Return text that can be printed color.
-
-        :param color: ANSI colour code
-        :param text: a string
-        :return: a string with ANSI colour encoding"""
-        return color + text + PaastaColors.DEFAULT
-
-    @staticmethod
-    def cyan(text):
-        """Return text that can be printed cyan.
-
-        :param text: a string
-        :return: text colour coded with ANSI cyan"""
-        return PaastaColors.color_text(PaastaColors.CYAN, text)
-
-    @staticmethod
-    def yellow(text):
-        """Return text that can be printed yellow.
-
-        :param text: a string
-        :return: text colour coded with ANSI yellow"""
-        return PaastaColors.color_text(PaastaColors.YELLOW, text)
-
-    @staticmethod
-    def grey(text):
-        return PaastaColors.color_text(PaastaColors.GREY, text)
-
-    @staticmethod
-    def default(text):
-        return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
 
 class PaastaCheckMessages:

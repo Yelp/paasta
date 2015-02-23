@@ -6,10 +6,9 @@ from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import get_pipeline_url
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import PaastaColors
 from service_configuration_lib import read_service_configuration
-
 
 NO_DESCRIPTION_MESSAGE = (
     "No 'description' entry in service.yaml. Please a one line sentance that describes this service"

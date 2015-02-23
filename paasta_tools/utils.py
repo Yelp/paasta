@@ -22,6 +22,142 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
 )
 
 
+class PaastaColors:
+    """Collection of static variables and methods to assist in coloring text."""
+    # ANSI colour codes
+    BLUE = '\033[34m'
+    BOLD = '\033[1m'
+    CYAN = '\033[36m'
+    DEFAULT = '\033[0m'
+    GREEN = '\033[32m'
+    GREY = '\033[1m\033[30m'
+    RED = '\033[31m'
+    YELLOW = '\033[33m'
+
+    @staticmethod
+    def bold(text):
+        """Return bolded text.
+
+        :param text: a string
+        :return: text colour coded with ANSI bold
+        """
+        return PaastaColors.color_text(PaastaColors.BOLD, text)
+
+    @staticmethod
+    def blue(text):
+        """Return text that can be printed cyan.
+
+        :param text: a string
+        :return: text colour coded with ANSI blue
+        """
+        return PaastaColors.color_text(PaastaColors.BLUE, text)
+
+    @staticmethod
+    def green(text):
+        """Return text that can be printed cyan.
+
+        :param text: a string
+        :return: text colour coded with ANSI green"""
+        return PaastaColors.color_text(PaastaColors.GREEN, text)
+
+    @staticmethod
+    def red(text):
+        """Return text that can be printed cyan.
+
+        :param text: a string
+        :return: text colour coded with ANSI red"""
+        return PaastaColors.color_text(PaastaColors.RED, text)
+
+    @staticmethod
+    def color_text(color, text):
+        """Return text that can be printed color.
+
+        :param color: ANSI colour code
+        :param text: a string
+        :return: a string with ANSI colour encoding"""
+        return color + text + PaastaColors.DEFAULT
+
+    @staticmethod
+    def cyan(text):
+        """Return text that can be printed cyan.
+
+        :param text: a string
+        :return: text colour coded with ANSI cyan"""
+        return PaastaColors.color_text(PaastaColors.CYAN, text)
+
+    @staticmethod
+    def yellow(text):
+        """Return text that can be printed yellow.
+
+        :param text: a string
+        :return: text colour coded with ANSI yellow"""
+        return PaastaColors.color_text(PaastaColors.YELLOW, text)
+
+    @staticmethod
+    def grey(text):
+        return PaastaColors.color_text(PaastaColors.GREY, text)
+
+    @staticmethod
+    def default(text):
+        return PaastaColors.color_text(PaastaColors.DEFAULT, text)
+
+
+LOG_COMPONENTS = {
+    'build': {
+        'color': PaastaColors.blue,
+        'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
+        'command': 'NA - TODO: tee jenkins build steps into scribe PAASTA-201',
+        'source_env': 'env1',
+    },
+    'deploy': {
+        'color': PaastaColors.cyan,
+        'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
+        'command': 'NA - TODO: tee deploy logs into scribe PAASTA-201',
+    },
+    'app_output': {
+        'color': PaastaColors.bold,
+        'help': 'Stderr and stdout of the actual process spawned by Mesos',
+        'command': 'NA - PAASTA-78',
+    },
+    'app_request': {
+        'color': PaastaColors.bold,
+        'help': 'The request log for the service. Defaults to "service_NAME_requests"',
+        'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
+    },
+    'app_errors': {
+        'color': PaastaColors.red,
+        'help': 'Application error log, defaults to "stream_service_NAME_errors"',
+        'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
+    },
+    'lb_requests': {
+        'color': PaastaColors.bold,
+        'help': 'All requests from Smartstack haproxy',
+        'command': 'NA - TODO: SRV-1130',
+    },
+    'lb_errors': {
+        'color': PaastaColors.red,
+        'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
+        'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
+    },
+    'monitoring': {
+        'color': PaastaColors.green,
+        'help': 'Logs from Sensu checks for the service',
+        'command': 'NA - TODO log mesos healthcheck and sensu stuff.',
+    },
+}
+
+
+class NoSuchLogComponent(Exception):
+    pass
+
+
+def validate_log_component(component):
+    if component in LOG_COMPONENTS.keys():
+        return True
+    else:
+        raise NoSuchLogComponent
+
+
 def get_git_url(service):
     """Get the git url for a service. Assumes that the service's
     repo matches its name, and that it lives in services- i.e.
@@ -52,6 +188,7 @@ def format_log_line(level, cluster, instance, component, line):
     Returns an appropriately-formatted dictionary which can be serialized to
     JSON for logging and which contains 'line'.
     """
+    validate_log_component(component)
     now = _now()
     message = json.dumps({
         'timestamp': now,

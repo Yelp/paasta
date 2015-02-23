@@ -19,7 +19,7 @@ def test_format_log_line():
     input_line = 'foo'
     fake_cluster = 'fake_cluster'
     fake_instance = 'fake_instance'
-    fake_component = 'fake_component'
+    fake_component = 'build'
     fake_level = 'debug'
     fake_now = 'fake_now'
     expected = json.dumps({
@@ -36,9 +36,14 @@ def test_format_log_line():
         assert actual == expected
 
 
+def test_format_log_line_rejects_invalid_components():
+    with raises(utils.NoSuchLogComponent):
+        utils.format_log_line('fake_service', 'fake_line', 'BOGUS_COMPONENT', 'debug', 'fake_input')
+
+
 def test_log_raise_on_unknown_level():
     with raises(utils.NoSuchLogLevel):
-        utils._log('fake_service', 'fake_line', 'fake_component', 'BOGUS_LEVEL')
+        utils._log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
 
 
 def test_get_log_name_for_service():

@@ -5,21 +5,21 @@ import os
 import re
 import urllib2
 
-from service_configuration_lib import read_extra_service_information
-from service_configuration_lib import read_service_configuration
-from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.marathon_tools import get_service_instance_list
+from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import is_file_in_dir
 from paasta_tools.paasta_cli.utils import NoSuchService
-from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
-from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import success
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import x_mark
+from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import _run
+from service_configuration_lib import read_extra_service_information
+from service_configuration_lib import read_service_configuration
 
 
 def get_pipeline_config(service_name):

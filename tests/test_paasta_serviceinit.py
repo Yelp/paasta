@@ -8,7 +8,7 @@ import mesos
 import mock
 
 from paasta_tools import paasta_serviceinit
-from paasta_tools.paasta_cli.utils import PaastaColors
+from paasta_tools.utils import PaastaColors
 
 
 class TestPaastaServiceinit:

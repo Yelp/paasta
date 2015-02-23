@@ -10,52 +10,10 @@ from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import figure_out_cluster
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.paasta_cli.utils import PaastaColors
+from paasta_tools.utils import LOG_COMPONENTS
+
 
 DEFAULT_COMPONENTS = ['build', 'deploy', 'app_output', 'lb_errors', 'monitoring']
-LOG_COMPONENTS = {
-    'build': {
-        'color': PaastaColors.blue,
-        'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
-        'command': 'NA - TODO: tee jenkins build steps into scribe PAASTA-201',
-        'source_env': 'devc',
-    },
-    'deploy': {
-        'color': PaastaColors.cyan,
-        'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
-        'command': 'NA - TODO: tee deploy logs into scribe PAASTA-201',
-    },
-    'app_output': {
-        'color': PaastaColors.bold,
-        'help': 'Stderr and stdout of the actual process spawned by Mesos',
-        'command': 'NA - PAASTA-78',
-    },
-    'app_request': {
-        'color': PaastaColors.bold,
-        'help': 'The request log for the service. Defaults to "service_NAME_requests"',
-        'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
-    },
-    'app_errors': {
-        'color': PaastaColors.red,
-        'help': 'Application error log, defaults to "stream_service_NAME_errors"',
-        'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
-    },
-    'lb_requests': {
-        'color': PaastaColors.bold,
-        'help': 'All requests from Smartstack haproxy',
-        'command': 'NA - TODO: SRV-1130',
-    },
-    'lb_errors': {
-        'color': PaastaColors.red,
-        'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
-        'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
-    },
-    'monitoring': {
-        'color': PaastaColors.green,
-        'help': 'Logs from Sensu checks for the service',
-        'command': 'NA - TODO log mesos healthcheck and sensu stuff.',
-    },
-}
 
 log = logging.getLogger('__main__')
 

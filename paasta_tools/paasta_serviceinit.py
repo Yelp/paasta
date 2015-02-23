@@ -15,11 +15,11 @@ import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
 
 from paasta_tools import marathon_tools
-from paasta_tools.paasta_cli.utils import PaastaColors
-from paasta_tools.monitoring.replication_utils import get_replication_for_services
-from paasta_tools.mesos_tools import get_running_mesos_tasks_for_service
 from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
+from paasta_tools.mesos_tools import get_running_mesos_tasks_for_service
+from paasta_tools.monitoring.replication_utils import get_replication_for_services
 from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.utils import PaastaColors
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))

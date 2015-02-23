@@ -4,20 +4,19 @@ on the PaaSTA stack"""
 from ordereddict import OrderedDict
 from os.path import join
 
-
-from service_configuration_lib import read_deploy
-from paasta_tools.marathon_tools import \
-    DEFAULT_SOA_DIR, _get_deployments_json
+from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
+from paasta_tools.marathon_tools import _get_deployments_json
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
-from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import get_pipeline_url
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
-from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import x_mark
+from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
+from paasta_tools.utils import PaastaColors
+from service_configuration_lib import read_deploy
 
 
 def add_subparser(subparsers):
