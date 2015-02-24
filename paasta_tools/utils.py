@@ -95,7 +95,7 @@ def _timeout(process):
         try:
             # sending SIGKILL to the process
             process.kill()
-            print 'ERROR: Timeout running command: %s', process.name
+            print('ERROR: Timeout running command: %s' % process.name)
         except OSError as e:
             # No such process error
             # The process could have been terminated meanwhile
