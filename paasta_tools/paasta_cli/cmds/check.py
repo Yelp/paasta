@@ -128,7 +128,7 @@ def makefile_responds_to_itest():
     # 0 - Nothing to do
     # 1 - Things to do
     # 2 - Don't know what you are talking about
-    returncode, _ = _run(cmd)
+    returncode, _ = _run(cmd, timeout=5)
     return returncode in [0, 1]
 
 
@@ -148,7 +148,7 @@ def makefile_check():
 
 def git_repo_check(service_name):
     cmd = 'git ls-remote git@git.yelpcorp.com:services/%s' % service_name
-    returncode, _ = _run(cmd)
+    returncode, _ = _run(cmd, timeout=5)
     if returncode == 0:
         print PaastaCheckMessages.GIT_REPO_FOUND
     else:

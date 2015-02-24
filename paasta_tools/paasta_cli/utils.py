@@ -342,7 +342,7 @@ def check_ssh_and_sudo_on_master(master):
     success status (True or False) and any output from attempting the check.
     """
     check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
-    rc, output = _run(check_command)
+    rc, output = _run(check_command, timeout=10)
     if rc == 0:
         return (True, None)
     if rc == 255:  # ssh error
@@ -380,7 +380,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, verbo
         instancename,
         subcommand
     )
-    _, output = _run(command)
+    _, output = _run(command, timeout=10)
     return output
 
 
