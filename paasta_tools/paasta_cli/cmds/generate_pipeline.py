@@ -44,7 +44,7 @@ def paasta_generate_pipeline(args):
 
     for cmd in cmds:
         print "INFO: Executing %s" % cmd
-        returncode, output = _run(cmd, timeout=30)
+        returncode, output = _run(cmd, timeout=90)
         if returncode != 0:
             print "ERROR: Failed to generate Jenkins pipeline"
             print output
