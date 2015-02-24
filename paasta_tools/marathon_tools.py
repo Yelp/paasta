@@ -39,10 +39,17 @@ class MarathonConfig:
     def __init__(self):
         self.__dict__ = self.__shared_state
         if not self.config:
-            self.config = json.loads(open(PATH_TO_MARATHON_CONFIG).read())
+            if os.path.exists(PATH_TO_MARATHON_CONFIG):
+                self.config = json.loads(open(PATH_TO_MARATHON_CONFIG).read())
+            else:
+                raise PaastaNotConfigured
 
     def get(self):
         return self.config
+
+
+class PaastaNotConfigured(Exception):
+    pass
 
 
 class NoMarathonClusterFoundException(Exception):
@@ -749,7 +756,11 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     if not cluster:
         try:
             cluster = get_cluster()
-        except NoMarathonClusterFoundException:
+        # In the cases where there is *no* cluster or in the case
+        # where there isn't a Paasta configuration file at *all*, then
+        # there must be no marathon_services running here, so we catch
+        # these custom exceptions and return [].
+        except (NoMarathonClusterFoundException, PaastaNotConfigured):
             return []
     # When a cluster is defined in mesos, lets iterate through marathon services
     marathon_services = marathon_services_running_here()
