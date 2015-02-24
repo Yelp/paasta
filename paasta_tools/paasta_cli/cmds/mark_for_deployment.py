@@ -54,7 +54,7 @@ def paasta_mark_for_deployment(args):
     """Mark a docker image for deployment"""
     cmd = build_command(args.git_url, args.commit, args.clusterinstance)
     print "INFO: Executing command '%s'" % cmd
-    returncode, output = _run(cmd, timeout=10)
+    returncode, output = _run(cmd, timeout=30)
     if returncode != 0:
         print 'ERROR: Failed to mark image for deployment. Output:\n%sReturn code was: %d' % (output, returncode)
         sys.exit(returncode)

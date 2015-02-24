@@ -48,7 +48,7 @@ def paasta_push_to_registry(args):
 
     cmd = build_command(service_name, args.commit)
     print 'INFO: Executing command "%s"' % cmd
-    returncode, output = _run(cmd, timeout=300)
+    returncode, output = _run(cmd, timeout=1800)
     if returncode != 0:
         print 'ERROR: Failed to promote image. Output:\n%sReturn code was: %d' % (output, returncode)
         sys.exit(returncode)
