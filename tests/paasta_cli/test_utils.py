@@ -1,3 +1,4 @@
+import mock
 from mock import patch
 from socket import error
 from socket import gaierror
@@ -109,7 +110,7 @@ def test_check_ssh_and_sudo_on_master_check_successful(mock_run):
     expected_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
 
     actual = utils.check_ssh_and_sudo_on_master(master)
-    mock_run.assert_called_once_with(expected_command)
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == (True, None)
 
 
@@ -141,7 +142,7 @@ def test_run_paasta_serviceinit_status(mock_run):
     expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit fake_service_name.fake_instancename status'
 
     actual = utils.run_paasta_serviceinit('status', 'fake_master', 'fake_service_name', 'fake_instancename')
-    mock_run.assert_called_once_with(expected_command)
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value[1]
 
 
@@ -151,7 +152,7 @@ def test_run_paasta_serviceinit_status_verbose(mock_run):
     expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v fake_service_name.fake_instancename status'
 
     actual = utils.run_paasta_serviceinit('status', 'fake_master', 'fake_service_name', 'fake_instancename', True)
-    mock_run.assert_called_once_with(expected_command)
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value[1]
 
 
