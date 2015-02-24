@@ -653,6 +653,25 @@ class TestMarathonTools:
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert actual == []
 
+    def test_get_marathon_services_running_here_for_nerve_when_paasta_not_configured(self):
+        cluster = None
+        soa_dir = 'the_sound_of_music'
+        with contextlib.nested(
+            mock.patch(
+                'marathon_tools.get_cluster',
+                side_effect=marathon_tools.PaastaNotConfigured,
+            ),
+            mock.patch(
+                'marathon_tools.marathon_services_running_here',
+                return_value=[],
+            ),
+        ) as (
+            get_cluster_patch,
+            marathon_services_running_here_patch,
+        ):
+            actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
+            assert actual == []
+
     def test_get_marathon_services_running_here_for_nerve_when_get_cluster_raises_other_exception(self):
         cluster = None
         soa_dir = 'the_sound_of_music'
