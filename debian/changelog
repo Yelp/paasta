@@ -1,3 +1,10 @@
+paasta-tools (0.9.8-yelp1) lucid; urgency=low
+
+  * 0.9.8 tagged with 'make release'
+    Commit: Merge branch exit0_when_done
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 24 Feb 2015 15:21:35 -0800
+
 paasta-tools (0.9.7-yelp1) lucid; urgency=low
 
   * 0.9.7 tagged with 'make release'
