@@ -7,7 +7,7 @@ from paasta_tools.paasta_cli.cmds import logs
 
 def test_cluster_to_scribe_env_good():
     actual = logs.cluster_to_scribe_env('mesosstage')
-    assert actual == 'devc'
+    assert actual == 'env1'
 
 
 def test_cluster_to_scribe_env_bad():
@@ -47,7 +47,7 @@ def test_determine_scribereader_envs():
         cluster_to_scribe_env_patch.return_value = 'fake_scribe_env'
         actual = logs.determine_scribereader_envs(components, cluster)
         cluster_to_scribe_env_patch.assert_called_with(cluster)
-        assert actual == set(['devc', 'fake_scribe_env'])
+        assert actual == set(['env1', 'fake_scribe_env'])
 
 
 def test_prefix():
