@@ -3,7 +3,6 @@ service-configuration-lib >= 0.8.2
 marathon == 0.6.10
 argparse
 requests
-pycurl
 pysensu-yelp >= 0.1.5
 kazoo >= 2.0.0
 sensu-plugin == 0.1.0

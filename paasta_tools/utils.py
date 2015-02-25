@@ -84,6 +84,27 @@ def _log(service_name, line, component, level='event', cluster='N/A', instance='
     clog.log_line(log_name, line)
 
 
+def read_marathon_config():
+    """
+    Read Marathon configs to get cluster info and volumes
+    that we need to bind when runngin a container.
+    """
+    config_path = '/etc/paasta_tools/paasta.json'
+
+    config = json.loads(open(config_path).read())
+
+    volumes = list()
+
+    for volume in config['docker_volumes']:
+        volumes.append(volume['hostPath'] + ':' + volume['containerPath'] + ':' + volume['mode'].lower())
+
+    result = dict()
+
+    result['cluster'] = config['cluster']
+    result['volumes'] = volumes
+    return result
+
+
 def _run(command, env=os.environ):
     """Given a command, run it. Return a tuple of the return code and any
     output.
