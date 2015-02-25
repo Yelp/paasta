@@ -6,6 +6,8 @@ import yaml
 from docker import Client
 from docker import errors
 
+from paasta_tools.paasta_cli.utils import validate_service_name
+
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
@@ -75,6 +77,11 @@ def read_service_manifest(service, cluster, canary):
     """
     Read service manifest to get info about the environment.
     """
+    service_name = service
+    if service_name and service_name.startswith('services-'):
+        service_name = service_name.split('services-', 1)[1]
+    validate_service_name(service_name)
+
     path = '/nail/etc/services/' + service + '/marathon-' + cluster + '.yaml'
 
     manifest = yaml.load(file(path, 'r'))
