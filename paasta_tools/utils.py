@@ -177,7 +177,7 @@ class NoSuchLogLevel(Exception):
 
 def configure_log():
     """We will log to the yocalhost binded scribe."""
-    clog.config.configure(scribe_host='169.254.255.254', scribe_port=1463)
+    clog.config.configure(scribe_host='169.254.255.254', scribe_port=1463, scribe_disable=False)
 
 
 def _now():
@@ -211,16 +211,15 @@ def _log(service_name, line, component, level='event', cluster='N/A', instance='
     """This expects someone (currently the paasta cli main()) to have already
     configured the log object. We'll just write things to it.
     """
-    line = format_log_line(level, cluster, instance, component, line)
     if level == 'event':
         print(line, file=sys.stdout)
     elif level == 'debug':
         print(line, file=sys.stderr)
     else:
         raise NoSuchLogLevel
-    line = str(line)
     log_name = get_log_name_for_service(service_name)
-    clog.log_line(log_name, line)
+    formatted_line = format_log_line(level, cluster, instance, component, line)
+    clog.log_line(log_name, formatted_line)
 
 
 def _timeout(process):
