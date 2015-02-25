@@ -223,8 +223,14 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
     mock_calculate_remote_masters.assert_called_once_with(cluster_name)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
     mock_check_ssh_and_sudo_on_master.assert_called_once_with('fake_connectable_master')
-    mock_run_paasta_serviceinit.assert_called_once_with('status', 'fake_connectable_master', service_name, instancename,
-                                                        False)
+    mock_run_paasta_serviceinit.assert_called_once_with(
+        'status',
+        'fake_connectable_master',
+        service_name,
+        instancename,
+        cluster_name,
+        False,
+    )
     assert actual == mock_run_paasta_serviceinit.return_value
 
 

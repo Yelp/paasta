@@ -403,7 +403,7 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, servic
     check, output = check_ssh_and_sudo_on_master(master)
     if not check:
         return 'ERROR ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
-    return run_paasta_serviceinit(subcommand, master, service_name, instancename, verbose)
+    return run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster_name, verbose)
 
 
 def lazy_choices_completer(list_func):
