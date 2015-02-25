@@ -382,6 +382,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
         subcommand
     )
     _, output = _run(command, timeout=10)
+    # All serviceinit commands except "status" change state, so we log them
     if subcommand != 'status':
         for line in output.splitlines():
             _log(service_name, line, 'deploy', cluster=cluster, instance=instancename)
