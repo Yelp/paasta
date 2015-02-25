@@ -244,13 +244,13 @@ def _timeout(process):
                 raise
 
 
-def _run(command, env=os.environ, timeout=None, livelog=False, **kwargs):
+def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
     :param timeout: If specified, the command will be terminated after timeout
         seconds.
-    :param livelog: If True, the _log will be handled by _run. If set, it is mandatory
+    :param log: If True, the _log will be handled by _run. If set, it is mandatory
         to pass at least a :service_name: and a :component: parameter. Optionally you
         can pass :cluster:, :instance: and :loglevel: parameters for logging.
     We wanted to use plumbum instead of rolling our own thing with
@@ -258,14 +258,14 @@ def _run(command, env=os.environ, timeout=None, livelog=False, **kwargs):
     https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
     magic.
     """
-    if livelog:
+    output = []
+    if log:
         service_name = kwargs['service_name']
         component = kwargs['component']
         cluster = kwargs.get('cluster', ANY_CLUSTER)
         instance = kwargs.get('instance', ANY_INSTANCE)
         loglevel = kwargs.get('loglevel', DEFAULT_LOGLEVEL)
     try:
-        output = ''
         process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, env=env)
         process.name = command
         # start the timer if we specified a timeout
@@ -273,7 +273,7 @@ def _run(command, env=os.environ, timeout=None, livelog=False, **kwargs):
             proctimer = threading.Timer(timeout, _timeout, (process,))
             proctimer.start()
         for line in iter(process.stdout.readline, ''):
-            if livelog:
+            if log:
                 _log(
                     service_name=service_name,
                     line=line,
@@ -282,16 +282,16 @@ def _run(command, env=os.environ, timeout=None, livelog=False, **kwargs):
                     cluster=cluster,
                     instance=instance,
                 )
-            output = output + line
+            output.append(line)
         # when finished, get the exit code
         returncode = process.wait()
     except OSError as e:
-        output = e.strerror
+        output.append(e.strerror)
         returncode = e.errno
     # Stop the timer
     if timeout:
         proctimer.cancel()
-    return returncode, output
+    return returncode, ''.join(output)
 
 
 def get_umask():
