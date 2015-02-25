@@ -23,8 +23,9 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'push-to-registry'
 )
 # Default values for _log
-DEFAULT_CLUSTER = 'N/A'
-DEFAULT_INSTANCE = 'N/A'
+ANY_CLUSTER = 'N/A'
+ANY_INSTANCE = 'N/A'
+DEFAULT_LOGLEVEL = 'event'
 
 
 class PaastaColors:
@@ -210,7 +211,7 @@ def get_log_name_for_service(service_name):
     return 'stream_paasta_%s' % service_name
 
 
-def _log(service_name, line, component, level='event', cluster=DEFAULT_CLUSTER, instance=DEFAULT_INSTANCE):
+def _log(service_name, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
     """This expects someone (currently the paasta cli main()) to have already
     configured the log object. We'll just write things to it.
     """
@@ -251,7 +252,7 @@ def _run(command, env=os.environ, timeout=None, livelog=False, **kwargs):
         seconds.
     :param livelog: If True, the _log will be handled by _run. If set, it is mandatory
         to pass at least a :service_name: and a :component: parameter. Optionally you
-        can pass :cluster: and :instance: parameters for logging.
+        can pass :cluster:, :instance: and :loglevel: parameters for logging.
     We wanted to use plumbum instead of rolling our own thing with
     subprocess.Popen but were blocked by
     https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
@@ -260,14 +261,9 @@ def _run(command, env=os.environ, timeout=None, livelog=False, **kwargs):
     if livelog:
         service_name = kwargs['service_name']
         component = kwargs['component']
-        try:
-            cluster = kwargs['cluster']
-        except KeyError:
-            cluster = DEFAULT_CLUSTER
-        try:
-            instance = kwargs['instance']
-        except KeyError:
-            instance = DEFAULT_INSTANCE
+        cluster = kwargs.get('cluster', ANY_CLUSTER)
+        instance = kwargs.get('instance', ANY_INSTANCE)
+        loglevel = kwargs.get('loglevel', DEFAULT_LOGLEVEL)
     try:
         output = ''
         process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, env=env)
@@ -282,7 +278,7 @@ def _run(command, env=os.environ, timeout=None, livelog=False, **kwargs):
                     service_name=service_name,
                     line=line,
                     component=component,
-                    level='debug',
+                    level=loglevel,
                     cluster=cluster,
                     instance=instance,
                 )
