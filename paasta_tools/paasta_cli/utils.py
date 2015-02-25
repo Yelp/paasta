@@ -10,6 +10,7 @@ from service_configuration_lib import read_services_configuration
 
 from paasta_tools.marathon_tools import get_cluster
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
+from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import PaastaColors
 
@@ -367,7 +368,7 @@ def check_ssh_and_sudo_on_master(master):
     return (False, output)
 
 
-def run_paasta_serviceinit(subcommand, master, service_name, instancename, verbose=False):
+def run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster, verbose=False):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if verbose:
         verbose_flag = "-v "
@@ -381,6 +382,9 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, verbo
         subcommand
     )
     _, output = _run(command, timeout=10)
+    if subcommand != 'status':
+        for line in output.splitlines():
+            _log(service_name, line, 'deploy', cluster=cluster, instance=instancename)
     return output
 
 
