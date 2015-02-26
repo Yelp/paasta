@@ -1,16 +1,19 @@
 #!/usskr/bin/env python
 """PaaSTA log reader for humans"""
-import sys
 import argparse
 import logging
+import Queue
+import sys
 
 from argcomplete.completers import ChoicesCompleter
+from scribereader import scribereader
 
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import figure_out_cluster
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import LOG_COMPONENTS
+from paasta_tools.utils import get_log_name_for_service
 
 
 DEFAULT_COMPONENTS = ['build', 'deploy', 'app_output', 'lb_errors', 'monitoring']
@@ -102,24 +105,40 @@ def cluster_to_scribe_env(cluster):
         return env
 
 
-def scribe_tail(env, service, components, cluster):
+def scribe_tail(env, service, components, cluster, queue):
     """Calls scribetailer for a particular environment.
     outputs lines that match for the requested cluster and components
     in a pretty way"""
-    log.info("Going to scribetail in %s" % env)
-    # TODO: Replace with real scribe-tailer
-    for component in components:
-        command_string = "Command: %s" % LOG_COMPONENTS[component]['command']
-        print prefix(command_string, component)
+    # This is the code that runs in the thread spawned in
+    # tail_paasta_logs.
+    log.debug("Going to tail scribe in %s" % env)
+    stream_name = get_log_name_for_service(service)
+    host, port = scribereader.get_env_scribe_host(env, True)
+    tailer = scribereader.get_stream_tailer(stream_name, host, port)
+    for line in tailer:
+        # if line_passes_filter(line):
+            queue.put(line)
+
+    # def line_passes_filter(line, levels, components, cluster):
+    #     return line.component in components and (line.cluster == cluster (alias like "prod"?) or line.cluster == 'N/A')
 
 
 def tail_paasta_logs(service, components, cluster):
     """Sergeant function for spawning off all the right scribe tailing functions"""
     envs = determine_scribereader_envs(components, cluster)
     log.info("Would connect to these envs to tail scribe logs: %s" % envs)
+    queue = Queue.Queue()
+    # establish ioloop Queue
     for env in envs:
-        # TODO: do this in parallel
-        scribe_tail(env, service, components, cluster)
+        # start a thread that tails scribe for env, passing in reference to ioloop Queue
+        scribe_tail(env, service, components, cluster, queue)
+        # kwargs = { env=env, service=service, components=components, cluster=cluster }
+        # t = Thread(target=scribe_tail, kwargs=**kwargs)
+        # t.start()
+    # start pulling things off the queue and output them
+    # while True:
+    #     print Queue.get()
+    #     Queue.task_done()
 
 
 def paasta_logs(args):

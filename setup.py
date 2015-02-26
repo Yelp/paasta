@@ -27,6 +27,7 @@ setup(
         'argcomplete == 0.8.1',
         'mesos.cli == 0.1.3',
         'humanize == 0.5.1',
+        'scribereader == 0.1.3',
     ],
     scripts = [
         'paasta_tools/setup_marathon_job.py',
