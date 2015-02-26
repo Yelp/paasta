@@ -64,7 +64,7 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
 
 def get_service_stanza(description, external_link, auto):
     stanza = {}
-    stanza["desciption"] = get_description(description, auto)
+    stanza["description"] = get_description(description, auto)
     stanza["external_link"] = get_external_link(external_link, auto)
     return stanza
 
