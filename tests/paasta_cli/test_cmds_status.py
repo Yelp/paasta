@@ -4,6 +4,7 @@ from mock import MagicMock
 from pytest import raises
 from StringIO import StringIO
 
+from paasta_tools import marathon_tools
 from paasta_tools.paasta_cli.utils import \
     NoSuchService, PaastaColors, PaastaCheckMessages
 from paasta_tools.paasta_cli.cmds.status import paasta_status, \
@@ -56,11 +57,11 @@ def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
     assert output == expected_output
 
 
-@patch('paasta_tools.paasta_cli.cmds.status._get_deployments_json')
+@patch('paasta_tools.paasta_cli.cmds.status.DeploymentsJson.read')
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_missing_deployments_err(mock_stdout, mock_get_deployments_json):
     # paasta_status exits on error if deployments.json missing
-    mock_get_deployments_json.return_value = {}
+    mock_get_deployments_json.return_value = marathon_tools.DeploymentsJson({})
 
     expected_output = 'Failed to locate deployments.json ' \
                       'in default SOA directory\n'
@@ -264,9 +265,9 @@ def test_status_pending_pipeline_build_message(
     assert expected_output in output
 
 
-@patch('paasta_tools.paasta_cli.cmds.status._get_deployments_json')
+@patch('paasta_tools.paasta_cli.cmds.status.DeploymentsJson.read')
 def test_get_actual_deployments(mock_get_deployments,):
-    mock_get_deployments.return_value = {
+    mock_get_deployments.return_value = marathon_tools.DeploymentsJson({
         'v1': {
             'fake_service:paasta-b_cluster.b_instance': {
                 'docker_image': 'this_is_a_sha',
@@ -275,7 +276,7 @@ def test_get_actual_deployments(mock_get_deployments,):
                 'docker_image': 'this_is_a_sha',
             }
         }
-    }
+    })
     expected = {
         'a_cluster.a_instance': 'this_is_a_sha',
         'b_cluster.b_instance': 'this_is_a_sha',

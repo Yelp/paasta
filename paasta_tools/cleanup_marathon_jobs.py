@@ -47,7 +47,7 @@ def cleanup_apps(soa_dir):
 
     :param soa_dir: The SOA config directory to read from"""
     log.info("Loading marathon configuration")
-    marathon_config = marathon_tools.get_config()
+    marathon_config = marathon_tools.MarathonConfig.read()
     log.info("Connecting to marathon")
     client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
                                                 marathon_config['pass'])

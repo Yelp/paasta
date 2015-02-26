@@ -20,7 +20,7 @@ import sys
 
 import docker
 
-from paasta_tools.marathon_tools import get_deployed_images
+from paasta_tools.marathon_tools import DeploymentsJson
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -115,7 +115,7 @@ def main():
     running_containers = get_running_containers(client)
     running_mesos_containers = get_mesos_containers(running_containers)
     running_mesos_old_containers = get_old_containers(running_mesos_containers, args.max_age)
-    deployed_images = get_deployed_images()
+    deployed_images = DeploymentsJson.read().get_deployed_images()
     running_mesos_old_undeployed_containers = get_undeployed_containers(running_mesos_old_containers, deployed_images)
 
     log.info('I found these containers running:')

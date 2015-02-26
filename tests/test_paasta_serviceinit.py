@@ -7,7 +7,7 @@ import marathon
 import mesos
 import mock
 
-from paasta_tools import paasta_serviceinit
+from paasta_tools import marathon_tools, paasta_serviceinit
 from paasta_tools.paasta_cli.utils import PaastaColors
 
 
@@ -64,14 +64,17 @@ class TestPaastaServiceStatus:
     def test_get_bouncing_status(self):
         with contextlib.nested(
             mock.patch('paasta_tools.paasta_serviceinit.marathon_tools.get_matching_appids', autospec=True),
-            mock.patch('paasta_tools.paasta_serviceinit.marathon_tools.get_bounce_method', autospec=True),
         ) as (
             mock_get_matching_appids,
-            mock_get_bounce_method,
         ):
             mock_get_matching_appids.return_value = ['a', 'b']
-            mock_get_bounce_method.return_value = 'fake_bounce'
-            actual = paasta_serviceinit.get_bouncing_status('fake_service', 'fake_instance', 'unused', 'unused')
+            mock_config = marathon_tools.MarathonServiceConfig(
+                'fake_service',
+                'fake_instance',
+                {'bounce_method': 'fake_bounce'},
+                {},
+            )
+            actual = paasta_serviceinit.get_bouncing_status('fake_service', 'fake_instance', 'unused', mock_config)
             assert 'fake_bounce' in actual
             assert 'Bouncing' in actual
 

@@ -31,18 +31,276 @@ PATH_TO_MARATHON_CONFIG = '/etc/paasta_tools/marathon_config.json'
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 
-class MarathonConfig:
-    # A simple borg DP class to keep the config from being loaded tons of times.
-    # http://code.activestate.com/recipes/66531/
-    __shared_state = {'config': None}
+class MarathonConfig(dict):
+    # # A simple borg DP class to keep the config from being loaded tons of times.
+    # # http://code.activestate.com/recipes/66531/
+    # __shared_state = {'config': None}
 
-    def __init__(self):
-        self.__dict__ = self.__shared_state
-        if not self.config:
-            self.config = json.loads(open(PATH_TO_MARATHON_CONFIG).read())
+    @classmethod
+    def read(cls, path=PATH_TO_MARATHON_CONFIG):
+        with open(path) as f:
+            return cls(json.load(f))
 
-    def get(self):
-        return self.config
+    def get_cluster(self):
+        """Get the cluster defined in this host's marathon config file.
+
+        :returns: The name of the cluster defined in the marathon configuration"""
+        try:
+            return self['cluster']
+        except KeyError:
+            log.warning('Could not find marathon cluster in marathon config at %s' % PATH_TO_MARATHON_CONFIG)
+            raise NoMarathonClusterFoundException
+
+    def get_docker_registry(self):
+        """Get the docker_registry defined in this host's marathon config file.
+
+        :returns: The docker_registry specified in the marathon configuration"""
+        return self['docker_registry']
+
+    def get_zk_hosts(self):
+        """Get the zk_hosts defined in this hosts's marathon config file.
+        Strips off the zk:// prefix, if it exists, for use with Kazoo.
+
+        :returns: The zk_hosts specified in the marathon configuration"""
+        hosts = self['zk_hosts']
+        # how do python strings not have a method for doing this
+        if hosts.startswith('zk://'):
+            return hosts[len('zk://'):]
+        return hosts
+
+    def get_docker_volumes(self):
+        return self['docker_volumes']
+
+
+class DeploymentsJson(dict):
+    __cached = {}
+
+    @classmethod
+    def read(cls, soa_dir=DEFAULT_SOA_DIR):
+        cls.__cached
+        if not cls.__cached.get(soa_dir, None):
+            deployment_file = os.path.join(soa_dir, 'deployments.json')
+            if os.path.exists(deployment_file):
+                with open(deployment_file) as f:
+                    cls.__cached[soa_dir] = cls(json.load(f)['v1'])
+
+        return cls.__cached[soa_dir]
+
+    def get_branch_dict(self, service_name, instance_name):
+        full_branch = '%s:%s' % (service_name, instance_name)
+        return self.get(full_branch, {})
+
+    def get_deployed_images(self):
+        """Get the docker images that are supposed/allowed to be deployed here
+        according to deployments.json.
+
+        :param soa_dir: The SOA Configuration directory with deployments.json
+        :returns: A set of images (as strings), or empty set if deployments.json
+        doesn't exist in soa_dir
+        """
+
+        images = set()
+        for d in self.values():
+            if 'docker_image' in d and d['desired_state'] == 'start':
+                images.add(d['docker_image'])
+        return images
+
+
+class MarathonServiceConfig(object):
+    @classmethod
+    def read(cls, service_name, instance, cluster, deployments_json=None, soa_dir=DEFAULT_SOA_DIR):
+        """Read a service instance's configuration for marathon.
+
+        If a branch isn't specified for a config, the 'branch' key defaults to
+        paasta-${cluster}.${instance}.
+
+        If cluster isn't given, it's loaded using get_cluster.
+
+        :param name: The service name
+        :param instance: The instance of the service to retrieve
+        :param cluster: The cluster to read the configuration for
+        :param soa_dir: The SOA configuration directory to read from
+        :returns: A dictionary of whatever was in the config for the service instance"""
+        log.info("Reading service configuration files from dir %s/ in %s", service_name, soa_dir)
+        log.info("Reading general configuration file: service.yaml")
+        general_config = service_configuration_lib.read_extra_service_information(
+            service_name,
+            "service",
+            soa_dir=soa_dir
+        )
+        marathon_conf_file = "marathon-%s" % cluster
+        log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
+        instance_configs = service_configuration_lib.read_extra_service_information(
+            service_name,
+            marathon_conf_file,
+            soa_dir=soa_dir
+        )
+
+        if instance not in instance_configs:
+            log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
+            return {}
+
+        general_config.update(instance_configs[instance])
+
+        if deployments_json is None:
+            deployments_json = DeploymentsJson(soa_dir=soa_dir)
+
+        return cls(
+            service_name,
+            instance,
+            general_config,
+            deployments_json.get_branch_dict(service_name, instance),
+        )
+
+    def __init__(self, service_name, instance, config_dict, branch_dict):
+        self.service_name = service_name
+        self.instance = instance
+        self.config_dict = config_dict
+        self.branch_dict = branch_dict
+
+    def copy(self):
+        return self.__class__(self.service_name, self.instance, dict(self.config_dict), dict(self.branch_dict))
+
+    def get_docker_image(self):
+        """Get the docker image name (with tag) for a given service branch from
+        a generated deployments.json file."""
+        return self.branch_dict.get('docker_image', '')
+
+    def get_desired_state(self):
+        """Get the desired state (either 'start' or 'stop') for a given service
+        branch from a generated deployments.json file."""
+        return self.branch_dict.get('desired_state', 'start')
+
+    def get_force_bounce(self):
+        """Get the force_bounce token for a given service branch from a generated
+        deployments.json file. This is a token that, when changed, indicates that
+        the marathon job should be recreated and bounced, even if no other
+        parameters have changed. This may be None or a string, generally a
+        timestamp.
+        """
+        return self.branch_dict.get('force_bounce', None)
+
+    def get_instances(self):
+        """Get the number of instances specified in the service's marathon configuration.
+
+        Defaults to 0 if not specified in the config.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The number of instances specified in the config, 0 if not
+                  specified or if desired_state is not 'start'."""
+        if self.get_desired_state() == 'start':
+            instances = self.config_dict.get('instances', 1)
+            return int(instances)
+        else:
+            return 0
+
+    def get_mem(self):
+        """Gets the memory required from the service's marathon configuration.
+
+        Defaults to 1000 (1G) if no value specified in the config.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The amount of memory specified by the config, 1000 if not specified"""
+        mem = self.config_dict.get('mem')
+        return int(mem) if mem else 1000
+
+    def get_cpus(self):
+        """Gets the number of cpus required from the service's marathon configuration.
+
+        Defaults to .25 (1/4 of a cpu) if no value specified in the config.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The number of cpus specified in the config, .25 if not specified"""
+        cpus = self.config_dict.get('cpus')
+        return float(cpus) if cpus else .25
+
+    def get_args(self):
+        """Get the docker args specified in the service's marathon configuration.
+
+        Defaults to an empty array if not specified in the config.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: An array of args specified in the config, [] if not specified"""
+        return self.config_dict.get('args', [])
+
+    def get_bounce_method(self):
+        """Get the bounce method specified in the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The bounce method specified in the config, or 'upthendown' if not specified"""
+        bounce_method = self.config_dict.get('bounce_method')
+        return bounce_method if bounce_method else 'upthendown'
+
+    def get_constraints(self):
+        """Gets the constraints specified in the service's marathon configuration.
+
+        These are Marathon job constraints. See
+        https://github.com/mesosphere/marathon/wiki/Constraints
+
+        Defaults to no constraints if none given.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The constraints specified in the config, an empty array if not specified"""
+        return self.config_dict.get('constraints')
+
+    def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, healthchecks):
+        """Create the configuration that will be passed to the Marathon REST API.
+
+        Currently compiles the following keys into one nice dict:
+
+        - id: the ID of the image in Marathon
+        - cmd: currently the docker_url, seemingly needed by Marathon to keep the container field
+        - container: a dict containing the docker url and docker launch options. Needed by deimos.
+        - uris: blank.
+        - ports: an array containing the port.
+        - mem: the amount of memory required.
+        - cpus: the number of cpus required.
+        - constraints: the constraints on the Marathon job.
+        - instances: the number of instances required.
+
+        The last 5 keys are retrieved using the get_<key> functions defined above.
+
+        :param job_id: The job/app id name
+        :param docker_url: The url to the docker image the job will actually execute
+        :param docker_volumes: The docker volumes to run the image with, via the
+                               marathon configuration file
+        :param service_marathon_config: The service instance's configuration dict
+        :returns: A dict containing all of the keys listed above"""
+        complete_config = {
+            'id': job_id,
+            'container': {
+                'docker': {
+                    'image': docker_url,
+                    'network': 'BRIDGE',
+                    'portMappings': [
+                        {
+                            'containerPort': 8888,
+                            'hostPort': 0,
+                            'protocol': 'tcp',
+                        },
+                    ],
+                },
+                'type': 'DOCKER',
+                'volumes': docker_volumes,
+            },
+            'uris': ['file:///root/.dockercfg', ],
+            'backoff_seconds': 1,
+            'backoff_factor': 2,
+            'health_checks': healthchecks,
+        }
+        complete_config['mem'] = self.get_mem()
+        complete_config['cpus'] = self.get_cpus()
+        complete_config['constraints'] = self.get_constraints()
+        complete_config['instances'] = self.get_instances()
+        complete_config['args'] = self.get_args()
+        log.info("Complete configuration for instance is: %s", complete_config)
+        return complete_config
+
+    def get_nerve_namespace(self):
+        return self.config_dict.get('nerve_ns', self.instance)
+
+    def get_bounce_health_params(self):
+        return self.config_dict.get('bounce_health_params', {})
 
 
 class NoMarathonClusterFoundException(Exception):
@@ -57,27 +315,8 @@ class InvalidSmartstackMode(Exception):
     pass
 
 
-def get_config():
-    """Get the general marathon configuration information, or load
-    a default configuration if the config file isn't deployed here.
-
-    The configuration file is managed by puppet, and is called
-    /etc/paasta_tools/marathon_config.json.
-
-    :returns: A dict of the marathon configuration"""
-    return MarathonConfig().get()
-
-
 def get_cluster():
-    """Get the cluster defined in this host's marathon config file.
-
-    :returns: The name of the cluster defined in the marathon configuration"""
-    try:
-        config = get_config()
-        return config['cluster']
-    except KeyError:
-        log.warning('Could not find marathon cluster in marathon config at %s' % PATH_TO_MARATHON_CONFIG)
-        raise NoMarathonClusterFoundException
+    return MarathonConfig.read().get_cluster()
 
 
 def get_marathon_client(url, user, passwd):
@@ -89,21 +328,6 @@ def get_marathon_client(url, user, passwd):
     :returns: A new marathon.MarathonClient object"""
     log.info("Connecting to Marathon server at: %s", url)
     return MarathonClient(url, user, passwd, timeout=30)
-
-
-def get_docker_registry():
-    """Get the docker_registry defined in this host's marathon config file.
-
-    :returns: The docker_registry specified in the marathon configuration"""
-    return get_config()['docker_registry']
-
-
-def get_zk_hosts():
-    """Get the zk_hosts defined in this hosts's marathon config file.
-    Strips off the zk:// prefix, if it exists, for use with Kazoo.
-
-    :returns: The zk_hosts specified in the marathon configuration"""
-    return get_config()['zk_hosts'].lstrip('zk://')
 
 
 def compose_job_id(name, instance, tag=None):
@@ -151,91 +375,6 @@ def get_docker_url(registry_uri, docker_image):
     return docker_url
 
 
-def get_mem(service_config):
-    """Gets the memory required from the service's marathon configuration.
-
-    Defaults to 1000 (1G) if no value specified in the config.
-
-    :param service_config: The service instance's configuration dictionary
-    :returns: The amount of memory specified by the config, 1000 if not specified"""
-    mem = service_config.get('mem')
-    return int(mem) if mem else 1000
-
-
-def get_cpus(service_config):
-    """Gets the number of cpus required from the service's marathon configuration.
-
-    Defaults to .25 (1/4 of a cpu) if no value specified in the config.
-
-    :param service_config: The service instance's configuration dictionary
-    :returns: The number of cpus specified in the config, .25 if not specified"""
-    cpus = service_config.get('cpus')
-    return float(cpus) if cpus else .25
-
-
-def get_constraints(service_config):
-    """Gets the constraints specified in the service's marathon configuration.
-
-    These are Marathon job constraints. See
-    https://github.com/mesosphere/marathon/wiki/Constraints
-
-    Defaults to no constraints if none given.
-
-    :param service_config: The service instance's configuration dictionary
-    :returns: The constraints specified in the config, an empty array if not specified"""
-    return service_config.get('constraints')
-
-
-def get_instances(service_config):
-    """Get the number of instances specified in the service's marathon configuration.
-
-    Defaults to 0 if not specified in the config.
-
-    :param service_config: The service instance's configuration dictionary
-    :returns: The number of instances specified in the config, 0 if not
-              specified or if desired_state is not 'start'."""
-    if get_desired_state(service_config) == 'start':
-        instances = service_config.get('instances', 1)
-        return int(instances)
-    else:
-        return 0
-
-
-def get_args(service_config):
-    """Get the docker args specified in the service's marathon configuration.
-
-    Defaults to an empty array if not specified in the config.
-
-    :param service_config: The service instance's configuration dictionary
-    :returns: An array of args specified in the config, [] if not specified"""
-    return service_config.get('args', [])
-
-
-def get_bounce_method(service_config):
-    """Get the bounce method specified in the service's marathon configuration.
-
-    :param service_config: The service instance's configuration dictionary
-    :returns: The bounce method specified in the config, or 'upthendown' if not specified"""
-    bounce_method = service_config.get('bounce_method')
-    return bounce_method if bounce_method else 'upthendown'
-
-
-def get_desired_state(service_config):
-    """Get the desired_state specified in the service config.
-
-    :param service_config: The service instances's configuration dictionary
-    :returns: The desired state, either 'stop' or 'start'."""
-    return service_config['desired_state']
-
-
-def get_force_bounce(service_config):
-    """Get the force_bounce token specified in the service config.
-
-    :param service_config: The service instances's configuration dictionary
-    :returns: The force_bounce token, which may be a string or None."""
-    return service_config['force_bounce']
-
-
 def get_config_hash(config, force_bounce=None):
     """Create an MD5 hash of the configuration dictionary to be sent to
     Marathon. Or anything really, so long as str(config) works. Returns
@@ -248,192 +387,6 @@ def get_config_hash(config, force_bounce=None):
     return "config%s" % hasher.hexdigest()[:8]
 
 
-def get_healthchecks(service, instance):
-    """Returns a list of healthchecks per the spec:
-    https://mesosphere.github.io/marathon/docs/health-checks.html
-    Tries to be very conservative. Currently uses the same configuration
-    that smartstack uses, regarding mode (tcp/http) and http status uri.
-
-    If you have an http service, it uses the default endpoint that smartstack uses.
-    (/status currently)
-
-    Otherwise these do *not* use the same thresholds as smarstack in order to not
-    produce a negative feedback loop, where mesos agressivly kills tasks because they
-    are slow, which causes other things to be slow, etc.
-
-    :param service_config: service config hash
-    :returns: list of healthcheck defines for marathon"""
-
-    smartstack_config = read_service_namespace_config(service, instance)
-    mode = smartstack_config.get('mode', 'http')
-    # We wait for a minute for a service to come up
-    graceperiodseconds = 60
-    intervalseconds = 10
-    timeoutseconds = 10
-    # And kill it after it has been failing for a minute
-    maxconsecutivefailures = 6
-
-    if mode == 'http':
-        http_path = smartstack_config.get('healthcheck_uri', '/status')
-        healthchecks = [
-            {
-                "protocol": "HTTP",
-                "path": http_path,
-                "gracePeriodSeconds": graceperiodseconds,
-                "intervalSeconds": intervalseconds,
-                "portIndex": 0,
-                "timeoutSeconds": timeoutseconds,
-                "maxConsecutiveFailures": maxconsecutivefailures
-            },
-        ]
-    elif mode == 'tcp':
-        healthchecks = [
-            {
-                "protocol": "TCP",
-                "gracePeriodSeconds": graceperiodseconds,
-                "intervalSeconds": intervalseconds,
-                "portIndex": 0,
-                "timeoutSeconds": timeoutseconds,
-                "maxConsecutiveFailures": maxconsecutivefailures
-            },
-        ]
-    else:
-        raise InvalidSmartstackMode("Unknown mode: %s" % mode)
-    return healthchecks
-
-
-def format_marathon_app_dict(job_id, docker_url, docker_volumes, service_marathon_config, healthchecks):
-    """Create the configuration that will be passed to the Marathon REST API.
-
-    Currently compiles the following keys into one nice dict:
-
-    - id: the ID of the image in Marathon
-    - cmd: currently the docker_url, seemingly needed by Marathon to keep the container field
-    - container: a dict containing the docker url and docker launch options. Needed by deimos.
-    - uris: blank.
-    - ports: an array containing the port.
-    - mem: the amount of memory required.
-    - cpus: the number of cpus required.
-    - constraints: the constraints on the Marathon job.
-    - instances: the number of instances required.
-
-    The last 5 keys are retrieved using the get_<key> functions defined above.
-
-    :param job_id: The job/app id name
-    :param docker_url: The url to the docker image the job will actually execute
-    :param docker_volumes: The docker volumes to run the image with, via the
-                           marathon configuration file
-    :param service_marathon_config: The service instance's configuration dict
-    :returns: A dict containing all of the keys listed above"""
-    complete_config = {
-        'id': job_id,
-        'container': {
-            'docker': {
-                'image': docker_url,
-                'network': 'BRIDGE',
-                'portMappings': [
-                    {
-                        'containerPort': 8888,
-                        'hostPort': 0,
-                        'protocol': 'tcp',
-                    },
-                ],
-            },
-            'type': 'DOCKER',
-            'volumes': docker_volumes,
-        },
-        'uris': ['file:///root/.dockercfg', ],
-        'backoff_seconds': 1,
-        'backoff_factor': 2,
-        'health_checks': healthchecks,
-    }
-    complete_config['mem'] = get_mem(service_marathon_config)
-    complete_config['cpus'] = get_cpus(service_marathon_config)
-    complete_config['constraints'] = get_constraints(service_marathon_config)
-    complete_config['instances'] = get_instances(service_marathon_config)
-    complete_config['args'] = get_args(service_marathon_config)
-    log.info("Complete configuration for instance is: %s", complete_config)
-    return complete_config
-
-
-def _get_deployments_json(soa_dir):
-    """Load deployments.json.
-
-    :param soa_dir: The SOA Configuration directory with deployments.json
-    :returns: A dictionary of the loaded json, or empty dict if
-    soa_dir/deployments.json does not exist
-    """
-    deployment_file = os.path.join(soa_dir, 'deployments.json')
-    if os.path.exists(deployment_file):
-        return json.loads(open(deployment_file).read())
-    else:
-        return {}
-
-
-def get_branch_dict(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
-    full_branch = '%s:%s' % (service_name, branch_name)
-    deployments_json = _get_deployments_json(soa_dir)
-    return deployments_json['v1'].get(full_branch, {})
-
-
-def get_docker_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
-    """Get the docker image name (with tag) for a given service branch from
-    a generated deployments.json file.
-
-    :param service_name: The name of the service
-    :param branch_name: The name of the remote branch to get an image for
-    :param soa_dir: The SOA Configuration directory with deployments.json
-    :returns: The name and tag of the docker image for the branch, or '' if
-              deployments.json doesn't exist in soa_dir"""
-    return get_branch_dict(service_name, branch_name, soa_dir=soa_dir) \
-        .get('docker_image', '')
-
-
-def get_desired_state_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
-    """Get the desired state (either 'start' or 'stop') for a given service
-    branch from a generated deployments.json file.
-
-    :param service_name: The name of the service
-    :param branch_name: The name of the remote branch to get state for
-    :param soa_dir: The SOA Configuration directory with deployments.json
-    :returns: The desired state for the branch, or '' if
-              deployments.json doesn't exist in soa_dir"""
-    return get_branch_dict(service_name, branch_name, soa_dir=soa_dir) \
-        .get('desired_state', 'start')
-
-
-def get_force_bounce_from_branch(service_name, branch_name, soa_dir=DEFAULT_SOA_DIR):
-    """Get the force_bounce token for a given service branch from a generated
-    deployments.json file. This is a token that, when changed, indicates that
-    the marathon job should be recreated and bounced, even if no other
-    parameters have changed. This may be None or a string, generally a
-    timestamp.
-
-    :param service_name: The name of the service
-    :param branch_name: The name of the remote branch to get token for
-    :param soa_dir: The SOA Configuration directory with deployments.json
-    :returns: The force_bounce token for the branch, or None if
-              deployments.json doesn't exist in soa_dir"""
-    return get_branch_dict(service_name, branch_name, soa_dir=soa_dir) \
-        .get('force_bounce', None)
-
-
-def get_deployed_images(soa_dir=DEFAULT_SOA_DIR):
-    """Get the docker images that are supposed/allowed to be deployed here
-    according to deployments.json.
-
-    :param soa_dir: The SOA Configuration directory with deployments.json
-    :returns: A set of images (as strings), or empty set if deployments.json
-    doesn't exist in soa_dir
-    """
-    deployments_json = _get_deployments_json(soa_dir)
-    images = set()
-    for d in deployments_json.values():
-        if 'docker_image' in d and d['desired_state'] == 'start':
-            images.add(d['docker_image'])
-    return images
-
-
 def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
     """Read a service's monitoring.yaml file.
 
@@ -444,50 +397,6 @@ def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
     monitoring_file = os.path.join(rootdir, name, "monitoring.yaml")
     monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
     return monitor_conf
-
-
-def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Read a service instance's configuration for marathon.
-
-    If a branch isn't specified for a config, the 'branch' key defaults to
-    paasta-${cluster}.${instance}.
-
-    If cluster isn't given, it's loaded using get_cluster.
-
-    :param name: The service name
-    :param instance: The instance of the service to retrieve
-    :param cluster: The cluster to read the configuration for
-    :param soa_dir: The SOA configuration directory to read from
-    :returns: A dictionary of whatever was in the config for the service instance"""
-    if not cluster:
-        cluster = get_cluster()
-    log.info("Reading service configuration files from dir %s/ in %s", name, soa_dir)
-    log.info("Reading general configuration file: service.yaml")
-    general_config = service_configuration_lib.read_extra_service_information(
-        name,
-        "service",
-        soa_dir=soa_dir
-    )
-    marathon_conf_file = "marathon-%s" % cluster
-    log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
-    instance_configs = service_configuration_lib.read_extra_service_information(
-        name,
-        marathon_conf_file,
-        soa_dir=soa_dir
-    )
-    if instance in instance_configs:
-        general_config.update(instance_configs[instance])
-        if 'branch' not in general_config:
-            branch = get_default_branch(cluster, instance)
-        else:
-            branch = general_config['branch']
-        general_config['docker_image'] = get_docker_from_branch(name, branch, soa_dir)
-        general_config['desired_state'] = get_desired_state_from_branch(name, branch, soa_dir)
-        general_config['force_bounce'] = get_force_bounce_from_branch(name, branch, soa_dir)
-        return general_config
-    else:
-        log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
-        return {}
 
 
 def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -518,7 +427,7 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     if not cluster:
         cluster = get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
+    nerve_dict = ServiceNamespaceConfig.read(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
 
 
@@ -539,7 +448,7 @@ def get_mode_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR)
     if not cluster:
         cluster = get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
+    nerve_dict = ServiceNamespaceConfig.read(name, namespace, soa_dir)
     return nerve_dict.get('mode', 'http')
 
 
@@ -585,6 +494,7 @@ def list_all_marathon_instances_for_service(service):
     return instances
 
 
+# TODO refactor this to use MarathonServiceConfig
 def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the marathon instances defined for a service as a list of tuples.
 
@@ -651,58 +561,113 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     return namespace_list
 
 
-def read_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
-    """Attempt to read the configuration for a service's namespace in a more strict fashion.
+class ServiceNamespaceConfig(dict):
+    @classmethod
+    def read(cls, srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
+        """Attempt to read the configuration for a service's namespace in a more strict fashion.
 
-    Retrevies the following keys:
+        Retrevies the following keys:
 
-    - proxy_port: the proxy port defined for the given namespace
-    - healthcheck_uri: URI target for healthchecking
-    - healthcheck_timeout_s: healthcheck timeout in seconds
-    - timeout_connect_ms: proxy frontend timeout in milliseconds
-    - timeout_server_ms: proxy server backend timeout in milliseconds
-    - timeout_client_ms: proxy server client timeout in milliseconds
-    - retries: the number of retries on a proxy backend
-    - mode: the mode the service is run in (http or tcp)
-    - routes: a list of tuples of (source, destination)
+        - proxy_port: the proxy port defined for the given namespace
+        - healthcheck_uri: URI target for healthchecking
+        - healthcheck_timeout_s: healthcheck timeout in seconds
+        - timeout_connect_ms: proxy frontend timeout in milliseconds
+        - timeout_server_ms: proxy server backend timeout in milliseconds
+        - timeout_client_ms: proxy server client timeout in milliseconds
+        - retries: the number of retries on a proxy backend
+        - mode: the mode the service is run in (http or tcp)
+        - routes: a list of tuples of (source, destination)
 
-    :param srv_name: The service name
-    :param namespace: The namespace to read
-    :param soa_dir: The SOA config directory to read from
-    :returns: A dict of the above keys, if they were defined
-    """
-    try:
-        smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
+        :param srv_name: The service name
+        :param namespace: The namespace to read
+        :param soa_dir: The SOA config directory to read from
+        :returns: A dict of the above keys, if they were defined
+        """
+
+        try:
+            smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
+        except:
+            return cls()
         ns_config = smartstack[namespace]
-        ns_dict = {}
+        ns_dict = cls()
         # We can't really use .get, as we don't want the key to be in the returned
         # dict at all if it doesn't exist in the config file.
         # We also can't just copy the whole dict, as we only care about some keys
         # and there's other things that appear in the smartstack section in
         # several cases.
-        if 'healthcheck_uri' in ns_config:
-            ns_dict['healthcheck_uri'] = ns_config['healthcheck_uri']
-        if 'healthcheck_timeout_s' in ns_config:
-            ns_dict['healthcheck_timeout_s'] = ns_config['healthcheck_timeout_s']
-        if 'proxy_port' in ns_config:
-            ns_dict['proxy_port'] = ns_config['proxy_port']
-        if 'timeout_connect_ms' in ns_config:
-            ns_dict['timeout_connect_ms'] = ns_config['timeout_connect_ms']
-        if 'timeout_server_ms' in ns_config:
-            ns_dict['timeout_server_ms'] = ns_config['timeout_server_ms']
-        if 'timeout_client_ms' in ns_config:
-            ns_dict['timeout_client_ms'] = ns_config['timeout_client_ms']
-        if 'retries' in ns_config:
-            ns_dict['retries'] = ns_config['retries']
-        if 'mode' in ns_config:
-            ns_dict['mode'] = ns_config['mode']
+        key_whitelist = set([
+            'healthcheck_uri',
+            'healthcheck_timeout_s',
+            'proxy_port',
+            'timeout_connect_ms',
+            'timeout_server_ms',
+            'timeout_client_ms',
+            'retries',
+            'mode',
+        ])
+
+        for key, value in ns_config.items():
+            if key in key_whitelist:
+                ns_dict[key] = value
+
         if 'routes' in ns_config:
             ns_dict['routes'] = [(route['source'], dest)
                                  for route in ns_config['routes']
                                  for dest in route['destinations']]
+
         return ns_dict
-    except:  # The file couldn't be loaded, didn't exist, or otherwise was broken.
-        return {}
+
+    def get_healthchecks(self):
+        """Returns a list of healthchecks per the spec:
+        https://mesosphere.github.io/marathon/docs/health-checks.html
+        Tries to be very conservative. Currently uses the same configuration
+        that smartstack uses, regarding mode (tcp/http) and http status uri.
+
+        If you have an http service, it uses the default endpoint that smartstack uses.
+        (/status currently)
+
+        Otherwise these do *not* use the same thresholds as smarstack in order to not
+        produce a negative feedback loop, where mesos agressivly kills tasks because they
+        are slow, which causes other things to be slow, etc.
+
+        :param service_config: service config hash
+        :returns: list of healthcheck defines for marathon"""
+
+        mode = self.get('mode', 'http')
+        # We wait for a minute for a service to come up
+        graceperiodseconds = 60
+        intervalseconds = 10
+        timeoutseconds = 10
+        # And kill it after it has been failing for a minute
+        maxconsecutivefailures = 6
+
+        if mode == 'http':
+            http_path = self.get('healthcheck_uri', '/status')
+            healthchecks = [
+                {
+                    "protocol": "HTTP",
+                    "path": http_path,
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "portIndex": 0,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
+        elif mode == 'tcp':
+            healthchecks = [
+                {
+                    "protocol": "TCP",
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "portIndex": 0,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
+        else:
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+        return healthchecks
 
 
 def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, timeout_s=30):
@@ -757,7 +722,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     for name, instance, port in marathon_services:
         try:
             namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-            nerve_dict = read_service_namespace_config(name, namespace, soa_dir)
+            nerve_dict = ServiceNamespaceConfig.read(name, namespace, soa_dir)
             nerve_dict['port'] = port
             nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
             nerve_list.append((nerve_name, nerve_dict))
@@ -774,7 +739,7 @@ def get_classic_services_that_run_here():
 
 
 def get_classic_service_information_for_nerve(name, soa_dir):
-    nerve_dict = read_service_namespace_config(name, 'main', soa_dir)
+    nerve_dict = ServiceNamespaceConfig.read(name, 'main', soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
     nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
@@ -856,17 +821,19 @@ def is_app_id_running(app_id, client):
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
-    config = read_service_config(name, instance, soa_dir=soa_dir)
-    docker_url = get_docker_url(marathon_config['docker_registry'],
-                                config['docker_image'])
-    healthchecks = get_healthchecks(name, instance)
-    complete_config = format_marathon_app_dict(partial_id, docker_url,
-                                               marathon_config['docker_volumes'],
-                                               config, healthchecks)
+    config = MarathonServiceConfig.read(name, instance, soa_dir=soa_dir)
+    docker_url = get_docker_url(marathon_config.get_docker_registry(), config.get_docker_image())
+    healthchecks = ServiceNamespaceConfig.read(name, instance).get_healthchecks()
+    complete_config = config.format_marathon_app_dict(
+        partial_id,
+        docker_url,
+        marathon_config.get_docker_volumes(),
+        healthchecks,
+    )
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(
         complete_config,
-        force_bounce=get_force_bounce(config),
+        force_bounce=config.get_force_bounce(),
     )
     tag = "%s.%s" % (code_sha, config_hash)
     full_id = compose_job_id(name, instance, tag)
@@ -900,10 +867,10 @@ def get_expected_instance_count_for_namespace(service_name, namespace, soa_dir=D
     :returns: An integer value of the # of expected instances for the namespace"""
     total_expected = 0
     for name, instance in get_service_instance_list(service_name, soa_dir=soa_dir):
-        srv_config = read_service_config(name, instance, soa_dir=soa_dir)
-        instance_ns = srv_config['nerve_ns'] if 'nerve_ns' in srv_config else instance
+        srv_config = MarathonServiceConfig.read(name, instance, soa_dir=soa_dir)
+        instance_ns = srv_config.get_nerve_namespace()
         if namespace == instance_ns:
-            total_expected += get_instances(srv_config)
+            total_expected += srv_config.get_instances()
     return total_expected
 
 

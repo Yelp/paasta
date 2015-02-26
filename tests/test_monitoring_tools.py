@@ -1,5 +1,7 @@
 import contextlib
 import mock
+
+import marathon_tools
 import monitoring_tools
 
 
@@ -13,7 +15,8 @@ class TestMonitoring_Tools:
         'notification_email': 'general_test_notification_email',
         'page': general_page
     }
-    empty_service_config = {}
+
+    empty_service_config = marathon_tools.MarathonServiceConfig('myservicename', 'myinstance', {}, {})
     job_page = False
     fake_job_config = {
         'team': 'job_test_team',
@@ -104,17 +107,20 @@ class TestMonitoring_Tools:
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_service_configuration',
                        return_value=self.fake_general_service_config),
-            mock.patch('marathon_tools.read_service_config', return_value=self.fake_job_config),
+            mock.patch('marathon_tools.MarathonServiceConfig.read', return_value=self.fake_job_config),
             mock.patch('marathon_tools.read_monitoring_config', return_value=self.fake_monitor_config),
+            mock.patch('marathon_tools.get_cluster', return_value='clustername'),
         ) as (
             service_configuration_lib_patch,
             read_service_patch,
-            read_monitoring_patch
+            read_monitoring_patch,
+            get_cluster_patch,
         ):
             actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name, self.soa_dir)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, soa_dir=self.soa_dir)
+            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, 'clustername',
+                                                       soa_dir=self.soa_dir)
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
 
     def test_get_monitoring_config_value_with_monitor_config(self):
@@ -122,17 +128,20 @@ class TestMonitoring_Tools:
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_service_configuration',
                        return_value=self.fake_general_service_config),
-            mock.patch('marathon_tools.read_service_config', return_value=self.empty_job_config),
+            mock.patch('marathon_tools.MarathonServiceConfig.read', return_value=self.empty_job_config),
             mock.patch('marathon_tools.read_monitoring_config', return_value=self.fake_monitor_config),
+            mock.patch('marathon_tools.get_cluster', return_value='clustername'),
         ) as (
             service_configuration_lib_patch,
             read_service_patch,
-            read_monitoring_patch
+            read_monitoring_patch,
+            get_cluster_patch,
         ):
             actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name, self.soa_dir)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, soa_dir=self.soa_dir)
+            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, 'clustername',
+                                                       soa_dir=self.soa_dir)
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
 
     def test_get_monitoring_config_value_with_service_config(self):
@@ -140,17 +149,20 @@ class TestMonitoring_Tools:
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_service_configuration',
                        return_value=self.fake_general_service_config),
-            mock.patch('marathon_tools.read_service_config', return_value=self.empty_job_config),
+            mock.patch('marathon_tools.MarathonServiceConfig.read', return_value=self.empty_job_config),
             mock.patch('marathon_tools.read_monitoring_config', return_value=self.empty_monitor_config),
+            mock.patch('marathon_tools.get_cluster', return_value='clustername'),
         ) as (
             service_configuration_lib_patch,
             read_service_patch,
-            read_monitoring_patch
+            read_monitoring_patch,
+            get_cluster_patch,
         ):
             actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name, self.soa_dir)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, soa_dir=self.soa_dir)
+            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, 'clustername',
+                                                       soa_dir=self.soa_dir)
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
 
     def test_get_monitoring_config_value_with_defaults(self):
@@ -158,15 +170,18 @@ class TestMonitoring_Tools:
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_service_configuration',
                        return_value=self.empty_job_config),
-            mock.patch('marathon_tools.read_service_config', return_value=self.empty_job_config),
+            mock.patch('marathon_tools.MarathonServiceConfig.read', return_value=self.empty_job_config),
             mock.patch('marathon_tools.read_monitoring_config', return_value=self.empty_monitor_config),
+            mock.patch('marathon_tools.get_cluster', return_value='clustername'),
         ) as (
             service_configuration_lib_patch,
             read_service_patch,
-            read_monitoring_patch
+            read_monitoring_patch,
+            get_cluster_patch,
         ):
             actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name, self.soa_dir)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, soa_dir=self.soa_dir)
+            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, 'clustername',
+                                                       soa_dir=self.soa_dir)
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)

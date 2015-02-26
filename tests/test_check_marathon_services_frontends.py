@@ -3,6 +3,8 @@ import mock
 import contextlib
 import pysensu_yelp
 
+import marathon_tools
+
 
 def test_build_check_command():
     mode = 'paasta'
@@ -50,8 +52,8 @@ def test_send_event():
         mock.patch("paasta_tools.monitoring_tools.get_irc_channels",
                    return_value=fake_irc),
         mock.patch("pysensu_yelp.send_event"),
-        mock.patch('paasta_tools.marathon_tools.get_cluster',
-                   return_value=fake_cluster)
+        mock.patch('paasta_tools.marathon_tools.MarathonConfig.read',
+                   return_value=marathon_tools.MarathonConfig({'cluster': fake_cluster}))
     ) as (
         monitoring_tools_get_team_patch,
         monitoring_tools_get_runbook_patch,

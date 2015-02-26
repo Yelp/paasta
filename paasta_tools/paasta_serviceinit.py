@@ -78,7 +78,7 @@ def restart_marathon_job(service, instance, app_id, normal_instance_count, clien
 
 def get_bouncing_status(service, instance, client, complete_job_config):
     apps = marathon_tools.get_matching_appids(service, instance, client)
-    bounce_method = marathon_tools.get_bounce_method(complete_job_config)
+    bounce_method = complete_job_config.get_bounce_method()
     app_count = len(apps)
     if app_count == 0:
         return PaastaColors.red("Stopped")
@@ -396,13 +396,13 @@ def main():
     service = service_instance.split(marathon_tools.ID_SPACER)[0]
     instance = service_instance.split(marathon_tools.ID_SPACER)[1]
 
-    marathon_config = marathon_tools.get_config()
+    marathon_config = marathon_tools.MarathonConfig.read()
     cluster = marathon_tools.get_cluster()
     validate_service_instance(service, instance, cluster)
 
-    complete_job_config = marathon_tools.read_service_config(service, instance, cluster)
+    complete_job_config = marathon_tools.MarathonServiceConfig.read(service, instance, cluster)
     app_id = marathon_tools.get_app_id(service, instance, marathon_config)
-    normal_instance_count = marathon_tools.get_instances(complete_job_config)
+    normal_instance_count = complete_job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
 
     client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],

@@ -7,7 +7,7 @@ from os.path import join
 
 from service_configuration_lib import read_deploy
 from paasta_tools.marathon_tools import \
-    DEFAULT_SOA_DIR, _get_deployments_json
+    DEFAULT_SOA_DIR, DeploymentsJson
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
@@ -98,7 +98,7 @@ def list_deployed_clusters(pipeline, actual_deployments):
 
 
 def get_actual_deployments(service_name):
-    deployments_json = _get_deployments_json(DEFAULT_SOA_DIR)
+    deployments_json = DeploymentsJson.read(DEFAULT_SOA_DIR)
     if not deployments_json:
         print 'Failed to locate deployments.json in default SOA directory'
         exit(1)

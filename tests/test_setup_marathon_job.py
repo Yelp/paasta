@@ -12,14 +12,19 @@ import setup_marathon_job
 class TestSetupMarathonJob:
 
     fake_docker_image = 'test_docker:1.0'
-    fake_marathon_job_config = {
-        'instances': 3,
-        'cpus': 1,
-        'mem': 100,
-        'docker_image': fake_docker_image,
-        'nerve_ns': 'aaaaugh',
-        'bounce_method': 'brutal'
-    }
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        'servicename',
+        'instancename',
+        {
+            'instances': 3,
+            'cpus': 1,
+            'mem': 100,
+            'docker_image': fake_docker_image,
+            'nerve_ns': 'aaaaugh',
+            'bounce_method': 'brutal'
+        },
+        {},
+    )
     fake_docker_registry = 'remote_registry.com'
     fake_marathon_config = {
         'cluster': 'test_cluster',
@@ -65,9 +70,9 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.read_service_config',
-                return_value=self.fake_marathon_job_config,
-                autospec=True,
+                'paasta_tools.marathon_tools.MarathonServiceConfig.read',
+                return_value=self.fake_marathon_service_config,
+                spec=marathon_tools.MarathonServiceConfig.read,
             ),
             mock.patch(
                 'setup_marathon_job.setup_service',
@@ -110,7 +115,7 @@ class TestSetupMarathonJob:
                 self.fake_args.service_instance.split('.')[1],
                 fake_client,
                 self.fake_marathon_config,
-                self.fake_marathon_job_config,
+                self.fake_marathon_service_config,
             )
             sys_exit_patch.assert_called_once_with(0)
 
@@ -133,9 +138,9 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.read_service_config',
-                return_value=self.fake_marathon_job_config,
-                autospec=True,
+                'paasta_tools.marathon_tools.MarathonServiceConfig.read',
+                return_value=self.fake_marathon_service_config,
+                spec=marathon_tools.MarathonServiceConfig.read,
             ),
             mock.patch(
                 'setup_marathon_job.setup_service',
@@ -176,7 +181,7 @@ class TestSetupMarathonJob:
                 self.fake_args.service_instance.split('.')[1],
                 fake_client,
                 self.fake_marathon_config,
-                self.fake_marathon_job_config)
+                self.fake_marathon_service_config)
             sys_exit_patch.assert_called_once_with(1)
 
     def test_send_event(self):
@@ -294,7 +299,7 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.get_config',
+                'paasta_tools.marathon_tools.MarathonConfig.read',
                 return_value=self.fake_marathon_config,
                 autospec=True,
             ),
@@ -312,7 +317,7 @@ class TestSetupMarathonJob:
                 fake_instance,
                 fake_client,
                 self.fake_marathon_config,
-                self.fake_marathon_job_config
+                self.fake_marathon_service_config
             )
             create_config_patch.assert_called_once_with(
                 fake_name,
@@ -345,14 +350,15 @@ class TestSetupMarathonJob:
                 return_value=(111, 'Never'),
                 autospec=True,
             ),
-            mock.patch(
-                'paasta_tools.marathon_tools.get_bounce_method',
+            mock.patch.object(
+                self.fake_marathon_service_config,
+                'get_bounce_method',
                 return_value=fake_bounce,
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.read_service_config',
-                return_value=self.fake_marathon_job_config,
+                'paasta_tools.marathon_tools.MarathonServiceConfig.read',
+                return_value=self.fake_marathon_service_config,
                 autospec=True,
             ),
         ) as (
@@ -366,7 +372,7 @@ class TestSetupMarathonJob:
                 fake_instance,
                 fake_client,
                 self.fake_marathon_config,
-                self.fake_marathon_job_config,
+                self.fake_marathon_service_config,
             )
             assert status == 111
             assert output == 'Never'
@@ -376,7 +382,7 @@ class TestSetupMarathonJob:
                 fake_instance,
                 self.fake_marathon_config
             )
-            get_bounce_patch.assert_called_once_with(self.fake_marathon_job_config)
+            get_bounce_patch.assert_called_once_with()
             deploy_service_patch.assert_called_once_with(
                 fake_name,
                 fake_instance,
@@ -384,8 +390,8 @@ class TestSetupMarathonJob:
                 fake_complete,
                 fake_client,
                 fake_bounce,
-                self.fake_marathon_job_config['nerve_ns'],
-                {},
+                self.fake_marathon_service_config.get_nerve_namespace(),
+                self.fake_marathon_service_config.get_bounce_health_params(),
             )
 
     def test_setup_service_srv_complete_config_raises(self):
@@ -501,9 +507,9 @@ class TestSetupMarathonJob:
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}
         with mock.patch(
-            'paasta_tools.marathon_tools.get_config',
+            'paasta_tools.marathon_tools.MarathonConfig.read',
             return_value=fake_conf,
-            autospec=True,
+            spec=marathon_tools.MarathonConfig.read,  # autospec doesn't work on classmethod
         ) as get_conf_patch:
             assert setup_marathon_job.get_main_marathon_config() == fake_conf
             get_conf_patch.assert_called_once_with()

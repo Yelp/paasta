@@ -66,9 +66,10 @@ def __get_monitoring_config_value(key, framework, service_name, instance_name=No
                                   soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
     general_config = service_configuration_lib.read_service_configuration(service_name, soa_dir=soa_dir)
     if instance_name:
-        job_config = marathon_tools.read_service_config(service_name, instance_name, soa_dir=soa_dir)
+        cluster = marathon_tools.get_cluster()
+        job_config = marathon_tools.MarathonServiceConfig.read(service_name, instance_name, cluster, soa_dir=soa_dir)
     else:
-        job_config = {}
+        job_config = marathon_tools.MarathonServiceConfig(service_name, instance_name, {}, {})
     monitor_config = marathon_tools.read_monitoring_config(service_name, soa_dir=soa_dir)
     service_default = general_config.get(key, monitoring_defaults(key))
     service_default = general_config.get('monitoring', {key: service_default}).get(key, service_default)

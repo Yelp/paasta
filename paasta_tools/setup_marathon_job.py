@@ -88,7 +88,7 @@ def send_event(name, instance, soa_dir, status, output):
 
 def get_main_marathon_config():
     log.debug("Reading marathon configuration")
-    marathon_config = marathon_tools.get_config()
+    marathon_config = marathon_tools.MarathonConfig.read()
     log.info("Marathon config is: %s", marathon_config)
     return marathon_config
 
@@ -198,9 +198,9 @@ def setup_service(service_name, instance_name, client, marathon_config,
         full_id,
         complete_config,
         client,
-        marathon_tools.get_bounce_method(service_marathon_config),
-        service_marathon_config.get('nerve_ns', instance_name),
-        service_marathon_config.get('bounce_health_params', {}),
+        service_marathon_config.get_bounce_method(),
+        service_marathon_config.get_nerve_namespace(),
+        service_marathon_config.get_bounce_health_params(),
     )
 
 
@@ -231,8 +231,12 @@ def main():
     client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
                                                 marathon_config['pass'])
 
-    service_instance_config = marathon_tools.read_service_config(service_name, instance_name,
-                                                                 marathon_tools.get_cluster(), soa_dir)
+    service_instance_config = marathon_tools.MarathonServiceConfig.read(
+        service_name,
+        instance_name,
+        marathon_tools.get_cluster(),
+        soa_dir,
+    )
 
     if service_instance_config:
         try:

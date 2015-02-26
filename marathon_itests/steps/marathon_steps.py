@@ -28,7 +28,7 @@ def working_marathon(context):
     if not hasattr(context, 'client'):
         marathon_connection_string = "http://%s" % get_service_connection_string('marathon', 8080)
         zk_connection_string = "zk://%s/meoss-testcluster" % get_service_connection_string('zookeeper', 2181)
-        marathon_config = {
+        marathon_config = marathon_tools.MarathonConfig({
           'docker_volumes': [],
           'url': marathon_connection_string,
           'zk_hosts': zk_connection_string,
@@ -36,7 +36,7 @@ def working_marathon(context):
           'user': None,
           'pass': None,
           'docker_registry': u'docker-dev.yelpcorp.com'
-        }
+        })
         context.client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
                                      marathon_config['pass'])
         context.marathon_config = marathon_config

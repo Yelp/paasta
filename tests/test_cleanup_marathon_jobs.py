@@ -56,7 +56,7 @@ class TestCleanupMarathonJobs:
                 'paasta_tools.marathon_tools.get_marathon_services_for_cluster',
                 return_value=expected_apps
             ),
-            mock.patch('paasta_tools.marathon_tools.get_config',
+            mock.patch('paasta_tools.marathon_tools.MarathonConfig.read',
                        return_value=self.fake_marathon_config),
             mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', spec=contextmanager),
             mock.patch('paasta_tools.marathon_tools.get_marathon_client', return_value=self.fake_marathon_client),
