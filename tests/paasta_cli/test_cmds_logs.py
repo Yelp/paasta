@@ -19,6 +19,50 @@ def test_cluster_to_scribe_env_bad():
         assert sys_exit.value.code == 1
 
 
+def test_line_passes_filter_true():
+    levels = ['fake_level1', 'fake_level2']
+    cluster = 'fake_cluster'
+    instance = 'fake_instance'
+    components = ['build', 'deploy']
+    line = 'fake_line'
+    formatted_line = format_log_line(levels[0], cluster, instance, components[0], line)
+    assert logs.line_passes_filter(formatted_line, levels, components, cluster) is True
+
+
+def test_line_passes_filter_true_when_default_cluster():
+    levels = ['fake_level1', 'fake_level2']
+    cluster = 'fake_cluster'
+    instance = 'fake_instance'
+    components = ['build', 'deploy']
+    line = 'fake_line'
+    # TODO: Use ANY_CLUSTER when tripy ships the branch that
+    # introduces that constant instead of hardcoded 'N/A'
+    formatted_line = format_log_line(levels[0], 'N/A', instance, components[0], line)
+    assert logs.line_passes_filter(formatted_line, levels, components, cluster) is True
+
+
+def test_line_passes_filter_false_when_wrong_level():
+    levels = ['fake_level1', 'fake_level2']
+    cluster = 'fake_cluster'
+    instance = 'fake_instance'
+    components = ['build', 'deploy']
+    line = 'fake_line'
+    formatted_line = format_log_line('BOGUS_LEVEL', cluster, instance, components[0], line)
+    assert logs.line_passes_filter(formatted_line, levels, components, cluster) is False
+
+
+def test_line_passes_filter_false_when_wrong_component():
+    levels = ['fake_level1', 'fake_level2']
+    cluster = 'fake_cluster'
+    instance = 'fake_instance'
+    components = ['build', 'deploy']
+    line = 'fake_line'
+    # component must be legit as well as not in the list of requested
+    # components
+    formatted_line = format_log_line(levels[0], cluster, instance, 'monitoring', line)
+    assert logs.line_passes_filter(formatted_line, levels, components, cluster) is False
+
+
 def test_scribe_tail_log_everything():
     env = 'fake_env'
     service = 'fake_service'

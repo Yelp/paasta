@@ -1,6 +1,7 @@
 #!/usskr/bin/env python
 """PaaSTA log reader for humans"""
 import argparse
+import json
 import logging
 import Queue
 import sys
@@ -106,8 +107,18 @@ def cluster_to_scribe_env(cluster):
 
 
 def line_passes_filter(line, levels, components, cluster):
-    pass
-    # return line.component in components and (line.cluster == cluster (alias like "prod"?) or line.cluster == 'N/A')
+    """UPDATE ME!!!"""
+    parsed_line = json.loads(line)
+    return (
+        parsed_line.get('level') in levels
+        and parsed_line.get('component') in components
+        and (
+            parsed_line.get('cluster') == cluster
+            # TODO: Use ANY_CLUSTER when tripy ships the branch that
+            # introduces that constant instead of hardcoded 'N/A'
+            or parsed_line.get('cluster') == 'N/A'
+        )
+    )
 
 
 def scribe_tail(env, service, levels, components, cluster, queue):
