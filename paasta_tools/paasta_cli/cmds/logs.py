@@ -144,7 +144,6 @@ def tail_paasta_logs(service, levels, components, cluster):
     envs = determine_scribereader_envs(components, cluster)
     log.info("Would connect to these envs to tail scribe logs: %s" % envs)
     queue = Queue.Queue()
-    # establish ioloop Queue
     for env in envs:
         # start a thread that tails scribe for env, passing in reference to ioloop Queue
         scribe_tail(env, service, levels, components, cluster, queue)
