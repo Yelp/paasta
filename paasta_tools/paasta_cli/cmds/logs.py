@@ -105,25 +105,30 @@ def cluster_to_scribe_env(cluster):
         return env
 
 
-def scribe_tail(env, service, components, cluster, queue):
+def line_passes_filter(line, levels, components, cluster):
+    pass
+    # return line.component in components and (line.cluster == cluster (alias like "prod"?) or line.cluster == 'N/A')
+
+
+def scribe_tail(env, service, levels, components, cluster, queue):
     """Calls scribetailer for a particular environment.
     outputs lines that match for the requested cluster and components
-    in a pretty way"""
-    # This is the code that runs in the thread spawned in
+    in a pretty way
+
+    UPDATE ME!!!
+    """
+    # This is the code that runs in the thread spawned by
     # tail_paasta_logs.
     log.debug("Going to tail scribe in %s" % env)
     stream_name = get_log_name_for_service(service)
     host, port = scribereader.get_env_scribe_host(env, True)
     tailer = scribereader.get_stream_tailer(stream_name, host, port)
     for line in tailer:
-        # if line_passes_filter(line):
+        if line_passes_filter(line, levels, components, cluster):
             queue.put(line)
 
-    # def line_passes_filter(line, levels, components, cluster):
-    #     return line.component in components and (line.cluster == cluster (alias like "prod"?) or line.cluster == 'N/A')
 
-
-def tail_paasta_logs(service, components, cluster):
+def tail_paasta_logs(service, levels, components, cluster):
     """Sergeant function for spawning off all the right scribe tailing functions"""
     envs = determine_scribereader_envs(components, cluster)
     log.info("Would connect to these envs to tail scribe logs: %s" % envs)
@@ -131,8 +136,8 @@ def tail_paasta_logs(service, components, cluster):
     # establish ioloop Queue
     for env in envs:
         # start a thread that tails scribe for env, passing in reference to ioloop Queue
-        scribe_tail(env, service, components, cluster, queue)
-        # kwargs = { env=env, service=service, components=components, cluster=cluster }
+        scribe_tail(env, service, levels, components, cluster, queue)
+        # kwargs = { env=env, service=service, levels=levels, components=components, cluster=cluster, queue=queue }
         # t = Thread(target=scribe_tail, kwargs=**kwargs)
         # t.start()
     # start pulling things off the queue and output them

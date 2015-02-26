@@ -19,35 +19,44 @@ def test_cluster_to_scribe_env_bad():
         assert sys_exit.value.code == 1
 
 
-def test_scribe_tail():
+def test_scribe_tail_log_everything():
     env = 'fake_env'
     service = 'fake_service'
+    levels = ['fake_level1', 'fake_level2']
     components = ['build', 'deploy']
     cluster = 'fake_cluster'
     instance = 'fake_instance'
     queue = Queue.Queue()
     tailer = iter([
         format_log_line(
-            'event',
+            levels[0],
             cluster,
             instance,
             'build',
-            'level: event. component: build.',
+            'level: first. component: build.',
         ),
         format_log_line(
-            'debug',
+            levels[1],
             cluster,
             instance,
             'deploy',
-            'level: debug. component: deploy.',
+            'level: second. component: deploy.',
         ),
     ])
-    with mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True) as mock_scribereader:
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.line_passes_filter', autospec=True),
+    ) as (
+        mock_scribereader,
+        mock_line_passes_filter,
+    ):
         mock_scribereader.get_env_scribe_host.return_value = ('fake_host', 'fake_port')
         mock_scribereader.get_stream_tailer.return_value = tailer
+        mock_line_passes_filter.return_value = True
         logs.scribe_tail(
             env,
             service,
+            levels,
             components,
             cluster,
             queue,
@@ -61,14 +70,60 @@ def test_scribe_tail():
         assert queue.qsize() == 2
         first_line = queue.get_nowait()
         queue.task_done()
-        assert 'level: event. component: build.' in first_line
+        assert 'level: first. component: build.' in first_line
         second_line = queue.get_nowait()
         queue.task_done()
-        assert 'level: debug. component: deploy.' in second_line
+        assert 'level: second. component: deploy.' in second_line
+
+
+def test_scribe_tail_log_nothing():
+    env = 'fake_env'
+    service = 'fake_service'
+    levels = ['fake_level1', 'fake_level2']
+    components = ['build', 'deploy']
+    cluster = 'fake_cluster'
+    instance = 'fake_instance'
+    queue = Queue.Queue()
+    tailer = iter([
+        format_log_line(
+            levels[0],
+            cluster,
+            instance,
+            'build',
+            'level: first. component: build.',
+        ),
+        format_log_line(
+            levels[1],
+            cluster,
+            instance,
+            'deploy',
+            'level: second. component: deploy.',
+        ),
+    ])
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.line_passes_filter', autospec=True),
+    ) as (
+        mock_scribereader,
+        mock_line_passes_filter,
+    ):
+        mock_scribereader.get_env_scribe_host.return_value = ('fake_host', 'fake_port')
+        mock_scribereader.get_stream_tailer.return_value = tailer
+        mock_line_passes_filter.return_value = False
+        logs.scribe_tail(
+            env,
+            service,
+            levels,
+            components,
+            cluster,
+            queue,
+        )
+        assert queue.qsize() == 0
 
 
 def test_tail_paasta_logs():
     service = 'fake_service'
+    levels = ['fake_level1', 'fake_level2']
     components = ['deploy', 'monitoring']
     cluster = 'fake_cluster'
     with contextlib.nested(
@@ -81,10 +136,10 @@ def test_tail_paasta_logs():
         log_patch,
     ):
         determine_scribereader_envs_patch.return_value = ['env1', 'env2']
-        logs.tail_paasta_logs(service, components, cluster)
+        logs.tail_paasta_logs(service, levels, components, cluster)
         determine_scribereader_envs_patch.assert_called_once_with(components, cluster)
-        scribe_tail_patch.assert_any_call('env1', service, components, cluster, mock.ANY)
-        scribe_tail_patch.assert_any_call('env2', service, components, cluster, mock.ANY)
+        scribe_tail_patch.assert_any_call('env1', service, levels, components, cluster, mock.ANY)
+        scribe_tail_patch.assert_any_call('env2', service, levels, components, cluster, mock.ANY)
         scribe_tail_patch.call_count == 2
 
 
