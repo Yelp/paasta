@@ -96,7 +96,7 @@ def read_marathon_config():
     volumes = list()
 
     for volume in config['docker_volumes']:
-        volumes.append(volume['hostPath'] + ':' + volume['containerPath'] + ':' + volume['mode'].lower())
+        volumes.append('%s:%s:%s', volume['hostPath'], volume['containerPath'], volume['mode'].lower())
 
     result = dict()
 

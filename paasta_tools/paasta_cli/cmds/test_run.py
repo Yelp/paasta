@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import json
+import os
 import sys
 
 from docker import Client
@@ -12,20 +13,23 @@ from paasta_tools.utils import read_marathon_config
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'test-run',
-        description='Test run service Docker container (not implemented)',
-        help='Test run service Docker container (not implemented)')
+        description='Test run service Docker container',
+        help='Test run service Docker container',
+    )
 
     list_parser.add_argument(
         '-s', '--service',
-        help='Name of service for which you wish to '
-        + 'upload a docker image. Leading "services-'
-        + '", as included in a Jenkins job name, will'
-        + ' be stripped.',
+        help=(
+            'Name of service for which you wish to '
+            'upload a docker image. Leading "services-'
+            '", as included in a Jenkins job name, will'
+            ' be stripped.'
+        ),
         required=True,
     )
     list_parser.add_argument(
         '-p', '--path',
-        help='Path to Dockerfile which you want to test-run',
+        help='Path to directory with Dockerfile which you want to test-run',
         required=False,
     )
     list_parser.add_argument(
@@ -92,36 +96,35 @@ def run_docker_container(docker_client, docker_hash, args):
 def build_docker_container(docker_client, args):
     """
     Build Docker container from Dockerfile in the current directory or
-    specified in command line args. Returns result image hash.
+    specified in command line args. Resulting image hash.
     """
     result = ''
 
-    dockerfile_path = './'
+    dockerfile_path = './Dockerfile'
 
     if args.path:
-        dockerfile_path = args.path
+        dockerfile_path = args.path + dockerfile_path
 
     for line in docker_client.build(path=dockerfile_path, tag='latest'):
         line_dict = json.loads(line)
 
-        try:
-            stream_line = line_dict['stream']
+        stream_line = line_dict.get('stream')
 
-            if args.verbose:
-                sys.stdout.write(stream_line)
+        if args.verbose:
+            sys.stdout.write(stream_line)
 
-            if stream_line.startswith('Successfully built '):
-                """Strip the beginning of a string and \n in the end."""
-                result = stream_line[len('Successfully built '):]
-                result = result[:len(result) - 1]
-        except:
-            pass
+        if stream_line.startswith('Successfully built '):
+            """Strip the beginning of a string and \n in the end."""
+            result = stream_line[len('Successfully built '):]
+            result = result[:len(result) - 1]
 
     return result
 
 
 def paasta_test_run(args):
-    docker_client = Client(base_url='unix://var/run/docker.sock')
+    base_docker_url = os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
+
+    docker_client = Client(base_url=base_docker_url)
 
     try:
         docker_hash = build_docker_container(docker_client, args)
