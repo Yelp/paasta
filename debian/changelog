@@ -1,3 +1,10 @@
+paasta-tools (0.9.9-yelp1) lucid; urgency=low
+
+  * 0.9.9 tagged with 'make release'
+    Commit: Dont bail if a repo doesnt exist
+
+ -- Evan Krall <krall@yelp.com>  Thu, 26 Feb 2015 23:33:35 -0800
+
 paasta-tools (0.9.8-yelp1) lucid; urgency=low
 
   * 0.9.8 tagged with 'make release'
