@@ -240,13 +240,15 @@ def main():
                                            service_instance_config)
             sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
             send_event(service_name, instance_name, soa_dir, sensu_status, output)
-            sys.exit(status)
+            # We exit 0 because the script finished ok and the event was sent to the right team.
+            sys.exit(0)
         except (KeyError, TypeError, AttributeError):
             import traceback
             error_str = traceback.format_exc()
             log.error(error_str)
             send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
-            sys.exit(1)
+            # We exit 0 because the script finished ok and the event was sent to the right team.
+            sys.exit(0)
     else:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
                     (args.service_instance, marathon_tools.get_cluster())
