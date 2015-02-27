@@ -276,7 +276,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
             if log:
                 _log(
                     service_name=service_name,
-                    line=line,
+                    line=line.rstrip('\n'),
                     component=component,
                     level=loglevel,
                     cluster=cluster,
@@ -288,7 +288,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     except OSError as e:
         _log(
             service_name=service_name,
-            line=e.strerror,
+            line=e.strerror.rstrip('\n'),
             component=component,
             level=loglevel,
             cluster=cluster,
@@ -299,7 +299,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     # Stop the timer
     if timeout:
         proctimer.cancel()
-    return returncode, ''.join(output)
+    return returncode, '\n'.join(output)
 
 
 def get_umask():

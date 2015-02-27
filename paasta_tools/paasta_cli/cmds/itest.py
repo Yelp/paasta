@@ -59,7 +59,7 @@ def paasta_itest(args):
     cmd = "make itest"
 
     print 'INFO: Executing command "%s" with DOCKER_TAG set to %s' % (cmd, tag)
-    returncode, output = _run(cmd, env=run_env, timeout=3600)
+    returncode, output = _run(cmd, env=run_env, timeout=3600, log=True, component='build', service_name=service_name)
     if returncode != 0:
         print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (output, returncode)
         sys.exit(returncode)
