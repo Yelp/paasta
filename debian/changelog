@@ -1,3 +1,10 @@
+paasta-tools (0.9.11-yelp1) lucid; urgency=low
+
+  * 0.9.11 tagged with 'make release'
+    Commit: Added generate_services_file command
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 02 Mar 2015 15:30:18 -0800
+
 paasta-tools (0.9.9-yelp1) lucid; urgency=low
 
   * 0.9.9 tagged with 'make release'
