@@ -801,7 +801,7 @@ class TestMarathonTools:
                     'network': 'BRIDGE',
                     'portMappings': [
                         {
-                            'containerPort': 8888,
+                            'containerPort': marathon_tools.CONTAINER_PORT,
                             'hostPort': 0,
                             'protocol': 'tcp',
                         },

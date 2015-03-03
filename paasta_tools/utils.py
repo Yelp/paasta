@@ -93,16 +93,7 @@ def read_marathon_config():
 
     config = json.loads(open(config_path).read())
 
-    volumes = list()
-
-    for volume in config['docker_volumes']:
-        volumes.append('%s:%s:%s', volume['hostPath'], volume['containerPath'], volume['mode'].lower())
-
-    result = dict()
-
-    result['cluster'] = config['cluster']
-    result['volumes'] = volumes
-    return result
+    return config
 
 
 def _run(command, env=os.environ):

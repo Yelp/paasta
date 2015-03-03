@@ -7,8 +7,9 @@ import urllib2
 
 from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
-from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_service_instance_list
+from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import is_file_in_dir
@@ -74,7 +75,7 @@ def expose_8888_in_dockerfile(path):
     :param path : path to a Dockerfile
     :return : A boolean that is True if the Dockerfile contains 'EXPOSE 8888'
     """
-    pattern = re.compile('EXPOSE\s+8888.*')
+    pattern = re.compile("EXPOSE\s+%d.*" % CONTAINER_PORT)
     with open(path, 'r') as dockerfile:
         for line in dockerfile.readlines():
             if pattern.match(line):

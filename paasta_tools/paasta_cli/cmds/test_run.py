@@ -6,7 +6,13 @@ import sys
 from docker import Client
 from docker import errors
 
+from paasta_tools.marathon_tools import get_args
+from paasta_tools.marathon_tools import get_cpus
+from paasta_tools.marathon_tools import get_mem
 from paasta_tools.marathon_tools import read_service_config
+from paasta_tools.paasta_cli.utils import figure_out_service_name
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
+from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.utils import read_marathon_config
 
 
@@ -25,7 +31,6 @@ def add_subparser(subparsers):
             '", as included in a Jenkins job name, will'
             ' be stripped.'
         ),
-        required=True,
     )
     list_parser.add_argument(
         '-p', '--path',
@@ -35,33 +40,31 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-t', '--tty',
         help='Run Docker container with --tty=true',
+        action='store_true',
         required=False,
         default=False,
     )
     list_parser.add_argument(
-        '-c', '--cmd',
-        help='Run Docker container with particular command, o'
-        + 'for instance bash',
+        '-C', '--cmd',
+        help=(
+            'Run Docker container with particular command, '
+            'for instance bash'
+        ),
         required=False,
         default='',
     )
     list_parser.add_argument(
         '-i', '--instance',
-        help='Run Docker container with CPU/memory limit set '
-        + 'for particular instance',
+        help='Run Docker container with environment set for particular instance',
         required=False,
-        defaule='main',
-    )
+        default='main',
+    ).completer = lazy_choices_completer(list_instances)
     list_parser.add_argument(
         '-v', '--verbose',
         help='Show Docker commands output',
+        action='store_true',
         required=False,
         default=False,
-    )
-    list_parser.add_argument(
-        '-e', '--cluster',
-        help='Specify Marathon cluster',
-        required=False,
     )
 
     list_parser.set_defaults(command=paasta_test_run)
@@ -72,17 +75,29 @@ def run_docker_container(docker_client, docker_hash, args):
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
     """
-    marathon_config = read_marathon_config()
+    marathon_config_raw = read_marathon_config()
 
-    service_manifest = read_service_config(args.service, args.instance, marathon_config['cluster'])
+    volumes = list()
+
+    for volume in marathon_config_raw['docker_volumes']:
+        volumes.append('%s:%s:%s', volume['hostPath'], volume['containerPath'], volume['mode'].lower())
+
+    marathon_config = dict()
+
+    marathon_config['cluster'] = marathon_config_raw['cluster']
+    marathon_config['volumes'] = volumes
+
+    service = figure_out_service_name(args)
+
+    service_manifest = read_service_config(service, args.instance, marathon_config['cluster'])
 
     create_result = docker_client.create_container(
         image=docker_hash,
-        command=args.cmd,
+        command=args.cmd + get_args(service_manifest),
         tty=args.tty,
         volumes=marathon_config['volumes'],
-        mem_limit=str(service_manifest['mem']) + 'm',
-        cpu_shares=service_manifest['cpus'],
+        mem_limit=get_mem(service_manifest),
+        cpu_shares=get_cpus(service_manifest),
         ports=[8888],
         stdin_open=True,
     )

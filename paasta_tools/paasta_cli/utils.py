@@ -198,7 +198,7 @@ class PaastaCheckMessages:
 
     DOCKERFILE_DOESNT_EXPOSE_8888 = failure(
         "Couldn't find 'EXPOSE 8888' in Dockerfile. Your service must respond\n"
-        "  to 8888. The Dockerfile should expose that per the doc linked "
+        "  to %d. The Dockerfile should expose that per the doc linked "
         "below.\n  More info:", "http://y/paasta-contract")
 
     DOCKERFILE_YELPCORP = success(
