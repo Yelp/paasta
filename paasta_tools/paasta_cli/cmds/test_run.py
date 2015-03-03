@@ -1,15 +1,18 @@
 #!/usr/bin/env python
 import json
 import os
+import socket
 import sys
 
 from docker import Client
 from docker import errors
 
+from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_args
 from paasta_tools.marathon_tools import get_cpus
 from paasta_tools.marathon_tools import get_mem
 from paasta_tools.marathon_tools import read_service_config
+from paasta_tools.marathon_tools import read_service_namespace_config
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
@@ -55,7 +58,7 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-i', '--instance',
-        help='Run Docker container with environment set for particular instance',
+        help='Simulate a docker run for a particular instance of the service, like "main" or "canary"',
         required=False,
         default='main',
     ).completer = lazy_choices_completer(list_instances)
@@ -91,18 +94,34 @@ def run_docker_container(docker_client, docker_hash, args):
 
     service_manifest = read_service_config(service, args.instance, marathon_config['cluster'])
 
+    command = get_args(service_manifest)
+    if args.cmd:
+        command = args.cmd
+
+    stdin_open = False
+    if args.tty:
+        stdin_open = True
+
     create_result = docker_client.create_container(
         image=docker_hash,
-        command=args.cmd + get_args(service_manifest),
+        command=command,
         tty=args.tty,
         volumes=marathon_config['volumes'],
         mem_limit=get_mem(service_manifest),
         cpu_shares=get_cpus(service_manifest),
-        ports=[8888],
-        stdin_open=True,
+        ports=[CONTAINER_PORT],
+        stdin_open=stdin_open,
     )
 
-    docker_client.start(create_result['Id'], port_bindings={8888: None})
+    docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: None})
+
+    smartstack_config = read_service_namespace_config(service, args.instance)
+    mode = smartstack_config.get('mode', 'http')
+    hostname = socket.gethostname()
+    port = smartstack_config.get('proxy_port', 0)
+
+    sys.stdout.write('Docker container %s is started.\n', create_result['Id'])
+    sys.stdout.write('Reachable via %s://%s:%d', mode, hostname, port)
 
     for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
         sys.stdout.write(line)
