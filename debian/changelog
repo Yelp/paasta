@@ -1,3 +1,10 @@
+paasta-tools (0.9.12-yelp1) lucid; urgency=low
+
+  * 0.9.12 tagged with 'make release'
+    Commit: Fix lint in generate_services_file
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 03 Mar 2015 13:52:23 -0800
+
 paasta-tools (0.9.11-yelp1) lucid; urgency=low
 
   * 0.9.11 tagged with 'make release'
