@@ -76,9 +76,10 @@ configuration for the running image:
 * ``--volume``: Volume mapping is controlled via the paasta_tools
   configuration. This is not user-controlled for security reasons. The default
   mappings include common configuration folders (like `srv-configs
-  <https://trac.yelpcorp.com/wiki/HowToService/Configuration>`_) and key files
-  in ``/nail/etc`` (``habitat``, ``ecosystem``, etc). The aws keys in
-  `/etc/boto_cfg` are also included by default.
+  <https://trac.yelpcorp.com/wiki/HowToService/Configuration>`_), `yelpsoa-configs
+  <https://docs.google.com/a/yelp.com/document/d/1ZBg5ykniRU30UXj4YcsKfmmnuegQbtR2VuqCAIGi-50/edit#bookmark=id.nn2fb0z24rjh>`_,
+  and key files in ``/nail/etc`` (``habitat``, ``ecosystem``, etc). The aws keys
+  in ``/etc/boto_cfg`` are also included by default.
 
 * ``--workdir``: Mesos containers are launched in a temporary "workspace"
   directory on disk. Use the workdir sparingly and try not to output files.
