@@ -24,6 +24,7 @@ ID_SPACER = '.'
 MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = 5051
+CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
 
@@ -340,7 +341,7 @@ def format_marathon_app_dict(job_id, docker_url, docker_volumes, service_maratho
                 'network': 'BRIDGE',
                 'portMappings': [
                     {
-                        'containerPort': 8888,
+                        'containerPort': CONTAINER_PORT,
                         'hostPort': 0,
                         'protocol': 'tcp',
                     },

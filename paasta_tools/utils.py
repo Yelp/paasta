@@ -244,6 +244,18 @@ def _timeout(process):
                 raise
 
 
+def read_marathon_config():
+    """
+    Read Marathon configs to get cluster info and volumes
+    that we need to bind when runngin a container.
+    """
+    config_path = '/etc/paasta_tools/paasta.json'
+
+    config = json.loads(open(config_path).read())
+
+    return config
+
+
 def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
     output.
