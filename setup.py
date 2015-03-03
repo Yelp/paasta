@@ -43,6 +43,7 @@ setup(
         'paasta_tools/check_marathon_services_replication.py',
         'paasta_tools/check_mesos_resource_utilization.py',
         'paasta_tools/generate_services_yaml.py',
+        'paasta_tools/generate_services_file.py',
         'paasta_tools/cleanup_marathon_orphaned_containers.py',
         'paasta_tools/paasta_serviceinit.py',
         'paasta_tools/paasta_cli/paasta_cli.py',
