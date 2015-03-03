@@ -1,3 +1,10 @@
+paasta-tools (0.9.13-yelp1) lucid; urgency=low
+
+  * 0.9.13 tagged with 'make release'
+    Commit: Fixed merge conflict.
+
+ -- Leonid Movsesyan <leonid@yelp.com>  Tue, 03 Mar 2015 15:26:02 -0800
+
 paasta-tools (0.9.12-yelp1) lucid; urgency=low
 
   * 0.9.12 tagged with 'make release'
