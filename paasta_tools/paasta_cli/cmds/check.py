@@ -90,7 +90,7 @@ def docker_file_reads_from_yelpcorp(path):
 
     with open(path, 'r') as dockerfile:
         first_line = dockerfile.readline()
-        if first_line.startswith("FROM docker-dev.yelpcorp.com"):
+        if re.match('FROM\s+docker-dev.yelpcorp.com.*', first_line):
             return True
         else:
             return False
