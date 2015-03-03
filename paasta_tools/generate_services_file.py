@@ -7,6 +7,7 @@ import os
 import sys
 import service_configuration_lib
 
+
 def get_service_lines_for_service(service):
     lines = []
     config = service_configuration_lib.read_service_configuration(service)
