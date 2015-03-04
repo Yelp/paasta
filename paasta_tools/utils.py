@@ -294,7 +294,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
                     cluster=cluster,
                     instance=instance,
                 )
-            output.append(line)
+            output.append(line.rstrip('\n'))
         # when finished, get the exit code
         returncode = process.wait()
     except OSError as e:
@@ -306,7 +306,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
             cluster=cluster,
             instance=instance,
         )
-        output.append(e.strerror)
+        output.append(e.strerror.rstrip('\n'))
         returncode = e.errno
     # Stop the timer
     if timeout:
