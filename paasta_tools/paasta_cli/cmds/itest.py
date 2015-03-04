@@ -5,6 +5,7 @@ import os
 import sys
 
 from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 
 
@@ -58,8 +59,27 @@ def paasta_itest(args):
     run_env['DOCKER_TAG'] = tag
     cmd = "make itest"
 
-    print 'INFO: Executing command "%s" with DOCKER_TAG set to %s' % (cmd, tag)
-    returncode, output = _run(cmd, env=run_env, timeout=3600, log=True, component='build', service_name=service_name)
+    returncode, output = _run(
+        cmd,
+        env=run_env,
+        timeout=3600,
+        log=True,
+        component='build',
+        service_name=service_name,
+        loglevel='debug'
+    )
     if returncode != 0:
-        print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (output, returncode)
+        _log(
+            service_name=service_name,
+            line='ERROR: itest failed for %s. See output: %s' %
+            (args.commit, os.environ.get('BUILD_URL', '') + 'console'),
+            component='build',
+            level='event',
+        )
         sys.exit(returncode)
+    _log(
+        service_name=service_name,
+        line='itest passed for %s.' % args.commit,
+        component='build',
+        level='event',
+    )

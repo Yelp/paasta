@@ -3,8 +3,11 @@
 deployment to a cluster.instance.
 """
 
+import os
 import sys
 
+from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 
 
@@ -53,8 +56,37 @@ def build_command(
 def paasta_mark_for_deployment(args):
     """Mark a docker image for deployment"""
     cmd = build_command(args.git_url, args.commit, args.clusterinstance)
-    print "INFO: Executing command '%s'" % cmd
-    returncode, output = _run(cmd, timeout=30)
+    # Git repo URL's basename should be the service_name
+    service_name = args.git_url.split('/')[-1]
+    validate_service_name(service_name)
+    # Clusterinstance should be in cluster.instance format
+    cluster, instance = args.clusterinstance.split('.')
+    returncode, output = _run(
+        cmd,
+        timeout=30,
+        log=True,
+        component='deploy',
+        loglevel='debug',
+        service_name=service_name,
+        cluster=cluster,
+        instance=instance
+    )
     if returncode != 0:
-        print 'ERROR: Failed to mark image for deployment. Output:\n%sReturn code was: %d' % (output, returncode)
+        _log(
+            service_name=service_name,
+            line='ERROR: Failed to mark %s for deployment in %s.\nDetailed output: %s' %
+            (args.commit, args.clusterinstance, os.environ.get('BUILD_URL', '') + 'console'),
+            component='deploy',
+            level='event',
+            cluster=cluster,
+            instance=instance,
+        )
         sys.exit(returncode)
+    _log(
+        service_name=service_name,
+        line='Marked %s in %s for deployment.' % (args.commit, args.clusterinstance,),
+        component='deploy',
+        level='event',
+        cluster=cluster,
+        instance=instance,
+    )

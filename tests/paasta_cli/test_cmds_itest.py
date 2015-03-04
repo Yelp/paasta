@@ -19,7 +19,9 @@ def test_build_docker_tag():
 @patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.itest._run', autospec=True)
 @patch('sys.exit')
+@patch('paasta_tools.paasta_cli.cmds.itest._log', autospec=True)
 def test_itest_run_fail(
+    mock_log,
     mock_exit,
     mock_run,
     mock_validate_service_name,
@@ -32,7 +34,9 @@ def test_itest_run_fail(
 
 @patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.itest._run', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.itest._log', autospec=True)
 def test_itest_success(
+    mock_log,
     mock_run,
     mock_validate_service_name,
 ):
@@ -45,7 +49,9 @@ def test_itest_success(
 @patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.itest._run', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.itest.build_docker_tag', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.itest._log', autospec=True)
 def test_itest_works_when_service_name_starts_with_services_dash(
+    mock_log,
     mock_build_docker_tag,
     mock_run,
     mock_validate_service_name,

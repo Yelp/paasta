@@ -3,9 +3,11 @@
 image to a registry.
 """
 
+import os
 import sys
 
 from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 
 
@@ -47,8 +49,26 @@ def paasta_push_to_registry(args):
     validate_service_name(service_name)
 
     cmd = build_command(service_name, args.commit)
-    print 'INFO: Executing command "%s"' % cmd
-    returncode, output = _run(cmd, timeout=1800)
+    returncode, output = _run(
+        cmd,
+        timeout=1800,
+        log=True,
+        component='build',
+        service_name=service_name,
+        loglevel='debug'
+    )
     if returncode != 0:
-        print 'ERROR: Failed to promote image. Output:\n%sReturn code was: %d' % (output, returncode)
+        _log(
+            service_name=service_name,
+            line='ERROR: Failed to promote image for %s.\nDetailed output: %s' %
+            (args.commit, os.environ.get('BUILD_URL', '') + 'console'),
+            component='build',
+            level='event',
+        )
         sys.exit(returncode)
+    _log(
+        service_name=service_name,
+        line='Successfully pushed image for %s to registry' % (args.commit,),
+        component='build',
+        level='event',
+    )
