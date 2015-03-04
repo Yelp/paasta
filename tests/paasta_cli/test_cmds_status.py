@@ -84,7 +84,7 @@ def test_report_status_for_cluster_displays_deployed_service(
     service_name = 'fake_service'
     planned_deployments = ['cluster.instance']
     actual_deployments = {
-        'cluster.instance': 'this_is_a_sha'
+        'cluster.instance': 'sha'
     }
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
@@ -92,7 +92,7 @@ def test_report_status_for_cluster_displays_deployed_service(
         "\n"
         "cluster: cluster\n"
         "  instance: %s\n"
-        "    version: this_is_a_sha\n"
+        "    Git sha:    sha\n"
         "    %s\n"
         % (
             PaastaColors.blue('instance'),
@@ -145,8 +145,8 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         'a_cluster.b_instance',
     ]
     actual_deployments = {
-        'a_cluster.a_instance': 'this_is_a_sha',
-        'a_cluster.b_instance': 'this_is_a_sha',
+        'a_cluster.a_instance': '533976a9',
+        'a_cluster.b_instance': '533976a9',
     }
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
@@ -154,10 +154,10 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         "\n"
         "cluster: a_cluster\n"
         "  instance: %s\n"
-        "    version: this_is_a_sha\n"
+        "    Git sha:    533976a9\n"
         "    %s\n"
         "  instance: %s\n"
-        "    version: this_is_a_sha\n"
+        "    Git sha:    533976a9\n"
         "    %s\n"
         % (
             PaastaColors.blue('a_instance'),
@@ -186,7 +186,7 @@ def test_print_cluster_status_missing_deploys_in_red(
         'a_cluster.b_instance',
     ]
     actual_deployments = {
-        'a_cluster.a_instance': 'this_is_a_sha',
+        'a_cluster.a_instance': '533976a981679d586bed1cfb534fdba4b4e2c815',
     }
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
@@ -194,10 +194,10 @@ def test_print_cluster_status_missing_deploys_in_red(
         "\n"
         "cluster: a_cluster\n"
         "  instance: %s\n"
-        "    version: this_is_a_sha\n"
+        "    Git sha:    533976a9\n"
         "    %s\n"
         "  instance: %s\n"
-        "    version: None\n"
+        "    Git sha:    None\n"
         % (
             PaastaColors.blue('a_instance'),
             fake_status,
