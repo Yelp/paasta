@@ -23,11 +23,13 @@ def test_mark_for_deployment_run_fail(
 
 
 @patch('paasta_tools.paasta_cli.cmds.mark_for_deployment._run', autospec=True)
+@patch('sys.exit', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
 def test_mark_for_deployment_success(
     mock_validate_service_name,
     mock_log,
+    mock_exit,
     mock_run,
 ):
     mock_run.return_value = (0, 'Interminate!')

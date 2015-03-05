@@ -58,17 +58,14 @@ def paasta_push_to_registry(args):
         loglevel='debug'
     )
     if returncode != 0:
-        _log(
-            service_name=service_name,
-            line='ERROR: Failed to promote image for %s.\nDetailed output: %s' %
-            (args.commit, os.environ.get('BUILD_URL', '') + 'console'),
-            component='build',
-            level='event',
-        )
-        sys.exit(returncode)
+        logline = 'ERROR: Failed to promote image for %s.\nDetailed output: %s' % \
+            (args.commit, os.environ.get('BUILD_URL', '') + 'console')
+    else:
+        logline = 'Successfully pushed image for %s to registry' % (args.commit,)
     _log(
         service_name=service_name,
-        line='Successfully pushed image for %s to registry' % (args.commit,),
+        line=logline,
         component='build',
         level='event',
     )
+    sys.exit(returncode)

@@ -69,17 +69,14 @@ def paasta_itest(args):
         loglevel='debug'
     )
     if returncode != 0:
-        _log(
-            service_name=service_name,
-            line='ERROR: itest failed for %s. See output: %s' %
+        logline = 'ERROR: itest failed for %s. See output: %s' % \
             (args.commit, os.environ.get('BUILD_URL', '') + 'console'),
-            component='build',
-            level='event',
-        )
-        sys.exit(returncode)
+    else:
+        logline = 'itest passed for %s.' % args.commit,
     _log(
         service_name=service_name,
-        line='itest passed for %s.' % args.commit,
+        line=logline,
         component='build',
         level='event',
     )
+    sys.exit(returncode)

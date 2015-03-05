@@ -72,21 +72,16 @@ def paasta_mark_for_deployment(args):
         instance=instance
     )
     if returncode != 0:
-        _log(
-            service_name=service_name,
-            line='ERROR: Failed to mark %s for deployment in %s.\nDetailed output: %s' %
-            (args.commit, args.clusterinstance, os.environ.get('BUILD_URL', '') + 'console'),
-            component='deploy',
-            level='event',
-            cluster=cluster,
-            instance=instance,
-        )
-        sys.exit(returncode)
+        logline = 'ERROR: Failed to mark %s for deployment in %s.\nDetailed output: %s' % \
+            (args.commit, args.clusterinstance, os.environ.get('BUILD_URL', '') + 'console')
+    else:
+        logline = 'Marked %s in %s for deployment.' % (args.commit, args.clusterinstance,)
     _log(
         service_name=service_name,
-        line='Marked %s in %s for deployment.' % (args.commit, args.clusterinstance,),
+        line=logline,
         component='deploy',
         level='event',
         cluster=cluster,
         instance=instance,
     )
+    sys.exit(returncode)
