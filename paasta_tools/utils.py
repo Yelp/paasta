@@ -22,6 +22,10 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'performance-check',
     'push-to-registry'
 )
+# Default values for _log
+ANY_CLUSTER = 'N/A'
+ANY_INSTANCE = 'N/A'
+DEFAULT_LOGLEVEL = 'event'
 
 
 class PaastaColors:
@@ -207,7 +211,7 @@ def get_log_name_for_service(service_name):
     return 'stream_paasta_%s' % service_name
 
 
-def _log(service_name, line, component, level='event', cluster='N/A', instance='N/A'):
+def _log(service_name, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
     """This expects someone (currently the paasta cli main()) to have already
     configured the log object. We'll just write things to it.
     """
@@ -239,17 +243,39 @@ def _timeout(process):
                 raise
 
 
-def _run(command, env=os.environ, timeout=None):
+def read_marathon_config():
+    """
+    Read Marathon configs to get cluster info and volumes
+    that we need to bind when runngin a container.
+    """
+    config_path = '/etc/paasta_tools/paasta.json'
+
+    config = json.loads(open(config_path).read())
+
+    return config
+
+
+def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
-    :param timeout: If specified, the command will be terminated after timout
+    :param timeout: If specified, the command will be terminated after timeout
         seconds.
+    :param log: If True, the _log will be handled by _run. If set, it is mandatory
+        to pass at least a :service_name: and a :component: parameter. Optionally you
+        can pass :cluster:, :instance: and :loglevel: parameters for logging.
     We wanted to use plumbum instead of rolling our own thing with
     subprocess.Popen but were blocked by
     https://github.com/tomerfiliba/plumbum/issues/162 and our local BASH_FUNC
     magic.
     """
+    output = []
+    if log:
+        service_name = kwargs['service_name']
+        component = kwargs['component']
+        cluster = kwargs.get('cluster', ANY_CLUSTER)
+        instance = kwargs.get('instance', ANY_INSTANCE)
+        loglevel = kwargs.get('loglevel', DEFAULT_LOGLEVEL)
     try:
         process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, env=env)
         process.name = command
@@ -257,17 +283,34 @@ def _run(command, env=os.environ, timeout=None):
         if timeout:
             proctimer = threading.Timer(timeout, _timeout, (process,))
             proctimer.start()
-        # execute it, the output goes to the stdout
-        output, _ = process.communicate()
+        for line in iter(process.stdout.readline, ''):
+            if log:
+                _log(
+                    service_name=service_name,
+                    line=line.rstrip('\n'),
+                    component=component,
+                    level=loglevel,
+                    cluster=cluster,
+                    instance=instance,
+                )
+            output.append(line.rstrip('\n'))
         # when finished, get the exit code
-        returncode = process.returncode
+        returncode = process.wait()
     except OSError as e:
-        output = e.strerror
+        _log(
+            service_name=service_name,
+            line=e.strerror.rstrip('\n'),
+            component=component,
+            level=loglevel,
+            cluster=cluster,
+            instance=instance,
+        )
+        output.append(e.strerror.rstrip('\n'))
         returncode = e.errno
     # Stop the timer
     if timeout:
         proctimer.cancel()
-    return returncode, output
+    return returncode, '\n'.join(output)
 
 
 def get_umask():

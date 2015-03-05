@@ -1,3 +1,31 @@
+paasta-tools (0.9.13-yelp1) lucid; urgency=low
+
+  * 0.9.13 tagged with 'make release'
+    Commit: Fixed merge conflict.
+
+ -- Leonid Movsesyan <leonid@yelp.com>  Tue, 03 Mar 2015 15:26:02 -0800
+
+paasta-tools (0.9.12-yelp1) lucid; urgency=low
+
+  * 0.9.12 tagged with 'make release'
+    Commit: Fix lint in generate_services_file
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 03 Mar 2015 13:52:23 -0800
+
+paasta-tools (0.9.11-yelp1) lucid; urgency=low
+
+  * 0.9.11 tagged with 'make release'
+    Commit: Added generate_services_file command
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 02 Mar 2015 15:30:18 -0800
+
+paasta-tools (0.9.9-yelp1) lucid; urgency=low
+
+  * 0.9.9 tagged with 'make release'
+    Commit: Dont bail if a repo doesnt exist
+
+ -- Evan Krall <krall@yelp.com>  Thu, 26 Feb 2015 23:33:35 -0800
+
 paasta-tools (0.9.8-yelp1) lucid; urgency=low
 
   * 0.9.8 tagged with 'make release'
