@@ -5,7 +5,7 @@ deployment to a cluster.instance.
 
 import sys
 
-from paasta_tools.paasta_cli.utils import get_jenkins_build_output
+from paasta_tools.paasta_cli.utils import get_jenkins_build_output_url
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
@@ -74,7 +74,7 @@ def paasta_mark_for_deployment(args):
     )
     if returncode != 0:
         loglines.append('ERROR: Failed to mark %s for deployment in %s.' % (args.commit, args.clusterinstance))
-        output = get_jenkins_build_output()
+        output = get_jenkins_build_output_url()
         if output:
             loglines.append('See output: %s' % output)
     else:

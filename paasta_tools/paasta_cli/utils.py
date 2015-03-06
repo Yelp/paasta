@@ -436,7 +436,7 @@ def get_pipeline_url(service):
         'https://jenkins.yelpcorp.com/view/services-%s' % service)
 
 
-def get_jenkins_build_output():
+def get_jenkins_build_output_url():
     """Returns the URL for Jenkins job's output.
     Returns None if it's not available.
     """

@@ -5,7 +5,7 @@ image to a registry.
 
 import sys
 
-from paasta_tools.paasta_cli.utils import get_jenkins_build_output
+from paasta_tools.paasta_cli.utils import get_jenkins_build_output_url
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
@@ -60,7 +60,7 @@ def paasta_push_to_registry(args):
     )
     if returncode != 0:
         loglines.append('ERROR: Failed to promote image for %s.' % args.commit)
-        output = get_jenkins_build_output()
+        output = get_jenkins_build_output_url()
         if output:
             loglines.append('See output: %s' % output)
     else:
