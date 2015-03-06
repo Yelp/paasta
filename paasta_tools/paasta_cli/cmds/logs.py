@@ -176,13 +176,10 @@ def tail_paasta_logs(service, levels, components, cluster):
     expected_thread_count = len(scribe_envs) + 1  # main thread is included
     queue_sizes = []
     while True:
-        # queue_sizes.append(queue.qsize())
-        # print "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& size is %s" % queue.qsize()
-        if not queue.empty():
-            # print "OMG CALLING PRINT_LOG WITH UH SOMETHING"
-            print_log(queue.get())
+        try:
+            print_log(queue.get_nowait())
             queue.task_done()
-        else:
+        except Queue.Empty:
             # If there's nothing in the queue, take this opportunity to make
             # sure all the tailers are still running.
             if len(threading.enumerate()) != expected_thread_count:
