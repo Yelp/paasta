@@ -6,6 +6,8 @@ import sys
 
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import _run
+from paasta_tools.utils import build_docker_tag
+from paasta_tools.utils import check_docker_image
 
 
 def add_subparser(subparsers):
@@ -28,24 +30,6 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_itest)
 
 
-def build_docker_tag(upstream_job_name, upstream_git_commit):
-    """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
-    will look for your images.
-
-    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
-    service's path in git. E.g. For git.yelpcorp.com:services/foo the
-    upstream_job_name is services-foo.
-
-    upstream_git_commit is the SHA that we're building. Usually this is the
-    tip of origin/master.
-    """
-    tag = 'docker-paasta.yelpcorp.com:443/services-%s:paasta-%s' % (
-        upstream_job_name,
-        upstream_git_commit,
-    )
-    return tag
-
-
 def paasta_itest(args):
     """Build and test a docker image"""
     service_name = args.service
@@ -63,3 +47,6 @@ def paasta_itest(args):
     if returncode != 0:
         print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (output, returncode)
         sys.exit(returncode)
+    if not check_docker_image(service_name, args.commit):
+        print 'ERROR: itest has not created %s' % tag
+        sys.exit(1)

@@ -7,6 +7,7 @@ import sys
 
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import _run
+from paasta_tools.utils import build_docker_tag
 
 
 def add_subparser(subparsers):
@@ -32,9 +33,9 @@ def build_command(upstream_job_name, upstream_git_commit):
     # This is kinda dumb since we just cleaned the 'services-' off of the
     # service so we could validate it, but the Docker image will have the full
     # name with 'services-' so add it back.
-    cmd = 'docker push docker-paasta.yelpcorp.com:443/services-%s:paasta-%s' % (
-        upstream_job_name,
-        upstream_git_commit,
+    tag = build_docker_tag(upstream_job_name, upstream_git_commit)
+    cmd = 'docker push %s' % (
+        tag,
     )
     return cmd
 
