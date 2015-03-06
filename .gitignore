@@ -8,3 +8,4 @@ debian/paasta-tools/
 debian/files
 docs/man/
 tags
+venv
