@@ -174,21 +174,30 @@ def tail_paasta_logs(service, levels, components, cluster):
     # TODO???: A noisy tailer in one scribe_env (such that the queue never gets
     # empty) will prevent us from ever noticing that another tailer has died.
     expected_thread_count = len(scribe_envs) + 1  # main thread is included
-    queue_sizes = []
     while True:
         try:
-            print_log(queue.get_nowait())
+            # This is a blocking call with a timeout for a couple reasons:
+            #
+            # * If the queue is empty and we get_nowait(), we loop very quickly
+            # and accomplish nothing.
+            #
+            # * Testing revealed a race condition where print_log() is called
+            # and even prints its message, but this action isn't recorded on
+            # the patched-in print_log() leading to test flakes. The short
+            # timeout seems to soothe this behavior: running this test 10 times
+            # with a timeout of 0.0 resulted in 5 failures; running it with a
+            # timeout of 0.1 resulted in 0 failures.
+            print_log(queue.get(True, 0.1))
             queue.task_done()
         except Queue.Empty:
             # If there's nothing in the queue, take this opportunity to make
             # sure all the tailers are still running.
-            if len(threading.enumerate()) != expected_thread_count:
+            running_threads = threading.enumerate()
+            if len(running_threads) != expected_thread_count:
                 print "@@@@@@@@@@@@@@@@@@@@@@"
-                print "quitting because expected %s threads but as of *right now*" % expected_thread_count
-                print "(not when the check was done) there are %s" % threading.enumerate()
+                print "Quitting because I expected %s threads but there are %s" % (
+                    expected_thread_count, running_threads)
                 break
-    print "***********************************************"
-    print "all done! historical sizes was %s" % queue_sizes
 
 
 def paasta_logs(args):
