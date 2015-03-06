@@ -103,7 +103,7 @@ def run_docker_container_interactive(service, instance, docker_hash, volumes, co
 
     run_args.append('--tty=true')
     run_args.append('--interactive=true')
-    run_args.append('--memory=%s' % (str(get_mem(service_manifest)) + 'm'))
+    run_args.append('--memory=%dm' % get_mem(service_manifest))
     run_args.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     run_args.append('%s' % docker_hash)
     run_args.extend(command)
@@ -140,7 +140,7 @@ def run_docker_container_non_interactive(
         command=command,
         tty=False,
         volumes=volumes,
-        mem_limit=str(get_mem(service_manifest)) + 'm',
+        mem_limit='%dm' % get_mem(service_manifest),
         cpu_shares=get_cpus(service_manifest),
         ports=[CONTAINER_PORT],
         stdin_open=False,
@@ -157,6 +157,10 @@ def run_docker_container_non_interactive(
     for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
         sys.stdout.write(line)
 
+    '''
+    TODO: if ^C will be pressed before this, container will not be stopped and removed.
+    We need to handle signal here.
+    '''
     docker_client.stop(create_result['Id'])
     docker_client.remove_container(create_result['Id'])
 
@@ -186,7 +190,14 @@ def run_docker_container(docker_client, docker_hash, service, args):
         command = get_args(service_manifest)
 
     if args.interactive:
-        run_docker_container_interactive(service, args.instance, docker_hash, volumes, command, service_manifest)
+        run_docker_container_interactive(
+            service,
+            args.instance,
+            docker_hash,
+            volumes,
+            command,
+            service_manifest
+        )
     else:
         run_docker_container_non_interactive(
             docker_client,
