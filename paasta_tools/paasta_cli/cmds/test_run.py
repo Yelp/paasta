@@ -146,21 +146,27 @@ def run_docker_container_non_interactive(
         stdin_open=False,
     )
 
-    docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: None})
+    container_started = False
+    try:
+        docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: None})
 
-    smartstack_config = read_service_namespace_config(service, instance)
-    port = smartstack_config.get('proxy_port', 0)
+        container_started = True
 
-    healthcheck_string = get_healthcheck(service, instance, port)
-    sys.stdout.write(healthcheck_string)
+        smartstack_config = read_service_namespace_config(service, instance)
+        port = smartstack_config.get('proxy_port', 0)
 
-    for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
-        sys.stdout.write(line)
+        healthcheck_string = get_healthcheck(service, instance, port)
+        sys.stdout.write(healthcheck_string)
 
-    '''
-    TODO: if ^C will be pressed before this, container will not be stopped and removed.
-    We need to handle signal here.
-    '''
+        for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
+            sys.stdout.write(line)
+
+    except KeyboardInterrupt:
+        if container_started:
+            docker_client.stop(create_result['Id'])
+            docker_client.remove_container(create_result['Id'])
+            raise
+
     docker_client.stop(create_result['Id'])
     docker_client.remove_container(create_result['Id'])
 
