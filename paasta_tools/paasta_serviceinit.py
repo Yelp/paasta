@@ -141,9 +141,13 @@ def get_verbose_status_of_marathon_app(app):
     output.append("    Tasks:  Mesos Task ID                  Host deployed to    Deployed at what localtime")
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
+        if task.host is not None:
+            hostname = task.host.split(".")[0]
+        else:
+            hostname = "Unknown"
         format_tuple = (
             get_task_uuid(task.id),
-            task.host.split(".")[0],
+            hostname,
             local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
             humanize.naturaltime(local_deployed_datetime),
         )
