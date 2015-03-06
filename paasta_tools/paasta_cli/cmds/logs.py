@@ -5,6 +5,7 @@ import json
 import logging
 import Queue
 import sys
+import threading
 
 from argcomplete.completers import ChoicesCompleter
 from scribereader import scribereader
@@ -121,7 +122,7 @@ def line_passes_filter(line, levels, components, cluster):
     )
 
 
-def scribe_tail(env, service, levels, components, cluster, queue):
+def scribe_tail(scribe_env, service, levels, components, cluster, queue):
     """Calls scribetailer for a particular environment.
     outputs lines that match for the requested cluster and components
     in a pretty way
@@ -130,30 +131,67 @@ def scribe_tail(env, service, levels, components, cluster, queue):
     """
     # This is the code that runs in the thread spawned by
     # tail_paasta_logs.
-    log.debug("Going to tail scribe in %s" % env)
+    log.debug("Going to tail scribe in %s" % scribe_env)
     stream_name = get_log_name_for_service(service)
-    host, port = scribereader.get_env_scribe_host(env, True)
+    host, port = scribereader.get_env_scribe_host(scribe_env, True)
     tailer = scribereader.get_stream_tailer(stream_name, host, port)
     for line in tailer:
         if line_passes_filter(line, levels, components, cluster):
             queue.put(line)
 
 
+def print_log(line):
+    """Mostly a stub to ease testing. Eventually this may do some formatting or
+    something.
+    """
+    print line
+
+
 def tail_paasta_logs(service, levels, components, cluster):
     """Sergeant function for spawning off all the right scribe tailing functions"""
-    envs = determine_scribereader_envs(components, cluster)
-    log.info("Would connect to these envs to tail scribe logs: %s" % envs)
+    scribe_envs = determine_scribereader_envs(components, cluster)
+    log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
     queue = Queue.Queue()
-    for env in envs:
-        # start a thread that tails scribe for env, passing in reference to ioloop Queue
-        scribe_tail(env, service, levels, components, cluster, queue)
-        # kwargs = { env=env, service=service, levels=levels, components=components, cluster=cluster, queue=queue }
-        # t = Thread(target=scribe_tail, kwargs=**kwargs)
-        # t.start()
-    # start pulling things off the queue and output them
-    # while True:
-    #     print Queue.get()
-    #     Queue.task_done()
+    for scribe_env in scribe_envs:
+        # Start a thread that tails scribe in this env
+        kw = {
+            'scribe_env': scribe_env,
+            'service': service,
+            'levels': levels,
+            'components': components,
+            'cluster': cluster,
+            'queue': queue,
+        }
+        t = threading.Thread(target=scribe_tail, kwargs=kw)
+        t.start()
+    # Pull things off the queue and output them. If any thread dies we are no longer
+    # presenting the user with the full picture so we quit.
+    #
+    # This is convenient for testing, where a fake scribe_tail() can emit a
+    # fake log and exit. Without the thread count check, we would just sit here
+    # forever even though the threads doing the tailing are all gone.
+    #
+    # TODO???: A noisy tailer in one scribe_env (such that the queue never gets
+    # empty) will prevent us from ever noticing that another tailer has died.
+    expected_thread_count = len(scribe_envs) + 1  # main thread is included
+    queue_sizes = []
+    while True:
+        # queue_sizes.append(queue.qsize())
+        # print "&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&&& size is %s" % queue.qsize()
+        if not queue.empty():
+            # print "OMG CALLING PRINT_LOG WITH UH SOMETHING"
+            print_log(queue.get())
+            queue.task_done()
+        else:
+            # If there's nothing in the queue, take this opportunity to make
+            # sure all the tailers are still running.
+            if len(threading.enumerate()) != expected_thread_count:
+                print "@@@@@@@@@@@@@@@@@@@@@@"
+                print "quitting because expected %s threads but as of *right now*" % expected_thread_count
+                print "(not when the check was done) there are %s" % threading.enumerate()
+                break
+    print "***********************************************"
+    print "all done! historical sizes was %s" % queue_sizes
 
 
 def paasta_logs(args):

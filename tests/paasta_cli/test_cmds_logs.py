@@ -172,23 +172,57 @@ def test_tail_paasta_logs():
     cluster = 'fake_cluster'
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.logs.Queue', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.logs.log', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.print_log', autospec=True),
     ) as (
         determine_scribereader_envs_patch,
-        queue_patch,
         scribe_tail_patch,
         log_patch,
+        print_log_patch,
     ):
         determine_scribereader_envs_patch.return_value = ['env1', 'env2']
-        queue = queue_patch.Queue()
+
+        def scribe_tail_side_effect(
+            scribe_env,
+            service,
+            levels,
+            components,
+            cluster,
+            queue,
+        ):
+            # The print here is just for debugging
+            print 'fake log line added for %s' % scribe_env
+            queue.put('fake log line added for %s' % scribe_env)
+        scribe_tail_patch.side_effect = scribe_tail_side_effect
 
         logs.tail_paasta_logs(service, levels, components, cluster)
+
         determine_scribereader_envs_patch.assert_called_once_with(components, cluster)
-        scribe_tail_patch.assert_any_call('env1', service, levels, components, cluster, queue)
-        scribe_tail_patch.assert_any_call('env2', service, levels, components, cluster, queue)
+
         scribe_tail_patch.call_count == 2
+        scribe_tail_patch.assert_any_call(
+            scribe_env='env1',
+            service=service,
+            levels=levels,
+            components=components,
+            cluster=cluster,
+            queue=mock.ANY,
+        )
+        scribe_tail_patch.assert_any_call(
+            scribe_env='env2',
+            service=service,
+            levels=levels,
+            components=components,
+            cluster=cluster,
+            queue=mock.ANY,
+        )
+
+        print_log_patch.call_count == 2
+        print "#######################################################"
+        print print_log_patch.call_args_list
+        print_log_patch.assert_any_call('fake log line added for env1')
+        print_log_patch.assert_any_call('fake log line added for env2')
 
 
 def test_determine_scribereader_envs():
