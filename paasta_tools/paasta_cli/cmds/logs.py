@@ -148,7 +148,13 @@ def print_log(line):
 
 
 def tail_paasta_logs(service, levels, components, cluster):
-    """Sergeant function for spawning off all the right scribe tailing functions"""
+    """Sergeant function for spawning off all the right scribe tailing functions.
+
+    NOTE: This function creates threads and doesn't really clean them up!
+    That's because we expect to just exit the process when this function
+    returns (as main() does). Someone calling this function directly with
+    something like "while True: tail_paasta_logs()" will be very sad.
+    """
     scribe_envs = determine_scribereader_envs(components, cluster)
     log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
     queue = Queue.Queue()
@@ -178,15 +184,61 @@ def tail_paasta_logs(service, levels, components, cluster):
         try:
             # This is a blocking call with a timeout for a couple reasons:
             #
-            # * If the queue is empty and we get_nowait(), we loop very quickly
+            # * If the queue is empty and we get_nowait(), we loop very tightly
             # and accomplish nothing.
             #
             # * Testing revealed a race condition where print_log() is called
             # and even prints its message, but this action isn't recorded on
-            # the patched-in print_log() leading to test flakes. The short
-            # timeout seems to soothe this behavior: running this test 10 times
-            # with a timeout of 0.0 resulted in 5 failures; running it with a
-            # timeout of 0.1 resulted in 0 failures.
+            # the patched-in print_log(). This resulted in test flakes. The
+            # short timeout seems to soothe this behavior: running this test 10
+            # times with a timeout of 0.0 resulted in 5 failures; running it
+            # with a timeout of 0.1 resulted in 0 failures.
+            #
+            # * There's still a race because if thread1 emits its log line and
+            # exits before thread2 has a chance to do anything, we bail out
+            # (via Queue.Empty and one of our expected threads having quit) and
+            # thread2 never does its work.
+            #
+            # It's possible this approach is fundamentally broken and will
+            # never work, and we'll need to e.g. put more responsibility on the
+            # individual threads and have them raise an exception or use
+            # notify() when they die and let the main thread take it from
+            # there.
+            #
+            # OR, don't use threads at all. Fork processes, monitor them, kill
+            # them when necessary, etc.
+            #
+            # (notes from end of #levchins discussion with wtimoney)
+            # [05.17:48:42] <        troscoe> | anyway, | your proposed
+            # strategy would be: individual tailer threads monitor some
+            # sentinel or global flag or get notified when they're supposed to
+            # shut down. then instead of just aborting, the sargeant would set
+            # the sentinel or flag or do the notify() of all the running
+            # threads, let them shut down, and clear out the queue?
+            # [05.17:49:34] <              |> | first half yes but clog needs
+            # to play nice with that strat
+            # [05.17:49:40] <              |> | which it doesnt so itd be a clog change
+            # [05.17:49:45] <        troscoe> | :\
+            # [05.17:50:03] <        troscoe> | how about the death process is
+            # sleep for a while and then kill?
+            # [05.17:50:21] <        troscoe> | or uh, something with a timer
+            # thread that just murders everyone who hasn't come back yet?
+            # [05.17:50:35] <              |> | you cant murder cpy threads
+            # [05.17:50:43] <        troscoe> | really?
+            # [05.17:50:47] <              |> | they can be in gil-yielded native code
+            # [05.17:50:54] <              |> | at which point their held
+            # refcounts are fucking hosed
+            # [05.17:51:00] <              |> | similarly you cant kill java threads
+            # [05.17:51:04] <        troscoe> | currently, there are no
+            # priorities, no thread groups, and threads cannot be destroyed,
+            # stopped, suspended, resumed, or interrupted
+            # [05.17:51:06] <              |> | because vm guarantees
+            # [05.17:51:22] <              |> | you can nuke child processes
+            # [05.17:51:50] <        PBERENS> | FORK-it
+            # [05.17:51:51] <        troscoe> | hence your suggestion seven
+            # hours ago to just use fork()? :)
+            # [05.17:52:12] <              |> | troof
+            # [05.17:52:16] <              |> | cpy loves processes
             print_log(queue.get(True, 0.1))
             queue.task_done()
         except Queue.Empty:
