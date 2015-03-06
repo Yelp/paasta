@@ -14,6 +14,7 @@ from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import figure_out_cluster
 from paasta_tools.paasta_cli.utils import list_services
+from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import LOG_COMPONENTS
 from paasta_tools.utils import get_log_name_for_service
 
@@ -130,7 +131,7 @@ def scribe_tail(scribe_env, service, levels, components, cluster, queue):
     UPDATE ME!!!
     """
     # This is the code that runs in the thread spawned by
-    # tail_paasta_logs.
+    # tail_paasta_logs().
     log.debug("Going to tail scribe in %s" % scribe_env)
     stream_name = get_log_name_for_service(service)
     host, port = scribereader.get_env_scribe_host(scribe_env, True)
@@ -264,11 +265,13 @@ def paasta_logs(args):
 
     if args.debug:
         log.setLevel(logging.DEBUG)
+        levels = [DEFAULT_LOGLEVEL, 'debug']
     else:
         log.setLevel(logging.WARN)
+        levels = [DEFAULT_LOGLEVEL]
 
     log.info("Going to get logs for %s on cluster %s" % (service_name, cluster))
     if args.tail:
-        tail_paasta_logs(service_name, components, cluster)
+        tail_paasta_logs(service_name, levels, components, cluster)
     else:
         print "Non-tailing actions are not yet supported"
