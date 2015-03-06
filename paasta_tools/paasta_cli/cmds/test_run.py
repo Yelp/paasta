@@ -84,6 +84,10 @@ def add_subparser(subparsers):
 
 
 def run_docker_container_interactive(service, instance, docker_hash, volumes, command, service_manifest):
+    """
+    Since docker-py has some issues with running a container with TTY attached we're just executing
+    docker run command for interactive mode. For non-interactive mode we're using docker-py.
+    """
     sys.stderr.write(PaastaColors.yellow(
         'Warning! You\'re running a container in interactive mode.\n'
         'This is not how Mesos runs containers. To run container exactly\n'
@@ -121,6 +125,10 @@ def run_docker_container_non_interactive(
     command,
     service_manifest
 ):
+    """
+    Using docker-py for non-interactive run of a container. In the end of function it stops the container
+    and removes it.
+    """
     sys.stderr.write(PaastaColors.yellow(
         'Warning! You\'re running a container in non-interactive mode.\n'
         'This is how Mesos runs containers. Some programs behave differently\n'
