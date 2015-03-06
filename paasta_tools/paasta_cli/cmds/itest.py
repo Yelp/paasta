@@ -4,6 +4,7 @@
 import os
 import sys
 
+from paasta_tools.paasta_cli.utils import get_jenkins_build_output
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
@@ -58,6 +59,7 @@ def paasta_itest(args):
     run_env = os.environ.copy()
     run_env['DOCKER_TAG'] = tag
     cmd = "make itest"
+    loglines = []
 
     returncode, output = _run(
         cmd,
@@ -69,14 +71,19 @@ def paasta_itest(args):
         loglevel='debug'
     )
     if returncode != 0:
-        logline = 'ERROR: itest failed for %s. See output: %s' % \
-            (args.commit, os.environ.get('BUILD_URL', '') + 'console'),
+        loglines.append(
+            'ERROR: itest failed for %s.' % args.commit
+        )
+        output = get_jenkins_build_output()
+        if output:
+            loglines.append('See output: %s' % output)
     else:
-        logline = 'itest passed for %s.' % args.commit,
-    _log(
-        service_name=service_name,
-        line=logline,
-        component='build',
-        level='event',
-    )
+        loglines.append('itest passed for %s.' % args.commit)
+    for logline in loglines:
+        _log(
+            service_name=service_name,
+            line=logline,
+            component='build',
+            level='event',
+        )
     sys.exit(returncode)

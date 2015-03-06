@@ -434,3 +434,14 @@ def figure_out_cluster(args):
 def get_pipeline_url(service):
     return PaastaColors.cyan(
         'https://jenkins.yelpcorp.com/view/services-%s' % service)
+
+
+def get_jenkins_build_output():
+    """Returns the URL for Jenkins job's output.
+    Returns None if it's not available.
+    """
+    try:
+        build_output = os.environ['BUILD_URL'] + 'console'
+    except KeyError:
+        build_output = None
+    return build_output
