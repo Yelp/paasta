@@ -20,15 +20,19 @@ def test_build_docker_container():
 @patch('paasta_tools.paasta_cli.cmds.test_run.Client', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.test_run.build_docker_container', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.test_run.run_docker_container', autospec=True)
+@patch('paasta_tools.paasta_cli.utils.validate_service_name', autospec=True)
 def test_run_success(
     mock_Client,
     mock_build_docker_container,
     mock_run_docker_container,
+    mock_validate_service_name,
 ):
     mock_Client.return_value = None
     mock_build_docker_container.return_value = None
     mock_run_docker_container.return_value = None
+    mock_validate_service_name.return_value = True
 
     args = MagicMock()
+    args.service = 'fake_service'
 
     assert paasta_test_run(args) is None
