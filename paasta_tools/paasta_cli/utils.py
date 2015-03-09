@@ -440,8 +440,7 @@ def get_jenkins_build_output_url():
     """Returns the URL for Jenkins job's output.
     Returns None if it's not available.
     """
-    try:
-        build_output = os.environ['BUILD_URL'] + 'console'
-    except KeyError:
-        build_output = None
+    build_output = os.environ.get('BUILD_URL')
+    if build_output:
+        build_output = build_output + 'console'
     return build_output
