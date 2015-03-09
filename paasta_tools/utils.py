@@ -370,14 +370,15 @@ def build_docker_tag(upstream_job_name, upstream_git_commit):
 
 
 def check_docker_image(service_name, tag):
-    """Checks whether the given image for :service_name: with tag exists.
+    """Checks whether the given image for :service_name: with :tag: exists.
     Returns True if there is exactly one matching image found.
-    TODO: Should we log if more than one result found? In theory that should
-    never happen.
+    Raises ValueError if more than one docker image with :tag: found.
     """
     docker_client = docker.Client(timeout=60)
     image_name = build_docker_image_name(service_name)
     docker_tag = build_docker_tag(service_name, tag)
     images = docker_client.images(name=image_name)
     result = len([image for image in images if docker_tag in image['RepoTags']])
+    if result > 1:
+        raise ValueError('More than one docker image found with tag %s' % docker_tag)
     return result == 1
