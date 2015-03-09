@@ -13,3 +13,5 @@ mesos.cli == 0.1.3
 dulwich == 0.9.8
 humanize == 0.5.1
 yelp_clog == 1.4.2
+tzlocal
+pytz
