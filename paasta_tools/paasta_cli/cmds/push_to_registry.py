@@ -5,7 +5,9 @@ image to a registry.
 
 import sys
 
+from paasta_tools.paasta_cli.utils import get_jenkins_build_output_url
 from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 
 
@@ -47,8 +49,27 @@ def paasta_push_to_registry(args):
     validate_service_name(service_name)
 
     cmd = build_command(service_name, args.commit)
-    print 'INFO: Executing command "%s"' % cmd
-    returncode, output = _run(cmd, timeout=1800)
+    loglines = []
+    returncode, output = _run(
+        cmd,
+        timeout=1800,
+        log=True,
+        component='build',
+        service_name=service_name,
+        loglevel='debug'
+    )
     if returncode != 0:
-        print 'ERROR: Failed to promote image. Output:\n%sReturn code was: %d' % (output, returncode)
-        sys.exit(returncode)
+        loglines.append('ERROR: Failed to promote image for %s.' % args.commit)
+        output = get_jenkins_build_output_url()
+        if output:
+            loglines.append('See output: %s' % output)
+    else:
+        loglines.append('Successfully pushed image for %s to registry' % args.commit)
+    for logline in loglines:
+        _log(
+            service_name=service_name,
+            line=logline,
+            component='build',
+            level='event',
+        )
+    sys.exit(returncode)
