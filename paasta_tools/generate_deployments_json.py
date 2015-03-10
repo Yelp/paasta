@@ -142,7 +142,7 @@ def get_branch_mappings(soa_dir, old_mappings):
             if ref_name in remote_refs:
                 commit_sha = remote_refs[ref_name]
                 branch_alias = '%s:%s' % (service, branch)
-                docker_image = 'services-%s:paasta-%s' % (service, commit_sha)
+                docker_image = build_docker_image_name(service, commit_sha)
                 log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
                 mapping = mappings.setdefault(branch_alias, {})
                 mapping['docker_image'] = docker_image
@@ -152,6 +152,22 @@ def get_branch_mappings(soa_dir, old_mappings):
                 mapping['force_bounce'] = force_bounce
 
     return mappings
+
+
+def build_docker_image_name(service, sha):
+    return 'services-%s:paasta-%s' % (service, sha)
+
+
+def get_service_from_docker_image(image_name):
+    """Does the opposite of build_docker_image_name and retrieves the
+    name of a service our of a provided docker image
+
+    An image name has the full path, including the registry. Like:
+    docker-paasta.yelpcorp.com:443/services-example_service:paasta-591ae8a7b3224e3b3322370b858377dd6ef335b6
+    """
+
+    matches = re.search('.*/services-(.*?):paasta-.*?', image_name)
+    return matches.group(1)
 
 
 def get_desired_state(service, branch, remote_refs):
