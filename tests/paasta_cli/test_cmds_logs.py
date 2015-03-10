@@ -174,6 +174,45 @@ def test_scribe_tail_log_nothing():
         assert queue.qsize() == 0
 
 
+class FakeKeyboardInterrupt(KeyboardInterrupt):
+    """Raising a real KeyboardInterrupt causes pytest to, y'know, stop."""
+    pass
+
+
+def test_scribe_tail_ctrl_c():
+    env = 'fake_env'
+    service = 'fake_service'
+    levels = ['fake_level1', 'fake_level2']
+    components = ['build', 'deploy']
+    cluster = 'fake_cluster'
+    queue = Queue()
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.line_passes_filter', autospec=True),
+    ) as (
+        mock_scribereader,
+        mock_line_passes_filter,
+    ):
+        # There's no reason this method is the one that raises the
+        # KeyboardInterrupt. This just happens to be the first convenient place
+        # to simulate the user pressing Ctrl-C.
+        mock_scribereader.get_env_scribe_host.side_effect = FakeKeyboardInterrupt
+        try:
+            logs.scribe_tail(
+                env,
+                service,
+                levels,
+                components,
+                cluster,
+                queue,
+            )
+        # We have to catch this ourselves otherwise it will fool pytest too!
+        except FakeKeyboardInterrupt:
+            raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
+        # If we made it here, KeyboardInterrupt was not raised and this test
+        # was successful.
+
+
 def test_tail_paasta_logs():
     """This test lets tail_paasta_logs() fire off processes to do work. We
     verify that the work was done, basically irrespective of how it was done.
