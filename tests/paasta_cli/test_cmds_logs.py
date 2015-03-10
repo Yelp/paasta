@@ -7,6 +7,7 @@ import time
 from pytest import raises
 
 from paasta_tools.paasta_cli.cmds import logs
+from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import format_log_line
 from paasta_tools.utils import get_log_name_for_service
 
@@ -38,9 +39,7 @@ def test_line_passes_filter_true_when_default_cluster():
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
-    # TODO: Use ANY_CLUSTER when tripy ships the branch that
-    # introduces that constant instead of hardcoded 'N/A'
-    formatted_line = format_log_line(levels[0], 'N/A', instance, components[0], line)
+    formatted_line = format_log_line(levels[0], ANY_CLUSTER, instance, components[0], line)
     assert logs.line_passes_filter(formatted_line, levels, components, cluster) is True
 
 

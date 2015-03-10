@@ -13,6 +13,7 @@ from argcomplete.completers import ChoicesCompleter
 from scribereader import scribereader
 
 from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import figure_out_cluster
 from paasta_tools.paasta_cli.utils import list_services
@@ -118,9 +119,7 @@ def line_passes_filter(line, levels, components, cluster):
         and parsed_line.get('component') in components
         and (
             parsed_line.get('cluster') == cluster
-            # TODO: Use ANY_CLUSTER when tripy ships the branch that
-            # introduces that constant instead of hardcoded 'N/A'
-            or parsed_line.get('cluster') == 'N/A'
+            or parsed_line.get('cluster') == ANY_CLUSTER
         )
     )
 
