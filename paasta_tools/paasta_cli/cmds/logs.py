@@ -5,6 +5,7 @@ import json
 import logging
 from multiprocessing import Process
 from multiprocessing import Queue
+from pprint import pprint
 from Queue import Empty
 import sys
 
@@ -139,12 +140,13 @@ def scribe_tail(scribe_env, service, levels, components, cluster, queue):
         host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
         host = host_and_port['host']
         port = host_and_port['port']
-        log.debug("########## CALLING GET_STREAM TAILER WITH HOST %s and PORT %s" % (host, port))
         tailer = scribereader.get_stream_tailer(stream_name, host, port)
         for line in tailer:
             if line_passes_filter(line, levels, components, cluster):
                 queue.put(line)
     except KeyboardInterrupt:
+        # Die peacefully rather than printing N threads worth of stack
+        # traces.
         pass
 
 
@@ -152,16 +154,17 @@ def print_log(line):
     """Mostly a stub to ease testing. Eventually this may do some formatting or
     something.
     """
-    print line
+    pprint(json.loads(line))
 
 
 def tail_paasta_logs(service, levels, components, cluster):
-    """Sergeant function for spawning off all the right scribe tailing functions.
+    """Sergeant function for spawning off all the right log tailing functions.
 
-    NOTE: This function creates threads and doesn't really clean them up!
-    That's because we expect to just exit the process when this function
-    returns (as main() does). Someone calling this function directly with
-    something like "while True: tail_paasta_logs()" will be very sad.
+    NOTE: This function spawns concurrent processes and doesn't necessarily
+    worry about cleaning them up! That's because we expect to just exit the
+    main process when this function returns (as main() does). Someone calling
+    this function directly with something like "while True: tail_paasta_logs()"
+    may be very sad.
     """
     scribe_envs = determine_scribereader_envs(components, cluster)
     log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
@@ -180,15 +183,15 @@ def tail_paasta_logs(service, levels, components, cluster):
         t = Process(target=scribe_tail, kwargs=kw)
         child_threads.append(t)
         t.start()
-    print "BEFORE WHILE, CHILD_THREADS %s" % child_threads
-    # Pull things off the queue and output them. If any thread dies we are no longer
-    # presenting the user with the full picture so we quit.
+
+    # Pull things off the queue and output them. If any thread dies we are no
+    # longer presenting the user with the full picture so we quit.
     #
     # This is convenient for testing, where a fake scribe_tail() can emit a
-    # fake log and exit. Without the thread count check, we would just sit here
-    # forever even though the threads doing the tailing are all gone.
+    # fake log and exit. Without the thread aliveness check, we would just sit
+    # here forever even though the threads doing the tailing are all gone.
     #
-    # TODO???: A noisy tailer in one scribe_env (such that the queue never gets
+    # NOTE: A noisy tailer in one scribe_env (such that the queue never gets
     # empty) will prevent us from ever noticing that another tailer has died.
     while True:
         try:
@@ -201,66 +204,41 @@ def tail_paasta_logs(service, levels, components, cluster):
             # and even prints its message, but this action isn't recorded on
             # the patched-in print_log(). This resulted in test flakes. The
             # short timeout seems to soothe this behavior: running this test 10
-            # times with a timeout of 0.0 resulted in 5 failures; running it
+            # times with a timeout of 0.0 resulted in 2 failures; running it
             # with a timeout of 0.1 resulted in 0 failures.
             #
-            # * There's still a race because if thread1 emits its log line and
-            # exits before thread2 has a chance to do anything, we bail out
-            # (via Queue.Empty and one of our expected threads having quit) and
-            # thread2 never does its work.
+            # * There's a race where thread1 emits its log line and exits
+            # before thread2 has a chance to do anything, causing us to bail
+            # out via the Queue Empty and thread aliveness check.
             #
-            # It's possible this approach is fundamentally broken and will
-            # never work, and we'll need to e.g. put more responsibility on the
-            # individual threads and have them raise an exception or use
-            # notify() when they die and let the main thread take it from
-            # there.
-            #
-            # OR, don't use threads at all. Fork processes, monitor them, kill
-            # them when necessary, etc.
-            #
-            # (notes from end of #levchins discussion with wtimoney)
-            # [05.17:48:42] <        troscoe> | anyway, | your proposed
-            # strategy would be: individual tailer threads monitor some
-            # sentinel or global flag or get notified when they're supposed to
-            # shut down. then instead of just aborting, the sargeant would set
-            # the sentinel or flag or do the notify() of all the running
-            # threads, let them shut down, and clear out the queue?
-            # [05.17:49:34] <              |> | first half yes but clog needs
-            # to play nice with that strat
-            # [05.17:49:40] <              |> | which it doesnt so itd be a clog change
-            # [05.17:49:45] <        troscoe> | :\
-            # [05.17:50:03] <        troscoe> | how about the death process is
-            # sleep for a while and then kill?
-            # [05.17:50:21] <        troscoe> | or uh, something with a timer
-            # thread that just murders everyone who hasn't come back yet?
-            # [05.17:50:35] <              |> | you cant murder cpy threads
-            # [05.17:50:43] <        troscoe> | really?
-            # [05.17:50:47] <              |> | they can be in gil-yielded native code
-            # [05.17:50:54] <              |> | at which point their held
-            # refcounts are fucking hosed
-            # [05.17:51:00] <              |> | similarly you cant kill java threads
-            # [05.17:51:04] <        troscoe> | currently, there are no
-            # priorities, no thread groups, and threads cannot be destroyed,
-            # stopped, suspended, resumed, or interrupted
-            # [05.17:51:06] <              |> | because vm guarantees
-            # [05.17:51:22] <              |> | you can nuke child processes
-            # [05.17:51:50] <        PBERENS> | FORK-it
-            # [05.17:51:51] <        troscoe> | hence your suggestion seven
-            # hours ago to just use fork()? :)
-            # [05.17:52:12] <              |> | troof
-            # [05.17:52:16] <              |> | cpy loves processes
-            print_log(queue.get(True, 0.1))
+            # We've decided to live with this for now and see if it's really a
+            # problem. The threads in test code exit pretty much immediately
+            # and a short timeout has been enough to ensure correct behavior
+            # there, so IRL with longer start-up times This Is Fine.
+            print_log(queue.get(False, 0.1))
         except Empty:
-            # If there's nothing in the queue, take this opportunity to make
-            # sure all the tailers are still running.
-            running_threads = [tt.is_alive() for tt in child_threads]
-            if not all(running_threads):
-                print "@@@@@@@@@@@@@@@@@@@@@@"
-                print "Quitting because I expected these threads (%s) to all be alive." % child_threads
-                print "But is_alive status was (%s)" % running_threads
-                break
+            try:
+                # If there's nothing in the queue, take this opportunity to make
+                # sure all the tailers are still running.
+                running_threads = [tt.is_alive() for tt in child_threads]
+                if not all(running_threads):
+                    log.info('Quitting because I expected %d log tailers to be alive but only %d are alive.' % (
+                        len(child_threads),
+                        len(running_threads),
+                    ))
+                    break
+            except KeyboardInterrupt:
+                # Die peacefully rather than printing N threads worth of stack
+                # traces.
+                #
+                # This extra nested catch is because it's pretty easy to be in
+                # the above try block when the user hits Ctrl-C which otherwise
+                # dumps a stack trace.
+                log.info('Terminating.')
         except KeyboardInterrupt:
-            pass
+            # Die peacefully rather than printing N threads worth of stack
+            # traces.
+            log.info('Terminating.')
 
 
 def paasta_logs(args):
