@@ -6,7 +6,6 @@ import datetime
 import marathon
 import mesos
 import mock
-import pytest  # ### TMP
 
 from paasta_tools import paasta_serviceinit
 from paasta_tools.utils import PaastaColors
@@ -110,8 +109,6 @@ class TestPaastaServiceStatus:
             mock_get_verbose_app.assert_called_once_with(app)
             assert 'fake_return' in actual
 
-    # ### TMP
-    @pytest.mark.xfail
     def test_get_verbose_status_of_marathon_app(self):
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
         fake_app.version = '2015-01-15T05:30:49.862Z'
