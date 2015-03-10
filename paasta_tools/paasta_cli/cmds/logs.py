@@ -112,7 +112,10 @@ def cluster_to_scribe_env(cluster):
 
 
 def line_passes_filter(line, levels, components, cluster):
-    """UPDATE ME!!!"""
+    """Given a (JSON-formatted) log line, return True if the line should be
+    displayed given the provided levels, components, and cluster; return False
+    otherwise.
+    """
     parsed_line = json.loads(line)
     return (
         parsed_line.get('level') in levels
@@ -125,14 +128,13 @@ def line_passes_filter(line, levels, components, cluster):
 
 
 def scribe_tail(scribe_env, service, levels, components, cluster, queue):
-    """Calls scribetailer for a particular environment.
-    outputs lines that match for the requested cluster and components
-    in a pretty way
+    """Creates a scribetailer for a particular environment.
 
-    UPDATE ME!!!
+    When it encounters a line that it should report, it sticks it into the
+    provided queue.
+
+    This code is designed to run in a thread as spawned by tail_paasta_logs().
     """
-    # This is the code that runs in the thread spawned by
-    # tail_paasta_logs().
     try:
         log.debug("Going to tail scribe in %s" % scribe_env)
         stream_name = get_log_name_for_service(service)
