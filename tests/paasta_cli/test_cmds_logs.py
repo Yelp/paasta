@@ -1,6 +1,7 @@
 import contextlib
 import mock
 from multiprocessing import Queue
+from Queue import Empty
 import time
 
 from pytest import raises
@@ -294,6 +295,42 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
         fake_queue = mock.MagicMock(spec_set=Queue())
         fake_queue.get.side_effect = FakeKeyboardInterrupt
         queue_patch.return_value = fake_queue
+        try:
+            logs.tail_paasta_logs(service, levels, components, cluster)
+        # We have to catch this ourselves otherwise it will fool pytest too!
+        except FakeKeyboardInterrupt:
+            raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
+        # If we made it here, KeyboardInterrupt was not raised and this test
+        # was successful.
+
+
+def test_tail_paasta_logs_ctrl_c_in_is_alive():
+    service = 'fake_service'
+    levels = ['fake_level1', 'fake_level2']
+    components = ['deploy', 'monitoring']
+    cluster = 'fake_cluster'
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.log', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.print_log', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.Queue', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.Process', autospec=True),
+    ) as (
+        determine_scribereader_envs_patch,
+        scribe_tail_patch,
+        log_patch,
+        print_log_patch,
+        queue_patch,
+        process_patch,
+    ):
+        determine_scribereader_envs_patch.return_value = ['env1', 'env2']
+        fake_queue = mock.MagicMock(spec_set=Queue())
+        fake_queue.get.side_effect = Empty
+        queue_patch.return_value = fake_queue
+        fake_process = mock.MagicMock()
+        fake_process.is_alive.side_effect = FakeKeyboardInterrupt
+        process_patch.return_value = fake_process
         try:
             logs.tail_paasta_logs(service, levels, components, cluster)
         # We have to catch this ourselves otherwise it will fool pytest too!

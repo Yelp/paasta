@@ -169,7 +169,7 @@ def tail_paasta_logs(service, levels, components, cluster):
     scribe_envs = determine_scribereader_envs(components, cluster)
     log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
     queue = Queue()
-    child_threads = []
+    spawned_processes = []
     for scribe_env in scribe_envs:
         # Start a thread that tails scribe in this env
         kw = {
@@ -180,9 +180,9 @@ def tail_paasta_logs(service, levels, components, cluster):
             'cluster': cluster,
             'queue': queue,
         }
-        t = Process(target=scribe_tail, kwargs=kw)
-        child_threads.append(t)
-        t.start()
+        process = Process(target=scribe_tail, kwargs=kw)
+        spawned_processes.append(process)
+        process.start()
 
     # Pull things off the queue and output them. If any thread dies we are no
     # longer presenting the user with the full picture so we quit.
@@ -226,11 +226,11 @@ def tail_paasta_logs(service, levels, components, cluster):
             try:
                 # If there's nothing in the queue, take this opportunity to make
                 # sure all the tailers are still running.
-                running_threads = [tt.is_alive() for tt in child_threads]
-                if not all(running_threads):
+                running_processes = [tt.is_alive() for tt in spawned_processes]
+                if not all(running_processes):
                     log.info('Quitting because I expected %d log tailers to be alive but only %d are alive.' % (
-                        len(child_threads),
-                        len(running_threads),
+                        len(spawned_processes),
+                        len(running_processes),
                     ))
                     break
             except KeyboardInterrupt:
