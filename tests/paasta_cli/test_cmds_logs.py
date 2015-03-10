@@ -65,6 +65,16 @@ def test_line_passes_filter_false_when_wrong_component():
     assert logs.line_passes_filter(formatted_line, levels, components, cluster) is False
 
 
+def test_line_passes_filter_false_when_line_not_valid_json():
+    levels = ['fake_level1', 'fake_level2']
+    cluster = 'fake_cluster'
+    components = ['build', 'deploy']
+    line = 'i am definitely not json'
+    # component must be legit as well as not in the list of requested
+    # components
+    assert logs.line_passes_filter(line, levels, components, cluster) is False
+
+
 def test_scribe_tail_log_everything():
     env = 'fake_env'
     service = 'fake_service'

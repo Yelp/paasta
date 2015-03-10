@@ -116,7 +116,11 @@ def line_passes_filter(line, levels, components, cluster):
     displayed given the provided levels, components, and cluster; return False
     otherwise.
     """
-    parsed_line = json.loads(line)
+    try:
+        parsed_line = json.loads(line)
+    except ValueError:
+        log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+        return False
     return (
         parsed_line.get('level') in levels
         and parsed_line.get('component') in components
