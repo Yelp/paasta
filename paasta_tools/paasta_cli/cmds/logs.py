@@ -214,7 +214,8 @@ def tail_paasta_logs(service, levels, components, cluster):
             # We've decided to live with this for now and see if it's really a
             # problem. The threads in test code exit pretty much immediately
             # and a short timeout has been enough to ensure correct behavior
-            # there, so IRL with longer start-up times This Is Fine.
+            # there, so IRL with longer start-up times for each thread this
+            # will surely be fine.
             print_log(queue.get(False, 0.1))
         except Empty:
             try:

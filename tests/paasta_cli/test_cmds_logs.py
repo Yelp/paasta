@@ -213,12 +213,12 @@ def test_scribe_tail_ctrl_c():
         # was successful.
 
 
-def test_tail_paasta_logs():
+def test_tail_paasta_logs_let_threads_be_threads():
     """This test lets tail_paasta_logs() fire off processes to do work. We
     verify that the work was done, basically irrespective of how it was done.
 
     Because of its nature, this test is potentially prone to flakiness. If this
-    turns out to be true, it should move to the integration test suite.
+    becomes a problem, it should move to the integration test suite.
     """
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
@@ -251,35 +251,16 @@ def test_tail_paasta_logs():
         scribe_tail_patch.side_effect = scribe_tail_side_effect
 
         logs.tail_paasta_logs(service, levels, components, cluster)
-
         determine_scribereader_envs_patch.assert_called_once_with(components, cluster)
-
-# This breaks under multiprocessing, we think because the patched scribe_tail's
-# call_count and call_args don't get updated *in the main thread*.
-#         scribe_tail_patch.call_count == 2
-#         print "!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!"
-#         print scribe_tail_patch.call_args_list
-#         import pdb; pdb.set_trace()
-#         scribe_tail_patch.assert_any_call(
-#             scribe_env='env1',
-#             service=service,
-#             levels=levels,
-#             components=components,
-#             cluster=cluster,
-#             queue=mock.ANY,
-#         )
-#         scribe_tail_patch.assert_any_call(
-#             scribe_env='env2',
-#             service=service,
-#             levels=levels,
-#             components=components,
-#             cluster=cluster,
-#             queue=mock.ANY,
-#         )
-
+        # NOTE: Assertions about scribe_tail_patch break under multiprocessing.
+        # We think this is because the patched scribe_tail's attributes
+        # (call_count, call_args, etc.) don't get updated here in the main
+        # thread where we can inspect them. (The patched-in code does run,
+        # however, since it prints debugging messages.)
+        #
+        # Instead, we'll rely on what we can see, which is the result of the
+        # thread's work deposited in the shared queue.
         assert print_log_patch.call_count == 2
-        print "#######################################################"
-        print print_log_patch.call_args_list
         print_log_patch.assert_any_call('fake log line added for env1')
         print_log_patch.assert_any_call('fake log line added for env2')
 
