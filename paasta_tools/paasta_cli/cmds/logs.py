@@ -216,6 +216,11 @@ def tail_paasta_logs(service, levels, components, cluster):
             # and a short timeout has been enough to ensure correct behavior
             # there, so IRL with longer start-up times for each thread this
             # will surely be fine.
+            #
+            # UPDATE: Actually this is leading to a test failure rate of about
+            # 1/10 even with timeout of 1s. I'm thinking of adding a sleep to
+            # the threads in test code to smooth this out, then pulling the
+            # trigger on moving that test to integration land where it belongs.
             print_log(queue.get(False, 0.1))
         except Empty:
             try:
@@ -236,10 +241,12 @@ def tail_paasta_logs(service, levels, components, cluster):
                 # the above try block when the user hits Ctrl-C which otherwise
                 # dumps a stack trace.
                 log.info('Terminating.')
+                break
         except KeyboardInterrupt:
             # Die peacefully rather than printing N threads worth of stack
             # traces.
             log.info('Terminating.')
+            break
 
 
 def paasta_logs(args):

@@ -1,6 +1,7 @@
 import contextlib
 import mock
 from multiprocessing import Queue
+import time
 
 from pytest import raises
 
@@ -248,6 +249,11 @@ def test_tail_paasta_logs_let_threads_be_threads():
             # The print here is just for debugging
             print 'fake log line added for %s' % scribe_env
             queue.put('fake log line added for %s' % scribe_env)
+            # I hate hate hate sleep in tests. This needs to move to the
+            # integration suite since I don't think it will ever be stable
+            # enough without the sleep and the sleep makes this test too slow
+            # to be a unit test.
+            time.sleep(0.05)
         scribe_tail_patch.side_effect = scribe_tail_side_effect
 
         logs.tail_paasta_logs(service, levels, components, cluster)
@@ -263,6 +269,38 @@ def test_tail_paasta_logs_let_threads_be_threads():
         assert print_log_patch.call_count == 2
         print_log_patch.assert_any_call('fake log line added for env1')
         print_log_patch.assert_any_call('fake log line added for env2')
+
+
+def test_tail_paasta_logs_ctrl_c_in_queue_get():
+    service = 'fake_service'
+    levels = ['fake_level1', 'fake_level2']
+    components = ['deploy', 'monitoring']
+    cluster = 'fake_cluster'
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.log', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.print_log', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.Queue', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.Process', autospec=True),
+    ) as (
+        determine_scribereader_envs_patch,
+        scribe_tail_patch,
+        log_patch,
+        print_log_patch,
+        queue_patch,
+        process_patch,
+    ):
+        fake_queue = mock.MagicMock(spec_set=Queue())
+        fake_queue.get.side_effect = FakeKeyboardInterrupt
+        queue_patch.return_value = fake_queue
+        try:
+            logs.tail_paasta_logs(service, levels, components, cluster)
+        # We have to catch this ourselves otherwise it will fool pytest too!
+        except FakeKeyboardInterrupt:
+            raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
+        # If we made it here, KeyboardInterrupt was not raised and this test
+        # was successful.
 
 
 # def test_tail_paasta_logs_extra_thread():
