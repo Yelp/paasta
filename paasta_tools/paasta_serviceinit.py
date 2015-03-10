@@ -12,8 +12,7 @@ import sys
 
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
-import pytz
-import tzlocal
+import dateutil.tz
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
@@ -45,9 +44,10 @@ def parse_args():
 
 
 def datetime_from_utc_to_local(utc_datetime):
-    local_tz = tzlocal.get_localzone()
+    local_tz = dateutil.tz.tzlocal()
     # We make out datetime timezone aware
-    utc_datetime = pytz.utc.localize(utc_datetime)
+    utc_datetime = utc_datetime.replace(tzinfo=dateutil.tz.tzutc())
+    # We convert to the local timezone
     local_datetime = utc_datetime.astimezone(local_tz)
     # We need to remove timezone awareness because of humanize
     local_datetime = local_datetime.replace(tzinfo=None)
