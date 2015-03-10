@@ -218,9 +218,9 @@ def tail_paasta_logs(service, levels, components, cluster):
             # will surely be fine.
             #
             # UPDATE: Actually this is leading to a test failure rate of about
-            # 1/10 even with timeout of 1s. I'm thinking of adding a sleep to
-            # the threads in test code to smooth this out, then pulling the
-            # trigger on moving that test to integration land where it belongs.
+            # 1/10 even with timeout of 1s. I'm adding a sleep to the threads
+            # in test code to smooth this out, then pulling the trigger on
+            # moving that test to integration land where it belongs.
             print_log(queue.get(False, 0.1))
         except Empty:
             try:
