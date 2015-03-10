@@ -14,6 +14,7 @@ from subprocess import PIPE
 from subprocess import STDOUT
 
 import clog
+import docker
 
 
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
@@ -337,3 +338,47 @@ def atomic_file_write(target_path):
     mode = 0666 & (~get_umask())
     os.chmod(temp_target_path, mode)
     os.rename(temp_target_path, target_path)
+
+
+def build_docker_image_name(upstream_job_name):
+    """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
+    will look for your images.
+
+    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
+    service's path in git. E.g. For git.yelpcorp.com:services/foo the
+    upstream_job_name is services-foo.
+    """
+    name = 'docker-paasta.yelpcorp.com:443/services-%s' % upstream_job_name
+    return name
+
+
+def build_docker_tag(upstream_job_name, upstream_git_commit):
+    """Builds the DOCKER_TAG string
+
+    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
+    service's path in git. E.g. For git.yelpcorp.com:services/foo the
+    upstream_job_name is services-foo.
+
+    upstream_git_commit is the SHA that we're building. Usually this is the
+    tip of origin/master.
+    """
+    tag = '%s:paasta-%s' % (
+        build_docker_image_name(upstream_job_name),
+        upstream_git_commit,
+    )
+    return tag
+
+
+def check_docker_image(service_name, tag):
+    """Checks whether the given image for :service_name: with :tag: exists.
+    Returns True if there is exactly one matching image found.
+    Raises ValueError if more than one docker image with :tag: found.
+    """
+    docker_client = docker.Client(timeout=60)
+    image_name = build_docker_image_name(service_name)
+    docker_tag = build_docker_tag(service_name, tag)
+    images = docker_client.images(name=image_name)
+    result = [image for image in images if docker_tag in image['RepoTags']]
+    if len(result) > 1:
+        raise ValueError('More than one docker image found with tag %s\n%s' % docker_tag, result)
+    return len(result) == 1
