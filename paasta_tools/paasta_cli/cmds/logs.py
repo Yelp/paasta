@@ -3,9 +3,10 @@
 import argparse
 import json
 import logging
-import Queue
+from multiprocessing import Process
+from multiprocessing import Queue
+from Queue import Empty
 import sys
-import threading
 
 from argcomplete.completers import ChoicesCompleter
 from scribereader import scribereader
@@ -134,7 +135,10 @@ def scribe_tail(scribe_env, service, levels, components, cluster, queue):
     # tail_paasta_logs().
     log.debug("Going to tail scribe in %s" % scribe_env)
     stream_name = get_log_name_for_service(service)
-    host, port = scribereader.get_env_scribe_host(scribe_env, True)
+    host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
+    host = host_and_port['host']
+    port = host_and_port['port']
+    log.debug("########## CALLING GET_STREAM TAILER WITH HOST %s and PORT %s" % (host, port))
     tailer = scribereader.get_stream_tailer(stream_name, host, port)
     for line in tailer:
         if line_passes_filter(line, levels, components, cluster):
@@ -158,7 +162,8 @@ def tail_paasta_logs(service, levels, components, cluster):
     """
     scribe_envs = determine_scribereader_envs(components, cluster)
     log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
-    queue = Queue.Queue()
+    queue = Queue()
+    child_threads = []
     for scribe_env in scribe_envs:
         # Start a thread that tails scribe in this env
         kw = {
@@ -169,8 +174,10 @@ def tail_paasta_logs(service, levels, components, cluster):
             'cluster': cluster,
             'queue': queue,
         }
-        t = threading.Thread(target=scribe_tail, kwargs=kw)
+        t = Process(target=scribe_tail, kwargs=kw)
+        child_threads.append(t)
         t.start()
+    print "BEFORE WHILE, CHILD_THREADS %s" % child_threads
     # Pull things off the queue and output them. If any thread dies we are no longer
     # presenting the user with the full picture so we quit.
     #
@@ -180,7 +187,6 @@ def tail_paasta_logs(service, levels, components, cluster):
     #
     # TODO???: A noisy tailer in one scribe_env (such that the queue never gets
     # empty) will prevent us from ever noticing that another tailer has died.
-    expected_thread_count = len(scribe_envs) + 1  # main thread is included
     while True:
         try:
             # This is a blocking call with a timeout for a couple reasons:
@@ -241,15 +247,14 @@ def tail_paasta_logs(service, levels, components, cluster):
             # [05.17:52:12] <              |> | troof
             # [05.17:52:16] <              |> | cpy loves processes
             print_log(queue.get(True, 0.1))
-            queue.task_done()
-        except Queue.Empty:
+        except Empty:
             # If there's nothing in the queue, take this opportunity to make
             # sure all the tailers are still running.
-            running_threads = threading.enumerate()
-            if len(running_threads) != expected_thread_count:
+            running_threads = [tt.is_alive() for tt in child_threads]
+            if not all(running_threads):
                 print "@@@@@@@@@@@@@@@@@@@@@@"
-                print "Quitting because I expected %s threads but there are %s" % (
-                    expected_thread_count, running_threads)
+                print "Quitting because I expected these threads (%s) to all be alive." % child_threads
+                print "But is_alive status was (%s)" % running_threads
                 break
 
 
