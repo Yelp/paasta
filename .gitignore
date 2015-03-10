@@ -9,3 +9,4 @@ debian/files
 docs/man/
 tags
 venv
+.bash_history
