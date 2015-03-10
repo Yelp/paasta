@@ -8,11 +8,11 @@ Assumes that the credentials are available, so must run as root.
 import argparse
 import datetime
 import logging
-import time
 import sys
 
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
+import dateutil.tz
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
@@ -44,9 +44,14 @@ def parse_args():
 
 
 def datetime_from_utc_to_local(utc_datetime):
-    now_timestamp = time.time()
-    offset = datetime.datetime.fromtimestamp(now_timestamp) - datetime.datetime.utcfromtimestamp(now_timestamp)
-    return utc_datetime + offset
+    local_tz = dateutil.tz.tzlocal()
+    # We make out datetime timezone aware
+    utc_datetime = utc_datetime.replace(tzinfo=dateutil.tz.tzutc())
+    # We convert to the local timezone
+    local_datetime = utc_datetime.astimezone(local_tz)
+    # We need to remove timezone awareness because of humanize
+    local_datetime = local_datetime.replace(tzinfo=None)
+    return local_datetime
 
 
 def validate_service_instance(service, instance, cluster):

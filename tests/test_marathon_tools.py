@@ -51,15 +51,17 @@ class TestMarathonTools:
         fake_path = '/etc/nope.json'
         fake_dir = '/var/dir_of_fake'
         fake_json = {
-            'no_srv:blaster': {
-                'docker_image': 'test_rocker:9.9',
-                'desired_state': 'start',
-                'force_bounce': None,
-            },
-            'dont_care:about': {
-                'docker_image': 'this:guy',
-                'desired_state': 'stop',
-                'force_bounce': '12345',
+            'v1': {
+                'no_srv:blaster': {
+                    'docker_image': 'test_rocker:9.9',
+                    'desired_state': 'start',
+                    'force_bounce': None,
+                },
+                'dont_care:about': {
+                    'docker_image': 'this:guy',
+                    'desired_state': 'stop',
+                    'force_bounce': '12345',
+                },
             },
         }
         with contextlib.nested(
@@ -145,16 +147,18 @@ class TestMarathonTools:
 
     def test_get_deployed_images(self):
         fake_json = {
-            'no_srv:blaster': {
-                'docker_image': 'test_rocker:9.9',
-                'desired_state': 'start',
-                'force_bounce': None,
-            },
-            'dont_care:about': {
-                'docker_image': 'this:guy',
-                'desired_state': 'stop',
-                'force_bounce': '12345',
-            },
+            'v1': {
+                'no_srv:blaster': {
+                    'docker_image': 'test_rocker:9.9',
+                    'desired_state': 'start',
+                    'force_bounce': None,
+                },
+                'dont_care:about': {
+                    'docker_image': 'this:guy',
+                    'desired_state': 'stop',
+                    'force_bounce': '12345',
+                },
+            }
         }
         with mock.patch("marathon_tools._get_deployments_json", return_value=fake_json):
             actual = marathon_tools.get_deployed_images()

@@ -114,6 +114,13 @@ def test_get_branch_mappings():
         assert list_remote_refs_patch.call_count == 2
 
 
+def test_get_service_from_docker_image():
+    mock_image = ('docker-paasta.yelpcorp.com:443/'
+                  'services-example_service:paasta-591ae8a7b3224e3b3322370b858377dd6ef335b6')
+    actual = generate_deployments_json.get_service_from_docker_image(mock_image)
+    assert 'example_service' == actual
+
+
 def test_main():
     fake_soa_dir = '/etc/true/null'
     file_mock = mock.MagicMock(spec=file)
