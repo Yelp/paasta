@@ -236,6 +236,9 @@ def tail_paasta_logs(service, levels, components, cluster):
                         len(spawned_processes),
                         running_processes.count(True),
                     ))
+                    for process in spawned_processes:
+                        if process.is_alive():
+                            process.terminate()
                     break
             except KeyboardInterrupt:
                 # Die peacefully rather than printing N threads worth of stack
