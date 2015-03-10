@@ -1,7 +1,8 @@
 import contextlib
 import mock
+from multiprocessing import Queue
+
 from pytest import raises
-import Queue
 
 from paasta_tools.paasta_cli.cmds import logs
 from paasta_tools.utils import format_log_line
@@ -70,7 +71,7 @@ def test_scribe_tail_log_everything():
     components = ['build', 'deploy']
     cluster = 'fake_cluster'
     instance = 'fake_instance'
-    queue = Queue.Queue()
+    queue = Queue()
     tailer = iter([
         format_log_line(
             levels[0],
@@ -115,11 +116,13 @@ def test_scribe_tail_log_everything():
             'fake_port',
         )
         assert queue.qsize() == 2
-        first_line = queue.get_nowait()
-        queue.task_done()
+        # Sadly, fetching with a timeout seems to be needed with
+        # multiprocessing.Queue (this was not the case with Queue.Queue). It
+        # failed 8/10 times with a get_nowait() vs 0/10 times with a 0.1s
+        # timeout.
+        first_line = queue.get(True, 0.1)
         assert 'level: first. component: build.' in first_line
-        second_line = queue.get_nowait()
-        queue.task_done()
+        second_line = queue.get(True, 0.1)
         assert 'level: second. component: deploy.' in second_line
 
 
@@ -130,7 +133,7 @@ def test_scribe_tail_log_nothing():
     components = ['build', 'deploy']
     cluster = 'fake_cluster'
     instance = 'fake_instance'
-    queue = Queue.Queue()
+    queue = Queue()
     tailer = iter([
         format_log_line(
             levels[0],
@@ -172,6 +175,12 @@ def test_scribe_tail_log_nothing():
 
 
 def test_tail_paasta_logs():
+    """This test lets tail_paasta_logs() fire off processes to do work. We
+    verify that the work was done, basically irrespective of how it was done.
+
+    Because of its nature, this test is potentially prone to flakiness. If this
+    turns out to be true, it should move to the integration test suite.
+    """
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['deploy', 'monitoring']
