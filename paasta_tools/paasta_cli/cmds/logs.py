@@ -133,16 +133,19 @@ def scribe_tail(scribe_env, service, levels, components, cluster, queue):
     """
     # This is the code that runs in the thread spawned by
     # tail_paasta_logs().
-    log.debug("Going to tail scribe in %s" % scribe_env)
-    stream_name = get_log_name_for_service(service)
-    host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
-    host = host_and_port['host']
-    port = host_and_port['port']
-    log.debug("########## CALLING GET_STREAM TAILER WITH HOST %s and PORT %s" % (host, port))
-    tailer = scribereader.get_stream_tailer(stream_name, host, port)
-    for line in tailer:
-        if line_passes_filter(line, levels, components, cluster):
-            queue.put(line)
+    try:
+        log.debug("Going to tail scribe in %s" % scribe_env)
+        stream_name = get_log_name_for_service(service)
+        host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
+        host = host_and_port['host']
+        port = host_and_port['port']
+        log.debug("########## CALLING GET_STREAM TAILER WITH HOST %s and PORT %s" % (host, port))
+        tailer = scribereader.get_stream_tailer(stream_name, host, port)
+        for line in tailer:
+            if line_passes_filter(line, levels, components, cluster):
+                queue.put(line)
+    except KeyboardInterrupt:
+        pass
 
 
 def print_log(line):
@@ -256,6 +259,8 @@ def tail_paasta_logs(service, levels, components, cluster):
                 print "Quitting because I expected these threads (%s) to all be alive." % child_threads
                 print "But is_alive status was (%s)" % running_threads
                 break
+        except KeyboardInterrupt:
+            pass
 
 
 def paasta_logs(args):
