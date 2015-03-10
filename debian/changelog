@@ -1,3 +1,10 @@
+paasta-tools (0.9.14-yelp1) lucid; urgency=low
+
+  * 0.9.14 tagged with 'make release'
+    Commit: PAASTA-214 'paasta logs' can tail from scribe
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 10 Mar 2015 14:16:06 -0700
+
 paasta-tools (0.9.13-yelp1) lucid; urgency=low
 
   * 0.9.13 tagged with 'make release'
