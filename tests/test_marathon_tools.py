@@ -251,13 +251,16 @@ class TestMarathonTools:
         expected = 'end_of_the_line'
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
+            mock.patch('marathon_tools.exists', create=True, return_value=True),
             mock.patch('marathon_tools.open', create=True, return_value=file_mock),
             mock.patch('json.loads', return_value=expected)
         ) as (
+            exists_patch,
             open_file_patch,
             json_patch
         ):
             assert marathon_tools.get_config() == expected
+            exists_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             file_mock.read.assert_called_once_with()
             json_patch.assert_called_once_with(file_mock.read())

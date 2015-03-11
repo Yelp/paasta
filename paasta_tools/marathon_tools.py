@@ -7,6 +7,7 @@ make the PaaSTA stack work.
 import hashlib
 import logging
 import os
+from os.path import exists
 import re
 import requests
 import socket
@@ -40,7 +41,7 @@ class MarathonConfig:
     def __init__(self):
         self.__dict__ = self.__shared_state
         if not self.config:
-            if os.path.exists(PATH_TO_MARATHON_CONFIG):
+            if exists(PATH_TO_MARATHON_CONFIG):
                 self.config = json.loads(open(PATH_TO_MARATHON_CONFIG).read())
             else:
                 raise PaastaNotConfigured
