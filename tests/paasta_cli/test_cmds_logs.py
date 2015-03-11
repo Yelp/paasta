@@ -65,6 +65,16 @@ def test_line_passes_filter_false_when_wrong_component():
     assert logs.line_passes_filter(formatted_line, levels, components, cluster) is False
 
 
+def test_line_passes_filter_false_when_line_not_valid_json():
+    levels = ['fake_level1', 'fake_level2']
+    cluster = 'fake_cluster'
+    components = ['build', 'deploy']
+    line = 'i am definitely not json'
+    # component must be legit as well as not in the list of requested
+    # components
+    assert logs.line_passes_filter(line, levels, components, cluster) is False
+
+
 def test_scribe_tail_log_everything():
     env = 'fake_env'
     service = 'fake_service'
@@ -364,13 +374,26 @@ def test_tail_paasta_logs_aliveness_check():
         fake_queue.get.side_effect = Empty
         queue_patch.return_value = fake_queue
         fake_process = mock.MagicMock()
-        fake_process.is_alive.side_effect = [True, True, True, False]
+        fake_process.is_alive.side_effect = [
+            # First time: simulate both threads being alive.
+            True, True,
+            # Second time: simulate first thread is alive but second thread is now dead.
+            True, False,
+            # This gets us into the kill stanza, which calls is_alive() on each
+            # thread again. We'll recycle our answers from the previous calls
+            # to is_alive() where the first thread is alive but the second
+            # thread is dead.
+            True, False,
+        ]
         process_patch.return_value = fake_process
         logs.tail_paasta_logs(service, levels, components, cluster)
         # is_alive returns True for each environment the first time through,
         # then False for one environment the second time through. The loop
         # stops there. Hence the total call_count is 4.
-        assert fake_process.is_alive.call_count == 4
+        assert fake_process.is_alive.call_count == 6
+        # We only terminate the first thread, which is still alive. We don't
+        # terminate the second thread, which was already dead.
+        assert fake_process.terminate.call_count == 1
 
 
 def test_determine_scribereader_envs():

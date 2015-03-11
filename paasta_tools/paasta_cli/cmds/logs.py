@@ -116,7 +116,11 @@ def line_passes_filter(line, levels, components, cluster):
     displayed given the provided levels, components, and cluster; return False
     otherwise.
     """
-    parsed_line = json.loads(line)
+    try:
+        parsed_line = json.loads(line)
+    except ValueError:
+        log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+        return False
     return (
         parsed_line.get('level') in levels
         and parsed_line.get('component') in components
@@ -155,7 +159,10 @@ def print_log(line):
     """Mostly a stub to ease testing. Eventually this may do some formatting or
     something.
     """
-    pprint(json.loads(line))
+    try:
+        pprint(json.loads(line))
+    except ValueError:
+        log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
 
 
 def tail_paasta_logs(service, levels, components, cluster):
@@ -229,10 +236,13 @@ def tail_paasta_logs(service, levels, components, cluster):
                 # sure all the tailers are still running.
                 running_processes = [tt.is_alive() for tt in spawned_processes]
                 if not all(running_processes):
-                    log.info('Quitting because I expected %d log tailers to be alive but only %d are alive.' % (
+                    log.warn('Quitting because I expected %d log tailers to be alive but only %d are alive.' % (
                         len(spawned_processes),
-                        len(running_processes),
+                        running_processes.count(True),
                     ))
+                    for process in spawned_processes:
+                        if process.is_alive():
+                            process.terminate()
                     break
             except KeyboardInterrupt:
                 # Die peacefully rather than printing N threads worth of stack
@@ -241,12 +251,12 @@ def tail_paasta_logs(service, levels, components, cluster):
                 # This extra nested catch is because it's pretty easy to be in
                 # the above try block when the user hits Ctrl-C which otherwise
                 # dumps a stack trace.
-                log.info('Terminating.')
+                log.warn('Terminating.')
                 break
         except KeyboardInterrupt:
             # Die peacefully rather than printing N threads worth of stack
             # traces.
-            log.info('Terminating.')
+            log.warn('Terminating.')
             break
 
 
