@@ -255,7 +255,7 @@ class TestMarathonTools:
         expected = 'end_of_the_line'
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
-            mock.patch('marathon_tools.exists', create=True, return_value=True),
+            mock.patch('marathon_tools.exists', autospec=True, return_value=True),
             mock.patch('marathon_tools.open', create=True, return_value=file_mock),
             mock.patch('json.loads', autospec=True, return_value=expected)
         ) as (
