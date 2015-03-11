@@ -1,3 +1,12 @@
+paasta-tools (0.9.16-yelp1) lucid; urgency=low
+
+  * 0.9.16 tagged with 'make release'
+    Commit: Patch out os.path.exists() so this test works even if
+    /etc/paasta_tools/marathon_config.json does not actually exist.
+    This is why you need to write tests that fail\!\!\!
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 10 Mar 2015 18:16:43 -0700
+
 paasta-tools (0.9.15-yelp1) lucid; urgency=low
 
   * 0.9.15 tagged with 'make release'
