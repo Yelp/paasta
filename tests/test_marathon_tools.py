@@ -67,7 +67,7 @@ class TestMarathonTools:
         with contextlib.nested(
             mock.patch('marathon_tools.open', create=True, return_value=file_mock),
             mock.patch('os.path.join', return_value=fake_path),
-            mock.patch('os.path.exists', return_value=True),
+            mock.patch('marathon_tools.exists', return_value=True),
             mock.patch('json.loads', return_value=fake_json),
         ) as (
             open_patch,
