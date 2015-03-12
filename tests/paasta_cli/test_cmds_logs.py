@@ -224,6 +224,12 @@ def test_scribe_tail_ctrl_c():
         # was successful.
 
 
+def test_prettify_log_line():
+    fake_line = "{'json': 'sure'}"
+
+
+
+
 def test_tail_paasta_logs_let_threads_be_threads():
     """This test lets tail_paasta_logs() fire off processes to do work. We
     verify that the work was done, basically irrespective of how it was done.
@@ -277,8 +283,8 @@ def test_tail_paasta_logs_let_threads_be_threads():
         # Instead, we'll rely on what we can see, which is the result of the
         # thread's work deposited in the shared queue.
         assert print_log_patch.call_count == 2
-        print_log_patch.assert_any_call('fake log line added for env1')
-        print_log_patch.assert_any_call('fake log line added for env2')
+        print_log_patch.assert_any_call('fake log line added for env1', False)
+        print_log_patch.assert_any_call('fake log line added for env2', False)
 
 
 def test_tail_paasta_logs_ctrl_c_in_queue_get():

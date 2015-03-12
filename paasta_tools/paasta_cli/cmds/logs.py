@@ -5,7 +5,6 @@ import json
 import logging
 from multiprocessing import Process
 from multiprocessing import Queue
-from pprint import pprint
 from Queue import Empty
 import sys
 
@@ -54,6 +53,9 @@ def add_subparser(subparsers):
     status_parser.add_argument('-d', '--debug', action='store_true',
                                dest='debug', default=False,
                                help='Enable debug logging')
+    status_parser.add_argument('-r', '--raw-mode', action='store_true',
+                               dest='raw_mode', default=False,
+                               help="Don't pretty-print logs; emit them exactly as they are in scribe.")
     default_component_string = ','.join(DEFAULT_COMPONENTS)
     component_descriptions = build_component_descriptions(LOG_COMPONENTS)
     epilog = 'COMPONENTS\n' \
@@ -155,17 +157,24 @@ def scribe_tail(scribe_env, service, levels, components, cluster, queue):
         pass
 
 
-def print_log(line):
+def print_log(line, raw_mode=False):
     """Mostly a stub to ease testing. Eventually this may do some formatting or
     something.
     """
-    try:
-        pprint(json.loads(line))
-    except ValueError:
-        log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+    if raw_mode:
+        print line,  # suppress trailing newline since scribereader already attaches one
+    else:
+        try:
+            print "PRETYYYYYYYYYYYYYYYYYYYYYYYY %s" % prettify_log_line(json.loads(line))
+        except ValueError:
+            log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
 
 
-def tail_paasta_logs(service, levels, components, cluster):
+def prettify_log_line(line):
+    return line
+
+
+def tail_paasta_logs(service, levels, components, cluster, raw_mode=False):
     """Sergeant function for spawning off all the right log tailing functions.
 
     NOTE: This function spawns concurrent processes and doesn't necessarily
@@ -248,7 +257,8 @@ def tail_paasta_logs(service, levels, components, cluster):
             # 1/10 even with timeout of 1s. I'm adding a sleep to the threads
             # in test code to smooth this out, then pulling the trigger on
             # moving that test to integration land where it belongs.
-            print_log(queue.get(False, 0.1))
+            line = queue.get(False, 0.1)
+            print_log(line, raw_mode)
         except Empty:
             try:
                 # If there's nothing in the queue, take this opportunity to make
@@ -298,6 +308,6 @@ def paasta_logs(args):
 
     log.info("Going to get logs for %s on cluster %s" % (service_name, cluster))
     if args.tail:
-        tail_paasta_logs(service_name, levels, components, cluster)
+        tail_paasta_logs(service_name, levels, components, cluster, raw_mode=args.raw_mode)
     else:
         print "Non-tailing actions are not yet supported"
