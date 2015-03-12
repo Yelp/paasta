@@ -278,6 +278,22 @@ def test_prettify_log_line_valid_json():
     assert expected_timestamp in actual
     assert parsed_line['component'] in actual
     assert parsed_line['message'] in actual
+    assert parsed_line['level'] in actual
+
+
+def test_prettify_log_line_valid_json_level_is_event():
+    parsed_line = {
+        "message": "fake_message",
+        "component": "fake_component",
+        "level": "event",
+        "cluster": "fake_cluster",
+        "instance": "fake_instance",
+        "timestamp": "2015-03-12T21:20:04.602002",
+    }
+    line = json.dumps(parsed_line)
+
+    actual = logs.prettify_log_line(line)
+    assert parsed_line['level'] not in actual
 
 
 def test_tail_paasta_logs_let_threads_be_threads():
