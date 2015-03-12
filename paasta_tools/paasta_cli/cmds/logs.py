@@ -162,22 +162,25 @@ def print_log(line, raw_mode=False):
     something.
     """
     if raw_mode:
-        print line,  # suppress trailing newline since scribereader already attaches one
+        print line,  # suppress trailing newline since scribereader already attached one
     else:
-        print "PRETYYYYYYYYYYYYYYYYYYYYYYYY %s" % prettify_log_line(line)
+        print prettify_log_line(line)
 
 
 def prettify_log_line(line):
     pretty_line = ''
     try:
         parsed_line = json.loads(line)
-        pretty_line = "[%s] [%s]" % (
-            parsed_line['component'],
-            parsed_line['cluster'],
-        )
+        pretty_line = "%(timestamp)s - %(message)s" % ({
+            'timestamp': parsed_line['timestamp'],
+            'message': parsed_line['message'],
+        })
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
         pretty_line = "Invalid JSON: %s" % line
+    except KeyError:
+        log.debug('JSON parsed correctly but was missing a key. Skipping. Line: %s' % line)
+        pretty_line = "JSON missing keys: %s" % line
     return pretty_line
 
 

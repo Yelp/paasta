@@ -226,18 +226,33 @@ def test_scribe_tail_ctrl_c():
 
 
 def test_prettify_log_line_invalid_json():
-    fake_line = "i am not json"
-    assert logs.prettify_log_line(fake_line) == "Invalid JSON: %s" % fake_line
+    line = "i am not json"
+    assert logs.prettify_log_line(line) == "Invalid JSON: %s" % line
+
+
+def test_prettify_log_line_valid_json_missing_key():
+    line = json.dumps({
+        "component": "fake_component",
+        "oops_i_spelled_timestamp_rong": "1999-09-09",
+    })
+    actual = logs.prettify_log_line(line)
+    assert "JSON missing keys: %s" % line in actual
 
 
 def test_prettify_log_line_valid_json():
-    fake_line = json.dumps({
+    parsed_line = {
+        "message": "fake_message",
         "component": "fake_component",
+        "level": "fake_level",
         "cluster": "fake_cluster",
-    })
-    actual = logs.prettify_log_line(fake_line)
-    assert '[fake_cluster]' in actual
-    assert '[fake_component]' in actual
+        "instance": "fake_instance",
+        "timestamp": "fake_timestamp",
+    }
+    line = json.dumps(parsed_line)
+    actual = logs.prettify_log_line(line)
+    assert parsed_line['message'] in actual
+    # assert parsed_line['component'] in actual
+    assert '%s - ' % parsed_line['timestamp'] in actual
 
 
 def test_tail_paasta_logs_let_threads_be_threads():
