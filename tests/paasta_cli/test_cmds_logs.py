@@ -234,6 +234,20 @@ def test_prettify_timestamp():
     assert ":20:04" in actual
 
 
+def test_prettify_component_valid():
+    component = "build"
+    actual = logs.prettify_component(component)
+    assert component in actual
+    assert "UNPRETTIFIABLE COMPONENT" not in actual
+
+
+def test_prettify_component_invalid():
+    component = "non-existent component"
+    actual = logs.prettify_component(component)
+    assert component in actual
+    assert "UNPRETTIFIABLE COMPONENT" in actual
+
+
 def test_prettify_log_line_invalid_json():
     line = "i am not json"
     assert logs.prettify_log_line(line) == "Invalid JSON: %s" % line
