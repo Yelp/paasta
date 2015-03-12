@@ -373,7 +373,7 @@ def _get_deployments_json(soa_dir):
     soa_dir/deployments.json does not exist
     """
     deployment_file = os.path.join(soa_dir, 'deployments.json')
-    if os.path.exists(deployment_file):
+    if exists(deployment_file):
         return json.loads(open(deployment_file).read())
     else:
         return {}
