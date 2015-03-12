@@ -171,6 +171,19 @@ def get_mem(service_config):
     return int(mem) if mem else 1000
 
 
+def get_env(service_config):
+    """Gets the environment required from the service's marathon configuration.
+
+    Will always have PORT: CONTAINER_PORT to make it more obvious *inside*
+    the container what port they need to listen on. (PAASTA-267)
+
+    :param service_config: The service instance's configuration dictionary
+    :returns: A dictionary with the requested env. Including the PORT."""
+    env = service_config.get('env', {})
+    env['PORT'] = '%s' % CONTAINER_PORT
+    return env
+
+
 def get_cpus(service_config):
     """Gets the number of cpus required from the service's marathon configuration.
 
@@ -313,6 +326,7 @@ def get_healthchecks(service, instance):
 
 def format_marathon_app_dict(job_id, docker_url, docker_volumes, service_marathon_config, healthchecks):
     """Create the configuration that will be passed to the Marathon REST API.
+    https://mesosphere.github.io/marathon/docs/rest-api.html#post-/v2/apps
 
     Currently compiles the following keys into one nice dict:
 
@@ -356,6 +370,7 @@ def format_marathon_app_dict(job_id, docker_url, docker_volumes, service_maratho
         'backoff_factor': 2,
         'health_checks': healthchecks,
     }
+    complete_config['env'] = get_env(service_marathon_config)
     complete_config['mem'] = get_mem(service_marathon_config)
     complete_config['cpus'] = get_cpus(service_marathon_config)
     complete_config['constraints'] = get_constraints(service_marathon_config)

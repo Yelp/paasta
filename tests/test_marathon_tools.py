@@ -829,6 +829,7 @@ class TestMarathonTools:
             },
         ]
         fake_mem = 1000000000000000000000
+        fake_env = {'FAKEENV': 'FAKEVALUE'}
         fake_cpus = .42
         fake_instances = 101
         fake_args = ['arg1', 'arg2']
@@ -864,6 +865,7 @@ class TestMarathonTools:
             'constraints': [],
             'uris': ['file:///root/.dockercfg', ],
             'mem': fake_mem,
+            'env': fake_env,
             'cpus': fake_cpus,
             'instances': fake_instances,
             'args': fake_args,
@@ -873,12 +875,14 @@ class TestMarathonTools:
         }
         with contextlib.nested(
             mock.patch('marathon_tools.get_mem', autospec=True, return_value=fake_mem),
+            mock.patch('marathon_tools.get_env', autospec=True, return_value=fake_env),
             mock.patch('marathon_tools.get_cpus', autospec=True, return_value=fake_cpus),
             mock.patch('marathon_tools.get_constraints', autospec=True, return_value=[]),
             mock.patch('marathon_tools.get_instances', autospec=True, return_value=fake_instances),
             mock.patch('marathon_tools.get_args', autospec=True, return_value=fake_args),
         ) as (
             get_mem_patch,
+            get_env_patch,
             get_cpus_patch,
             get_constraints_patch,
             get_instances_patch,
@@ -887,6 +891,7 @@ class TestMarathonTools:
             actual = marathon_tools.format_marathon_app_dict(fake_id, fake_url, fake_volumes,
                                                              self.fake_marathon_job_config, fake_healthchecks)
             get_mem_patch.assert_called_once_with(self.fake_marathon_job_config)
+            get_env_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_cpus_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_constraints_patch.assert_called_once_with(self.fake_marathon_job_config)
             get_instances_patch.assert_called_once_with(self.fake_marathon_job_config)
@@ -962,6 +967,16 @@ class TestMarathonTools:
 
     def test_get_mem_default(self):
         assert marathon_tools.get_mem({}) == 1000
+
+    def test_get_env_default(self):
+        assert marathon_tools.get_env({}) == {'PORT': '8888'}
+
+    def test_get_env_with_config(self):
+        fake_conf = {'env': {'SPECIAL_ENV': 'TRUE'}}
+        assert marathon_tools.get_env(fake_conf) == {
+            'SPECIAL_ENV': 'TRUE',
+            'PORT': '8888'
+        }
 
     def test_get_args_default(self):
         assert marathon_tools.get_args({}) == []
