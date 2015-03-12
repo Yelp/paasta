@@ -164,14 +164,21 @@ def print_log(line, raw_mode=False):
     if raw_mode:
         print line,  # suppress trailing newline since scribereader already attaches one
     else:
-        try:
-            print "PRETYYYYYYYYYYYYYYYYYYYYYYYY %s" % prettify_log_line(json.loads(line))
-        except ValueError:
-            log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+        print "PRETYYYYYYYYYYYYYYYYYYYYYYYY %s" % prettify_log_line(line)
 
 
 def prettify_log_line(line):
-    return line
+    pretty_line = ''
+    try:
+        parsed_line = json.loads(line)
+        pretty_line = "[%s] [%s]" % (
+            parsed_line['component'],
+            parsed_line['cluster'],
+        )
+    except ValueError:
+        log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+        pretty_line = "Invalid JSON: %s" % line
+    return pretty_line
 
 
 def tail_paasta_logs(service, levels, components, cluster, raw_mode=False):

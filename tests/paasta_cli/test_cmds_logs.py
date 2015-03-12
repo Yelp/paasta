@@ -1,4 +1,5 @@
 import contextlib
+import json
 import mock
 from multiprocessing import Queue
 from Queue import Empty
@@ -224,10 +225,19 @@ def test_scribe_tail_ctrl_c():
         # was successful.
 
 
-def test_prettify_log_line():
-    fake_line = "{'json': 'sure'}"
+def test_prettify_log_line_invalid_json():
+    fake_line = "i am not json"
+    assert logs.prettify_log_line(fake_line) == "Invalid JSON: %s" % fake_line
 
 
+def test_prettify_log_line_valid_json():
+    fake_line = json.dumps({
+        "component": "fake_component",
+        "cluster": "fake_cluster",
+    })
+    actual = logs.prettify_log_line(fake_line)
+    assert '[fake_cluster]' in actual
+    assert '[fake_component]' in actual
 
 
 def test_tail_paasta_logs_let_threads_be_threads():
