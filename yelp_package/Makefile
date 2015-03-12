@@ -1,5 +1,5 @@
 # Edit this releaseland run "make release"
-RELEASE=0.9.17-yelp1
+RELEASE=0.9.18-yelp1
 
 SHELL=/bin/bash
 
