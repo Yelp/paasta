@@ -19,6 +19,7 @@ from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
 from paasta_tools.mesos_tools import get_running_mesos_tasks_for_service
 from paasta_tools.monitoring.replication_utils import get_replication_for_services
 from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 
 log = logging.getLogger('__main__')
@@ -59,26 +60,48 @@ def validate_service_instance(service, instance, cluster):
     all_services = marathon_tools.get_marathon_services_for_cluster(cluster)
     if (service, instance) not in all_services:
         log.info(all_services)
-        print "Error: %s.%s doesn't look like it has been deployed to this cluster! (%s)" % (service, instance, cluster)
+        _log(
+            service_name=service,
+            line="ERROR: %s.%s doesn't look like it has been deployed to this cluster! (%s)" %
+            (service, instance, cluster),
+            component='deploy',
+            level='event',
+            cluster=cluster,
+            instance=instance
+        )
         sys.exit(3)
     return True
 
 
-def start_marathon_job(service, instance, app_id, normal_instance_count, client):
+def start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
     name = PaastaColors.cyan("%s.%s" % (service, instance))
-    print "Scaling %s up to %d instances" % (name, normal_instance_count)
+    _log(
+        service_name=service,
+        line="Scaling %s up to %d instances" % (name, normal_instance_count),
+        component='deploy',
+        level='event',
+        cluster=cluster,
+        instance=instance
+    )
     client.scale_app(app_id, instances=normal_instance_count, force=True)
 
 
-def stop_marathon_job(service, instance, app_id, client):
+def stop_marathon_job(service, instance, app_id, client, cluster):
     name = PaastaColors.cyan("%s.%s" % (service, instance))
-    print "Scaling %s down to 0 instances" % (name)
+    _log(
+        service_name=service,
+        line="Scaling %s down to 0 instances" % (name),
+        component='deploy',
+        level='event',
+        cluster=cluster,
+        instance=instance
+    )
     client.scale_app(app_id, instances=0, force=True)
 
 
-def restart_marathon_job(service, instance, app_id, normal_instance_count, client):
-    stop_marathon_job(service, instance, app_id, client)
-    start_marathon_job(service, instance, app_id, normal_instance_count, client)
+def restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
+    stop_marathon_job(service, instance, app_id, client, cluster)
+    start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
 
 
 def get_bouncing_status(service, instance, client, complete_job_config):
@@ -417,11 +440,11 @@ def main():
     client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
                                                 marathon_config['pass'])
     if command == 'start':
-        start_marathon_job(service, instance, app_id, normal_instance_count, client)
+        start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     elif command == 'stop':
-        stop_marathon_job(service, instance, app_id, client)
+        stop_marathon_job(service, instance, app_id, client, cluster)
     elif command == 'restart':
-        restart_marathon_job(service, instance, app_id, normal_instance_count, client)
+        restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     elif command == 'status':
         print status_desired_state(service, instance, client, complete_job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)

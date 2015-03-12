@@ -152,3 +152,9 @@ def test_check_docker_image_true():
             'Size': 0}
         ]
         assert utils.check_docker_image(fake_app, fake_commit) is True
+
+
+def test_remove_ansi_escape_sequences():
+    plain_string = 'blackandwhite'
+    colored_string = '\033[34m' + plain_string + '\033[0m'
+    assert utils.remove_ansi_escape_sequences(colored_string) == plain_string

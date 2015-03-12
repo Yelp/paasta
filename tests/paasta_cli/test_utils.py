@@ -137,8 +137,7 @@ def test_check_ssh_and_sudo_on_master_check_sudo_failure(mock_run):
 
 
 @patch('paasta_tools.paasta_cli.utils._run', autospec=True)
-@patch('paasta_tools.paasta_cli.utils._log', autospec=True)
-def test_run_paasta_serviceinit_status(mock_log, mock_run):
+def test_run_paasta_serviceinit_status(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
     expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit fake_service_name.fake_instancename status'
 
@@ -151,12 +150,10 @@ def test_run_paasta_serviceinit_status(mock_log, mock_run):
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value[1]
-    assert mock_log.call_count == 0
 
 
 @patch('paasta_tools.paasta_cli.utils._run', autospec=True)
-@patch('paasta_tools.paasta_cli.utils._log', autospec=True)
-def test_run_paasta_serviceinit_status_verbose(mock_log, mock_run):
+def test_run_paasta_serviceinit_status_verbose(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
     expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v fake_service_name.fake_instancename status'
 
@@ -170,31 +167,6 @@ def test_run_paasta_serviceinit_status_verbose(mock_log, mock_run):
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value[1]
-    assert mock_log.call_count == 0
-
-
-@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
-@patch('paasta_tools.paasta_cli.utils._log', autospec=True)
-def test_run_paasta_serviceinit_non_status_subcommand_calls_log(mock_log, mock_run):
-    mock_run.return_value = ('unused', 'fake_output1\nfake_output2')
-
-    utils.run_paasta_serviceinit(
-        'anything-but-status',
-        'fake_master',
-        'fake_service_name',
-        'fake_instancename',
-        'fake_cluster',
-        True,
-    )
-    assert mock_log.call_count == 2
-    for line in ['fake_output1', 'fake_output2']:
-        mock_log.assert_any_call(
-            'fake_service_name',
-            line,
-            'deploy',
-            cluster='fake_cluster',
-            instance='fake_instancename',
-        )
 
 
 @patch('paasta_tools.paasta_cli.utils.calculate_remote_masters', autospec=True)
@@ -252,7 +224,7 @@ def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
 
     actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster_name, service_name, instancename)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
-    assert 'ERROR could not find connectable master in cluster %s' % cluster_name in actual
+    assert 'ERROR: could not find connectable master in cluster %s' % cluster_name in actual
     assert "fake_err_msg" in actual
 
 
@@ -275,7 +247,7 @@ def test_execute_paasta_serviceinit_on_remote_check_ssh_and_sudo_failed(
     mock_calculate_remote_masters.return_value = ([master_name], None)
     actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster_name, service_name, instancename)
     assert mock_run_paasta_serviceinit.call_count == 0
-    assert 'ERROR ssh or sudo check failed for master %s' % master_name in actual
+    assert 'ERROR: ssh or sudo check failed for master %s' % master_name in actual
     assert 'err_msg' in actual
 
 
