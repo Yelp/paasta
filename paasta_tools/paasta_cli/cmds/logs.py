@@ -173,6 +173,25 @@ def tail_paasta_logs(service, levels, components, cluster):
     main process when this function returns (as main() does). Someone calling
     this function directly with something like "while True: tail_paasta_logs()"
     may be very sad.
+
+    NOTE: We try pretty hard to supress KeyboardInterrupts to prevent big
+    useless stack traces, but it turns out to be non-trivial and we fail ~10%
+    of the time. We decided we could live with it and we're shipping this to
+    see how it fares in real world testing.
+
+    Here are some things we read about this problem:
+    * http://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
+    * http://jtushman.github.io/blog/2014/01/14/python-%7C-multiprocessing-and-interrupts/
+    * http://bryceboe.com/2010/08/26/python-multiprocessing-and-keyboardinterrupt/
+
+    We could also try harder to terminate processes from more places. We could
+    use process.join() to ensure things have a chance to die. We punted these
+    things.
+
+    It's possible this whole multiprocessing strategy is wrong-headed. If you
+    are reading this code to curse whoever wrote it, see discussion in
+    PAASTA-214 and https://reviewboard.yelpcorp.com/r/87320/ and feel free to
+    implement one of the other options.
     """
     scribe_envs = determine_scribereader_envs(components, cluster)
     log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
