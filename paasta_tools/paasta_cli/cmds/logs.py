@@ -186,6 +186,9 @@ def prettify_component(component):
 
 
 def prettify_log_line(line):
+    """Given a line from the log, which is expected to be JSON and have all the
+    things we expect, return a pretty formatted string containing relevant values.
+    """
     pretty_line = ''
     try:
         parsed_line = json.loads(line)
