@@ -29,6 +29,8 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``args``: docker args if you use the "entrypoint" functionality
 
+  * ``env``: A dictionary of environment variables that will be made available to the container. The PORT variable is always set by the system to be the port that the service must listen on to be exposed via docker (8888).
+
 smartstack.yaml
 ---------------
 
