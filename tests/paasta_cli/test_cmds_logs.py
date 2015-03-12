@@ -226,9 +226,12 @@ def test_scribe_tail_ctrl_c():
 
 
 def test_prettify_timestamp():
-    pass
-    # timestamp = "2015-03-12T21:20:04.602002"
-    # assert logs.prettify_timestamp(timestamp) == "2015-03-12 14:20:04"
+    timestamp = "2015-03-12T21:20:04.602002"
+    actual = logs.prettify_timestamp(timestamp)
+    # kwa and I tried to get python to recognize a hardcoded timezone
+    # in TZ, even using tzset(), but it ignored us. So we're punting.
+    assert "2015-03-12 " in actual
+    assert ":20:04"
 
 
 def test_prettify_log_line_invalid_json():

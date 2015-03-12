@@ -1,6 +1,7 @@
 #!/usskr/bin/env python
 """PaaSTA log reader for humans"""
 import argparse
+import datetime
 import json
 import logging
 from multiprocessing import Process
@@ -12,10 +13,11 @@ from argcomplete.completers import ChoicesCompleter
 from scribereader import scribereader
 
 from paasta_tools.marathon_tools import list_clusters
-from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import figure_out_cluster
 from paasta_tools.paasta_cli.utils import list_services
+from paasta_tools.utils import ANY_CLUSTER
+from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import LOG_COMPONENTS
 from paasta_tools.utils import get_log_name_for_service
@@ -171,7 +173,9 @@ def prettify_timestamp(timestamp):
     """Returns more human-friendly form of 'timestamp' without microseconds and
     in local time.
     """
-    return timestamp
+    dt = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
+    pretty_timestamp = datetime_from_utc_to_local(dt)
+    return pretty_timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 
 def prettify_log_line(line):
