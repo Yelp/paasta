@@ -167,12 +167,19 @@ def print_log(line, raw_mode=False):
         print prettify_log_line(line)
 
 
+def prettify_timestamp(timestamp):
+    """Returns more human-friendly form of 'timestamp' without microseconds and
+    in local time.
+    """
+    return timestamp
+
+
 def prettify_log_line(line):
     pretty_line = ''
     try:
         parsed_line = json.loads(line)
         pretty_line = "%(timestamp)s - %(message)s" % ({
-            'timestamp': parsed_line['timestamp'],
+            'timestamp': prettify_timestamp(parsed_line['timestamp']),
             'message': parsed_line['message'],
         })
     except ValueError:

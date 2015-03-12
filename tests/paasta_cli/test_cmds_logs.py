@@ -225,6 +225,12 @@ def test_scribe_tail_ctrl_c():
         # was successful.
 
 
+def test_prettify_timestamp():
+    pass
+    # timestamp = "2015-03-12T21:20:04.602002"
+    # assert logs.prettify_timestamp(timestamp) == "2015-03-12 14:20:04"
+
+
 def test_prettify_log_line_invalid_json():
     line = "i am not json"
     assert logs.prettify_log_line(line) == "Invalid JSON: %s" % line
@@ -246,13 +252,14 @@ def test_prettify_log_line_valid_json():
         "level": "fake_level",
         "cluster": "fake_cluster",
         "instance": "fake_instance",
-        "timestamp": "fake_timestamp",
+        "timestamp": "2015-03-12T21:20:04.602002",
     }
     line = json.dumps(parsed_line)
+
     actual = logs.prettify_log_line(line)
     assert parsed_line['message'] in actual
-    # assert parsed_line['component'] in actual
-    assert '%s - ' % parsed_line['timestamp'] in actual
+    expected_timestamp = logs.prettify_timestamp(parsed_line['timestamp'])
+    assert '%s - ' % expected_timestamp in actual
 
 
 def test_tail_paasta_logs_let_threads_be_threads():
