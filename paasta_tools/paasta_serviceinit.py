@@ -59,16 +59,8 @@ def validate_service_instance(service, instance, cluster):
     log.info("Operating on cluster: %s" % cluster)
     all_services = marathon_tools.get_marathon_services_for_cluster(cluster)
     if (service, instance) not in all_services:
+        print "Error: %s.%s doesn't look like it has been deployed to this cluster! (%s)" % (service, instance, cluster)
         log.info(all_services)
-        _log(
-            service_name=service,
-            line="ERROR: %s.%s doesn't look like it has been deployed to this cluster! (%s)" %
-            (service, instance, cluster),
-            component='deploy',
-            level='event',
-            cluster=cluster,
-            instance=instance
-        )
         sys.exit(3)
     return True
 
@@ -77,7 +69,7 @@ def start_marathon_job(service, instance, app_id, normal_instance_count, client,
     name = PaastaColors.cyan("%s.%s" % (service, instance))
     _log(
         service_name=service,
-        line="Scaling %s up to %d instances" % (name, normal_instance_count),
+        line="EmergencyStart: scaling %s up to %d instances" % (name, normal_instance_count),
         component='deploy',
         level='event',
         cluster=cluster,
@@ -90,7 +82,7 @@ def stop_marathon_job(service, instance, app_id, client, cluster):
     name = PaastaColors.cyan("%s.%s" % (service, instance))
     _log(
         service_name=service,
-        line="Scaling %s down to 0 instances" % (name),
+        line="EmergencyStop: Scaling %s down to 0 instances" % (name),
         component='deploy',
         level='event',
         cluster=cluster,
