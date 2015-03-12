@@ -178,12 +178,20 @@ def prettify_timestamp(timestamp):
     return pretty_timestamp.strftime("%Y-%m-%d %H:%M:%S")
 
 
+def prettify_component(component):
+    try:
+        return LOG_COMPONENTS[component]['color'](component)
+    except KeyError:
+        return "UNPRETTIFIABLE COMPONENT %s" % component
+
+
 def prettify_log_line(line):
     pretty_line = ''
     try:
         parsed_line = json.loads(line)
-        pretty_line = "%(timestamp)s - %(message)s" % ({
+        pretty_line = "[%(timestamp)s] [%(component)s] %(message)s" % ({
             'timestamp': prettify_timestamp(parsed_line['timestamp']),
+            'component': prettify_component(parsed_line['component']),
             'message': parsed_line['message'],
         })
     except ValueError:

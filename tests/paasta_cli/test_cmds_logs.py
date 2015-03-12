@@ -260,9 +260,10 @@ def test_prettify_log_line_valid_json():
     line = json.dumps(parsed_line)
 
     actual = logs.prettify_log_line(line)
-    assert parsed_line['message'] in actual
     expected_timestamp = logs.prettify_timestamp(parsed_line['timestamp'])
-    assert '%s - ' % expected_timestamp in actual
+    assert expected_timestamp in actual
+    assert parsed_line['component'] in actual
+    assert parsed_line['message'] in actual
 
 
 def test_tail_paasta_logs_let_threads_be_threads():
