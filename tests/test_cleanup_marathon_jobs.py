@@ -72,6 +72,28 @@ class TestCleanupMarathonJobs:
                                                  self.fake_marathon_config['pass'])
             delete_patch.assert_called_once_with('not-here.oh.no', self.fake_marathon_client)
 
+    def test_cleanup_apps_doesnt_delete_unknown_apps(self):
+        soa_dir = 'not_really_a_dir'
+        expected_apps = [('present', 'away'), ('on-app', 'off')]
+        fake_app_ids = [mock.Mock(id='non_conforming_app')]
+        self.fake_marathon_client.list_apps = mock.Mock(return_value=fake_app_ids)
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.get_marathon_services_for_cluster',
+                       return_value=expected_apps, autospec=True),
+            mock.patch('paasta_tools.marathon_tools.get_config', autospec=True,
+                       return_value=self.fake_marathon_config),
+            mock.patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True,
+                       return_value=self.fake_marathon_client),
+            mock.patch('cleanup_marathon_jobs.delete_app', autospec=True),
+        ) as (
+            get_marathon_services_for_cluster_patch,
+            config_patch,
+            client_patch,
+            delete_patch,
+        ):
+            cleanup_marathon_jobs.cleanup_apps(soa_dir)
+            assert delete_patch.call_count == 0
+
     def test_delete_app(self):
         app_id = 'example--service.main.git93340779.configddb38a65'
         client = self.fake_marathon_client
