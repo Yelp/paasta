@@ -278,6 +278,7 @@ def test_prettify_log_line_valid_json():
     assert expected_timestamp in actual
     assert parsed_line['component'] in actual
     assert parsed_line['cluster'] in actual
+    assert parsed_line['instance'] in actual
     assert parsed_line['level'] in actual
     assert parsed_line['message'] in actual
 
