@@ -4,17 +4,17 @@ import datetime
 import errno
 import json
 import shlex
+from subprocess import Popen
+from subprocess import PIPE
+from subprocess import STDOUT
 import sys
 import tempfile
 import threading
 import os
 import re
 
-from subprocess import Popen
-from subprocess import PIPE
-from subprocess import STDOUT
-
 import clog
+import dateutil.tz
 import docker
 
 
@@ -389,3 +389,14 @@ def check_docker_image(service_name, tag):
     if len(result) > 1:
         raise ValueError('More than one docker image found with tag %s\n%s' % docker_tag, result)
     return len(result) == 1
+
+
+def datetime_from_utc_to_local(utc_datetime):
+    local_tz = dateutil.tz.tzlocal()
+    # We make out datetime timezone aware
+    utc_datetime = utc_datetime.replace(tzinfo=dateutil.tz.tzutc())
+    # We convert to the local timezone
+    local_datetime = utc_datetime.astimezone(local_tz)
+    # We need to remove timezone awareness because of humanize
+    local_datetime = local_datetime.replace(tzinfo=None)
+    return local_datetime

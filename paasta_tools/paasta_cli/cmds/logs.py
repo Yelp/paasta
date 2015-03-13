@@ -1,11 +1,11 @@
 #!/usskr/bin/env python
 """PaaSTA log reader for humans"""
 import argparse
+import datetime
 import json
 import logging
 from multiprocessing import Process
 from multiprocessing import Queue
-from pprint import pprint
 from Queue import Empty
 import sys
 
@@ -13,12 +13,14 @@ from argcomplete.completers import ChoicesCompleter
 from scribereader import scribereader
 
 from paasta_tools.marathon_tools import list_clusters
-from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import figure_out_cluster
 from paasta_tools.paasta_cli.utils import list_services
+from paasta_tools.utils import ANY_CLUSTER
+from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import LOG_COMPONENTS
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
 
 
@@ -54,6 +56,9 @@ def add_subparser(subparsers):
     status_parser.add_argument('-d', '--debug', action='store_true',
                                dest='debug', default=False,
                                help='Enable debug logging')
+    status_parser.add_argument('-r', '--raw-mode', action='store_true',
+                               dest='raw_mode', default=False,
+                               help="Don't pretty-print logs; emit them exactly as they are in scribe.")
     default_component_string = ','.join(DEFAULT_COMPONENTS)
     component_descriptions = build_component_descriptions(LOG_COMPONENTS)
     epilog = 'COMPONENTS\n' \
@@ -155,17 +160,76 @@ def scribe_tail(scribe_env, service, levels, components, cluster, queue):
         pass
 
 
-def print_log(line):
+def print_log(line, requested_levels, raw_mode=False):
     """Mostly a stub to ease testing. Eventually this may do some formatting or
     something.
     """
+    if raw_mode:
+        print line,  # suppress trailing newline since scribereader already attached one
+    else:
+        print prettify_log_line(line, requested_levels)
+
+
+def prettify_timestamp(timestamp):
+    """Returns more human-friendly form of 'timestamp' without microseconds and
+    in local time.
+    """
+    dt = datetime.datetime.strptime(timestamp, "%Y-%m-%dT%H:%M:%S.%f")
+    pretty_timestamp = datetime_from_utc_to_local(dt)
+    return pretty_timestamp.strftime("%Y-%m-%d %H:%M:%S")
+
+
+def prettify_component(component):
     try:
-        pprint(json.loads(line))
+        return LOG_COMPONENTS[component]['color']('[%s]' % component)
+    except KeyError:
+        return "UNPRETTIFIABLE COMPONENT %s" % component
+
+
+def prettify_level(level, requested_levels):
+    """Colorize level. 'event' is special and gets bolded; everything else gets
+    lightened.
+
+    requested_levels is an iterable of levels that will be displayed. If only
+    one level will be displayed, don't bother to print it (return empty string).
+    If multiple levels will be displayed, emit the (prettified) level so the
+    resulting log output is not ambiguous.
+    """
+    pretty_level = ''
+    if len(requested_levels) > 1:
+        if level == 'event':
+            pretty_level = PaastaColors.bold('[%s]' % level)
+        else:
+            pretty_level = PaastaColors.grey('[%s]' % level)
+    return pretty_level
+
+
+def prettify_log_line(line, requested_levels):
+    """Given a line from the log, which is expected to be JSON and have all the
+    things we expect, return a pretty formatted string containing relevant values.
+    """
+    pretty_line = ''
+    try:
+        parsed_line = json.loads(line)
+        pretty_level = prettify_level(parsed_line['level'], requested_levels)
+        pretty_line = "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(level)s%(message)s" % ({
+            'timestamp': prettify_timestamp(parsed_line['timestamp']),
+            'component': prettify_component(parsed_line['component']),
+            'cluster': '[%s]' % parsed_line['cluster'],
+            'instance': '[%s]' % parsed_line['instance'],
+            'level': '%s ' % pretty_level,
+            'message': parsed_line['message'],
+        })
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+        pretty_line = "Invalid JSON: %s" % line
+    except KeyError:
+        log.debug('JSON parsed correctly but was missing a key. Skipping. Line: %s' % line)
+        pretty_line = "JSON missing keys: %s" % line
+    return pretty_line
 
 
-def tail_paasta_logs(service, levels, components, cluster):
+def tail_paasta_logs(service, levels, components, cluster, raw_mode=False):
     """Sergeant function for spawning off all the right log tailing functions.
 
     NOTE: This function spawns concurrent processes and doesn't necessarily
@@ -248,7 +312,8 @@ def tail_paasta_logs(service, levels, components, cluster):
             # 1/10 even with timeout of 1s. I'm adding a sleep to the threads
             # in test code to smooth this out, then pulling the trigger on
             # moving that test to integration land where it belongs.
-            print_log(queue.get(False, 0.1))
+            line = queue.get(False, 0.1)
+            print_log(line, levels, raw_mode)
         except Empty:
             try:
                 # If there's nothing in the queue, take this opportunity to make
@@ -298,6 +363,6 @@ def paasta_logs(args):
 
     log.info("Going to get logs for %s on cluster %s" % (service_name, cluster))
     if args.tail:
-        tail_paasta_logs(service_name, levels, components, cluster)
+        tail_paasta_logs(service_name, levels, components, cluster, raw_mode=args.raw_mode)
     else:
         print "Non-tailing actions are not yet supported"

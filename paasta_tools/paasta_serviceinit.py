@@ -12,7 +12,6 @@ import sys
 
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
-import dateutil.tz
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
@@ -21,6 +20,7 @@ from paasta_tools.monitoring.replication_utils import get_replication_for_servic
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import datetime_from_utc_to_local
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -42,17 +42,6 @@ def parse_args():
     parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
     args = parser.parse_args()
     return args
-
-
-def datetime_from_utc_to_local(utc_datetime):
-    local_tz = dateutil.tz.tzlocal()
-    # We make out datetime timezone aware
-    utc_datetime = utc_datetime.replace(tzinfo=dateutil.tz.tzutc())
-    # We convert to the local timezone
-    local_datetime = utc_datetime.astimezone(local_tz)
-    # We need to remove timezone awareness because of humanize
-    local_datetime = local_datetime.replace(tzinfo=None)
-    return local_datetime
 
 
 def validate_service_instance(service, instance, cluster):
