@@ -192,11 +192,12 @@ def prettify_log_line(line):
     pretty_line = ''
     try:
         parsed_line = json.loads(line)
-        pretty_line = "[%(timestamp)s] [%(component)s] - %(level)s%(message)s" % ({
+        pretty_line = "[%(timestamp)s] [%(component)s] [%(cluster)s] - %(level)s%(message)s" % ({
             'timestamp': prettify_timestamp(parsed_line['timestamp']),
             'component': prettify_component(parsed_line['component']),
+            'cluster': parsed_line['cluster'],
+            'level': '[%s] ' % parsed_line['level'] if parsed_line['level'] != 'event' else '',
             'message': parsed_line['message'],
-            'level': '[%s] ' % parsed_line['level'] if parsed_line['level'] != 'event' else ''
         })
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
