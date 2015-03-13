@@ -12,6 +12,7 @@ import sys
 from argcomplete.completers import ChoicesCompleter
 from scribereader import scribereader
 
+from paasta_tools.marathon_tools import get_clusters_deployed_to
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import list_services
@@ -351,7 +352,7 @@ def paasta_logs(args):
     service_name = figure_out_service_name(args)
 
     if args.clusters is None:
-        clusters = []  # guess_clusters_we're_in
+        clusters = get_clusters_deployed_to(service_name)
     else:
         clusters = args.clusters.split(",")
 
