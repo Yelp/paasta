@@ -20,6 +20,7 @@ from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import LOG_COMPONENTS
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
 
 
@@ -180,9 +181,18 @@ def prettify_timestamp(timestamp):
 
 def prettify_component(component):
     try:
-        return LOG_COMPONENTS[component]['color'](component)
+        return LOG_COMPONENTS[component]['color']('[%s]' % component)
     except KeyError:
         return "UNPRETTIFIABLE COMPONENT %s" % component
+
+
+def prettify_level(level):
+    pretty_level = 'UNSPECIFIED LEVEL'
+    if level == 'event':
+        pretty_level = PaastaColors.bold('[%s]' % level)
+    else:
+        pretty_level = PaastaColors.grey('[%s]' % level)
+    return pretty_level
 
 
 def prettify_log_line(line):
@@ -192,12 +202,13 @@ def prettify_log_line(line):
     pretty_line = ''
     try:
         parsed_line = json.loads(line)
-        pretty_line = "%(timestamp)s [%(component)s] [%(cluster)s] [%(instance)s] - %(level)s%(message)s" % ({
+        pretty_level = prettify_level(parsed_line['level'])
+        pretty_line = "%(timestamp)s %(component)s %(cluster)s %(instance)s - %(level)s%(message)s" % ({
             'timestamp': prettify_timestamp(parsed_line['timestamp']),
             'component': prettify_component(parsed_line['component']),
-            'cluster': parsed_line['cluster'],
-            'instance': parsed_line['instance'],
-            'level': '[%s] ' % parsed_line['level'] if parsed_line['level'] != 'event' else '',
+            'cluster': '[%s]' % parsed_line['cluster'],
+            'instance': '[%s]' % parsed_line['instance'],
+            'level': '%s ' % pretty_level,
             'message': parsed_line['message'],
         })
     except ValueError:
