@@ -10,7 +10,6 @@ from service_configuration_lib import read_services_configuration
 
 from paasta_tools.marathon_tools import get_cluster
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
-from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import PaastaColors
 
@@ -382,10 +381,6 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
         subcommand
     )
     _, output = _run(command, timeout=10)
-    # All serviceinit commands except "status" change state, so we log them
-    if subcommand != 'status':
-        for line in output.splitlines():
-            _log(service_name, line, 'deploy', cluster=cluster, instance=instancename)
     return output
 
 
@@ -399,11 +394,11 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, servic
     master, output = find_connectable_master(masters)
     if not master:
         return (
-            'ERROR could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
         )
     check, output = check_ssh_and_sudo_on_master(master)
     if not check:
-        return 'ERROR ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
+        return 'ERROR: ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
     return run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster_name, verbose)
 
 

@@ -8,6 +8,7 @@ import sys
 import tempfile
 import threading
 import os
+import re
 
 from subprocess import Popen
 from subprocess import PIPE
@@ -27,6 +28,7 @@ DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
 ANY_CLUSTER = 'N/A'
 ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
+no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
 
 class PaastaColors:
@@ -189,6 +191,11 @@ def _now():
     return datetime.datetime.utcnow().isoformat()
 
 
+def remove_ansi_escape_sequences(line):
+    """Removes ansi escape sequences from the given line."""
+    return no_escape.sub('', line)
+
+
 def format_log_line(level, cluster, instance, component, line):
     """Accepts a string 'line'.
 
@@ -197,6 +204,7 @@ def format_log_line(level, cluster, instance, component, line):
     """
     validate_log_component(component)
     now = _now()
+    line = remove_ansi_escape_sequences(line)
     message = json.dumps({
         'timestamp': now,
         'level': level,
