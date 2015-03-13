@@ -248,9 +248,22 @@ def test_prettify_component_invalid():
     assert "UNPRETTIFIABLE COMPONENT" in actual
 
 
+def test_prettify_level_more_than_one_requested_levels():
+    level = 'fake_level'
+    requested_levels = ['fake_requested_level', 'fake_requested_level2']
+    assert level in logs.prettify_level(level, requested_levels)
+
+
+def test_prettify_level_less_than_or_equal_to_one_requested_levels():
+    level = 'fake_level'
+    requested_levels = []
+    assert level not in logs.prettify_level(level, requested_levels)
+
+
 def test_prettify_log_line_invalid_json():
     line = "i am not json"
-    assert logs.prettify_log_line(line) == "Invalid JSON: %s" % line
+    levels = []
+    assert logs.prettify_log_line(line, levels) == "Invalid JSON: %s" % line
 
 
 def test_prettify_log_line_valid_json_missing_key():
@@ -258,7 +271,8 @@ def test_prettify_log_line_valid_json_missing_key():
         "component": "fake_component",
         "oops_i_spelled_timestamp_rong": "1999-09-09",
     })
-    actual = logs.prettify_log_line(line)
+    levels = []
+    actual = logs.prettify_log_line(line, levels)
     assert "JSON missing keys: %s" % line in actual
 
 
@@ -271,9 +285,10 @@ def test_prettify_log_line_valid_json():
         "instance": "fake_instance",
         "timestamp": "2015-03-12T21:20:04.602002",
     }
+    requested_levels = ['fake_requested_level1', 'fake_requested_level2']
     line = json.dumps(parsed_line)
 
-    actual = logs.prettify_log_line(line)
+    actual = logs.prettify_log_line(line, requested_levels)
     expected_timestamp = logs.prettify_timestamp(parsed_line['timestamp'])
     assert expected_timestamp in actual
     assert parsed_line['component'] in actual
@@ -283,7 +298,8 @@ def test_prettify_log_line_valid_json():
     assert parsed_line['message'] in actual
 
 
-def test_prettify_log_line_valid_json_level_is_event():
+def test_prettify_log_line_valid_json_requested_level_is_only_event():
+    requested_levels = ['fake_requested_level1']
     parsed_line = {
         "message": "fake_message",
         "component": "fake_component",
@@ -294,7 +310,7 @@ def test_prettify_log_line_valid_json_level_is_event():
     }
     line = json.dumps(parsed_line)
 
-    actual = logs.prettify_log_line(line)
+    actual = logs.prettify_log_line(line, requested_levels)
     assert parsed_line['level'] not in actual
 
 
@@ -351,8 +367,8 @@ def test_tail_paasta_logs_let_threads_be_threads():
         # Instead, we'll rely on what we can see, which is the result of the
         # thread's work deposited in the shared queue.
         assert print_log_patch.call_count == 2
-        print_log_patch.assert_any_call('fake log line added for env1', False)
-        print_log_patch.assert_any_call('fake log line added for env2', False)
+        print_log_patch.assert_any_call('fake log line added for env1', levels, False)
+        print_log_patch.assert_any_call('fake log line added for env2', levels, False)
 
 
 def test_tail_paasta_logs_ctrl_c_in_queue_get():
