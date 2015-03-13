@@ -851,6 +851,7 @@ class TestMarathonTools:
                 'docker': {
                     'image': fake_url,
                     'network': 'BRIDGE',
+                    'parameters': {'env': 'PORT=%s' % marathon_tools.CONTAINER_PORT},
                     'portMappings': [
                         {
                             'containerPort': marathon_tools.CONTAINER_PORT,
@@ -969,13 +970,12 @@ class TestMarathonTools:
         assert marathon_tools.get_mem({}) == 1000
 
     def test_get_env_default(self):
-        assert marathon_tools.get_env({}) == {'PORT': '8888'}
+        assert marathon_tools.get_env({}) == {}
 
     def test_get_env_with_config(self):
         fake_conf = {'env': {'SPECIAL_ENV': 'TRUE'}}
         assert marathon_tools.get_env(fake_conf) == {
             'SPECIAL_ENV': 'TRUE',
-            'PORT': '8888'
         }
 
     def test_get_args_default(self):
