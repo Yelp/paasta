@@ -36,12 +36,13 @@ def step_impl(context):
 def step_impl(context):
     normal_instance_count = 1
     client = context.client
+    cluster = context.marathon_config['cluster']
     app_id = 'test-service.main'
     service = 'test-service'
     instance = 'main'
 
     old_tasks = context.client.get_app(app_id).tasks
-    paasta_serviceinit.restart_marathon_job(service, instance, app_id, normal_instance_count, client)
+    paasta_serviceinit.restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     print "Sleeping 5 seconds to wait for test-service to be restarted."
     time.sleep(5)
     new_tasks = context.client.get_app(app_id).tasks
