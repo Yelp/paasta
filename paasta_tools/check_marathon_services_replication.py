@@ -64,7 +64,7 @@ def send_event(service_name, namespace, soa_dir, status, output):
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
     _log(
         service_name=service_name,
-        line='Monitoring: %s: %s' % (status, output),
+        line='Replication: %s' % (status, output),
         component='monitoring',
         level='debug',
         cluster=cluster,
