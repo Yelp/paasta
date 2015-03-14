@@ -124,7 +124,7 @@ def line_passes_filter(line, levels, components, clusters):
     try:
         parsed_line = json.loads(line)
     except ValueError:
-        log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+        log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
     return (
         parsed_line.get('level') in levels
@@ -221,10 +221,10 @@ def prettify_log_line(line, requested_levels):
             'message': parsed_line['message'],
         })
     except ValueError:
-        log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+        log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         pretty_line = "Invalid JSON: %s" % line
     except KeyError:
-        log.debug('JSON parsed correctly but was missing a key. Skipping. Line: %s' % line)
+        log.debug('JSON parsed correctly but was missing a key. Skipping. Line: %r' % line)
         pretty_line = "JSON missing keys: %s" % line
     return pretty_line
 
