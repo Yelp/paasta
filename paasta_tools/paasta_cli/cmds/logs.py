@@ -314,7 +314,7 @@ def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
             # 1/10 even with timeout of 1s. I'm adding a sleep to the threads
             # in test code to smooth this out, then pulling the trigger on
             # moving that test to integration land where it belongs.
-            line = queue.get(False, 0.1)
+            line = queue.get(True, 0.1)
             print_log(line, levels, raw_mode)
         except Empty:
             try:
