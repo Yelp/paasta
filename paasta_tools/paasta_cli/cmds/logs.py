@@ -15,6 +15,7 @@ from scribereader import scribereader
 from paasta_tools.marathon_tools import get_clusters_deployed_to
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
+from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_from_utc_to_local
@@ -48,7 +49,7 @@ def add_subparser(subparsers):
     status_parser.add_argument(
         '-l', '--clusters',
         help=cluster_help,
-    ).completer = ChoicesCompleter(list_clusters())
+    ).completer = completer_clusters
     status_parser.add_argument(
         '-f', '-F', '--tail', dest='tail', action='store_true', default=True,
         help='Stream the logs and follow it for more data',
@@ -70,6 +71,15 @@ def add_subparser(subparsers):
              % (default_component_string, component_descriptions)
     status_parser.epilog = epilog
     status_parser.set_defaults(command=paasta_logs)
+
+
+def completer_clusters(prefix, parsed_args, **kwargs):
+    service = parsed_args.service or guess_service_name()
+    print >>sys.stderr, service
+    if service in list_services():
+        return get_clusters_deployed_to(service)
+    else:
+        return list_clusters()
 
 
 def build_component_descriptions(components):
