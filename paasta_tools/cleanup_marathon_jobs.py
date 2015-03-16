@@ -81,7 +81,11 @@ def cleanup_apps(soa_dir):
 
     for app_id in running_app_ids:
         log.debug("Checking app id %s", app_id)
-        short_app_id = marathon_tools.remove_tag_from_job_id(app_id)
+        try:
+            short_app_id = marathon_tools.remove_tag_from_job_id(app_id)
+        except IndexError:
+            log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app_id)
+            continue
         if short_app_id not in valid_short_app_ids:
             delete_app(app_id, client)
 
