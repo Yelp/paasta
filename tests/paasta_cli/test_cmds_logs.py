@@ -477,7 +477,7 @@ def test_tail_paasta_logs_aliveness_check():
         fake_queue.get.side_effect = Empty
         queue_patch.return_value = fake_queue
         fake_process = mock.MagicMock()
-        fake_process.is_alive.side_effect = [
+        is_alive_responses = [
             # First time: simulate both threads being alive.
             True, True,
             # Second time: simulate first thread is alive but second thread is now dead.
@@ -488,12 +488,11 @@ def test_tail_paasta_logs_aliveness_check():
             # thread is dead.
             True, False,
         ]
+        fake_process.is_alive.side_effect = is_alive_responses
         process_patch.return_value = fake_process
         logs.tail_paasta_logs(service, levels, components, clusters)
-        # is_alive returns True for each environment the first time through,
-        # then False for one environment the second time through. The loop
-        # stops there. Hence the total call_count is 4.
-        assert fake_process.is_alive.call_count == 6
+        # is_alive() should be called on all the values we painstakingly provided above.
+        assert fake_process.is_alive.call_count == len(is_alive_responses)
         # We only terminate the first thread, which is still alive. We don't
         # terminate the second thread, which was already dead.
         assert fake_process.terminate.call_count == 1
