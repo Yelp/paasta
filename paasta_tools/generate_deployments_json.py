@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""
-Usage: ./generate_deployments_json.py [options]
+"""Usage: ./generate_deployments_json.py [options]
 
 Creates a deployments.json file in the specified SOA configuration directory.
 This file contains a dictionary of k/v pairs representing a map between remote
@@ -63,7 +62,8 @@ def get_branches_from_marathon_file(file_dir, filename):
 
     :param file_dir: The directory that the filename argument is in
     :param filename: The name of the service configuration file to read from
-    :returns: A set of branch names listed in the configuration file"""
+    :returns: A set of branch names listed in the configuration file
+    """
     valid_branches = set([])
     config = service_configuration_lib.read_service_information(os.path.join(file_dir, filename))
     for instance in config:
@@ -88,7 +88,8 @@ def get_branches_for_service(soa_dir, service):
 
     :param soa_dir: The SOA configuration directory to read from
     :param service: The service name to get branches for
-    :returns: A list of branches defined in instances for the service"""
+    :returns: A list of branches defined in instances for the service
+    """
     valid_branches = set([])
     working_dir = os.path.join(soa_dir, service)
     for fname in os.listdir(working_dir):
@@ -101,7 +102,8 @@ def get_service_directories(soa_dir):
     """Get the service directories for a given soa directory.
 
     :param soa_dir: The SOA configuration directory to get subdirs from
-    :returns: A list of subdirectories in soa_dir"""
+    :returns: A list of subdirectories in soa_dir
+    """
     # Uses os.walk to create a generator, then calls .next() to get
     # the first entry of the generator (the entries in soa_dir itself).
     # The generator returns pwd, dirs, files, and we want dirs.
