@@ -66,6 +66,7 @@ Development
 .. toctree::
    :maxdepth: 2
 
+   contributing
    style_guide
 
 Indices and tables
