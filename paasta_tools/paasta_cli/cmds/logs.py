@@ -75,7 +75,6 @@ def add_subparser(subparsers):
 
 def completer_clusters(prefix, parsed_args, **kwargs):
     service = parsed_args.service or guess_service_name()
-    print >>sys.stderr, service
     if service in list_services():
         return get_clusters_deployed_to(service)
     else:
