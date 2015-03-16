@@ -740,12 +740,18 @@ class TestMarathonTools:
                 autospec=True,
                 return_value=['b', 'a']
             ),
+            mock.patch(
+                'os.path.exists',
+                autospec=True,
+                side_effect=lambda x: x == 'a'
+            ),
         ) as (
             services_that_run_here_patch,
             listdir_patch,
+            exists_patch,
         ):
             services = marathon_tools.get_classic_services_that_run_here()
-            assert services == ['a', 'b', 'c', 'd']
+            assert services == ['a', 'c', 'd']
             services_that_run_here_patch.assert_called_once_with()
             listdir_patch.assert_called_once_with(marathon_tools.PUPPET_SERVICE_DIR)
 
