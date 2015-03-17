@@ -174,13 +174,9 @@ def get_mem(service_config):
 def get_env(service_config):
     """Gets the environment required from the service's marathon configuration.
 
-    Will always have PORT: CONTAINER_PORT to make it more obvious *inside*
-    the container what port they need to listen on. (PAASTA-267)
-
     :param service_config: The service instance's configuration dictionary
-    :returns: A dictionary with the requested env. Including the PORT."""
+    :returns: A dictionary with the requested env."""
     env = service_config.get('env', {})
-    env['PORT'] = '%s' % CONTAINER_PORT
     return env
 
 
@@ -348,12 +344,20 @@ def format_marathon_app_dict(job_id, docker_url, docker_volumes, service_maratho
                            marathon configuration file
     :param service_marathon_config: The service instance's configuration dict
     :returns: A dict containing all of the keys listed above"""
+    docker_parameters = {
+        # We overwrite the PORT variable in a special way, we must do it at the
+        # *docker* level. This is because marathon *rewrites* the PORT variable
+        # if we set it at the API level.
+        # https://github.com/mesosphere/marathon/blob/05ef9578306eb629eb5450feb07898d4984724bd/src/main/scala/mesosphere/mesos/TaskBuilder.scala#L280-L281
+        'env': 'PORT=%s' % CONTAINER_PORT,
+    }
     complete_config = {
         'id': job_id,
         'container': {
             'docker': {
                 'image': docker_url,
                 'network': 'BRIDGE',
+                'parameters': docker_parameters,
                 'portMappings': [
                     {
                         'containerPort': CONTAINER_PORT,
