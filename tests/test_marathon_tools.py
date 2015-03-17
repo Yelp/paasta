@@ -851,7 +851,6 @@ class TestMarathonTools:
                 'docker': {
                     'image': fake_url,
                     'network': 'BRIDGE',
-                    'parameters': {'env': 'PORT=%s' % marathon_tools.CONTAINER_PORT},
                     'portMappings': [
                         {
                             'containerPort': marathon_tools.CONTAINER_PORT,
