@@ -394,8 +394,8 @@ class TestSetupMarathonJob:
         fake_error = marathon_tools.NoDockerImageError()
         fake_deployments_json = {'i like': 'debugging'}
         fake_marathon_config = {'deployments_json': fake_deployments_json}
-        fake_error.srv_config = 'fake_srv_config'
-        fake_error.deployments_json = 'fake_deployments_json'
+        fake_error.srv_config = {'fake_srv_config': 'is a dict'}
+        fake_error.srv_config['deployments_json'] = 'fake_deployments_json'
         with mock.patch(
             'setup_marathon_job.marathon_tools.create_complete_config',
             side_effect=fake_error,
