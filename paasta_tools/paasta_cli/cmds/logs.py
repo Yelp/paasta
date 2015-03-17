@@ -304,10 +304,10 @@ def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
             #
             # * Testing revealed a race condition where print_log() is called
             # and even prints its message, but this action isn't recorded on
-            # the patched-in print_log(). This resulted in test flakes. The
-            # short timeout seems to soothe this behavior: running this test 10
-            # times with a timeout of 0.0 resulted in 2 failures; running it
-            # with a timeout of 0.1 resulted in 0 failures.
+            # the patched-in print_log(). This resulted in test flakes. A short
+            # timeout seems to soothe this behavior: running this test 10 times
+            # with a timeout of 0.0 resulted in 2 failures; running it with a
+            # timeout of 0.1 resulted in 0 failures.
             #
             # * There's a race where thread1 emits its log line and exits
             # before thread2 has a chance to do anything, causing us to bail
