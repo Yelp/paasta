@@ -888,17 +888,17 @@ def is_app_id_running(app_id, client):
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
-    config = read_service_config(name, instance, soa_dir=soa_dir)
+    srv_config = read_service_config(name, instance, soa_dir=soa_dir)
     docker_url = get_docker_url(marathon_config['docker_registry'],
-                                config['docker_image'])
+                                srv_config['docker_image'])
     healthchecks = get_healthchecks(name, instance)
     complete_config = format_marathon_app_dict(partial_id, docker_url,
                                                marathon_config['docker_volumes'],
-                                               config, healthchecks)
+                                               srv_config, healthchecks)
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(
         complete_config,
-        force_bounce=get_force_bounce(config),
+        force_bounce=get_force_bounce(srv_config),
     )
     tag = "%s.%s" % (code_sha, config_hash)
     full_id = compose_job_id(name, instance, tag)
