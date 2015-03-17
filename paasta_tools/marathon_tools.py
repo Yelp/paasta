@@ -894,10 +894,7 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
                                     srv_config['docker_image'])
     # Noisy debugging output for PAASTA-322
     except NoDockerImageError as err:
-        err.message = "%s\n%s" % (
-            err.message,
-            "The service's srv_config: %s" % srv_config,
-        )
+        err.srv_config = srv_config
         raise err
     healthchecks = get_healthchecks(name, instance)
     complete_config = format_marathon_app_dict(partial_id, docker_url,
