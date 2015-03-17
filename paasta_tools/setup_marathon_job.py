@@ -189,13 +189,11 @@ def setup_service(service_name, instance_name, client, marathon_config,
             # Noisy debugging output for PAASTA-322
             "The service's marathon_config: {2}\n"
             "The service's srv_config: {3}\n"
-            "deployments.json from just after first call to get_branch_dict: {4}\n"
         ).format(
             service_name,
             instance_name,
             marathon_config,
             err.srv_config,
-            err.deployments_json,
         )
         log.error(error_msg)
         return (1, error_msg)
