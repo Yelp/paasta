@@ -392,6 +392,7 @@ class TestSetupMarathonJob:
         fake_name = 'test_service'
         fake_instance = 'test_instance'
         fake_error = marathon_tools.NoDockerImageError()
+        fake_marathon_config = {}
         fake_error.srv_config = "fake_srv_config"
         with mock.patch(
             'setup_marathon_job.marathon_tools.create_complete_config',
@@ -401,7 +402,7 @@ class TestSetupMarathonJob:
                 fake_name,
                 fake_instance,
                 None,
-                None,
+                fake_marathon_config,
                 None
             )
             assert status == 1
