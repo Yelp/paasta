@@ -889,8 +889,16 @@ def is_app_id_running(app_id, client):
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
     srv_config = read_service_config(name, instance, soa_dir=soa_dir)
-    docker_url = get_docker_url(marathon_config['docker_registry'],
-                                srv_config['docker_image'])
+    try:
+        docker_url = get_docker_url(marathon_config['docker_registry'],
+                                    srv_config['docker_image'])
+    # Noisy debugging output for PAASTA-322
+    except NoDockerImageError as err:
+        err.message = "%s\n%s" % (
+            err.message,
+            "The service's srv_config: %s" % srv_config,
+        )
+        raise err
     healthchecks = get_healthchecks(name, instance)
     complete_config = format_marathon_app_dict(partial_id, docker_url,
                                                marathon_config['docker_volumes'],

@@ -181,10 +181,17 @@ def setup_service(service_name, instance_name, client, marathon_config,
     log.info("Setting up instance %s for service %s", instance_name, service_name)
     try:
         complete_config = marathon_tools.create_complete_config(service_name, instance_name, marathon_config)
-    except marathon_tools.NoDockerImageError:
-        error_msg = "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?".format(
+    except marathon_tools.NoDockerImageError as err:
+        error_msg = (
+            "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"
+            # Noisy debugging output for PAASTA-322
+            "The service's marathon_config: {2}\n"
+            "The exception: {3}\n"
+        ).format(
             service_name,
-            instance_name
+            instance_name,
+            marathon_config,
+            err,
         )
         log.error(error_msg)
         return (1, error_msg)

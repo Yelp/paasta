@@ -393,7 +393,7 @@ class TestSetupMarathonJob:
         fake_instance = 'test_instance'
         with mock.patch(
             'setup_marathon_job.marathon_tools.create_complete_config',
-            side_effect=marathon_tools.NoDockerImageError
+            side_effect=marathon_tools.NoDockerImageError("The service's srv_config would be in here"),
         ):
             status, output = setup_marathon_job.setup_service(
                 fake_name,
@@ -405,6 +405,9 @@ class TestSetupMarathonJob:
             assert status == 1
             expected = "Docker image for test_service.test_instance not in"
             assert expected in output
+            # Noisy debugging output for PAASTA-322
+            assert "The service's marathon_config" in output
+            assert "The service's srv_config" in output
 
     def test_deploy_service_unknown_bounce(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
