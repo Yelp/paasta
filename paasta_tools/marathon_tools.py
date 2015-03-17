@@ -512,6 +512,8 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         general_config['docker_image'] = get_docker_from_branch(name, branch, soa_dir)
         general_config['desired_state'] = get_desired_state_from_branch(name, branch, soa_dir)
         general_config['force_bounce'] = get_force_bounce_from_branch(name, branch, soa_dir)
+        # Noisy debugging output for PAASTA-322
+        general_config['deployments_json'] = _get_deployments_json(soa_dir)
         return general_config
     else:
         log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)

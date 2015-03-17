@@ -394,6 +394,7 @@ class TestSetupMarathonJob:
         fake_error = marathon_tools.NoDockerImageError()
         fake_marathon_config = {}
         fake_error.srv_config = "fake_srv_config"
+        fake_error.deployments_json = "fake_deployments_json"
         with mock.patch(
             'setup_marathon_job.marathon_tools.create_complete_config',
             side_effect=fake_error,
@@ -410,7 +411,9 @@ class TestSetupMarathonJob:
             assert expected in output
             # Noisy debugging output for PAASTA-322
             assert "The service's marathon_config" in output
+            assert "REDACTED" in output
             assert "fake_srv_config" in output
+            assert "fake_deployments_json" in output
 
     def test_deploy_service_unknown_bounce(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
