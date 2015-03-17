@@ -12,9 +12,10 @@ import sys
 from argcomplete.completers import ChoicesCompleter
 from scribereader import scribereader
 
+from paasta_tools.marathon_tools import get_clusters_deployed_to
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
-from paasta_tools.paasta_cli.utils import figure_out_cluster
+from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_from_utc_to_local
@@ -44,11 +45,11 @@ def add_subparser(subparsers):
         '-c', '--components',
         help=components_help,
     ).completer = ChoicesCompleter(LOG_COMPONENTS.keys())
-    cluster_help = 'The cluster to see relevant logs for. Defaults to the local cluster.'
+    cluster_help = 'The clusters to see relevant logs for. Defaults to all clusters to which this service is deployed.'
     status_parser.add_argument(
-        '-l', '--cluster',
+        '-l', '--clusters',
         help=cluster_help,
-    ).completer = ChoicesCompleter(list_clusters())
+    ).completer = completer_clusters
     status_parser.add_argument(
         '-f', '-F', '--tail', dest='tail', action='store_true', default=True,
         help='Stream the logs and follow it for more data',
@@ -70,6 +71,14 @@ def add_subparser(subparsers):
              % (default_component_string, component_descriptions)
     status_parser.epilog = epilog
     status_parser.set_defaults(command=paasta_logs)
+
+
+def completer_clusters(prefix, parsed_args, **kwargs):
+    service = parsed_args.service or guess_service_name()
+    if service in list_services():
+        return get_clusters_deployed_to(service)
+    else:
+        return list_clusters()
 
 
 def build_component_descriptions(components):
@@ -116,27 +125,27 @@ def cluster_to_scribe_env(cluster):
         return env
 
 
-def line_passes_filter(line, levels, components, cluster):
+def line_passes_filter(line, levels, components, clusters):
     """Given a (JSON-formatted) log line, return True if the line should be
-    displayed given the provided levels, components, and cluster; return False
+    displayed given the provided levels, components, and clusters; return False
     otherwise.
     """
     try:
         parsed_line = json.loads(line)
     except ValueError:
-        log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+        log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
     return (
         parsed_line.get('level') in levels
         and parsed_line.get('component') in components
         and (
-            parsed_line.get('cluster') == cluster
+            parsed_line.get('cluster') in clusters
             or parsed_line.get('cluster') == ANY_CLUSTER
         )
     )
 
 
-def scribe_tail(scribe_env, service, levels, components, cluster, queue):
+def scribe_tail(scribe_env, service, levels, components, clusters, queue):
     """Creates a scribetailer for a particular environment.
 
     When it encounters a line that it should report, it sticks it into the
@@ -152,7 +161,7 @@ def scribe_tail(scribe_env, service, levels, components, cluster, queue):
         port = host_and_port['port']
         tailer = scribereader.get_stream_tailer(stream_name, host, port)
         for line in tailer:
-            if line_passes_filter(line, levels, components, cluster):
+            if line_passes_filter(line, levels, components, clusters):
                 queue.put(line)
     except KeyboardInterrupt:
         # Die peacefully rather than printing N threads worth of stack
@@ -221,15 +230,15 @@ def prettify_log_line(line, requested_levels):
             'message': parsed_line['message'],
         })
     except ValueError:
-        log.debug('Trouble parsing line as json. Skipping. Line: %s' % line)
+        log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         pretty_line = "Invalid JSON: %s" % line
     except KeyError:
-        log.debug('JSON parsed correctly but was missing a key. Skipping. Line: %s' % line)
+        log.debug('JSON parsed correctly but was missing a key. Skipping. Line: %r' % line)
         pretty_line = "JSON missing keys: %s" % line
     return pretty_line
 
 
-def tail_paasta_logs(service, levels, components, cluster, raw_mode=False):
+def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
     """Sergeant function for spawning off all the right log tailing functions.
 
     NOTE: This function spawns concurrent processes and doesn't necessarily
@@ -257,7 +266,9 @@ def tail_paasta_logs(service, levels, components, cluster, raw_mode=False):
     PAASTA-214 and https://reviewboard.yelpcorp.com/r/87320/ and feel free to
     implement one of the other options.
     """
-    scribe_envs = determine_scribereader_envs(components, cluster)
+    scribe_envs = set([])
+    for cluster in clusters:
+        scribe_envs.update(determine_scribereader_envs(components, cluster))
     log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
     queue = Queue()
     spawned_processes = []
@@ -268,7 +279,7 @@ def tail_paasta_logs(service, levels, components, cluster, raw_mode=False):
             'service': service,
             'levels': levels,
             'components': components,
-            'cluster': cluster,
+            'clusters': clusters,
             'queue': queue,
         }
         process = Process(target=scribe_tail, kwargs=kw)
@@ -312,14 +323,14 @@ def tail_paasta_logs(service, levels, components, cluster, raw_mode=False):
             # 1/10 even with timeout of 1s. I'm adding a sleep to the threads
             # in test code to smooth this out, then pulling the trigger on
             # moving that test to integration land where it belongs.
-            line = queue.get(False, 0.1)
+            line = queue.get(True, 0.1)
             print_log(line, levels, raw_mode)
         except Empty:
             try:
                 # If there's nothing in the queue, take this opportunity to make
                 # sure all the tailers are still running.
                 running_processes = [tt.is_alive() for tt in spawned_processes]
-                if not all(running_processes):
+                if not running_processes or not all(running_processes):
                     log.warn('Quitting because I expected %d log tailers to be alive but only %d are alive.' % (
                         len(spawned_processes),
                         running_processes.count(True),
@@ -348,7 +359,12 @@ def paasta_logs(args):
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
     service_name = figure_out_service_name(args)
-    cluster = figure_out_cluster(args)
+
+    if args.clusters is None:
+        clusters = get_clusters_deployed_to(service_name)
+    else:
+        clusters = args.clusters.split(",")
+
     if args.components is not None:
         components = args.components.split(",")
     else:
@@ -361,8 +377,8 @@ def paasta_logs(args):
         log.setLevel(logging.WARN)
         levels = [DEFAULT_LOGLEVEL]
 
-    log.info("Going to get logs for %s on cluster %s" % (service_name, cluster))
+    log.info("Going to get logs for %s on clusters %s" % (service_name, clusters))
     if args.tail:
-        tail_paasta_logs(service_name, levels, components, cluster, raw_mode=args.raw_mode)
+        tail_paasta_logs(service_name, levels, components, clusters, raw_mode=args.raw_mode)
     else:
         print "Non-tailing actions are not yet supported"

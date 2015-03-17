@@ -26,54 +26,66 @@ def test_cluster_to_scribe_env_bad():
 
 def test_line_passes_filter_true():
     levels = ['fake_level1', 'fake_level2']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
-    formatted_line = format_log_line(levels[0], cluster, instance, components[0], line)
-    assert logs.line_passes_filter(formatted_line, levels, components, cluster) is True
+    formatted_line = format_log_line(levels[0], clusters[0], instance, components[0], line)
+    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is True
 
 
 def test_line_passes_filter_true_when_default_cluster():
     levels = ['fake_level1', 'fake_level2']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
     formatted_line = format_log_line(levels[0], ANY_CLUSTER, instance, components[0], line)
-    assert logs.line_passes_filter(formatted_line, levels, components, cluster) is True
+    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is True
 
 
 def test_line_passes_filter_false_when_wrong_level():
     levels = ['fake_level1', 'fake_level2']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
-    formatted_line = format_log_line('BOGUS_LEVEL', cluster, instance, components[0], line)
-    assert logs.line_passes_filter(formatted_line, levels, components, cluster) is False
+    formatted_line = format_log_line('BOGUS_LEVEL', clusters[0], instance, components[0], line)
+    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is False
 
 
 def test_line_passes_filter_false_when_wrong_component():
     levels = ['fake_level1', 'fake_level2']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
     # component must be legit as well as not in the list of requested
     # components
-    formatted_line = format_log_line(levels[0], cluster, instance, 'monitoring', line)
-    assert logs.line_passes_filter(formatted_line, levels, components, cluster) is False
+    formatted_line = format_log_line(levels[0], clusters[0], instance, 'monitoring', line)
+    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is False
+
+
+def test_line_passes_filter_false_when_wrong_cluster():
+    levels = ['fake_level1', 'fake_level2']
+    clusters = ['fake_cluster1', 'fake_cluster2']
+    instance = 'fake_instance'
+    components = ['build', 'deploy']
+    line = 'fake_line'
+    # component must be legit as well as not in the list of requested
+    # components
+    formatted_line = format_log_line(levels[0], 'BOGUS_CLUSTER', instance, components[0], line)
+    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is False
 
 
 def test_line_passes_filter_false_when_line_not_valid_json():
     levels = ['fake_level1', 'fake_level2']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     components = ['build', 'deploy']
     line = 'i am definitely not json'
     # component must be legit as well as not in the list of requested
     # components
-    assert logs.line_passes_filter(line, levels, components, cluster) is False
+    assert logs.line_passes_filter(line, levels, components, clusters) is False
 
 
 def test_scribe_tail_log_everything():
@@ -81,20 +93,20 @@ def test_scribe_tail_log_everything():
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['build', 'deploy']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     queue = Queue()
     tailer = iter([
         format_log_line(
             levels[0],
-            cluster,
+            clusters,
             instance,
             'build',
             'level: first. component: build.',
         ),
         format_log_line(
             levels[1],
-            cluster,
+            clusters,
             instance,
             'deploy',
             'level: second. component: deploy.',
@@ -118,7 +130,7 @@ def test_scribe_tail_log_everything():
             service,
             levels,
             components,
-            cluster,
+            clusters,
             queue,
         )
         assert mock_scribereader.get_env_scribe_host.call_count == 1
@@ -143,20 +155,20 @@ def test_scribe_tail_log_nothing():
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['build', 'deploy']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     queue = Queue()
     tailer = iter([
         format_log_line(
             levels[0],
-            cluster,
+            clusters,
             instance,
             'build',
             'level: first. component: build.',
         ),
         format_log_line(
             levels[1],
-            cluster,
+            clusters,
             instance,
             'deploy',
             'level: second. component: deploy.',
@@ -180,7 +192,7 @@ def test_scribe_tail_log_nothing():
             service,
             levels,
             components,
-            cluster,
+            clusters,
             queue,
         )
         assert queue.qsize() == 0
@@ -196,7 +208,7 @@ def test_scribe_tail_ctrl_c():
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['build', 'deploy']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     queue = Queue()
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True),
@@ -215,7 +227,7 @@ def test_scribe_tail_ctrl_c():
                 service,
                 levels,
                 components,
-                cluster,
+                clusters,
                 queue,
             )
         # We have to catch this ourselves otherwise it will fool pytest too!
@@ -324,7 +336,7 @@ def test_tail_paasta_logs_let_threads_be_threads():
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['deploy', 'monitoring']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
@@ -343,7 +355,7 @@ def test_tail_paasta_logs_let_threads_be_threads():
             service,
             levels,
             components,
-            cluster,
+            clusters,
             queue,
         ):
             # The print here is just for debugging
@@ -356,8 +368,9 @@ def test_tail_paasta_logs_let_threads_be_threads():
             time.sleep(0.05)
         scribe_tail_patch.side_effect = scribe_tail_side_effect
 
-        logs.tail_paasta_logs(service, levels, components, cluster)
-        determine_scribereader_envs_patch.assert_called_once_with(components, cluster)
+        logs.tail_paasta_logs(service, levels, components, clusters)
+        for cluster in clusters:
+            determine_scribereader_envs_patch.assert_any_call(components, cluster)
         # NOTE: Assertions about scribe_tail_patch break under multiprocessing.
         # We think this is because the patched scribe_tail's attributes
         # (call_count, call_args, etc.) don't get updated here in the main
@@ -375,7 +388,7 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['deploy', 'monitoring']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
@@ -395,7 +408,7 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
         fake_queue.get.side_effect = FakeKeyboardInterrupt
         queue_patch.return_value = fake_queue
         try:
-            logs.tail_paasta_logs(service, levels, components, cluster)
+            logs.tail_paasta_logs(service, levels, components, clusters)
         # We have to catch this ourselves otherwise it will fool pytest too!
         except FakeKeyboardInterrupt:
             raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
@@ -407,7 +420,7 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['deploy', 'monitoring']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
@@ -431,7 +444,7 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
         fake_process.is_alive.side_effect = FakeKeyboardInterrupt
         process_patch.return_value = fake_process
         try:
-            logs.tail_paasta_logs(service, levels, components, cluster)
+            logs.tail_paasta_logs(service, levels, components, clusters)
         # We have to catch this ourselves otherwise it will fool pytest too!
         except FakeKeyboardInterrupt:
             raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
@@ -443,7 +456,7 @@ def test_tail_paasta_logs_aliveness_check():
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['deploy', 'monitoring']
-    cluster = 'fake_cluster'
+    clusters = ['fake_cluster1', 'fake_cluster2']
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
@@ -476,7 +489,7 @@ def test_tail_paasta_logs_aliveness_check():
             True, False,
         ]
         process_patch.return_value = fake_process
-        logs.tail_paasta_logs(service, levels, components, cluster)
+        logs.tail_paasta_logs(service, levels, components, clusters)
         # is_alive returns True for each environment the first time through,
         # then False for one environment the second time through. The loop
         # stops there. Hence the total call_count is 4.
@@ -484,6 +497,35 @@ def test_tail_paasta_logs_aliveness_check():
         # We only terminate the first thread, which is still alive. We don't
         # terminate the second thread, which was already dead.
         assert fake_process.terminate.call_count == 1
+
+
+def test_tail_paasta_logs_empty_clusters():
+    service = 'fake_service'
+    levels = ['fake_level1', 'fake_level2']
+    components = ['deploy', 'monitoring']
+    clusters = []
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.log', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.print_log', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.Queue', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.Process', autospec=True),
+    ) as (
+        determine_scribereader_envs_patch,
+        scribe_tail_patch,
+        log_patch,
+        print_log_patch,
+        queue_patch,
+        process_patch,
+    ):
+        determine_scribereader_envs_patch.return_value = []
+        fake_queue = mock.MagicMock(spec_set=Queue())
+        fake_queue.get.side_effect = Empty
+        queue_patch.return_value = fake_queue
+        logs.tail_paasta_logs(service, levels, components, clusters)
+        assert process_patch.call_count == 0
+        assert print_log_patch.call_count == 0
 
 
 def test_determine_scribereader_envs():
