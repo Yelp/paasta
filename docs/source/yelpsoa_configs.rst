@@ -29,7 +29,9 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``args``: docker args if you use the "entrypoint" functionality
 
-  * ``env``: A dictionary of environment variables that will be made available to the container. The PORT variable is always set by the system to be the port that the service must listen on to be exposed via docker (8888).
+  * ``env``: A dictionary of environment variables that will be made available to the container.
+
+    * **WARNING**: A PORT variable is provided to the docker image, but it represents the EXTERNAL port, not the internal one. The internal service MUST listen on 8888, so this PORT variable confuses some service stacks that are listening for this variable. Such services MUST overwrite this environment variable to function. (``PORT=8888 ./uwisgi.py```) We tried to work around this, see `PAASTA-267 <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
 
 smartstack.yaml
 ---------------
