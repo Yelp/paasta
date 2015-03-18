@@ -262,19 +262,30 @@ class TestMarathonTools:
         expected = 'end_of_the_line'
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
-            mock.patch('marathon_tools.exists', autospec=True, return_value=True),
             mock.patch('marathon_tools.open', create=True, return_value=file_mock),
             mock.patch('json.loads', autospec=True, return_value=expected)
         ) as (
-            exists_patch,
             open_file_patch,
             json_patch
         ):
             assert marathon_tools.get_config() == expected
-            exists_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             file_mock.read.assert_called_once_with()
-            json_patch.assert_called_once_with(file_mock.read())
+            json_patch.assert_called_once_with(file_mock.read.return_value)
+
+    def test_get_config_open_raises_ioerror(self):
+        expected = 'end_of_the_line'
+        # Reset magic state cache
+        marathon_tools.MarathonConfig._shared_state['config'] = None
+        with contextlib.nested(
+            mock.patch('marathon_tools.open', create=True, side_effect=IOError('I cannot the file')),
+            mock.patch('json.loads', autospec=True, return_value=expected)
+        ) as (
+            open_file_patch,
+            json_patch
+        ):
+            with raises(marathon_tools.PaastaNotConfigured):
+                marathon_tools.get_config()
 
     def test_get_cluster(self):
         fake_config = {

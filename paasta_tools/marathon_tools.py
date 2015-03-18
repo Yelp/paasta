@@ -36,15 +36,15 @@ PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 class MarathonConfig:
     # A simple borg DP class to keep the config from being loaded tons of times.
     # http://code.activestate.com/recipes/66531/
-    __shared_state = {'config': None}
+    _shared_state = {'config': None}
 
     def __init__(self):
-        self.__dict__ = self.__shared_state
+        self.__dict__ = self._shared_state
         if not self.config:
-            if exists(PATH_TO_MARATHON_CONFIG):
+            try:
                 self.config = json.loads(open(PATH_TO_MARATHON_CONFIG).read())
-            else:
-                raise PaastaNotConfigured
+            except IOError:
+                raise PaastaNotConfigured("Couldn't open path to marathon config %s" % PATH_TO_MARATHON_CONFIG)
 
     def get(self):
         return self.config
