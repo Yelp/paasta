@@ -129,6 +129,10 @@ class TestMarathonTools:
         fake_docker = 'no_docker:9.9'
         config_copy = self.fake_marathon_job_config.config_dict.copy()
         fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
+        deployments_json_mock = mock.Mock(
+            spec=marathon_tools.DeploymentsJson,
+            get_branch_dict=lambda x, y: fake_branch_dict,
+        )
 
         def conf_helper(name, filename, soa_dir="AAAAAAAAA"):
             if filename == 'marathon-amnesia':
@@ -143,7 +147,9 @@ class TestMarathonTools:
             fake_instance,
             dict(
                 self.fake_srv_config.items() +
-                self.fake_marathon_job_config.config_dict.items()
+                self.fake_marathon_job_config.config_dict.items() +
+                # Noisy debugging output for PAASTA-322
+                [('deployments_json', deployments_json_mock)]
             ),
             fake_branch_dict,
         )
@@ -155,10 +161,6 @@ class TestMarathonTools:
         ) as (
             read_extra_info_patch,
         ):
-            deployments_json_mock = mock.Mock(
-                spec=marathon_tools.DeploymentsJson,
-                get_branch_dict=lambda x, y: fake_branch_dict,
-            )
             actual = marathon_tools.MarathonServiceConfig.read(
                 fake_name,
                 fake_instance,
@@ -664,12 +666,18 @@ class TestMarathonTools:
                 autospec=True,
                 return_value=['b', 'a']
             ),
+            mock.patch(
+                'os.path.exists',
+                autospec=True,
+                side_effect=lambda x: x == 'a'
+            ),
         ) as (
             services_that_run_here_patch,
             listdir_patch,
+            exists_patch,
         ):
             services = marathon_tools.get_classic_services_that_run_here()
-            assert services == ['a', 'b', 'c', 'd']
+            assert services == ['a', 'c', 'd']
             services_that_run_here_patch.assert_called_once_with()
             listdir_patch.assert_called_once_with(marathon_tools.PUPPET_SERVICE_DIR)
 

@@ -148,7 +148,10 @@ class MarathonServiceConfig(object):
         general_config.update(instance_configs[instance])
 
         if deployments_json is None:
-            deployments_json = DeploymentsJson(soa_dir=soa_dir)
+            deployments_json = DeploymentsJson.read(soa_dir=soa_dir)
+
+        # Noisy debugging output for PAASTA-322
+        general_config['deployments_json'] = deployments_json
 
         return cls(
             service_name,
@@ -756,7 +759,10 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
 def get_classic_services_that_run_here():
     return sorted(
         service_configuration_lib.services_that_run_here() +
-        os.listdir(PUPPET_SERVICE_DIR)
+        # find all files in the PUPPET_SERVICE_DIR, but discard broken symlinks
+        # this allows us to (de)register services on a machine by
+        # breaking/healing a symlink placed by Puppet.
+        [i for i in os.listdir(PUPPET_SERVICE_DIR) if os.path.exists(i)]
     )
 
 
@@ -843,10 +849,15 @@ def is_app_id_running(app_id, client):
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
-    config = MarathonServiceConfig.read(name, instance, soa_dir=soa_dir)
-    docker_url = get_docker_url(marathon_config.get_docker_registry(), config.get_docker_image())
+    srv_config = MarathonServiceConfig.read(name, instance, soa_dir=soa_dir)
+    try:
+        docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
+    # Noisy debugging output for PAASTA-322
+    except NoDockerImageError as err:
+        err.srv_config = srv_config
+        raise err
     healthchecks = ServiceNamespaceConfig.read(name, instance).get_healthchecks()
-    complete_config = config.format_marathon_app_dict(
+    complete_config = srv_config.format_marathon_app_dict(
         partial_id,
         docker_url,
         marathon_config.get_docker_volumes(),
@@ -855,7 +866,7 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(
         complete_config,
-        force_bounce=config.get_force_bounce(),
+        force_bounce=srv_config.get_force_bounce(),
     )
     tag = "%s.%s" % (code_sha, config_hash)
     full_id = compose_job_id(name, instance, tag)
