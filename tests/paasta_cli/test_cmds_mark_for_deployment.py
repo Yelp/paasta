@@ -16,8 +16,8 @@ def test_mark_for_deployment_run_fail(
 ):
     mock_run.return_value = (1, 'Exterminate!')
     args = MagicMock()
-    args.git_url = 'git://false.repo/services/test_services'
     args.clusterinstance = 'cluster.instance'
+    args.service = 'test_service'
     paasta_mark_for_deployment(args)
     mock_exit.assert_called_once_with(1)
 
@@ -34,6 +34,6 @@ def test_mark_for_deployment_success(
 ):
     mock_run.return_value = (0, 'Interminate!')
     args = MagicMock()
-    args.git_url = 'git://false.repo/services/test_services'
     args.clusterinstance = 'cluster.instance'
+    args.service = 'test_service'
     assert paasta_mark_for_deployment(args) is None
