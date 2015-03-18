@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""
-Usage: ./generate_deployments_json.py [options]
+"""Usage: ./generate_deployments_json.py [options]
 
 Creates a deployments.json file in the specified SOA configuration directory.
 This file contains a dictionary of k/v pairs representing a map between remote
@@ -63,7 +62,8 @@ def get_branches_from_marathon_file(file_dir, filename):
 
     :param file_dir: The directory that the filename argument is in
     :param filename: The name of the service configuration file to read from
-    :returns: A set of branch names listed in the configuration file"""
+    :returns: A set of branch names listed in the configuration file
+    """
     valid_branches = set([])
     config = service_configuration_lib.read_service_information(os.path.join(file_dir, filename))
     for instance in config:
@@ -88,7 +88,8 @@ def get_branches_for_service(soa_dir, service):
 
     :param soa_dir: The SOA configuration directory to read from
     :param service: The service name to get branches for
-    :returns: A list of branches defined in instances for the service"""
+    :returns: A list of branches defined in instances for the service
+    """
     valid_branches = set([])
     working_dir = os.path.join(soa_dir, service)
     for fname in os.listdir(working_dir):
@@ -101,7 +102,8 @@ def get_service_directories(soa_dir):
     """Get the service directories for a given soa directory.
 
     :param soa_dir: The SOA configuration directory to get subdirs from
-    :returns: A list of subdirectories in soa_dir"""
+    :returns: A list of subdirectories in soa_dir
+    """
     # Uses os.walk to create a generator, then calls .next() to get
     # the first entry of the generator (the entries in soa_dir itself).
     # The generator returns pwd, dirs, files, and we want dirs.
@@ -131,14 +133,18 @@ def get_branch_mappings(soa_dir, old_mappings):
             log.info('Service %s has no valid branches. Skipping.', service)
             continue
 
-        remote_refs = remote_git.list_remote_refs(get_git_url(service))
+        try:
+            remote_refs = remote_git.list_remote_refs(get_git_url(service))
+        except remote_git.LSRemoteException:
+            log.info("Couldn't list remote refs for %s", service)
+            remote_refs = {}
 
         for branch in valid_branches:
             ref_name = 'refs/heads/%s' % branch
             if ref_name in remote_refs:
                 commit_sha = remote_refs[ref_name]
                 branch_alias = '%s:%s' % (service, branch)
-                docker_image = 'services-%s:paasta-%s' % (service, commit_sha)
+                docker_image = build_docker_image_name(service, commit_sha)
                 log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
                 mapping = mappings.setdefault(branch_alias, {})
                 mapping['docker_image'] = docker_image
@@ -148,6 +154,22 @@ def get_branch_mappings(soa_dir, old_mappings):
                 mapping['force_bounce'] = force_bounce
 
     return mappings
+
+
+def build_docker_image_name(service, sha):
+    return 'services-%s:paasta-%s' % (service, sha)
+
+
+def get_service_from_docker_image(image_name):
+    """Does the opposite of build_docker_image_name and retrieves the
+    name of a service our of a provided docker image
+
+    An image name has the full path, including the registry. Like:
+    docker-paasta.yelpcorp.com:443/services-example_service:paasta-591ae8a7b3224e3b3322370b858377dd6ef335b6
+    """
+
+    matches = re.search('.*/services-(.*?):paasta-.*?', image_name)
+    return matches.group(1)
 
 
 def get_desired_state(service, branch, remote_refs):

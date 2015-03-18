@@ -7,7 +7,7 @@ def test_get_serviceinit_status():
     with mock.patch('paasta_tools.monitoring.context._run') as mock_run:
         expected_command = 'paasta_serviceinit -v fake_service.fake_instance status'
         context.get_serviceinit_status('fake_service', 'fake_instance')
-        mock_run.assert_called_once_with(expected_command)
+        mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
 
 
 def test_get_context():

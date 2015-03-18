@@ -4,8 +4,12 @@
 import os
 import sys
 
+from paasta_tools.paasta_cli.utils import get_jenkins_build_output_url
 from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import _log
 from paasta_tools.utils import _run
+from paasta_tools.utils import build_docker_tag
+from paasta_tools.utils import check_docker_image
 
 
 def add_subparser(subparsers):
@@ -28,24 +32,6 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_itest)
 
 
-def build_docker_tag(upstream_job_name, upstream_git_commit):
-    """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
-    will look for your images.
-
-    upstream_job_name is a sanitized-for-Jenkins (s,/,-,g) version of the
-    service's path in git. E.g. For git.yelpcorp.com:services/foo the
-    upstream_job_name is services-foo.
-
-    upstream_git_commit is the SHA that we're building. Usually this is the
-    tip of origin/master.
-    """
-    tag = 'docker-paasta.yelpcorp.com:443/services-%s:paasta-%s' % (
-        upstream_job_name,
-        upstream_git_commit,
-    )
-    return tag
-
-
 def paasta_itest(args):
     """Build and test a docker image"""
     service_name = args.service
@@ -57,9 +43,34 @@ def paasta_itest(args):
     run_env = os.environ.copy()
     run_env['DOCKER_TAG'] = tag
     cmd = "make itest"
+    loglines = []
 
-    print 'INFO: Executing command "%s" with DOCKER_TAG set to %s' % (cmd, tag)
-    returncode, output = _run(cmd, env=run_env)
+    returncode, output = _run(
+        cmd,
+        env=run_env,
+        timeout=3600,
+        log=True,
+        component='build',
+        service_name=service_name,
+        loglevel='debug'
+    )
     if returncode != 0:
-        print 'ERROR: Failed to run itest. Output:\n%sReturn code was: %d' % (output, returncode)
-        sys.exit(returncode)
+        loglines.append(
+            'ERROR: itest failed for %s.' % args.commit
+        )
+        output = get_jenkins_build_output_url()
+        if output:
+            loglines.append('See output: %s' % output)
+    else:
+        loglines.append('itest passed for %s.' % args.commit)
+        if not check_docker_image(service_name, args.commit):
+            loglines.append('ERROR: itest has not created %s' % tag)
+            returncode = 1
+    for logline in loglines:
+        _log(
+            service_name=service_name,
+            line=logline,
+            component='build',
+            level='event',
+        )
+    sys.exit(returncode)

@@ -4,20 +4,19 @@ on the PaaSTA stack"""
 from ordereddict import OrderedDict
 from os.path import join
 
-
-from service_configuration_lib import read_deploy
-from paasta_tools.marathon_tools import \
-    DEFAULT_SOA_DIR, DeploymentsJson
+from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
+from paasta_tools.marathon_tools import DeploymentsJson
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
-from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import get_pipeline_url
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
-from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import x_mark
+from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
+from paasta_tools.utils import PaastaColors
+from service_configuration_lib import read_deploy
 
 
 def add_subparser(subparsers):
@@ -131,7 +130,7 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
         if namespace in actual_deployments:
             unformatted_instance = instance
             instance = PaastaColors.blue(instance)
-            version = actual_deployments[namespace]
+            version = actual_deployments[namespace][:8]
             # TODO: Perform sanity checks once per cluster instead of for each namespace
             status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, unformatted_instance,
                                                                  verbose)
@@ -143,7 +142,7 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             status = None
 
         print '  instance: %s' % instance
-        print '    version: %s' % version
+        print '    Git sha:    %s' % version
         if status is not None:
             for line in status.rstrip().split('\n'):
                 print '    %s' % line

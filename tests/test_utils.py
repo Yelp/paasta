@@ -19,7 +19,7 @@ def test_format_log_line():
     input_line = 'foo'
     fake_cluster = 'fake_cluster'
     fake_instance = 'fake_instance'
-    fake_component = 'fake_component'
+    fake_component = 'build'
     fake_level = 'debug'
     fake_now = 'fake_now'
     expected = json.dumps({
@@ -36,9 +36,14 @@ def test_format_log_line():
         assert actual == expected
 
 
+def test_format_log_line_rejects_invalid_components():
+    with raises(utils.NoSuchLogComponent):
+        utils.format_log_line('fake_service', 'fake_line', 'BOGUS_COMPONENT', 'debug', 'fake_input')
+
+
 def test_log_raise_on_unknown_level():
     with raises(utils.NoSuchLogLevel):
-        utils._log('fake_service', 'fake_line', 'fake_component', 'BOGUS_LEVEL')
+        utils._log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
 
 
 def test_get_log_name_for_service():
@@ -102,3 +107,54 @@ def test_atomic_file_write_itest():
 
 def test_configure_log():
     utils.configure_log()
+
+
+def test_build_docker_tag():
+    upstream_job_name = 'fake_upstream_job_name'
+    upstream_git_commit = 'fake_upstream_git_commit'
+    expected = 'docker-paasta.yelpcorp.com:443/services-%s:paasta-%s' % (
+        upstream_job_name,
+        upstream_git_commit,
+    )
+    actual = utils.build_docker_tag(upstream_job_name, upstream_git_commit)
+    assert actual == expected
+
+
+def test_check_docker_image_false():
+    fake_app = 'fake_app'
+    fake_commit = 'fake_commit'
+    docker_tag = utils.build_docker_tag(fake_app, fake_commit)
+    with mock.patch('docker.Client') as mock_docker:
+        docker_client = mock_docker.return_value
+        docker_client.images.return_value = [{
+            'Created': 1425430339,
+            'VirtualSize': 250344331,
+            'ParentId': '1111',
+            'RepoTags': [docker_tag],
+            'Id': 'ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2',
+            'Size': 0}
+        ]
+        assert utils.check_docker_image('test_service', 'tag2') is False
+
+
+def test_check_docker_image_true():
+    fake_app = 'fake_app'
+    fake_commit = 'fake_commit'
+    docker_tag = utils.build_docker_tag(fake_app, fake_commit)
+    with mock.patch('docker.Client') as mock_docker:
+        docker_client = mock_docker.return_value
+        docker_client.images.return_value = [{
+            'Created': 1425430339,
+            'VirtualSize': 250344331,
+            'ParentId': '1111',
+            'RepoTags': [docker_tag],
+            'Id': 'ef978820f195dede62e206bbd41568463ab2b79260bc63835a72154fe7e196a2',
+            'Size': 0}
+        ]
+        assert utils.check_docker_image(fake_app, fake_commit) is True
+
+
+def test_remove_ansi_escape_sequences():
+    plain_string = 'blackandwhite'
+    colored_string = '\033[34m' + plain_string + '\033[0m'
+    assert utils.remove_ansi_escape_sequences(colored_string) == plain_string

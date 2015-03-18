@@ -22,6 +22,7 @@ import sys
 import service_configuration_lib
 from paasta_tools import marathon_tools
 from paasta_tools import bounce_lib
+from paasta_tools.utils import _log
 
 
 ID_SPACER = marathon_tools.ID_SPACER
@@ -38,6 +39,28 @@ def parse_args():
                         dest="verbose", default=False)
     args = parser.parse_args()
     return args
+
+
+def delete_app(app_id, client):
+    """Deletes a marathon app safely and logs to notify the user that it
+    happened"""
+    short_app_id = marathon_tools.remove_tag_from_job_id(app_id)
+    log.warn("%s appears to be old; attempting to delete" % app_id)
+    srv_instance = short_app_id.replace('--', '_')
+    service_name = srv_instance.split('.')[0]
+    instance = srv_instance.split('.')[1]
+    try:
+        with bounce_lib.bounce_lock_zookeeper(srv_instance):
+            bounce_lib.delete_marathon_app(app_id, client)
+            log_line = "Deleted stale marathon job that looks lost: %s" % app_id
+            _log(service_name=service_name,
+                 component='deploy',
+                 level='event',
+                 cluster=marathon_tools.get_cluster(),
+                 instance=instance,
+                 line=log_line)
+    except IOError:
+        log.debug("%s is being bounced, skipping" % app_id)
 
 
 def cleanup_apps(soa_dir):
@@ -58,16 +81,13 @@ def cleanup_apps(soa_dir):
 
     for app_id in running_app_ids:
         log.debug("Checking app id %s", app_id)
-        short_app_id = marathon_tools.remove_tag_from_job_id(app_id)
+        try:
+            short_app_id = marathon_tools.remove_tag_from_job_id(app_id)
+        except IndexError:
+            log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app_id)
+            continue
         if short_app_id not in valid_short_app_ids:
-            try:
-                log.warn("%s appears to be old; attempting to delete", app_id)
-                srv_instance = short_app_id.replace('--', '_')
-                with bounce_lib.bounce_lock_zookeeper(srv_instance):
-                    bounce_lib.delete_marathon_app(app_id, client)
-            except IOError:
-                log.debug("%s is being bounced, skipping", app_id)
-                continue  # It's being bounced, don't touch it!
+            delete_app(app_id, client)
 
 
 def main():

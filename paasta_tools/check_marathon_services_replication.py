@@ -27,6 +27,7 @@ from paasta_tools.monitoring import replication_utils
 from paasta_tools.monitoring.context import get_context
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.utils import _log
 
 
 ID_SPACER = marathon_tools.ID_SPACER
@@ -49,6 +50,7 @@ def send_event(service_name, namespace, soa_dir, status, output):
     if not team:
         return
     runbook = monitoring_tools.get_runbook(framework, service_name, soa_dir=soa_dir)
+    cluster = marathon_tools.get_cluster()
     result_dict = {
         'tip': monitoring_tools.get_tip(framework, service_name, soa_dir=soa_dir),
         'notification_email': monitoring_tools.get_notification_email(framework, service_name, soa_dir=soa_dir),
@@ -57,9 +59,17 @@ def send_event(service_name, namespace, soa_dir, status, output):
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,
-        'source': 'mesos-%s' % marathon_tools.get_cluster()
+        'source': 'mesos-%s' % cluster
     }
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
+    _log(
+        service_name=service_name,
+        line='Replication: %s' % output,
+        component='monitoring',
+        level='debug',
+        cluster=cluster,
+        instance=namespace
+    )
 
 
 def parse_args():

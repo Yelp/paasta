@@ -18,9 +18,11 @@ def test_build_command():
 
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry._run', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.push_to_registry._log', autospec=True)
 @patch('sys.exit', autospec=True)
 def test_push_to_registry_run_fail(
     mock_exit,
+    mock_log,
     mock_run,
     mock_validate_service_name,
 ):
@@ -32,7 +34,11 @@ def test_push_to_registry_run_fail(
 
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry._run', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.push_to_registry._log', autospec=True)
+@patch('sys.exit', autospec=True)
 def test_push_to_registry_success(
+    mock_exit,
+    mock_log,
     mock_run,
     mock_validate_service_name,
 ):
@@ -43,9 +49,13 @@ def test_push_to_registry_success(
 
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry._run', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.push_to_registry._log', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry.build_command', autospec=True)
+@patch('sys.exit', autospec=True)
 def test_push_to_registry_works_when_service_name_starts_with_services_dash(
+    mock_exit,
     mock_build_command,
+    mock_log,
     mock_run,
     mock_validate_service_name,
 ):

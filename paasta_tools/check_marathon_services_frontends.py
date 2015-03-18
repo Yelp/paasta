@@ -80,7 +80,8 @@ def check_service(port, mode):
     :param port: The proxy_port defined in a service's smartstack namespace
     :returns: A tuple of (status, output) to be used with send_event"""
     command = build_check_command(port, mode)
-    status, output = _run(command)
+    # Nagios checks use the default (10 seconds) timeout
+    status, output = _run(command, timeout=11)
     return (status, output)
 
 

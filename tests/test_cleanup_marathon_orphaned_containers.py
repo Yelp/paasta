@@ -3,6 +3,9 @@
 import calendar
 import datetime
 
+import contextlib
+import mock
+
 import cleanup_marathon_orphaned_containers
 
 
@@ -62,3 +65,32 @@ def test_get_undeployed_containers():
     assert mesos_undeployed_old in actual
     assert mesos_undeployed_young in actual
     assert nonmesos_undeployed_old in actual
+
+
+def test_kill_containers():
+    with contextlib.nested(
+        mock.patch('cleanup_marathon_orphaned_containers.get_cluster', autospec=True),
+        mock.patch('cleanup_marathon_orphaned_containers._log', autospec=True),
+        mock.patch('socket.getfqdn', autospec=True),
+    ) as (
+        mock_get_cluster,
+        mock_log,
+        mock_getfqdn,
+    ):
+        mock_client = mock.Mock()
+        mock_get_cluster.return_value = 'fake_cluster'
+        mock_getfqdn.return_value = 'fake_fqdn'
+        cleanup_marathon_orphaned_containers.kill_containers([mesos_deployed_old], mock_client, False)
+        expected_log_line = (
+            'Killed orphaned container '
+            'docker-registry.example.com:443/services-example_service:'
+            'paasta-e682882f439de98bc9611f54563ee5c2a7785665 on fake_fqdn.'
+            ' Not supposed to be deployed.'
+        )
+        mock_log.assert_called_once_with(
+            service_name='example_service',
+            line=expected_log_line,
+            component='deploy',
+            level='event',
+            cluster='fake_cluster',
+        )

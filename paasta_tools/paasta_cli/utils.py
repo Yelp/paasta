@@ -11,6 +11,7 @@ from service_configuration_lib import read_services_configuration
 from paasta_tools.marathon_tools import get_cluster
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
 from paasta_tools.utils import _run
+from paasta_tools.utils import PaastaColors
 
 
 def load_method(module_name, method_name):
@@ -83,86 +84,6 @@ def failure(msg, link):
     return "%s %s %s" % (x_mark(), msg, PaastaColors.blue(link))
 
 
-class PaastaColors:
-    """Collection of static variables and methods to assist in coloring text."""
-    # ANSI colour codes
-    BLUE = '\033[34m'
-    BOLD = '\033[1m'
-    CYAN = '\033[36m'
-    DEFAULT = '\033[0m'
-    GREEN = '\033[32m'
-    GREY = '\033[1m\033[30m'
-    RED = '\033[31m'
-    YELLOW = '\033[33m'
-
-    @staticmethod
-    def bold(text):
-        """Return bolded text.
-
-        :param text: a string
-        :return: text colour coded with ANSI bold
-        """
-        return PaastaColors.color_text(PaastaColors.BOLD, text)
-
-    @staticmethod
-    def blue(text):
-        """Return text that can be printed cyan.
-
-        :param text: a string
-        :return: text colour coded with ANSI blue
-        """
-        return PaastaColors.color_text(PaastaColors.BLUE, text)
-
-    @staticmethod
-    def green(text):
-        """Return text that can be printed cyan.
-
-        :param text: a string
-        :return: text colour coded with ANSI green"""
-        return PaastaColors.color_text(PaastaColors.GREEN, text)
-
-    @staticmethod
-    def red(text):
-        """Return text that can be printed cyan.
-
-        :param text: a string
-        :return: text colour coded with ANSI red"""
-        return PaastaColors.color_text(PaastaColors.RED, text)
-
-    @staticmethod
-    def color_text(color, text):
-        """Return text that can be printed color.
-
-        :param color: ANSI colour code
-        :param text: a string
-        :return: a string with ANSI colour encoding"""
-        return color + text + PaastaColors.DEFAULT
-
-    @staticmethod
-    def cyan(text):
-        """Return text that can be printed cyan.
-
-        :param text: a string
-        :return: text colour coded with ANSI cyan"""
-        return PaastaColors.color_text(PaastaColors.CYAN, text)
-
-    @staticmethod
-    def yellow(text):
-        """Return text that can be printed yellow.
-
-        :param text: a string
-        :return: text colour coded with ANSI yellow"""
-        return PaastaColors.color_text(PaastaColors.YELLOW, text)
-
-    @staticmethod
-    def grey(text):
-        return PaastaColors.color_text(PaastaColors.GREY, text)
-
-    @staticmethod
-    def default(text):
-        return PaastaColors.color_text(PaastaColors.DEFAULT, text)
-
-
 class PaastaCheckMessages:
     """Collection of message printed out by 'paasta check'.
     Helpful as it avoids cumbersome maintenance of the unit tests."""
@@ -198,7 +119,7 @@ class PaastaCheckMessages:
 
     DOCKERFILE_DOESNT_EXPOSE_8888 = failure(
         "Couldn't find 'EXPOSE 8888' in Dockerfile. Your service must respond\n"
-        "  to 8888. The Dockerfile should expose that per the doc linked "
+        "  to %d. The Dockerfile should expose that per the doc linked "
         "below.\n  More info:", "http://y/paasta-contract")
 
     DOCKERFILE_YELPCORP = success(
@@ -421,7 +342,7 @@ def check_ssh_and_sudo_on_master(master):
     success status (True or False) and any output from attempting the check.
     """
     check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
-    rc, output = _run(check_command)
+    rc, output = _run(check_command, timeout=10)
     if rc == 0:
         return (True, None)
     if rc == 255:  # ssh error
@@ -446,7 +367,7 @@ def check_ssh_and_sudo_on_master(master):
     return (False, output)
 
 
-def run_paasta_serviceinit(subcommand, master, service_name, instancename, verbose=False):
+def run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster, verbose=False):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if verbose:
         verbose_flag = "-v "
@@ -459,7 +380,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, verbo
         instancename,
         subcommand
     )
-    _, output = _run(command)
+    _, output = _run(command, timeout=10)
     return output
 
 
@@ -473,12 +394,12 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, servic
     master, output = find_connectable_master(masters)
     if not master:
         return (
-            'ERROR could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
         )
     check, output = check_ssh_and_sudo_on_master(master)
     if not check:
-        return 'ERROR ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
-    return run_paasta_serviceinit(subcommand, master, service_name, instancename, verbose)
+        return 'ERROR: ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
+    return run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster_name, verbose)
 
 
 def lazy_choices_completer(list_func):
@@ -513,3 +434,13 @@ def figure_out_cluster(args):
 def get_pipeline_url(service):
     return PaastaColors.cyan(
         'https://jenkins.yelpcorp.com/view/services-%s' % service)
+
+
+def get_jenkins_build_output_url():
+    """Returns the URL for Jenkins job's output.
+    Returns None if it's not available.
+    """
+    build_output = os.environ.get('BUILD_URL')
+    if build_output:
+        build_output = build_output + 'console'
+    return build_output

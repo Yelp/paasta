@@ -7,6 +7,7 @@ make the PaaSTA stack work.
 import hashlib
 import logging
 import os
+from os.path import exists
 import re
 import requests
 import socket
@@ -24,6 +25,7 @@ ID_SPACER = '.'
 MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = 5051
+CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
 
@@ -38,8 +40,11 @@ class MarathonConfig(dict):
 
     @classmethod
     def read(cls, path=PATH_TO_MARATHON_CONFIG):
-        with open(path) as f:
-            return cls(json.load(f))
+        if exists(PATH_TO_MARATHON_CONFIG):
+            with open(path) as f:
+                return cls(json.load(f))
+        else:
+            raise PaastaNotConfigured
 
     def get_cluster(self):
         """Get the cluster defined in this host's marathon config file.
@@ -204,6 +209,14 @@ class MarathonServiceConfig(object):
         mem = self.config_dict.get('mem')
         return int(mem) if mem else 1000
 
+    def get_env(self):
+        """Gets the environment required from the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: A dictionary with the requested env."""
+        env = self.config_dict.get('env', {})
+        return env
+
     def get_cpus(self):
         """Gets the number of cpus required from the service's marathon configuration.
 
@@ -274,7 +287,7 @@ class MarathonServiceConfig(object):
                     'network': 'BRIDGE',
                     'portMappings': [
                         {
-                            'containerPort': 8888,
+                            'containerPort': CONTAINER_PORT,
                             'hostPort': 0,
                             'protocol': 'tcp',
                         },
@@ -288,6 +301,7 @@ class MarathonServiceConfig(object):
             'backoff_factor': 2,
             'health_checks': healthchecks,
         }
+        complete_config['env'] = self.get_env()
         complete_config['mem'] = self.get_mem()
         complete_config['cpus'] = self.get_cpus()
         complete_config['constraints'] = self.get_constraints()
@@ -301,6 +315,10 @@ class MarathonServiceConfig(object):
 
     def get_bounce_health_params(self):
         return self.config_dict.get('bounce_health_params', {})
+
+
+class PaastaNotConfigured(Exception):
+    pass
 
 
 class NoMarathonClusterFoundException(Exception):
@@ -714,7 +732,11 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     if not cluster:
         try:
             cluster = get_cluster()
-        except NoMarathonClusterFoundException:
+        # In the cases where there is *no* cluster or in the case
+        # where there isn't a Paasta configuration file at *all*, then
+        # there must be no marathon_services running here, so we catch
+        # these custom exceptions and return [].
+        except (NoMarathonClusterFoundException, PaastaNotConfigured):
             return []
     # When a cluster is defined in mesos, lets iterate through marathon services
     marathon_services = marathon_services_running_here()

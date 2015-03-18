@@ -33,7 +33,7 @@ def paasta_emergency_restart(args):
     """Performs an emergency restart on a given service.instance on a given cluster"""
     service = figure_out_service_name(args)
     print "Performing an emergency restart on %s.%s..." % (args.service, args.instance)
-    execute_paasta_serviceinit_on_remote_master('stop', args.cluster, service, args.instance)
+    execute_paasta_serviceinit_on_remote_master('restart', args.cluster, service, args.instance)
     print "Warning: this tool just asks Marathon suspend, and then resume normal operation"
     print "It does not (currently) do a fancy bounce. This tool is only designed to be used"
     print "in an emergency."

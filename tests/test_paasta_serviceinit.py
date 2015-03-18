@@ -8,7 +8,7 @@ import mesos
 import mock
 
 from paasta_tools import marathon_tools, paasta_serviceinit
-from paasta_tools.paasta_cli.utils import PaastaColors
+from paasta_tools.utils import PaastaColors
 
 
 class TestPaastaServiceinit:
@@ -44,19 +44,21 @@ class TestPaastaServiceinit:
 
     def test_start_marathon_job(self):
         client = mock.create_autospec(marathon.MarathonClient)
+        cluster = 'my_cluster'
         service = 'my_service'
         instance = 'my_instance'
         app_id = 'mock_app_id'
         normal_instance_count = 5
-        paasta_serviceinit.start_marathon_job(service, instance, app_id, normal_instance_count, client)
+        paasta_serviceinit.start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
         client.scale_app.assert_called_once_with(app_id, instances=normal_instance_count, force=True)
 
     def test_stop_marathon_job(self):
         client = mock.create_autospec(marathon.MarathonClient)
+        cluster = 'my_cluster'
         service = 'my_service'
         instance = 'my_instance'
         app_id = 'mock_app_id'
-        paasta_serviceinit.stop_marathon_job(service, instance, app_id, client)
+        paasta_serviceinit.stop_marathon_job(service, instance, app_id, client, cluster)
         client.scale_app.assert_called_once_with(app_id, instances=0, force=True)
 
 

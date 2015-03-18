@@ -5,21 +5,22 @@ import os
 import re
 import urllib2
 
-from service_configuration_lib import read_extra_service_information
-from service_configuration_lib import read_service_configuration
-from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_service_instance_list
+from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import is_file_in_dir
 from paasta_tools.paasta_cli.utils import NoSuchService
-from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.paasta_cli.utils import PaastaCheckMessages
-from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import success
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import x_mark
+from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import _run
+from service_configuration_lib import read_extra_service_information
+from service_configuration_lib import read_service_configuration
 
 
 def get_pipeline_config(service_name):
@@ -74,7 +75,7 @@ def expose_8888_in_dockerfile(path):
     :param path : path to a Dockerfile
     :return : A boolean that is True if the Dockerfile contains 'EXPOSE 8888'
     """
-    pattern = re.compile('EXPOSE\s+8888.*')
+    pattern = re.compile("EXPOSE\s+%d.*" % CONTAINER_PORT)
     with open(path, 'r') as dockerfile:
         for line in dockerfile.readlines():
             if pattern.match(line):
@@ -90,7 +91,7 @@ def docker_file_reads_from_yelpcorp(path):
 
     with open(path, 'r') as dockerfile:
         first_line = dockerfile.readline()
-        if first_line.startswith("FROM docker-dev.yelpcorp.com"):
+        if re.match('FROM\s+docker-dev.yelpcorp.com.*', first_line):
             return True
         else:
             return False
@@ -128,7 +129,7 @@ def makefile_responds_to_itest():
     # 0 - Nothing to do
     # 1 - Things to do
     # 2 - Don't know what you are talking about
-    returncode, _ = _run(cmd)
+    returncode, _ = _run(cmd, timeout=5)
     return returncode in [0, 1]
 
 
@@ -148,7 +149,7 @@ def makefile_check():
 
 def git_repo_check(service_name):
     cmd = 'git ls-remote git@git.yelpcorp.com:services/%s' % service_name
-    returncode, _ = _run(cmd)
+    returncode, _ = _run(cmd, timeout=5)
     if returncode == 0:
         print PaastaCheckMessages.GIT_REPO_FOUND
     else:

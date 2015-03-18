@@ -182,7 +182,7 @@ class TestSetupMarathonJob:
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config)
-            sys_exit_patch.assert_called_once_with(1)
+            sys_exit_patch.assert_called_once_with(0)
 
     def test_send_event(self):
         fake_service_name = 'fake_service'

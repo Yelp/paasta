@@ -1,3 +1,105 @@
+paasta-tools (0.9.21-yelp1) lucid; urgency=low
+
+  * 0.9.21 tagged with 'make release'
+    Commit: Undo port 8888 changes for PAASTA-267
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 17 Mar 2015 11:52:09 -0700
+
+paasta-tools (0.9.20-yelp1) lucid; urgency=low
+
+  * 0.9.20 tagged with 'make release'
+    Commit: Merge branch PAASTA-267
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 16 Mar 2015 17:08:19 -0700
+
+paasta-tools (0.9.19-yelp1) lucid; urgency=low
+
+  * 0.9.19 tagged with 'make release'
+    Commit: Merge branch troscoe_PAASTA-283
+    https://reviewboard.yelpcorp.com/r/89352/
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Fri, 13 Mar 2015 15:25:55 -0700
+
+paasta-tools (0.9.18-yelp1) lucid; urgency=low
+
+  * 0.9.18 tagged with 'make release'
+    Commit: Merge branch PAASTA-267
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 12 Mar 2015 13:49:35 -0700
+
+paasta-tools (0.9.17-yelp1) lucid; urgency=low
+
+  * 0.9.17 tagged with 'make release'
+    Commit: Merge branch troscoe_existential
+    https://reviewboard.yelpcorp.com/r/89139/
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 11 Mar 2015 17:47:36 -0700
+
+paasta-tools (0.9.16-yelp1) lucid; urgency=low
+
+  * 0.9.16 tagged with 'make release'
+    Commit: Patch out os.path.exists() so this test works even if
+    /etc/paasta_tools/marathon_config.json does not actually exist.
+    This is why you need to write tests that fail\!\!\!
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 10 Mar 2015 18:16:43 -0700
+
+paasta-tools (0.9.15-yelp1) lucid; urgency=low
+
+  * 0.9.15 tagged with 'make release'
+    Commit: Merge branch troscoe_logs_2
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 10 Mar 2015 17:54:41 -0700
+
+paasta-tools (0.9.14-yelp1) lucid; urgency=low
+
+  * 0.9.14 tagged with 'make release'
+    Commit: PAASTA-214 'paasta logs' can tail from scribe
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 10 Mar 2015 14:16:06 -0700
+
+paasta-tools (0.9.13-yelp1) lucid; urgency=low
+
+  * 0.9.13 tagged with 'make release'
+    Commit: Fixed merge conflict.
+
+ -- Leonid Movsesyan <leonid@yelp.com>  Tue, 03 Mar 2015 15:26:02 -0800
+
+paasta-tools (0.9.12-yelp1) lucid; urgency=low
+
+  * 0.9.12 tagged with 'make release'
+    Commit: Fix lint in generate_services_file
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 03 Mar 2015 13:52:23 -0800
+
+paasta-tools (0.9.11-yelp1) lucid; urgency=low
+
+  * 0.9.11 tagged with 'make release'
+    Commit: Added generate_services_file command
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 02 Mar 2015 15:30:18 -0800
+
+paasta-tools (0.9.9-yelp1) lucid; urgency=low
+
+  * 0.9.9 tagged with 'make release'
+    Commit: Dont bail if a repo doesnt exist
+
+ -- Evan Krall <krall@yelp.com>  Thu, 26 Feb 2015 23:33:35 -0800
+
+paasta-tools (0.9.8-yelp1) lucid; urgency=low
+
+  * 0.9.8 tagged with 'make release'
+    Commit: Merge branch exit0_when_done
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 24 Feb 2015 15:21:35 -0800
+
+paasta-tools (0.9.7-yelp1) lucid; urgency=low
+
+  * 0.9.7 tagged with 'make release'
+    Commit: Merge branch PAASTA-259
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 23 Feb 2015 17:43:42 -0800
+
 paasta-tools (0.9.6-yelp1) lucid; urgency=low
 
   * 0.9.6 tagged with 'make release'
