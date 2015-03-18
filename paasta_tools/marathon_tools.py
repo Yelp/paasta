@@ -504,6 +504,8 @@ def read_service_config(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
         general_config['docker_image'] = get_docker_from_branch(name, branch, soa_dir)
         general_config['desired_state'] = get_desired_state_from_branch(name, branch, soa_dir)
         general_config['force_bounce'] = get_force_bounce_from_branch(name, branch, soa_dir)
+        # Noisy debugging output for PAASTA-322
+        general_config['deployments_json'] = _get_deployments_json(soa_dir)
         return general_config
     else:
         log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
@@ -883,17 +885,22 @@ def is_app_id_running(app_id, client):
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
-    config = read_service_config(name, instance, soa_dir=soa_dir)
-    docker_url = get_docker_url(marathon_config['docker_registry'],
-                                config['docker_image'])
+    srv_config = read_service_config(name, instance, soa_dir=soa_dir)
+    try:
+        docker_url = get_docker_url(marathon_config['docker_registry'],
+                                    srv_config['docker_image'])
+    # Noisy debugging output for PAASTA-322
+    except NoDockerImageError as err:
+        err.srv_config = srv_config
+        raise err
     healthchecks = get_healthchecks(name, instance)
     complete_config = format_marathon_app_dict(partial_id, docker_url,
                                                marathon_config['docker_volumes'],
-                                               config, healthchecks)
+                                               srv_config, healthchecks)
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(
         complete_config,
-        force_bounce=get_force_bounce(config),
+        force_bounce=get_force_bounce(srv_config),
     )
     tag = "%s.%s" % (code_sha, config_hash)
     full_id = compose_job_id(name, instance, tag)

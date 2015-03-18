@@ -391,20 +391,30 @@ class TestSetupMarathonJob:
     def test_setup_service_srv_complete_config_raises(self):
         fake_name = 'test_service'
         fake_instance = 'test_instance'
+        fake_error = marathon_tools.NoDockerImageError()
+        fake_deployments_json = {'i like': 'debugging'}
+        fake_marathon_config = {'deployments_json': fake_deployments_json}
+        fake_error.srv_config = {'fake_srv_config': 'is a dict'}
+        fake_error.srv_config['deployments_json'] = 'fake_deployments_json'
         with mock.patch(
             'setup_marathon_job.marathon_tools.create_complete_config',
-            side_effect=marathon_tools.NoDockerImageError
+            side_effect=fake_error,
         ):
             status, output = setup_marathon_job.setup_service(
                 fake_name,
                 fake_instance,
                 None,
-                None,
+                fake_marathon_config,
                 None
             )
             assert status == 1
-            expected = "Docker image for test_service.test_instance not in"
+            expected = 'Docker image for test_service.test_instance not in'
             assert expected in output
+            # Noisy debugging output for PAASTA-322
+            assert "The service's marathon_config" in output
+            assert 'REDACTED' in output
+            assert 'fake_srv_config' in output
+            assert str(fake_deployments_json) in output
 
     def test_deploy_service_unknown_bounce(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'

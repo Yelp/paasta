@@ -192,6 +192,7 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         fake_docker = 'no_docker:9.9'
+        fake_deployments_json = {'i like': 'debugging'}
         config_copy = self.fake_marathon_job_config.copy()
         del config_copy['docker_image']
 
@@ -207,6 +208,8 @@ class TestMarathonTools:
         expected['docker_image'] = fake_docker
         expected['desired_state'] = 'stop'
         expected['force_bounce'] = '12345'
+        # Noisy debugging output for PAASTA-322
+        expected['deployments_json'] = fake_deployments_json
 
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_extra_service_information',
@@ -220,12 +223,16 @@ class TestMarathonTools:
                        return_value='stop'),
             mock.patch('marathon_tools.get_force_bounce_from_branch',
                        autospec=True,
-                       return_value='12345')
+                       return_value='12345'),
+            mock.patch('marathon_tools._get_deployments_json',
+                       autospec=True,
+                       return_value=fake_deployments_json),
         ) as (
             read_extra_info_patch,
             get_docker_patch,
             get_desired_state_patch,
             get_force_bounce_patch,
+            get_deployments_json_patch,
         ):
             actual = marathon_tools.read_service_config(fake_name, fake_instance,
                                                         fake_cluster, fake_dir)
