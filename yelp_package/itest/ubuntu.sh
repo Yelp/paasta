@@ -12,7 +12,6 @@ deploy_marathon_services
 generate_deployments_json
 check_marathon_services_replication
 generate_services_yaml
-cleanup_marathon_orphaned_containers
 paasta_serviceinit"
 
 MARATHON_SERVICES="fake_service_uno.main
@@ -103,13 +102,6 @@ if check_classic_service_replication --help >/dev/null; then
   echo "Looks like we can check_classic_service_replication with --help"
 else
   echo "Could not invoke check_classic_service_replication with --help"
-  exit 1
-fi
-
-if cleanup_marathon_orphaned_containers --help >/dev/null; then
-  echo "Looks like we can cleanup_marathon_orphaned_containers with --help"
-else
-  echo "Could not invoke cleanup_marathon_orphaned_containers with --help"
   exit 1
 fi
 
