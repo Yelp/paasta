@@ -1,3 +1,10 @@
+paasta-tools (0.9.26-yelp1) lucid; urgency=low
+
+  * 0.9.26 tagged with 'make release'
+    Refactor marathon_tools.py from a bunch of functions into a set of classes with methods
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Mar 2015 11:12:02 -0700
+
 paasta-tools (0.9.25-yelp1) lucid; urgency=low
 
   * 0.9.25 tagged with 'make release'
