@@ -139,8 +139,7 @@ def get_file_contents(path):
 
 def makefile_has_a_tab(makefile_path):
     contents = get_file_contents(makefile_path)
-    # This is a literal tab
-    return '	' in contents
+    return '\t' in contents
 
 
 def makefile_check():

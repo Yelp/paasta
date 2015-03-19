@@ -436,7 +436,7 @@ def test_makefile_responds_to_itest_run(mock_run):
 
 def test_makefile_has_a_tab_true():
     fake_makefile_path = 'UNUSED'
-    fake_contents = 'target:\n	command'
+    fake_contents = 'target:\n\tcommand'
     with contextlib.nested(
         patch(
             'paasta_tools.paasta_cli.cmds.check.get_file_contents',
