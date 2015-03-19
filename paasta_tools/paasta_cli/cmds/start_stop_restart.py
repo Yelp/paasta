@@ -1,14 +1,17 @@
 #!/usr/bin/env python
-from argcomplete.completers import ChoicesCompleter
 import datetime
-import fnmatch
-from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.generate_deployments_json import (
-    get_branches_for_service
-)
-from paasta_tools import utils, remote_git
-import re
+import os
+import socket
 import sys
+
+from paasta_tools import utils, remote_git
+from paasta_tools.generate_deployments_json import get_branches_for_service
+from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.paasta_cli.utils import figure_out_service_name
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
+from paasta_tools.paasta_cli.utils import list_services
+from paasta_tools.paasta_cli.utils import list_instances
+
 
 SOA_DIR = '/nail/etc/services'
 
@@ -22,11 +25,6 @@ def get_branches(service):
             yield branch
 
 
-def completer_branches(prefix, parsed_args, **kwargs):
-    branches = get_branches(parsed_args.service)
-    return (b for b in branches if b.startswith(prefix))
-
-
 def add_subparser(subparsers):
     for command, lower, upper, cmd_func in [
         ('start', 'start or restart', 'Start or restart', paasta_start),
@@ -35,43 +33,25 @@ def add_subparser(subparsers):
     ]:
         status_parser = subparsers.add_parser(
             command,
-            description="%ss a PaaSTA service by creating a specially-formed git tag." % upper,
+            description="%ss a PaaSTA service in a graceful way." % upper,
             help="%ss a PaaSTA service" % upper,
         )
         status_parser.add_argument(
             '-s', '--service',
             help='Service that you want to %s. Like example_service.' % lower,
             required=True,
-        ).completer = ChoicesCompleter(list_services())
+        ).completer = lazy_choices_completer(list_services())
         status_parser.add_argument(
-            '-b', '--branch',
-            help="""Branch of the service that you want to %s. Like
-                    "norcal-prod.main" or "pnw-stagea.canary". This can be a
-                    glob-style pattern to match multiple branches.""" % lower,
-            action='append',
+            '-i', '--instance',
+            help='Instance of the service that you want to %s. Like "main" or "canary".' % lower,
             required=True,
-        ).completer = completer_branches
+        ).completer = lazy_choices_completer(list_instances)
+        status_parser.add_argument(
+            '-c', '--cluster',
+            help='The PaaSTA cluster that has the service you want to %s. Like norcal-prod' % lower,
+            required=True,
+        ).completer = lazy_choices_completer(list_clusters)
         status_parser.set_defaults(command=cmd_func)
-
-
-class NoBranchesMatchException(Exception):
-    def __init__(self, unmatched_pattern):
-        self.unmatched_pattern = unmatched_pattern
-
-
-def match_branches(all_branches, branch_patterns):
-    matched = set()
-    for pattern in branch_patterns:
-        regex = fnmatch.translate(pattern)
-        found_match = False
-        for branch in all_branches:
-            if re.match(regex, branch):
-                matched.add(branch)
-                found_match = True
-        if not found_match:
-            raise NoBranchesMatchException(pattern)
-
-    return matched
 
 
 def format_timestamp(dt=None):
@@ -102,7 +82,22 @@ def make_mutate_refs_func(branches, force_bounce, desired_state):
     return mutate_refs
 
 
-def issue_state_change_for_branches(service, branches, force_bounce,
+def log_event(service, instance, cluster, desired_state):
+    user = os.getlogin()
+    host = socket.getfqdn()
+    line = "Issued request to change state of %s to '%s' by %s@%s" % (
+        instance, desired_state, user, host)
+    utils._log(
+        service_name=service,
+        level='event',
+        cluster=cluster,
+        instance=instance,
+        component='deploy',
+        line=line,
+    )
+
+
+def issue_state_change_for_branches(service, instance, cluster, branches, force_bounce,
                                     desired_state):
     ref_mutator = make_mutate_refs_func(
         branches=branches,
@@ -110,22 +105,27 @@ def issue_state_change_for_branches(service, branches, force_bounce,
         desired_state=desired_state
     )
     remote_git.create_remote_refs(utils.get_git_url(service), ref_mutator)
+    log_event(service, instance, cluster, desired_state)
 
 
 def paasta_start_or_stop(args, desired_state):
     """Issues a start for given branches of a service."""
-    service = args.service
-    branch_patterns = args.branch  # this is a list because of action='append'
-    all_branches = get_branches(service)
-    try:
-        branches = match_branches(all_branches, branch_patterns)
-    except NoBranchesMatchException as e:
-        print "No branches found for %s that match %s" % \
-            (service, e.unmatched_pattern)
+    service = figure_out_service_name(args)
+    instance = args.instance
+    cluster = args.cluster
+
+    branch = "paasta-%s.%s" % (cluster, instance)
+    all_branches = list(get_branches(service))
+
+    if branch not in all_branches:
+        print "No branches found for %s in %s." % \
+            (branch, all_branches)
+        print "Has it been deployed there yet?"
         sys.exit(1)
 
     force_bounce = format_timestamp(datetime.datetime.utcnow())
-    issue_state_change_for_branches(service, branches, force_bounce,
+    branches = [branch]
+    issue_state_change_for_branches(service, instance, cluster, branches, force_bounce,
                                     desired_state)
 
 
