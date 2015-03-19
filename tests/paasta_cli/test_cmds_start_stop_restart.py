@@ -16,7 +16,8 @@ def test_format_tag():
 
 @mock.patch('paasta_tools.utils.get_git_url', autospec=True)
 @mock.patch('dulwich.client.get_transport_and_path', autospec=True)
-def test_issue_state_change_for_branches(get_transport_and_path, get_git_url):
+@mock.patch('paasta_tools.paasta_cli.cmds.start_stop_restart.log_event', autospec=True)
+def test_issue_state_change_for_branches(mock_log_event, get_transport_and_path, get_git_url):
     fake_git_url = 'BLOORGRGRGRGR'
     fake_path = 'somepath'
 
@@ -37,6 +38,7 @@ def test_issue_state_change_for_branches(get_transport_and_path, get_git_url):
     get_transport_and_path.assert_called_once_with(fake_git_url)
     mock_git_client.send_pack.assert_called_once_with(fake_path, mock.ANY,
                                                       mock.ANY)
+    assert mock_log_event.call_count == 1
 
 
 def test_make_mutate_refs_func():
