@@ -371,8 +371,10 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if verbose:
         verbose_flag = "-v "
+        timeout = 120
     else:
         verbose_flag = ''
+        timeout = 10
     command = 'ssh -A -n %s sudo paasta_serviceinit %s%s.%s %s' % (
         master,
         verbose_flag,
@@ -380,7 +382,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
         instancename,
         subcommand
     )
-    _, output = _run(command, timeout=10)
+    _, output = _run(command, timeout=timeout)
     return output
 
 

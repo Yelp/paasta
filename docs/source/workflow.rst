@@ -60,6 +60,10 @@ configuration for the running image:
 
 * ``--net``: PaaSTA uses bridge mode to enable random port allocation.
 
+* ``--env``: Any environment variables specified in the ``env`` section will be here.
+
+  * **WARNING**: A PORT variable is provided to the docker image, but it represents the EXTERNAL port, not the internal one. The internal service MUST listen on 8888, so this PORT variable confuses some service stacks that are listening for this variable. Such services MUST overwrite this environment variable to function. (``PORT=8888 ./uwisgi.py```) We tried to work around this, see `PAASTA-267 <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
+
 * ``--publish``: Mesos picks a random port on the host that maps to and exposes
   port 8888 inside the container. This random port is announced to Smartstack
   so that it can be used for load balancing.
