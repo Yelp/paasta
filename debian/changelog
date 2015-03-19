@@ -1,3 +1,10 @@
+paasta-tools (0.9.29-yelp1) lucid; urgency=low
+
+  * 0.9.29 tagged with 'make release'
+    Commit: Fix incorrect call to MarathonServiceConfig.load
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Mar 2015 14:03:38 -0700
+
 paasta-tools (0.9.28-yelp1) lucid; urgency=low
 
   * 0.9.28 tagged with 'make release'
