@@ -92,7 +92,7 @@ class PaastaCheckMessages:
 
     DEPLOY_YAML_MISSING = failure(
         "No deploy.yaml exists, so your service cannot be deployed.\n  "
-        "Push a deploy.yaml and run `paasta build-deploy-pipline`.\n  "
+        "Push a deploy.yaml and run `paasta generate-pipeline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
     DEPLOY_SECURITY_FOUND = success("Found a security-check entry in your deploy pipeline")
@@ -118,9 +118,10 @@ class PaastaCheckMessages:
     DOCKERFILE_EXPOSES_8888 = success("Found 'EXPOSE 8888' in Dockerfile")
 
     DOCKERFILE_DOESNT_EXPOSE_8888 = failure(
-        "Couldn't find 'EXPOSE 8888' in Dockerfile. Your service must respond\n"
-        "  to %d. The Dockerfile should expose that per the doc linked "
-        "below.\n  More info:", "http://y/paasta-contract")
+        "Couldn't find 'EXPOSE 8888' in Dockerfile. The Dockerfile should\n"
+        "expose that per the doc linked below.\n  More info:",
+        "http://y/paasta-contract",
+    )
 
     DOCKERFILE_YELPCORP = success(
         "Your Dockerfile pulls from the standard Yelp images.")
@@ -128,7 +129,7 @@ class PaastaCheckMessages:
     DOCKERFILE_NOT_YELPCORP = failure(
         "Your Dockerfile does not use the standard Yelp images.\n  "
         "This is bad because your `docker pulls` will be slow and you won't be "
-        "using the local mirrors.\n  "
+        "using the local mirrors.\n"
         "More info:", "http://y/paasta-runbook-dockerfile")
 
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
@@ -137,7 +138,7 @@ class PaastaCheckMessages:
 
     MARATHON_YAML_MISSING = failure(
         "No marathon.yaml exists, so your service cannot be deployed.\n  "
-        "Push a marathon-[ecosystem].yaml and run `paasta build-deploy-pipline`.\n  "
+        "Push a marathon-[ecosystem].yaml and run `paasta generate-pipeline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
     MAKEFILE_FOUND = success("A Makefile is present")
@@ -203,7 +204,7 @@ class PaastaCheckMessages:
     @staticmethod
     def sensu_team_found(team_name):
         return success(
-            "Your service uses Sensu and team %s will get alerts." % team_name)
+            "Your service uses Sensu and team '%s' will get alerts." % team_name)
 
     @staticmethod
     def smartstack_port_found(instance, port):
