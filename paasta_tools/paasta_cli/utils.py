@@ -152,6 +152,14 @@ class PaastaCheckMessages:
         "http://y/paasta-contract"
     )
 
+    MAKEFILE_HAS_A_TAB = success("The Makefile contains a tab character")
+    MAKEFILE_HAS_NO_TABS = failure(
+        "The Makefile contains no tab characters. "
+        "Make sure you didn't accidentally paste spaces (which `make` does not respect) "
+        "instead of a tab.",
+        "http://y/paasta-contract",
+    )
+
     PIPELINE_FOUND = success("Jenkins build pipeline found")
 
     PIPELINE_MISSING = failure("Jenkins build pipeline missing. Please run "
