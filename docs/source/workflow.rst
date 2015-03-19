@@ -129,7 +129,3 @@ Cleanup
 that don't need to be running anymore. This should be rare, like if you change
 a service's name or manually delete a ``paasta-[clustername]`` git branch, but
 is a useful safety net in case a task escapes.
-
-`cleanup_marathon_orphaned_containers
-<cleanup_marathon_orphaned_containers.html>`_ reaps containers that get lost in
-the shuffle when we restart Mesos slaves too hard.

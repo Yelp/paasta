@@ -5,7 +5,6 @@ usr/share/python/paasta-tools/bin/check_marathon_services_replication.py usr/bin
 usr/share/python/paasta-tools/bin/check_mesos_resource_utilization.py usr/bin/check_mesos_resource_utilization
 usr/share/python/paasta-tools/bin/check_synapse_replication.py usr/bin/check_synapse_replication
 usr/share/python/paasta-tools/bin/cleanup_marathon_jobs.py usr/bin/cleanup_marathon_jobs
-usr/share/python/paasta-tools/bin/cleanup_marathon_orphaned_containers.py usr/bin/cleanup_marathon_orphaned_containers
 usr/share/python/paasta-tools/bin/deploy_marathon_services usr/bin/deploy_marathon_services
 usr/share/python/paasta-tools/bin/generate_deployments_json.py usr/bin/generate_deployments_json
 usr/share/python/paasta-tools/bin/generate_services_yaml.py usr/bin/generate_services_yaml
