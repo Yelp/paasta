@@ -1,11 +1,14 @@
-from mock import patch, MagicMock
+import contextlib
 from StringIO import StringIO
+
+from mock import patch, MagicMock
 
 from paasta_tools.paasta_cli.cmds.check import deploy_check
 from paasta_tools.paasta_cli.cmds.check import deploy_has_performance_check
 from paasta_tools.paasta_cli.cmds.check import deploy_has_security_check
 from paasta_tools.paasta_cli.cmds.check import docker_check
 from paasta_tools.paasta_cli.cmds.check import get_marathon_steps
+from paasta_tools.paasta_cli.cmds.check import makefile_has_a_tab
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
 from paasta_tools.paasta_cli.cmds.check import marathon_check
 from paasta_tools.paasta_cli.cmds.check import marathon_deployments_check
@@ -429,6 +432,36 @@ def test_makefile_responds_to_itest_run(mock_run):
     mock_run.return_value = (2, 'Output')
     actual = makefile_responds_to_itest()
     assert actual is False
+
+
+def test_makefile_has_a_tab_true():
+    fake_makefile_path = 'UNUSED'
+    fake_contents = 'target:\n\tcommand'
+    with contextlib.nested(
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.get_file_contents',
+            autospec=True,
+            return_value=fake_contents
+        ),
+    ) as (
+        mock_get_file_contents,
+    ):
+        assert makefile_has_a_tab(fake_makefile_path) is True
+
+
+def test_makefile_has_a_tab_false():
+    fake_makefile_path = 'UNUSED'
+    fake_contents = 'target:\n    command'
+    with contextlib.nested(
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.get_file_contents',
+            autospec=True,
+            return_value=fake_contents
+        ),
+    ) as (
+        mock_get_file_contents,
+    ):
+        assert makefile_has_a_tab(fake_makefile_path) is False
 
 
 @patch('sys.stdout', new_callable=StringIO)
