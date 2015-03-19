@@ -30,6 +30,11 @@ def add_subparser(subparsers):
                                   'cluster1.canary, cluster2.main)',
                              required=True,
                              )
+    list_parser.add_argument('-s', '--service',
+                             help='Name of the service which you wish to mark for deployment. Leading '
+                             '"services-" will be stripped.',
+                             required=True,
+                             )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
@@ -55,10 +60,11 @@ def build_command(
 
 def paasta_mark_for_deployment(args):
     """Mark a docker image for deployment"""
-    cmd = build_command(args.git_url, args.commit, args.clusterinstance)
-    # Git repo URL's basename should be the service_name
-    service_name = args.git_url.split('/')[-1]
+    service_name = args.service
+    if service_name and service_name.startswith('services-'):
+        service_name = service_name.split('services-', 1)[1]
     validate_service_name(service_name)
+    cmd = build_command(args.git_url, args.commit, args.clusterinstance)
     # Clusterinstance should be in cluster.instance format
     cluster, instance = args.clusterinstance.split('.')
     loglines = []
