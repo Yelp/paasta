@@ -28,7 +28,7 @@ def pick_random_port():
 
 
 def get_healthcheck(service, instance, random_port):
-    smartstack_config = ServiceNamespaceConfig.read(service, instance)
+    smartstack_config = ServiceNamespaceConfig.load(service, instance)
     mode = smartstack_config.get('mode', 'http')
     hostname = socket.getfqdn()
 
@@ -149,7 +149,7 @@ def run_docker_container_non_interactive(
 
         container_started = True
 
-        smartstack_config = ServiceNamespaceConfig.read(service, instance)
+        smartstack_config = ServiceNamespaceConfig.load(service, instance)
         port = smartstack_config.get('proxy_port', 0)
 
         healthcheck_string = get_healthcheck(service, instance, port)
@@ -185,7 +185,7 @@ def run_docker_container(docker_client, docker_hash, service, args):
     marathon_config['cluster'] = marathon_config_raw['cluster']
     marathon_config['volumes'] = volumes
 
-    service_manifest = MarathonServiceConfig.read(service, args.instance, marathon_config['cluster'])
+    service_manifest = MarathonServiceConfig.load(service, args.instance, marathon_config['cluster'])
 
     if args.cmd:
         command = shlex.split(args.cmd)

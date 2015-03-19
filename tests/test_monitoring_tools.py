@@ -105,11 +105,12 @@ class TestMonitoring_Tools:
     def test_get_monitoring_config_value_with_job_config(self):
         expected = 'job_test_team'
         with contextlib.nested(
-            mock.patch('service_configuration_lib.read_service_configuration',
+            mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
                        return_value=self.fake_general_service_config),
-            mock.patch('marathon_tools.MarathonServiceConfig.read', return_value=self.fake_job_config),
-            mock.patch('marathon_tools.read_monitoring_config', return_value=self.fake_monitor_config),
-            mock.patch('marathon_tools.get_cluster', return_value='clustername'),
+            mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load,
+                       return_value=self.fake_job_config),
+            mock.patch('marathon_tools.read_monitoring_config', autospec=True, return_value=self.fake_monitor_config),
+            mock.patch('marathon_tools.get_cluster', autospec=True, return_value='clustername'),
         ) as (
             service_configuration_lib_patch,
             read_service_patch,
@@ -126,11 +127,12 @@ class TestMonitoring_Tools:
     def test_get_monitoring_config_value_with_monitor_config(self):
         expected = 'monitor_test_team'
         with contextlib.nested(
-            mock.patch('service_configuration_lib.read_service_configuration',
+            mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
                        return_value=self.fake_general_service_config),
-            mock.patch('marathon_tools.MarathonServiceConfig.read', return_value=self.empty_job_config),
-            mock.patch('marathon_tools.read_monitoring_config', return_value=self.fake_monitor_config),
-            mock.patch('marathon_tools.get_cluster', return_value='clustername'),
+            mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load,
+                       return_value=self.empty_job_config),
+            mock.patch('marathon_tools.read_monitoring_config', autospec=True, return_value=self.fake_monitor_config),
+            mock.patch('marathon_tools.get_cluster', autospec=True, return_value='clustername'),
         ) as (
             service_configuration_lib_patch,
             read_service_patch,
@@ -147,11 +149,12 @@ class TestMonitoring_Tools:
     def test_get_monitoring_config_value_with_service_config(self):
         expected = 'general_test_team'
         with contextlib.nested(
-            mock.patch('service_configuration_lib.read_service_configuration',
+            mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
                        return_value=self.fake_general_service_config),
-            mock.patch('marathon_tools.MarathonServiceConfig.read', return_value=self.empty_job_config),
-            mock.patch('marathon_tools.read_monitoring_config', return_value=self.empty_monitor_config),
-            mock.patch('marathon_tools.get_cluster', return_value='clustername'),
+            mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load,
+                       return_value=self.empty_job_config),
+            mock.patch('marathon_tools.read_monitoring_config', autospec=True, return_value=self.empty_monitor_config),
+            mock.patch('marathon_tools.get_cluster', autospec=True, return_value='clustername'),
         ) as (
             service_configuration_lib_patch,
             read_service_patch,
@@ -168,11 +171,12 @@ class TestMonitoring_Tools:
     def test_get_monitoring_config_value_with_defaults(self):
         expected = False
         with contextlib.nested(
-            mock.patch('service_configuration_lib.read_service_configuration',
+            mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
                        return_value=self.empty_job_config),
-            mock.patch('marathon_tools.MarathonServiceConfig.read', return_value=self.empty_job_config),
-            mock.patch('marathon_tools.read_monitoring_config', return_value=self.empty_monitor_config),
-            mock.patch('marathon_tools.get_cluster', return_value='clustername'),
+            mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load,
+                       return_value=self.empty_job_config),
+            mock.patch('marathon_tools.read_monitoring_config', autospec=True, return_value=self.empty_monitor_config),
+            mock.patch('marathon_tools.get_cluster', autospec=True, return_value='clustername'),
         ) as (
             service_configuration_lib_patch,
             read_service_patch,

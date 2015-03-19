@@ -88,7 +88,7 @@ def send_event(name, instance, soa_dir, status, output):
 
 def get_main_marathon_config():
     log.debug("Reading marathon configuration")
-    marathon_config = marathon_tools.MarathonConfig.read()
+    marathon_config = marathon_tools.MarathonConfig.load()
     log.info("Marathon config is: %s", marathon_config)
     return marathon_config
 
@@ -240,7 +240,7 @@ def main():
     client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
                                                 marathon_config['pass'])
 
-    service_instance_config = marathon_tools.MarathonServiceConfig.read(
+    service_instance_config = marathon_tools.MarathonServiceConfig.load(
         service_name,
         instance_name,
         marathon_tools.get_cluster(),

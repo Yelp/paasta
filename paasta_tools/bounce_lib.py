@@ -79,7 +79,7 @@ def bounce_lock_zookeeper(name):
     This is a contextmanager. Please use it via 'with bounce_lock(name):'.
 
     :param name: The lock name to acquire"""
-    zk = KazooClient(hosts=marathon_tools.MarathonConfig.read().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
+    zk = KazooClient(hosts=marathon_tools.MarathonConfig.load().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
     zk.start()
     lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, name))
     acquired = False
@@ -101,7 +101,7 @@ def create_app_lock():
     due to marathon's extreme lack of resilience with creating multiple
     apps at once, so we use this to not do that and only deploy
     one app at a time."""
-    zk = KazooClient(hosts=marathon_tools.MarathonConfig.read().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
+    zk = KazooClient(hosts=marathon_tools.MarathonConfig.load().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
     zk.start()
     lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, 'create_marathon_app_lock'))
     try:

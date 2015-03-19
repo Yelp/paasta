@@ -7,7 +7,6 @@ make the PaaSTA stack work.
 import hashlib
 import logging
 import os
-from os.path import exists
 import re
 import requests
 import socket
@@ -34,17 +33,13 @@ PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 
 class MarathonConfig(dict):
-    # # A simple borg DP class to keep the config from being loaded tons of times.
-    # # http://code.activestate.com/recipes/66531/
-    # __shared_state = {'config': None}
-
     @classmethod
-    def read(cls, path=PATH_TO_MARATHON_CONFIG):
-        if exists(PATH_TO_MARATHON_CONFIG):
+    def load(cls, path=PATH_TO_MARATHON_CONFIG):
+        try:
             with open(path) as f:
                 return cls(json.load(f))
-        else:
-            raise PaastaNotConfigured
+        except IOError as e:
+            raise PaastaNotConfigured("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
 
     def get_cluster(self):
         """Get the cluster defined in this host's marathon config file.
@@ -78,18 +73,11 @@ class MarathonConfig(dict):
 
 
 class DeploymentsJson(dict):
-    __cached = {}
-
     @classmethod
-    def read(cls, soa_dir=DEFAULT_SOA_DIR):
-        cls.__cached
-        if not cls.__cached.get(soa_dir, None):
-            deployment_file = os.path.join(soa_dir, 'deployments.json')
-            if os.path.exists(deployment_file):
-                with open(deployment_file) as f:
-                    cls.__cached[soa_dir] = cls(json.load(f)['v1'])
-
-        return cls.__cached[soa_dir]
+    def load(cls, soa_dir=DEFAULT_SOA_DIR):
+        deployment_file = os.path.join(soa_dir, 'deployments.json')
+        with open(deployment_file) as f:
+            return cls(json.load(f)['v1'])
 
     def get_branch_dict(self, service_name, instance_name):
         full_branch = '%s:%s' % (service_name, instance_name)
@@ -105,15 +93,15 @@ class DeploymentsJson(dict):
         """
 
         images = set()
-        for d in self.values():
-            if 'docker_image' in d and d['desired_state'] == 'start':
-                images.add(d['docker_image'])
+        for branch_dict in self.values():
+            if 'docker_image' in branch_dict and branch_dict['desired_state'] == 'start':
+                images.add(branch_dict['docker_image'])
         return images
 
 
 class MarathonServiceConfig(object):
     @classmethod
-    def read(cls, service_name, instance, cluster, deployments_json=None, soa_dir=DEFAULT_SOA_DIR):
+    def load(cls, service_name, instance, cluster, deployments_json=None, soa_dir=DEFAULT_SOA_DIR):
         """Read a service instance's configuration for marathon.
 
         If a branch isn't specified for a config, the 'branch' key defaults to
@@ -148,7 +136,7 @@ class MarathonServiceConfig(object):
         general_config.update(instance_configs[instance])
 
         if deployments_json is None:
-            deployments_json = DeploymentsJson.read(soa_dir=soa_dir)
+            deployments_json = DeploymentsJson.load(soa_dir=soa_dir)
 
         # Noisy debugging output for PAASTA-322
         general_config['deployments_json'] = deployments_json
@@ -320,6 +308,112 @@ class MarathonServiceConfig(object):
         return self.config_dict.get('bounce_health_params', {})
 
 
+class ServiceNamespaceConfig(dict):
+    @classmethod
+    def load(cls, srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
+        """Attempt to read the configuration for a service's namespace in a more strict fashion.
+
+        Retrevies the following keys:
+
+        - proxy_port: the proxy port defined for the given namespace
+        - healthcheck_uri: URI target for healthchecking
+        - healthcheck_timeout_s: healthcheck timeout in seconds
+        - timeout_connect_ms: proxy frontend timeout in milliseconds
+        - timeout_server_ms: proxy server backend timeout in milliseconds
+        - timeout_client_ms: proxy server client timeout in milliseconds
+        - retries: the number of retries on a proxy backend
+        - mode: the mode the service is run in (http or tcp)
+        - routes: a list of tuples of (source, destination)
+
+        :param srv_name: The service name
+        :param namespace: The namespace to read
+        :param soa_dir: The SOA config directory to read from
+        :returns: A dict of the above keys, if they were defined
+        """
+
+        smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
+        config_from_file = smartstack[namespace]
+        service_namespace_config = cls()
+        # We can't really use .get, as we don't want the key to be in the returned
+        # dict at all if it doesn't exist in the config file.
+        # We also can't just copy the whole dict, as we only care about some keys
+        # and there's other things that appear in the smartstack section in
+        # several cases.
+        key_whitelist = set([
+            'healthcheck_uri',
+            'healthcheck_timeout_s',
+            'proxy_port',
+            'timeout_connect_ms',
+            'timeout_server_ms',
+            'timeout_client_ms',
+            'retries',
+            'mode',
+        ])
+
+        for key, value in config_from_file.items():
+            if key in key_whitelist:
+                service_namespace_config[key] = value
+
+        if 'routes' in config_from_file:
+            service_namespace_config['routes'] = [(route['source'], dest)
+                                                  for route in config_from_file['routes']
+                                                  for dest in route['destinations']]
+
+        return service_namespace_config
+
+    def get_healthchecks(self):
+        """Returns a list of healthchecks per the spec:
+        https://mesosphere.github.io/marathon/docs/health-checks.html
+        Tries to be very conservative. Currently uses the same configuration
+        that smartstack uses, regarding mode (tcp/http) and http status uri.
+
+        If you have an http service, it uses the default endpoint that smartstack uses.
+        (/status currently)
+
+        Otherwise these do *not* use the same thresholds as smarstack in order to not
+        produce a negative feedback loop, where mesos agressivly kills tasks because they
+        are slow, which causes other things to be slow, etc.
+
+        :param service_config: service config hash
+        :returns: list of healthcheck defines for marathon"""
+
+        mode = self.get('mode', 'http')
+        # We wait for a minute for a service to come up
+        graceperiodseconds = 60
+        intervalseconds = 10
+        timeoutseconds = 10
+        # And kill it after it has been failing for a minute
+        maxconsecutivefailures = 6
+
+        if mode == 'http':
+            http_path = self.get('healthcheck_uri', '/status')
+            healthchecks = [
+                {
+                    "protocol": "HTTP",
+                    "path": http_path,
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "portIndex": 0,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
+        elif mode == 'tcp':
+            healthchecks = [
+                {
+                    "protocol": "TCP",
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "portIndex": 0,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
+        else:
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+        return healthchecks
+
+
 class PaastaNotConfigured(Exception):
     pass
 
@@ -337,7 +431,7 @@ class InvalidSmartstackMode(Exception):
 
 
 def get_cluster():
-    return MarathonConfig.read().get_cluster()
+    return MarathonConfig.load().get_cluster()
 
 
 def get_marathon_client(url, user, passwd):
@@ -448,7 +542,7 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     if not cluster:
         cluster = get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = ServiceNamespaceConfig.read(name, namespace, soa_dir)
+    nerve_dict = ServiceNamespaceConfig.load(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
 
 
@@ -469,7 +563,7 @@ def get_mode_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR)
     if not cluster:
         cluster = get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = ServiceNamespaceConfig.read(name, namespace, soa_dir)
+    nerve_dict = ServiceNamespaceConfig.load(name, namespace, soa_dir)
     return nerve_dict.get('mode', 'http')
 
 
@@ -515,7 +609,6 @@ def list_all_marathon_instances_for_service(service):
     return instances
 
 
-# TODO refactor this to use MarathonServiceConfig
 def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the marathon instances defined for a service as a list of tuples.
 
@@ -582,115 +675,6 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     return namespace_list
 
 
-class ServiceNamespaceConfig(dict):
-    @classmethod
-    def read(cls, srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
-        """Attempt to read the configuration for a service's namespace in a more strict fashion.
-
-        Retrevies the following keys:
-
-        - proxy_port: the proxy port defined for the given namespace
-        - healthcheck_uri: URI target for healthchecking
-        - healthcheck_timeout_s: healthcheck timeout in seconds
-        - timeout_connect_ms: proxy frontend timeout in milliseconds
-        - timeout_server_ms: proxy server backend timeout in milliseconds
-        - timeout_client_ms: proxy server client timeout in milliseconds
-        - retries: the number of retries on a proxy backend
-        - mode: the mode the service is run in (http or tcp)
-        - routes: a list of tuples of (source, destination)
-
-        :param srv_name: The service name
-        :param namespace: The namespace to read
-        :param soa_dir: The SOA config directory to read from
-        :returns: A dict of the above keys, if they were defined
-        """
-
-        try:
-            smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
-        except:
-            return cls()
-        ns_config = smartstack[namespace]
-        ns_dict = cls()
-        # We can't really use .get, as we don't want the key to be in the returned
-        # dict at all if it doesn't exist in the config file.
-        # We also can't just copy the whole dict, as we only care about some keys
-        # and there's other things that appear in the smartstack section in
-        # several cases.
-        key_whitelist = set([
-            'healthcheck_uri',
-            'healthcheck_timeout_s',
-            'proxy_port',
-            'timeout_connect_ms',
-            'timeout_server_ms',
-            'timeout_client_ms',
-            'retries',
-            'mode',
-        ])
-
-        for key, value in ns_config.items():
-            if key in key_whitelist:
-                ns_dict[key] = value
-
-        if 'routes' in ns_config:
-            ns_dict['routes'] = [(route['source'], dest)
-                                 for route in ns_config['routes']
-                                 for dest in route['destinations']]
-
-        return ns_dict
-
-    def get_healthchecks(self):
-        """Returns a list of healthchecks per the spec:
-        https://mesosphere.github.io/marathon/docs/health-checks.html
-        Tries to be very conservative. Currently uses the same configuration
-        that smartstack uses, regarding mode (tcp/http) and http status uri.
-
-        If you have an http service, it uses the default endpoint that smartstack uses.
-        (/status currently)
-
-        Otherwise these do *not* use the same thresholds as smarstack in order to not
-        produce a negative feedback loop, where mesos agressivly kills tasks because they
-        are slow, which causes other things to be slow, etc.
-
-        :param service_config: service config hash
-        :returns: list of healthcheck defines for marathon"""
-
-        mode = self.get('mode', 'http')
-        # We wait for a minute for a service to come up
-        graceperiodseconds = 60
-        intervalseconds = 10
-        timeoutseconds = 10
-        # And kill it after it has been failing for a minute
-        maxconsecutivefailures = 6
-
-        if mode == 'http':
-            http_path = self.get('healthcheck_uri', '/status')
-            healthchecks = [
-                {
-                    "protocol": "HTTP",
-                    "path": http_path,
-                    "gracePeriodSeconds": graceperiodseconds,
-                    "intervalSeconds": intervalseconds,
-                    "portIndex": 0,
-                    "timeoutSeconds": timeoutseconds,
-                    "maxConsecutiveFailures": maxconsecutivefailures
-                },
-            ]
-        elif mode == 'tcp':
-            healthchecks = [
-                {
-                    "protocol": "TCP",
-                    "gracePeriodSeconds": graceperiodseconds,
-                    "intervalSeconds": intervalseconds,
-                    "portIndex": 0,
-                    "timeoutSeconds": timeoutseconds,
-                    "maxConsecutiveFailures": maxconsecutivefailures
-                },
-            ]
-        else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
-        return healthchecks
-
-
 def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, timeout_s=30):
     """See what services are being run by a mesos-slave via marathon on
     the given host and port.
@@ -747,7 +731,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     for name, instance, port in marathon_services:
         try:
             namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-            nerve_dict = ServiceNamespaceConfig.read(name, namespace, soa_dir)
+            nerve_dict = ServiceNamespaceConfig.load(name, namespace, soa_dir)
             nerve_dict['port'] = port
             nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
             nerve_list.append((nerve_name, nerve_dict))
@@ -767,7 +751,7 @@ def get_classic_services_that_run_here():
 
 
 def get_classic_service_information_for_nerve(name, soa_dir):
-    nerve_dict = ServiceNamespaceConfig.read(name, 'main', soa_dir)
+    nerve_dict = ServiceNamespaceConfig.load(name, 'main', soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
     nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
@@ -789,7 +773,7 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     runs_on, AND services that are currently deployed in a mesos-slave here via marathon.
 
     conf_dict is a dictionary possibly containing the same keys returned by
-    read_service_namespace_config (in fact, that's what this calls).
+    ServiceNamespaceConfig.load (in fact, that's what this calls).
     Some or none of those keys may not be present on a per-service basis.
 
     :param cluster: The cluster to read the configuration for
@@ -849,14 +833,14 @@ def is_app_id_running(app_id, client):
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
-    srv_config = MarathonServiceConfig.read(name, instance, soa_dir=soa_dir)
+    srv_config = MarathonServiceConfig.load(name, instance, soa_dir=soa_dir)
     try:
         docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
     # Noisy debugging output for PAASTA-322
     except NoDockerImageError as err:
         err.srv_config = srv_config
         raise err
-    healthchecks = ServiceNamespaceConfig.read(name, instance).get_healthchecks()
+    healthchecks = ServiceNamespaceConfig.load(name, instance).get_healthchecks()
     complete_config = srv_config.format_marathon_app_dict(
         partial_id,
         docker_url,
@@ -900,7 +884,7 @@ def get_expected_instance_count_for_namespace(service_name, namespace, soa_dir=D
     :returns: An integer value of the # of expected instances for the namespace"""
     total_expected = 0
     for name, instance in get_service_instance_list(service_name, soa_dir=soa_dir):
-        srv_config = MarathonServiceConfig.read(name, instance, soa_dir=soa_dir)
+        srv_config = MarathonServiceConfig.load(name, instance, soa_dir=soa_dir)
         instance_ns = srv_config.get_nerve_namespace()
         if namespace == instance_ns:
             total_expected += srv_config.get_instances()

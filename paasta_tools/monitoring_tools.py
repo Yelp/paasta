@@ -67,7 +67,7 @@ def __get_monitoring_config_value(key, framework, service_name, instance_name=No
     general_config = service_configuration_lib.read_service_configuration(service_name, soa_dir=soa_dir)
     if instance_name:
         cluster = marathon_tools.get_cluster()
-        job_config = marathon_tools.MarathonServiceConfig.read(service_name, instance_name, cluster, soa_dir=soa_dir)
+        job_config = marathon_tools.MarathonServiceConfig.load(service_name, instance_name, cluster, soa_dir=soa_dir)
     else:
         job_config = marathon_tools.MarathonServiceConfig(service_name, instance_name, {}, {})
     monitor_config = marathon_tools.read_monitoring_config(service_name, soa_dir=soa_dir)
