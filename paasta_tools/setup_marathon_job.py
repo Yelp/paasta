@@ -244,7 +244,7 @@ def main():
         service_name,
         instance_name,
         marathon_tools.get_cluster(),
-        soa_dir,
+        soa_dir=soa_dir,
     )
 
     if service_instance_config:

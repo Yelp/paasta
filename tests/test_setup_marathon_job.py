@@ -108,7 +108,7 @@ class TestSetupMarathonJob:
                 self.fake_args.service_instance.split('.')[0],
                 self.fake_args.service_instance.split('.')[1],
                 self.fake_marathon_config['cluster'],
-                self.fake_args.soa_dir,
+                soa_dir=self.fake_args.soa_dir,
             )
             setup_service_patch.assert_called_once_with(
                 self.fake_args.service_instance.split('.')[0],
@@ -175,7 +175,7 @@ class TestSetupMarathonJob:
                 self.fake_args.service_instance.split('.')[0],
                 self.fake_args.service_instance.split('.')[1],
                 self.fake_marathon_config['cluster'],
-                self.fake_args.soa_dir)
+                soa_dir=self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
                 self.fake_args.service_instance.split('.')[0],
                 self.fake_args.service_instance.split('.')[1],
