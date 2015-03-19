@@ -1,22 +1,7 @@
+import contextlib
 import mock
+
 from paasta_tools.paasta_cli.cmds import start_stop_restart
-from pytest import raises
-
-
-def test_match_branches():
-    # simple case
-    assert start_stop_restart.match_branches(['foo'], ['foo']) == set(['foo'])
-
-    assert start_stop_restart.match_branches(
-        ['foo', 'bar', 'baz'],
-        ['b*']
-    ) == set(['bar', 'baz'])
-
-    with raises(start_stop_restart.NoBranchesMatchException):
-        start_stop_restart.match_branches(['foo'], ['bar'])
-
-    with raises(start_stop_restart.NoBranchesMatchException):
-        start_stop_restart.match_branches(['foo'], ['foo', 'bar'])
 
 
 def test_format_tag():
@@ -42,6 +27,8 @@ def test_issue_state_change_for_branches(get_transport_and_path, get_git_url):
 
     start_stop_restart.issue_state_change_for_branches(
         'fake_service',
+        'fake_cluster',
+        'fake_instance',
         ['branch1', 'branch2'],
         '0',
         'stop'
@@ -75,3 +62,24 @@ def test_make_mutate_refs_func():
 
     actual = mutate_refs(old_refs)
     assert actual == expected
+
+
+def test_log_event():
+    with contextlib.nested(
+        mock.patch('os.getlogin', autospec=True, return_value='fake_user'),
+        mock.patch('socket.getfqdn', autospec=True, return_value='fake_fqdn'),
+        mock.patch('paasta_tools.utils._log', autospec=True),
+    ) as (
+        mock_getlogin,
+        mock_getfqdn,
+        mock_log,
+    ):
+        start_stop_restart.log_event('fake_service', 'fake_instance', 'fake_cluster', 'stopped')
+        mock_log.assert_called_once_with(
+            instance='fake_instance',
+            service_name='fake_service',
+            level='event',
+            component='deploy',
+            cluster='fake_cluster',
+            line="Issued request to change state of fake_instance to 'stopped' by fake_user@fake_fqdn"
+        )
