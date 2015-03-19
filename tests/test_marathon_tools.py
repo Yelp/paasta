@@ -761,7 +761,7 @@ class TestMarathonTools:
             mock.patch(
                 'os.path.exists',
                 autospec=True,
-                side_effect=lambda x: x == 'a'
+                side_effect=lambda x: x == '/etc/nerve/puppet_services.d/a'
             ),
         ) as (
             services_that_run_here_patch,

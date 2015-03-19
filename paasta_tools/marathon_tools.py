@@ -798,7 +798,10 @@ def get_classic_services_that_run_here():
         # find all files in the PUPPET_SERVICE_DIR, but discard broken symlinks
         # this allows us to (de)register services on a machine by
         # breaking/healing a symlink placed by Puppet.
-        [i for i in os.listdir(PUPPET_SERVICE_DIR) if os.path.exists(i)]
+        [
+            i for i in os.listdir(PUPPET_SERVICE_DIR) if
+            os.path.exists(os.path.join(PUPPET_SERVICE_DIR, i))
+        ]
     )
 
 
