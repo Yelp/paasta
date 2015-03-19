@@ -133,8 +133,13 @@ def makefile_responds_to_itest():
     return returncode in [0, 1]
 
 
-def makefile_has_a_tab():
-    return True
+def get_file_contents(path):
+    return open(path).read()
+
+
+def makefile_has_a_tab(makefile_path):
+    contents = get_file_contents(makefile_path)
+    return '	' in contents
 
 
 def makefile_check():
@@ -144,15 +149,15 @@ def makefile_check():
     if makefile_path:
         print PaastaCheckMessages.MAKEFILE_FOUND
 
+        if makefile_has_a_tab(makefile_path):
+            print PaastaCheckMessages.MAKEFILE_HAS_A_TAB
+        else:
+            print PaastaCheckMessages.MAKEFILE_HAS_NO_TABS
+
         if makefile_responds_to_itest():
             print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST
         else:
             print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST_FAIL
-
-        if makefile_has_a_tab():
-            print PaastaCheckMessages.MAKEFILE_HAS_A_TAB
-        else:
-            print PaastaCheckMessages.MAKEFILE_HAS_NO_TABS
     else:
         print PaastaCheckMessages.MAKEFILE_MISSING
 
