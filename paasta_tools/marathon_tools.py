@@ -337,7 +337,8 @@ class ServiceNamespaceConfig(dict):
         """
 
         smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
-        config_from_file = smartstack[namespace]
+        config_from_file = smartstack.get(namespace, {})
+
         service_namespace_config = cls()
         # We can't really use .get, as we don't want the key to be in the returned
         # dict at all if it doesn't exist in the config file.
