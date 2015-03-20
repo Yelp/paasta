@@ -1,3 +1,10 @@
+paasta-tools (0.9.35-yelp1) lucid; urgency=low
+
+  * 0.9.35 tagged with 'make release'
+    Commit: Allowing ServiceNamespaceConfig to gracefully fail
+
+ -- Joseph Lynch <jlynch@yelp.com>  Fri, 20 Mar 2015 09:51:28 -0700
+
 paasta-tools (0.9.34-yelp1) lucid; urgency=low
 
   * 0.9.34 tagged with 'make release'
