@@ -1113,7 +1113,7 @@ class TestMarathonTools:
             branch_dict={},
         )
 
-        def config_helper(name, inst, soa_dir=None):
+        def config_helper(name, inst, cluster, soa_dir=None):
             if inst == 'blue':
                 return fake_srv_config
             else:
@@ -1130,11 +1130,16 @@ class TestMarathonTools:
             inst_list_patch,
             read_config_patch,
         ):
-            actual = marathon_tools.get_expected_instance_count_for_namespace(service_name, namespace, soa_dir)
+            actual = marathon_tools.get_expected_instance_count_for_namespace(
+                service_name,
+                namespace,
+                cluster='fake_cluster',
+                soa_dir=soa_dir,
+            )
             assert actual == 11
-            inst_list_patch.assert_called_once_with(service_name, soa_dir=soa_dir)
-            read_config_patch.assert_any_call(service_name, 'blue', soa_dir=soa_dir)
-            read_config_patch.assert_any_call(service_name, 'green', soa_dir=soa_dir)
+            inst_list_patch.assert_called_once_with(service_name, cluster='fake_cluster', soa_dir=soa_dir)
+            read_config_patch.assert_any_call(service_name, 'blue', 'fake_cluster', soa_dir=soa_dir)
+            read_config_patch.assert_any_call(service_name, 'green', 'fake_cluster', soa_dir=soa_dir)
 
     def test_get_matching_appids(self):
         fakeapp1 = mock.Mock(id='/fake--service.fake--instance---bouncingold')

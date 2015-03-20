@@ -881,7 +881,7 @@ def get_code_sha_from_dockerurl(docker_url):
     return "git%s" % parts[-1][:8]
 
 
-def get_expected_instance_count_for_namespace(service_name, namespace, soa_dir=DEFAULT_SOA_DIR):
+def get_expected_instance_count_for_namespace(service_name, namespace, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get the number of expected instances for a namespace, based on the number
     of instances set to run on that namespace as specified in Marathon service
     configuration files.
@@ -891,8 +891,10 @@ def get_expected_instance_count_for_namespace(service_name, namespace, soa_dir=D
     :param soa_dir: The SOA configuration directory to read from
     :returns: An integer value of the # of expected instances for the namespace"""
     total_expected = 0
-    for name, instance in get_service_instance_list(service_name, soa_dir=soa_dir):
-        srv_config = MarathonServiceConfig.load(name, instance, soa_dir=soa_dir)
+    if not cluster:
+        cluster = get_cluster()
+    for name, instance in get_service_instance_list(service_name, cluster=cluster, soa_dir=soa_dir):
+        srv_config = MarathonServiceConfig.load(name, instance, cluster, soa_dir=soa_dir)
         instance_ns = srv_config.get_nerve_namespace()
         if namespace == instance_ns:
             total_expected += srv_config.get_instances()
