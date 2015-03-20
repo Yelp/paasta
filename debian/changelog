@@ -1,3 +1,11 @@
+paasta-tools (0.9.30-yelp1) lucid; urgency=low
+
+  * 0.9.30 tagged with 'make release'
+    Commit: Define a get() method on MarathonServiceConfig so
+    monitoring_tools.__get_monitoring_config_value works again
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Mar 2015 17:05:38 -0700
+
 paasta-tools (0.9.29-yelp1) lucid; urgency=low
 
   * 0.9.29 tagged with 'make release'
