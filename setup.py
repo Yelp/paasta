@@ -6,7 +6,7 @@ from setuptools import setup, find_packages
 
 setup(
     name           = 'paasta-tools',
-    version        = '0.9.33',
+    version        = '0.9.34',
     provides       = ["paasta_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
