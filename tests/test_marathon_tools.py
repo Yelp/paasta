@@ -17,6 +17,7 @@ class TestMarathonTools:
             'instances': 3,
             'cpus': 1,
             'mem': 100,
+            'nerve_ns': 'fake_nerve_ns',
         },
         {
             'docker_image': 'test_docker:1.0',
@@ -1012,7 +1013,7 @@ class TestMarathonTools:
             format_marathon_app_dict_patch,
             hash_patch,
             code_sha_patch,
-            _,
+            SNC_load_patch,
         ):
             assert marathon_tools.get_app_id(
                 fake_name,
@@ -1023,6 +1024,7 @@ class TestMarathonTools:
                                                               soa_dir='/nail/etc/services')
             hash_patch.assert_called_once_with(fake_config, force_bounce=None)
             code_sha_patch.assert_called_once_with(fake_url)
+            SNC_load_patch.assert_called_once_with(fake_name, 'fake_nerve_ns')
 
     def test_get_code_sha_from_dockerurl(self):
         fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'

@@ -848,7 +848,7 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     except NoDockerImageError as err:
         err.srv_config = srv_config
         raise err
-    healthchecks = ServiceNamespaceConfig.load(name, instance).get_healthchecks()
+    healthchecks = ServiceNamespaceConfig.load(name, srv_config.get_nerve_namespace()).get_healthchecks()
     complete_config = srv_config.format_marathon_app_dict(
         partial_id,
         docker_url,
