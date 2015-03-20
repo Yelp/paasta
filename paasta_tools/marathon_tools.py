@@ -157,6 +157,9 @@ class MarathonServiceConfig(object):
     def copy(self):
         return self.__class__(self.service_name, self.instance, dict(self.config_dict), dict(self.branch_dict))
 
+    def get(self, key, default=None):
+        return self.config_dict.get(key, default)
+
     def get_docker_image(self):
         """Get the docker image name (with tag) for a given service branch from
         a generated deployments.json file."""

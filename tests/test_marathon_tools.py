@@ -929,6 +929,10 @@ class TestMarathonTools:
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {'desired_state': 'stop'})
         assert fake_conf.get_desired_state() == 'stop'
 
+    def test_get(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'foo': 'bar'}, {})
+        assert fake_conf.get('foo') == 'bar'
+
     def test_get_docker_url_no_error(self):
         fake_registry = "im.a-real.vm"
         fake_image = "and-i-can-run:1.0"

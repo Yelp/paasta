@@ -18,13 +18,18 @@ class TestMonitoring_Tools:
 
     empty_service_config = marathon_tools.MarathonServiceConfig('myservicename', 'myinstance', {}, {})
     job_page = False
-    fake_job_config = {
-        'team': 'job_test_team',
-        'runbook': 'y/job_test_runbook',
-        'tip': 'job_test_tip',
-        'notification_email': 'job_test_notification_email',
-        'page': job_page
-    }
+    fake_job_config = marathon_tools.MarathonServiceConfig(
+        'myservicename',
+        'myinstance',
+        {
+            'team': 'job_test_team',
+            'runbook': 'y/job_test_runbook',
+            'tip': 'job_test_tip',
+            'notification_email': 'job_test_notification_email',
+            'page': job_page
+        },
+        {},
+    )
     empty_job_config = {}
     monitor_page = True
     fake_monitor_config = {
