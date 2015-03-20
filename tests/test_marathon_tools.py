@@ -991,8 +991,10 @@ class TestMarathonTools:
         fake_hash = 'CONFIGHASH'
         fake_code_sha = 'CODESHA'
         fake_config = {}
+        fake_cluster = 'fake_cluster'
 
         with contextlib.nested(
+            mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
             mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load,
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
@@ -1003,6 +1005,7 @@ class TestMarathonTools:
             mock.patch('marathon_tools.ServiceNamespaceConfig.load', spec=marathon_tools.ServiceNamespaceConfig.load,
                        return_value=mock.Mock(get_healthchecks=lambda: []))
         ) as (
+            get_cluster_patch,
             read_service_config_patch,
             docker_url_patch,
             format_marathon_app_dict_patch,
@@ -1015,7 +1018,8 @@ class TestMarathonTools:
                 fake_instance,
                 self.fake_marathon_config
             ) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
-            read_service_config_patch.assert_called_once_with(fake_name, fake_instance, soa_dir='/nail/etc/services')
+            read_service_config_patch.assert_called_once_with(fake_name, fake_instance, fake_cluster,
+                                                              soa_dir='/nail/etc/services')
             hash_patch.assert_called_once_with(fake_config, force_bounce=None)
             code_sha_patch.assert_called_once_with(fake_url)
 
@@ -1036,6 +1040,7 @@ class TestMarathonTools:
         fake_name = 'fakeapp'
         fake_instance = 'fakeinstance'
         fake_url = 'dockervania_from_konami'
+        fake_cluster = 'fake_cluster'
 
         fake_service_config_1 = marathon_tools.MarathonServiceConfig(
             fake_name,
@@ -1068,11 +1073,13 @@ class TestMarathonTools:
         )
 
         with contextlib.nested(
+            mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
             mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch('marathon_tools.ServiceNamespaceConfig.load',
                        return_value=mock.Mock(get_healthchecks=lambda: []))
         ) as (
+            get_cluster_patch,
             read_service_config_patch,
             docker_url_patch,
             _,

@@ -839,7 +839,7 @@ def is_app_id_running(app_id, client):
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
-    srv_config = MarathonServiceConfig.load(name, instance, soa_dir=soa_dir)
+    srv_config = MarathonServiceConfig.load(name, instance, get_cluster(), soa_dir=soa_dir)
     try:
         docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
     # Noisy debugging output for PAASTA-322
