@@ -17,7 +17,6 @@ class TestMarathonTools:
             'instances': 3,
             'cpus': 1,
             'mem': 100,
-            'branch': 'master',
         },
         {
             'docker_image': 'test_docker:1.0',
@@ -125,10 +124,11 @@ class TestMarathonTools:
         fake_dir = '/nail/home/sanfran'
         fake_docker = 'no_docker:9.9'
         config_copy = self.fake_marathon_job_config.config_dict.copy()
+
         fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
         deployments_json_mock = mock.Mock(
             spec=marathon_tools.DeploymentsJson,
-            get_branch_dict=lambda x, y: fake_branch_dict,
+            get_branch_dict=mock.Mock(return_value=fake_branch_dict),
         )
 
         def conf_helper(name, filename, soa_dir="AAAAAAAAA"):
@@ -170,6 +170,7 @@ class TestMarathonTools:
             assert expected.config_dict == actual.config_dict
             assert expected.branch_dict == actual.branch_dict
 
+            deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'paasta-amnesia.solo')
             read_extra_info_patch.assert_any_call(fake_name, "service", soa_dir=fake_dir)
             read_extra_info_patch.assert_any_call(fake_name, "marathon-amnesia", soa_dir=fake_dir)
             assert read_extra_info_patch.call_count == 2

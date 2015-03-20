@@ -79,8 +79,8 @@ class DeploymentsJson(dict):
         with open(deployment_file) as f:
             return cls(json.load(f)['v1'])
 
-    def get_branch_dict(self, service_name, instance_name):
-        full_branch = '%s:%s' % (service_name, instance_name)
+    def get_branch_dict(self, service_name, branch):
+        full_branch = '%s:%s' % (service_name, branch)
         return self.get(full_branch, {})
 
     def get_deployed_images(self):
@@ -141,11 +141,13 @@ class MarathonServiceConfig(object):
         # Noisy debugging output for PAASTA-322
         general_config['deployments_json'] = deployments_json
 
+        branch = general_config.get('branch', get_default_branch(cluster, instance))
+
         return cls(
             service_name,
             instance,
             general_config,
-            deployments_json.get_branch_dict(service_name, instance),
+            deployments_json.get_branch_dict(service_name, branch),
         )
 
     def __init__(self, service_name, instance, config_dict, branch_dict):
