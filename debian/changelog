@@ -1,3 +1,11 @@
+paasta-tools (0.9.33-yelp1) lucid; urgency=low
+
+  * 0.9.33 tagged with 'make release'
+    Commit: ServiceNamespaceConfig.load needs to be called with
+    namespace, not instance
+
+ -- Evan Krall <krall@yelp.com>  Thu, 19 Mar 2015 21:19:03 -0700
+
 paasta-tools (0.9.32-yelp1) lucid; urgency=low
 
   * 0.9.32 tagged with 'make release'
