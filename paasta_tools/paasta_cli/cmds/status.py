@@ -103,10 +103,10 @@ def get_actual_deployments(service_name):
         exit(1)
     # Create a dictionary of actual $service_name Jenkins deployments
     actual_deployments = {}
-    for key in deployments_json['v1']:
+    for key in deployments_json:
         service, namespace = key.encode('utf8').split(':')
         if service == service_name:
-            value = deployments_json['v1'][key]['docker_image'].encode('utf8')
+            value = deployments_json[key]['docker_image'].encode('utf8')
             sha = value[value.rfind('-') + 1:]
             actual_deployments[namespace.replace('paasta-', '', 1)] = sha
     return actual_deployments
