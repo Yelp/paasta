@@ -1,3 +1,11 @@
+paasta-tools (0.9.36-yelp1) lucid; urgency=low
+
+  * 0.9.36 tagged with 'make release'
+    Commit: Add __repr__ to MarathonServiceConfig to help debugging
+    (PAASTA-322)
+
+ -- Evan Krall <krall@yelp.com>  Mon, 23 Mar 2015 11:34:41 -0700
+
 paasta-tools (0.9.35-yelp1) lucid; urgency=low
 
   * 0.9.35 tagged with 'make release'
