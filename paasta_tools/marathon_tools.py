@@ -156,6 +156,14 @@ class MarathonServiceConfig(object):
         self.config_dict = config_dict
         self.branch_dict = branch_dict
 
+    def __repr__(self):
+        return "MarathonServiceConfig(%r, %r, %r, %r)" % (
+            self.service_name,
+            self.instance,
+            self.config_dict,
+            self.branch_dict
+        )
+
     def copy(self):
         return self.__class__(self.service_name, self.instance, dict(self.config_dict), dict(self.branch_dict))
 

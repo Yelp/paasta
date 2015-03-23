@@ -1157,6 +1157,13 @@ class TestMarathonTools:
         assert actual == expected
 
 
+class TestMarathonServiceConfig(object):
+    def test_repr(self):
+        actual = repr(marathon_tools.MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'}))
+        expected = """MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'})"""
+        assert actual == expected
+
+
 class TestServiceNamespaceConfig(object):
     def test_get_healthchecks_http_overrides(self):
         fake_path = '/mycoolstatus'
