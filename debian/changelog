@@ -1,3 +1,10 @@
+paasta-tools (0.9.37-yelp1) lucid; urgency=low
+
+  * 0.9.37 tagged with 'make release'
+    Commit: Remove incorrect use of [v1] on DeploymentsJson object.
+
+ -- Evan Krall <krall@yelp.com>  Mon, 23 Mar 2015 16:42:32 -0700
+
 paasta-tools (0.9.36-yelp1) lucid; urgency=low
 
   * 0.9.36 tagged with 'make release'
