@@ -1,6 +1,6 @@
 replication_utils
 =================
 
-.. automodule:: monitoring.replication_utils
+.. automodule:: paasta_tools.monitoring.replication_utils
    :members:
 
