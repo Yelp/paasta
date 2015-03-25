@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 import datetime
-import os
 import socket
 import sys
 
@@ -83,7 +82,7 @@ def make_mutate_refs_func(branches, force_bounce, desired_state):
 
 
 def log_event(service, instance, cluster, desired_state):
-    user = os.getlogin()
+    user = utils.get_username()
     host = socket.getfqdn()
     line = "Issued request to change state of %s to '%s' by %s@%s" % (
         instance, desired_state, user, host)

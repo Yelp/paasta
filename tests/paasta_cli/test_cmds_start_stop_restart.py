@@ -68,11 +68,11 @@ def test_make_mutate_refs_func():
 
 def test_log_event():
     with contextlib.nested(
-        mock.patch('os.getlogin', autospec=True, return_value='fake_user'),
+        mock.patch('paasta_tools.utils.get_username', autospec=True, return_value='fake_user'),
         mock.patch('socket.getfqdn', autospec=True, return_value='fake_fqdn'),
         mock.patch('paasta_tools.utils._log', autospec=True),
     ) as (
-        mock_getlogin,
+        mock_get_username,
         mock_getfqdn,
         mock_log,
     ):
