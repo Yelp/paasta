@@ -1,17 +1,18 @@
 from __future__ import print_function
+from subprocess import PIPE
+from subprocess import Popen
+from subprocess import STDOUT
 import contextlib
 import datetime
 import errno
 import json
+import os
+import pwd
+import re
 import shlex
-from subprocess import Popen
-from subprocess import PIPE
-from subprocess import STDOUT
 import sys
 import tempfile
 import threading
-import os
-import re
 
 import clog
 import dateutil.tz
@@ -400,3 +401,10 @@ def datetime_from_utc_to_local(utc_datetime):
     # We need to remove timezone awareness because of humanize
     local_datetime = local_datetime.replace(tzinfo=None)
     return local_datetime
+
+
+def get_username():
+    """Returns the current username in a portable way
+    http://stackoverflow.com/a/2899055
+    """
+    return pwd.getpwuid(os.getuid())[0]
