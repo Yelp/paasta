@@ -100,7 +100,7 @@ def get_bouncing_status(service, instance, client, complete_job_config):
 
 
 def get_desired_state_human(complete_job_config):
-    desired_state = marathon_tools.get_desired_state(complete_job_config)
+    desired_state = complete_job_config.get_desired_state()
     if desired_state == 'start':
         return PaastaColors.bold('Started')
     elif desired_state == 'stop':
@@ -410,7 +410,7 @@ def main():
     instance = service_instance.split(marathon_tools.ID_SPACER)[1]
 
     marathon_config = marathon_tools.MarathonConfig.load()
-    cluster = marathon_tools.get_cluster()
+    cluster = marathon_config.get_cluster()
     validate_service_instance(service, instance, cluster)
 
     complete_job_config = marathon_tools.MarathonServiceConfig.load(service, instance, cluster)

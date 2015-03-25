@@ -94,6 +94,17 @@ class TestPaastaServiceStatus:
             assert 'Started' in actual
             assert 'Bouncing' in actual
 
+    def test_get_desired_state(self):
+        fake_config = marathon_tools.MarathonServiceConfig(
+            'fake_service',
+            'fake_instance',
+            {},
+            {},
+        )
+
+        actual = paasta_serviceinit.get_desired_state_human(fake_config)
+        assert 'Started' in actual
+
     def test_status_marathon_job_verbose(self):
         client = mock.create_autospec(marathon.MarathonClient)
         app = mock.create_autospec(marathon.models.app.MarathonApp)
