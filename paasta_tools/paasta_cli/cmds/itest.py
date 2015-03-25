@@ -45,6 +45,12 @@ def paasta_itest(args):
     cmd = "make itest"
     loglines = []
 
+    _log(
+        service_name=service_name,
+        line='starting itest for %s.' % args.commit,
+        component='build',
+        level='event'
+    )
     returncode, output = _run(
         cmd,
         env=run_env,
