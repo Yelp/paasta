@@ -264,6 +264,19 @@ def test_list_service_instances(
     assert actual == expected
 
 
+@patch('paasta_tools.paasta_cli.utils.list_instances_for_service')
+@patch('paasta_tools.paasta_cli.utils.list_services')
+def test_list_paasta_services(
+    mock_list_services,
+    mock_list_instances,
+):
+    mock_list_services.return_value = ['fake_service']
+    mock_list_instances.return_value = ['canary', 'main']
+    expected = ['fake_service']
+    actual = utils.list_paasta_services()
+    assert actual == expected
+
+
 @patch('paasta_tools.paasta_cli.utils.guess_service_name')
 @patch('paasta_tools.paasta_cli.utils.validate_service_name')
 @patch('paasta_tools.paasta_cli.utils.list_instances_for_service')

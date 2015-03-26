@@ -279,6 +279,16 @@ def list_services():
     return sorted(read_services_configuration().keys())
 
 
+def list_paasta_services():
+    """Returns a sorted list of services that happen to have at
+    least one service.instance, which indicates it is on PaaSTA"""
+    the_list = []
+    for service_name in list_services():
+        if list_instances_for_service(service_name):
+            the_list.append(service_name)
+    return the_list
+
+
 def list_service_instances():
     """Returns a sorted list of service.instance names"""
     the_list = []
