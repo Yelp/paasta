@@ -1,3 +1,11 @@
+paasta-tools (0.9.39-yelp1) lucid; urgency=low
+
+  * 0.9.39 tagged with 'make release'
+    Commit: Make generate_deployments_json blow up when git isnt
+    responsive. PAASTA-367
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 26 Mar 2015 11:17:54 -0700
+
 paasta-tools (0.9.38-yelp1) lucid; urgency=low
 
   * 0.9.38 tagged with 'make release'
