@@ -20,7 +20,7 @@ release:
 
 
 clean:
-	rm -f ./dist
+	rm -rf ./dist
 	make -C yelp_package clean
 	rm -rf docs/build
 	find . -name '*.pyc' -delete

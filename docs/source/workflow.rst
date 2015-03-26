@@ -91,7 +91,7 @@ configuration for the running image:
 Mesos is the actual system that runs the docker images. In Mesos land these are
 called "TASKS". PaaSTA-configured tasks use exponential backoff to prevent
 unhealthy tasks from continuously filling up disks and logs -- the more times
-that your service has failed to start, the longer Mesos will wait before 
+that your service has failed to start, the longer Mesos will wait before
 trying to start it again.
 
 Mesos *will* healthcheck the task based on the same healthcheck that Smarstack
@@ -104,18 +104,42 @@ Bouncing
 PaaSTA supports pluggable bounce_methods to give service authors a choice
 on how to handle the transition between new and old versions of as service.
 
-There are two bounce methods currently available:
+There are four bounce methods available:
 
-* `upthendown <bounce_lib.html#bounce_lib.upthendown_bounce>`_ - Brings up a
-  service, waits two minutes for it to be fully available in the load
-  balancer, then removes the old service. This is the default method.
-* `brutal <bounce_lib.html#bounce_lib.brutal_bounce>`_ - Destroys
-  the old app first, then brings up the new one.
+* `brutal <bounce_lib.html#bounce_lib.brutal_bounce>`_ - Stops old versions and
+  starts the new version, without regard to safety. Not recommended for most
+  use cases; it's mostly for debugging, but this is probably the fastest bounce
+  method.
+* `upthendown <bounce_lib.html#bounce_lib.upthendown_bounce>`_ - Brings up the
+  new version of the service and waits until all instances are healthy before
+  stopping the old versions. May be useful for services that need a quorum of
+  the new version. During a bounce, your service will have up to twice as many
+  instances running, so it will up to twice as many cluster resources as usual.
+* `downthenup <bounce_lib.html#bounce_lib.downthenup_bounce>`_ - Stops any old
+  versions and waits for them to die before starting the new version. May be
+  useful for services without strict uptime requirements (log tailers, queue
+  workers) that do not want more than one version running at a time.
+* `crossover <bounce_lib.html#bounce_lib.crossover_bounce>`_ - Starts the new
+  version, and gradually kills instances of the old versions as new instances
+  become healthy. The code behind this is more complex than the other methods,
+  but this is recommended for most use cases. It provides good safety (will not
+  take your old instances down if your new version doesn't pass healthchecks)
+  but does not consume as many resources as ``upthendown``.
 
 A service author can select a bounce method by setting ``bounce_method`` in
 the marathon configuration file. (e.g. ``marathon-SHARED.yaml``) This setting
 is set per-instance. See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>_`
 file.
+
+Additionally, a service author can configure how the bounce code determines
+which instances are healthy by setting ``bounce_health_params``. This
+dictionary is passed in as keyword arguments to `get_happy_tasks <bounce_lib.html#bounce_lib.get_happy_tasks>`_.
+Valid options are:
+
+* ``min_task_uptime``: Minimum number of seconds that a task must be running
+  before we consider it healthy. Useful if tasks take a while to start up.
+* ``check_haproxy``: Whether to check the local haproxy to make sure this task
+  has been registered and discovered.
 
 Monitoring
 ----------
