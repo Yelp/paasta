@@ -438,7 +438,7 @@ class TestSetupMarathonJob:
         expected = (1, errormsg)
 
         with contextlib.nested(
-            mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
+            mock.patch('setup_marathon_job._log', autospec=True),
             mock.patch(
                 'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
                 return_value='fake_cluster',
@@ -455,6 +455,7 @@ class TestSetupMarathonJob:
                 nerve_ns=fake_instance,
                 bounce_health_params={},
             )
+            assert mock_log.call_count == 1
         assert expected == actual
         fake_client.list_apps.assert_called_once_with(embed_failures=True)
         assert fake_client.create_app.call_count == 0
@@ -501,7 +502,7 @@ class TestSetupMarathonJob:
             ),
             mock.patch('paasta_tools.bounce_lib.kill_old_ids', autospec=True),
             mock.patch('paasta_tools.bounce_lib.create_marathon_app', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
+            mock.patch('setup_marathon_job._log', autospec=True),
             mock.patch(
                 'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
                 return_value='fake_cluster',
@@ -531,6 +532,7 @@ class TestSetupMarathonJob:
             fake_client.kill_task.assert_called_once_with(old_app.id, old_task.id, scale=True)
             create_marathon_app_patch.assert_called_once_with(fake_config['id'], fake_config, fake_client)
             kill_old_ids_patch.assert_called_once_with([old_app_id], fake_client)
+            assert mock_log.call_count == 5
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}
