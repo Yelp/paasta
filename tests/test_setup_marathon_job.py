@@ -6,6 +6,7 @@ import mock
 import marathon
 
 from paasta_tools import marathon_tools, bounce_lib
+from paasta_tools.bounce_lib import list_bounce_methods
 import setup_marathon_job
 
 
@@ -432,7 +433,10 @@ class TestSetupMarathonJob:
             list_apps=mock.Mock(return_value=fake_apps))
         fake_config = {'id': fake_id, 'instances': 2}
 
-        expected = (1, 'bounce_method not recognized: %s' % fake_bounce)
+        errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
+            (fake_bounce, ', '.join(list_bounce_methods()))
+        expected = (1, errormsg)
+
         with contextlib.nested(
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch(

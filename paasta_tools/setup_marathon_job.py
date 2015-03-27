@@ -133,15 +133,17 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     try:
         bounce_func = bounce_lib.get_bounce_method_func(bounce_method)
     except KeyError:
+        errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
+            (bounce_method, ', '.join(bounce_lib.list_bounce_methods()))
         _log(
             service_name=service_name,
-            line="ERROR: bounce_methos not recognized: %s." % bounce_method,
+            line=errormsg,
             component='deploy',
             level='event',
             cluster=cluster,
             instance=instance_name
         )
-        return (1, "bounce_method not recognized: %s" % bounce_method)
+        return (1, errormsg)
 
     try:
         with bounce_lib.bounce_lock_zookeeper(short_id):
@@ -152,11 +154,15 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
                 happy_new_tasks=happy_new_tasks,
                 old_app_tasks=old_app_tasks,
             )
-            import pdb; pdb.set_trace()
             _log(
                 service_name=service_name,
                 line='%s bounce started on %s. %d new tasks to bring up, %d to kill.' %
-                (bounce_method, short_id, config['instances']-len(happy_new_tasks), len(actions['tasks_to_kill'])),
+                (
+                    bounce_method,
+                    short_id,
+                    config['instances']-len(happy_new_tasks),
+                    len(actions['tasks_to_kill'])
+                ),
                 component='deploy',
                 level='event',
                 cluster=cluster,
@@ -165,7 +171,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
             if actions['create_app'] and not new_app_running:
                 _log(
                     service_name=service_name,
-                    line='%s bounce creating new app: %s app_id' % (bounce_method, marathon_jobid),
+                    line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
                     component='deploy',
                     level='debug',
                     cluster=cluster,
@@ -175,8 +181,8 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
             if len(actions['tasks_to_kill']) > 0:
                 _log(
                     service_name=service_name,
-                    line='%s bounce killing %d tasks for app %s' %
-                    (bounce_method, len(actions['tasks_to_kill']), actions['tasks_to_kill'][0]['app_id']),
+                    line='%s bounce killing %d old tasks with app_id %s' %
+                    (bounce_method, len(actions['tasks_to_kill']), next(iter(actions['tasks_to_kill'])).app_id),
                     component='deploy',
                     level='debug',
                     cluster=cluster,
@@ -189,7 +195,8 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
             if actions['apps_to_kill']:
                 _log(
                     service_name=service_name,
-                    line='%s bounce removing old unused apps: %s' % (bounce_method, actions['apps_to_kill']),
+                    line='%s bounce removing old unused apps with app_ids  %s' %
+                    (bounce_method, actions['apps_to_kill']),
                     component='deploy',
                     level='debug',
                     cluster=cluster,

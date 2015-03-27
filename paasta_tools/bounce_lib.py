@@ -44,6 +44,10 @@ def get_bounce_method_func(name):
     return _bounce_method_funcs[name]
 
 
+def list_bounce_methods():
+    return _bounce_method_funcs.keys()
+
+
 class LockHeldException(Exception):
     pass
 

@@ -74,6 +74,11 @@ def when_deploy_service_initiated(context, bounce_method):
         mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
         mock.patch('paasta_tools.bounce_lib.create_app_lock', autospec=True),
         mock.patch('paasta_tools.bounce_lib.time.sleep', autospec=True),
+        mock.patch(
+            'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
+            autospec=True,
+            return_value='testcluster',
+        ),
     ):
         setup_marathon_job.deploy_service(
             context.service_name,
