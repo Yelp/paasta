@@ -532,6 +532,12 @@ class TestSetupMarathonJob:
             fake_client.kill_task.assert_called_once_with(old_app.id, old_task.id, scale=True)
             create_marathon_app_patch.assert_called_once_with(fake_config['id'], fake_config, fake_client)
             kill_old_ids_patch.assert_called_once_with([old_app_id], fake_client)
+            # We should call _log 5 times:
+            # 1. bounce starts
+            # 2. create new app
+            # 3. killing old tasks
+            # 4. remove old apps
+            # 5. bounce finishes
             assert mock_log.call_count == 5
 
     def test_get_marathon_config(self):
