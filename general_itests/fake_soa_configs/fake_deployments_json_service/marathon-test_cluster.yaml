@@ -1,0 +1,4 @@
+---
+test_instance:
+   cpus: 0.1
+   ram: 100
