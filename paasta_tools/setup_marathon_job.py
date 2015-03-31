@@ -37,6 +37,7 @@ from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
+from paasta_tools.utils import configure_log
 
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
@@ -286,6 +287,7 @@ def main():
     - Create the complete marathon job configuration
     - Deploy/bounce the service
     - Emit an event about the deployment to sensu"""
+    configure_log()
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
