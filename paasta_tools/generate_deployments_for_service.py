@@ -48,6 +48,8 @@ def parse_args():
                         help="define a different soa config directory")
     parser.add_argument('-v', '--verbose', action='store_true',
                         dest="verbose", default=False)
+    parser.add_argument('-s', '--service', required=True,
+                        help="Service name to make the deployments.json for")
     args = parser.parse_args()
     return args
 
@@ -98,19 +100,7 @@ def get_branches_for_service(soa_dir, service):
     return valid_branches
 
 
-def get_service_directories(soa_dir):
-    """Get the service directories for a given soa directory.
-
-    :param soa_dir: The SOA configuration directory to get subdirs from
-    :returns: A list of subdirectories in soa_dir
-    """
-    # Uses os.walk to create a generator, then calls .next() to get
-    # the first entry of the generator (the entries in soa_dir itself).
-    # The generator returns pwd, dirs, files, and we want dirs.
-    return sorted(os.walk(soa_dir).next()[1])
-
-
-def get_branch_mappings(soa_dir, old_mappings):
+def get_branch_mappings(soa_dir, service, old_mappings):
     """Gets mappings from service_name:branch_name to services-service_name:paasta-hash,
     where hash is the current SHA at the HEAD of branch_name.
     This is done for all services in soa_dir.
@@ -126,28 +116,26 @@ def get_branch_mappings(soa_dir, old_mappings):
             the other properties of this app have not changed.
     """
     mappings = {}
-    for service in get_service_directories(soa_dir):
-        log.info('Examining service %s', service)
-        valid_branches = get_branches_for_service(soa_dir, service)
-        if not valid_branches:
-            log.info('Service %s has no valid branches. Skipping.', service)
-            continue
+    valid_branches = get_branches_for_service(soa_dir, service)
+    if not valid_branches:
+        log.info('Service %s has no valid branches. Skipping.', service)
+        return {}
 
-        remote_refs = remote_git.list_remote_refs(get_git_url(service))
+    remote_refs = remote_git.list_remote_refs(get_git_url(service))
 
-        for branch in valid_branches:
-            ref_name = 'refs/heads/%s' % branch
-            if ref_name in remote_refs:
-                commit_sha = remote_refs[ref_name]
-                branch_alias = '%s:%s' % (service, branch)
-                docker_image = build_docker_image_name(service, commit_sha)
-                log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
-                mapping = mappings.setdefault(branch_alias, {})
-                mapping['docker_image'] = docker_image
+    for branch in valid_branches:
+        ref_name = 'refs/heads/%s' % branch
+        if ref_name in remote_refs:
+            commit_sha = remote_refs[ref_name]
+            branch_alias = '%s:%s' % (service, branch)
+            docker_image = build_docker_image_name(service, commit_sha)
+            log.info('Mapping branch %s to docker image %s', branch_alias, docker_image)
+            mapping = mappings.setdefault(branch_alias, {})
+            mapping['docker_image'] = docker_image
 
-                desired_state, force_bounce = get_desired_state(service, branch, remote_refs)
-                mapping['desired_state'] = desired_state
-                mapping['force_bounce'] = force_bounce
+            desired_state, force_bounce = get_desired_state(service, branch, remote_refs)
+            mapping['desired_state'] = desired_state
+            mapping['force_bounce'] = force_bounce
 
     return mappings
 
@@ -217,21 +205,22 @@ def get_branch_mappings_from_deployments_dict(deployments_dict):
 def main():
     args = parse_args()
     soa_dir = os.path.abspath(args.soa_dir)
+    service = args.service
     if args.verbose:
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
     try:
-        with open(os.path.join(soa_dir, TARGET_FILE), 'r') as f:
+        with open(os.path.join(soa_dir, service, TARGET_FILE), 'r') as f:
             old_deployments_dict = json.load(f)
             old_mappings = get_branch_mappings_from_deployments_dict(old_deployments_dict)
     except (IOError, ValueError):
         old_mappings = {}
-    mappings = get_branch_mappings(soa_dir, old_mappings)
+    mappings = get_branch_mappings(soa_dir, service, old_mappings)
 
     deployments_dict = get_deployments_dict_from_branch_mappings(mappings)
 
-    with atomic_file_write(os.path.join(soa_dir, TARGET_FILE)) as f:
+    with atomic_file_write(os.path.join(soa_dir, service, TARGET_FILE)) as f:
         json.dump(deployments_dict, f)
 
 

@@ -1,0 +1,13 @@
+#!/bin/bash
+#
+# Generates all the per-service deployments.json files
+# and cleans up any leftovers
+#
+
+delete_old_deployments {
+  # TODO: Delete deployments.json files that are not
+  # supposed to be there. (not in `paasta list`)
+}
+
+paasta list | xargs -n 1 -r -P 4 generate_deployments_for_service -s
+delete_old_deployments
