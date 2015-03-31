@@ -6,6 +6,7 @@ import mock
 import marathon
 
 from paasta_tools import marathon_tools, bounce_lib
+from paasta_tools.bounce_lib import list_bounce_methods
 import setup_marathon_job
 
 
@@ -430,19 +431,31 @@ class TestSetupMarathonJob:
         fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_apps))
-        fake_config = {'id': fake_id}
+        fake_config = {'id': fake_id, 'instances': 2}
 
-        expected = (1, 'bounce_method not recognized: %s' % fake_bounce)
-        actual = setup_marathon_job.deploy_service(
-            fake_name,
-            fake_instance,
-            fake_id,
-            fake_config,
-            fake_client,
-            fake_bounce,
-            nerve_ns=fake_instance,
-            bounce_health_params={},
-        )
+        errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
+            (fake_bounce, ', '.join(list_bounce_methods()))
+        expected = (1, errormsg)
+
+        with contextlib.nested(
+            mock.patch('setup_marathon_job._log', autospec=True),
+            mock.patch(
+                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
+                return_value='fake_cluster',
+                autospec=True
+            ),
+        ) as (mock_log, mock_get_cluster):
+            actual = setup_marathon_job.deploy_service(
+                fake_name,
+                fake_instance,
+                fake_id,
+                fake_config,
+                fake_client,
+                fake_bounce,
+                nerve_ns=fake_instance,
+                bounce_health_params={},
+            )
+            assert mock_log.call_count == 1
         assert expected == actual
         fake_client.list_apps.assert_called_once_with(embed_failures=True)
         assert fake_client.create_app.call_count == 0
@@ -452,7 +465,7 @@ class TestSetupMarathonJob:
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance, tag='blah')
-        fake_config = {'id': fake_id}
+        fake_config = {'id': fake_id, 'instances': 2}
 
         old_app_id = ('%s2' % fake_id)
         old_task = mock.Mock(id="old_task_id", app_id=old_app_id)
@@ -489,7 +502,13 @@ class TestSetupMarathonJob:
             ),
             mock.patch('paasta_tools.bounce_lib.kill_old_ids', autospec=True),
             mock.patch('paasta_tools.bounce_lib.create_marathon_app', autospec=True),
-        ) as (_, _, _, kill_old_ids_patch, create_marathon_app_patch):
+            mock.patch('setup_marathon_job._log', autospec=True),
+            mock.patch(
+                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
+                return_value='fake_cluster',
+                autospec=True
+            ),
+        ) as (_, _, _, kill_old_ids_patch, create_marathon_app_patch, mock_log, mock_get_cluster):
             result = setup_marathon_job.deploy_service(
                 fake_name,
                 fake_instance,
@@ -513,6 +532,13 @@ class TestSetupMarathonJob:
             fake_client.kill_task.assert_called_once_with(old_app.id, old_task.id, scale=True)
             create_marathon_app_patch.assert_called_once_with(fake_config['id'], fake_config, fake_client)
             kill_old_ids_patch.assert_called_once_with([old_app_id], fake_client)
+            # We should call _log 5 times:
+            # 1. bounce starts
+            # 2. create new app
+            # 3. killing old tasks
+            # 4. remove old apps
+            # 5. bounce finishes
+            assert mock_log.call_count == 5
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}
