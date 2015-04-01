@@ -25,7 +25,7 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <bounce_lib.html>`_
 
-  * ``constraints``: future placeholder; see https://github.com/mesosphere/marathon/wiki/Constraints
+  * ``constraints``: future placeholder; see https://mesosphere.github.io/marathon/docs/constraints.html
 
   * ``args``: docker args if you use the "entrypoint" functionality
 
