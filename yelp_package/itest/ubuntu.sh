@@ -10,6 +10,7 @@ check_marathon_services_frontends
 list_marathon_service_instances
 deploy_marathon_services
 generate_deployments_json
+generate_deployments_for_service
 check_marathon_services_replication
 generate_services_yaml
 paasta_serviceinit"
