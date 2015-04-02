@@ -1,6 +1,13 @@
 paasta-tools (0.9.42-yelp1) lucid; urgency=low
 
   * 0.9.42 tagged with 'make release'
+    Commit: Merge branch PAASTA-368
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 02 Apr 2015 15:46:23 -0700
+
+paasta-tools (0.9.42-yelp1) lucid; urgency=low
+
+  * 0.9.42 tagged with 'make release'
     Commit: Support reading new smartstack.yaml keys.  Refs SRV-1678.
 
  -- John Billings <billings@yelp.com>  Thu, 02 Apr 2015 14:55:44 -0700
