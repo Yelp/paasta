@@ -428,18 +428,47 @@ class TestMarathonTools:
         fake_timeout = -10103
         fake_port = 777
         fake_retries = 9001
-        fake_info = {'healthcheck_uri': fake_uri, 'healthcheck_timeout_s': fake_timeout,
-                     'proxy_port': fake_port,
-                     'timeout_connect_ms': 192, 'timeout_server_ms': 291,
-                     'timeout_client_ms': 912, 'retries': fake_retries, 'mode': fake_mode,
-                     'routes': [{'source': 'oregon', 'destinations': ['indiana']},
-                                {'source': 'florida', 'destinations': ['miami', 'beach']}]}
+        fake_discover = 'myhabitat'
+        fake_advertise = ['red', 'blue']
+        fake_info = {
+            'healthcheck_uri': fake_uri,
+            'healthcheck_timeout_s': fake_timeout,
+            'proxy_port': fake_port,
+            'timeout_connect_ms': 192,
+            'timeout_server_ms': 291,
+            'timeout_client_ms': 912,
+            'retries': fake_retries,
+            'mode': fake_mode,
+            'routes': [
+                {'source': 'oregon', 'destinations': ['indiana']},
+                {'source': 'florida', 'destinations': ['miami', 'beach']}
+            ],
+            'discover': fake_discover,
+            'advertise': fake_advertise,
+            'extra_advertise': {
+                'alpha': ['beta'],
+                'gamma': ['delta', 'epsilon'],
+            },
+        }
         fake_config = {namespace: fake_info}
-        expected = {'healthcheck_uri': fake_uri, 'healthcheck_timeout_s': fake_timeout,
-                    'proxy_port': fake_port,
-                    'timeout_connect_ms': 192, 'timeout_server_ms': 291,
-                    'timeout_client_ms': 912, 'retries': fake_retries, 'mode': fake_mode,
-                    'routes': [('oregon', 'indiana'), ('florida', 'miami'), ('florida', 'beach')]}
+        expected = {
+            'healthcheck_uri': fake_uri,
+            'healthcheck_timeout_s': fake_timeout,
+            'proxy_port': fake_port,
+            'timeout_connect_ms': 192,
+            'timeout_server_ms': 291,
+            'timeout_client_ms': 912,
+            'retries': fake_retries,
+            'mode': fake_mode,
+            'routes': [
+                ('oregon', 'indiana'), ('florida', 'miami'), ('florida', 'beach')
+            ],
+            'discover': fake_discover,
+            'advertise': fake_advertise,
+            'extra_advertise': [
+                ('alpha', 'beta'), ('gamma', 'delta'), ('gamma', 'epsilon')
+            ],
+        }
         with mock.patch('service_configuration_lib.read_extra_service_information',
                         autospec=True,
                         return_value=fake_config) as read_extra_patch:

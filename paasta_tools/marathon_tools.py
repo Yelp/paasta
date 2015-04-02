@@ -337,6 +337,10 @@ class ServiceNamespaceConfig(dict):
         - retries: the number of retries on a proxy backend
         - mode: the mode the service is run in (http or tcp)
         - routes: a list of tuples of (source, destination)
+        - discover: the scope at which to discover services e.g. 'habitat'
+        - advertise: a list of scopes to advertise services at e.g. ['habitat', 'region']
+        - advertise_extra: a list of tuples of (source, destination)
+          e.g. [('region:dc6-prod', 'region:useast1-prod')]
 
         :param srv_name: The service name
         :param namespace: The namespace to read
@@ -362,6 +366,8 @@ class ServiceNamespaceConfig(dict):
             'timeout_client_ms',
             'retries',
             'mode',
+            'discover',
+            'advertise',
         ])
 
         for key, value in config_from_file.items():
@@ -372,6 +378,13 @@ class ServiceNamespaceConfig(dict):
             service_namespace_config['routes'] = [(route['source'], dest)
                                                   for route in config_from_file['routes']
                                                   for dest in route['destinations']]
+
+        if 'extra_advertise' in config_from_file:
+            service_namespace_config['extra_advertise'] = [
+                (src, dst)
+                for src in config_from_file['extra_advertise']
+                for dst in config_from_file['extra_advertise'][src]
+            ]
 
         return service_namespace_config
 
