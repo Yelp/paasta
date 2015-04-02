@@ -119,6 +119,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     existing_apps = [app for app in app_list if short_id in app.id]
     new_app_list = [a for a in existing_apps if a.id == '/%s' % config['id']]
     other_apps = [a for a in existing_apps if a.id != '/%s' % config['id']]
+    serviceinstance = "%s.%s" % (service_name, instance_name)
 
     if new_app_list:
         new_app = new_app_list[0]
@@ -166,7 +167,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
                     line='%s bounce started on %s. %d new tasks to bring up, %d to kill.' %
                     (
                         bounce_method,
-                        short_id,
+                        serviceinstance,
                         config['instances']-len(happy_new_tasks),
                         len(actions['tasks_to_kill'])
                     ),
@@ -203,8 +204,11 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
             if actions['apps_to_kill']:
                 _log(
                     service_name=service_name,
-                    line='%s bounce removing old unused apps with app_ids  %s' %
-                    (bounce_method, actions['apps_to_kill']),
+                    line='%s bounce removing old unused apps with app_ids: %s' %
+                    (
+                        bounce_method,
+                        ', '.join(actions['apps_to_kill'])
+                    ),
                     component='deploy',
                     level='debug',
                     cluster=cluster,
@@ -219,7 +223,12 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     if changed:
         _log(
             service_name=service_name,
-            line='%s bounce on %s finished. Now running %s' % (bounce_method, short_id, marathon_jobid.split('.')[2]),
+            line='%s bounce on %s finished. Now running %s' %
+            (
+                bounce_method,
+                serviceinstance,
+                marathon_jobid.split('.')[2]
+            ),
             component='deploy',
             level='event',
             cluster=cluster,

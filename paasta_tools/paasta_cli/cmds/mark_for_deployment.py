@@ -71,12 +71,6 @@ def paasta_mark_for_deployment(args):
     returncode, output = _run(
         cmd,
         timeout=30,
-        log=True,
-        component='deploy',
-        loglevel='debug',
-        service_name=service_name,
-        cluster=cluster,
-        instance=instance
     )
     if returncode != 0:
         loglines.append('ERROR: Failed to mark %s for deployment in %s.' % (args.commit, args.clusterinstance))
