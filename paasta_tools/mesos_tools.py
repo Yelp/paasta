@@ -34,6 +34,6 @@ def fetch_mesos_stats():
     """Queries the mesos stats api and returns a dictionary of the results"""
     # We make mesos bind on the "primary" of the server
     my_ip = socket.getfqdn()
-    stats_uri = 'http://%s:5050/master/stats.json' % my_ip
+    stats_uri = 'http://%s:5050//metrics/snapshot' % my_ip
     response = requests.get(stats_uri, timeout=5)
     return json.loads(response.text)
