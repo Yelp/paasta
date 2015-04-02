@@ -5,7 +5,7 @@ from ordereddict import OrderedDict
 from os.path import join
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
-from paasta_tools.marathon_tools import DeploymentsJson
+from paasta_tools.marathon_tools import load_deployments_json
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.paasta_cli.utils import figure_out_service_name
@@ -97,7 +97,7 @@ def list_deployed_clusters(pipeline, actual_deployments):
 
 
 def get_actual_deployments(service_name):
-    deployments_json = DeploymentsJson.load(DEFAULT_SOA_DIR)
+    deployments_json = load_deployments_json(DEFAULT_SOA_DIR)
     if not deployments_json:
         print 'Failed to locate deployments.json in default SOA directory'
         exit(1)

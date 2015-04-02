@@ -72,13 +72,13 @@ class MarathonConfig(dict):
         return self['docker_volumes']
 
 
-class DeploymentsJson(dict):
-    @classmethod
-    def load(cls, soa_dir=DEFAULT_SOA_DIR):
-        deployment_file = os.path.join(soa_dir, 'deployments.json')
-        with open(deployment_file) as f:
-            return cls(json.load(f)['v1'])
+def load_deployments_json(soa_dir=DEFAULT_SOA_DIR):
+    deployment_file = os.path.join(soa_dir, 'deployments.json')
+    with open(deployment_file) as f:
+        return DeploymentsJson(json.load(f)['v1'])
 
+
+class DeploymentsJson(dict):
     def get_branch_dict(self, service_name, branch):
         full_branch = '%s:%s' % (service_name, branch)
         return self.get(full_branch, {})
@@ -121,7 +121,7 @@ class MarathonServiceConfig(object):
         general_config.update(instance_configs[instance])
 
         if deployments_json is None:
-            deployments_json = DeploymentsJson.load(soa_dir=soa_dir)
+            deployments_json = load_deployments_json(soa_dir=soa_dir)
 
         # Noisy debugging output for PAASTA-322
         general_config['deployments_json'] = deployments_json

@@ -75,7 +75,7 @@ class TestMarathonTools:
             open_patch,
             json_patch
         ):
-            actual = marathon_tools.DeploymentsJson.load(fake_dir)
+            actual = marathon_tools.load_deployments_json(fake_dir)
             open_patch.assert_called_once_with(fake_path)
             json_patch.assert_called_once_with(file_mock.__enter__())
             assert actual == fake_json['v1']

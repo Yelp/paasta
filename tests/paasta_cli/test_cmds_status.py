@@ -57,7 +57,7 @@ def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
     assert output == expected_output
 
 
-@patch('paasta_tools.paasta_cli.cmds.status.DeploymentsJson.load')
+@patch('paasta_tools.paasta_cli.cmds.status.load_deployments_json', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
 def test_status_missing_deployments_err(mock_stdout, mock_get_deployments_json):
     # paasta_status exits on error if deployments.json missing
@@ -265,7 +265,7 @@ def test_status_pending_pipeline_build_message(
     assert expected_output in output
 
 
-@patch('paasta_tools.paasta_cli.cmds.status.DeploymentsJson.load')
+@patch('paasta_tools.paasta_cli.cmds.status.load_deployments_json', autospec=True)
 def test_get_actual_deployments(mock_get_deployments,):
     mock_get_deployments.return_value = marathon_tools.DeploymentsJson({
         'fake_service:paasta-b_cluster.b_instance': {
