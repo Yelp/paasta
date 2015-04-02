@@ -83,21 +83,6 @@ class DeploymentsJson(dict):
         full_branch = '%s:%s' % (service_name, branch)
         return self.get(full_branch, {})
 
-    def get_deployed_images(self):
-        """Get the docker images that are supposed/allowed to be deployed here
-        according to deployments.json.
-
-        :param soa_dir: The SOA Configuration directory with deployments.json
-        :returns: A set of images (as strings), or empty set if deployments.json
-        doesn't exist in soa_dir
-        """
-
-        images = set()
-        for branch_dict in self.values():
-            if 'docker_image' in branch_dict and branch_dict['desired_state'] == 'start':
-                images.add(branch_dict['docker_image'])
-        return images
-
 
 class MarathonServiceConfig(object):
     @classmethod

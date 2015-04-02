@@ -80,23 +80,6 @@ class TestMarathonTools:
             json_patch.assert_called_once_with(file_mock.__enter__())
             assert actual == fake_json['v1']
 
-    def test_get_deployed_images(self):
-        fake_json = {
-            'no_srv:blaster': {
-                'docker_image': 'test_rocker:9.9',
-                'desired_state': 'start',
-                'force_bounce': None,
-            },
-            'dont_care:about': {
-                'docker_image': 'this:guy',
-                'desired_state': 'stop',
-                'force_bounce': '12345',
-            },
-        }
-        actual = marathon_tools.DeploymentsJson(fake_json).get_deployed_images()
-        expected = set(['test_rocker:9.9'])
-        assert actual == expected
-
     def test_read_monitoring_config(self):
         fake_name = 'partial'
         fake_fname = 'acronyms'
