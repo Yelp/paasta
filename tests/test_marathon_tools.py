@@ -142,7 +142,7 @@ class TestMarathonTools:
         ) as (
             read_extra_info_patch,
         ):
-            actual = marathon_tools.MarathonServiceConfig.load(
+            actual = marathon_tools.load_marathon_service_config(
                 fake_name,
                 fake_instance,
                 fake_cluster,
@@ -1009,7 +1009,7 @@ class TestMarathonTools:
 
         with contextlib.nested(
             mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
-            mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load,
+            mock.patch('marathon_tools.load_marathon_service_config', autospec=True,
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch.object(self.fake_marathon_job_config, 'format_marathon_app_dict',
@@ -1089,7 +1089,7 @@ class TestMarathonTools:
 
         with contextlib.nested(
             mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
-            mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load),
+            mock.patch('marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch('marathon_tools.ServiceNamespaceConfig.load',
                        return_value=mock.Mock(get_healthchecks=lambda: []))
@@ -1135,8 +1135,8 @@ class TestMarathonTools:
             mock.patch('marathon_tools.get_service_instance_list',
                        autospec=True,
                        return_value=fake_instances),
-            mock.patch('marathon_tools.MarathonServiceConfig.load',
-                       spec=marathon_tools.MarathonServiceConfig.load,
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
                        side_effect=config_helper),
         ) as (
             inst_list_patch,

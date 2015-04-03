@@ -71,9 +71,9 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.MarathonServiceConfig.load',
+                'paasta_tools.marathon_tools.load_marathon_service_config',
                 return_value=self.fake_marathon_service_config,
-                spec=marathon_tools.MarathonServiceConfig.load,
+                autospec=True,
             ),
             mock.patch(
                 'setup_marathon_job.setup_service',
@@ -139,9 +139,9 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.MarathonServiceConfig.load',
+                'paasta_tools.marathon_tools.load_marathon_service_config',
                 return_value=self.fake_marathon_service_config,
-                spec=marathon_tools.MarathonServiceConfig.load,
+                autospec=True,
             ),
             mock.patch(
                 'setup_marathon_job.setup_service',
@@ -358,7 +358,7 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.MarathonServiceConfig.load',
+                'paasta_tools.marathon_tools.load_marathon_service_config',
                 return_value=self.fake_marathon_service_config,
                 autospec=True,
             ),

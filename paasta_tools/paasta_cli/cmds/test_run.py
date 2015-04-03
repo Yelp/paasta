@@ -9,7 +9,7 @@ from docker import Client
 from docker import errors
 
 from paasta_tools.marathon_tools import CONTAINER_PORT
-from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import ServiceNamespaceConfig
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
@@ -189,7 +189,7 @@ def run_docker_container(docker_client, docker_hash, service, args):
     marathon_config['cluster'] = marathon_config_raw['cluster']
     marathon_config['volumes'] = volumes
 
-    service_manifest = MarathonServiceConfig.load(service, args.instance, marathon_config['cluster'])
+    service_manifest = load_marathon_service_config(service, args.instance, marathon_config['cluster'])
 
     if args.cmd:
         command = shlex.split(args.cmd)

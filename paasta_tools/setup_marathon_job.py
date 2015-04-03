@@ -304,7 +304,7 @@ def main():
     client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
                                                 marathon_config['pass'])
 
-    service_instance_config = marathon_tools.MarathonServiceConfig.load(
+    service_instance_config = marathon_tools.load_marathon_service_config(
         service_name,
         instance_name,
         marathon_tools.get_cluster(),

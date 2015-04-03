@@ -84,57 +84,57 @@ class DeploymentsJson(dict):
         return self.get(full_branch, {})
 
 
+def load_marathon_service_config(service_name, instance, cluster, deployments_json=None, soa_dir=DEFAULT_SOA_DIR):
+    """Read a service instance's configuration for marathon.
+
+    If a branch isn't specified for a config, the 'branch' key defaults to
+    paasta-${cluster}.${instance}.
+
+    If cluster isn't given, it's loaded using get_cluster.
+
+    :param name: The service name
+    :param instance: The instance of the service to retrieve
+    :param cluster: The cluster to read the configuration for
+    :param soa_dir: The SOA configuration directory to read from
+    :returns: A dictionary of whatever was in the config for the service instance"""
+    log.info("Reading service configuration files from dir %s/ in %s", service_name, soa_dir)
+    log.info("Reading general configuration file: service.yaml")
+    general_config = service_configuration_lib.read_extra_service_information(
+        service_name,
+        "service",
+        soa_dir=soa_dir
+    )
+    marathon_conf_file = "marathon-%s" % cluster
+    log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
+    instance_configs = service_configuration_lib.read_extra_service_information(
+        service_name,
+        marathon_conf_file,
+        soa_dir=soa_dir
+    )
+
+    if instance not in instance_configs:
+        log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
+        return {}
+
+    general_config.update(instance_configs[instance])
+
+    if deployments_json is None:
+        deployments_json = load_deployments_json(soa_dir=soa_dir)
+
+    # Noisy debugging output for PAASTA-322
+    general_config['deployments_json'] = deployments_json
+
+    branch = general_config.get('branch', get_default_branch(cluster, instance))
+
+    return MarathonServiceConfig(
+        service_name,
+        instance,
+        general_config,
+        deployments_json.get_branch_dict(service_name, branch),
+    )
+
+
 class MarathonServiceConfig(object):
-    @classmethod
-    def load(cls, service_name, instance, cluster, deployments_json=None, soa_dir=DEFAULT_SOA_DIR):
-        """Read a service instance's configuration for marathon.
-
-        If a branch isn't specified for a config, the 'branch' key defaults to
-        paasta-${cluster}.${instance}.
-
-        If cluster isn't given, it's loaded using get_cluster.
-
-        :param name: The service name
-        :param instance: The instance of the service to retrieve
-        :param cluster: The cluster to read the configuration for
-        :param soa_dir: The SOA configuration directory to read from
-        :returns: A dictionary of whatever was in the config for the service instance"""
-        log.info("Reading service configuration files from dir %s/ in %s", service_name, soa_dir)
-        log.info("Reading general configuration file: service.yaml")
-        general_config = service_configuration_lib.read_extra_service_information(
-            service_name,
-            "service",
-            soa_dir=soa_dir
-        )
-        marathon_conf_file = "marathon-%s" % cluster
-        log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
-        instance_configs = service_configuration_lib.read_extra_service_information(
-            service_name,
-            marathon_conf_file,
-            soa_dir=soa_dir
-        )
-
-        if instance not in instance_configs:
-            log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
-            return {}
-
-        general_config.update(instance_configs[instance])
-
-        if deployments_json is None:
-            deployments_json = load_deployments_json(soa_dir=soa_dir)
-
-        # Noisy debugging output for PAASTA-322
-        general_config['deployments_json'] = deployments_json
-
-        branch = general_config.get('branch', get_default_branch(cluster, instance))
-
-        return cls(
-            service_name,
-            instance,
-            general_config,
-            deployments_json.get_branch_dict(service_name, branch),
-        )
-
     def __init__(self, service_name, instance, config_dict, branch_dict):
         self.service_name = service_name
         self.instance = instance
@@ -848,7 +848,7 @@ def is_app_id_running(app_id, client):
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
-    srv_config = MarathonServiceConfig.load(name, instance, get_cluster(), soa_dir=soa_dir)
+    srv_config = load_marathon_service_config(name, instance, get_cluster(), soa_dir=soa_dir)
     try:
         docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
     # Noisy debugging output for PAASTA-322
@@ -901,7 +901,7 @@ def get_expected_instance_count_for_namespace(service_name, namespace, cluster=N
     if not cluster:
         cluster = get_cluster()
     for name, instance in get_service_instance_list(service_name, cluster=cluster, soa_dir=soa_dir):
-        srv_config = MarathonServiceConfig.load(name, instance, cluster, soa_dir=soa_dir)
+        srv_config = load_marathon_service_config(name, instance, cluster, soa_dir=soa_dir)
         instance_ns = srv_config.get_nerve_namespace()
         if namespace == instance_ns:
             total_expected += srv_config.get_instances()
