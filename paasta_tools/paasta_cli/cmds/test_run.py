@@ -10,7 +10,7 @@ from docker import errors
 
 from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import load_marathon_service_config
-from paasta_tools.marathon_tools import ServiceNamespaceConfig
+from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
@@ -28,7 +28,7 @@ def pick_random_port():
 
 
 def get_healthcheck(service, instance, random_port):
-    smartstack_config = ServiceNamespaceConfig.load(service, instance)
+    smartstack_config = load_service_namespace_config(service, instance)
     mode = smartstack_config.get('mode', 'http')
     hostname = socket.getfqdn()
 
@@ -153,7 +153,7 @@ def run_docker_container_non_interactive(
 
         container_started = True
 
-        smartstack_config = ServiceNamespaceConfig.load(service, instance)
+        smartstack_config = load_service_namespace_config(service, instance)
         port = smartstack_config.get('proxy_port', 0)
 
         healthcheck_string = get_healthcheck(service, instance, port)

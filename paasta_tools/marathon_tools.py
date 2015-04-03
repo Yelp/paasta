@@ -306,73 +306,73 @@ class MarathonServiceConfig(object):
         return self.config_dict.get('bounce_health_params', {})
 
 
+def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
+    """Attempt to read the configuration for a service's namespace in a more strict fashion.
+
+    Retrevies the following keys:
+
+    - proxy_port: the proxy port defined for the given namespace
+    - healthcheck_uri: URI target for healthchecking
+    - healthcheck_timeout_s: healthcheck timeout in seconds
+    - timeout_connect_ms: proxy frontend timeout in milliseconds
+    - timeout_server_ms: proxy server backend timeout in milliseconds
+    - timeout_client_ms: proxy server client timeout in milliseconds
+    - retries: the number of retries on a proxy backend
+    - mode: the mode the service is run in (http or tcp)
+    - routes: a list of tuples of (source, destination)
+    - discover: the scope at which to discover services e.g. 'habitat'
+    - advertise: a list of scopes to advertise services at e.g. ['habitat', 'region']
+    - advertise_extra: a list of tuples of (source, destination)
+      e.g. [('region:dc6-prod', 'region:useast1-prod')]
+
+    :param srv_name: The service name
+    :param namespace: The namespace to read
+    :param soa_dir: The SOA config directory to read from
+    :returns: A dict of the above keys, if they were defined
+    """
+
+    smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
+    config_from_file = smartstack.get(namespace, {})
+
+    service_namespace_config = ServiceNamespaceConfig()
+    # We can't really use .get, as we don't want the key to be in the returned
+    # dict at all if it doesn't exist in the config file.
+    # We also can't just copy the whole dict, as we only care about some keys
+    # and there's other things that appear in the smartstack section in
+    # several cases.
+    key_whitelist = set([
+        'healthcheck_uri',
+        'healthcheck_timeout_s',
+        'proxy_port',
+        'timeout_connect_ms',
+        'timeout_server_ms',
+        'timeout_client_ms',
+        'retries',
+        'mode',
+        'discover',
+        'advertise',
+    ])
+
+    for key, value in config_from_file.items():
+        if key in key_whitelist:
+            service_namespace_config[key] = value
+
+    if 'routes' in config_from_file:
+        service_namespace_config['routes'] = [(route['source'], dest)
+                                              for route in config_from_file['routes']
+                                              for dest in route['destinations']]
+
+    if 'extra_advertise' in config_from_file:
+        service_namespace_config['extra_advertise'] = [
+            (src, dst)
+            for src in config_from_file['extra_advertise']
+            for dst in config_from_file['extra_advertise'][src]
+        ]
+
+    return service_namespace_config
+
+
 class ServiceNamespaceConfig(dict):
-    @classmethod
-    def load(cls, srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
-        """Attempt to read the configuration for a service's namespace in a more strict fashion.
-
-        Retrevies the following keys:
-
-        - proxy_port: the proxy port defined for the given namespace
-        - healthcheck_uri: URI target for healthchecking
-        - healthcheck_timeout_s: healthcheck timeout in seconds
-        - timeout_connect_ms: proxy frontend timeout in milliseconds
-        - timeout_server_ms: proxy server backend timeout in milliseconds
-        - timeout_client_ms: proxy server client timeout in milliseconds
-        - retries: the number of retries on a proxy backend
-        - mode: the mode the service is run in (http or tcp)
-        - routes: a list of tuples of (source, destination)
-        - discover: the scope at which to discover services e.g. 'habitat'
-        - advertise: a list of scopes to advertise services at e.g. ['habitat', 'region']
-        - advertise_extra: a list of tuples of (source, destination)
-          e.g. [('region:dc6-prod', 'region:useast1-prod')]
-
-        :param srv_name: The service name
-        :param namespace: The namespace to read
-        :param soa_dir: The SOA config directory to read from
-        :returns: A dict of the above keys, if they were defined
-        """
-
-        smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
-        config_from_file = smartstack.get(namespace, {})
-
-        service_namespace_config = cls()
-        # We can't really use .get, as we don't want the key to be in the returned
-        # dict at all if it doesn't exist in the config file.
-        # We also can't just copy the whole dict, as we only care about some keys
-        # and there's other things that appear in the smartstack section in
-        # several cases.
-        key_whitelist = set([
-            'healthcheck_uri',
-            'healthcheck_timeout_s',
-            'proxy_port',
-            'timeout_connect_ms',
-            'timeout_server_ms',
-            'timeout_client_ms',
-            'retries',
-            'mode',
-            'discover',
-            'advertise',
-        ])
-
-        for key, value in config_from_file.items():
-            if key in key_whitelist:
-                service_namespace_config[key] = value
-
-        if 'routes' in config_from_file:
-            service_namespace_config['routes'] = [(route['source'], dest)
-                                                  for route in config_from_file['routes']
-                                                  for dest in route['destinations']]
-
-        if 'extra_advertise' in config_from_file:
-            service_namespace_config['extra_advertise'] = [
-                (src, dst)
-                for src in config_from_file['extra_advertise']
-                for dst in config_from_file['extra_advertise'][src]
-            ]
-
-        return service_namespace_config
-
     def get_healthchecks(self):
         """Returns a list of healthchecks per the spec:
         https://mesosphere.github.io/marathon/docs/health-checks.html
@@ -554,7 +554,7 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     if not cluster:
         cluster = get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = ServiceNamespaceConfig.load(name, namespace, soa_dir)
+    nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
 
 
@@ -575,7 +575,7 @@ def get_mode_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR)
     if not cluster:
         cluster = get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = ServiceNamespaceConfig.load(name, namespace, soa_dir)
+    nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('mode', 'http')
 
 
@@ -743,7 +743,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     for name, instance, port in marathon_services:
         try:
             namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-            nerve_dict = ServiceNamespaceConfig.load(name, namespace, soa_dir)
+            nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
             nerve_dict['port'] = port
             nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
             nerve_list.append((nerve_name, nerve_dict))
@@ -766,7 +766,7 @@ def get_classic_services_that_run_here():
 
 
 def get_classic_service_information_for_nerve(name, soa_dir):
-    nerve_dict = ServiceNamespaceConfig.load(name, 'main', soa_dir)
+    nerve_dict = load_service_namespace_config(name, 'main', soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
     nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
@@ -788,7 +788,7 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     runs_on, AND services that are currently deployed in a mesos-slave here via marathon.
 
     conf_dict is a dictionary possibly containing the same keys returned by
-    ServiceNamespaceConfig.load (in fact, that's what this calls).
+    load_service_namespace_config (in fact, that's what this calls).
     Some or none of those keys may not be present on a per-service basis.
 
     :param cluster: The cluster to read the configuration for
@@ -855,7 +855,7 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     except NoDockerImageError as err:
         err.srv_config = srv_config
         raise err
-    healthchecks = ServiceNamespaceConfig.load(name, srv_config.get_nerve_namespace()).get_healthchecks()
+    healthchecks = load_service_namespace_config(name, srv_config.get_nerve_namespace()).get_healthchecks()
     complete_config = srv_config.format_marathon_app_dict(
         partial_id,
         docker_url,
