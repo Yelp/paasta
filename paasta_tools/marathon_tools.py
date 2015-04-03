@@ -119,7 +119,7 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     general_config.update(instance_configs[instance])
 
     if deployments_json is None:
-        deployments_json = load_deployments_json(soa_dir=soa_dir)
+        deployments_json = load_deployments_json(service_name, soa_dir=soa_dir)
 
     # Noisy debugging output for PAASTA-322
     general_config['deployments_json'] = deployments_json

@@ -101,6 +101,28 @@ class TestMarathonTools:
             join_patch.assert_called_once_with(fake_path, fake_name, 'monitoring.yaml')
             read_monitoring_patch.assert_called_once_with(fake_fname)
 
+    def test_load_marathon_service_config_loads_deployments_json(self):
+        fake_name = 'jazz'
+        fake_instance = 'solo'
+        fake_cluster = 'amnesia'
+        fake_dir = '/nail/home/sanfran'
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_deployments_json', autospec=True),
+            mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
+        ) as (
+            mock_load_deployments_json,
+            mock_read_extra_service_information,
+        ):
+            mock_read_extra_service_information.return_value = {fake_instance: {}}
+            marathon_tools.load_marathon_service_config(
+                fake_name,
+                fake_instance,
+                fake_cluster,
+                deployments_json=None,
+                soa_dir=fake_dir,
+            )
+            mock_load_deployments_json.assert_called_once_with(fake_name, soa_dir=fake_dir)
+
     def test_read_service_config(self):
         fake_name = 'jazz'
         fake_instance = 'solo'
