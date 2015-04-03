@@ -97,7 +97,7 @@ def list_deployed_clusters(pipeline, actual_deployments):
 
 
 def get_actual_deployments(service_name):
-    deployments_json = load_deployments_json(DEFAULT_SOA_DIR)
+    deployments_json = load_deployments_json(service_name, DEFAULT_SOA_DIR)
     if not deployments_json:
         print 'Failed to locate deployments.json in default SOA directory'
         exit(1)

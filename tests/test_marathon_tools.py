@@ -53,7 +53,7 @@ class TestMarathonTools:
     def test_DeploymentsJson_read(self):
         file_mock = mock.MagicMock(spec=file)
         fake_dir = '/var/dir_of_fake'
-        fake_path = '/var/dir_of_fake/deployments.json'
+        fake_path = '/var/dir_of_fake/fake_service/deployments.json'
         fake_json = {
             'v1': {
                 'no_srv:blaster': {
@@ -75,7 +75,7 @@ class TestMarathonTools:
             open_patch,
             json_patch
         ):
-            actual = marathon_tools.load_deployments_json(fake_dir)
+            actual = marathon_tools.load_deployments_json('fake_service', fake_dir)
             open_patch.assert_called_once_with(fake_path)
             json_patch.assert_called_once_with(file_mock.__enter__())
             assert actual == fake_json['v1']

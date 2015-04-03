@@ -72,8 +72,8 @@ class MarathonConfig(dict):
         return self['docker_volumes']
 
 
-def load_deployments_json(soa_dir=DEFAULT_SOA_DIR):
-    deployment_file = os.path.join(soa_dir, 'deployments.json')
+def load_deployments_json(service_name, soa_dir=DEFAULT_SOA_DIR):
+    deployment_file = os.path.join(soa_dir, service_name, 'deployments.json')
     with open(deployment_file) as f:
         return DeploymentsJson(json.load(f)['v1'])
 
