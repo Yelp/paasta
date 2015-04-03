@@ -4,10 +4,20 @@
 # and cleans up any leftovers
 #
 
-delete_old_deployments {
-  # TODO: Delete deployments.json files that are not
-  # supposed to be there. (not in `paasta list`)
+function delete_old_deployments {
+    # Delete any deployments.json file that is older than an hour
+    find /nail/etc/services -iname deployments.json  -mmin +60 -delete
 }
 
+# xargs will return 0 if everything went ok, but 12X if something else went wrong
 paasta list | xargs -n 1 -r -P 4 generate_deployments_for_service -s
-delete_old_deployments
+ret=$?
+
+if [[ $ret -eq 0 ]]; then
+    # Only delete old files if we are confident than everything went ok
+    delete_old_deployments
+else
+    # Otherwise return whatever exit code xargs gives us, so we can
+    # get alerted
+    exit $ret
+fi
