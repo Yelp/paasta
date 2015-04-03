@@ -184,7 +184,7 @@ class TestMarathonTools:
             open_file_patch,
             json_patch
         ):
-            assert marathon_tools.MarathonConfig.load() == expected
+            assert marathon_tools.load_marathon_config() == expected
             open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             json_patch.assert_called_once_with(file_mock.__enter__())
 
@@ -196,7 +196,7 @@ class TestMarathonTools:
             open_patch,
         ):
             with raises(marathon_tools.PaastaNotConfigured) as excinfo:
-                marathon_tools.MarathonConfig.load(fake_dir)
+                marathon_tools.load_marathon_config(fake_dir)
             assert excinfo.type == marathon_tools.PaastaNotConfigured
             assert str(excinfo.value) == "Could not load marathon config file b: a"
 
@@ -647,7 +647,7 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         with contextlib.nested(
             mock.patch(
-                'marathon_tools.MarathonConfig.load',
+                'marathon_tools.load_marathon_config',
                 return_value=mock.Mock(
                     get_cluster=mock.Mock(side_effect=Exception, spec=marathon_tools.MarathonConfig.get_cluster)
                 ),

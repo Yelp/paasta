@@ -63,7 +63,7 @@ def send_event(service_name, instance_name, check_name, soa_dir, status, output)
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,
-        'source': 'mesos-%s' % marathon_tools.MarathonConfig.load().get_cluster()
+        'source': 'mesos-%s' % marathon_tools.load_marathon_config().get_cluster()
     }
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 

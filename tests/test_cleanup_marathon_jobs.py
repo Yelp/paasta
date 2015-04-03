@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-
-from paasta_tools import marathon_tools
 import cleanup_marathon_jobs
 import mock
 import contextlib
@@ -54,8 +52,8 @@ class TestCleanupMarathonJobs:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.get_marathon_services_for_cluster',
                        return_value=expected_apps, autospec=True),
-            mock.patch('paasta_tools.marathon_tools.MarathonConfig.load',
-                       spec=marathon_tools.MarathonConfig.load,
+            mock.patch('paasta_tools.marathon_tools.load_marathon_config',
+                       autospec=True,
                        return_value=self.fake_marathon_config),
             mock.patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True,
                        return_value=self.fake_marathon_client),
@@ -82,8 +80,8 @@ class TestCleanupMarathonJobs:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.get_marathon_services_for_cluster',
                        return_value=expected_apps, autospec=True),
-            mock.patch('paasta_tools.marathon_tools.MarathonConfig.load',
-                       spec=marathon_tools.MarathonConfig.load,
+            mock.patch('paasta_tools.marathon_tools.load_marathon_config',
+                       autospec=True,
                        return_value=self.fake_marathon_config),
             mock.patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True,
                        return_value=self.fake_marathon_client),

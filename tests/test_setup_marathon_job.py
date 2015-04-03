@@ -300,7 +300,7 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch(
-                'paasta_tools.marathon_tools.MarathonConfig.load',
+                'paasta_tools.marathon_tools.load_marathon_config',
                 return_value=self.fake_marathon_config,
                 autospec=True,
             ),
@@ -543,9 +543,9 @@ class TestSetupMarathonJob:
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}
         with mock.patch(
-            'paasta_tools.marathon_tools.MarathonConfig.load',
+            'paasta_tools.marathon_tools.load_marathon_config',
             return_value=fake_conf,
-            spec=marathon_tools.MarathonConfig.load,  # autospec doesn't work on classmethod
+            autospec=True
         ) as get_conf_patch:
             assert setup_marathon_job.get_main_marathon_config() == fake_conf
             get_conf_patch.assert_called_once_with()

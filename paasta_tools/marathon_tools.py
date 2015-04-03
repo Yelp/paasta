@@ -32,15 +32,15 @@ PATH_TO_MARATHON_CONFIG = '/etc/paasta_tools/marathon_config.json'
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 
-class MarathonConfig(dict):
-    @classmethod
-    def load(cls, path=PATH_TO_MARATHON_CONFIG):
-        try:
-            with open(path) as f:
-                return cls(json.load(f))
-        except IOError as e:
-            raise PaastaNotConfigured("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
+def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
+    try:
+        with open(path) as f:
+            return MarathonConfig(json.load(f))
+    except IOError as e:
+        raise PaastaNotConfigured("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
 
+
+class MarathonConfig(dict):
     def get_cluster(self):
         """Get the cluster defined in this host's marathon config file.
 
@@ -443,7 +443,7 @@ class InvalidSmartstackMode(Exception):
 
 
 def get_cluster():
-    return MarathonConfig.load().get_cluster()
+    return load_marathon_config().get_cluster()
 
 
 def get_marathon_client(url, user, passwd):

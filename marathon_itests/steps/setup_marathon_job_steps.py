@@ -24,13 +24,13 @@ fake_service_config = {'container': {'docker': {'portMappings': [{'protocol': 't
 def step_impl(context):
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.create_complete_config'),
-        mock.patch('paasta_tools.marathon_tools.MarathonConfig.load', return_value=context.marathon_config),
+        mock.patch('paasta_tools.marathon_tools.load_marathon_config', return_value=context.marathon_config),
     ) as (
         mock_create_complete_config,
         mock_MarathonConfig,
     ):
         mock_create_complete_config.return_value = fake_service_config
-        print marathon_tools.MarathonConfig.load()
+        print marathon_tools.load_marathon_config()
         return_tuple = setup_marathon_job.setup_service(
             fake_service_name,
             fake_instance_name,
