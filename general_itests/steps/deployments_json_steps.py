@@ -8,6 +8,7 @@ from dulwich.objects import Commit
 from dulwich.objects import parse_timezone
 from time import time
 from paasta_tools import generate_deployments_for_service
+from paasta_tools import marathon_tools
 import contextlib
 import os
 import json
@@ -66,16 +67,13 @@ def step_impl(context):
 
 @then(u'That deployments.json can be read back correctly')
 def step_impl(context):
-    # TODO: Use the native parsers once we are using this per-service file
-    deployments = json.load(open(context.deployments_file))
+    deployments = marathon_tools.load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
     expected_deployments = {
-        'v1': {
-            'fake_deployments_json_service:paasta-test_cluster.test_instance': {
-                'force_bounce': None,
-                'desired_state': 'start',
-                'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit
-            }
+        'fake_deployments_json_service:paasta-test_cluster.test_instance': {
+            'force_bounce': None,
+            'desired_state': 'start',
+            'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit
         }
     }
-    assert expected_deployments == deployments
+    assert expected_deployments == deployments, "actual: %s\nexpected:%s" % (deployments, expected_deployments)
     shutil.rmtree(context.test_git_repo_dir)
