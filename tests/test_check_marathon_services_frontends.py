@@ -52,9 +52,9 @@ def test_send_event():
         mock.patch("paasta_tools.monitoring_tools.get_irc_channels",
                    return_value=fake_irc),
         mock.patch("pysensu_yelp.send_event"),
-        mock.patch('paasta_tools.marathon_tools.MarathonConfig.load',
+        mock.patch('paasta_tools.marathon_tools.load_marathon_config',
                    return_value=marathon_tools.MarathonConfig({'cluster': fake_cluster}),
-                   spec=marathon_tools.MarathonConfig.load)
+                   autospec=True)
     ) as (
         monitoring_tools_get_team_patch,
         monitoring_tools_get_runbook_patch,

@@ -409,11 +409,11 @@ def main():
     service = service_instance.split(marathon_tools.ID_SPACER)[0]
     instance = service_instance.split(marathon_tools.ID_SPACER)[1]
 
-    marathon_config = marathon_tools.MarathonConfig.load()
+    marathon_config = marathon_tools.load_marathon_config()
     cluster = marathon_config.get_cluster()
     validate_service_instance(service, instance, cluster)
 
-    complete_job_config = marathon_tools.MarathonServiceConfig.load(service, instance, cluster)
+    complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     app_id = marathon_tools.get_app_id(service, instance, marathon_config)
     normal_instance_count = complete_job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)

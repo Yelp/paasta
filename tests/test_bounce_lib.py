@@ -3,7 +3,6 @@ import contextlib
 import datetime
 import mock
 import marathon
-import marathon_tools
 
 
 class TestBounceLib:
@@ -37,11 +36,11 @@ class TestBounceLib:
         with contextlib.nested(
             mock.patch('bounce_lib.KazooClient', return_value=fake_zk, autospec=True),
             mock.patch(
-                'marathon_tools.MarathonConfig.load',
+                'marathon_tools.load_marathon_config',
                 return_value=mock.Mock(
                     get_zk_hosts=lambda: fake_zk_hosts
                 ),
-                spec=marathon_tools.MarathonConfig.load,
+                autospec=True,
             ),
         ) as (
             client_patch,

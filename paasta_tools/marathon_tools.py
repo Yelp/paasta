@@ -32,15 +32,15 @@ PATH_TO_MARATHON_CONFIG = '/etc/paasta_tools/marathon_config.json'
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 
-class MarathonConfig(dict):
-    @classmethod
-    def load(cls, path=PATH_TO_MARATHON_CONFIG):
-        try:
-            with open(path) as f:
-                return cls(json.load(f))
-        except IOError as e:
-            raise PaastaNotConfigured("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
+def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
+    try:
+        with open(path) as f:
+            return MarathonConfig(json.load(f))
+    except IOError as e:
+        raise PaastaNotConfigured("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
 
+
+class MarathonConfig(dict):
     def get_cluster(self):
         """Get the cluster defined in this host's marathon config file.
 
@@ -72,84 +72,69 @@ class MarathonConfig(dict):
         return self['docker_volumes']
 
 
-class DeploymentsJson(dict):
-    @classmethod
-    def load(cls, soa_dir=DEFAULT_SOA_DIR):
-        deployment_file = os.path.join(soa_dir, 'deployments.json')
-        with open(deployment_file) as f:
-            return cls(json.load(f)['v1'])
+def load_deployments_json(service_name, soa_dir=DEFAULT_SOA_DIR):
+    deployment_file = os.path.join(soa_dir, service_name, 'deployments.json')
+    with open(deployment_file) as f:
+        return DeploymentsJson(json.load(f)['v1'])
 
+
+class DeploymentsJson(dict):
     def get_branch_dict(self, service_name, branch):
         full_branch = '%s:%s' % (service_name, branch)
         return self.get(full_branch, {})
 
-    def get_deployed_images(self):
-        """Get the docker images that are supposed/allowed to be deployed here
-        according to deployments.json.
 
-        :param soa_dir: The SOA Configuration directory with deployments.json
-        :returns: A set of images (as strings), or empty set if deployments.json
-        doesn't exist in soa_dir
-        """
+def load_marathon_service_config(service_name, instance, cluster, deployments_json=None, soa_dir=DEFAULT_SOA_DIR):
+    """Read a service instance's configuration for marathon.
 
-        images = set()
-        for branch_dict in self.values():
-            if 'docker_image' in branch_dict and branch_dict['desired_state'] == 'start':
-                images.add(branch_dict['docker_image'])
-        return images
+    If a branch isn't specified for a config, the 'branch' key defaults to
+    paasta-${cluster}.${instance}.
+
+    If cluster isn't given, it's loaded using get_cluster.
+
+    :param name: The service name
+    :param instance: The instance of the service to retrieve
+    :param cluster: The cluster to read the configuration for
+    :param soa_dir: The SOA configuration directory to read from
+    :returns: A dictionary of whatever was in the config for the service instance"""
+    log.info("Reading service configuration files from dir %s/ in %s", service_name, soa_dir)
+    log.info("Reading general configuration file: service.yaml")
+    general_config = service_configuration_lib.read_extra_service_information(
+        service_name,
+        "service",
+        soa_dir=soa_dir
+    )
+    marathon_conf_file = "marathon-%s" % cluster
+    log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
+    instance_configs = service_configuration_lib.read_extra_service_information(
+        service_name,
+        marathon_conf_file,
+        soa_dir=soa_dir
+    )
+
+    if instance not in instance_configs:
+        log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
+        return {}
+
+    general_config.update(instance_configs[instance])
+
+    if deployments_json is None:
+        deployments_json = load_deployments_json(service_name, soa_dir=soa_dir)
+
+    # Noisy debugging output for PAASTA-322
+    general_config['deployments_json'] = deployments_json
+
+    branch = general_config.get('branch', get_default_branch(cluster, instance))
+
+    return MarathonServiceConfig(
+        service_name,
+        instance,
+        general_config,
+        deployments_json.get_branch_dict(service_name, branch),
+    )
 
 
 class MarathonServiceConfig(object):
-    @classmethod
-    def load(cls, service_name, instance, cluster, deployments_json=None, soa_dir=DEFAULT_SOA_DIR):
-        """Read a service instance's configuration for marathon.
-
-        If a branch isn't specified for a config, the 'branch' key defaults to
-        paasta-${cluster}.${instance}.
-
-        If cluster isn't given, it's loaded using get_cluster.
-
-        :param name: The service name
-        :param instance: The instance of the service to retrieve
-        :param cluster: The cluster to read the configuration for
-        :param soa_dir: The SOA configuration directory to read from
-        :returns: A dictionary of whatever was in the config for the service instance"""
-        log.info("Reading service configuration files from dir %s/ in %s", service_name, soa_dir)
-        log.info("Reading general configuration file: service.yaml")
-        general_config = service_configuration_lib.read_extra_service_information(
-            service_name,
-            "service",
-            soa_dir=soa_dir
-        )
-        marathon_conf_file = "marathon-%s" % cluster
-        log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
-        instance_configs = service_configuration_lib.read_extra_service_information(
-            service_name,
-            marathon_conf_file,
-            soa_dir=soa_dir
-        )
-
-        if instance not in instance_configs:
-            log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
-            return {}
-
-        general_config.update(instance_configs[instance])
-
-        if deployments_json is None:
-            deployments_json = DeploymentsJson.load(soa_dir=soa_dir)
-
-        # Noisy debugging output for PAASTA-322
-        general_config['deployments_json'] = deployments_json
-
-        branch = general_config.get('branch', get_default_branch(cluster, instance))
-
-        return cls(
-            service_name,
-            instance,
-            general_config,
-            deployments_json.get_branch_dict(service_name, branch),
-        )
-
     def __init__(self, service_name, instance, config_dict, branch_dict):
         self.service_name = service_name
         self.instance = instance
@@ -321,73 +306,73 @@ class MarathonServiceConfig(object):
         return self.config_dict.get('bounce_health_params', {})
 
 
+def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
+    """Attempt to read the configuration for a service's namespace in a more strict fashion.
+
+    Retrevies the following keys:
+
+    - proxy_port: the proxy port defined for the given namespace
+    - healthcheck_uri: URI target for healthchecking
+    - healthcheck_timeout_s: healthcheck timeout in seconds
+    - timeout_connect_ms: proxy frontend timeout in milliseconds
+    - timeout_server_ms: proxy server backend timeout in milliseconds
+    - timeout_client_ms: proxy server client timeout in milliseconds
+    - retries: the number of retries on a proxy backend
+    - mode: the mode the service is run in (http or tcp)
+    - routes: a list of tuples of (source, destination)
+    - discover: the scope at which to discover services e.g. 'habitat'
+    - advertise: a list of scopes to advertise services at e.g. ['habitat', 'region']
+    - advertise_extra: a list of tuples of (source, destination)
+      e.g. [('region:dc6-prod', 'region:useast1-prod')]
+
+    :param srv_name: The service name
+    :param namespace: The namespace to read
+    :param soa_dir: The SOA config directory to read from
+    :returns: A dict of the above keys, if they were defined
+    """
+
+    smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
+    config_from_file = smartstack.get(namespace, {})
+
+    service_namespace_config = ServiceNamespaceConfig()
+    # We can't really use .get, as we don't want the key to be in the returned
+    # dict at all if it doesn't exist in the config file.
+    # We also can't just copy the whole dict, as we only care about some keys
+    # and there's other things that appear in the smartstack section in
+    # several cases.
+    key_whitelist = set([
+        'healthcheck_uri',
+        'healthcheck_timeout_s',
+        'proxy_port',
+        'timeout_connect_ms',
+        'timeout_server_ms',
+        'timeout_client_ms',
+        'retries',
+        'mode',
+        'discover',
+        'advertise',
+    ])
+
+    for key, value in config_from_file.items():
+        if key in key_whitelist:
+            service_namespace_config[key] = value
+
+    if 'routes' in config_from_file:
+        service_namespace_config['routes'] = [(route['source'], dest)
+                                              for route in config_from_file['routes']
+                                              for dest in route['destinations']]
+
+    if 'extra_advertise' in config_from_file:
+        service_namespace_config['extra_advertise'] = [
+            (src, dst)
+            for src in config_from_file['extra_advertise']
+            for dst in config_from_file['extra_advertise'][src]
+        ]
+
+    return service_namespace_config
+
+
 class ServiceNamespaceConfig(dict):
-    @classmethod
-    def load(cls, srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
-        """Attempt to read the configuration for a service's namespace in a more strict fashion.
-
-        Retrevies the following keys:
-
-        - proxy_port: the proxy port defined for the given namespace
-        - healthcheck_uri: URI target for healthchecking
-        - healthcheck_timeout_s: healthcheck timeout in seconds
-        - timeout_connect_ms: proxy frontend timeout in milliseconds
-        - timeout_server_ms: proxy server backend timeout in milliseconds
-        - timeout_client_ms: proxy server client timeout in milliseconds
-        - retries: the number of retries on a proxy backend
-        - mode: the mode the service is run in (http or tcp)
-        - routes: a list of tuples of (source, destination)
-        - discover: the scope at which to discover services e.g. 'habitat'
-        - advertise: a list of scopes to advertise services at e.g. ['habitat', 'region']
-        - advertise_extra: a list of tuples of (source, destination)
-          e.g. [('region:dc6-prod', 'region:useast1-prod')]
-
-        :param srv_name: The service name
-        :param namespace: The namespace to read
-        :param soa_dir: The SOA config directory to read from
-        :returns: A dict of the above keys, if they were defined
-        """
-
-        smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
-        config_from_file = smartstack.get(namespace, {})
-
-        service_namespace_config = cls()
-        # We can't really use .get, as we don't want the key to be in the returned
-        # dict at all if it doesn't exist in the config file.
-        # We also can't just copy the whole dict, as we only care about some keys
-        # and there's other things that appear in the smartstack section in
-        # several cases.
-        key_whitelist = set([
-            'healthcheck_uri',
-            'healthcheck_timeout_s',
-            'proxy_port',
-            'timeout_connect_ms',
-            'timeout_server_ms',
-            'timeout_client_ms',
-            'retries',
-            'mode',
-            'discover',
-            'advertise',
-        ])
-
-        for key, value in config_from_file.items():
-            if key in key_whitelist:
-                service_namespace_config[key] = value
-
-        if 'routes' in config_from_file:
-            service_namespace_config['routes'] = [(route['source'], dest)
-                                                  for route in config_from_file['routes']
-                                                  for dest in route['destinations']]
-
-        if 'extra_advertise' in config_from_file:
-            service_namespace_config['extra_advertise'] = [
-                (src, dst)
-                for src in config_from_file['extra_advertise']
-                for dst in config_from_file['extra_advertise'][src]
-            ]
-
-        return service_namespace_config
-
     def get_healthchecks(self):
         """Returns a list of healthchecks per the spec:
         https://mesosphere.github.io/marathon/docs/health-checks.html
@@ -458,7 +443,7 @@ class InvalidSmartstackMode(Exception):
 
 
 def get_cluster():
-    return MarathonConfig.load().get_cluster()
+    return load_marathon_config().get_cluster()
 
 
 def get_marathon_client(url, user, passwd):
@@ -569,7 +554,7 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     if not cluster:
         cluster = get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = ServiceNamespaceConfig.load(name, namespace, soa_dir)
+    nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
 
 
@@ -590,7 +575,7 @@ def get_mode_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR)
     if not cluster:
         cluster = get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = ServiceNamespaceConfig.load(name, namespace, soa_dir)
+    nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('mode', 'http')
 
 
@@ -758,7 +743,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     for name, instance, port in marathon_services:
         try:
             namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-            nerve_dict = ServiceNamespaceConfig.load(name, namespace, soa_dir)
+            nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
             nerve_dict['port'] = port
             nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
             nerve_list.append((nerve_name, nerve_dict))
@@ -781,7 +766,7 @@ def get_classic_services_that_run_here():
 
 
 def get_classic_service_information_for_nerve(name, soa_dir):
-    nerve_dict = ServiceNamespaceConfig.load(name, 'main', soa_dir)
+    nerve_dict = load_service_namespace_config(name, 'main', soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
     nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
@@ -803,7 +788,7 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     runs_on, AND services that are currently deployed in a mesos-slave here via marathon.
 
     conf_dict is a dictionary possibly containing the same keys returned by
-    ServiceNamespaceConfig.load (in fact, that's what this calls).
+    load_service_namespace_config (in fact, that's what this calls).
     Some or none of those keys may not be present on a per-service basis.
 
     :param cluster: The cluster to read the configuration for
@@ -863,14 +848,14 @@ def is_app_id_running(app_id, client):
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
-    srv_config = MarathonServiceConfig.load(name, instance, get_cluster(), soa_dir=soa_dir)
+    srv_config = load_marathon_service_config(name, instance, get_cluster(), soa_dir=soa_dir)
     try:
         docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
     # Noisy debugging output for PAASTA-322
     except NoDockerImageError as err:
         err.srv_config = srv_config
         raise err
-    healthchecks = ServiceNamespaceConfig.load(name, srv_config.get_nerve_namespace()).get_healthchecks()
+    healthchecks = load_service_namespace_config(name, srv_config.get_nerve_namespace()).get_healthchecks()
     complete_config = srv_config.format_marathon_app_dict(
         partial_id,
         docker_url,
@@ -916,7 +901,7 @@ def get_expected_instance_count_for_namespace(service_name, namespace, cluster=N
     if not cluster:
         cluster = get_cluster()
     for name, instance in get_service_instance_list(service_name, cluster=cluster, soa_dir=soa_dir):
-        srv_config = MarathonServiceConfig.load(name, instance, cluster, soa_dir=soa_dir)
+        srv_config = load_marathon_service_config(name, instance, cluster, soa_dir=soa_dir)
         instance_ns = srv_config.get_nerve_namespace()
         if namespace == instance_ns:
             total_expected += srv_config.get_instances()

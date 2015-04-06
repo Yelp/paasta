@@ -53,7 +53,7 @@ class TestMarathonTools:
     def test_DeploymentsJson_read(self):
         file_mock = mock.MagicMock(spec=file)
         fake_dir = '/var/dir_of_fake'
-        fake_path = '/var/dir_of_fake/deployments.json'
+        fake_path = '/var/dir_of_fake/fake_service/deployments.json'
         fake_json = {
             'v1': {
                 'no_srv:blaster': {
@@ -75,27 +75,10 @@ class TestMarathonTools:
             open_patch,
             json_patch
         ):
-            actual = marathon_tools.DeploymentsJson.load(fake_dir)
+            actual = marathon_tools.load_deployments_json('fake_service', fake_dir)
             open_patch.assert_called_once_with(fake_path)
             json_patch.assert_called_once_with(file_mock.__enter__())
             assert actual == fake_json['v1']
-
-    def test_get_deployed_images(self):
-        fake_json = {
-            'no_srv:blaster': {
-                'docker_image': 'test_rocker:9.9',
-                'desired_state': 'start',
-                'force_bounce': None,
-            },
-            'dont_care:about': {
-                'docker_image': 'this:guy',
-                'desired_state': 'stop',
-                'force_bounce': '12345',
-            },
-        }
-        actual = marathon_tools.DeploymentsJson(fake_json).get_deployed_images()
-        expected = set(['test_rocker:9.9'])
-        assert actual == expected
 
     def test_read_monitoring_config(self):
         fake_name = 'partial'
@@ -117,6 +100,28 @@ class TestMarathonTools:
             abspath_patch.assert_called_once_with(fake_soa_dir)
             join_patch.assert_called_once_with(fake_path, fake_name, 'monitoring.yaml')
             read_monitoring_patch.assert_called_once_with(fake_fname)
+
+    def test_load_marathon_service_config_loads_deployments_json(self):
+        fake_name = 'jazz'
+        fake_instance = 'solo'
+        fake_cluster = 'amnesia'
+        fake_dir = '/nail/home/sanfran'
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_deployments_json', autospec=True),
+            mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
+        ) as (
+            mock_load_deployments_json,
+            mock_read_extra_service_information,
+        ):
+            mock_read_extra_service_information.return_value = {fake_instance: {}}
+            marathon_tools.load_marathon_service_config(
+                fake_name,
+                fake_instance,
+                fake_cluster,
+                deployments_json=None,
+                soa_dir=fake_dir,
+            )
+            mock_load_deployments_json.assert_called_once_with(fake_name, soa_dir=fake_dir)
 
     def test_read_service_config(self):
         fake_name = 'jazz'
@@ -159,7 +164,7 @@ class TestMarathonTools:
         ) as (
             read_extra_info_patch,
         ):
-            actual = marathon_tools.MarathonServiceConfig.load(
+            actual = marathon_tools.load_marathon_service_config(
                 fake_name,
                 fake_instance,
                 fake_cluster,
@@ -201,7 +206,7 @@ class TestMarathonTools:
             open_file_patch,
             json_patch
         ):
-            assert marathon_tools.MarathonConfig.load() == expected
+            assert marathon_tools.load_marathon_config() == expected
             open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             json_patch.assert_called_once_with(file_mock.__enter__())
 
@@ -213,7 +218,7 @@ class TestMarathonTools:
             open_patch,
         ):
             with raises(marathon_tools.PaastaNotConfigured) as excinfo:
-                marathon_tools.MarathonConfig.load(fake_dir)
+                marathon_tools.load_marathon_config(fake_dir)
             assert excinfo.type == marathon_tools.PaastaNotConfigured
             assert str(excinfo.value) == "Could not load marathon config file b: a"
 
@@ -366,9 +371,10 @@ class TestMarathonTools:
         fake_port = 1234567890
         fake_nerve = marathon_tools.ServiceNamespaceConfig({'proxy_port': fake_port})
         with contextlib.nested(
-            mock.patch('marathon_tools.read_namespace_for_service_instance', autospec=True, return_value=namespace),
-            mock.patch('marathon_tools.ServiceNamespaceConfig.load', spec=marathon_tools.ServiceNamespaceConfig.load,
-                       return_value=fake_nerve)
+            mock.patch('marathon_tools.read_namespace_for_service_instance',
+                       autospec=True, return_value=namespace),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True, return_value=fake_nerve)
         ) as (
             read_ns_patch,
             read_config_patch
@@ -387,9 +393,10 @@ class TestMarathonTools:
         fake_mode = 'banana'
         fake_nerve = marathon_tools.ServiceNamespaceConfig({'mode': fake_mode})
         with contextlib.nested(
-            mock.patch('marathon_tools.read_namespace_for_service_instance', autospec=True, return_value=namespace),
-            mock.patch('marathon_tools.ServiceNamespaceConfig.load', spec=marathon_tools.ServiceNamespaceConfig.load,
-                       return_value=fake_nerve)
+            mock.patch('marathon_tools.read_namespace_for_service_instance',
+                       autospec=True, return_value=namespace),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True, return_value=fake_nerve)
         ) as (
             read_ns_patch,
             read_config_patch
@@ -407,8 +414,9 @@ class TestMarathonTools:
         namespace = 'is_here'
         expected = 'http'
         with contextlib.nested(
-            mock.patch('marathon_tools.read_namespace_for_service_instance', autospec=True, return_value=namespace),
-            mock.patch('marathon_tools.ServiceNamespaceConfig.load',
+            mock.patch('marathon_tools.read_namespace_for_service_instance',
+                       autospec=True, return_value=namespace),
+            mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=marathon_tools.ServiceNamespaceConfig())
         ) as (
             read_ns_patch,
@@ -472,7 +480,7 @@ class TestMarathonTools:
         with mock.patch('service_configuration_lib.read_extra_service_information',
                         autospec=True,
                         return_value=fake_config) as read_extra_patch:
-            assert marathon_tools.ServiceNamespaceConfig.load(name, namespace, soa_dir) == expected
+            assert marathon_tools.load_service_namespace_config(name, namespace, soa_dir) == expected
             read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
 
     def test_read_service_namespace_config_no_file(self):
@@ -483,7 +491,7 @@ class TestMarathonTools:
         with mock.patch('service_configuration_lib.read_extra_service_information',
                         side_effect=Exception) as read_extra_patch:
             with raises(Exception) as excinfo:
-                marathon_tools.ServiceNamespaceConfig.load(name, namespace, soa_dir)
+                marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
             assert excinfo.type == Exception
             read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
 
@@ -596,8 +604,8 @@ class TestMarathonTools:
             mock.patch('marathon_tools.read_namespace_for_service_instance',
                        autospec=True,
                        side_effect=lambda a, b, c, d: namespaces.pop()),
-            mock.patch('marathon_tools.ServiceNamespaceConfig.load',
-                       spec=marathon_tools.ServiceNamespaceConfig.load,
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
                        side_effect=lambda a, b, c: nerve_dicts.pop()),
         ) as (
             mara_srvs_here_patch,
@@ -664,7 +672,7 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         with contextlib.nested(
             mock.patch(
-                'marathon_tools.MarathonConfig.load',
+                'marathon_tools.load_marathon_config',
                 return_value=mock.Mock(
                     get_cluster=mock.Mock(side_effect=Exception, spec=marathon_tools.MarathonConfig.get_cluster)
                 ),
@@ -684,7 +692,7 @@ class TestMarathonTools:
     def test_get_classic_service_information_for_nerve(self):
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_port', return_value=101),
-            mock.patch('marathon_tools.ServiceNamespaceConfig.load', spec=marathon_tools.ServiceNamespaceConfig.load,
+            mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
                        return_value={'ten': 10}),
         ) as (
             read_port_patch,
@@ -1026,14 +1034,14 @@ class TestMarathonTools:
 
         with contextlib.nested(
             mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
-            mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load,
+            mock.patch('marathon_tools.load_marathon_service_config', autospec=True,
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch.object(self.fake_marathon_job_config, 'format_marathon_app_dict',
                               return_value=fake_config, autospec=True),
             mock.patch('marathon_tools.get_config_hash', autospec=True, return_value=fake_hash),
             mock.patch('marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value=fake_code_sha),
-            mock.patch('marathon_tools.ServiceNamespaceConfig.load', spec=marathon_tools.ServiceNamespaceConfig.load,
+            mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=mock.Mock(get_healthchecks=lambda: []))
         ) as (
             get_cluster_patch,
@@ -1106,9 +1114,9 @@ class TestMarathonTools:
 
         with contextlib.nested(
             mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
-            mock.patch('marathon_tools.MarathonServiceConfig.load', spec=marathon_tools.MarathonServiceConfig.load),
+            mock.patch('marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
-            mock.patch('marathon_tools.ServiceNamespaceConfig.load',
+            mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=mock.Mock(get_healthchecks=lambda: []))
         ) as (
             get_cluster_patch,
@@ -1152,8 +1160,8 @@ class TestMarathonTools:
             mock.patch('marathon_tools.get_service_instance_list',
                        autospec=True,
                        return_value=fake_instances),
-            mock.patch('marathon_tools.MarathonServiceConfig.load',
-                       spec=marathon_tools.MarathonServiceConfig.load,
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
                        side_effect=config_helper),
         ) as (
             inst_list_patch,
