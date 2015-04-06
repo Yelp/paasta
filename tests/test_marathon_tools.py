@@ -118,7 +118,6 @@ class TestMarathonTools:
                 fake_name,
                 fake_instance,
                 fake_cluster,
-                deployments_json=None,
                 soa_dir=fake_dir,
             )
             mock_load_deployments_json.assert_called_once_with(fake_name, soa_dir=fake_dir)
