@@ -13,6 +13,7 @@ RUN apt-get -y install dh-virtualenv=0.6-yelp2
 RUN apt-get -y install python-yaml
 RUN apt-get -y install python-pytest
 RUN apt-get -y install pyflakes
+RUN apt-get -y install help2man
 
 ENV HOME /work
 ENV PWD /work

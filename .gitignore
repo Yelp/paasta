@@ -4,9 +4,13 @@ dist/
 *.py?
 .*.sw?
 paasta_tools.egg-info/
-debian/paasta-tools/
-debian/files
 docs/man/
 tags
 venv
 .bash_history
+
+# Generated debian artifacts
+debian/paasta-tools/
+debian/files
+debian/paasta-tools.substvars
+debian/paasta-tools.debhelper.log
