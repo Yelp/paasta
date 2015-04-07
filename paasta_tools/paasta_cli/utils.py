@@ -1,8 +1,6 @@
 import fnmatch
 import glob
 import os
-from socket import create_connection
-from socket import error
 from socket import gaierror
 from socket import gethostbyname_ex
 
@@ -338,30 +336,25 @@ def find_connectable_master(masters):
     None. If no masters pass all checks, return a tuple of None and the output
     from the DNS lookup.
     """
-    port = 22
-    timeout = 1.0  # seconds
+    timeout = 3.0  # seconds
 
     connectable_master = None
     for master in masters:
-        try:
-            create_connection((master, port), timeout)
-            # If that succeeded, the connection was successful and we've found
-            # our master.
+        rc, output = check_ssh_and_sudo_on_master(master, timeout=timeout)
+        if rc is True:
             connectable_master = master
             output = None
             break
-        except error as e:
-            output = 'ERROR cannot connect to %s port %s:\n%s ' % (master, port, e.strerror)
     return (connectable_master, output)
 
 
-def check_ssh_and_sudo_on_master(master):
+def check_ssh_and_sudo_on_master(master, timeout=10):
     """Given a master, attempt to ssh to the master and run a simple command
     with sudo to verify that ssh and sudo work properly. Return a tuple of the
     success status (True or False) and any output from attempting the check.
     """
     check_command = 'ssh -A -n %s sudo paasta_serviceinit -h' % master
-    rc, output = _run(check_command, timeout=10)
+    rc, output = _run(check_command, timeout=timeout)
     if rc == 0:
         return (True, None)
     if rc == 255:  # ssh error
@@ -393,7 +386,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
         timeout = 120
     else:
         verbose_flag = ''
-        timeout = 10
+        timeout = 20
     command = 'ssh -A -n %s sudo paasta_serviceinit %s%s.%s %s' % (
         master,
         verbose_flag,
@@ -417,9 +410,6 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, servic
         return (
             'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
         )
-    check, output = check_ssh_and_sudo_on_master(master)
-    if not check:
-        return 'ERROR: ssh or sudo check failed for master %s\nOutput: %s' % (master, output)
     return run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster_name, verbose)
 
 

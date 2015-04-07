@@ -245,7 +245,6 @@ def _timeout(process):
         try:
             # sending SIGKILL to the process
             process.kill()
-            print('ERROR: Timeout running command: %s' % process.name)
         except OSError as e:
             # No such process error
             # The process could have been terminated meanwhile
@@ -320,6 +319,8 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     # Stop the timer
     if timeout:
         proctimer.cancel()
+    if returncode == -9:
+        output.append("Command '%s' timed out (longer than %ss)" % (command, timeout))
     return returncode, '\n'.join(output)
 
 
