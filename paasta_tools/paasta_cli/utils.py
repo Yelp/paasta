@@ -341,7 +341,7 @@ def find_connectable_master(masters):
     connectable_master = None
     for master in masters:
         rc, output = check_ssh_and_sudo_on_master(master, timeout=timeout)
-        if rc == 0:
+        if rc is True:
             connectable_master = master
             output = None
             break
