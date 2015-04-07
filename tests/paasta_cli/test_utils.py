@@ -43,8 +43,8 @@ def test_find_connectable_master_happy_path(mock_check_ssh_and_sudo_on_master):
         '192.0.2.2',
         '192.0.2.3',
     ]
-    timeout = 1.0
-    mock_check_ssh_and_sudo_on_master.return_value = (0, None)
+    timeout = 3.0
+    mock_check_ssh_and_sudo_on_master.return_value = (True, None)
 
     actual = utils.find_connectable_master(masters)
     expected = (masters[0], None)
@@ -60,14 +60,14 @@ def test_find_connectable_master_one_failure(mock_check_ssh_and_sudo_on_master):
         '192.0.2.2',
         '192.0.2.3',
     ]
-    timeout = 1.0
+    timeout = 3.0
     # iter() is a workaround
     # (http://lists.idyll.org/pipermail/testing-in-python/2013-April/005527.html)
     # for a bug in mock (http://bugs.python.org/issue17826)
     create_connection_side_effects = iter([
-        (1, "something bad"),
-        (0, 'unused'),
-        (0, 'unused'),
+        (False, "something bad"),
+        (True, 'unused'),
+        (True, 'unused'),
     ])
     mock_check_ssh_and_sudo_on_master.side_effect = create_connection_side_effects
     mock_check_ssh_and_sudo_on_master.return_value = True
@@ -86,7 +86,7 @@ def test_find_connectable_master_all_failures(mock_check_ssh_and_sudo_on_master)
         '192.0.2.2',
         '192.0.2.3',
     ]
-    timeout = 1.0
+    timeout = 3.0
     mock_check_ssh_and_sudo_on_master.return_value = (255, "timeout")
 
     actual = utils.find_connectable_master(masters)

@@ -336,7 +336,7 @@ def find_connectable_master(masters):
     None. If no masters pass all checks, return a tuple of None and the output
     from the DNS lookup.
     """
-    timeout = 1.0  # seconds
+    timeout = 3.0  # seconds
 
     connectable_master = None
     for master in masters:
@@ -386,7 +386,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
         timeout = 120
     else:
         verbose_flag = ''
-        timeout = 10
+        timeout = 20
     command = 'ssh -A -n %s sudo paasta_serviceinit %s%s.%s %s' % (
         master,
         verbose_flag,
