@@ -320,7 +320,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     if timeout:
         proctimer.cancel()
     if returncode == -9:
-        output.append("Command %s timed out (longer than %ss)" % (command, timeout))
+        output.append("Command '%s' timed out (longer than %ss)" % (command, timeout))
     return returncode, '\n'.join(output)
 
 
