@@ -40,7 +40,6 @@ setup(
         'paasta_tools/monitoring/check_synapse_replication.py',
         'paasta_tools/monitoring/check_classic_service_replication.py',
         'paasta_tools/deploy_marathon_services',
-        'paasta_tools/generate_deployments_json.py',
         'paasta_tools/generate_all_deployments',
         'paasta_tools/generate_deployments_for_service.py',
         'paasta_tools/check_marathon_services_replication.py',
