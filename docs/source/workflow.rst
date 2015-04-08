@@ -31,7 +31,7 @@ that tells PaaSTA which versions of the service should go to which clusters.
 
 Deployment
 ----------
-A yelpsoa-configs master runs `generate_deployments_for_service <generated/paasta_tools.html#module-paasta_tools.generate_deployments_for_service>`_ 
+A yelpsoa-configs master runs `generate_deployments_for_service <generated/paasta_tools.generate_deployments_for_service.html>`_
 frequently. The generated ``deployments.json`` appears in ``/nail/etc/services/service_name`` throughout the cluster.
 
 Marathon masters run `deploy_marathon_services
