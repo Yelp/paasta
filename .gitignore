@@ -15,3 +15,6 @@ debian/paasta-tools/
 debian/files
 debian/paasta-tools.substvars
 debian/paasta-tools.debhelper.log
+
+# Itest artifacts
+fake_service_uno/
