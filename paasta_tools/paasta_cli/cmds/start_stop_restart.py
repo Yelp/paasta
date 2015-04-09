@@ -4,7 +4,7 @@ import socket
 import sys
 
 from paasta_tools import utils, remote_git
-from paasta_tools.generate_deployments_json import get_branches_for_service
+from paasta_tools.generate_deployments_for_service import get_branches_for_service
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
