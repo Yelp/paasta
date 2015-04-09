@@ -12,7 +12,8 @@ deploy_marathon_services
 generate_deployments_for_service
 check_marathon_services_replication
 generate_services_yaml
-paasta_serviceinit"
+paasta_serviceinit
+paasta_metastatus"
 
 MARATHON_SERVICES="fake_service_uno.main
 fake_service_dos.niam"
