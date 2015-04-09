@@ -32,6 +32,7 @@ emergency-restart
 info
 itest
 mark-for-deployment
+metastatus
 performance-check
 push-to-registry
 security-check

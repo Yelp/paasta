@@ -413,6 +413,36 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, servic
     return run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster_name, verbose)
 
 
+def run_paasta_metastatus(master, verbose=False):
+    if verbose:
+        verbose_flag = " -v"
+        timeout = 120
+    else:
+        verbose_flag = ''
+        timeout = 20
+    command = 'ssh -A -n %s sudo paasta_metastatus%s' % (
+        master,
+        verbose_flag,
+    )
+    _, output = _run(command, timeout=timeout)
+    return output
+
+
+def execute_paasta_metastatus_on_remote_master(cluster_name, verbose=False):
+    """Returns a string containing an error message if an error occurred.
+    Otherwise returns the output of run_paasta_metastatus().
+    """
+    masters, output = calculate_remote_masters(cluster_name)
+    if masters == []:
+        return 'ERROR: %s' % output
+    master, output = find_connectable_master(masters)
+    if not master:
+        return (
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
+        )
+    return run_paasta_metastatus(master, verbose)
+
+
 def lazy_choices_completer(list_func):
     def inner(prefix, **kwargs):
         options = list_func()
