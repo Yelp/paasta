@@ -5,8 +5,8 @@ from paasta_tools.paasta_cli.cmds import metastatus
 
 def test_report_cluster_status():
     cluster = 'fake_cluster'
-    mock_patch = 'paasta_tools.paasta_cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master'
-    with mock.patch(mock_patch) as mock_execute_paasta_metastatus_on_remote_master:
+    thing_to_patch = 'paasta_tools.paasta_cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master'
+    with mock.patch(thing_to_patch) as mock_execute_paasta_metastatus_on_remote_master:
         mock_execute_paasta_metastatus_on_remote_master.return_value = 'mock_status'
         actual = metastatus.report_cluster_status(cluster)
         mock_execute_paasta_metastatus_on_remote_master.assert_called_once_with(
