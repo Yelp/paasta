@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.mesos_tools import fetch_mesos_stats
 
 
@@ -44,8 +45,21 @@ def get_mesos_status():
     return "\n".join(output)
 
 
+def get_marathon_status():
+    """Gathers information about marathon.
+    :return: string containing the status."""
+    output = []
+    client = get_marathon_client()
+    output.append("Marathon:")
+    output.append("    %d apps" % len(client.list_apps()))
+    output.append("    %d tasks" % len(client.list_tasks()))
+    output.append("    %d deployments" % len(client.list_deployments()))
+    return "\n".join(output)
+
+
 def main():
     print get_mesos_status()
+    print get_marathon_status()
 
 
 if __name__ == '__main__':

@@ -33,3 +33,31 @@ def test_get_mesos_status(
     assert expected_mem_output in output
     assert expected_tasks_output in output
     assert expected_slaves_output in output
+
+
+@patch('paasta_tools.paasta_metastatus.get_marathon_client')
+def test_get_marathon_status(
+    mock_get_marathon_client,
+):
+    client = mock_get_marathon_client.return_value
+    client.list_apps.return_value = [
+        "MarathonApp::1",
+        "MarathonApp::2"
+    ]
+    client.list_deployments.return_value = [
+        "MarathonDeployment::1",
+    ]
+    client.list_tasks.return_value = [
+        "MarathonTask::1",
+        "MarathonTask::2",
+        "MarathonTask::3"
+    ]
+    expected_apps_output = "2 apps"
+    expected_deployment_output = "1 deployments"
+    expected_tasks_output = "3 tasks"
+
+    output = paasta_metastatus.get_marathon_status()
+
+    assert expected_apps_output in output
+    assert expected_deployment_output in output
+    assert expected_tasks_output in output
