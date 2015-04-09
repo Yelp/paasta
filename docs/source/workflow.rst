@@ -25,7 +25,7 @@ The `Paasta Contract <http://y/paasta-contract>`_ describes the
 responsibilities of services that wish to work with PaaSTA.
 
 paasta_tools contains the implementation of several of these rules.
-For example, `generate_deployments_json <generate_deployments_json.html>`_ is
+For example, `generate_deployments_for_service <generate_deployments_for_service.html>`_ is
 the piece that checks each service's git repo for the specially-named branch
 that tells PaaSTA which versions of the service should go to which clusters.
 

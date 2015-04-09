@@ -1,6 +1,5 @@
 #!/usr/bin/env python
-"""Usage: ./generate_deployments_json.py [options]
-
+"""
 Creates a deployments.json file in the specified SOA configuration directory.
 This file contains a dictionary of k/v pairs representing a map between remote
 branches of a service's Git repository and the current SHA at the tip of that branch.

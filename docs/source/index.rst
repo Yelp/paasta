@@ -34,7 +34,7 @@ Scripts
    check_marathon_services_replication
    cleanup_marathon_jobs
    deploy_marathon_services
-   generate_deployments_json
+   generate_deployments_for_service
    generate_services_yaml
    list_marathon_service_instances
    setup_chronos_jobs
