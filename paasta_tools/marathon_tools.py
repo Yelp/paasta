@@ -313,6 +313,7 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     Retrevies the following keys:
 
     - proxy_port: the proxy port defined for the given namespace
+    - healthcheck_port: An alternate port to use for health checking
     - healthcheck_uri: URI target for healthchecking
     - healthcheck_timeout_s: healthcheck timeout in seconds
     - timeout_connect_ms: proxy frontend timeout in milliseconds
@@ -343,6 +344,7 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     # several cases.
     key_whitelist = set([
         'healthcheck_uri',
+        'healthcheck_port',
         'healthcheck_timeout_s',
         'proxy_port',
         'timeout_connect_ms',
