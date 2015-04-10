@@ -296,7 +296,7 @@ def get_cpu_usage(task):
         # (https://github.com/apache/mesos/blob/dc7c4b6d0bcf778cc0cad57bb108564be734143a/src/slave/constants.hpp#L100)
         cpu_shares = task.cpu_limit - .1
         allocated_seconds = duration_seconds * cpu_shares
-        used_seconds = task.stats['cpus_system_time_secs'] + task.stats['cpus_user_time_secs']
+        used_seconds = task.stats.get('cpus_system_time_secs', 0.0) + task.stats.get('cpus_user_time_secs', 0.0)
         if allocated_seconds == 0:
             return "Undef"
         percent = round(100 * (used_seconds / allocated_seconds), 1)

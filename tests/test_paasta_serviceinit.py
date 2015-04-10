@@ -368,6 +368,18 @@ class TestPaastaServiceStatus:
         actual = paasta_serviceinit.get_cpu_usage(fake_task)
         assert PaastaColors.red('100.0%') in actual
 
+    def test_get_cpu_usage_handles_missing_stats(self):
+        fake_task = mock.create_autospec(mesos.cli.task.Task)
+        fake_task.cpu_limit = 1.1
+        fake_duration = 100
+        fake_task.stats = {}
+        fake_task.__getitem__.return_value = [{
+            'state': 'TASK_RUNNING',
+            'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
+        }]
+        actual = paasta_serviceinit.get_cpu_usage(fake_task)
+        assert "0.0%" in actual
+
     def test_get_mem_usage_good(self):
         fake_task = mock.create_autospec(mesos.cli.task.Task)
         fake_task.rss = 1024 * 1024 * 10
