@@ -97,7 +97,7 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA configuration directory to read from
     :returns: A dictionary of whatever was in the config for the service instance"""
-    log.info("Reading service configuration files from dir %s/ in %s", service_name, soa_dir)
+    log.info("Reading service configuration files from dir %s/ in %s" % (service_name, soa_dir))
     log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_extra_service_information(
         service_name,
@@ -113,8 +113,9 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     )
 
     if instance not in instance_configs:
-        log.error("%s not found in config file %s.yaml.", instance, marathon_conf_file)
-        return {}
+        raise NoMarathonConfigurationForService(
+            "%s not found in config file %s.yaml." % (instance, marathon_conf_file)
+        )
 
     general_config.update(instance_configs[instance])
 
@@ -439,6 +440,10 @@ class NoDockerImageError(Exception):
 
 
 class InvalidSmartstackMode(Exception):
+    pass
+
+
+class NoMarathonConfigurationForService(Exception):
     pass
 
 
