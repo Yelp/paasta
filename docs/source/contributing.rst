@@ -35,4 +35,13 @@ We use `argcomplete <https://github.com/kislyuk/argcomplete>`_ to provide tab co
 
   * ``eval "$(.tox/py/bin/register-python-argcomplete ./paasta_tools/paasta_cli/paasta_cli.py)"``
 
-* We'd like to add better automated tests for this: `PAASTA-299 <https://jira.yelpcorp.com/browse/PAASTA-299>`_
+* There is a simple integration test. See the itest/ folder.
+
+
+Upgrading Components
+--------------------
+
+As things progress, there will come a time that you will have to upgrade
+PaaSTA components to new versions.
+
+* See `Upgrading Marathon <upgrading_marathon.html>`_ for how to upgrade Marathon safely.
