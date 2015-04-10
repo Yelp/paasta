@@ -1,3 +1,11 @@
+paasta-tools (0.9.46-yelp1) lucid; urgency=low
+
+  * 0.9.46 tagged with 'make release'
+    Commit: add in the healthcheck_port to the whitelist in
+    load_service_namespace_config
+
+ -- Ryan Neal <ryanneal@yelp.com>  Fri, 10 Apr 2015 16:33:14 -0700
+
 paasta-tools (0.9.45-yelp1) lucid; urgency=low
 
   * 0.9.45 tagged with 'make release'
