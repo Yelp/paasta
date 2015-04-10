@@ -10,6 +10,7 @@ def test_build_docker_container():
     args = MagicMock()
 
     docker_client.build.return_value = [
+        '{"stream":null}',
         '{"stream":"foo\\n"}',
         '{"stream":"foo\\n"}',
         '{"stream":"Successfully built 1234\\n"}'
