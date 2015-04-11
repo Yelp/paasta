@@ -83,3 +83,124 @@ class SuggestSmartstackProxyPortTestCase(T.TestCase):
 
         # What we came here for: the actual output of the function under test
         T.assert_equal(actual, 20002 + 1)  # highest port + 1
+
+
+class SuggestRunsOnTestCase(T.TestCase):
+    @T.setup_teardown
+    def mock_service_configuration_lookups(self):
+        with nested(
+            mock.patch("service_wizard.service_configuration.load_service_yamls"),
+            mock.patch("service_wizard.service_configuration.collate_service_yamls"),
+            mock.patch("service_wizard.autosuggest.suggest_all_hosts", return_value=""),
+            mock.patch("service_wizard.autosuggest.suggest_hosts_for_habitat", return_value=""),
+        ) as (self.mock_load_service_yamls, _, _, _):
+                yield
+
+    def test_returns_original_if_no_munging_occurred(self):
+        expected = "things,not,needing,munging"
+        actual = autosuggest.suggest_runs_on(expected)
+        T.assert_equal(expected, actual)
+
+    def test_does_not_load_yamls_if_no_munging_occurred(self):
+        runs_on = "things,not,needing,munging"
+        autosuggest.suggest_runs_on(runs_on)
+        T.assert_equal(0, self.mock_load_service_yamls.call_count)
+
+    def test_loads_yamls_if_auto(self):
+        runs_on = "AUTO"
+        autosuggest.suggest_runs_on(runs_on)
+        T.assert_equal(1, self.mock_load_service_yamls.call_count)
+
+    def test_loads_yamls_if_HABITAT(self):
+        runs_on = "FAKE_HABITAT1"
+        autosuggest.suggest_runs_on(runs_on)
+        T.assert_equal(1, self.mock_load_service_yamls.call_count)
+
+
+class DiscoverHabitatsTestCase(T.TestCase):
+    def test_stage(self):
+        collated_service_yamls = {
+            "stagex": {
+                "stagexhost": 1,
+            },
+            "xstage": {
+                "should_not_be_included": 1,
+            },
+        }
+        habitats = autosuggest.discover_habitats(collated_service_yamls)
+        T.assert_in("stagex", habitats)
+        T.assert_not_in("xstage", habitats)
+
+    def test_prod(self):
+        # Prod values are hardcoded, so even with no discovered habitats they
+        # should appear.
+        collated_service_yamls = {}
+        habitats = autosuggest.discover_habitats(collated_service_yamls)
+        T.assert_in("iad1", habitats)
+
+    def test_dev(self):
+        collated_service_yamls = {
+            "devx": {
+                "devxhost": 1,
+            },
+            "xdev": {
+                "should_not_be_included": 1,
+            },
+        }
+        habitats = autosuggest.discover_habitats(collated_service_yamls)
+        T.assert_in("devx", habitats)
+        T.assert_not_in("xdev", habitats)
+
+
+class SuggestHostsForHabitat(T.TestCase):
+    def test_habitat_not_in_collated_service_yamls(self):
+        collated_service_yamls = {}
+        actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "nonexistent")
+        T.assert_equal("", actual)
+
+    def test_not_prod(self):
+        """All non-prod habitats have the same workflow, so just test one."""
+        expected = "stagexservices1"
+        collated_service_yamls = {
+            "stagex": {
+                expected: 5,
+                "stagexservices2": 10,
+                "stagex-ineligibile-non-services-box3": 1,
+            },
+        }
+        actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "stagex")
+        T.assert_equal(expected, actual)
+
+    def test_prod(self):
+        expected = "host1,host2"
+        collated_service_yamls = {
+            "hab1": {
+                "host1": 99,
+                "host2": 99,
+                "host3": 1,
+                "host4": 1,
+            },
+            # All these machines will be filtered out since they're not general service machines.
+            "hab2": {
+                "host5": 10,
+                "host6": 1,
+                "host7": 1,
+            },
+        }
+        actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "hab1")
+        T.assert_equal(expected, actual)
+
+
+class SuggestAllHostsTestCase(T.TestCase):
+    @T.setup_teardown
+    def mock_suggest_hosts_for_habitat(self):
+        with mock.patch(
+            "service_wizard.autosuggest.suggest_hosts_for_habitat",
+            return_value="fake_list_of_hosts",
+        ) as self.mock_suggest_hosts_for_habitat:
+            yield
+
+    def test_calls_suggest_hosts_for_habitat(self):
+        autosuggest.suggest_all_hosts({"unused": "dict"})
+        # Make sure we try to suggest at least one habitat.
+        T.assert_gt(self.mock_suggest_hosts_for_habitat.call_count, 0)
