@@ -50,6 +50,30 @@ class SuggestPortTestCase(T.TestCase):
         T.assert_equal(actual, 13002 + 1)  # highest port + 1
 
 
+class GetSmartstackProxyPortFromFileTestCase(T.TestCase):
+    def test_multiple_stanzas_per_file(self):
+        with nested(
+            mock.patch("__builtin__.open", autospec=True),
+            mock.patch("service_wizard.autosuggest.yaml", autospec=True),
+        ) as (
+            mock_open,
+            mock_yaml,
+        ):
+            mock_yaml.load.return_value = {
+                "main": {
+                    "proxy_port": 1,
+                },
+                "foo": {
+                    "proxy_port": 2,
+                },
+            }
+            actual = autosuggest._get_smartstack_proxy_port_from_file(
+                "fake_root",
+                "smartstack.yaml",
+            )
+            T.assert_equal(actual, 2)
+
+
 # Shamelessly copied from SuggestPortTestCase
 class SuggestSmartstackProxyPortTestCase(T.TestCase):
     def test_suggest_smartstack_proxy_port(self):

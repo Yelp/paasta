@@ -31,17 +31,22 @@ def suggest_port():
 
 
 def _get_smartstack_proxy_port_from_file(root, file):
-    """Given a root and file (as from os.walk), attempt to return a smartstack
-    proxy port number (int) from that file. Returns 0 if there is no smartstack
-    proxy_port."""
+    """Given a root and file (as from os.walk), attempt to return the highest
+    smartstack proxy port number (int) from that file. Returns 0 if there is no
+    smartstack proxy_port.
+    """
+    port = 0
     with open(os.path.join(root, file)) as f:
         data = yaml.load(f)
-        if file.endswith('service.yaml') and 'smartstack' in data:
-            port = data['smartstack'].get('proxy_port', 0)
-        elif file.endswith('smartstack.yaml') and 'main' in data:
-            port = data['main'].get('proxy_port', 0)
-        else:
-            port = 0
+
+    if file.endswith('service.yaml') and 'smartstack' in data:
+        # Specifying this in service.yaml is old and deprecated and doesn't
+        # support multiple namespaces.
+        port = data['smartstack'].get('proxy_port', 0)
+    elif file.endswith('smartstack.yaml'):
+        for namespace in data.keys():
+            port = max(port, data[namespace].get('proxy_port', 0))
+
     return int(port)
 
 
