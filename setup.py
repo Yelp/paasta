@@ -47,6 +47,7 @@ setup(
         'paasta_tools/generate_services_yaml.py',
         'paasta_tools/generate_services_file.py',
         'paasta_tools/paasta_serviceinit.py',
+        'paasta_tools/paasta_metastatus.py',
         'paasta_tools/paasta_cli/paasta_cli.py',
         'paasta_tools/paasta_cli/paasta_tabcomplete.sh',
     ]
