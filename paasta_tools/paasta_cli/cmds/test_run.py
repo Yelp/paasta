@@ -247,6 +247,10 @@ def build_docker_container(docker_client, args):
 def paasta_test_run(args):
     service = figure_out_service_name(args)
 
+    if not os.path.isfile(os.path.join(os.getcwd(), 'Dockerfile')):
+        sys.stderr.write('No Dockerfile in the current directory')
+        sys.exit(1)
+
     base_docker_url = os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
 
     docker_client = Client(base_url=base_docker_url)
