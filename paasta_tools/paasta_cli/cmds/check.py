@@ -76,11 +76,10 @@ def expose_8888_in_dockerfile(path):
     :return : A boolean that is True if the Dockerfile contains 'EXPOSE 8888'
     """
     pattern = re.compile("EXPOSE\s+%d.*" % CONTAINER_PORT)
-    with open(path, 'r') as dockerfile:
-        for line in dockerfile.readlines():
-            if pattern.match(line):
-                return True
-        return False
+    for line in read_dockerfile_lines(path):
+        if pattern.match(line):
+            return True
+    return False
 
 
 def docker_file_reads_from_yelpcorp(path):
@@ -89,12 +88,11 @@ def docker_file_reads_from_yelpcorp(path):
     :param path : path to a Dockerfile
     :return : A boolean that is True if the Dockerfile reads from yelpcorp"""
 
-    with open(path, 'r') as dockerfile:
-        first_line = dockerfile.readline()
-        if re.match('FROM\s+docker-dev.yelpcorp.com.*', first_line):
+    docker_dev_re = re.compile('FROM\s+docker-dev.yelpcorp.com.*')
+    for line in read_dockerfile_lines(path):
+        if docker_dev_re.match(line):
             return True
-        else:
-            return False
+    return False
 
 
 def docker_check():
@@ -307,3 +305,8 @@ def paasta_check(args):
     marathon_deployments_check(service_path)
     sensu_check(service_name, service_path)
     smartstack_check(service_name, service_path)
+
+
+def read_dockerfile_lines(path):
+    with open(path, 'r') as dockerfile:
+        return dockerfile.readlines()
