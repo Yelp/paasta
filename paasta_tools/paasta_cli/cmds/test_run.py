@@ -245,13 +245,28 @@ def build_docker_container(docker_client, args):
     return result
 
 
+def validate_environment():
+    """Validates whether the current directory good for running
+    paasta test_run"""
+    if os.getcwd() == os.path.expanduser("~"):
+        sys.stderr.write(
+            'ERROR: Running this command from your home directory, probably not a good idea.\n'
+            'Try changing to root folder of the service directory.\n'
+        )
+        sys.exit(1)
+    if not os.path.isfile(os.path.join(os.getcwd(), 'Dockerfile')):
+        sys.stderr.write(
+            'ERROR: No Dockerfile in the current directory.\n'
+            'Are you in the root folder of the service directory? Does a Dockerfile exist?'
+        )
+        sys.exit(1)
+
+
 def paasta_test_run(args):
+    validate_environment()
+
     service = figure_out_service_name(args)
     validate_service_name(service)
-
-    if not os.path.isfile(os.path.join(os.getcwd(), 'Dockerfile')):
-        sys.stderr.write('No Dockerfile in the current directory')
-        sys.exit(1)
 
     base_docker_url = os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
 
