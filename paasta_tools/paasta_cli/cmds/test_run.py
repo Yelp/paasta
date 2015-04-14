@@ -14,6 +14,7 @@ from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
+from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import read_marathon_config
@@ -246,6 +247,7 @@ def build_docker_container(docker_client, args):
 
 def paasta_test_run(args):
     service = figure_out_service_name(args)
+    validate_service_name(service)
 
     if not os.path.isfile(os.path.join(os.getcwd(), 'Dockerfile')):
         sys.stderr.write('No Dockerfile in the current directory')
