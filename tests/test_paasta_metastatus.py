@@ -35,10 +35,17 @@ def test_get_mesos_status(
     assert expected_slaves_output in output
 
 
-@patch('paasta_tools.paasta_metastatus.get_marathon_client')
+@patch('paasta_tools.paasta_metastatus.marathon_tools.get_marathon_client')
+@patch('paasta_tools.paasta_metastatus.marathon_tools.load_marathon_config')
 def test_get_marathon_status(
+    mock_load_marathon_config,
     mock_get_marathon_client,
 ):
+    mock_load_marathon_config.return_value = {
+        'url': 'fakeurl',
+        'user': 'fakeuser',
+        'pass': 'fakepass',
+    }
     client = mock_get_marathon_client.return_value
     client.list_apps.return_value = [
         "MarathonApp::1",
