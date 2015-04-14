@@ -417,11 +417,6 @@ class TestSetupMarathonJob:
             assert status == 1
             expected = 'Docker image for test_service.test_instance not in'
             assert expected in output
-            # Noisy debugging output for PAASTA-322
-            assert "The service's marathon_config" in output
-            assert 'REDACTED' in output
-            assert 'fake_srv_config' in output
-            assert str(fake_deployments_json) in output
 
     def test_deploy_service_unknown_bounce(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
