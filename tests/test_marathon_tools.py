@@ -170,9 +170,7 @@ class TestMarathonTools:
             fake_instance,
             dict(
                 self.fake_srv_config.items() +
-                self.fake_marathon_job_config.config_dict.items() +
-                # Noisy debugging output for PAASTA-322
-                [('deployments_json', deployments_json_mock)]
+                self.fake_marathon_job_config.config_dict.items()
             ),
             fake_branch_dict,
         )
