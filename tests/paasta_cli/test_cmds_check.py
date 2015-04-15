@@ -7,6 +7,7 @@ from paasta_tools.paasta_cli.cmds.check import deploy_check
 from paasta_tools.paasta_cli.cmds.check import deploy_has_performance_check
 from paasta_tools.paasta_cli.cmds.check import deploy_has_security_check
 from paasta_tools.paasta_cli.cmds.check import docker_check
+from paasta_tools.paasta_cli.cmds.check import docker_file_reads_from_yelpcorp
 from paasta_tools.paasta_cli.cmds.check import get_marathon_steps
 from paasta_tools.paasta_cli.cmds.check import makefile_has_a_tab
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
@@ -602,3 +603,25 @@ def test_marathon_deployments_marathon_but_not_deploy(
     actual = marathon_deployments_check('fake_service')
     assert actual is False
     assert 'BOGUS' in mock_stdout.getvalue()
+
+
+@patch('paasta_tools.paasta_cli.cmds.check.read_dockerfile_lines', autospec=True)
+def test_docker_file_reads_from_yelpcorp_sad(
+    mock_read_dockerfile_lines,
+):
+    mock_read_dockerfile_lines.return_value = [
+        '# some comment',
+        'FROM BAD',
+    ]
+    assert docker_file_reads_from_yelpcorp("unused") is False
+
+
+@patch('paasta_tools.paasta_cli.cmds.check.read_dockerfile_lines', autospec=True)
+def test_docker_file_reads_from_yelpcorp_happy(
+    mock_read_dockerfile_lines,
+):
+    mock_read_dockerfile_lines.return_value = [
+        '# some comment',
+        'FROM docker-dev.yelpcorp.com/trusty_yelp',
+    ]
+    assert docker_file_reads_from_yelpcorp("unused") is True
