@@ -106,12 +106,10 @@ def get_deploy_stanza():
         {"instancename": "norcal-devb.main", },
         {"instancename": "norcal-devc.canary", },
         {"instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
-        {"instancename": "norcal-prod.canary", },
+        {"instancename": "norcal-prod.canary","trigger_next_step_manually": True },
         {"instancename": "nova-prod.canary", },
-        {"instancename": "pnw-prod.canary", "trigger_next_step_manually": True, },
         {"instancename": "norcal-prod.main", },
         {"instancename": "nova-prod.main", },
-        {"instancename": "pnw-prod.main", },
     ]
     return stanza
 
