@@ -246,12 +246,12 @@ def build_docker_container(docker_client, args):
 
 
 def validate_environment():
-    """Validates whether the current directory good for running
+    """Validates whether the current directory is good for running
     paasta test_run"""
     if os.getcwd() == os.path.expanduser("~"):
         sys.stderr.write(
-            'ERROR: Running this command from your home directory, probably not a good idea.\n'
-            'Try changing to root folder of the service directory.\n'
+            'ERROR: Don\'t run this command from your home directory.\n'
+            'Try changing to the root of your working copy of the service.\n'
         )
         sys.exit(1)
     if not os.path.isfile(os.path.join(os.getcwd(), 'Dockerfile')):
