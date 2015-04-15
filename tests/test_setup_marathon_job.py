@@ -398,20 +398,15 @@ class TestSetupMarathonJob:
     def test_setup_service_srv_complete_config_raises(self):
         fake_name = 'test_service'
         fake_instance = 'test_instance'
-        fake_error = marathon_tools.NoDockerImageError()
-        fake_deployments_json = {'i like': 'debugging'}
-        fake_marathon_config = {'deployments_json': fake_deployments_json}
-        fake_error.srv_config = {'fake_srv_config': 'is a dict'}
-        fake_error.srv_config['deployments_json'] = 'fake_deployments_json'
         with mock.patch(
             'setup_marathon_job.marathon_tools.create_complete_config',
-            side_effect=fake_error,
+            side_effect=marathon_tools.NoDockerImageError,
         ):
             status, output = setup_marathon_job.setup_service(
                 fake_name,
                 fake_instance,
                 None,
-                fake_marathon_config,
+                None,
                 None
             )
             assert status == 1

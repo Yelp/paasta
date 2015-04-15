@@ -122,9 +122,6 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     if deployments_json is None:
         deployments_json = load_deployments_json(service_name, soa_dir=soa_dir)
 
-    # Noisy debugging output for PAASTA-322
-    general_config['deployments_json'] = deployments_json
-
     branch = general_config.get('branch', get_default_branch(cluster, instance))
 
     return MarathonServiceConfig(
@@ -856,12 +853,7 @@ def is_app_id_running(app_id, client):
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     partial_id = compose_job_id(name, instance)
     srv_config = load_marathon_service_config(name, instance, get_cluster(), soa_dir=soa_dir)
-    try:
-        docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
-    # Noisy debugging output for PAASTA-322
-    except NoDockerImageError as err:
-        err.srv_config = srv_config
-        raise err
+    docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
     healthchecks = load_service_namespace_config(name, srv_config.get_nerve_namespace()).get_healthchecks()
     complete_config = srv_config.format_marathon_app_dict(
         partial_id,
