@@ -10,11 +10,13 @@ def test_get_service_info():
         mock.patch('paasta_tools.paasta_cli.cmds.info.get_runbook', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.info.read_service_configuration', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.info.get_smartstack_endpoints', autospec=True),
     ) as (
         mock_get_team,
         mock_get_runbook,
         mock_read_service_configuration,
         mock_get_actual_deployments,
+        mock_get_smartstack_endpoints,
     ):
         mock_get_team.return_value = 'fake_team'
         mock_get_runbook.return_value = 'fake_runbook'
@@ -23,6 +25,7 @@ def test_get_service_info():
             'external_link': 'http://bla',
         }
         mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
+        mock_get_smartstack_endpoints.return_value = ['http://foo:1234', 'tcp://bar:1234']
         actual = info.get_service_info('fake_service')
         assert 'Service Name: fake_service' in actual
         assert 'Monitored By: team fake_team' in actual
@@ -35,6 +38,9 @@ def test_get_service_info():
         assert 'Deployed to the following' in actual
         assert 'clusterA' in actual
         assert 'clusterB' in actual
+        assert 'Smartstack endpoint' in actual
+        assert 'http://foo:1234' in actual
+        assert 'tcp://bar:1234' in actual
 
 
 def test_deployments_to_clusters():
@@ -42,3 +48,32 @@ def test_deployments_to_clusters():
     expected = set(['A', 'B', 'C'])
     actual = info.deployments_to_clusters(deployments)
     assert actual == expected
+
+
+def test_get_smartstack_endpoints_http():
+    with mock.patch(
+        'paasta_tools.paasta_cli.cmds.info.read_extra_service_information', autospec=True
+    ) as mock_read_extra_service_information:
+        mock_read_extra_service_information.return_value = {
+            'main': {
+                'proxy_port': 1234
+            }
+        }
+        expected = ["http://169.254.255.254:1234 (main)"]
+        actual = info.get_smartstack_endpoints('unused')
+        assert actual == expected
+
+
+def test_get_smartstack_endpoints_tcp():
+    with mock.patch(
+        'paasta_tools.paasta_cli.cmds.info.read_extra_service_information', autospec=True
+    ) as mock_read_extra_service_information:
+        mock_read_extra_service_information.return_value = {
+            'tcpone': {
+                'proxy_port': 1234,
+                'mode': 'tcp',
+            }
+        }
+        expected = ["tcp://169.254.255.254:1234 (tcpone)"]
+        actual = info.get_smartstack_endpoints('unused')
+        assert actual == expected

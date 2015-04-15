@@ -9,6 +9,7 @@ from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import PaastaColors
 from service_configuration_lib import read_service_configuration
+from service_configuration_lib import read_extra_service_information
 
 NO_DESCRIPTION_MESSAGE = (
     "No 'description' entry in service.yaml. Please a one line sentance that describes this service"
@@ -36,6 +37,18 @@ def deployments_to_clusters(deployments):
     return set(clusters)
 
 
+def get_smartstack_endpoints(service):
+    smartstack_config = read_extra_service_information(service, 'smartstack')
+    endpoints = []
+    for name, config in smartstack_config.iteritems():
+        mode = config.get('mode', 'http')
+        port = config.get('proxy_port')
+        endpoints.append("%s://169.254.255.254:%s (%s)" % (
+            mode, port, name
+        ))
+    return endpoints
+
+
 def get_service_info(service):
     service_configuration = read_service_configuration(service)
     description = service_configuration.get('description', NO_DESCRIPTION_MESSAGE)
@@ -43,6 +56,7 @@ def get_service_info(service):
     pipeline_url = get_pipeline_url(service)
     deployments = get_actual_deployments(service)
     git_url = get_git_url(service)
+    smartstack_endpoints = get_smartstack_endpoints(service)
 
     output = []
     output.append('Service Name: %s' % service)
@@ -55,6 +69,11 @@ def get_service_info(service):
     output.append('Deployed to the following clusters:')
     for cluster in deployments_to_clusters(deployments):
         output.append(' - %s' % cluster)
+    if smartstack_endpoints:
+        output.append('Smartstack endpoint(s):')
+        for endpoint in smartstack_endpoints:
+            output.append(' - %s' % endpoint)
+
     return '\n'.join(output)
 
 
