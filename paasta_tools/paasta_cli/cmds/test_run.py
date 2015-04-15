@@ -14,6 +14,7 @@ from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
+from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import read_marathon_config
@@ -244,8 +245,28 @@ def build_docker_container(docker_client, args):
     return result
 
 
+def validate_environment():
+    """Validates whether the current directory is good for running
+    paasta test_run"""
+    if os.getcwd() == os.path.expanduser("~"):
+        sys.stderr.write(
+            'ERROR: Don\'t run this command from your home directory.\n'
+            'Try changing to the root of your working copy of the service.\n'
+        )
+        sys.exit(1)
+    if not os.path.isfile(os.path.join(os.getcwd(), 'Dockerfile')):
+        sys.stderr.write(
+            'ERROR: No Dockerfile in the current directory.\n'
+            'Are you in the root folder of the service directory? Does a Dockerfile exist?'
+        )
+        sys.exit(1)
+
+
 def paasta_test_run(args):
+    validate_environment()
+
     service = figure_out_service_name(args)
+    validate_service_name(service)
 
     base_docker_url = os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
 
