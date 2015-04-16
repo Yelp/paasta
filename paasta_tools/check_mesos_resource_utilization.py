@@ -54,8 +54,8 @@ def check_thresholds(percent):
     stats = fetch_mesos_stats()
     over_threshold = False
     output = ""
-    current_mem = stats['mem_percent']
-    current_cpu = stats['cpus_percent']
+    current_mem = stats['master/mem_percent']
+    current_cpu = stats['master/cpus_percent']
     percent = int(percent)
     cpu_print_tuple = (percent, current_cpu)
     mem_print_tuple = (percent, current_mem)
