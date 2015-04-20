@@ -148,16 +148,14 @@ def run_docker_container_non_interactive(
         stdin_open=False,
     )
 
+    random_port = pick_random_port()
     container_started = False
     try:
-        docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: None})
+        docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: random_port})
 
         container_started = True
 
-        smartstack_config = load_service_namespace_config(service, instance)
-        port = smartstack_config.get('proxy_port', 0)
-
-        healthcheck_string = get_healthcheck(service, instance, port)
+        healthcheck_string = get_healthcheck(service, instance, random_port)
         sys.stdout.write(healthcheck_string)
 
         for line in docker_client.attach(create_result['Id'], stream=True, logs=True):

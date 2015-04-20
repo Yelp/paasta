@@ -1,15 +1,16 @@
-from mock import MagicMock
-from mock import patch
+import mock
 from pytest import raises
 
+from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.paasta_cli.cmds.test_run import build_docker_container
 from paasta_tools.paasta_cli.cmds.test_run import paasta_test_run
+from paasta_tools.paasta_cli.cmds.test_run import run_docker_container_non_interactive
 from paasta_tools.paasta_cli.cmds.test_run import validate_environment
 
 
 def test_build_docker_container():
-    docker_client = MagicMock()
-    args = MagicMock()
+    docker_client = mock.MagicMock()
+    args = mock.MagicMock()
 
     docker_client.build.return_value = [
         '{"stream":null}',
@@ -20,8 +21,8 @@ def test_build_docker_container():
     assert build_docker_container(docker_client, args) == '1234'
 
 
-@patch('os.path.expanduser', autospec=True)
-@patch('os.getcwd', autospec=True)
+@mock.patch('os.path.expanduser', autospec=True)
+@mock.patch('os.getcwd', autospec=True)
 def test_validate_environment_fail_in_homedir(
     mock_getcwd,
     mock_expanduser,
@@ -36,10 +37,10 @@ def test_validate_environment_fail_in_homedir(
     assert sys_exit.value.code == 1
 
 
-@patch('os.path.join', autospec=True)
-@patch('os.path.isfile', autospec=True)
-@patch('os.path.expanduser', autospec=True)
-@patch('os.getcwd', autospec=True)
+@mock.patch('os.path.join', autospec=True)
+@mock.patch('os.path.isfile', autospec=True)
+@mock.patch('os.path.expanduser', autospec=True)
+@mock.patch('os.getcwd', autospec=True)
 def test_validate_environment_fail_no_dockerfile(
     mock_getcwd,
     mock_expanduser,
@@ -57,12 +58,12 @@ def test_validate_environment_fail_no_dockerfile(
     assert sys_exit.value.code == 1
 
 
-@patch('paasta_tools.paasta_cli.cmds.test_run.validate_environment', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.test_run.figure_out_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.test_run.validate_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.test_run.run_docker_container', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.test_run.build_docker_container', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.test_run.Client', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.validate_environment', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.figure_out_service_name', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.validate_service_name', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.run_docker_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.build_docker_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.Client', autospec=True)
 def test_run_success(
     mock_Client,
     mock_build_docker_container,
@@ -78,7 +79,31 @@ def test_run_success(
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_validate_environment.return_value = None
 
-    args = MagicMock()
+    args = mock.MagicMock()
     args.service = 'fake_service'
 
     assert paasta_test_run(args) is None
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.pick_random_port', autospec=True)
+def test_run_docker_container_non_interactive(
+    mock_pick_random_port,
+):
+    mock_pick_random_port.return_value = 666
+    mock_docker_client = mock.MagicMock(spec='docker.Client')
+    mock_docker_client.create_container = mock.MagicMock(spec='docker.Client.create_container')
+    mock_docker_client.start = mock.MagicMock(spec='docker.Client.start')
+    mock_docker_client.attach = mock.MagicMock(spec='docker.Client.attach')
+    mock_docker_client.stop = mock.MagicMock(spec='docker.Client.stop')
+    mock_docker_client.remove_container = mock.MagicMock(spec='docker.Client.remove_container')
+    run_docker_container_non_interactive(
+        mock_docker_client,
+        'fake_service',
+        'fake_instance',
+        'fake_hash',
+        [],
+        'fake_command',
+        mock.MagicMock(),
+    )
+    mock_pick_random_port.assert_called_once_with()
+    mock_docker_client.start.assert_called_once_with(mock.ANY, port_bindings={CONTAINER_PORT: 666})
