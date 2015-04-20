@@ -193,7 +193,7 @@ class GetDeployStanzaTestCase(QuestionsTestCase):
             {"instancename": "performance-check"},
             {"instancename": "pnw-stagea.main"},
             {
-                "instancename": "norcal-prod.canary",
+                "instancename": "nova-prod.canary",
                 "trigger_next_step_manually": True,
             },
         ):
