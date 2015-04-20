@@ -10,6 +10,7 @@ from paasta_tools.paasta_cli.cmds import logs
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import format_log_line
 from paasta_tools.utils import get_log_name_for_service
+from scribereader.scribereader import StreamTailerSetupError
 
 
 def test_cluster_to_scribe_env_good():
@@ -234,6 +235,35 @@ def test_scribe_tail_ctrl_c():
             raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
         # If we made it here, KeyboardInterrupt was not raised and this test
         # was successful.
+
+
+def test_scribe_tail_handles_StreamTailerSetupError():
+    env = 'fake_env'
+    service = 'fake_service'
+    levels = ['fake_level1']
+    components = ['build']
+    clusters = ['fake_cluster1']
+    queue = Queue()
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.line_passes_filter', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.log', autospec=True),
+    ) as (
+        mock_scribereader,
+        mock_line_passes_filter,
+        mock_log,
+    ):
+        mock_scribereader.get_stream_tailer.side_effect = StreamTailerSetupError('bla', 'unused1', 'unused2')
+        with raises(StreamTailerSetupError) as setup_error:
+            logs.scribe_tail(
+                env,
+                service,
+                levels,
+                components,
+                clusters,
+                queue,
+            )
+        mock_log.error.assert_called_once_with('Failed to setup stream tailing for stream_paasta_fake_service in fake_env')
 
 
 def test_prettify_timestamp():
