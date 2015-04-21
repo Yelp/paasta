@@ -11,6 +11,7 @@ import sys
 
 from argcomplete.completers import ChoicesCompleter
 from scribereader import scribereader
+from scribereader.scribereader import StreamTailerSetupError
 
 from paasta_tools.marathon_tools import get_clusters_deployed_to
 from paasta_tools.marathon_tools import list_clusters
@@ -167,6 +168,11 @@ def scribe_tail(scribe_env, service, levels, components, clusters, queue):
         # Die peacefully rather than printing N threads worth of stack
         # traces.
         pass
+    except StreamTailerSetupError:
+        log.error("Failed to setup stream tailing for %s in %s" % (stream_name, scribe_env))
+        log.error("Don't Panic! This can happen the first time a service is deployed because the log")
+        log.error("doesn't exist yet. Please wait for the service to be deployed in %s and try again." % scribe_env)
+        raise
 
 
 def print_log(line, requested_levels, raw_mode=False):
