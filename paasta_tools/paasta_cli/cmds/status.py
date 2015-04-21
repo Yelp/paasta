@@ -3,6 +3,7 @@
 on the PaaSTA stack"""
 from ordereddict import OrderedDict
 from os.path import join
+import sys
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import load_deployments_json
@@ -99,8 +100,7 @@ def list_deployed_clusters(pipeline, actual_deployments):
 def get_actual_deployments(service_name):
     deployments_json = load_deployments_json(service_name, DEFAULT_SOA_DIR)
     if not deployments_json:
-        print 'Failed to locate deployments.json in default SOA directory'
-        exit(1)
+        sys.stderr.write("Warning: it looks like %s has not been deployed anywhere yet!" % service_name)
     # Create a dictionary of actual $service_name Jenkins deployments
     actual_deployments = {}
     for key in deployments_json:
