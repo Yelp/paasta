@@ -3,6 +3,7 @@ from pytest import raises
 
 from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.paasta_cli.cmds.test_run import build_docker_container
+from paasta_tools.paasta_cli.cmds.test_run import get_cmd_string
 from paasta_tools.paasta_cli.cmds.test_run import paasta_test_run
 from paasta_tools.paasta_cli.cmds.test_run import run_docker_container_non_interactive
 from paasta_tools.paasta_cli.cmds.test_run import validate_environment
@@ -107,3 +108,12 @@ def test_run_docker_container_non_interactive(
     )
     mock_pick_random_port.assert_called_once_with()
     mock_docker_client.start.assert_called_once_with(mock.ANY, port_bindings={CONTAINER_PORT: 666})
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd', autospec=True)
+def test_get_cmd_string(
+    mock_get_cmd,
+):
+    mock_get_cmd.return_value = 'fake_cmd'
+    actual = get_cmd_string()
+    assert 'fake_cmd' in actual
