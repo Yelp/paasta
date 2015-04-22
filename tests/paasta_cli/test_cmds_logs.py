@@ -254,7 +254,7 @@ def test_scribe_tail_handles_StreamTailerSetupError():
         mock_log,
     ):
         mock_scribereader.get_stream_tailer.side_effect = StreamTailerSetupError('bla', 'unused1', 'unused2')
-        with raises(StreamTailerSetupError) as setup_error:
+        with raises(StreamTailerSetupError):
             logs.scribe_tail(
                 env,
                 service,
@@ -263,7 +263,9 @@ def test_scribe_tail_handles_StreamTailerSetupError():
                 clusters,
                 queue,
             )
-        mock_log.error.assert_called_once_with('Failed to setup stream tailing for stream_paasta_fake_service in fake_env')
+        mock_log.error.assert_called_once_with(
+            'Failed to setup stream tailing for stream_paasta_fake_service in fake_env'
+        )
 
 
 def test_prettify_timestamp():
