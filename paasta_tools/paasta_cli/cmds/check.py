@@ -174,7 +174,8 @@ def marathon_check(service_path):
     print success/failure message.
 
     :param service_path: path to a directory containing the marathon yaml
-    files"""
+                         files
+    """
     if is_file_in_dir('marathon*.yaml', service_path):
         print PaastaCheckMessages.MARATHON_YAML_FOUND
     else:
