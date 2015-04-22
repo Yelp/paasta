@@ -9,7 +9,6 @@ from multiprocessing import Queue
 from Queue import Empty
 import sys
 
-from argcomplete.completers import ChoicesCompleter
 from scribereader import scribereader
 from scribereader.scribereader import StreamTailerSetupError
 
@@ -17,6 +16,7 @@ from paasta_tools.marathon_tools import get_clusters_deployed_to
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import guess_service_name
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_from_utc_to_local
@@ -40,12 +40,12 @@ def add_subparser(subparsers):
     status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect. Defaults to autodetect.'
-    ).completer = ChoicesCompleter(list_services())
+    ).completer = lazy_choices_completer(list_services())
     components_help = 'A comma separated list of the components you want logs for.'
     status_parser.add_argument(
         '-c', '--components',
         help=components_help,
-    ).completer = ChoicesCompleter(LOG_COMPONENTS.keys())
+    ).completer = lazy_choices_completer(LOG_COMPONENTS.keys())
     cluster_help = 'The clusters to see relevant logs for. Defaults to all clusters to which this service is deployed.'
     status_parser.add_argument(
         '-l', '--clusters',
