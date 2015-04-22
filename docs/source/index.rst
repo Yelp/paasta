@@ -57,7 +57,7 @@ Submodules
    :maxdepth: 2
 
    monitoring/index
-   paasta_cli/index
+   generated/paasta_tools.paasta_cli
 
 Development
 ~~~~~~~~~~~
