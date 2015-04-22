@@ -5,7 +5,11 @@ from paasta_tools import paasta_metastatus
 
 
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_stats')
+@patch('paasta_tools.paasta_metastatus.fetch_mesos_state')
+@patch('paasta_tools.paasta_metastatus.get_number_of_mesos_masters')
 def test_get_mesos_status(
+    mock_get_number_of_mesos_masters,
+    mock_fetch_mesos_state,
     mock_fetch_mesos_stats,
 ):
     mock_fetch_mesos_stats.return_value = {
@@ -19,6 +23,13 @@ def test_get_mesos_status(
         'master/slaves_active': 4,
         'master/slaves_inactive': 0,
     }
+    mock_fetch_mesos_state.return_value = {
+        'flags': {
+            'zk': 'zk://1.1.1.1:2222/fake_cluster',
+            'quorum': 2,
+        }
+    }
+    mock_get_number_of_mesos_masters.return_value = 2
     expected_cpus_output = "cpus: 3 total => 2 used, 1 available"
     expected_mem_output = \
         "memory: 10.00 GB total => 2.00 GB used, 8.00 GB available"
