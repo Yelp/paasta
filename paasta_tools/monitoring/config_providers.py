@@ -28,7 +28,7 @@ def extract_monitoring_info(framework, config, **kwargs):
     To be monitored a service *must* supply a team and notification email.
 
     :param framework: A string that represents one of the understood
-                      frameworks in the set: ('marathon', 'classic')
+                      frameworks in the set: ``('marathon', 'classic')``
     :param config: A dictionary containing the config source information.
                    This must be the input format expected by the extractor
     :param **kwargs: Any info you want to pass to the appropriate extractor

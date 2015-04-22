@@ -109,10 +109,10 @@ def get_branch_mappings(soa_dir, service, old_mappings):
                          mapping.
     :returns: A dictionary mapping service_name:branch_name to a dictionary containing:
         - 'docker_image': something like "services-service_name:paasta-hash". This is relative to the paasta docker
-            registry.
+          registry.
         - 'desired_state': either 'start' or 'stop'. Says whether this branch should be running.
         - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if
-            the other properties of this app have not changed.
+          the other properties of this app have not changed.
     """
     mappings = {}
     valid_branches = get_branches_for_service(soa_dir, service)

@@ -588,7 +588,7 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
     is useful for cli tools.
 
     :param service: Optional. If provided will only list clusters that
-    the particular service is using
+                    the particular service is using
     """
     clusters = set()
     if service is None:
@@ -603,7 +603,7 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
 
 def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
     """Looks at the clusters that a service is probably deployed to
-    by looking at marathon-*.yaml's and returns a sorted list of clusters.
+    by looking at ``marathon-*.yaml``'s and returns a sorted list of clusters.
     """
     clusters = set()
     srv_path = os.path.join(soa_dir, service)
