@@ -124,7 +124,7 @@ def test_get_cmd_string(
 def test_get_cmd_when_working(
     mock_read_local_dockerfile_lines,
 ):
-    mock_read_local_dockerfile_lines.return_value=['CMD BLA']
+    mock_read_local_dockerfile_lines.return_value = ['CMD BLA']
     actual = get_cmd()
     assert 'BLA' == actual
 
@@ -133,6 +133,6 @@ def test_get_cmd_when_working(
 def test_get_cmd_when_unknown(
     mock_read_local_dockerfile_lines,
 ):
-    mock_read_local_dockerfile_lines.return_value=[]
+    mock_read_local_dockerfile_lines.return_value = []
     actual = get_cmd()
     assert 'Unknown' in actual
