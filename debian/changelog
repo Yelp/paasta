@@ -1,3 +1,11 @@
+paasta-tools (0.9.50-yelp1) lucid; urgency=low
+
+  * 0.9.50 tagged with 'make release'
+    Commit: Fix some broken tests and flakes that somehow slipped
+    through the cracks
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 23 Apr 2015 10:47:10 -0700
+
 paasta-tools (0.9.49-yelp1) lucid; urgency=low
 
   * 0.9.49 tagged with 'make release'
