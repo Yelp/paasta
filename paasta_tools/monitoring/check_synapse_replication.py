@@ -32,11 +32,11 @@ def check_replication(service_name, service_replication,
 
         e.g. for an OK service
         (0,
-         "OK lucy has 1 instance(s)")
+        "OK lucy has 1 instance(s)")
 
         e.g. for a CRITICAL service
         (2,
-         "CRITICAL lucy has 0 instance(s), expected value in [1, 1e18])
+        "CRITICAL lucy has 0 instance(s), expected value in [1, 1e18])
     """
     code, status, interval = 0, 'OK', None
     if not (crit_range[0] <= service_replication <= crit_range[1]):

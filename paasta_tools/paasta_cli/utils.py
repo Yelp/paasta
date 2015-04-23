@@ -28,7 +28,8 @@ def file_names_in_dir(directory):
     """Read and return the files names in the directory.
 
     :return: a list of strings such as ['list','check'] that correspond to the
-    files in the directory without their extensions."""
+             files in the directory without their extensions.
+    """
     dir_path = os.path.dirname(os.path.abspath(directory.__file__))
     path = os.path.join(dir_path, '*.py')
 

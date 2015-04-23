@@ -30,7 +30,8 @@ def parse_args():
     """Initialize autocompletion and configure the argument parser.
 
     :return: an argparse.Namespace object mapping parameter names to the inputs
-    from sys.argv"""
+             from sys.argv
+    """
     parser = argparse.ArgumentParser(description="Yelp PaaSTA client")
 
     subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help")
