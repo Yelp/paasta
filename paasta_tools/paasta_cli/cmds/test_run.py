@@ -35,7 +35,26 @@ def get_healthcheck(service, instance, random_port):
 
     uri = PaastaColors.cyan('%s://%s:%d\n' % (mode, hostname, random_port))
 
-    return 'Mesos would have healthchecked your service via\n%s\n' % uri
+    return '\nMesos would have healthchecked your service via\n%s\n' % uri
+
+
+def read_local_dockerfile_lines():
+    dockerfile = os.path.join(os.getcwd(), 'Dockerfile')
+    return open(dockerfile).readlines()
+
+
+def get_cmd():
+    for line in read_local_dockerfile_lines():
+        if line.startswith('CMD'):
+            return line.lstrip('CMD ')
+    return "Unknown. Is there a CMD line in the Dockerfile?"
+
+
+def get_cmd_string():
+    cmd = get_cmd()
+    return ('You are in interactive mode, which may not run the exact command\n'
+            'that PaaSTA would have run. Run this command yourself to simulate\n'
+            'PaaSTA:\n%s\n' % PaastaColors.yellow(cmd))
 
 
 def add_subparser(subparsers):
@@ -114,6 +133,7 @@ def run_docker_container_interactive(service, instance, docker_hash, volumes, co
 
     healthcheck_string = get_healthcheck(service, instance, random_port)
     sys.stdout.write(healthcheck_string)
+    sys.stdout.write(get_cmd_string())
 
     os.execlp('/usr/bin/docker', *run_args)
 
