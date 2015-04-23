@@ -3,6 +3,7 @@ from pytest import raises
 
 from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.paasta_cli.cmds.test_run import build_docker_container
+from paasta_tools.paasta_cli.cmds.test_run import get_cmd
 from paasta_tools.paasta_cli.cmds.test_run import get_cmd_string
 from paasta_tools.paasta_cli.cmds.test_run import paasta_test_run
 from paasta_tools.paasta_cli.cmds.test_run import run_docker_container_non_interactive
@@ -117,3 +118,21 @@ def test_get_cmd_string(
     mock_get_cmd.return_value = 'fake_cmd'
     actual = get_cmd_string()
     assert 'fake_cmd' in actual
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.read_local_dockerfile_lines', autospec=True)
+def test_get_cmd_when_working(
+    mock_read_local_dockerfile_lines,
+):
+    mock_read_local_dockerfile_lines.return_value=['CMD BLA']
+    actual = get_cmd()
+    assert 'BLA' == actual
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.read_local_dockerfile_lines', autospec=True)
+def test_get_cmd_when_unknown(
+    mock_read_local_dockerfile_lines,
+):
+    mock_read_local_dockerfile_lines.return_value=[]
+    actual = get_cmd()
+    assert 'Unknown' in actual

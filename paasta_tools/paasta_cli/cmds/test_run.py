@@ -38,9 +38,13 @@ def get_healthcheck(service, instance, random_port):
     return '\nMesos would have healthchecked your service via\n%s\n' % uri
 
 
-def get_cmd():
+def read_local_dockerfile_lines():
     dockerfile = os.path.join(os.getcwd(), 'Dockerfile')
-    for line in open(dockerfile):
+    return open(dockerfile).readlines()
+
+
+def get_cmd():
+    for line in read_local_dockerfile_lines():
         if line.startswith('CMD'):
             return line.lstrip('CMD ')
     return "Unknown. Is there a CMD line in the Dockerfile?"
@@ -49,8 +53,8 @@ def get_cmd():
 def get_cmd_string():
     cmd = get_cmd()
     return ('You are in interactive mode, which may not run the exact command\n'
-            'that PaaSTA would have run. Run this command to yourself to replicate\n'
-            'PaaSTA: %s\n' % PaastaColors.yellow(cmd))
+            'that PaaSTA would have run. Run this command yourself to simulate\n'
+            'PaaSTA:\n%s\n' % PaastaColors.yellow(cmd))
 
 
 def add_subparser(subparsers):
