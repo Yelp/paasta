@@ -1,4 +1,5 @@
 #!/usr/bin/env python
+from paasta_tools.marathon_tools import NoDeploymentsAvailable
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.cmds.status import get_actual_deployments
@@ -49,14 +50,27 @@ def get_smartstack_endpoints(service):
     return endpoints
 
 
+def get_deployments_strings(service):
+    output = []
+    try:
+        deployments = get_actual_deployments(service)
+    except NoDeploymentsAvailable:
+        deployments = {}
+    if deployments == {}:
+        output.append(' - N/A: Not deployed to any PaaSTA Clusters')
+    else:
+        for cluster in deployments_to_clusters(deployments):
+            output.append(' - %s' % cluster)
+    return output
+
+
 def get_service_info(service):
     service_configuration = read_service_configuration(service)
     description = service_configuration.get('description', NO_DESCRIPTION_MESSAGE)
     external_link = service_configuration.get('external_link', NO_EXTERNAL_LINK_MESSAGE)
     pipeline_url = get_pipeline_url(service)
-    deployments = get_actual_deployments(service)
-    git_url = get_git_url(service)
     smartstack_endpoints = get_smartstack_endpoints(service)
+    git_url = get_git_url(service)
 
     output = []
     output.append('Service Name: %s' % service)
@@ -67,8 +81,7 @@ def get_service_info(service):
     output.append('Git Repo: %s' % git_url)
     output.append('Jenkins Pipeline: %s' % pipeline_url)
     output.append('Deployed to the following clusters:')
-    for cluster in deployments_to_clusters(deployments):
-        output.append(' - %s' % cluster)
+    output.extend(get_deployments_strings(service))
     if smartstack_endpoints:
         output.append('Smartstack endpoint(s):')
         for endpoint in smartstack_endpoints:

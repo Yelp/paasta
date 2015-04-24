@@ -57,24 +57,6 @@ def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
     assert output == expected_output
 
 
-@patch('paasta_tools.paasta_cli.cmds.status.load_deployments_json', autospec=True)
-@patch('sys.stdout', new_callable=StringIO)
-def test_status_missing_deployments_err(mock_stdout, mock_get_deployments_json):
-    # paasta_status exits on error if deployments.json missing
-    mock_get_deployments_json.return_value = marathon_tools.DeploymentsJson({})
-
-    expected_output = 'Failed to locate deployments.json ' \
-                      'in default SOA directory\n'
-
-    # Fail if exit(1) does not get called
-    with raises(SystemExit) as sys_exit:
-        status.get_actual_deployments('fake_service')
-
-    output = mock_stdout.getvalue()
-    assert sys_exit.value.code == 1
-    assert output == expected_output
-
-
 @patch('paasta_tools.paasta_cli.cmds.status.execute_paasta_serviceinit_on_remote_master')
 @patch('sys.stdout', new_callable=StringIO)
 def test_report_status_for_cluster_displays_deployed_service(

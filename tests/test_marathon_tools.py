@@ -71,9 +71,11 @@ class TestMarathonTools:
         with contextlib.nested(
             mock.patch('marathon_tools.open', create=True, return_value=file_mock),
             mock.patch('json.load', autospec=True, return_value=fake_json),
+            mock.patch('paasta_tools.marathon_tools.os.path.isfile', autospec=True, return_value=True),
         ) as (
             open_patch,
-            json_patch
+            json_patch,
+            isfile_patch,
         ):
             actual = marathon_tools.load_deployments_json('fake_service', fake_dir)
             open_patch.assert_called_once_with(fake_path)

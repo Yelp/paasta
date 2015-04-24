@@ -1,6 +1,7 @@
 import contextlib
 import mock
 
+from paasta_tools.marathon_tools import NoDeploymentsAvailable
 from paasta_tools.paasta_cli.cmds import info
 
 
@@ -77,3 +78,22 @@ def test_get_smartstack_endpoints_tcp():
         expected = ["tcp://169.254.255.254:1234 (tcpone)"]
         actual = info.get_smartstack_endpoints('unused')
         assert actual == expected
+
+
+def test_get_deployments_strings_normal_case():
+    with mock.patch(
+        'paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True
+    ) as mock_get_actual_deployments:
+        mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
+        actual = info.get_deployments_strings('unused')
+        assert ' - clusterA' in actual
+        assert ' - clusterB' in actual
+
+
+def test_get_deployments_strings_no_deployments():
+    with mock.patch(
+        'paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True
+    ) as mock_get_actual_deployments:
+        mock_get_actual_deployments.side_effect = NoDeploymentsAvailable
+        actual = info.get_deployments_strings('unused')
+        assert 'N/A: Not deployed' in actual[0]

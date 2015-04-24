@@ -263,9 +263,7 @@ def test_scribe_tail_handles_StreamTailerSetupError():
                 clusters,
                 queue,
             )
-        mock_log.error.assert_any_call(
-            'Failed to setup stream tailing for stream_paasta_fake_service in fake_env'
-        )
+        mock_log.error.assert_any_call('Failed to setup stream tailing for stream_paasta_fake_service in fake_env')
 
 
 def test_prettify_timestamp():
