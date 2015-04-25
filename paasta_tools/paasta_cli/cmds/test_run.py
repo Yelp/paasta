@@ -256,7 +256,7 @@ def build_docker_container(docker_client, args):
             sys.stdout.write(stream_line)
 
         if stream_line and stream_line.startswith('Successfully built '):
-            """Strip the beginning of a string and \n in the end."""
+            # Strip the beginning of a string and \n in the end.
             result = stream_line[len('Successfully built '):]
             result = result[:len(result) - 1]
 
