@@ -7,8 +7,8 @@ import sys
 
 import yaml
 
-from service_wizard.prompt import ask
-from service_wizard.autosuggest import suggest_smartstack_proxy_port
+from paasta_tools.paasta_cli.fsm.prompt import ask
+from paasta_tools.paasta_cli.fsm.autosuggest import suggest_smartstack_proxy_port
 
 
 # TODO: from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS

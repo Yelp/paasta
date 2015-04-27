@@ -2,7 +2,7 @@ from os import path
 # TODO: Use pystache instead of string.Template?
 import string
 
-from service_wizard import config
+from paasta_tools.paasta_cli.fsm import config
 
 
 class NoSuchTemplate(Exception):

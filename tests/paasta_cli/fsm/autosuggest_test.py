@@ -3,8 +3,8 @@ from contextlib import nested
 import mock
 import testify as T
 
-from service_wizard import autosuggest
-from service_wizard import config
+from paasta_tools.paasta_cli.fsm import autosuggest
+from paasta_tools.paasta_cli.fsm import config
 
 
 class SuggestPortTestCase(T.TestCase):

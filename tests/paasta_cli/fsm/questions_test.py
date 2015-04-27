@@ -1,8 +1,8 @@
 import mock
 import testify as T
 
-import fsm
-from service_wizard.questions import get_clusternames_from_deploy_stanza
+import paasta_tools.paasta_cli.cmds.fsm as fsm
+from paasta_tools.paasta_cli.fsm.questions import get_clusternames_from_deploy_stanza
 
 
 class QuestionsTestCase(T.TestCase):

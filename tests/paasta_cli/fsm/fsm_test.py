@@ -3,9 +3,9 @@ import contextlib
 import mock
 import testify as T
 
-import fsm
-from service_wizard.questions import _yamlize
-from service_wizard.service import SrvReaderWriter
+import paasta_tools.paasta_cli.cmds.fsm as fsm
+from paasta_tools.paasta_cli.fsm.questions import _yamlize
+from paasta_tools.paasta_cli.fsm.service import SrvReaderWriter
 
 
 class ValidateOptionsTest(T.TestCase):

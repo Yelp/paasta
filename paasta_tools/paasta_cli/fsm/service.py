@@ -1,6 +1,6 @@
 import os
 
-from service_wizard import paths
+from paasta_tools.paasta_cli.fsm import paths
 
 
 class Service(object):

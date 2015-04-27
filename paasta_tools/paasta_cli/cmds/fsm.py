@@ -4,15 +4,15 @@ import argparse
 from os.path import exists
 import sys
 
-from service_wizard.questions import _yamlize
-from service_wizard.questions import get_clusternames_from_deploy_stanza
-from service_wizard.questions import get_deploy_stanza
-from service_wizard.questions import get_marathon_stanza
-from service_wizard.questions import get_monitoring_stanza
-from service_wizard.questions import get_service_stanza
-from service_wizard.questions import get_smartstack_stanza
-from service_wizard.questions import get_srvname
-from service_wizard.service import Service
+from paasta_tools.paasta_cli.fsm.questions import _yamlize
+from paasta_tools.paasta_cli.fsm.questions import get_clusternames_from_deploy_stanza
+from paasta_tools.paasta_cli.fsm.questions import get_deploy_stanza
+from paasta_tools.paasta_cli.fsm.questions import get_marathon_stanza
+from paasta_tools.paasta_cli.fsm.questions import get_monitoring_stanza
+from paasta_tools.paasta_cli.fsm.questions import get_service_stanza
+from paasta_tools.paasta_cli.fsm.questions import get_smartstack_stanza
+from paasta_tools.paasta_cli.fsm.questions import get_srvname
+from paasta_tools.paasta_cli.fsm.service import Service
 
 
 def parse_args():

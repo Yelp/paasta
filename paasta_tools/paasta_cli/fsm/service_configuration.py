@@ -8,7 +8,7 @@ import re
 
 import service_configuration_lib
 
-from service_wizard import config
+from paasta_tools.paasta_cli.fsm import config
 
 
 PROD_RE = re.compile(r"-(sfo\d|iad\d)$")

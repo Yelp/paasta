@@ -4,8 +4,8 @@ import os.path
 
 import yaml
 
-from service_wizard import config
-from service_wizard import service_configuration
+from paasta_tools.paasta_cli.fsm import config
+from paasta_tools.paasta_cli.fsm import service_configuration
 
 
 def _get_port_from_file(root, file):
