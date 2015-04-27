@@ -77,12 +77,19 @@ configuration for the running image:
 * ``--tty``: Mesos containers are *not* given a tty.
 
 * ``--volume``: Volume mapping is controlled via the paasta_tools
-  configuration. This is not user-controlled for security reasons. The default
-  mappings include common configuration folders (like `srv-configs
-  <https://trac.yelpcorp.com/wiki/HowToService/Configuration>`_), `yelpsoa-configs
-  <https://docs.google.com/a/yelp.com/document/d/1ZBg5ykniRU30UXj4YcsKfmmnuegQbtR2VuqCAIGi-50/edit#bookmark=id.nn2fb0z24rjh>`_,
-  and key files in ``/nail/etc`` (``habitat``, ``ecosystem``, etc). The aws keys
-  in ``/etc/boto_cfg`` are also included by default.
+  configuration. This is not user-controlled for security reasons.
+  The default mappings include:
+
+  * ``/nail/srv/`` (including `/nail/srv/configs <https://trac.yelpcorp.com/wiki/HowToService/Configuration>`_)
+
+  * ``/nail/etc/services`` (`yelpsoa-configs <https://docs.google.com/a/yelp.com/document/d/1ZBg5ykniRU30UXj4YcsKfmmnuegQbtR2VuqCAIGi-50/edit#bookmark=id.nn2fb0z24rjh>`_)
+
+  * ``/nail/etc/[habitat,datacenter,ecosystem,superregion,etc]`` (Common `location discovery files <https://trac.yelpcorp.com/wiki/Habitat_Datacenter_Ecosystem_Runtimeenv_Region_Superregion>`_)
+
+  * ``/etc/boto_cfg`` (`rotated aws credentials <https://trac.yelpcorp.com/wiki/ztmPage/AutoReloadAWSCreds>`_)
+
+  * ``/var/run/synapse/services`` (`raw service discovery files <https://jira.yelpcorp.com/browse/PAASTA-618>`_)
+
 
 * ``--workdir``: Mesos containers are launched in a temporary "workspace"
   directory on disk. Use the workdir sparingly and try not to output files.
