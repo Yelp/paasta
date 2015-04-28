@@ -1,34 +1,38 @@
 import mock
-import testify as T
+from pytest import raises
+from pytest import yield_fixture
 
 import paasta_tools.paasta_cli.cmds.fsm as fsm
 from paasta_tools.paasta_cli.fsm.questions import get_clusternames_from_deploy_stanza
 
 
-class QuestionsTestCase(T.TestCase):
-    @T.setup_teardown
-    def setup_mocks(self):
+class TestQuestions:
+    @yield_fixture
+    def mock_ask(self):
         """Calling raw_input() from automated tests can ruin your day, so we'll
         mock it out even for those situations where we don't care about it and
         "shouldn't" call raw_input().
+
+        I guess under pytest this only works for methods that include this
+        fixture explicitly. So much for general safety I guess :/.
         """
-        with mock.patch("service_wizard.questions.ask", autospec=True) as (
-            self.mock_ask
+        with mock.patch("paasta_tools.paasta_cli.fsm.questions.ask", autospec=True) as (
+            mock_ask
         ):
-            yield
+            yield mock_ask
 
 
-class GetSrvnameTestCase(QuestionsTestCase):
-    def test_arg_passed_in(self):
+class TestGetSrvnameTestCase(TestQuestions):
+    def test_arg_passed_in(self, mock_ask):
         """If a value is specified, use it."""
         srvname = "services/fake"
         auto = "UNUSED"
         expected = srvname
         actual = fsm.get_srvname(srvname, auto)
-        T.assert_equal(expected, actual)
-        T.assert_equal(0, self.mock_ask.call_count)
+        assert expected == actual
+        assert 0 == mock_ask.call_count
 
-    def test_arg_not_passed_in_auto_true(self):
+    def test_arg_not_passed_in_auto_true(self, mock_ask):
         """If a value is not specified but --auto was requested, calculate and
         use a sane default.
 
@@ -36,47 +40,48 @@ class GetSrvnameTestCase(QuestionsTestCase):
         """
         srvname = None
         auto = True
-        T.assert_raises_and_contains(
-            SystemExit,
-            "I'd Really Rather You Didn't Use --auto Without --service-name",
-            fsm.get_srvname,
-            srvname,
-            auto,
-        )
-        T.assert_equal(0, self.mock_ask.call_count)
+        with raises(SystemExit) as err:
+            fsm.get_srvname(srvname, auto)
+        assert "I'd Really Rather You Didn't Use --auto Without --service-name" in err.value
+        assert 0 == mock_ask.call_count
 
-    def test_arg_not_passed_in_auto_false(self):
+    def test_arg_not_passed_in_auto_false(self, mock_ask):
         """If a value is not specified but and --auto was not requested, prompt
         the user.
         """
         srvname = None
         auto = False
         fsm.get_srvname(srvname, auto)
-        T.assert_equal(1, self.mock_ask.call_count)
+        assert 1 == mock_ask.call_count
 
 
-class GetSmartstackStanzaTestCase(QuestionsTestCase):
-    @T.setup
-    def setup_canned_data(self):
-        self.yelpsoa_config_root = "fake_yelpsoa_config_root"
-        self.suggested_port = 12345
-        self.expected_stanza = {
+class TestGetSmartstackStanzaTestCase(TestQuestions):
+    @yield_fixture
+    def fake_suggested_port(self):
+        fake_suggested_port = 12345
+        yield fake_suggested_port
+
+    @yield_fixture
+    def fake_expected_stanza(self, fake_suggested_port):
+        fake_expected_stanza = {
             "main": {
-                "proxy_port": self.suggested_port,
+                "proxy_port": fake_suggested_port,
             }
         }
+        yield fake_expected_stanza
 
-    def test_arg_passed_in(self):
+    def test_arg_passed_in(self, mock_ask, fake_suggested_port, fake_expected_stanza):
         """If a port is specified, use it."""
-        port = self.suggested_port
+        yelpsoa_config_root = "fake_yelpsoa_config_root"
+        port = fake_suggested_port
         auto = "UNUSED"
 
-        actual = fsm.get_smartstack_stanza(self.yelpsoa_config_root, auto, port)
+        actual = fsm.get_smartstack_stanza(yelpsoa_config_root, auto, port)
 
-        T.assert_equal(self.expected_stanza, actual)
-        T.assert_equal(0, self.mock_ask.call_count)
+        assert fake_expected_stanza == actual
+        assert 0 == mock_ask.call_count
 
-    def test_arg_not_passed_in_auto_true(self):
+    def test_arg_not_passed_in_auto_true(self, mock_ask, fake_suggested_port, fake_expected_stanza):
         """If a value is not specified but --auto was requested, calculate and
         use a sane default.
         """
@@ -85,20 +90,20 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         auto = True
 
         with mock.patch(
-            "service_wizard.questions.suggest_smartstack_proxy_port",
+            "paasta_tools.paasta_cli.fsm.questions.suggest_smartstack_proxy_port",
             autospec=True,
-            return_value=self.suggested_port,
+            return_value=fake_suggested_port,
         ) as (
-            self.mock_suggest_smartstack_proxy_port
+            mock_suggest_smartstack_proxy_port
         ):
             actual = fsm.get_smartstack_stanza(yelpsoa_config_root, auto, port)
 
-        self.mock_suggest_smartstack_proxy_port.assert_called_once_with(
+        mock_suggest_smartstack_proxy_port.assert_called_once_with(
             yelpsoa_config_root)
-        T.assert_equal(self.expected_stanza, actual)
-        T.assert_equal(0, self.mock_ask.call_count)
+        assert fake_expected_stanza == actual
+        assert 0 == mock_ask.call_count
 
-    def test_arg_not_passed_in_auto_false(self):
+    def test_arg_not_passed_in_auto_false(self, mock_ask, fake_suggested_port, fake_expected_stanza):
         """If a value is not specified and --auto was not requested, prompt
         the user.
         """
@@ -107,51 +112,47 @@ class GetSmartstackStanzaTestCase(QuestionsTestCase):
         suggested_port = 12345
         auto = False
 
-        self.mock_ask.return_value = suggested_port
+        mock_ask.return_value = suggested_port
         with mock.patch(
-            "service_wizard.questions.suggest_smartstack_proxy_port",
+            "paasta_tools.paasta_cli.fsm.questions.suggest_smartstack_proxy_port",
             autospec=True,
             return_value=suggested_port,
         ) as (
-            self.mock_suggest_smartstack_proxy_port
+            mock_suggest_smartstack_proxy_port
         ):
             actual = fsm.get_smartstack_stanza(yelpsoa_config_root, auto, port)
 
-        self.mock_suggest_smartstack_proxy_port.assert_called_once_with(
+        mock_suggest_smartstack_proxy_port.assert_called_once_with(
             yelpsoa_config_root)
-        T.assert_equal(self.expected_stanza, actual)
-        self.mock_ask.assert_called_once_with(
+        assert fake_expected_stanza == actual
+        mock_ask.assert_called_once_with(
             mock.ANY,
             suggested_port,
         )
 
 
-class GetMonitoringStanzaTestCase(QuestionsTestCase):
+class TestGetMonitoringStanzaTestCase(TestQuestions):
     def test_arg_passed_in(self):
         team = "america world police"
         auto = "UNUSED"
 
         actual = fsm.get_monitoring_stanza(auto, team)
-        T.assert_in(("team", team), actual.items())
-        T.assert_in(("service_type", "marathon"), actual.items())
+        assert ("team", team) in actual.items()
+        assert ("service_type", "marathon") in actual.items()
 
-    def test_arg_not_passed_in_auto_true(self):
+    def test_arg_not_passed_in_auto_true(self, mock_ask):
         """If a value is not specified but --auto was requested, calculate and
         use a sane default.
         """
         team = None
         auto = True
 
-        T.assert_raises_and_contains(
-            SystemExit,
-            "I'd Really Rather You Didn't Use --auto Without --team",
-            fsm.get_monitoring_stanza,
-            auto,
-            team,
-        )
-        T.assert_equal(0, self.mock_ask.call_count)
+        with raises(SystemExit) as err:
+            fsm.get_monitoring_stanza(auto, team)
+        assert "I'd Really Rather You Didn't Use --auto Without --team" in err.value
+        assert 0 == mock_ask.call_count
 
-    def test_arg_not_passed_in_auto_false(self):
+    def test_arg_not_passed_in_auto_false(self, mock_ask):
         """If a value is not specified but --auto was not requested, prompt the
         user.
         """
@@ -159,10 +160,10 @@ class GetMonitoringStanzaTestCase(QuestionsTestCase):
         auto = False
 
         actual = fsm.get_monitoring_stanza(auto, team)
-        T.assert_equal(1, self.mock_ask.call_count)
-        T.assert_in(("team", self.mock_ask.return_value), actual.items())
+        assert 1 == mock_ask.call_count
+        assert ("team", mock_ask.return_value) in actual.items()
 
-    def test_arg_not_passed_in_auto_true_legacy_style_true(self):
+    def test_arg_not_passed_in_auto_true_legacy_style_true(self, mock_ask):
         """If a value is not specified and --auto was requested and
         legacy_style is on, prompt the user.
         """
@@ -170,21 +171,21 @@ class GetMonitoringStanzaTestCase(QuestionsTestCase):
         auto = True
 
         actual = fsm.get_monitoring_stanza(auto, team, legacy_style=True)
-        T.assert_equal(1, self.mock_ask.call_count)
-        T.assert_in(("team", self.mock_ask.return_value), actual.items())
+        assert 1 == mock_ask.call_count
+        assert ("team", mock_ask.return_value) in actual.items()
 
     def test_service_type_marathon_when_legacy_style_true(self):
         team = "whatever"
         auto = "UNUSED"
 
         actual = fsm.get_monitoring_stanza(auto, team, legacy_style=True)
-        T.assert_in(("service_type", "classic"), actual.items())
+        assert ("service_type", "classic") in actual.items()
 
 
-class GetDeployStanzaTestCase(QuestionsTestCase):
+class TestGetDeployStanzaTestCase(TestQuestions):
     def test(self):
         actual = fsm.get_deploy_stanza()
-        T.assert_in("pipeline", actual.keys())
+        assert "pipeline" in actual.keys()
         actual["pipeline"] = actual["pipeline"]
 
         for expected_entry in (
@@ -197,15 +198,15 @@ class GetDeployStanzaTestCase(QuestionsTestCase):
                 "trigger_next_step_manually": True,
             },
         ):
-            T.assert_in(expected_entry, actual["pipeline"])
+            assert expected_entry in actual["pipeline"]
 
 
-class GetClusternamesFromDeployStanzaTestCase(QuestionsTestCase):
+class TestGetClusternamesFromDeployStanzaTestCase(TestQuestions):
     def test_empty(self):
         deploy_stanza = {}
         expected = set()
         actual = get_clusternames_from_deploy_stanza(deploy_stanza)
-        T.assert_equal(expected, actual)
+        assert expected == actual
 
     def test_non_empty(self):
         deploy_stanza = {}
@@ -224,11 +225,11 @@ class GetClusternamesFromDeployStanzaTestCase(QuestionsTestCase):
             "clustername-without-namespace",
         ])
         actual = get_clusternames_from_deploy_stanza(deploy_stanza)
-        T.assert_equal(expected, actual)
+        assert expected == actual
 
 
-class GetMarathonStanzaTestCase(QuestionsTestCase):
+class TestGetMarathonStanzaTestCase(TestQuestions):
     def test(self):
         actual = fsm.get_marathon_stanza()
-        T.assert_in("main", actual.keys())
-        T.assert_in("canary", actual.keys())
+        assert "main" in actual.keys()
+        assert "canary" in actual.keys()
