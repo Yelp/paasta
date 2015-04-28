@@ -1,4 +1,4 @@
-#!/usr/bin/python
+#!/usr/bin/env python
 
 import argparse
 from os.path import exists
@@ -13,6 +13,10 @@ from paasta_tools.paasta_cli.fsm.questions import get_service_stanza
 from paasta_tools.paasta_cli.fsm.questions import get_smartstack_stanza
 from paasta_tools.paasta_cli.fsm.questions import get_srvname
 from paasta_tools.paasta_cli.fsm.service import Service
+
+
+def add_subparser(subparsers):
+    pass
 
 
 def parse_args():
