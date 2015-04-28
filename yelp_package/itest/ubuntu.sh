@@ -29,6 +29,7 @@ help
 emergency-stop
 emergency-start
 emergency-restart
+fsm
 info
 itest
 mark-for-deployment
