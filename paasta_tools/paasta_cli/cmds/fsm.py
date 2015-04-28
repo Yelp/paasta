@@ -1,6 +1,5 @@
 #!/usr/bin/env python
 
-import argparse
 from os.path import exists
 import sys
 
@@ -16,33 +15,33 @@ from paasta_tools.paasta_cli.fsm.service import Service
 
 
 def add_subparser(subparsers):
-    pass
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description="Configure A New PaaSTA Service -- http://y/paasta For Details")
-    parser.add_argument(
+    fsm_parser = subparsers.add_parser(
+        "fsm",
+        description="Configure A New PaaSTA Service -- http://y/paasta-deploy For Details",
+        help="Start A New Service From Scratch",
+    )
+    fsm_parser.add_argument(
         "-y", "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
         default=None,
         required=True,
         help="Path to root of yelpsoa-configs checkout (required)")
-    parser.add_argument(
+    fsm_parser.add_argument(
         "-s", "--service-name",
         dest="srvname",
         default=None,
         help="Name of service being configured (--auto not available)")
-    parser.add_argument(
+    fsm_parser.add_argument(
         "--description",
         dest="description",
         default=None,
         help="One line description of the service. If AUTO will have placeholder text")
-    parser.add_argument(
+    fsm_parser.add_argument(
         "--external-link",
         dest="external_link",
         default=None,
         help="Link to a CEP or SCF of the service. If AUTO will have placeholder text")
-    parser.add_argument(
+    fsm_parser.add_argument(
         "-a",
         "--auto",
         dest="auto",
@@ -51,35 +50,30 @@ def parse_args():
         help="Automatically calculate and use sane defaults. Exit violently if "
              "any values cannot be automatically calculated.",
     )
-    parser.add_argument(
+    fsm_parser.add_argument(
         "-p", "--port",
         dest="port",
         default=None,
         help="Smartstack proxy port used by service.")
-    parser.add_argument(
+    fsm_parser.add_argument(
         "-t", "--team",
         dest="team",
         default=None,
         help="Team responsible for the service. Used by various notification "
              "systems. (--auto not available)",
     )
-
-    args = parser.parse_args()
-    validate_args(parser, args)
-    return args
+    fsm_parser.set_defaults(command=paasta_fsm)
 
 
-def validate_args(parser, args):
+def validate_args(args):
     """Does sys.exit() if an invalid combination of args is specified.
     Otherwise returns None (implicitly)."""
     if not exists(args.yelpsoa_config_root):
-        parser.print_usage()
         sys.exit(
             "I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
             "Like %s" % args.yelpsoa_config_root
         )
     if args.auto and not args.srvname:
-        parser.print_usage()
         sys.exit(
             "I'd Really Rather You Didn't Use --auto Without --service-name"
         )
@@ -113,7 +107,8 @@ def write_paasta_config(
         srv.io.symlink_file_relative("marathon-SHARED.yaml", "marathon-%s.yaml" % clustername)
 
 
-def main(args):
+def paasta_fsm(args):
+    validate_args(args)
     (srvname, service_stanza, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team) = (
         get_paasta_config(
             args.yelpsoa_config_root,
@@ -140,8 +135,3 @@ def main(args):
     print
     print "Customize Them If It Makes You Happy -- http://y/paasta For Details"
     print "Remember To Add, Commit, And Push When You're Done!"
-
-
-if __name__ == "__main__":
-    args = parse_args()
-    main(args)
