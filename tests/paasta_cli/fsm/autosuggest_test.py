@@ -122,6 +122,10 @@ class TestSuggestRunsOn:
     def mock_other_stuff(self):
         """Since we don't actually use any of these mocks, I'll patch them
         together and not yield any of them!
+
+        Note that pytest won't actually patch these things unless we introduce
+        a dependency on this fixture by referencing it in the test method's
+        args. I'm not sure how I feel about this yet.
         """
         with nested(
             mock.patch(
@@ -141,7 +145,7 @@ class TestSuggestRunsOn:
         ) as (_, _, _):
                 yield
 
-    def test_returns_original_if_no_munging_occurred(self):
+    def test_returns_original_if_no_munging_occurred(self, mock_other_stuff):
         expected = "things,not,needing,munging"
         actual = autosuggest.suggest_runs_on(expected)
         assert expected == actual
@@ -151,12 +155,12 @@ class TestSuggestRunsOn:
         autosuggest.suggest_runs_on(runs_on)
         assert 0 == mock_load_service_yamls.call_count
 
-    def test_loads_yamls_if_auto(self, mock_load_service_yamls):
+    def test_loads_yamls_if_auto(self, mock_other_stuff, mock_load_service_yamls):
         runs_on = "AUTO"
         autosuggest.suggest_runs_on(runs_on)
         assert 1 == mock_load_service_yamls.call_count
 
-    def test_loads_yamls_if_HABITAT(self, mock_load_service_yamls):
+    def test_loads_yamls_if_HABITAT(self, mock_other_stuff, mock_load_service_yamls):
         runs_on = "FAKE_HABITAT1"
         autosuggest.suggest_runs_on(runs_on)
         assert 1 == mock_load_service_yamls.call_count

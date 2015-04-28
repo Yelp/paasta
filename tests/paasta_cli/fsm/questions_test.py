@@ -132,7 +132,7 @@ class TestGetSmartstackStanzaTestCase(TestQuestions):
 
 
 class TestGetMonitoringStanzaTestCase(TestQuestions):
-    def test_arg_passed_in(self):
+    def test_arg_passed_in(self, mock_ask):
         team = "america world police"
         auto = "UNUSED"
 
@@ -174,7 +174,7 @@ class TestGetMonitoringStanzaTestCase(TestQuestions):
         assert 1 == mock_ask.call_count
         assert ("team", mock_ask.return_value) in actual.items()
 
-    def test_service_type_marathon_when_legacy_style_true(self):
+    def test_service_type_marathon_when_legacy_style_true(self, mock_ask):
         team = "whatever"
         auto = "UNUSED"
 
@@ -183,7 +183,7 @@ class TestGetMonitoringStanzaTestCase(TestQuestions):
 
 
 class TestGetDeployStanzaTestCase(TestQuestions):
-    def test(self):
+    def test(self, mock_ask):
         actual = fsm.get_deploy_stanza()
         assert "pipeline" in actual.keys()
         actual["pipeline"] = actual["pipeline"]
@@ -202,13 +202,13 @@ class TestGetDeployStanzaTestCase(TestQuestions):
 
 
 class TestGetClusternamesFromDeployStanzaTestCase(TestQuestions):
-    def test_empty(self):
+    def test_empty(self, mock_ask):
         deploy_stanza = {}
         expected = set()
         actual = get_clusternames_from_deploy_stanza(deploy_stanza)
         assert expected == actual
 
-    def test_non_empty(self):
+    def test_non_empty(self, mock_ask):
         deploy_stanza = {}
         deploy_stanza["pipeline"] = [
             {"instancename": "itest", },
@@ -229,7 +229,7 @@ class TestGetClusternamesFromDeployStanzaTestCase(TestQuestions):
 
 
 class TestGetMarathonStanzaTestCase(TestQuestions):
-    def test(self):
+    def test(self, mock_ask):
         actual = fsm.get_marathon_stanza()
         assert "main" in actual.keys()
         assert "canary" in actual.keys()
