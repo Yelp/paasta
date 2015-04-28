@@ -1,13 +1,13 @@
 from contextlib import nested
 
 import mock
-import testify as T
+from pytest import yield_fixture
 
 from paasta_tools.paasta_cli.fsm import autosuggest
 from paasta_tools.paasta_cli.fsm import config
 
 
-class SuggestPortTestCase(T.TestCase):
+class TestSuggestPort:
     def test_suggest_port(self):
         # mock.patch was very confused by the config module, so I'm doing it
         # this way. One more reason to disapprove of this global config module
@@ -39,22 +39,22 @@ class SuggestPortTestCase(T.TestCase):
         mock_get_port_from_file = mock.Mock(side_effect=get_port_from_file_side_effect)
         with nested(
             mock.patch("os.walk", mock_walk),
-            mock.patch("service_wizard.autosuggest._get_port_from_file", mock_get_port_from_file),
+            mock.patch("paasta_tools.paasta_cli.fsm.autosuggest._get_port_from_file", mock_get_port_from_file),
         ):
             actual = autosuggest.suggest_port()
         # Sanity check: our mock was called once for each legit port file in
         # walk_return
-        T.assert_equal(mock_get_port_from_file.call_count, 3)
+        assert mock_get_port_from_file.call_count == 3
 
         # What we came here for: the actual output of the function under test
-        T.assert_equal(actual, 13002 + 1)  # highest port + 1
+        assert actual == 13002 + 1  # highest port + 1
 
 
-class GetSmartstackProxyPortFromFileTestCase(T.TestCase):
+class TestGetSmartstackProxyPortFromFile:
     def test_multiple_stanzas_per_file(self):
         with nested(
             mock.patch("__builtin__.open", autospec=True),
-            mock.patch("service_wizard.autosuggest.yaml", autospec=True),
+            mock.patch("paasta_tools.paasta_cli.fsm.autosuggest.yaml", autospec=True),
         ) as (
             mock_open,
             mock_yaml,
@@ -71,11 +71,11 @@ class GetSmartstackProxyPortFromFileTestCase(T.TestCase):
                 "fake_root",
                 "smartstack.yaml",
             )
-            T.assert_equal(actual, 2)
+            assert actual == 2
 
 
-# Shamelessly copied from SuggestPortTestCase
-class SuggestSmartstackProxyPortTestCase(T.TestCase):
+# Shamelessly copied from TestSuggestPort
+class TestSuggestSmartstackProxyPort:
     def test_suggest_smartstack_proxy_port(self):
         yelpsoa_config_root = "fake_yelpsoa_config_root"
         walk_return = [
@@ -97,51 +97,72 @@ class SuggestSmartstackProxyPortTestCase(T.TestCase):
         mock_get_smartstack_proxy_port_from_file = mock.Mock(side_effect=get_smarstack_proxy_port_from_file_side_effect)
         with nested(
             mock.patch("os.walk", mock_walk),
-            mock.patch("service_wizard.autosuggest._get_smartstack_proxy_port_from_file",
+            mock.patch("paasta_tools.paasta_cli.fsm.autosuggest._get_smartstack_proxy_port_from_file",
                        mock_get_smartstack_proxy_port_from_file),
         ):
             actual = autosuggest.suggest_smartstack_proxy_port(yelpsoa_config_root)
         # Sanity check: our mock was called once for each legit port file in
         # walk_return
-        T.assert_equal(mock_get_smartstack_proxy_port_from_file.call_count, 3)
+        assert mock_get_smartstack_proxy_port_from_file.call_count == 3
 
         # What we came here for: the actual output of the function under test
-        T.assert_equal(actual, 20002 + 1)  # highest port + 1
+        assert actual == 20002 + 1  # highest port + 1
 
 
-class SuggestRunsOnTestCase(T.TestCase):
-    @T.setup_teardown
-    def mock_service_configuration_lookups(self):
+class TestSuggestRunsOn:
+    @yield_fixture
+    def mock_load_service_yamls(self):
+        with mock.patch(
+            "paasta_tools.paasta_cli.fsm.service_configuration.load_service_yamls",
+            autospec=True,
+        ) as mock_load_service_yamls:
+                yield mock_load_service_yamls
+
+    @yield_fixture
+    def mock_other_stuff(self):
+        """Since we don't actually use any of these mocks, I'll patch them
+        together and not yield any of them!
+        """
         with nested(
-            mock.patch("service_wizard.service_configuration.load_service_yamls"),
-            mock.patch("service_wizard.service_configuration.collate_service_yamls"),
-            mock.patch("service_wizard.autosuggest.suggest_all_hosts", return_value=""),
-            mock.patch("service_wizard.autosuggest.suggest_hosts_for_habitat", return_value=""),
-        ) as (self.mock_load_service_yamls, _, _, _):
+            mock.patch(
+                "paasta_tools.paasta_cli.fsm.service_configuration.collate_service_yamls",
+                autospec=True,
+            ),
+            mock.patch(
+                "paasta_tools.paasta_cli.fsm.autosuggest.suggest_all_hosts",
+                autospec=True,
+                return_value=""
+            ),
+            mock.patch(
+                "paasta_tools.paasta_cli.fsm.autosuggest.suggest_hosts_for_habitat",
+                autospec=True,
+                return_value=""
+            ),
+        ) as (_, _, _):
                 yield
 
     def test_returns_original_if_no_munging_occurred(self):
         expected = "things,not,needing,munging"
         actual = autosuggest.suggest_runs_on(expected)
-        T.assert_equal(expected, actual)
+        assert expected == actual
 
-    def test_does_not_load_yamls_if_no_munging_occurred(self):
+    def test_does_not_load_yamls_if_no_munging_occurred(self, mock_load_service_yamls):
         runs_on = "things,not,needing,munging"
         autosuggest.suggest_runs_on(runs_on)
-        T.assert_equal(0, self.mock_load_service_yamls.call_count)
+        assert 0 == mock_load_service_yamls.call_count
 
-    def test_loads_yamls_if_auto(self):
+    def test_loads_yamls_if_auto(self, mock_load_service_yamls):
         runs_on = "AUTO"
         autosuggest.suggest_runs_on(runs_on)
-        T.assert_equal(1, self.mock_load_service_yamls.call_count)
+        assert 1 == mock_load_service_yamls.call_count
 
-    def test_loads_yamls_if_HABITAT(self):
+    def test_loads_yamls_if_HABITAT(self, mock_load_service_yamls):
         runs_on = "FAKE_HABITAT1"
         autosuggest.suggest_runs_on(runs_on)
-        T.assert_equal(1, self.mock_load_service_yamls.call_count)
+        assert 1 == mock_load_service_yamls.call_count
 
 
-class DiscoverHabitatsTestCase(T.TestCase):
+class TestDiscoverHabitats:
     def test_stage(self):
         collated_service_yamls = {
             "stagex": {
@@ -152,15 +173,15 @@ class DiscoverHabitatsTestCase(T.TestCase):
             },
         }
         habitats = autosuggest.discover_habitats(collated_service_yamls)
-        T.assert_in("stagex", habitats)
-        T.assert_not_in("xstage", habitats)
+        assert "stagex" in habitats
+        assert "xstage" not in habitats
 
     def test_prod(self):
         # Prod values are hardcoded, so even with no discovered habitats they
         # should appear.
         collated_service_yamls = {}
         habitats = autosuggest.discover_habitats(collated_service_yamls)
-        T.assert_in("iad1", habitats)
+        assert "iad1" in habitats
 
     def test_dev(self):
         collated_service_yamls = {
@@ -172,15 +193,15 @@ class DiscoverHabitatsTestCase(T.TestCase):
             },
         }
         habitats = autosuggest.discover_habitats(collated_service_yamls)
-        T.assert_in("devx", habitats)
-        T.assert_not_in("xdev", habitats)
+        assert "devx" in habitats
+        assert "xdev" not in habitats
 
 
-class SuggestHostsForHabitat(T.TestCase):
+class SuggestHostsForHabitat:
     def test_habitat_not_in_collated_service_yamls(self):
         collated_service_yamls = {}
         actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "nonexistent")
-        T.assert_equal("", actual)
+        assert "" == actual
 
     def test_not_prod(self):
         """All non-prod habitats have the same workflow, so just test one."""
@@ -193,7 +214,7 @@ class SuggestHostsForHabitat(T.TestCase):
             },
         }
         actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "stagex")
-        T.assert_equal(expected, actual)
+        assert expected == actual
 
     def test_prod(self):
         expected = "host1,host2"
@@ -212,19 +233,20 @@ class SuggestHostsForHabitat(T.TestCase):
             },
         }
         actual = autosuggest.suggest_hosts_for_habitat(collated_service_yamls, "hab1")
-        T.assert_equal(expected, actual)
+        assert expected == actual
 
 
-class SuggestAllHostsTestCase(T.TestCase):
-    @T.setup_teardown
+class TestSuggestAllHosts:
+    @yield_fixture
     def mock_suggest_hosts_for_habitat(self):
         with mock.patch(
-            "service_wizard.autosuggest.suggest_hosts_for_habitat",
+            "paasta_tools.paasta_cli.fsm.autosuggest.suggest_hosts_for_habitat",
             return_value="fake_list_of_hosts",
-        ) as self.mock_suggest_hosts_for_habitat:
-            yield
+            autospec=True,
+        ) as mock_suggest_hosts_for_habitat:
+            yield mock_suggest_hosts_for_habitat
 
-    def test_calls_suggest_hosts_for_habitat(self):
+    def test_calls_suggest_hosts_for_habitat(self, mock_suggest_hosts_for_habitat):
         autosuggest.suggest_all_hosts({"unused": "dict"})
         # Make sure we try to suggest at least one habitat.
-        T.assert_gt(self.mock_suggest_hosts_for_habitat.call_count, 0)
+        assert mock_suggest_hosts_for_habitat.call_count > 0
