@@ -1,3 +1,11 @@
+paasta-tools (0.9.52-yelp1) lucid; urgency=low
+
+  * 0.9.52 tagged with 'make release'
+    Commit: Add fsm/templates to package. Try to use local versions but
+    fall back to system versions of these templates.
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 29 Apr 2015 11:47:40 -0700
+
 paasta-tools (0.9.51-yelp1) lucid; urgency=low
 
   * 0.9.51 tagged with 'make release'
