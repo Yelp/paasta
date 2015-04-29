@@ -50,5 +50,11 @@ setup(
         'paasta_tools/paasta_metastatus.py',
         'paasta_tools/paasta_cli/paasta_cli.py',
         'paasta_tools/paasta_cli/paasta_tabcomplete.sh',
-    ]
+    ],
+    data_files = [
+        ('wizard_templates', [
+            'paasta_tools/paasta_cli/fsm/templates/post_activate.tmpl',
+            'paasta_tools/paasta_cli/fsm/templates/post_download.tmpl',
+        ]),
+    ],
 )
