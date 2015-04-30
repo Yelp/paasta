@@ -306,14 +306,15 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
         # when finished, get the exit code
         returncode = process.wait()
     except OSError as e:
-        _log(
-            service_name=service_name,
-            line=e.strerror.rstrip('\n'),
-            component=component,
-            level=loglevel,
-            cluster=cluster,
-            instance=instance,
-        )
+        if log:
+            _log(
+                service_name=service_name,
+                line=e.strerror.rstrip('\n'),
+                component=component,
+                level=loglevel,
+                cluster=cluster,
+                instance=instance,
+            )
         output.append(e.strerror.rstrip('\n'))
         returncode = e.errno
     # Stop the timer
