@@ -1,0 +1,7 @@
+#!/bin/sh
+
+newversion="$1"
+oldversion="$2"
+basedir="$3"
+
+/nail/sys/srv-deploy/actions/serviceinit-reload "tmp_old_service" "$basedir"

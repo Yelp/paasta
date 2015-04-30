@@ -1,0 +1,10 @@
+---
+replication:
+  default: 0
+  key: habitat
+  map:
+    hab3: 6
+    hab1: 2
+    hab2: 6
+service_type: classic
+team: legacy_team

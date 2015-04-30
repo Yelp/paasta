@@ -1,0 +1,10 @@
+---
+canary:
+  cpus: 0.1
+  instances: 1
+  mem: 500
+  nerve_ns: main
+main:
+  cpus: 0.1
+  instances: 3
+  mem: 500
