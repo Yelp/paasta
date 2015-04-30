@@ -1,3 +1,11 @@
+paasta-tools (0.9.53-yelp1) lucid; urgency=low
+
+  * 0.9.53 tagged with 'make release'
+    Commit: Use setup.py to install templates and pkg_resources to find
+    them.
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 29 Apr 2015 20:36:10 -0700
+
 paasta-tools (0.9.52-yelp1) lucid; urgency=low
 
   * 0.9.52 tagged with 'make release'
