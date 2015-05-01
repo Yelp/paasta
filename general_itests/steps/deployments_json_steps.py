@@ -66,7 +66,7 @@ def step_impl_when(context):
         generate_deployments_for_service.main()
 
 
-@then(u'That deployments.json can be read back correctly')
+@then(u'that deployments.json can be read back correctly')
 def step_impl_then(context):
     deployments = marathon_tools.load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
     expected_deployments = {
