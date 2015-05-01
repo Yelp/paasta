@@ -1,4 +1,4 @@
-# import shutil
+import shutil
 
 
 def before_scenario(context, scenario):
@@ -9,5 +9,4 @@ def before_scenario(context, scenario):
 
 def after_scenario(context, scenario):
     if context.tmpdir:
-        print "### WOULD RMTREE %s" % context.tmpdir
-        # shutil.rmtree(context.tmpdir)
+        shutil.rmtree(context.tmpdir)

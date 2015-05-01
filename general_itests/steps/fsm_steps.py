@@ -41,4 +41,7 @@ def step_impl_when_auto(context):
 @then(u'the new yelpsoa-configs directory has sane values')
 def step_impl_then(context):
     all_services = read_services_configuration(soa_dir=context.fake_yelpsoa_configs)
-    print "all_services %s" % all_services['new_paasta_service']
+    my_config = all_services["new_paasta_service"]
+
+    # Largest proxy_port in fake_yelpsoa_configs + 1
+    assert my_config['smartstack']['main']['proxy_port'] == 20667
