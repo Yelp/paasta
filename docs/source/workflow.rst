@@ -90,6 +90,8 @@ configuration for the running image:
 
   * ``/var/run/synapse/services`` (`raw service discovery files <https://jira.yelpcorp.com/browse/PAASTA-618>`_)
 
+  * ``/nail/etc/zookeeper_discovery`` (`Zookeeper discovery files <https://docs.google.com/document/d/1Iongm7TSlnd0Zahsa2BoyyR6o2dxNh5AvOetVtJcXho/edit>`_)
+
 
 * ``--workdir``: Mesos containers are launched in a temporary "workspace"
   directory on disk. Use the workdir sparingly and try not to output files.
