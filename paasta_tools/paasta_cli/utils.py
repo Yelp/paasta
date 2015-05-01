@@ -151,7 +151,12 @@ class PaastaCheckMessages:
         "this and expects it to build and itest your docker image. More info:",
         "http://y/paasta-contract"
     )
-
+    MAKEFILE_RESPONDS_TEST = success("The Makefile responds to `make test`")
+    MAKEFILE_RESPONDS_TEST_FAIL = failure(
+        "The Makefile does not have a `make test` target. Jenkins needs\n"
+        "this and expects it to run unit tests. More info:",
+        "http://y/paasta-contract"
+    )
     MAKEFILE_HAS_A_TAB = success("The Makefile contains a tab character")
     MAKEFILE_HAS_NO_TABS = failure(
         "The Makefile contains no tab characters. Make sure you\n"

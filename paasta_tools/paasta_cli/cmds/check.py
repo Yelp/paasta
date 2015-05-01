@@ -131,6 +131,14 @@ def makefile_responds_to_itest():
     return returncode in [0, 1]
 
 
+def makefile_responds_to_test():
+    """Runs `make -q test` to detect if a makefile responds to an test
+    target."""
+    cmd = 'make -q test'
+    returncode, _ = _run(cmd, timeout=5)
+    return returncode in [0, 1]
+
+
 def get_file_contents(path):
     return open(path).read()
 
@@ -156,6 +164,11 @@ def makefile_check():
             print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST
         else:
             print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST_FAIL
+
+        if makefile_responds_to_test():
+            print PaastaCheckMessages.MAKEFILE_RESPONDS_TEST
+        else:
+            print PaastaCheckMessages.MAKEFILE_RESPONDS_TEST_FAIL
     else:
         print PaastaCheckMessages.MAKEFILE_MISSING
 
