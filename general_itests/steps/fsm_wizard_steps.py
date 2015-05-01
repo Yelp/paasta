@@ -25,13 +25,30 @@ def step_impl_given(context):
     )
 
 @when(u'we fsm a new service with --auto')
-def step_impl_when_auto(context):
+def step_impl_when_fsm_auto(context):
+    context.service_name = "new_paasta_service"
     cmd = ("../paasta_tools/paasta_cli/paasta_cli.py fsm "
            "--yelpsoa-config-root %s "
            "--auto "
-           "--service-name new_paasta_service "
+           "--service-name %s "
            "--team paasta_team"
-           % context.fake_yelpsoa_configs
+           % (context.fake_yelpsoa_configs, context.service_name)
+    )
+    print "Running cmd %s" % cmd
+    (returncode, output) = _run(cmd)
+    print "Got returncode %s with output:" % returncode
+    print output
+
+@when(u'we wizard a new service with --auto')
+def step_impl_when_wizard_auto(context):
+    context.service_name = "new_legacy_service"
+    cmd = ("../paasta_tools/paasta_cli/paasta_cli.py wizard "
+           "--yelpsoa-config-root %s "
+           "--auto "
+           "--service-name %s "
+           "--team legacy_team "
+           "--smartstack"
+           % (context.fake_yelpsoa_configs, context.service_name)
     )
     print "Running cmd %s" % cmd
     (returncode, output) = _run(cmd)
@@ -41,7 +58,7 @@ def step_impl_when_auto(context):
 @then(u'the new yelpsoa-configs directory has sane values')
 def step_impl_then(context):
     all_services = read_services_configuration(soa_dir=context.fake_yelpsoa_configs)
-    my_config = all_services["new_paasta_service"]
+    my_config = all_services[context.service_name]
 
     # Largest proxy_port in fake_yelpsoa_configs + 1
     assert my_config['smartstack']['main']['proxy_port'] == 20667
