@@ -11,6 +11,7 @@ from paasta_tools.paasta_cli.cmds.check import docker_file_reads_from_yelpcorp
 from paasta_tools.paasta_cli.cmds.check import get_marathon_steps
 from paasta_tools.paasta_cli.cmds.check import makefile_has_a_tab
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
+from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_test
 from paasta_tools.paasta_cli.cmds.check import marathon_check
 from paasta_tools.paasta_cli.cmds.check import marathon_deployments_check
 from paasta_tools.paasta_cli.cmds.check import NoSuchService
@@ -432,6 +433,20 @@ def test_makefile_responds_to_itest_good(mock_run):
 def test_makefile_responds_to_itest_run(mock_run):
     mock_run.return_value = (2, 'Output')
     actual = makefile_responds_to_itest()
+    assert actual is False
+
+
+@patch('paasta_tools.paasta_cli.cmds.check._run')
+def test_makefile_responds_to_test_good(mock_run):
+    mock_run.return_value = (1, 'Output')
+    actual = makefile_responds_to_test()
+    assert actual is True
+
+
+@patch('paasta_tools.paasta_cli.cmds.check._run')
+def test_makefile_responds_to_test_run(mock_run):
+    mock_run.return_value = (2, 'Output')
+    actual = makefile_responds_to_test()
     assert actual is False
 
 
