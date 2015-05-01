@@ -16,7 +16,7 @@ setup(
     include_package_data=True,
     install_requires = [
         'isodate >= 0.5.0',
-        'service-configuration-lib == 0.8.2',
+        'service-configuration-lib == 0.9.2',
         'marathon == 0.6.13',
         'argparse',
         'requests',

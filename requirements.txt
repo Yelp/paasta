@@ -13,5 +13,5 @@ python-dateutil == 2.4.0
 requests
 scribereader == 0.1.8
 sensu-plugin == 0.1.0
-service-configuration-lib >= 0.8.2
+service-configuration-lib == 0.9.2
 yelp_clog == 1.4.2

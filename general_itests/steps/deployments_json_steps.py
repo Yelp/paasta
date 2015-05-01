@@ -1,22 +1,23 @@
-from behave import when, then, given
-import mock
+import contextlib
+import os
+import shutil
 import tempfile
+
+from behave import when, then, given
 from dulwich.repo import Repo
 from dulwich.objects import Blob
 from dulwich.objects import Tree
 from dulwich.objects import Commit
 from dulwich.objects import parse_timezone
+import mock
 from time import time
+
 from paasta_tools import generate_deployments_for_service
 from paasta_tools import marathon_tools
-import contextlib
-import os
-import json
-import shutil
 
 
 @given(u'a test git repo is setup with commits')
-def step_impl(context):
+def step_impl_given(context):
     context.test_git_repo_dir = tempfile.mkdtemp('paasta_tools_deployments_json_itest')
     context.test_git_repo = Repo.init(context.test_git_repo_dir)
     print "Temp repo in %s" % context.test_git_repo_dir
@@ -42,7 +43,7 @@ def step_impl(context):
 
 
 @when(u'we generate deployments.json for that service')
-def step_impl(context):
+def step_impl_when(context):
     context.deployments_file = os.path.join('fake_soa_configs', 'fake_deployments_json_service', 'deployments.json')
     try:
             os.remove(context.deployments_file)
@@ -65,8 +66,8 @@ def step_impl(context):
         generate_deployments_for_service.main()
 
 
-@then(u'That deployments.json can be read back correctly')
-def step_impl(context):
+@then(u'that deployments.json can be read back correctly')
+def step_impl_then(context):
     deployments = marathon_tools.load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
     expected_deployments = {
         'fake_deployments_json_service:paasta-test_cluster.test_instance': {
