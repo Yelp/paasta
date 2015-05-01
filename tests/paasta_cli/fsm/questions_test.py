@@ -66,6 +66,9 @@ class TestGetSmartstackStanzaTestCase(TestQuestions):
         fake_expected_stanza = {
             "main": {
                 "proxy_port": fake_suggested_port,
+                "extra_advertise": {
+                    "ecosystem:testopia": ["ecosystem:testopia"]
+                },
             }
         }
         yield fake_expected_stanza

@@ -58,6 +58,11 @@ def get_smartstack_stanza(yelpsoa_config_root, auto, port):
     key_name = "main"
     smartstack_stanza[key_name] = {
         "proxy_port": int(port),
+        # Make the service available across all of testopia.
+        # See SRV-1715 for more background.
+        "extra_advertise": {
+            "ecosystem:testopia": ["ecosystem:testopia"]
+        }
     }
     return smartstack_stanza
 
