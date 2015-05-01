@@ -1,3 +1,11 @@
+paasta-tools (0.9.55-yelp1) lucid; urgency=low
+
+  * 0.9.55 tagged with 'make release'
+    Commit: Make testopia services discoverable across all of testopia.
+    Refs SRV-1715.
+
+ -- John Billings <billings@yelp.com>  Fri, 01 May 2015 13:44:16 -0700
+
 paasta-tools (0.9.54-yelp1) lucid; urgency=low
 
   * 0.9.54 tagged with 'make release'
