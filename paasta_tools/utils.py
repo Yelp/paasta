@@ -55,7 +55,7 @@ class PaastaColors:
 
     @staticmethod
     def blue(text):
-        """Return text that can be printed cyan.
+        """Return text that can be printed blue.
 
         :param text: a string
         :return: text colour coded with ANSI blue
@@ -64,7 +64,7 @@ class PaastaColors:
 
     @staticmethod
     def green(text):
-        """Return text that can be printed cyan.
+        """Return text that can be printed green.
 
         :param text: a string
         :return: text colour coded with ANSI green"""
@@ -72,7 +72,7 @@ class PaastaColors:
 
     @staticmethod
     def red(text):
-        """Return text that can be printed cyan.
+        """Return text that can be printed red.
 
         :param text: a string
         :return: text colour coded with ANSI red"""
