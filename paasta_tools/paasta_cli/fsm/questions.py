@@ -9,10 +9,7 @@ import yaml
 
 from paasta_tools.paasta_cli.fsm.prompt import ask
 from paasta_tools.paasta_cli.fsm.autosuggest import suggest_smartstack_proxy_port
-
-
-# TODO: from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
-DEPLOY_PIPELINE_NON_DEPLOY_STEPS = ('itest', 'security-check', 'performance-check', 'push-to-registry')
+from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 
 
 def _yamlize(contents):
