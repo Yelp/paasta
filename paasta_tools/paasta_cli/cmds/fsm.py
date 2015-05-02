@@ -13,6 +13,7 @@ from paasta_tools.paasta_cli.fsm.questions import get_service_stanza
 from paasta_tools.paasta_cli.fsm.questions import get_smartstack_stanza
 from paasta_tools.paasta_cli.fsm.questions import get_srvname
 from paasta_tools.paasta_cli.fsm.service import Service
+from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):
@@ -130,9 +131,13 @@ def paasta_fsm(args):
         deploy_stanza,
         marathon_stanza,
     )
+    print PaastaColors.yellow("               _  _(o)_(o)_  _")
+    print PaastaColors.red("             ._\`:_ F S M _:' \_,")
+    print PaastaColors.green("                 / (`---'\ `-.")
+    print PaastaColors.cyan("              ,-`  _)    (_,")
     print "With My Noodly Appendage I Have Written Configs For"
     print
-    print "    %s" % srvname
+    print PaastaColors.bold("    %s" % srvname)
     print
     print "Customize Them If It Makes You Happy -- http://y/paasta For Details"
     print "Remember To Add, Commit, And Push When You're Done:"
@@ -142,3 +147,4 @@ def paasta_fsm(args):
     print "git add ."
     print "git commit -m'Initial Commit For %s'" % args.srvname
     print "git push origin HEAD  # Pushmaster Or Ops Deputy Privs Required"
+    print
