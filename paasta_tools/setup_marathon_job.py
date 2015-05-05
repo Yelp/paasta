@@ -75,13 +75,13 @@ def send_event(name, instance, soa_dir, status, output):
     if not team:
         return
     check_name = 'setup_marathon_job.%s%s%s' % (name, ID_SPACER, instance)
-    runbook = 'y/rb-marathon'
+    runbook = 'http://y/paasta-troubleshooting'
     result_dict = {
         'tip': monitoring_tools.get_tip(framework, name, instance, soa_dir),
         'notification_email': monitoring_tools.get_notification_email(framework, name, instance, soa_dir),
         'irc_channels': monitoring_tools.get_irc_channels(framework, name, instance, soa_dir),
-        'alert_after': '6m',
-        'check_every': '2m',
+        'alert_after': '5m',
+        'check_every': '1m',
         'realert_every': -1,
         'source': 'mesos-%s' % marathon_tools.get_cluster(),
     }
