@@ -337,7 +337,7 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     """
 
     service_config = service_configuration_lib.read_service_configuration(srv_name, soa_dir)
-    smartstack_config = service_config['smartstack']
+    smartstack_config = service_config.get('smartstack', {})
     namespace_config_from_file = smartstack_config.get(namespace, {})
 
     service_namespace_config = ServiceNamespaceConfig()
