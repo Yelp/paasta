@@ -23,6 +23,7 @@ fake_service_uno.canary
 fake_service_dos.all_fake"
 
 PAASTA_COMMANDS="list
+list-clusters
 check
 generate-pipeline
 help
