@@ -136,27 +136,7 @@ do
 done
 
 # Tab completion tests
-# The expected output of tab completion is the words we should complete to
-# separated by the vertical tab char
-# This test will need to be modified if we add any new subcommands that start with
-# with the provided pre_typed:
-pre_typed='st'
-expected=`echo -e "start\vstop\vstatus"`
-# We feed the special env variables available at tab completion time
-# to the paasta command to make it return back the tab completion output to
-# fd 8, which we redirect to 1 so we can capture it
-# See https://github.com/kislyuk/argcomplete#debugging
-actual=`COMP_LINE="paasta $pre_typed" COMP_POINT=99 _ARGCOMPLETE=1 paasta 8>&1 9>/dev/null`
-if [[ $expected == $actual ]]; then
-    echo "Tab completion returned what we expected"
-else
-    echo "Tab completion did not return what we expected"
-    echo "Actual:"
-    echo $actual
-    echo "Expected:"
-    echo $expected
-    exit 1
-fi
+"$(dirname "$0")/tab_complete.sh"
 
 
 echo "Everything worked!"
