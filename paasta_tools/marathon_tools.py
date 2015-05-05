@@ -17,6 +17,8 @@ from marathon import MarathonClient
 import json
 import service_configuration_lib
 
+from paasta_tools.mesos_tools import fetch_mesos_state
+
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
 # It's used to compose a job's full ID from its name and instance
@@ -699,16 +701,13 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
     :param port: The port to query mesos-slave on
     :timeout_s: The timeout, in seconds, for the mesos-slave state request
     :returns: A list of triples of (service_name, instance_name, port)"""
-    state_url = 'http://%s:%s/state.json' % (hostname, port)
     try:
-        r = requests.get(state_url, timeout=10)
-        r.raise_for_status()
+        slave_state = fetch_mesos_state(hostname=hostname, port=port, timeout=timeout_s)
     except requests.ConnectionError as e:
         sys.stderr.write('Could not connect to the mesos slave to see which services are running\n')
         sys.stderr.write('on %s:%s. Is the mesos-slave running?\n' % (hostname, port))
         sys.stderr.write('Error was: %s\n' % e.message)
         sys.exit(1)
-    slave_state = r.json()
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]

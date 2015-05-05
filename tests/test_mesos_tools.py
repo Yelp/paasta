@@ -16,9 +16,9 @@ def test_get_running_mesos_tasks_for_service():
         {'id': 1, 'state': 'TASK_RUNNING'},
         {'id': 2, 'state': 'TASK_RUNNING'},
     ]
-    with mock.patch('paasta_tools.mesos_tools.get_mesos_tasks_for_service', autospec=True) as mesos_tasks_patch:
+    with mock.patch('paasta_tools.mesos_tools.get_mesos_tasks_from_master', autospec=True) as mesos_tasks_patch:
         mesos_tasks_patch.return_value = mock_tasks
-        actual = mesos_tools.get_running_mesos_tasks_for_service('unused', 'unused')
+        actual = mesos_tools.get_running_mesos_tasks_for_service('fake_id')
         assert actual == expected
 
 

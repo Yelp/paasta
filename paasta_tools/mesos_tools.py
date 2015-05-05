@@ -6,7 +6,6 @@ import re
 
 from kazoo.client import KazooClient
 
-from paasta_tools.marathon_tools import compose_job_id
 # mesos.cli.master reads its config file at *import* time, so we must have
 # this environment variable set and ready to go at that time so we can
 # read in the config for zookeeper, etc
@@ -18,18 +17,13 @@ def get_mesos_tasks_from_master(job_id):
     return master.CURRENT.tasks(fltr=job_id)
 
 
-def get_mesos_tasks_for_service(service, instance):
-    job_id = compose_job_id(service, instance)
-    return get_mesos_tasks_from_master(job_id)
-
-
-def get_running_mesos_tasks_for_service(service, instance):
-    all_tasks = get_mesos_tasks_for_service(service, instance)
+def get_running_mesos_tasks_for_service(job_id):
+    all_tasks = get_mesos_tasks_from_master(job_id)
     return [task for task in all_tasks if task['state'] == 'TASK_RUNNING']
 
 
-def get_non_running_mesos_tasks_for_service(service, instance):
-    all_tasks = get_mesos_tasks_for_service(service, instance)
+def get_non_running_mesos_tasks_for_service(job_id):
+    all_tasks = get_mesos_tasks_from_master(job_id)
     return [task for task in all_tasks if task['state'] != 'TASK_RUNNING']
 
 
@@ -42,11 +36,11 @@ def fetch_mesos_stats():
     return json.loads(response.text)
 
 
-def fetch_mesos_state():
+def fetch_mesos_state(hostname, port=5050, timeout=10):
     """Fetches mesos state.json and returns it as a dict."""
-    my_ip = socket.getfqdn()
-    stats_uri = 'http://%s:5050/state.json' % my_ip
-    response = requests.get(stats_uri, timeout=5)
+    stats_uri = 'http://%s:%s/state.json' % (hostname, port)
+    response = requests.get(stats_uri, timeout=timeout)
+    response.raise_for_status()
     return json.loads(response.text)
 
 
@@ -59,7 +53,7 @@ def get_mesos_quorum(state):
 def get_zookeeper_config(state):
     """Returns dict, containing the zookeeper hosts and path.
     :param state: mesos state dictionary"""
-    re_zk = re.match('^zk:\/\/([^\/]*)\/(.*)$', state['flags']['zk'])
+    re_zk = re.match(r"^zk://([^/]*)/(.*)$", state['flags']['zk'])
     return {'hosts': re_zk.group(1), 'path': re_zk.group(2)}
 
 

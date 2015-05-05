@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 
+import socket
+
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import fetch_mesos_stats
 from paasta_tools.mesos_tools import fetch_mesos_state
@@ -8,12 +10,22 @@ from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 
 
+def get_mesos_masters_state(state):
+    """Returns the state of the mesos masters.
+    :param state: mesos state dictionary"""
+    quorum = get_mesos_quorum(state)
+    num_of_masters = get_number_of_mesos_masters(get_zookeeper_config(state))
+    return num_of_masters, quorum
+
+
 def get_mesos_status():
     """Gathers information about the mesos cluster.
     :return: string containing the status
     """
     output = []
+    my_ip = socket.getfqdn()
     metrics = fetch_mesos_stats()
+    state = fetch_mesos_state(hostname=my_ip)
     output.append("Mesos:")
     output.append(
         "    cpus: %d total => %d used, %d available" %
@@ -39,15 +51,8 @@ def get_mesos_status():
             metrics['master/tasks_starting'],
         )
     )
-    state = fetch_mesos_state()
-    quorum = get_mesos_quorum(state)
-    num_of_masters = get_number_of_mesos_masters(get_zookeeper_config(state))
     output.append(
-        "    masters: %d masters (%d need for quorum)" %
-        (
-            num_of_masters,
-            quorum
-        )
+        "    masters: %d masters (%d need for quorum)" % get_mesos_masters_state(state)
     )
     output.append(
         "    slaves: %d active, %d inactive" %

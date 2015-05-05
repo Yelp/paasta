@@ -262,7 +262,8 @@ def status_smartstack_backends_verbose(service, instance, cluster):
 
 
 def status_mesos_tasks(service, instance, normal_instance_count):
-    running_tasks = get_running_mesos_tasks_for_service(service, instance)
+    job_id = marathon_tools.compose_job_id(service, instance)
+    running_tasks = get_running_mesos_tasks_for_service(job_id)
     count = len(running_tasks)
     if count >= normal_instance_count:
         status = PaastaColors.green("Healthy")
@@ -375,7 +376,8 @@ def pretty_format_non_running_mesos_task(task):
 def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
     output = []
-    running_tasks = get_running_mesos_tasks_for_service(service, instance)
+    job_id = marathon_tools.compose_job_id(service, instance)
+    running_tasks = get_running_mesos_tasks_for_service(job_id)
     output.append(RUNNING_TASK_FORMAT.format((
         "  Running Tasks:  Mesos Task ID",
         "Host deployed to",
@@ -385,7 +387,7 @@ def status_mesos_tasks_verbose(service, instance):
     )))
     for task in running_tasks:
         output.append(pretty_format_running_mesos_task(task))
-    non_running_tasks = list(reversed(get_non_running_mesos_tasks_for_service(service, instance)[-10:]))
+    non_running_tasks = list(reversed(get_non_running_mesos_tasks_for_service(job_id)[-10:]))
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
         "  Non-Running Tasks:  Mesos Task ID",
         "Host deployed to",
