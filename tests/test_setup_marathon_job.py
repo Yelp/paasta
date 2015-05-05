@@ -196,15 +196,15 @@ class TestSetupMarathonJob:
         fake_irc = '#fake'
         fake_soa_dir = '/fake/soa/dir'
         fake_cluster = 'fake_cluster'
-        expected_runbook = 'y/rb-marathon'
+        expected_runbook = 'http://y/paasta-troubleshooting'
         expected_check_name = 'setup_marathon_job.%s.%s' % (
             fake_service_name, fake_instance_name)
         expected_kwargs = {
             'tip': fake_tip,
             'notification_email': fake_notification_email,
             'irc_channels': fake_irc,
-            'alert_after': '6m',
-            'check_every': '2m',
+            'alert_after': '5m',
+            'check_every': '1m',
             'realert_every': -1,
             'source': 'mesos-fake_cluster',
         }
