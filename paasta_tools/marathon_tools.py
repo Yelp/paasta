@@ -336,8 +336,9 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     :returns: A dict of the above keys, if they were defined
     """
 
-    smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
-    config_from_file = smartstack.get(namespace, {})
+    service_config = service_configuration_lib.read_service_configuration(srv_name, soa_dir)
+    smartstack_config = service_config['smartstack']
+    namespace_config_from_file = smartstack_config.get(namespace, {})
 
     service_namespace_config = ServiceNamespaceConfig()
     # We can't really use .get, as we don't want the key to be in the returned
@@ -359,20 +360,20 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
         'advertise',
     ])
 
-    for key, value in config_from_file.items():
+    for key, value in namespace_config_from_file.items():
         if key in key_whitelist:
             service_namespace_config[key] = value
 
-    if 'routes' in config_from_file:
+    if 'routes' in namespace_config_from_file:
         service_namespace_config['routes'] = [(route['source'], dest)
-                                              for route in config_from_file['routes']
+                                              for route in namespace_config_from_file['routes']
                                               for dest in route['destinations']]
 
-    if 'extra_advertise' in config_from_file:
+    if 'extra_advertise' in namespace_config_from_file:
         service_namespace_config['extra_advertise'] = [
             (src, dst)
-            for src in config_from_file['extra_advertise']
-            for dst in config_from_file['extra_advertise'][src]
+            for src in namespace_config_from_file['extra_advertise']
+            for dst in namespace_config_from_file['extra_advertise'][src]
         ]
 
     return service_namespace_config

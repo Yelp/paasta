@@ -492,7 +492,11 @@ class TestMarathonTools:
                 'gamma': ['delta', 'epsilon'],
             },
         }
-        fake_config = {namespace: fake_info}
+        fake_config = {
+            'smartstack': {
+                namespace: fake_info,
+            },
+        }
         expected = {
             'healthcheck_uri': fake_uri,
             'healthcheck_timeout_s': fake_timeout,
@@ -511,23 +515,23 @@ class TestMarathonTools:
                 ('alpha', 'beta'), ('gamma', 'delta'), ('gamma', 'epsilon')
             ],
         }
-        with mock.patch('service_configuration_lib.read_extra_service_information',
+        with mock.patch('service_configuration_lib.read_service_configuration',
                         autospec=True,
-                        return_value=fake_config) as read_extra_patch:
-            assert marathon_tools.load_service_namespace_config(name, namespace, soa_dir) == expected
-            read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
+                        return_value=fake_config) as read_service_configuration_patch:
+            actual = marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
+            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
+            assert actual == expected
 
     def test_read_service_namespace_config_no_file(self):
         name = 'a_man'
         namespace = 'a_boat'
         soa_dir = 'an_adventure'
 
-        with mock.patch('service_configuration_lib.read_extra_service_information',
-                        side_effect=Exception) as read_extra_patch:
-            with raises(Exception) as excinfo:
+        with mock.patch('service_configuration_lib.read_service_configuration',
+                        side_effect=Exception) as read_service_configuration_patch:
+            with raises(Exception):
                 marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
-            assert excinfo.type == Exception
-            read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
+            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
 
     @mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
     def test_read_namespace_for_service_instance_has_value(self, read_info_patch):
