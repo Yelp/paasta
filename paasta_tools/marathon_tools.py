@@ -108,9 +108,8 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     :returns: A dictionary of whatever was in the config for the service instance"""
     log.info("Reading service configuration files from dir %s/ in %s" % (service_name, soa_dir))
     log.info("Reading general configuration file: service.yaml")
-    general_config = service_configuration_lib.read_extra_service_information(
+    general_config = service_configuration_lib.read_service_configuration(
         service_name,
-        "service",
         soa_dir=soa_dir
     )
     marathon_conf_file = "marathon-%s" % cluster
@@ -339,8 +338,9 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     :returns: A dict of the above keys, if they were defined
     """
 
-    smartstack = service_configuration_lib.read_extra_service_information(srv_name, 'smartstack', soa_dir)
-    config_from_file = smartstack.get(namespace, {})
+    service_config = service_configuration_lib.read_service_configuration(srv_name, soa_dir)
+    smartstack_config = service_config.get('smartstack', {})
+    namespace_config_from_file = smartstack_config.get(namespace, {})
 
     service_namespace_config = ServiceNamespaceConfig()
     # We can't really use .get, as we don't want the key to be in the returned
@@ -362,20 +362,20 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
         'advertise',
     ])
 
-    for key, value in config_from_file.items():
+    for key, value in namespace_config_from_file.items():
         if key in key_whitelist:
             service_namespace_config[key] = value
 
-    if 'routes' in config_from_file:
+    if 'routes' in namespace_config_from_file:
         service_namespace_config['routes'] = [(route['source'], dest)
-                                              for route in config_from_file['routes']
+                                              for route in namespace_config_from_file['routes']
                                               for dest in route['destinations']]
 
-    if 'extra_advertise' in config_from_file:
+    if 'extra_advertise' in namespace_config_from_file:
         service_namespace_config['extra_advertise'] = [
             (src, dst)
-            for src in config_from_file['extra_advertise']
-            for dst in config_from_file['extra_advertise'][src]
+            for src in namespace_config_from_file['extra_advertise']
+            for dst in namespace_config_from_file['extra_advertise'][src]
         ]
 
     return service_namespace_config
@@ -676,8 +676,9 @@ def get_all_namespaces_for_service(name, soa_dir=DEFAULT_SOA_DIR):
     :param name: The service name
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of the form (service_name.namespace, namespace_config)"""
+    service_config = service_configuration_lib.read_service_configuration(name, soa_dir)
+    smartstack = service_config.get('smartstack', {})
     namespace_list = []
-    smartstack = service_configuration_lib.read_extra_service_information(name, 'smartstack', soa_dir)
     for namespace in smartstack:
         full_name = '%s%s%s' % (name, ID_SPACER, namespace)
         namespace_list.append((full_name, smartstack[namespace]))

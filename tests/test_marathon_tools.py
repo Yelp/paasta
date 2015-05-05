@@ -26,8 +26,15 @@ class TestMarathonTools:
         }
     )
     fake_srv_config = {
+        'data': {},
+        'deploy': {},
+        'deployed_to': ['another-box'],
+        'lb_extras': {},
+        'monitoring': {},
         'runs_on': ['some-box'],
-        'deployed_on': ['another-box'],
+        'port': None,
+        'smartstack': {},
+        'vip': None,
     }
     fake_docker_registry = 'remote_registry.com'
     fake_marathon_config = marathon_tools.MarathonConfig({
@@ -103,16 +110,18 @@ class TestMarathonTools:
             join_patch.assert_called_once_with(fake_path, fake_name, 'monitoring.yaml')
             read_monitoring_patch.assert_called_once_with(fake_fname)
 
-    def test_load_marathon_service_config_loads_deployments_json(self):
+    def test_load_marathon_service_config_happy_path(self):
         fake_name = 'jazz'
         fake_instance = 'solo'
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         with contextlib.nested(
             mock.patch('marathon_tools.load_deployments_json', autospec=True),
+            mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
             mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
         ) as (
             mock_load_deployments_json,
+            mock_read_service_configuration,
             mock_read_extra_service_information,
         ):
             mock_read_extra_service_information.return_value = {fake_instance: {}}
@@ -122,6 +131,8 @@ class TestMarathonTools:
                 fake_cluster,
                 soa_dir=fake_dir,
             )
+            assert mock_read_service_configuration.call_count == 1
+            assert mock_read_extra_service_information.call_count == 1
             mock_load_deployments_json.assert_called_once_with(fake_name, soa_dir=fake_dir)
 
     def test_load_marathon_service_config_bails_with_no_config(self):
@@ -131,9 +142,11 @@ class TestMarathonTools:
         fake_dir = '/nail/home/sanfran'
         with contextlib.nested(
             mock.patch('marathon_tools.load_deployments_json', autospec=True),
+            mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
             mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
         ) as (
             mock_load_deployments_json,
+            mock_read_service_configuration,
             mock_read_extra_service_information,
         ):
             mock_read_extra_service_information.return_value = {}
@@ -159,14 +172,6 @@ class TestMarathonTools:
             get_branch_dict=mock.Mock(return_value=fake_branch_dict),
         )
 
-        def conf_helper(name, filename, soa_dir="AAAAAAAAA"):
-            if filename == 'marathon-amnesia':
-                return {fake_instance: config_copy}
-            elif filename == 'service':
-                return self.fake_srv_config
-            else:
-                raise Exception('read_service_config tried to access invalid filename %s' % filename)
-
         expected = marathon_tools.MarathonServiceConfig(
             fake_name,
             fake_instance,
@@ -178,10 +183,18 @@ class TestMarathonTools:
         )
 
         with contextlib.nested(
-            mock.patch('service_configuration_lib.read_extra_service_information',
-                       autospec=True,
-                       side_effect=conf_helper),
+            mock.patch(
+                'service_configuration_lib.read_service_configuration',
+                autospec=True,
+                return_value=self.fake_srv_config,
+            ),
+            mock.patch(
+                'service_configuration_lib.read_extra_service_information',
+                autospec=True,
+                return_value={fake_instance: config_copy},
+            ),
         ) as (
+            read_service_configuration_patch,
             read_extra_info_patch,
         ):
             actual = marathon_tools.load_marathon_service_config(
@@ -197,9 +210,10 @@ class TestMarathonTools:
             assert expected.branch_dict == actual.branch_dict
 
             deployments_json_mock.get_branch_dict.assert_called_once_with(fake_name, 'paasta-amnesia.solo')
-            read_extra_info_patch.assert_any_call(fake_name, "service", soa_dir=fake_dir)
+            assert read_service_configuration_patch.call_count == 1
+            read_service_configuration_patch.assert_any_call(fake_name, soa_dir=fake_dir)
+            assert read_extra_info_patch.call_count == 1
             read_extra_info_patch.assert_any_call(fake_name, "marathon-amnesia", soa_dir=fake_dir)
-            assert read_extra_info_patch.call_count == 2
 
     def test_get_service_instance_list(self):
         fake_name = 'hint'
@@ -320,13 +334,15 @@ class TestMarathonTools:
         soa_dir = '^_^'
         t1_dict = {'hollo': 'werld', 'smark': 'stact'}
         t2_dict = {'vataman': 'witir', 'sin': 'chaps'}
-        fake_smartstack = {'t1': t1_dict, 't2': t2_dict}
+        fake_smartstack = {
+            'smartstack': {'t1': t1_dict, 't2': t2_dict},
+        }
         expected = [('vvvvvv.t2', t2_dict), ('vvvvvv.t1', t1_dict)]
-        with mock.patch('service_configuration_lib.read_extra_service_information', autospec=True,
-                        return_value=fake_smartstack) as read_extra_patch:
+        with mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
+                        return_value=fake_smartstack) as read_service_configuration_patch:
             actual = marathon_tools.get_all_namespaces_for_service(name, soa_dir)
+            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
             assert expected == actual
-            read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
 
     def test_get_marathon_services_for_cluster(self):
         cluster = 'honey_bunches_of_oats'
@@ -472,7 +488,11 @@ class TestMarathonTools:
                 'gamma': ['delta', 'epsilon'],
             },
         }
-        fake_config = {namespace: fake_info}
+        fake_config = {
+            'smartstack': {
+                namespace: fake_info,
+            },
+        }
         expected = {
             'healthcheck_uri': fake_uri,
             'healthcheck_timeout_s': fake_timeout,
@@ -491,23 +511,23 @@ class TestMarathonTools:
                 ('alpha', 'beta'), ('gamma', 'delta'), ('gamma', 'epsilon')
             ],
         }
-        with mock.patch('service_configuration_lib.read_extra_service_information',
+        with mock.patch('service_configuration_lib.read_service_configuration',
                         autospec=True,
-                        return_value=fake_config) as read_extra_patch:
-            assert marathon_tools.load_service_namespace_config(name, namespace, soa_dir) == expected
-            read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
+                        return_value=fake_config) as read_service_configuration_patch:
+            actual = marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
+            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
+            assert actual == expected
 
     def test_read_service_namespace_config_no_file(self):
         name = 'a_man'
         namespace = 'a_boat'
         soa_dir = 'an_adventure'
 
-        with mock.patch('service_configuration_lib.read_extra_service_information',
-                        side_effect=Exception) as read_extra_patch:
-            with raises(Exception) as excinfo:
+        with mock.patch('service_configuration_lib.read_service_configuration',
+                        side_effect=Exception) as read_service_configuration_patch:
+            with raises(Exception):
                 marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
-            assert excinfo.type == Exception
-            read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
+            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
 
     @mock.patch('service_configuration_lib.read_extra_service_information', autospec=True)
     def test_read_namespace_for_service_instance_has_value(self, read_info_patch):

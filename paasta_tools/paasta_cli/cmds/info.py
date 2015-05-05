@@ -10,7 +10,6 @@ from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import PaastaColors
 from service_configuration_lib import read_service_configuration
-from service_configuration_lib import read_extra_service_information
 
 NO_DESCRIPTION_MESSAGE = (
     "No 'description' entry in service.yaml. Please a one line sentance that describes this service"
@@ -39,7 +38,8 @@ def deployments_to_clusters(deployments):
 
 
 def get_smartstack_endpoints(service):
-    smartstack_config = read_extra_service_information(service, 'smartstack')
+    service_config = read_service_configuration(service)
+    smartstack_config = service_config.get('smartstack', {})
     endpoints = []
     for name, config in smartstack_config.iteritems():
         mode = config.get('mode', 'http')

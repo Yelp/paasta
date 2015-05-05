@@ -53,11 +53,13 @@ def test_deployments_to_clusters():
 
 def test_get_smartstack_endpoints_http():
     with mock.patch(
-        'paasta_tools.paasta_cli.cmds.info.read_extra_service_information', autospec=True
-    ) as mock_read_extra_service_information:
-        mock_read_extra_service_information.return_value = {
-            'main': {
-                'proxy_port': 1234
+        'paasta_tools.paasta_cli.cmds.info.read_service_configuration', autospec=True
+    ) as mock_read_service_configuration:
+        mock_read_service_configuration.return_value = {
+            'smartstack': {
+                'main': {
+                    'proxy_port': 1234
+                }
             }
         }
         expected = ["http://169.254.255.254:1234 (main)"]
@@ -67,12 +69,14 @@ def test_get_smartstack_endpoints_http():
 
 def test_get_smartstack_endpoints_tcp():
     with mock.patch(
-        'paasta_tools.paasta_cli.cmds.info.read_extra_service_information', autospec=True
-    ) as mock_read_extra_service_information:
-        mock_read_extra_service_information.return_value = {
-            'tcpone': {
-                'proxy_port': 1234,
-                'mode': 'tcp',
+        'paasta_tools.paasta_cli.cmds.info.read_service_configuration', autospec=True
+    ) as mock_read_service_configuration:
+        mock_read_service_configuration.return_value = {
+            'smartstack': {
+                'tcpone': {
+                    'proxy_port': 1234,
+                    'mode': 'tcp',
+                }
             }
         }
         expected = ["tcp://169.254.255.254:1234 (tcpone)"]
