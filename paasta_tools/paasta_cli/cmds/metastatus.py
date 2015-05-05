@@ -47,5 +47,5 @@ def paasta_metastatus(args):
             print report_cluster_status(cluster, args.verbose)
             print ""
         else:
-            print "Cluster %s doesn't look like a valid cluster?"
+            print "Cluster %s doesn't look like a valid cluster?" % args.clusters
             print "Try using tab completion to help complete the cluster name"
