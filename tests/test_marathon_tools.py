@@ -726,7 +726,7 @@ class TestMarathonTools:
             mock.patch(
                 'service_configuration_lib.services_that_run_here',
                 autospec=True,
-                return_value=['d', 'c']
+                return_value={'d', 'c'}
             ),
             mock.patch(
                 'os.listdir',
