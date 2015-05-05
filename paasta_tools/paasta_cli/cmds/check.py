@@ -19,7 +19,6 @@ from paasta_tools.paasta_cli.utils import x_mark
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import _run
-from service_configuration_lib import read_extra_service_information
 from service_configuration_lib import read_service_configuration
 
 
@@ -283,8 +282,8 @@ def smartstack_check(service_name, service_path):
     :param service_path: path to loction of smartstack.yaml file"""
     if is_file_in_dir('smartstack.yaml', service_path):
         print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
-        smartstack_dict = read_extra_service_information(
-            service_name, 'smartstack')
+        config_dict = read_service_configuration(service_name)
+        smartstack_dict = config_dict.get('smartstack', {})
         instances = smartstack_dict.keys()
         if instances:
             no_ports_found = True

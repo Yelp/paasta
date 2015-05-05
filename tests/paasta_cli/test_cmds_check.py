@@ -295,7 +295,7 @@ def test_check_sensu_check_fail(mock_stdout, mock_is_file_in_dir):
 
 
 @patch('paasta_tools.paasta_cli.cmds.check.'
-       'read_extra_service_information')
+       'read_service_configuration')
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_smartstack_check_pass(mock_stdout, mock_is_file_in_dir,
@@ -306,8 +306,10 @@ def test_check_smartstack_check_pass(mock_stdout, mock_is_file_in_dir,
     port = 80
     instance = 'main'
     smartstack_dict = {
-        instance: {
-            'proxy_port': port
+        'smartstack': {
+            instance: {
+                'proxy_port': port
+            }
         }
     }
     mock_read_service_info.return_value = smartstack_dict
@@ -323,7 +325,7 @@ def test_check_smartstack_check_pass(mock_stdout, mock_is_file_in_dir,
 
 
 @patch('paasta_tools.paasta_cli.cmds.check.'
-       'read_extra_service_information')
+       'read_service_configuration')
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_smartstack_check_missing_port(
@@ -349,7 +351,7 @@ def test_check_smartstack_check_missing_port(
 
 
 @patch('paasta_tools.paasta_cli.cmds.check.'
-       'read_extra_service_information')
+       'read_service_configuration')
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_smartstack_check_missing_instance(
