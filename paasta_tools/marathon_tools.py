@@ -677,8 +677,9 @@ def get_all_namespaces_for_service(name, soa_dir=DEFAULT_SOA_DIR):
     :param name: The service name
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of the form (service_name.namespace, namespace_config)"""
+    service_config = service_configuration_lib.read_service_configuration(name, soa_dir)
+    smartstack = service_config.get('smartstack', {})
     namespace_list = []
-    smartstack = service_configuration_lib.read_extra_service_information(name, 'smartstack', soa_dir)
     for namespace in smartstack:
         full_name = '%s%s%s' % (name, ID_SPACER, namespace)
         namespace_list.append((full_name, smartstack[namespace]))

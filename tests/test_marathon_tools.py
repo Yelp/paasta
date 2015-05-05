@@ -340,13 +340,15 @@ class TestMarathonTools:
         soa_dir = '^_^'
         t1_dict = {'hollo': 'werld', 'smark': 'stact'}
         t2_dict = {'vataman': 'witir', 'sin': 'chaps'}
-        fake_smartstack = {'t1': t1_dict, 't2': t2_dict}
+        fake_smartstack = {
+            'smartstack': {'t1': t1_dict, 't2': t2_dict},
+        }
         expected = [('vvvvvv.t2', t2_dict), ('vvvvvv.t1', t1_dict)]
-        with mock.patch('service_configuration_lib.read_extra_service_information', autospec=True,
-                        return_value=fake_smartstack) as read_extra_patch:
+        with mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
+                        return_value=fake_smartstack) as read_service_configuration_patch:
             actual = marathon_tools.get_all_namespaces_for_service(name, soa_dir)
+            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
             assert expected == actual
-            read_extra_patch.assert_called_once_with(name, 'smartstack', soa_dir)
 
     def test_get_marathon_services_for_cluster(self):
         cluster = 'honey_bunches_of_oats'
