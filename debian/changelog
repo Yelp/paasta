@@ -1,3 +1,10 @@
+paasta-tools (0.9.58-yelp1) lucid; urgency=low
+
+  * 0.9.58 tagged with 'make release'
+    Commit: Fix get_classic_services_that_run_here.  Refs PAASTA-689.
+
+ -- John Billings <billings@yelp.com>  Tue, 05 May 2015 15:49:13 -0700
+
 paasta-tools (0.9.57-yelp1) lucid; urgency=low
 
   * 0.9.57 tagged with 'make release'
