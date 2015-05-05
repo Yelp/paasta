@@ -14,7 +14,7 @@ def get_service_lines_for_service(service):
     port = config.get('port', None)
     if port is not None:
         lines.append("%s (%d/tcp)" % (service, port))
-    smartstack_config = service_configuration_lib.read_extra_service_information(service, 'smartstack')
+    smartstack_config = config.get('smartstack', {})
     for namespace in smartstack_config:
         proxy_port = smartstack_config[namespace].get('proxy_port', None)
         if proxy_port is not None:
