@@ -158,3 +158,11 @@ def test_remove_ansi_escape_sequences():
     plain_string = 'blackandwhite'
     colored_string = '\033[34m' + plain_string + '\033[0m'
     assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
+
+
+@mock.patch('os.listdir', autospec=True)
+def test_list_all_clusters(mock_os_listdir):
+    mock_os_listdir.return_value = ['cluster1.yaml', 'cluster2.yaml']
+    expected = set(['cluster1', 'cluster2'])
+    actual = utils.list_all_clusters()
+    assert actual == expected

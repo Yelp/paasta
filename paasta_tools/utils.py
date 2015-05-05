@@ -410,3 +410,13 @@ def get_username():
     http://stackoverflow.com/a/2899055
     """
     return pwd.getpwuid(os.getuid())[0]
+
+
+def list_all_clusters(zk_discovery_path='/nail/etc/zookeeper_discovery/infrastructure/'):
+    """Returns a set of all infrastructure zookeeper clusters.
+    This makes the assumption that paasta clusters and zookeeper
+    clusters are the same"""
+    clusters = set()
+    for yaml_file in os.listdir(zk_discovery_path):
+        clusters.add(yaml_file.split('.')[0])
+    return clusters

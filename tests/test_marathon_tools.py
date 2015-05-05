@@ -255,17 +255,11 @@ class TestMarathonTools:
         with raises(marathon_tools.NoMarathonClusterFoundException):
             fake_config.get_cluster()
 
-    def test_list_clusters_no_service(self):
-        with contextlib.nested(
-            mock.patch('service_configuration_lib.read_services_configuration', autospec=True),
-            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True),
-        ) as (
-            mock_read_services,
-            mock_get_clusters_deployed_to,
-        ):
-            mock_read_services.return_value = {'service1': 'config'}
-            mock_get_clusters_deployed_to.return_value = ['cluster1', 'cluster2']
+    def test_list_clusters_no_service_given_lists_all_of_them(self):
+        with mock.patch('marathon_tools.list_all_clusters', autospec=True) as mock_list_all_clusters:
+            mock_list_all_clusters.return_value = ['cluster1', 'cluster2']
             actual = marathon_tools.list_clusters()
+            mock_list_all_clusters.assert_called_once_with()
             expected = ['cluster1', 'cluster2']
             assert actual == expected
 

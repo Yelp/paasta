@@ -17,6 +17,8 @@ from marathon import MarathonClient
 import json
 import service_configuration_lib
 
+from paasta_tools.utils import list_all_clusters
+
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
 # It's used to compose a job's full ID from its name and instance
@@ -599,12 +601,9 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
     """
     clusters = set()
     if service is None:
-        services = service_configuration_lib.read_services_configuration().keys()
+        clusters = list_all_clusters()
     else:
-        services = [service]
-
-    for service in services:
-        clusters = clusters.union(set(get_clusters_deployed_to(service)))
+        clusters = set(get_clusters_deployed_to(service))
     return sorted(clusters)
 
 
