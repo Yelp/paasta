@@ -106,9 +106,8 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     :returns: A dictionary of whatever was in the config for the service instance"""
     log.info("Reading service configuration files from dir %s/ in %s" % (service_name, soa_dir))
     log.info("Reading general configuration file: service.yaml")
-    general_config = service_configuration_lib.read_extra_service_information(
+    general_config = service_configuration_lib.read_service_configuration(
         service_name,
-        "service",
         soa_dir=soa_dir
     )
     marathon_conf_file = "marathon-%s" % cluster
