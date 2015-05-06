@@ -12,9 +12,6 @@ class TestQuestions:
         """Calling raw_input() from automated tests can ruin your day, so we'll
         mock it out even for those situations where we don't care about it and
         "shouldn't" call raw_input().
-
-        I guess under pytest this only works for methods that include this
-        fixture explicitly. So much for general safety I guess :/.
         """
         with mock.patch("paasta_tools.paasta_cli.fsm.questions.ask", autospec=True) as (
             mock_ask
