@@ -34,14 +34,4 @@ else
     tab_complete_fail "$pre_typed" "$actual" "$expected"
 fi
 
-pre_typed='wizard -'
-expected=`echo -e "start\vstop\vstatus"`
-actual=`COMP_LINE="paasta $pre_typed" COMP_POINT=99 _ARGCOMPLETE=1 paasta 8>&1 9>/dev/null`
-if [[ $expected == $actual ]]; then
-    tab_complete_pass "$pre_typed"
-else
-    tab_complete_fail "$pre_typed" "$actual" "$expected"
-fi
-
-
 echo "Everything worked!"
