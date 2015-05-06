@@ -318,6 +318,19 @@ def list_instances():
     return sorted(all_instances)
 
 
+def _load_sensu_team_data():
+    pass
+
+
+def list_teams():
+    """Loads team data from the system. Returns a set of team names (or empty
+    set).
+    """
+    team_data = _load_sensu_team_data()
+    teams = set(team_data.get('team_data', {}).keys())
+    return teams
+
+
 def calculate_remote_masters(cluster_name):
     """Given a cluster_name, do a DNS lookup of that cluster_name (which
     happens to point, eventually, to the Mesos masters in that cluster_name).
