@@ -34,4 +34,20 @@ else
     tab_complete_fail "$pre_typed" "$actual" "$expected"
 fi
 
+
+# laziness test
+#
+# Our tab completion code uses lazy_choices_completer to defer collection of
+# expensive tab-complete options, e.g. scraping yelpsoa-configs. Make sure we
+# are being sufficiently lazy.
+num_opens_in_nail_etc_services=`strace -e open paasta 2>&1 | grep '/nail/etc/services'  | wc -l`
+if [[ $num_opens_in_nail_etc_services == 0 ]]; then
+    echo "laziness test ok."
+else
+    echo "laziness test failure."
+    echo "Running 'paasta' caused $num_opens_in_nail_etc_services file opens in /nail/etc/services"
+    exit 1
+fi
+
+
 echo "Everything worked!"
