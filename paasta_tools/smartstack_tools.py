@@ -38,6 +38,24 @@ def get_backends(service=None, synapse_host_port='localhost:3212'):
     :returns backends: A list of dicts representing the backends of all
                        services or the requested service
     """
+    if service:
+        services = [service]
+    else:
+        services = None
+    return get_multiple_backends(services, synapse_host_port=synapse_host_port)
+
+
+def get_multiple_backends(services=None, synapse_host_port='localhost:3212'):
+    """Fetches the CSV from haproxy and returns a list of backends,
+    regardless of their state.
+
+    :param services: If specified, only return backends for these particular
+                     services.
+    :param synapse_host_port: A string in host:port format that this check
+                              should contact for replication information.
+    :returns backends: A list of dicts representing the backends of all
+                       services or the requested service
+    """
 
     reader = retrieve_haproxy_csv(synapse_host_port)
     backends = []
@@ -53,7 +71,7 @@ def get_backends(service=None, synapse_host_port='localhost:3212'):
         # FRONTEND/BACKEND hosts, use starts_with so that hosts that are UP
         # with 1/X healthchecks to go before going down get counted as UP:
         ha_slave, ha_service = line['svname'], line['pxname']
-        if (service is None or service == ha_service) and ha_slave not in ('FRONTEND', 'BACKEND'):
+        if (services is None or ha_service in services) and ha_slave not in ('FRONTEND', 'BACKEND'):
             backends.append(line)
 
     return backends

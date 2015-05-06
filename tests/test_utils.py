@@ -178,3 +178,20 @@ def test_get_infrastructure_zookeeper_servers(mock_parse_yaml_file):
     expected = ['1.2.3.4', '5.6.7.8']
     assert actual == expected
     mock_parse_yaml_file.assert_called_once_with('/nail/etc/zookeeper_discovery/infrastructure/test-cluster.yaml')
+
+
+def test_color_text():
+    expected = "%shi%s" % (utils.PaastaColors.RED, utils.PaastaColors.DEFAULT)
+    actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "hi")
+    assert actual == expected
+
+
+def test_color_text_nested():
+    expected = "%sred%sblue%sred%s" % (
+        utils.PaastaColors.RED,
+        utils.PaastaColors.BLUE,
+        utils.PaastaColors.DEFAULT + utils.PaastaColors.RED,
+        utils.PaastaColors.DEFAULT,
+    )
+    actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "red%sred" % utils.PaastaColors.blue("blue"))
+    assert actual == expected

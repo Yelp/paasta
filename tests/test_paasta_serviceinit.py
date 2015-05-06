@@ -2,6 +2,7 @@
 
 import contextlib
 import datetime
+import re
 
 import marathon
 import mesos
@@ -111,6 +112,7 @@ class TestPaastaServiceStatus:
         client.get_app.return_value = app
         service = 'my_service'
         instance = 'my_instance'
+        task = mock.Mock()
         with contextlib.nested(
             mock.patch('paasta_tools.paasta_serviceinit.marathon_tools.get_matching_appids'),
             mock.patch('paasta_tools.paasta_serviceinit.get_verbose_status_of_marathon_app'),
@@ -119,11 +121,12 @@ class TestPaastaServiceStatus:
             mock_get_verbose_app,
         ):
             mock_get_matching_appids.return_value = ['/app1']
-            mock_get_verbose_app.return_value = 'fake_return'
-            actual = paasta_serviceinit.status_marathon_job_verbose(service, instance, client)
+            mock_get_verbose_app.return_value = ([task], 'fake_return')
+            tasks, out = paasta_serviceinit.status_marathon_job_verbose(service, instance, client)
             mock_get_matching_appids.assert_called_once_with(service, instance, client)
             mock_get_verbose_app.assert_called_once_with(app)
-            assert 'fake_return' in actual
+            assert tasks == [task]
+            assert 'fake_return' in out
 
     def test_get_verbose_status_of_marathon_app(self):
         fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
@@ -134,11 +137,12 @@ class TestPaastaServiceStatus:
         fake_task.host = 'fake_deployed_host'
         fake_task.staged_at = datetime.datetime.fromtimestamp(0)
         fake_app.tasks = [fake_task]
-        actual = paasta_serviceinit.get_verbose_status_of_marathon_app(fake_app)
-        assert 'fake_task_id' in actual
-        assert '/fake--service' in actual
-        assert 'App created: 2015-01-14 21:30:49' in actual
-        assert 'fake_deployed_host' in actual
+        tasks, out = paasta_serviceinit.get_verbose_status_of_marathon_app(fake_app)
+        assert 'fake_task_id' in out
+        assert '/fake--service' in out
+        assert 'App created: 2015-01-14 21:30:49' in out
+        assert 'fake_deployed_host' in out
+        assert tasks == [fake_task]
 
     def test_status_marathon_job_when_running(self):
         client = mock.create_autospec(marathon.MarathonClient)
@@ -212,39 +216,45 @@ class TestPaastaServiceStatus:
             is_app_id_running_patch.assert_called_once_with(app_id, client)
             assert 'Deploying' in output
 
-    def test_status_smartstack_backends_verbose_different_nerve_ns(self):
-        service = 'my_service'
-        instance = 'my_instance'
-        cluster = 'fake_cluster'
-        with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-        ) as (
-            mock_read_namespace_for_service_instance,
-        ):
-            mock_read_namespace_for_service_instance.return_value = 'different_ns'
-            actual = paasta_serviceinit.status_smartstack_backends_verbose(service, instance, cluster)
-            assert actual == ""
+    def test_pretty_print_haproxy_backend(self):
+        pass
 
-    def test_status_smartstack_backends_verbose_same_nerve_ns(self):
+    def test_status_smartstack_backends_verbose_multiple_apps(self):
         service = 'my_service'
         instance = 'my_instance'
         cluster = 'fake_cluster'
-        fake_backends = [
-            {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
-             'check_code': '200', 'svname': 'ipaddress1:port1_hostname1',
-             'check_status': 'L7OK', 'check_duration': 1},
-        ]
+
+        good_task = mock.Mock()
+        bad_task = mock.Mock()
+        other_task = mock.Mock()
+        haproxy_backends_by_task = {
+            good_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+                        'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+                        'check_status': 'L7OK', 'check_duration': 1},
+            bad_task: {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
+                       'check_code': '200', 'svname': 'ipaddress2:1002_hostname2',
+                       'check_status': 'L7OK', 'check_duration': 1},
+        }
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_backends'),
+            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True),
+            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks', autospec=True),
         ) as (
             mock_read_namespace_for_service_instance,
             mock_get_backends,
+            mock_match_backends_and_tasks,
         ):
             mock_read_namespace_for_service_instance.return_value = instance
-            mock_get_backends.return_value = fake_backends
-            actual = paasta_serviceinit.status_smartstack_backends_verbose(service, instance, cluster)
-            assert "hostname1:port1" in actual
+            mock_get_backends.return_value = haproxy_backends_by_task.values()
+            mock_match_backends_and_tasks.return_value = [
+                (haproxy_backends_by_task[good_task], good_task),
+                (haproxy_backends_by_task[bad_task], None),
+                (None, other_task),
+            ]
+            tasks = [good_task, other_task]
+            actual = paasta_serviceinit.status_smartstack_backends_verbose(service, instance, cluster, tasks)
+            assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.DEFAULT), actual)
+            assert re.search(r"%s[^\n]*hostname2:1002" % re.escape(PaastaColors.GREY), actual)
 
     def test_status_smartstack_backends_different_nerve_ns(self):
         service = 'my_service'
@@ -393,6 +403,5 @@ class TestPaastaServiceStatus:
         fake_task.mem_limit = fake_task.rss
         actual = paasta_serviceinit.get_mem_usage(fake_task)
         assert actual == PaastaColors.red('100/100MB')
-
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
