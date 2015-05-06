@@ -1,3 +1,13 @@
+paasta-tools (0.9.63-yelp1) lucid; urgency=low
+
+  * 0.9.63 tagged with 'make release'
+    Merge branch 'troscoe_i_put_on_my_robe_and_wizard_tab_2'
+    https://reviewboard.yelpcorp.com/r/96614/
+    Commit: Merge branch troscoe_i_put_on_my_robe_and_wizard_tab_3
+    https://reviewboard.yelpcorp.com/r/96742/
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 06 May 2015 16:40:47 -0700
+
 paasta-tools (0.9.62-yelp1) lucid; urgency=low
 
   * 0.9.62 tagged with 'make release'
