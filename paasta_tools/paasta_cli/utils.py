@@ -4,6 +4,7 @@ import os
 from socket import gaierror
 from socket import gethostbyname_ex
 
+import json
 from service_configuration_lib import read_services_configuration
 
 from paasta_tools.marathon_tools import get_cluster
@@ -319,7 +320,9 @@ def list_instances():
 
 
 def _load_sensu_team_data():
-    pass
+    with open('/etc/sensu/team_data.json') as f:
+        team_data = json.load(f)
+    return team_data
 
 
 def list_teams():

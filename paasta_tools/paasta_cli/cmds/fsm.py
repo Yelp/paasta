@@ -13,6 +13,8 @@ from paasta_tools.paasta_cli.fsm.questions import get_service_stanza
 from paasta_tools.paasta_cli.fsm.questions import get_smartstack_stanza
 from paasta_tools.paasta_cli.fsm.questions import get_srvname
 from paasta_tools.paasta_cli.fsm.service import Service
+from paasta_tools.paasta_cli.utils import list_teams
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.utils import PaastaColors
 
 
@@ -63,7 +65,7 @@ def add_subparser(subparsers):
         default=None,
         help="Team responsible for the service. Used by various notification "
              "systems. (--auto not available)",
-    )
+    ).completer = lazy_choices_completer(list_teams())
     fsm_parser.set_defaults(command=paasta_fsm)
 
 
