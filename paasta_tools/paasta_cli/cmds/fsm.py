@@ -65,7 +65,7 @@ def add_subparser(subparsers):
         default=None,
         help="Team responsible for the service. Used by various notification "
              "systems. (--auto not available)",
-    ).completer = lazy_choices_completer(list_teams())
+    ).completer = lazy_choices_completer(list_teams)
     fsm_parser.set_defaults(command=paasta_fsm)
 
 
