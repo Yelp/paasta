@@ -97,7 +97,7 @@ def test_check_namespaces():
     crit = 90
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
-                   side_effect=lambda a, b, c: expected.pop()),
+                   side_effect=lambda a, b, soa_dir=soa_dir: expected.pop()),
         mock.patch('check_marathon_services_replication.send_event'),
         mock.patch('check_marathon_services_replication.get_context'),
     ) as (
@@ -106,11 +106,11 @@ def test_check_namespaces():
         context_patch,
     ):
         check_marathon_services_replication.check_namespaces(namespaces, available, soa_dir, crit)
-        expected_patch.assert_any_call('test', 'one', soa_dir)
-        expected_patch.assert_any_call('test', 'two', soa_dir)
-        expected_patch.assert_any_call('test', 'three', soa_dir)
-        expected_patch.assert_any_call('test', 'four', soa_dir)
-        expected_patch.assert_any_call('test', 'five', soa_dir)
+        expected_patch.assert_any_call('test', 'one', soa_dir=soa_dir)
+        expected_patch.assert_any_call('test', 'two', soa_dir=soa_dir)
+        expected_patch.assert_any_call('test', 'three', soa_dir=soa_dir)
+        expected_patch.assert_any_call('test', 'four', soa_dir=soa_dir)
+        expected_patch.assert_any_call('test', 'five', soa_dir=soa_dir)
         assert expected_patch.call_count == 5
         event_patch.assert_any_call('test', 'one', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
         event_patch.assert_any_call('test', 'two', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
