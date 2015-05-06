@@ -1,4 +1,5 @@
 import os
+import socket
 import requests
 import json
 import re
@@ -10,6 +11,9 @@ from kazoo.client import KazooClient
 # read in the config for zookeeper, etc
 os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
 from mesos.cli import master
+
+MESOS_MASTER_PORT = 5050
+MESOS_SLAVE_PORT = '5051'
 
 
 def get_mesos_tasks_from_master(job_id):
@@ -33,10 +37,11 @@ def fetch_mesos_stats():
     return response.json()
 
 
-def fetch_mesos_state(hostname, port=5050, timeout=10):
-    """Fetches mesos state.json and returns it as a dict."""
-    stats_uri = 'http://%s:%s/state.json' % (hostname, port)
-    response = requests.get(stats_uri, timeout=timeout)
+def fetch_local_slave_state():
+    """Fetches mesos slave state.json and returns it as a dict."""
+    hostname = socket.getfqdn()
+    stats_uri = 'http://%s:%s/state.json' % (hostname, MESOS_SLAVE_PORT)
+    response = requests.get(stats_uri, timeout=10)
     response.raise_for_status()
     return json.loads(response.text)
 

@@ -17,7 +17,7 @@ from marathon import MarathonClient
 import json
 import service_configuration_lib
 
-from paasta_tools.mesos_tools import fetch_mesos_state
+from paasta_tools.mesos_tools import fetch_local_slave_state
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -25,7 +25,6 @@ from paasta_tools.mesos_tools import fetch_mesos_state
 ID_SPACER = '.'
 MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
-MESOS_SLAVE_PORT = 5051
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -693,19 +692,14 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     return namespace_list
 
 
-def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, timeout_s=30):
-    """See what services are being run by a mesos-slave via marathon on
-    the given host and port.
-
-    :param hostname: The hostname to query mesos-slave on
-    :param port: The port to query mesos-slave on
-    :timeout_s: The timeout, in seconds, for the mesos-slave state request
+def marathon_services_running_here():
+    """See what marathon services are being run by a mesos-slave on this host.
     :returns: A list of triples of (service_name, instance_name, port)"""
     try:
-        slave_state = fetch_mesos_state(hostname=hostname, port=port, timeout=timeout_s)
+        slave_state = fetch_local_slave_state()
     except requests.ConnectionError as e:
         sys.stderr.write('Could not connect to the mesos slave to see which services are running\n')
-        sys.stderr.write('on %s:%s. Is the mesos-slave running?\n' % (hostname, port))
+        sys.stderr.write('on %s. Is the mesos-slave running?\n' % e.request.url)
         sys.stderr.write('Error was: %s\n' % e.message)
         sys.exit(1)
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
@@ -718,16 +712,6 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
         srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list
-
-
-def marathon_services_running_here(port=MESOS_SLAVE_PORT, timeout_s=30):
-    """See what marathon services are being run by a mesos-slave on this host.
-    This is just marathon_services_running_on for localhost.
-
-    :param port: The port to query mesos-slave on
-    :timeout_s: The timeout, in seconds, for the mesos-slave state request
-    :returns: A list of triples of (service_name, instance_name, port)"""
-    return marathon_services_running_on(port=port, timeout_s=timeout_s)
 
 
 def get_marathon_services_running_here_for_nerve(cluster, soa_dir):

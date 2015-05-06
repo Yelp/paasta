@@ -536,8 +536,8 @@ class TestMarathonTools:
         assert actual == instance
         read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
 
-    @mock.patch('marathon_tools.fetch_mesos_state', autospec=True)
-    def test_marathon_services_running_on(self, mock_fetch_mesos_state):
+    @mock.patch('marathon_tools.fetch_local_slave_state', autospec=True)
+    def test_marathon_services_running_here(self, mock_fetch_local_slave_state):
         id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr'
         id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94'
         id_3 = 'dota.axe.cleave.482u9jyoi4wed'
@@ -548,10 +548,7 @@ class TestMarathonTools:
         ports_3 = '[333-333]'
         ports_4 = '[444-444]'
         ports_5 = '[555-555]'
-        hostname = 'io-dev.oiio.io'
-        port = 123456789
-        timeout = -99
-        mock_fetch_mesos_state.return_value = {
+        mock_fetch_local_slave_state.return_value = {
             'frameworks': [
                 {
                     'executors': [
@@ -586,23 +583,19 @@ class TestMarathonTools:
                     ('fire', 'photon', 222),
                     ('dota', 'axe', 333),
                     ('mesos', 'deployment', 444)]
-        actual = marathon_tools.marathon_services_running_on(hostname, port, timeout)
-        mock_fetch_mesos_state.assert_called_once_with(hostname=hostname, port=port, timeout=timeout)
+        actual = marathon_tools.marathon_services_running_here()
+        mock_fetch_local_slave_state.assert_called_once_with()
         assert expected == actual
 
-    @mock.patch('marathon_tools.fetch_mesos_state', autospec=True)
-    def test_marathon_services_running_on_handles_connection_failures(self, mock_fetch_mesos_state):
-        mock_fetch_mesos_state.side_effect = requests.ConnectionError('Connection Failed')
+    @mock.patch('marathon_tools.fetch_local_slave_state', autospec=True)
+    def test_marathon_services_running_here_handles_connection_failures(self, mock_fetch_local_slave_state):
+        mock_fetch_local_slave_state.side_effect = requests.ConnectionError(
+            'Connection Failed',
+            request=requests.Request('GET', url='http://fake/')
+        )
         with raises(SystemExit) as sys_exit:
-            marathon_tools.marathon_services_running_on()
+            marathon_tools.marathon_services_running_here()
             assert sys_exit.value.code == 1
-
-    @mock.patch('marathon_tools.marathon_services_running_on', autospec=True, return_value='chipotle')
-    def test_marathon_services_running_here(self, mesos_on_patch):
-        port = 808
-        timeout = 9999
-        assert marathon_tools.marathon_services_running_here(port, timeout) == 'chipotle'
-        mesos_on_patch.assert_called_once_with(port=port, timeout_s=timeout)
 
     def test_get_marathon_services_running_here_for_nerve(self):
         cluster = 'edelweiss'
