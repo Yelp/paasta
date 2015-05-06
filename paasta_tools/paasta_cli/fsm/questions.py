@@ -9,6 +9,7 @@ import yaml
 
 from paasta_tools.paasta_cli.fsm.prompt import ask
 from paasta_tools.paasta_cli.fsm.autosuggest import suggest_smartstack_proxy_port
+from paasta_tools.paasta_cli.utils import list_teams
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 
 
@@ -79,11 +80,18 @@ def get_monitoring_stanza(auto, team, legacy_style=False):
 
     legacy_style changes some behavior for use with wizard.py.
     """
+    all_teams = list_teams()
     if team is None:
         if auto and not legacy_style:
             sys.exit("I'd Really Rather You Didn't Use --auto Without --team")
         while not team:
+            print "Here are the existing teams:"
+            print ", ".join(sorted(all_teams))
             team = ask("Team responsible for this service?")
+    if team not in all_teams:
+        print "I Don't See Your Team '%s' In The List Of Valid Teams:" % team
+        sys.exit(", ".join(sorted(all_teams)))
+
     stanza = {}
     stanza["team"] = team
     stanza["service_type"] = "marathon"

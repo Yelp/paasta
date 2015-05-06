@@ -155,6 +155,7 @@ else
     echo $actual
     echo "Expected:"
     echo $expected
+    exit 1
 fi
 
 

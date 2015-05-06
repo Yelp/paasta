@@ -346,6 +346,35 @@ def test_list_instances_no_service(
     assert actual == expected
 
 
+def test_list_teams():
+    fake_team_data = {
+        'team_data': {
+            'red_jaguars': {
+                'pagerduty_api_key': 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                'pages_irc_channel': 'red_jaguars_pages',
+                'notifications_irc_channel': 'red_jaguars_notifications',
+                'notification_email': 'red_jaguars+alert@yelp.com',
+                'project': 'REDJAGS'
+            },
+            'blue_barracudas': {
+                'pagerduty_api_key': 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+                'pages_irc_channel': 'blue_barracudas_pages',
+            },
+        }
+    }
+    expected = set([
+        'red_jaguars',
+        'blue_barracudas',
+    ])
+    with mock.patch(
+        'paasta_tools.paasta_cli.utils._load_sensu_team_data',
+        autospec=True,
+        return_value=fake_team_data,
+    ):
+        actual = utils.list_teams()
+    assert actual == expected
+
+
 def test_lazy_choices_completer():
     completer = utils.lazy_choices_completer(lambda: ['1', '2', '3'])
     assert completer(prefix='') == ['1', '2', '3']

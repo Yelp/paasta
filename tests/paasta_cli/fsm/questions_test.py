@@ -12,9 +12,6 @@ class TestQuestions:
         """Calling raw_input() from automated tests can ruin your day, so we'll
         mock it out even for those situations where we don't care about it and
         "shouldn't" call raw_input().
-
-        I guess under pytest this only works for methods that include this
-        fixture explicitly. So much for general safety I guess :/.
         """
         with mock.patch("paasta_tools.paasta_cli.fsm.questions.ask", autospec=True) as (
             mock_ask
@@ -135,15 +132,34 @@ class TestGetSmartstackStanzaTestCase(TestQuestions):
 
 
 class TestGetMonitoringStanzaTestCase(TestQuestions):
-    def test_arg_passed_in(self, mock_ask):
-        team = "america world police"
+    @yield_fixture
+    def mock_list_teams(self):
+        with mock.patch("paasta_tools.paasta_cli.fsm.questions.list_teams", autospec=True) as (
+            mock_list_teams
+        ):
+            mock_list_teams.return_value = set([
+                "red_jaguars",
+                "blue_barracudas",
+                "green_monkeys",
+            ])
+            yield mock_list_teams
+
+    def test_valid_team_passed_in(self, mock_ask, mock_list_teams):
+        team = "red_jaguars"
         auto = "UNUSED"
 
         actual = fsm.get_monitoring_stanza(auto, team)
         assert ("team", team) in actual.items()
         assert ("service_type", "marathon") in actual.items()
 
-    def test_arg_not_passed_in_auto_true(self, mock_ask):
+    def test_invalid_team_passed_in(self, mock_ask, mock_list_teams):
+        team = "america world police"
+        auto = "UNUSED"
+
+        with raises(SystemExit):
+            fsm.get_monitoring_stanza(auto, team)
+
+    def test_team_not_passed_in_auto_true(self, mock_ask, mock_list_teams):
         """If a value is not specified but --auto was requested, calculate and
         use a sane default.
         """
@@ -155,30 +171,32 @@ class TestGetMonitoringStanzaTestCase(TestQuestions):
         assert "I'd Really Rather You Didn't Use --auto Without --team" in err.value
         assert 0 == mock_ask.call_count
 
-    def test_arg_not_passed_in_auto_false(self, mock_ask):
+    def test_team_not_passed_in_auto_false(self, mock_ask, mock_list_teams):
         """If a value is not specified but --auto was not requested, prompt the
         user.
         """
         team = None
         auto = False
 
+        mock_ask.return_value = "red_jaguars"
         actual = fsm.get_monitoring_stanza(auto, team)
         assert 1 == mock_ask.call_count
         assert ("team", mock_ask.return_value) in actual.items()
 
-    def test_arg_not_passed_in_auto_true_legacy_style_true(self, mock_ask):
+    def test_team_not_passed_in_auto_true_legacy_style_true(self, mock_ask, mock_list_teams):
         """If a value is not specified and --auto was requested and
         legacy_style is on, prompt the user.
         """
         team = None
         auto = True
 
+        mock_ask.return_value = "red_jaguars"
         actual = fsm.get_monitoring_stanza(auto, team, legacy_style=True)
         assert 1 == mock_ask.call_count
         assert ("team", mock_ask.return_value) in actual.items()
 
-    def test_service_type_marathon_when_legacy_style_true(self, mock_ask):
-        team = "whatever"
+    def test_service_type_marathon_when_legacy_style_true(self, mock_ask, mock_list_teams):
+        team = "red_jaguars"
         auto = "UNUSED"
 
         actual = fsm.get_monitoring_stanza(auto, team, legacy_style=True)
