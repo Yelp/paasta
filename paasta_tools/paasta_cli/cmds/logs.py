@@ -40,12 +40,12 @@ def add_subparser(subparsers):
     status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect. Defaults to autodetect.'
-    ).completer = lazy_choices_completer(list_services())
+    ).completer = lazy_choices_completer(list_services)
     components_help = 'A comma separated list of the components you want logs for.'
     status_parser.add_argument(
         '-c', '--components',
         help=components_help,
-    ).completer = lazy_choices_completer(LOG_COMPONENTS.keys())
+    ).completer = lazy_choices_completer(LOG_COMPONENTS.keys)
     cluster_help = 'The clusters to see relevant logs for. Defaults to all clusters to which this service is deployed.'
     status_parser.add_argument(
         '-l', '--clusters',
