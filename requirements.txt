@@ -22,7 +22,7 @@ mesos.cli==0.1.3
 mesos.interface==0.20.1
 mrjob==0.4.4.post1
 ordereddict==1.1
-paasta-tools==0.9.60
+paasta-tools==0.9.61
 ply==3.4
 prettytable==0.7.2
 protobuf==2.5.0

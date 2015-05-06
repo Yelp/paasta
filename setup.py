@@ -16,7 +16,7 @@ setup(
     include_package_data=True,
     install_requires = [
         'argcomplete >= 0.8.1',
-        'argparse >= 1.3.0',
+        'argparse >= 1.2.1',
         'docker-py >= 0.5.3',
         'dulwich >= 0.9.8',
         'humanize >= 0.5.1',
