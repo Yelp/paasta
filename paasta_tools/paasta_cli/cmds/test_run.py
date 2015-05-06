@@ -120,10 +120,10 @@ def run_docker_container_interactive(service, instance, docker_hash, volumes, co
 
     run_args.append('--tty=true')
     run_args.append('--interactive=true')
-    # We inject a BAD_PORT as the PORT variable, as marathon injects the externally
+    # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
     # be using this variable in surprising ways. See PAASTA-267 for more context.
-    run_args.append('--env=PORT=BAD_PORT')
+    run_args.append('--env=PORT=This_service_is_listening_for_the_PORT_variable__You_must_configure_it_to_use_8888_see_y/paasta_deploy')
     run_args.append('--memory=%dm' % service_manifest.get_mem())
     run_args.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     run_args.append('%s' % docker_hash)
@@ -160,6 +160,7 @@ def run_docker_container_non_interactive(
     create_result = docker_client.create_container(
         image=docker_hash,
         command=command,
+        environment=['PORT=This_service_is_listening_for_the_PORT_variable__You_must_configure_it_to_use_8888_see_y/paasta_deploy'],
         tty=False,
         volumes=volumes,
         mem_limit='%dm' % service_manifest.get_mem(),
