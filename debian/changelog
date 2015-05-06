@@ -1,3 +1,10 @@
+paasta-tools (0.9.62-yelp1) lucid; urgency=low
+
+  * 0.9.62 tagged with 'make release'
+    Commit: Relax argparse version constraint.
+
+ -- John Billings <billings@yelp.com>  Wed, 06 May 2015 13:47:19 -0700
+
 paasta-tools (0.9.61-yelp1) lucid; urgency=low
 
   * 0.9.61 tagged with 'make release'
