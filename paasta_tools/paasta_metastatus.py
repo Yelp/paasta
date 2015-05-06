@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
-import socket
-
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import fetch_mesos_stats
-from paasta_tools.mesos_tools import fetch_mesos_state
+from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
@@ -23,9 +21,8 @@ def get_mesos_status():
     :return: string containing the status
     """
     output = []
-    my_ip = socket.getfqdn()
     metrics = fetch_mesos_stats()
-    state = fetch_mesos_state(hostname=my_ip)
+    state = fetch_mesos_state_from_leader()
     output.append("Mesos:")
     output.append(
         "    cpus: %d total => %d used, %d available" %

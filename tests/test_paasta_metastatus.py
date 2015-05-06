@@ -7,9 +7,9 @@ from paasta_tools import paasta_metastatus
 @patch('socket.getfqdn', autospec=True)
 @patch('paasta_tools.paasta_metastatus.get_mesos_masters_state')
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_stats')
-@patch('paasta_tools.paasta_metastatus.fetch_mesos_state')
+@patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
 def test_get_mesos_status(
-    mock_fetch_mesos_state,
+    mock_fetch_mesos_state_from_leader,
     mock_fetch_mesos_stats,
     mock_get_mesos_master_state,
     mock_getfqdn,
@@ -27,7 +27,7 @@ def test_get_mesos_status(
         'master/slaves_active': 4,
         'master/slaves_inactive': 0,
     }
-    mock_fetch_mesos_state.return_value = {
+    mock_fetch_mesos_state_from_leader.return_value = {
         'flags': {
             'zk': 'zk://1.1.1.1:2222/fake_cluster',
             'quorum': 2,
@@ -43,7 +43,7 @@ def test_get_mesos_status(
     output = paasta_metastatus.get_mesos_status()
 
     assert mock_fetch_mesos_stats.called_once()
-    assert mock_fetch_mesos_state.called_once()
+    assert mock_fetch_mesos_state_from_leader.called_once()
     assert mock_get_mesos_master_state.called_once()
     assert expected_cpus_output in output
     assert expected_mem_output in output

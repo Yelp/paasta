@@ -1,5 +1,4 @@
 import os
-import socket
 import requests
 import json
 import re
@@ -29,11 +28,9 @@ def get_non_running_mesos_tasks_for_service(job_id):
 
 def fetch_mesos_stats():
     """Queries the mesos stats api and returns a dictionary of the results"""
-    # We make mesos bind on the "primary" of the server
-    my_ip = socket.getfqdn()
-    stats_uri = 'http://%s:5050/metrics/snapshot' % my_ip
-    response = requests.get(stats_uri, timeout=5)
-    return json.loads(response.text)
+    response = master.CURRENT.fetch('metrics/snapshot')
+    response.raise_for_status()
+    return response.json()
 
 
 def fetch_mesos_state(hostname, port=5050, timeout=10):
@@ -42,6 +39,11 @@ def fetch_mesos_state(hostname, port=5050, timeout=10):
     response = requests.get(stats_uri, timeout=timeout)
     response.raise_for_status()
     return json.loads(response.text)
+
+
+def fetch_mesos_state_from_leader():
+    """Fetches mesos state from the leader."""
+    return master.CURRENT.state
 
 
 def get_mesos_quorum(state):
