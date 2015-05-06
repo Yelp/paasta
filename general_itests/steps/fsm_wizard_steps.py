@@ -35,7 +35,7 @@ def step_impl_when_fsm_auto(context):
            "--yelpsoa-config-root %s "
            "--auto "
            "--service-name %s "
-           "--team paasta_team"
+           "--team paasta"
            % (context.fake_yelpsoa_configs, service_name)
     )
     print "Running cmd %s" % cmd
@@ -51,7 +51,7 @@ def step_impl_when_wizard_auto(context):
            "--yelpsoa-config-root %s "
            "--auto "
            "--service-name %s "
-           "--team legacy_team "
+           "--team paasta "
            "--smartstack"
            % (context.fake_yelpsoa_configs, service_name)
     )
