@@ -10,6 +10,7 @@ from service_configuration_lib import read_services_configuration
 from paasta_tools.marathon_tools import get_cluster
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
 from paasta_tools.utils import _run
+from paasta_tools.utils import get_infrastructure_zookeeper_servers
 from paasta_tools.utils import PaastaColors
 
 

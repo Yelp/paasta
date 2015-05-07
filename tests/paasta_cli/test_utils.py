@@ -5,37 +5,6 @@ from socket import gaierror
 from paasta_tools.paasta_cli import utils
 
 
-@patch('paasta_tools.paasta_cli.utils.gethostbyname_ex', autospec=True)
-def test_calculate_remote_masters_happy_path(mock_gethostbyname_ex):
-    cluster_name = 'fake_cluster_name'
-    ips = [
-        '192.0.2.1',
-        '192.0.2.2',
-        '192.0.2.3',
-    ]
-    mock_gethostbyname_ex.return_value = (
-        'unused',
-        'unused',
-        ips,
-    )
-
-    actual = utils.calculate_remote_masters(cluster_name)
-    mock_gethostbyname_ex.assert_called_once_with("mesos-%s.yelpcorp.com" % cluster_name)
-    assert actual == (ips, None)
-
-
-@patch('paasta_tools.paasta_cli.utils.gethostbyname_ex', autospec=True)
-def test_calculate_remote_masters_dns_lookup_fails(mock_gethostbyname_ex):
-    cluster_name = 'fake_cluster_name'
-    err_msg = 'fake omg ur dns does not exist'
-    mock_gethostbyname_ex.side_effect = gaierror('EAI_NONE', err_msg)
-
-    actual = utils.calculate_remote_masters(cluster_name)
-    mock_gethostbyname_ex.assert_called_once_with("mesos-%s.yelpcorp.com" % cluster_name)
-    assert actual[0] == []
-    assert err_msg in actual[1]
-
-
 @patch('paasta_tools.paasta_cli.utils.check_ssh_and_sudo_on_master', autospec=True)
 def test_find_connectable_master_happy_path(mock_check_ssh_and_sudo_on_master):
     masters = [

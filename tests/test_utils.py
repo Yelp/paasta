@@ -166,3 +166,15 @@ def test_list_all_clusters(mock_os_listdir):
     expected = set(['cluster1', 'cluster2'])
     actual = utils.list_all_clusters()
     assert actual == expected
+
+
+@mock.patch('paasta_tools.utils.parse_yaml_file', autospec=True)
+def test_get_infrastructure_zookeeper_servers(mock_parse_yaml_file):
+    mock_parse_yaml_file.return_value = [
+        ['1.2.3.4', 22181],
+        ['5.6.7.8', 22181],
+    ]
+    actual = utils.get_infrastructure_zookeeper_servers('test-cluster')
+    expected = ['1.2.3.4', '5.6.7.8']
+    assert actual == expected
+    mock_parse_yaml_file.assert_called_once_with('/nail/etc/zookeeper_discovery/infrastructure/test-cluster.yaml')
