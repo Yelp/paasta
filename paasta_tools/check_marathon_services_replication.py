@@ -116,7 +116,11 @@ def check_namespaces(all_namespaces, available_backends, soa_dir, crit_threshold
         log.info('Checking namespace %s', full_name)
         try:
             service_name, namespace = split_id(full_name)
-            num_expected = marathon_tools.get_expected_instance_count_for_namespace(service_name, namespace, soa_dir)
+            num_expected = marathon_tools.get_expected_instance_count_for_namespace(
+                service_name,
+                namespace,
+                soa_dir=soa_dir
+            )
         except (IndexError, KeyError, OSError, ValueError, AttributeError):
             log.info('Namespace %s isn\'t a marathon service', full_name)
             continue  # This isn't a Marathon service
