@@ -1,6 +1,5 @@
 import mock
 from mock import patch
-from socket import gaierror
 
 from paasta_tools.paasta_cli import utils
 
@@ -167,7 +166,7 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
         'fake_master2',
         'fake_master3',
     )
-    mock_calculate_remote_masters.return_value = (remote_masters, None)
+    mock_calculate_remote_masters.return_value = remote_masters
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
 
     actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster_name, service_name, instancename)
@@ -198,7 +197,7 @@ def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
     service_name = 'fake_service'
     instancename = 'fake_instance'
     mock_find_connectable_master.return_value = (None, "fake_err_msg")
-    mock_calculate_remote_masters.return_value = (['fake_master'], None)
+    mock_calculate_remote_masters.return_value = ['fake_master']
 
     actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster_name, service_name, instancename)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
@@ -220,7 +219,7 @@ def test_execute_paasta_metastatus_on_remote_master(
         'fake_master2',
         'fake_master3',
     )
-    mock_calculate_remote_masters.return_value = (remote_masters, None)
+    mock_calculate_remote_masters.return_value = remote_masters
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
 
     actual = utils.execute_paasta_metastatus_on_remote_master(cluster_name)
@@ -242,7 +241,7 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
 ):
     cluster_name = 'fake_cluster_name'
     mock_find_connectable_master.return_value = (None, "fake_err_msg")
-    mock_calculate_remote_masters.return_value = (['fake_master'], None)
+    mock_calculate_remote_masters.return_value = ['fake_master']
 
     actual = utils.execute_paasta_metastatus_on_remote_master(cluster_name)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
