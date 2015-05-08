@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 
@@ -22,12 +23,13 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_metastatus)
 
 
-def report_cluster_status(cluster, verbose=False):
-    """With a given cluster and verboseness, returns the status of the cluster"""
-    output = []
-    output.append("cluster: %s" % cluster)
-    output.append(execute_paasta_metastatus_on_remote_master(cluster, verbose))
-    return '\n'.join(output)
+def print_cluster_status(cluster, verbose=False):
+    """With a given cluster and verboseness, returns the status of the cluster
+    output is printed directly to provide dashbaords even if the cluster is unavailable"""
+    print "Cluster: %s" % cluster
+    print get_cluster_dashboards(cluster)
+    print execute_paasta_metastatus_on_remote_master(cluster, verbose)
+    print ""
 
 
 def figure_out_clusters_to_inspect(args, all_clusters):
@@ -38,14 +40,23 @@ def figure_out_clusters_to_inspect(args, all_clusters):
     return clusters_to_inspect
 
 
+def get_cluster_dashboards(cluster):
+    """Returns the direct dashboards for humans to use for a given cluster"""
+    output = []
+    output.append("Admin Dashboards: (may not be directly reachable if in prod)")
+    output.append("  Mesos:    %s" % PaastaColors.cyan("http://paasta-%s.yelp:5050/" % cluster))
+    output.append("  Marathon: %s" % PaastaColors.cyan("http://paasta-%s.yelp:5052/" % cluster))
+    output.append("  Synapse:  %s" % PaastaColors.cyan("http://paasta-%s.yelp:3212/" % cluster))
+    return '\n'.join(output)
+
+
 def paasta_metastatus(args):
     """Print the status of a PaaSTA clusters"""
     all_clusters = list_clusters()
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
     for cluster in clusters_to_inspect:
         if cluster in all_clusters:
-            print report_cluster_status(cluster, args.verbose)
-            print ""
+            print_cluster_status(cluster, args.verbose)
         else:
             print "Cluster %s doesn't look like a valid cluster?" % args.clusters
             print "Try using tab completion to help complete the cluster name"
