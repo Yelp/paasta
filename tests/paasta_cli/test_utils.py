@@ -1,39 +1,7 @@
 import mock
 from mock import patch
-from socket import gaierror
 
 from paasta_tools.paasta_cli import utils
-
-
-@patch('paasta_tools.paasta_cli.utils.gethostbyname_ex', autospec=True)
-def test_calculate_remote_masters_happy_path(mock_gethostbyname_ex):
-    cluster_name = 'fake_cluster_name'
-    ips = [
-        '192.0.2.1',
-        '192.0.2.2',
-        '192.0.2.3',
-    ]
-    mock_gethostbyname_ex.return_value = (
-        'unused',
-        'unused',
-        ips,
-    )
-
-    actual = utils.calculate_remote_masters(cluster_name)
-    mock_gethostbyname_ex.assert_called_once_with("mesos-%s.yelpcorp.com" % cluster_name)
-    assert actual == (ips, None)
-
-
-@patch('paasta_tools.paasta_cli.utils.gethostbyname_ex', autospec=True)
-def test_calculate_remote_masters_dns_lookup_fails(mock_gethostbyname_ex):
-    cluster_name = 'fake_cluster_name'
-    err_msg = 'fake omg ur dns does not exist'
-    mock_gethostbyname_ex.side_effect = gaierror('EAI_NONE', err_msg)
-
-    actual = utils.calculate_remote_masters(cluster_name)
-    mock_gethostbyname_ex.assert_called_once_with("mesos-%s.yelpcorp.com" % cluster_name)
-    assert actual[0] == []
-    assert err_msg in actual[1]
 
 
 @patch('paasta_tools.paasta_cli.utils.check_ssh_and_sudo_on_master', autospec=True)
@@ -198,7 +166,7 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
         'fake_master2',
         'fake_master3',
     )
-    mock_calculate_remote_masters.return_value = (remote_masters, None)
+    mock_calculate_remote_masters.return_value = remote_masters
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
 
     actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster_name, service_name, instancename)
@@ -229,7 +197,7 @@ def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
     service_name = 'fake_service'
     instancename = 'fake_instance'
     mock_find_connectable_master.return_value = (None, "fake_err_msg")
-    mock_calculate_remote_masters.return_value = (['fake_master'], None)
+    mock_calculate_remote_masters.return_value = ['fake_master']
 
     actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster_name, service_name, instancename)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
@@ -251,7 +219,7 @@ def test_execute_paasta_metastatus_on_remote_master(
         'fake_master2',
         'fake_master3',
     )
-    mock_calculate_remote_masters.return_value = (remote_masters, None)
+    mock_calculate_remote_masters.return_value = remote_masters
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
 
     actual = utils.execute_paasta_metastatus_on_remote_master(cluster_name)
@@ -273,7 +241,7 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
 ):
     cluster_name = 'fake_cluster_name'
     mock_find_connectable_master.return_value = (None, "fake_err_msg")
-    mock_calculate_remote_masters.return_value = (['fake_master'], None)
+    mock_calculate_remote_masters.return_value = ['fake_master']
 
     actual = utils.execute_paasta_metastatus_on_remote_master(cluster_name)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0

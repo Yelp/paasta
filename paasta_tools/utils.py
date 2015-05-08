@@ -17,8 +17,10 @@ import threading
 import clog
 import dateutil.tz
 import docker
+import yaml
 
 
+INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -412,7 +414,7 @@ def get_username():
     return pwd.getpwuid(os.getuid())[0]
 
 
-def list_all_clusters(zk_discovery_path='/nail/etc/zookeeper_discovery/infrastructure/'):
+def list_all_clusters(zk_discovery_path=INFRA_ZK_PATH):
     """Returns a set of all infrastructure zookeeper clusters.
     This makes the assumption that paasta clusters and zookeeper
     clusters are the same"""
@@ -420,3 +422,15 @@ def list_all_clusters(zk_discovery_path='/nail/etc/zookeeper_discovery/infrastru
     for yaml_file in os.listdir(zk_discovery_path):
         clusters.add(yaml_file.split('.')[0])
     return clusters
+
+
+def parse_yaml_file(yaml_file):
+    return yaml.load(open(yaml_file))
+
+
+def get_infrastructure_zookeeper_servers(cluster, zk_discovery_path=INFRA_ZK_PATH):
+    """Reads a yelp zookeeper toplogy file for a given cluster and returns
+    a list of the zookeeper server ips"""
+    yaml_file = os.path.join(zk_discovery_path, "%s%s" % (cluster, '.yaml'))
+    cluster_topology = parse_yaml_file(yaml_file)
+    return [host_port[0] for host_port in cluster_topology]
