@@ -3,9 +3,9 @@ import contextlib
 from marathon.models import MarathonApp
 import mock
 from pytest import raises
-import requests
 
 import marathon_tools
+from paasta_tools.mesos_tools import MesosSlaveConnectionError
 
 
 class TestMarathonTools:
@@ -589,9 +589,9 @@ class TestMarathonTools:
 
     @mock.patch('marathon_tools.fetch_local_slave_state', autospec=True)
     def test_marathon_services_running_here_handles_connection_failures(self, mock_fetch_local_slave_state):
-        mock_fetch_local_slave_state.side_effect = requests.ConnectionError(
+        mock_fetch_local_slave_state.side_effect = MesosSlaveConnectionError(
             'Connection Failed',
-            request=requests.Request('GET', url='http://fake/')
+            url='http://fakeurl:1111',
         )
         with raises(SystemExit) as sys_exit:
             marathon_tools.marathon_services_running_here()

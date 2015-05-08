@@ -16,6 +16,12 @@ MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = '5051'
 
 
+class MesosSlaveConnectionError(Exception):
+    def __init__(self, message, url):
+        super(MesosSlaveConnectionError, self).__init__(message)
+        self.url = url
+
+
 def get_mesos_tasks_from_master(job_id):
     return master.CURRENT.tasks(fltr=job_id)
 
@@ -41,7 +47,10 @@ def fetch_local_slave_state():
     """Fetches mesos slave state.json and returns it as a dict."""
     hostname = socket.getfqdn()
     stats_uri = 'http://%s:%s/state.json' % (hostname, MESOS_SLAVE_PORT)
-    response = requests.get(stats_uri, timeout=10)
+    try:
+        response = requests.get(stats_uri, timeout=10)
+    except requests.ConnectionError as e:
+        raise MesosSlaveConnectionError(e.message, url=e.request.url)
     response.raise_for_status()
     return json.loads(response.text)
 
