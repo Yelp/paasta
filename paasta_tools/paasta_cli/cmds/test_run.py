@@ -105,13 +105,13 @@ def add_subparser(subparsers):
 
 def run_docker_container_interactive(service, instance, docker_hash, volumes, command, service_manifest):
     """
-    Since docker-py has some issues with running a container with TTY attached we're just executing
-    docker run command for interactive mode. For non-interactive mode we're using docker-py.
+    docker-py has issues running a container with a TTY attached, so we execute
+    'docker run' directly.
     """
     sys.stderr.write(PaastaColors.yellow(
-        'Warning! You\'re running a container in interactive mode.\n'
-        'This is not how Mesos runs containers. To run container exactly\n'
-        'like Mesos does don\'t use the -I flag.\n\n'
+        "Warning! You're running a container in interactive mode.\n"
+        "This is not how Mesos runs containers. To run container exactly\n"
+        "like Mesos does don't use the -I flag.\n\n"
     ))
 
     run_args = ['docker', 'run']
@@ -151,13 +151,14 @@ def run_docker_container_non_interactive(
     service_manifest
 ):
     """
-    Using docker-py for non-interactive run of a container. In the end of function it stops the container
-    and removes it.
+    Since we need manual 'docker run' for interactive mode, we'll also use it for non-interactive mode.
+
+    When the run is complete, stop the container and remove it.
     """
     sys.stderr.write(PaastaColors.yellow(
-        'Warning! You\'re running a container in non-interactive mode.\n'
-        'This is how Mesos runs containers. Some programs behave differently\n'
-        'with no tty attach.\n\n'
+        "Warning! You're running a container in non-interactive mode.\n"
+        "This is how Mesos runs containers. Some programs behave differently\n"
+        "with no tty attached.\n\n"
     ))
 
     create_result = docker_client.create_container(
