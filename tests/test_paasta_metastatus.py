@@ -5,17 +5,17 @@ from paasta_tools import paasta_metastatus
 
 
 @patch('socket.getfqdn', autospec=True)
-@patch('paasta_tools.paasta_metastatus.get_mesos_masters_state')
+@patch('paasta_tools.paasta_metastatus.get_mesos_masters_status')
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_stats')
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
 def test_get_mesos_status(
     mock_fetch_mesos_state_from_leader,
     mock_fetch_mesos_stats,
-    mock_get_mesos_master_state,
+    mock_get_mesos_masters_status,
     mock_getfqdn,
 ):
     mock_getfqdn.return_value = 'fakename'
-    mock_get_mesos_master_state.return_value = (3, 2)
+    mock_get_mesos_masters_status.return_value = "fake masters info"
     mock_fetch_mesos_stats.return_value = {
         'master/cpus_total': 3,
         'master/cpus_used': 2,
@@ -44,7 +44,7 @@ def test_get_mesos_status(
 
     assert mock_fetch_mesos_stats.called_once()
     assert mock_fetch_mesos_state_from_leader.called_once()
-    assert mock_get_mesos_master_state.called_once()
+    assert mock_get_mesos_masters_status.called_once()
     assert expected_cpus_output in output
     assert expected_mem_output in output
     assert expected_tasks_output in output
@@ -84,3 +84,27 @@ def test_get_marathon_status(
     assert expected_apps_output in output
     assert expected_deployment_output in output
     assert expected_tasks_output in output
+
+
+@patch('paasta_tools.paasta_metastatus.get_number_of_mesos_masters')
+@patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
+@patch('paasta_tools.paasta_metastatus.get_zookeeper_config')
+def test_get_mesos_masters_status(
+    mock_get_zookeeper_config,
+    mock_get_mesos_quorum,
+    mock_get_number_of_mesos_masters,
+):
+    fake_state = {
+        'fake': 'and this is not real'
+    }
+    mock_get_zookeeper_config.return_value = 'zk://fake_zk:1112/fake_cluster'
+    mock_get_mesos_quorum.return_value = 2
+    mock_get_number_of_mesos_masters.return_value = 3
+
+    expected_output = "masters: %d masters (%d need for quorum)" % (3, 2)
+
+    output = paasta_metastatus.get_mesos_masters_status(fake_state)
+
+    assert mock_get_mesos_quorum.called_once()
+    assert mock_get_number_of_mesos_masters.called_once()
+    assert expected_output in output
