@@ -1,7 +1,7 @@
 # Unit tests for soa_collector.collect_gauge()
 import pytest
-import soa_collector
-from soa_collector import collect_gauge
+from paasta_tools.diamond_collector import soa_collector
+from paasta_tools.diamond_collector.soa_collector import collect_gauge
 
 
 @pytest.fixture

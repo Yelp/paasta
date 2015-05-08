@@ -1,6 +1,6 @@
 # Unit tests for soa_collector.drop_timer_entry()
 import pytest
-from soa_collector import drop_timer_entry
+from paasta_tools.diamond_collector.soa_collector import drop_timer_entry
 
 
 @pytest.fixture

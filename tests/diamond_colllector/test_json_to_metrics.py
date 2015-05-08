@@ -1,5 +1,5 @@
 # Unit tests for soa_collector.json_to_metrics()
-from soa_collector import json_to_metrics
+from paasta_tools.diamond_collector.soa_collector import json_to_metrics
 
 
 def test_empty():
@@ -17,7 +17,7 @@ def test_arbitrary_metric():
     metrics = json_to_metrics(json_dict)
     assert len(metrics) == 1
     metric_segments, value, type = metrics.pop()
-    assert metric_segments == ['flippy','foo']
+    assert metric_segments == ['flippy', 'foo']
     assert value == 0
     assert type is None
 

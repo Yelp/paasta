@@ -314,7 +314,8 @@ class SOACollector(diamond.collector.Collector):
 
     def __init__(self, *args, **kwargs):
         super(SOACollector, self).__init__(*args, **kwargs)
-        # TODO: undo once diamond is virtualenvs up - this is picking up an older version from yelp-main which doesn't have this method
+        # TODO: undo once diamond is virtualenvs up - this is picking up an
+        # older version from yelp-main which doesn't have this method
         if hasattr(service_configuration_lib, 'disable_yaml_cache'):
             service_configuration_lib.disable_yaml_cache()
 
@@ -353,4 +354,4 @@ class SOACollector(diamond.collector.Collector):
                     except Exception, e:
                         # Don't let one bad metric stop us from publishing the good ones
                         self.log.error('[%s] Error publishing metric %s/%s/%s from %s: %s' %
-                            (service_name, metric_name, metric_value, metric_type, url, str(e)))
+                                       (service_name, metric_name, metric_value, metric_type, url, str(e)))

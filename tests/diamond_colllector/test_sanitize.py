@@ -1,5 +1,5 @@
 # Unit tests for soa_collector.sanitize()
-from soa_collector import sanitize
+from paasta_tools.diamond_collector.soa_collector import sanitize
 
 
 def test_spaces():

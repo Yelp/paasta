@@ -1,7 +1,6 @@
 # Unit tests for soa_collector.drop_jvm_node()
 import pytest
-import soa_collector
-from soa_collector import drop_jvm_node
+from paasta_tools.diamond_collector.soa_collector import drop_jvm_node
 
 
 @pytest.fixture

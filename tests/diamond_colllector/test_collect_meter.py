@@ -1,7 +1,7 @@
 # Unit tests for soa_collector.collect_meter()
 import pytest
 
-from soa_collector import collect_meter
+from paasta_tools.diamond_collector.soa_collector import collect_meter
 
 
 @pytest.fixture
