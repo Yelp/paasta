@@ -9,15 +9,13 @@ from paasta_tools.mesos_tools import get_number_of_mesos_masters
 
 
 def get_mesos_masters_status(state):
-    """Returns a string containing the information about mesos
+    """Returns a tuple containing the information about mesos
     masters.
     :param state: mesos state dictionary"""
     quorum = get_mesos_quorum(state)
     num_of_masters = get_number_of_mesos_masters(get_zookeeper_config(state))
-    return "    masters: %d masters (%d need for quorum)" % (
-        num_of_masters,
-        quorum
-    )
+
+    return num_of_masters, quorum
 
 
 def get_mesos_status():
@@ -52,7 +50,10 @@ def get_mesos_status():
             metrics['master/tasks_starting'],
         )
     )
-    output.append(get_mesos_masters_status(state))
+    output.append(
+        "    masters: %d masters (%d need for quorum)" %
+        get_mesos_masters_status(state)
+    )
     output.append(
         "    slaves: %d active, %d inactive" %
         (

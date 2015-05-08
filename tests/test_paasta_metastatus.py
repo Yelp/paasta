@@ -15,7 +15,7 @@ def test_get_mesos_status(
     mock_getfqdn,
 ):
     mock_getfqdn.return_value = 'fakename'
-    mock_get_mesos_masters_status.return_value = "fake masters info"
+    mock_get_mesos_masters_status.return_value = (3, 2)
     mock_fetch_mesos_stats.return_value = {
         'master/cpus_total': 3,
         'master/cpus_used': 2,
@@ -97,14 +97,13 @@ def test_get_mesos_masters_status(
     fake_state = {
         'fake': 'and this is not real'
     }
-    mock_get_zookeeper_config.return_value = 'zk://fake_zk:1112/fake_cluster'
     mock_get_mesos_quorum.return_value = 2
     mock_get_number_of_mesos_masters.return_value = 3
 
-    expected_output = "masters: %d masters (%d need for quorum)" % (3, 2)
+    expected_output = (3, 2)
 
     output = paasta_metastatus.get_mesos_masters_status(fake_state)
 
     assert mock_get_mesos_quorum.called_once()
     assert mock_get_number_of_mesos_masters.called_once()
-    assert expected_output in output
+    assert expected_output == output

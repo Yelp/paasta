@@ -5,7 +5,6 @@ import mock
 from pytest import raises
 
 import marathon_tools
-from paasta_tools.mesos_tools import MesosSlaveConnectionError
 
 
 class TestMarathonTools:
@@ -586,16 +585,6 @@ class TestMarathonTools:
         actual = marathon_tools.marathon_services_running_here()
         mock_fetch_local_slave_state.assert_called_once_with()
         assert expected == actual
-
-    @mock.patch('marathon_tools.fetch_local_slave_state', autospec=True)
-    def test_marathon_services_running_here_handles_connection_failures(self, mock_fetch_local_slave_state):
-        mock_fetch_local_slave_state.side_effect = MesosSlaveConnectionError(
-            'Connection Failed',
-            url='http://fakeurl:1111',
-        )
-        with raises(SystemExit) as sys_exit:
-            marathon_tools.marathon_services_running_here()
-            assert sys_exit.value.code == 1
 
     def test_get_marathon_services_running_here_for_nerve(self):
         cluster = 'edelweiss'

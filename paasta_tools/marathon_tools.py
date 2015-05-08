@@ -10,7 +10,6 @@ import os
 import re
 import requests
 import socket
-import sys
 import glob
 
 from marathon import MarathonClient
@@ -18,7 +17,6 @@ import json
 import service_configuration_lib
 
 from paasta_tools.mesos_tools import fetch_local_slave_state
-from paasta_tools.mesos_tools import MesosSlaveConnectionError
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -696,13 +694,7 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
 def marathon_services_running_here():
     """See what marathon services are being run by a mesos-slave on this host.
     :returns: A list of triples of (service_name, instance_name, port)"""
-    try:
-        slave_state = fetch_local_slave_state()
-    except MesosSlaveConnectionError as e:
-        sys.stderr.write('Could not connect to the mesos slave to see which services are running\n')
-        sys.stderr.write('on %s. Is the mesos-slave running?\n' % e.url)
-        sys.stderr.write('Error was: %s\n' % e.message)
-        sys.exit(1)
+    slave_state = fetch_local_slave_state()
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]

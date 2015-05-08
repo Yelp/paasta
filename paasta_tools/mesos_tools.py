@@ -17,9 +17,7 @@ MESOS_SLAVE_PORT = '5051'
 
 
 class MesosSlaveConnectionError(Exception):
-    def __init__(self, message, url):
-        super(MesosSlaveConnectionError, self).__init__(message)
-        self.url = url
+    pass
 
 
 def get_mesos_tasks_from_master(job_id):
@@ -50,7 +48,11 @@ def fetch_local_slave_state():
     try:
         response = requests.get(stats_uri, timeout=10)
     except requests.ConnectionError as e:
-        raise MesosSlaveConnectionError(e.message, url=e.request.url)
+        raise MesosSlaveConnectionError(
+            'Could not connect to the mesos slave to see which services are running\n'
+            'on %s. Is the mesos-slave running?\n'
+            'Error was: %s\n' % (e.request.url, e.message)
+        )
     response.raise_for_status()
     return json.loads(response.text)
 
