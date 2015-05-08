@@ -1,3 +1,17 @@
+paasta-tools (0.9.65-yelp1) lucid; urgency=low
+
+  * 0.9.65 tagged with 'make release'
+    Commit: Merge branch advertise-and-discover-to-superregion
+
+ -- Justin Cunningham <justinc@yelp.com>  Fri, 08 May 2015 14:51:27 -0700
+
+paasta-tools (0.9.65-yelp1) lucid; urgency=low
+
+  * 0.9.65 tagged with 'make release'
+    Commit: Merge branch advertise-and-discover-to-superregion
+
+ -- Justin Cunningham <justinc@yelp.com>  Fri, 08 May 2015 14:50:46 -0700
+
 paasta-tools (0.9.64-yelp1) lucid; urgency=low
 
   * 0.9.64 tagged with 'make release'
