@@ -117,33 +117,25 @@ def run_docker_container_interactive(service, instance, docker_hash, volumes, co
     ))
 
     run_args = "FUCK YOUUUUUUUUUUU"
-    random_port = "FUCK YOUUUUUUUUUU"
-
-    for volume in volumes:
-        run_args.append('--volume=%s' % volume)
 
     run_args.append('--tty=true')
     run_args.append('--interactive=true')
+
+    sys.stdout.write(get_cmd_string())
+
+
+def get_docker_run_cmd(memory, random_port, volumes, docker_hash, command):
+    run_args = ['docker', 'run']
     # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
     # be using this variable in surprising ways. See PAASTA-267 for more context.
     run_args.append('--env=PORT=%s' % BAD_PORT_WARNING)
+    run_args.append('--memory=%dm' % memory)
+    run_args.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+    for volume in volumes:
+        run_args.append('--volume=%s' % volume)
     run_args.append('%s' % docker_hash)
     run_args.extend(command)
-
-    sys.stdout.write('Running docker command:\n%s\n' % ' '.join(run_args))
-
-    healthcheck_string = get_healthcheck(service, instance, random_port)
-    sys.stdout.write(healthcheck_string)
-    sys.stdout.write(get_cmd_string())
-
-    execlp('/usr/bin/docker', *run_args)
-
-
-def get_docker_run_cmd(memory, random_port):
-    run_args = ['docker', 'run']
-    run_args.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
-    run_args.append('--memory=%dm' % memory)
     return run_args
 
 
@@ -186,7 +178,8 @@ def run_docker_container_non_interactive(
 
     memory = service_manifest.get_mem()
     random_port = pick_random_port()
-    docker_run_cmd = get_docker_run_cmd(memory, random_port)
+    docker_run_cmd = get_docker_run_cmd(memory, random_port, volumes, docker_hash, command)
+    sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     container_started = False
     try:
         # docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: random_port})

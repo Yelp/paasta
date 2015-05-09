@@ -92,9 +92,17 @@ def test_run_success(
 def test_get_docker_run_cmd():
     memory = 555
     random_port = 666
-    actual = get_docker_run_cmd(memory, random_port)
-    assert any(['--publish=%s' % random_port in arg for arg in actual])
+    volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    docker_hash = '8' * 40
+    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    actual = get_docker_run_cmd(memory, random_port, volumes, docker_hash, command)
+
+    assert any(['--env=PORT=' in arg for arg in actual])
     assert '--memory=%dm' % memory in actual
+    assert any(['--publish=%s' % random_port in arg for arg in actual])
+    assert all(['--volume=%s' % volume in actual for volume in volumes])
+    assert docker_hash in actual
+    assert all([arg in actual for arg in command])
 
 
 def test_get_container_id():
