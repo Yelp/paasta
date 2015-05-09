@@ -151,7 +151,6 @@ def run_docker_container(
             "This is *NOT* how Mesos runs containers.\n"
             "To run the container exactly as Mesos does, omit the -I flag.\n\n"
         ))
-        sys.stdout.write(get_cmd_string())
     else:
         sys.stderr.write(PaastaColors.yellow(
             "You're running a container in non-interactive mode.\n"
@@ -171,6 +170,8 @@ def run_docker_container(
 
         healthcheck_string = get_healthcheck(service, instance, random_port)
         sys.stdout.write(healthcheck_string)
+        if interactive:
+            sys.stdout.write(get_cmd_string())
 
 #        for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
 #            sys.stdout.write(line)
