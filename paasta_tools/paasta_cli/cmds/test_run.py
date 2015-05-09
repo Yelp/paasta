@@ -138,28 +138,26 @@ def run_docker_container(
     command,
     service_manifest
 ):
-    """docker-py has issues running a container with a TTY attached, so we execute
-    'docker run' directly.
+    """docker-py has issues running a container with a TTY attached, so for
+    consistency we execute 'docker run' directly in both interactive and
+    non-interactive modes.
 
-    When the run is complete, stop the container and remove it (with docker-py).
+    In non-interactive mode when the run is complete, stop the container and
+    remove it (with docker-py).
     """
-    sys.stderr.write(PaastaColors.yellow(
-        "Warning! You're running a container in non-interactive mode.\n"
-        "This is how Mesos runs containers. Some programs behave differently\n"
-        "with no tty attached.\n\n"
-    ))
-
-#    create_result = docker_client.create_container(
-#        image=docker_hash,
-#        command=command,
-#        environment=['PORT=%s' % BAD_PORT_WARNING],
-#        tty=False,
-#        volumes=volumes,
-#        mem_limit='%dm' % service_manifest.get_mem(),
-#        cpu_shares=service_manifest.get_cpus(),
-#        ports=[CONTAINER_PORT],
-#        stdin_open=False,
-#    )
+    if interactive:
+        sys.stderr.write(PaastaColors.yellow(
+            "Warning! You're running a container in interactive mode.\n"
+            "This is *NOT* how Mesos runs containers.\n"
+            "To run the container exactly as Mesos does, omit the -I flag.\n\n"
+        ))
+        sys.stdout.write(get_cmd_string())
+    else:
+        sys.stderr.write(PaastaColors.yellow(
+            "You're running a container in non-interactive mode.\n"
+            "This is how Mesos runs containers.\n"
+            "Note that some programs behave differently with no tty attached.\n\n"
+        ))
 
     memory = service_manifest.get_mem()
     random_port = pick_random_port()
@@ -167,20 +165,12 @@ def run_docker_container(
     sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     container_started = False
     try:
-        # docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: random_port})
         execlp('/usr/bin/docker', *docker_run_cmd)
         container_started = True
         container_id = get_container_id()
 
         healthcheck_string = get_healthcheck(service, instance, random_port)
         sys.stdout.write(healthcheck_string)
-        if interactive:
-            sys.stderr.write(PaastaColors.yellow(
-                "Warning! You're running a container in interactive mode.\n"
-                "This is *NOT* how Mesos runs containers. To run the container exactly\n"
-                "as Mesos does, don't use the -I flag.\n\n"
-            ))
-            sys.stdout.write(get_cmd_string())
 
 #        for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
 #            sys.stdout.write(line)
