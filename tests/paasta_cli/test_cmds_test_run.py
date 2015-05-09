@@ -144,6 +144,7 @@ def test_run_docker_container_non_interactive(
         'fake_instance',
         'fake_hash',
         [],
+        False,  # interactive
         'fake_command',
         mock_service_manifest,
     )

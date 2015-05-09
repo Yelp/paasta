@@ -106,18 +106,6 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_test_run)
 
 
-def run_docker_container_interactive(service, instance, docker_hash, volumes, command, service_manifest):
-    """docker-py has issues running a container with a TTY attached, so we execute
-    'docker run' directly.
-    """
-    sys.stderr.write(PaastaColors.yellow(
-        "Warning! You're running a container in interactive mode.\n"
-        "This is *NOT* how Mesos runs containers. To run the container exactly\n"
-        "as Mesos does, don't use the -I flag.\n\n"
-    ))
-    sys.stdout.write(get_cmd_string())
-
-
 def get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command):
     run_args = ['docker', 'run']
     # We inject an invalid port as the PORT variable, as marathon injects the externally
@@ -146,14 +134,14 @@ def run_docker_container_non_interactive(
     instance,
     docker_hash,
     volumes,
+    interactive,
     command,
     service_manifest
 ):
-    """
-    Since we need manual 'docker run' for interactive mode, we'll also use it
-    for non-interactive mode.
+    """docker-py has issues running a container with a TTY attached, so we execute
+    'docker run' directly.
 
-    When the run is complete, stop the container and remove it.
+    When the run is complete, stop the container and remove it (with docker-py).
     """
     sys.stderr.write(PaastaColors.yellow(
         "Warning! You're running a container in non-interactive mode.\n"
@@ -175,7 +163,6 @@ def run_docker_container_non_interactive(
 
     memory = service_manifest.get_mem()
     random_port = pick_random_port()
-    interactive = False
     docker_run_cmd = get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command)
     sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     container_started = False
@@ -187,6 +174,13 @@ def run_docker_container_non_interactive(
 
         healthcheck_string = get_healthcheck(service, instance, random_port)
         sys.stdout.write(healthcheck_string)
+        if interactive:
+            sys.stderr.write(PaastaColors.yellow(
+                "Warning! You're running a container in interactive mode.\n"
+                "This is *NOT* how Mesos runs containers. To run the container exactly\n"
+                "as Mesos does, don't use the -I flag.\n\n"
+            ))
+            sys.stdout.write(get_cmd_string())
 
 #        for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
 #            sys.stdout.write(line)
@@ -225,25 +219,16 @@ def run_docker_container(docker_client, docker_hash, service, args):
     else:
         command = service_manifest.get_args()
 
-    if args.interactive:
-        run_docker_container_interactive(
-            service,
-            args.instance,
-            docker_hash,
-            volumes,
-            command,
-            service_manifest
-        )
-    else:
-        run_docker_container_non_interactive(
-            docker_client,
-            service,
-            args.instance,
-            docker_hash,
-            volumes,
-            command,
-            service_manifest
-        )
+    run_docker_container_non_interactive(
+        docker_client,
+        service,
+        args.instance,
+        docker_hash,
+        volumes,
+        args.interactive,
+        command,
+        service_manifest
+    )
 
 
 def build_docker_container(docker_client, args):
