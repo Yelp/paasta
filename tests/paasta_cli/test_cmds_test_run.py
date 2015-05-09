@@ -8,7 +8,7 @@ from paasta_tools.paasta_cli.cmds.test_run import get_cmd
 from paasta_tools.paasta_cli.cmds.test_run import get_cmd_string
 from paasta_tools.paasta_cli.cmds.test_run import get_docker_run_cmd
 from paasta_tools.paasta_cli.cmds.test_run import paasta_test_run
-from paasta_tools.paasta_cli.cmds.test_run import run_docker_container_non_interactive
+from paasta_tools.paasta_cli.cmds.test_run import run_docker_container
 from paasta_tools.paasta_cli.cmds.test_run import validate_environment
 
 
@@ -65,7 +65,7 @@ def test_validate_environment_fail_no_dockerfile(
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.validate_environment', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.validate_service_name', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.run_docker_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.configure_and_run_docker_container', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.build_docker_container', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.Client', autospec=True)
 def test_run_success(
@@ -89,7 +89,7 @@ def test_run_success(
     assert paasta_test_run(args) is None
 
 
-def test_get_docker_run_cmd_non_interactive():
+def test_get_docker_run_cmd_interactive_false():
     memory = 555
     random_port = 666
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
@@ -108,7 +108,7 @@ def test_get_docker_run_cmd_non_interactive():
     assert all([arg in actual for arg in command])
 
 
-def test_get_docker_run_cmd_interactive():
+def test_get_docker_run_cmd_interactive_true():
     memory = 555
     random_port = 666
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
@@ -128,7 +128,7 @@ def test_get_container_id():
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
-def test_run_docker_container_non_interactive(
+def test_run_docker_container(
     mock_execlp,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
@@ -138,7 +138,7 @@ def test_run_docker_container_non_interactive(
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
-    run_docker_container_non_interactive(
+    run_docker_container(
         mock_docker_client,
         'fake_service',
         'fake_instance',

@@ -107,28 +107,28 @@ def add_subparser(subparsers):
 
 
 def get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command):
-    run_args = ['docker', 'run']
+    cmd = ['docker', 'run']
     # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
     # be using this variable in surprising ways. See PAASTA-267 for more context.
-    run_args.append('--env=PORT=%s' % BAD_PORT_WARNING)
-    run_args.append('--memory=%dm' % memory)
-    run_args.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+    cmd.append('--env=PORT=%s' % BAD_PORT_WARNING)
+    cmd.append('--memory=%dm' % memory)
+    cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     for volume in volumes:
-        run_args.append('--volume=%s' % volume)
+        cmd.append('--volume=%s' % volume)
     if interactive:
-        run_args.append('--tty=true')
-        run_args.append('--interactive=true')
-    run_args.append('%s' % docker_hash)
-    run_args.extend(command)
-    return run_args
+        cmd.append('--tty=true')
+        cmd.append('--interactive=true')
+    cmd.append('%s' % docker_hash)
+    cmd.extend(command)
+    return cmd
 
 
 def get_container_id():
     return '12345'
 
 
-def run_docker_container_non_interactive(
+def run_docker_container(
     docker_client,
     service,
     instance,
@@ -195,7 +195,7 @@ def run_docker_container_non_interactive(
     docker_client.remove_container(container_id)
 
 
-def run_docker_container(docker_client, docker_hash, service, args):
+def configure_and_run_docker_container(docker_client, docker_hash, service, args):
     """
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
@@ -219,7 +219,7 @@ def run_docker_container(docker_client, docker_hash, service, args):
     else:
         command = service_manifest.get_args()
 
-    run_docker_container_non_interactive(
+    run_docker_container(
         docker_client,
         service,
         args.instance,
@@ -292,7 +292,7 @@ def paasta_test_run(args):
         sys.exit(1)
 
     try:
-        run_docker_container(docker_client, docker_hash, service, args)
+        configure_and_run_docker_container(docker_client, docker_hash, service, args)
     except errors.APIError as e:
         sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))
         sys.exit(1)
