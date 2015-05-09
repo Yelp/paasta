@@ -1,10 +1,12 @@
+import docker
 import mock
 from pytest import raises
 
-from paasta_tools.marathon_tools import CONTAINER_PORT
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_cli.cmds.test_run import build_docker_container
 from paasta_tools.paasta_cli.cmds.test_run import get_cmd
 from paasta_tools.paasta_cli.cmds.test_run import get_cmd_string
+from paasta_tools.paasta_cli.cmds.test_run import get_docker_run_cmd
 from paasta_tools.paasta_cli.cmds.test_run import paasta_test_run
 from paasta_tools.paasta_cli.cmds.test_run import run_docker_container_non_interactive
 from paasta_tools.paasta_cli.cmds.test_run import validate_environment
@@ -87,17 +89,31 @@ def test_run_success(
     assert paasta_test_run(args) is None
 
 
+def test_get_docker_run_cmd():
+    memory = 555
+    random_port = 666
+    actual = get_docker_run_cmd(memory, random_port)
+    assert any(['--publish=%s' % random_port in arg for arg in actual])
+    assert '--memory=%dm' % memory in actual
+
+
+def test_get_container_id():
+    pass
+
+
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
 def test_run_docker_container_non_interactive(
+    mock_execlp,
+    mock_get_docker_run_cmd,
     mock_pick_random_port,
 ):
     mock_pick_random_port.return_value = 666
-    mock_docker_client = mock.MagicMock(spec='docker.Client')
-    mock_docker_client.create_container = mock.MagicMock(spec='docker.Client.create_container')
-    mock_docker_client.start = mock.MagicMock(spec='docker.Client.start')
-    mock_docker_client.attach = mock.MagicMock(spec='docker.Client.attach')
-    mock_docker_client.stop = mock.MagicMock(spec='docker.Client.stop')
-    mock_docker_client.remove_container = mock.MagicMock(spec='docker.Client.remove_container')
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
+    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     run_docker_container_non_interactive(
         mock_docker_client,
         'fake_service',
@@ -105,10 +121,12 @@ def test_run_docker_container_non_interactive(
         'fake_hash',
         [],
         'fake_command',
-        mock.MagicMock(),
+        mock_service_manifest,
     )
+    mock_service_manifest.get_mem.assert_called_once_with()
     mock_pick_random_port.assert_called_once_with()
-    mock_docker_client.start.assert_called_once_with(mock.ANY, port_bindings={CONTAINER_PORT: 666})
+    assert mock_get_docker_run_cmd.call_count == 1
+    assert mock_execlp.call_count == 1
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd', autospec=True)

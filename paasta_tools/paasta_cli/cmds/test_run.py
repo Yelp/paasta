@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 import json
 import os
+from os import execlp
 import shlex
 import socket
 import sys
@@ -106,8 +107,7 @@ def add_subparser(subparsers):
 
 
 def run_docker_container_interactive(service, instance, docker_hash, volumes, command, service_manifest):
-    """
-    docker-py has issues running a container with a TTY attached, so we execute
+    """docker-py has issues running a container with a TTY attached, so we execute
     'docker run' directly.
     """
     sys.stderr.write(PaastaColors.yellow(
@@ -116,12 +116,11 @@ def run_docker_container_interactive(service, instance, docker_hash, volumes, co
         "as Mesos does, don't use the -I flag.\n\n"
     ))
 
-    run_args = ['docker', 'run']
+    run_args = "FUCK YOUUUUUUUUUUU"
+    random_port = "FUCK YOUUUUUUUUUU"
 
     for volume in volumes:
         run_args.append('--volume=%s' % volume)
-
-    random_port = pick_random_port()
 
     run_args.append('--tty=true')
     run_args.append('--interactive=true')
@@ -129,8 +128,6 @@ def run_docker_container_interactive(service, instance, docker_hash, volumes, co
     # assigned port like this. That allows this test run to catch services that might
     # be using this variable in surprising ways. See PAASTA-267 for more context.
     run_args.append('--env=PORT=%s' % BAD_PORT_WARNING)
-    run_args.append('--memory=%dm' % service_manifest.get_mem())
-    run_args.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     run_args.append('%s' % docker_hash)
     run_args.extend(command)
 
@@ -140,7 +137,18 @@ def run_docker_container_interactive(service, instance, docker_hash, volumes, co
     sys.stdout.write(healthcheck_string)
     sys.stdout.write(get_cmd_string())
 
-    os.execlp('/usr/bin/docker', *run_args)
+    execlp('/usr/bin/docker', *run_args)
+
+
+def get_docker_run_cmd(memory, random_port):
+    run_args = ['docker', 'run']
+    run_args.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+    run_args.append('--memory=%dm' % memory)
+    return run_args
+
+
+def get_container_id():
+    return '12345'
 
 
 def run_docker_container_non_interactive(
@@ -164,39 +172,42 @@ def run_docker_container_non_interactive(
         "with no tty attached.\n\n"
     ))
 
-    create_result = docker_client.create_container(
-        image=docker_hash,
-        command=command,
-        environment=['PORT=%s' % BAD_PORT_WARNING],
-        tty=False,
-        volumes=volumes,
-        mem_limit='%dm' % service_manifest.get_mem(),
-        cpu_shares=service_manifest.get_cpus(),
-        ports=[CONTAINER_PORT],
-        stdin_open=False,
-    )
+#    create_result = docker_client.create_container(
+#        image=docker_hash,
+#        command=command,
+#        environment=['PORT=%s' % BAD_PORT_WARNING],
+#        tty=False,
+#        volumes=volumes,
+#        mem_limit='%dm' % service_manifest.get_mem(),
+#        cpu_shares=service_manifest.get_cpus(),
+#        ports=[CONTAINER_PORT],
+#        stdin_open=False,
+#    )
 
+    memory = service_manifest.get_mem()
     random_port = pick_random_port()
+    docker_run_cmd = get_docker_run_cmd(memory, random_port)
     container_started = False
     try:
-        docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: random_port})
-
+        # docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: random_port})
+        execlp('/usr/bin/docker', *docker_run_cmd)
         container_started = True
+        container_id = get_container_id()
 
         healthcheck_string = get_healthcheck(service, instance, random_port)
         sys.stdout.write(healthcheck_string)
 
-        for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
-            sys.stdout.write(line)
+#        for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
+#            sys.stdout.write(line)
 
     except KeyboardInterrupt:
         if container_started:
-            docker_client.stop(create_result['Id'])
-            docker_client.remove_container(create_result['Id'])
+            docker_client.stop(container_id)
+            docker_client.remove_container(container_id)
             raise
 
-    docker_client.stop(create_result['Id'])
-    docker_client.remove_container(create_result['Id'])
+    docker_client.stop(container_id)
+    docker_client.remove_container(container_id)
 
 
 def run_docker_container(docker_client, docker_hash, service, args):
