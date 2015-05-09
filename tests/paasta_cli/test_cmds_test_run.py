@@ -102,8 +102,9 @@ def test_get_docker_run_cmd_interactive_false():
     assert '--memory=%dm' % memory in actual
     assert any(['--publish=%s' % random_port in arg for arg in actual])
     assert all(['--volume=%s' % volume in actual for volume in volumes])
-    assert '--tty=true' not in actual
+    assert '--detach=true' in actual
     assert '--interactive=true' not in actual
+    assert '--tty=true' not in actual
     assert docker_hash in actual
     assert all([arg in actual for arg in command])
 
@@ -117,8 +118,8 @@ def test_get_docker_run_cmd_interactive_true():
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
     actual = get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command)
 
-    assert '--tty=true' in actual
     assert '--interactive=true' in actual
+    assert '--tty=true' in actual
 
 
 def test_get_container_id():

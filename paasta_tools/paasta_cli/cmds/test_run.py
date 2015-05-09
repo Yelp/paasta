@@ -5,6 +5,7 @@ from os import execlp
 import shlex
 import socket
 import sys
+import time
 
 from docker import Client
 from docker import errors
@@ -117,8 +118,10 @@ def get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, c
     for volume in volumes:
         cmd.append('--volume=%s' % volume)
     if interactive:
-        cmd.append('--tty=true')
         cmd.append('--interactive=true')
+        cmd.append('--tty=true')
+    else:
+        cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
     cmd.extend(command)
     return cmd
@@ -163,24 +166,27 @@ def run_docker_container(
     docker_run_cmd = get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command)
     sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     container_started = False
+
+    execlp('/usr/bin/docker', *docker_run_cmd)
+    container_started = True
+    container_id = get_container_id()
+
+    healthcheck_string = get_healthcheck(service, instance, random_port)
+    sys.stdout.write(healthcheck_string)
+    if interactive:
+        sys.stdout.write(get_cmd_string())
+
     try:
-        execlp('/usr/bin/docker', *docker_run_cmd)
-        container_started = True
-        container_id = get_container_id()
-
-        healthcheck_string = get_healthcheck(service, instance, random_port)
-        sys.stdout.write(healthcheck_string)
-        if interactive:
-            sys.stdout.write(get_cmd_string())
-
+        time.sleep(1000000)
     except KeyboardInterrupt:
-        if container_started:
+        if container_started and not interactive:
             docker_client.stop(container_id)
             docker_client.remove_container(container_id)
             raise
 
-    docker_client.stop(container_id)
-    docker_client.remove_container(container_id)
+    if not interactive:
+        docker_client.stop(container_id)
+        docker_client.remove_container(container_id)
 
 
 def configure_and_run_docker_container(docker_client, docker_hash, service, args):
