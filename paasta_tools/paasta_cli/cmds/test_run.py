@@ -47,6 +47,7 @@ def read_local_dockerfile_lines():
 
 
 def get_cmd():
+    """Returns first CMD line from Dockerfile"""
     for line in read_local_dockerfile_lines():
         if line.startswith('CMD'):
             return line.lstrip('CMD ')
@@ -54,6 +55,7 @@ def get_cmd():
 
 
 def get_cmd_string():
+    """Returns get_cmd() with some formatting and explanation."""
     cmd = get_cmd()
     return ('You are in interactive mode, which may not run the exact command\n'
             'that PaaSTA would have run. Run this command yourself to simulate\n'
@@ -110,8 +112,8 @@ def run_docker_container_interactive(service, instance, docker_hash, volumes, co
     """
     sys.stderr.write(PaastaColors.yellow(
         "Warning! You're running a container in interactive mode.\n"
-        "This is not how Mesos runs containers. To run container exactly\n"
-        "like Mesos does don't use the -I flag.\n\n"
+        "This is *NOT* how Mesos runs containers. To run the container exactly\n"
+        "as Mesos does, don't use the -I flag.\n\n"
     ))
 
     run_args = ['docker', 'run']
@@ -151,7 +153,8 @@ def run_docker_container_non_interactive(
     service_manifest
 ):
     """
-    Since we need manual 'docker run' for interactive mode, we'll also use it for non-interactive mode.
+    Since we need manual 'docker run' for interactive mode, we'll also use it
+    for non-interactive mode.
 
     When the run is complete, stop the container and remove it.
     """
