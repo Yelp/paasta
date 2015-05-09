@@ -115,16 +115,10 @@ def run_docker_container_interactive(service, instance, docker_hash, volumes, co
         "This is *NOT* how Mesos runs containers. To run the container exactly\n"
         "as Mesos does, don't use the -I flag.\n\n"
     ))
-
-    run_args = "FUCK YOUUUUUUUUUUU"
-
-    run_args.append('--tty=true')
-    run_args.append('--interactive=true')
-
     sys.stdout.write(get_cmd_string())
 
 
-def get_docker_run_cmd(memory, random_port, volumes, docker_hash, command):
+def get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command):
     run_args = ['docker', 'run']
     # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
@@ -134,6 +128,9 @@ def get_docker_run_cmd(memory, random_port, volumes, docker_hash, command):
     run_args.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     for volume in volumes:
         run_args.append('--volume=%s' % volume)
+    if interactive:
+        run_args.append('--tty=true')
+        run_args.append('--interactive=true')
     run_args.append('%s' % docker_hash)
     run_args.extend(command)
     return run_args
@@ -178,7 +175,8 @@ def run_docker_container_non_interactive(
 
     memory = service_manifest.get_mem()
     random_port = pick_random_port()
-    docker_run_cmd = get_docker_run_cmd(memory, random_port, volumes, docker_hash, command)
+    interactive = False
+    docker_run_cmd = get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command)
     sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     container_started = False
     try:
