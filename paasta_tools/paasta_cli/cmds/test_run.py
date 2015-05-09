@@ -173,9 +173,6 @@ def run_docker_container(
         if interactive:
             sys.stdout.write(get_cmd_string())
 
-#        for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
-#            sys.stdout.write(line)
-
     except KeyboardInterrupt:
         if container_started:
             docker_client.stop(container_id)
