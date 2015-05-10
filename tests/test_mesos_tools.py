@@ -1,7 +1,8 @@
 import mock
-import paasta_tools.mesos_tools as mesos_tools
+import requests
+from pytest import raises
 
-from mock import patch
+import paasta_tools.mesos_tools as mesos_tools
 
 
 def test_get_running_mesos_tasks_for_service():
@@ -29,7 +30,7 @@ def test_get_zookeeper_config():
     assert mesos_tools.get_zookeeper_config(fake_state) == expected
 
 
-@patch('paasta_tools.mesos_tools.KazooClient')
+@mock.patch('paasta_tools.mesos_tools.KazooClient')
 def test_get_number_of_mesos_masters(
     mock_kazoo,
 ):
@@ -38,3 +39,20 @@ def test_get_number_of_mesos_masters(
     zk = mock_kazoo.return_value
     zk.get_children.return_value = ['log_11', 'state', 'info_1', 'info_2']
     assert mesos_tools.get_number_of_mesos_masters(fake_zk_config) == 2
+
+
+@mock.patch('requests.get')
+@mock.patch('socket.getfqdn')
+def test_fetch_local_slave_state_connection_error(
+    mock_getfqdn,
+    mock_requests_get,
+):
+    fake_request = requests.Request('GET', url='doesnt_matter')
+    mock_getfqdn.return_value = 'fake_hostname'
+    mock_requests_get.side_effect = requests.ConnectionError(
+        'fake_message',
+        request=fake_request,
+    )
+
+    with raises(mesos_tools.MesosSlaveConnectionError):
+        mesos_tools.fetch_local_slave_state()
