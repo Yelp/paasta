@@ -1,3 +1,17 @@
+paasta-tools (0.9.66-yelp1) lucid; urgency=low
+
+  * 0.9.66 tagged with 'make release'
+    Commit: bump version
+
+ -- Benjamin Chess <bchess@yelp.com>  Mon, 11 May 2015 08:16:46 -0700
+
+paasta-tools (0.9.65-yelp1) lucid; urgency=low
+
+  * 0.9.65 tagged with 'make release'
+    Commit: bump version
+
+ -- Benjamin Chess <bchess@yelp.com>  Mon, 11 May 2015 08:16:19 -0700
+
 paasta-tools (0.9.65-yelp1) lucid; urgency=low
 
   * 0.9.65 tagged with 'make release'
