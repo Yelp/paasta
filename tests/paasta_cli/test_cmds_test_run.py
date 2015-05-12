@@ -92,15 +92,17 @@ def test_run_success(
 def test_get_docker_run_cmd_interactive_false():
     memory = 555
     random_port = 666
+    container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
     interactive = False
     docker_hash = '8' * 40
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
-    actual = get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command)
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
 
     assert any(['--env=PORT=' in arg for arg in actual])
     assert '--memory=%dm' % memory in actual
     assert any(['--publish=%s' % random_port in arg for arg in actual])
+    assert '--name=%s' % container_name in actual
     assert all(['--volume=%s' % volume in actual for volume in volumes])
     assert '--detach=true' in actual
     assert '--interactive=true' not in actual

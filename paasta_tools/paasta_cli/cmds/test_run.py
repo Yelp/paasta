@@ -106,7 +106,7 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_test_run)
 
 
-def get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command):
+def get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command):
     cmd = ['docker', 'run']
     # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
@@ -114,6 +114,7 @@ def get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, c
     cmd.append('--env=PORT=%s' % BAD_PORT_WARNING)
     cmd.append('--memory=%dm' % memory)
     cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+    cmd.append('--name=%s' % container_name)
     for volume in volumes:
         cmd.append('--volume=%s' % volume)
     if interactive:
@@ -162,7 +163,8 @@ def run_docker_container(
 
     memory = service_manifest.get_mem()
     random_port = pick_random_port()
-    docker_run_cmd = get_docker_run_cmd(memory, random_port, volumes, interactive, docker_hash, command)
+    container_name = 'foo'
+    docker_run_cmd = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
     sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     container_started = False
 
