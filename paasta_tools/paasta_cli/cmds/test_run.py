@@ -5,7 +5,6 @@ from os import execlp
 import shlex
 import socket
 import sys
-import time
 
 from docker import Client
 from docker import errors
@@ -167,28 +166,28 @@ def run_docker_container(
     sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     container_started = False
 
-    # NOTE: This command BLOCKS in interactive mode.
-    #
-    # In non-interactive mode, the docker command detaches so we'll re-attach
-    # later.
-    execlp('/usr/bin/docker', *docker_run_cmd)
-
-    container_started = True
-    container_id = get_container_id()
-
     healthcheck_string = get_healthcheck(service, instance, random_port)
     sys.stdout.write(healthcheck_string)
     if interactive:
         sys.stdout.write(get_cmd_string())
 
+    # NOTE: This command BLOCKS in interactive mode.
+    #
+    # In non-interactive mode, the docker command detaches so we'll re-attach
+    # later.
     try:
-        time.sleep(1000000)
+        execlp('/usr/bin/docker', *docker_run_cmd)
+        container_started = True
+        container_id = get_container_id()
+
+        if not interactive:
+            for line in docker_client.attach(container_id, stream=True, logs=True):
+                sys.stdout.write(line)
     except KeyboardInterrupt:
         if container_started and not interactive:
             docker_client.stop(container_id)
             docker_client.remove_container(container_id)
             raise
-
     if not interactive:
         docker_client.stop(container_id)
         docker_client.remove_container(container_id)
