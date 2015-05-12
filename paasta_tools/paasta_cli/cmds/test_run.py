@@ -171,29 +171,30 @@ def run_docker_container(
     if interactive:
         sys.stdout.write(get_cmd_string())
 
-    # NOTE: This command BLOCKS in interactive mode.
-    #
-    # In non-interactive mode, the docker command detaches so we'll re-attach
-    # later.
     try:
+        # This command BLOCKS in interactive mode.
+        #
+        # In non-interactive mode, the docker command detaches so we'll
+        # re-attach later.
         execlp('/usr/bin/docker', *docker_run_cmd)
-        container_started = True
-        container_id = get_container_id()
 
-        if not interactive:
-            for line in docker_client.attach(container_id, stream=True, logs=True):
-                sys.stdout.write(line)
+        # Since we don't need cleanup steps in interactive mode we'll just bail
+        # and simplify the logic below.
+        if interactive:
+            return
+
+        container_started = True
+        container_id = get_container_id(docker_client)
+        for line in docker_client.attach(container_id, stream=True, logs=True):
+            sys.stdout.write(line)
     except KeyboardInterrupt:
-        # In interactive mode, docker stops and removes the container on its
-        # own. Cleanup steps are only required in non-interactive mode.
-        if container_started and not interactive:
+        if container_started:
             docker_client.stop(container_id)
             docker_client.remove_container(container_id)
             raise
     # Also cleanup if the container exits on its own.
-    if not interactive:
-        docker_client.stop(container_id)
-        docker_client.remove_container(container_id)
+    docker_client.stop(container_id)
+    docker_client.remove_container(container_id)
 
 
 def configure_and_run_docker_container(docker_client, docker_hash, service, args):
