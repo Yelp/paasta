@@ -1,3 +1,10 @@
+paasta-tools (0.9.69-yelp1) lucid; urgency=low
+
+  * 0.9.69 tagged with 'make release'
+    Commit: Merge branch soa_collector_use_paasta
+
+ -- Benjamin Chess <bchess@yelp.com>  Tue, 12 May 2015 09:41:16 -0700
+
 paasta-tools (0.9.68-yelp1) lucid; urgency=low
 
   * 0.9.68 tagged with 'make release'
