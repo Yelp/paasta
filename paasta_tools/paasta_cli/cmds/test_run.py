@@ -133,11 +133,22 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, interactive
     return cmd
 
 
+class LostContainerException(Exception):
+    pass
+
+
 def get_container_id(docker_client, container_name):
     """Use 'docker_client' to find the container we started, identifiable by
-    its 'container_name'.
+    its 'container_name'. If we can't find the id, raise
+    LostContainerException.
     """
-    return '12345'
+    for container in docker_client.containers():
+        if container_name in container.get('Names', []):
+            return container.get('Id')
+    raise LostContainerException(
+        "Can't find the container I just launched so I can't do anything else.\n"
+        "Try docker 'ps --all | grep %s' to see where it went." % container_name
+    )
 
 
 def run_docker_container(
@@ -183,19 +194,22 @@ def run_docker_container(
         sys.stdout.write(get_cmd_string())
 
     try:
-        # This command BLOCKS in interactive mode.
+        # This command BLOCKS inside docker in interactive mode.
         #
-        # In non-interactive mode, the docker command detaches so we'll
-        # re-attach later.
+        # In non-interactive mode, docker launches the container and exits;
+        # we'll re-attach later.
         execlp('/usr/bin/docker', *docker_run_cmd)
 
         # Since we don't need cleanup steps in interactive mode we'll just bail
         # and simplify the logic below.
+        #
+        # A dedicated Ctrl-C'er could escape this block and cause a bogus stop
+        # or remove and get a DockerAPI error. What to the ever.
         if interactive:
             return
 
         container_started = True
-        container_id = get_container_id(docker_client)
+        container_id = get_container_id(docker_client, container_name)
         for line in docker_client.attach(container_id, stream=True, logs=True):
             sys.stdout.write(line)
     except KeyboardInterrupt:
