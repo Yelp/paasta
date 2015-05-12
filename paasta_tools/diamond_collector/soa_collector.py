@@ -5,10 +5,19 @@
 # to enrich the metric information (translation: pyramid uwsgi metrics as emitted
 # as key/value pairs of the leaf nodes with the metric_type set to GAUGE).
 import json
+import os
+import sys
 import urllib2
 
 import diamond.collector
 
+# TODO: This is a hack to let this module be imported by diamond
+# see PAASTA-691 for details
+directory_path = os.path.dirname(os.path.realpath(__file__))
+package_path = os.path.abspath(os.path.join(directory_path, '../../'))
+sys.path.insert(0, package_path)
+
+from paasta_tools import marathon_tools
 import service_configuration_lib
 
 
@@ -314,10 +323,9 @@ class SOACollector(diamond.collector.Collector):
 
     def __init__(self, *args, **kwargs):
         super(SOACollector, self).__init__(*args, **kwargs)
-        # TODO: undo once diamond is virtualenvs up - this is picking up an
-        # older version from yelp-main which doesn't have this method
-        if hasattr(service_configuration_lib, 'disable_yaml_cache'):
-            service_configuration_lib.disable_yaml_cache()
+        # We don't want to cache YAML beacuse diamond is a long running process.
+        # In doing so, we'd never pick up changes to the yaml files on disk.
+        service_configuration_lib.disable_yaml_cache()
 
     def get_default_config(self):
         """
@@ -328,30 +336,34 @@ class SOACollector(diamond.collector.Collector):
         return config
 
     def collect(self):
-        service_names = service_configuration_lib.services_that_run_here()
-        services_metadata = service_configuration_lib.read_services_configuration()
+        services = marathon_tools.get_services_running_here_for_nerve()
 
-        for service_name in service_names:
-            service_metadata = services_metadata[service_name]
-            if 'port' in service_metadata and service_metadata['port']:
-                port = service_metadata['port']
-                url = 'http://localhost:%s/status/metrics' % port
-                json_response = get_json_metrics(url, self.log, service_name)
-                json_metrics = json_to_metrics(json_response)
+        for service_name, service_data in services:
+            port = service_data.get('port')
+            if not port:
+                continue
 
-                for metric_segments, metric_value, metric_type in json_metrics:
-                    if metric_type is None:
-                        metric_type = METRIC_TYPE_GAUGE
-                    metric_name = '.'.join([sanitize(service_name)] + metric_segments)
-                    try:
-                        self.publish(
-                            metric_name,
-                            metric_value,
-                            raw_value=metric_value,
-                            precision=4,
-                            metric_type=metric_type
-                        )
-                    except Exception, e:
-                        # Don't let one bad metric stop us from publishing the good ones
-                        self.log.error('[%s] Error publishing metric %s/%s/%s from %s: %s' %
-                                       (service_name, metric_name, metric_value, metric_type, url, str(e)))
+            if service_name.endswith('.main'):
+                # strip off .main for backwards compatibility with old metrics
+                service_name = service_name.partition('.')[0]
+
+            url = 'http://localhost:%s/status/metrics' % port
+            json_response = get_json_metrics(url, self.log, service_name)
+            json_metrics = json_to_metrics(json_response)
+
+            for metric_segments, metric_value, metric_type in json_metrics:
+                if metric_type is None:
+                    metric_type = METRIC_TYPE_GAUGE
+                metric_name = '.'.join([sanitize(service_name)] + metric_segments)
+                try:
+                    self.publish(
+                        metric_name,
+                        metric_value,
+                        raw_value=metric_value,
+                        precision=4,
+                        metric_type=metric_type
+                    )
+                except Exception, e:
+                    # Don't let one bad metric stop us from publishing the good ones
+                    self.log.error('[%s] Error publishing metric %s/%s/%s from %s: %s' %
+                                   (service_name, metric_name, metric_value, metric_type, url, str(e)))
