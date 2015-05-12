@@ -165,6 +165,49 @@ def test_run_docker_container_non_interactive(
     assert mock_docker_client.remove_container.call_count == 1
 
 
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_healthcheck',
+            autospec=True,
+            return_value="418 I'm a little healthcheck",
+            )
+def test_run_docker_container_non_interactive_keyboard_interrupt(
+    mock_get_healthcheck,
+    mock_execlp,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+):
+    mock_pick_random_port.return_value = 666
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(
+        spec_set=docker.Client.attach,
+        side_effect=KeyboardInterrupt,
+    )
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
+    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    with raises(KeyboardInterrupt):
+        run_docker_container(
+            mock_docker_client,
+            'fake_service',
+            'fake_instance',
+            'fake_hash',
+            [],
+            False,  # interactive
+            'fake_command',
+            mock_service_manifest,
+        )
+    mock_service_manifest.get_mem.assert_called_once_with()
+    mock_pick_random_port.assert_called_once_with()
+    assert mock_get_docker_run_cmd.call_count == 1
+    assert mock_get_healthcheck.call_count == 1
+    assert mock_execlp.call_count == 1
+    assert mock_docker_client.attach.call_count == 1
+    assert mock_docker_client.stop.call_count == 1
+    assert mock_docker_client.remove_container.call_count == 1
+
+
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd', autospec=True)
 def test_get_cmd_string(
     mock_get_cmd,
