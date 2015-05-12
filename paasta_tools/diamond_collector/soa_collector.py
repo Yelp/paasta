@@ -323,7 +323,7 @@ class SOACollector(diamond.collector.Collector):
 
     def __init__(self, *args, **kwargs):
         super(SOACollector, self).__init__(*args, **kwargs)
-        # We don't want to cache YAML beacuse diamond is a long running proces.
+        # We don't want to cache YAML beacuse diamond is a long running process.
         # In doing so, we'd never pick up changes to the yaml files on disk.
         service_configuration_lib.disable_yaml_cache()
 
