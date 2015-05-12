@@ -184,10 +184,13 @@ def run_docker_container(
             for line in docker_client.attach(container_id, stream=True, logs=True):
                 sys.stdout.write(line)
     except KeyboardInterrupt:
+        # In interactive mode, docker stops and removes the container on its
+        # own. Cleanup steps are only required in non-interactive mode.
         if container_started and not interactive:
             docker_client.stop(container_id)
             docker_client.remove_container(container_id)
             raise
+    # Also cleanup if the container exits on its own.
     if not interactive:
         docker_client.stop(container_id)
         docker_client.remove_container(container_id)
