@@ -167,7 +167,12 @@ def run_docker_container(
     sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     container_started = False
 
+    # NOTE: This command BLOCKS in interactive mode.
+    #
+    # In non-interactive mode, the docker command detaches so we'll re-attach
+    # later.
     execlp('/usr/bin/docker', *docker_run_cmd)
+
     container_started = True
     container_id = get_container_id()
 
