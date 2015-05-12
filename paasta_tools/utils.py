@@ -87,7 +87,10 @@ class PaastaColors:
         :param color: ANSI colour code
         :param text: a string
         :return: a string with ANSI colour encoding"""
-        return color + text + PaastaColors.DEFAULT
+        # any time text returns to default, we want to insert our color.
+        replaced = text.replace(PaastaColors.DEFAULT, PaastaColors.DEFAULT + color)
+        # then wrap the beginning and end in our color/default.
+        return color + replaced + PaastaColors.DEFAULT
 
     @staticmethod
     def cyan(text):

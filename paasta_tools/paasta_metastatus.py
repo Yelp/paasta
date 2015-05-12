@@ -2,6 +2,20 @@
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import fetch_mesos_stats
+from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
+from paasta_tools.mesos_tools import get_mesos_quorum
+from paasta_tools.mesos_tools import get_zookeeper_config
+from paasta_tools.mesos_tools import get_number_of_mesos_masters
+
+
+def get_mesos_masters_status(state):
+    """Returns a tuple containing the information about mesos
+    masters.
+    :param state: mesos state dictionary"""
+    quorum = get_mesos_quorum(state)
+    num_of_masters = get_number_of_mesos_masters(get_zookeeper_config(state))
+
+    return num_of_masters, quorum
 
 
 def get_mesos_status():
@@ -10,6 +24,7 @@ def get_mesos_status():
     """
     output = []
     metrics = fetch_mesos_stats()
+    state = fetch_mesos_state_from_leader()
     output.append("Mesos:")
     output.append(
         "    cpus: %d total => %d used, %d available" %
@@ -34,6 +49,10 @@ def get_mesos_status():
             metrics['master/tasks_staging'],
             metrics['master/tasks_starting'],
         )
+    )
+    output.append(
+        "    masters: %d masters (%d need for quorum)" %
+        get_mesos_masters_status(state)
     )
     output.append(
         "    slaves: %d active, %d inactive" %
