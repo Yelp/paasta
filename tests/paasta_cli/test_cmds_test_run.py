@@ -62,6 +62,22 @@ def test_validate_environment_fail_no_dockerfile(
     assert sys_exit.value.code == 1
 
 
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.randint',
+            autospec=True,
+            # http://operations.irclogs.yelpcorp.com/2015-05-12.html#0/h0,1
+            return_value=543534,
+            )
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_username',
+            autospec=True,
+            return_value='fsmonste',
+            )
+def test_get_container_name(mock_get_username, mock_randint):
+    expected = 'paasta_test_run_%s_%s' % (
+        mock_get_username.return_value, mock_randint.return_value)
+    actual = get_container_name()
+    assert actual == expected
+
+
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.validate_environment', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.validate_service_name', autospec=True)

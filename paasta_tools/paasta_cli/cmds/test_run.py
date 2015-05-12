@@ -2,6 +2,7 @@
 import json
 import os
 from os import execlp
+from random import randint
 import shlex
 import socket
 import sys
@@ -18,6 +19,7 @@ from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import get_username
 from paasta_tools.utils import read_marathon_config
 
 
@@ -106,6 +108,10 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_test_run)
 
 
+def get_container_name():
+    return 'paasta_test_run_%s_%s' % (get_username(), randint(1, 999999))
+
+
 def get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command):
     cmd = ['docker', 'run']
     # We inject an invalid port as the PORT variable, as marathon injects the externally
@@ -127,7 +133,10 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, interactive
     return cmd
 
 
-def get_container_id():
+def get_container_id(docker_client, container_name):
+    """Use 'docker_client' to find the container we started, identifiable by
+    its 'container_name'.
+    """
     return '12345'
 
 
@@ -163,7 +172,7 @@ def run_docker_container(
 
     memory = service_manifest.get_mem()
     random_port = pick_random_port()
-    container_name = 'foo'
+    container_name = get_container_name()
     docker_run_cmd = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
     sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     container_started = False
