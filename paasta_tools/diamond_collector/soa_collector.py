@@ -11,7 +11,7 @@ import urllib2
 
 import diamond.collector
 
-# This is a hack to let this module be imported by diamond
+# TODO: This is a hack to let this module be imported by diamond
 # see PAASTA-691 for details
 directory_path = os.path.dirname(os.path.realpath(__file__))
 package_path = os.path.abspath(os.path.join(directory_path, '../../'))
@@ -323,7 +323,9 @@ class SOACollector(diamond.collector.Collector):
 
     def __init__(self, *args, **kwargs):
         super(SOACollector, self).__init__(*args, **kwargs)
-        service_configuration_lib.disable_yaml_cache()  # TODO: delete?
+        # We don't want to cache YAML beacuse diamond is a long running proces.
+        # In doing so, we'd never pick up changes to the yaml files on disk.
+        service_configuration_lib.disable_yaml_cache()
 
     def get_default_config(self):
         """
@@ -336,12 +338,15 @@ class SOACollector(diamond.collector.Collector):
     def collect(self):
         services = marathon_tools.get_services_running_here_for_nerve()
 
-        for full_service_name, service_data in services:
+        for service_name, service_data in services:
             port = service_data.get('port')
             if not port:
                 continue
 
-            service_name = full_service_name.partition('.')[0]
+            if service_name.endswith('.main'):
+                # strip off .main for backwards compatibility with old metrics
+                service_name = service_name.partition('.')[0]
+
             url = 'http://localhost:%s/status/metrics' % port
             json_response = get_json_metrics(url, self.log, service_name)
             json_metrics = json_to_metrics(json_response)
