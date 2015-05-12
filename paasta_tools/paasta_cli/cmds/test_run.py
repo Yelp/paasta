@@ -16,11 +16,12 @@ from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
-from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.utils import PaastaColors
+from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import get_username
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import read_marathon_config
+from paasta_tools.utils import _run
 
 
 BAD_PORT_WARNING = 'This_service_is_listening_on_the_PORT_variable__You_must_use_8888__see_y/paasta_deploy'
@@ -193,23 +194,20 @@ def run_docker_container(
     if interactive:
         sys.stdout.write(get_cmd_string())
 
-    try:
-        # This command BLOCKS inside docker in interactive mode.
-        #
-        # In non-interactive mode, docker launches the container and exits;
-        # we'll re-attach later.
+    if interactive:
+        # NOTE: This immediately replaces us with the docker run cmd. Docker
+        # run knows how to clean up the running container in this situation.
         execlp('/usr/bin/docker', *docker_run_cmd)
+        # For testing, when execlp is patched out and doesn't replace us.
+        return
 
-        # Since we don't need cleanup steps in interactive mode we'll just bail
-        # and simplify the logic below.
-        #
-        # A dedicated Ctrl-C'er could escape this block and cause a bogus stop
-        # or remove and get a DockerAPI error. What to the ever.
-        if interactive:
-            return
-
+    try:
+        # This isn't technically correct/space-safe but I don't care right now.
+        # joined_cmd = ' '.join(['/usr/bin/docker'].extend(docker_run_cmd))
+        _run(docker_run_cmd)
         container_started = True
         container_id = get_container_id(docker_client, container_name)
+        sys.stdout.write('got container_id %s' % container_id)
         for line in docker_client.attach(container_id, stream=True, logs=True):
             sys.stdout.write(line)
     except KeyboardInterrupt:
