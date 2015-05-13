@@ -12,6 +12,7 @@ import sys
 
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
+import requests_cache
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
@@ -413,6 +414,9 @@ def main():
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
+
+    # Setting up transparent cache for http API calls
+    requests_cache.install_cache('paasta_serviceinit', backend='memory')
 
     command = args.command
     service_instance = args.service_instance
