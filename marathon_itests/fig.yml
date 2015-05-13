@@ -4,7 +4,7 @@ zookeeper:
     - 2181
 
 marathon:
-  image: docker-dev.yelpcorp.com/marathon:0.7.6-mesos-0.20.1
+  image: docker-dev.yelpcorp.com/marathon:0.8.1-mesos-0.20.1-yelp1
   ports:
     - 8080
   links:
