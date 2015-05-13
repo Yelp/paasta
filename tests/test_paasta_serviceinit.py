@@ -404,4 +404,11 @@ class TestPaastaServiceStatus:
         actual = paasta_serviceinit.get_mem_usage(fake_task)
         assert actual == PaastaColors.red('100/100MB')
 
+    def test_get_mem_usage_divide_by_zero(self):
+        fake_task = mock.create_autospec(mesos.cli.task.Task)
+        fake_task.rss = 1024 * 1024 * 10
+        fake_task.mem_limit = 0
+        actual = paasta_serviceinit.get_mem_usage(fake_task)
+        assert actual == "Undef"
+
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
