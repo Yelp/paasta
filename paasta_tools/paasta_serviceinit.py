@@ -415,9 +415,6 @@ def main():
     else:
         log.setLevel(logging.WARNING)
 
-    # Setting up transparent cache for http API calls
-    requests_cache.install_cache('paasta_serviceinit', backend='memory')
-
     command = args.command
     service_instance = args.service_instance
     service = service_instance.split(marathon_tools.ID_SPACER)[0]
@@ -441,6 +438,9 @@ def main():
     elif command == 'restart':
         restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     elif command == 'status':
+        # Setting up transparent cache for http API calls
+        requests_cache.install_cache('paasta_serviceinit', backend='memory')
+
         print status_desired_state(service, instance, client, complete_job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         if args.verbose:
