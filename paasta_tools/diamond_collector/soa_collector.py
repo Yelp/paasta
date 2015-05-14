@@ -5,17 +5,9 @@
 # to enrich the metric information (translation: pyramid uwsgi metrics as emitted
 # as key/value pairs of the leaf nodes with the metric_type set to GAUGE).
 import json
-import os
-import sys
 import urllib2
 
 import diamond.collector
-
-# TODO: This is a hack to let this module be imported by diamond
-# see PAASTA-691 for details
-directory_path = os.path.dirname(os.path.realpath(__file__))
-package_path = os.path.abspath(os.path.join(directory_path, '../../'))
-sys.path.insert(0, package_path)
 
 from paasta_tools import marathon_tools
 import service_configuration_lib
