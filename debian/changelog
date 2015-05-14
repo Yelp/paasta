@@ -1,3 +1,11 @@
+paasta-tools (0.9.70-yelp1) lucid; urgency=low
+
+  * 0.9.70 tagged with 'make release'
+    Commit: rollback sys.path hack for soa_collector now that diamond
+    will be in virtualenv
+
+ -- Benjamin Chess <bchess@yelp.com>  Thu, 14 May 2015 08:10:36 -0700
+
 paasta-tools (0.9.69-yelp1) lucid; urgency=low
 
   * 0.9.69 tagged with 'make release'
