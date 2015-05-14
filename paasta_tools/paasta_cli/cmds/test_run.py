@@ -143,8 +143,9 @@ def get_container_id(docker_client, container_name):
     its 'container_name'. If we can't find the id, raise
     LostContainerException.
     """
-    for container in docker_client.containers():
-        if container_name in container.get('Names', []):
+    containers = docker_client.containers()
+    for container in containers:
+        if '/%s' % container_name in container.get('Names', []):
             return container.get('Id')
     raise LostContainerException(
         "Can't find the container I just launched so I can't do anything else.\n"

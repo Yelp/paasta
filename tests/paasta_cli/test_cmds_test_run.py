@@ -147,8 +147,8 @@ def test_get_docker_run_cmd_interactive_true():
 def test_get_container_id():
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_containers = [
-        {'Names': ['paasta_test_run_1'], 'Id': '11111'},
-        {'Names': ['paasta_test_run_2'], 'Id': '22222'},
+        {'Names': ['/paasta_test_run_1'], 'Id': '11111'},
+        {'Names': ['/paasta_test_run_2'], 'Id': '22222'},
     ]
     mock_docker_client.containers = mock.MagicMock(
         spec_set=docker.Client,
@@ -163,8 +163,8 @@ def test_get_container_id():
 def test_get_container_id_name_not_found():
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_containers = [
-        {'Names': ['paasta_test_run_1'], 'Id': '11111'},
-        {'Names': ['paasta_test_run_2'], 'Id': '22222'},
+        {'Names': ['/paasta_test_run_1'], 'Id': '11111'},
+        {'Names': ['/paasta_test_run_2'], 'Id': '22222'},
     ]
     mock_docker_client.containers = mock.MagicMock(
         spec_set=docker.Client,
