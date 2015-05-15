@@ -149,7 +149,9 @@ def get_container_id(docker_client, container_name):
             return container.get('Id')
     raise LostContainerException(
         "Can't find the container I just launched so I can't do anything else.\n"
-        "Try docker 'ps --all | grep %s' to see where it went." % container_name
+        "Try docker 'ps --all | grep %s' to see where it went.\n"
+        "Here were all the containers:\n"
+        "%s" % (container_name, containers)
     )
 
 
@@ -204,8 +206,9 @@ def run_docker_container(
 
     try:
         # This isn't technically correct/space-safe but I don't care right now.
-        # joined_cmd = ' '.join(['/usr/bin/docker'].extend(docker_run_cmd))
-        _run(docker_run_cmd)
+        docker_run_cmd.insert(0, '/usr/bin/docker')
+        joined_cmd = ' '.join(docker_run_cmd)
+        _run(joined_cmd)
         container_started = True
         container_id = get_container_id(docker_client, container_name)
         sys.stdout.write('got container_id %s' % container_id)
