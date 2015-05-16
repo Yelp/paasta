@@ -119,11 +119,10 @@ def main():
         log.debug(repr(exc))
     if not is_leader:
         log.warning("You must run this command from a mesos master.")
-        log.warning("y/zookeeper-discovery explains how to check if you are.")
+        log.warning("http://y/zookeeper-discovery explains how to check if you are.")
         log.warning("")
         log.warning("If you're sure you're on a master, maybe the master is dead! :(")
-        log.warning("y/rb-mesos-master explains how to fix it.")
-        log.debug("Original exception was:")
+        log.warning("http://y/rb-mesos-master explains how to fix it.")
         sys.exit(1)
 
     soa_dir = args.soa_dir
