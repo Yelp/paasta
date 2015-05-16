@@ -642,12 +642,9 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         with contextlib.nested(
             mock.patch(
-                'marathon_tools.MarathonConfig',
+                'marathon_tools.get_cluster',
                 autospec=True,
-                return_value=mock.Mock(
-                    spec=marathon_tools.MarathonConfig.get_cluster,
-                    get_cluster=mock.Mock(side_effect=marathon_tools.NoMarathonClusterFoundException)
-                ),
+                side_effect=marathon_tools.NoMarathonClusterFoundException,
             ),
             mock.patch(
                 'marathon_tools.marathon_services_running_here',
@@ -687,10 +684,9 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         with contextlib.nested(
             mock.patch(
-                'marathon_tools.load_marathon_config',
-                return_value=mock.Mock(
-                    get_cluster=mock.Mock(side_effect=Exception, spec=marathon_tools.MarathonConfig.get_cluster)
-                ),
+                'marathon_tools.get_cluster',
+                autospec=True,
+                side_effect=Exception,
             ),
             mock.patch(
                 'marathon_tools.marathon_services_running_here',
