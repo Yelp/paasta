@@ -111,6 +111,22 @@ def check_service_instance(service_name, instance_name, soa_dir):
 def main():
     """Check every service instance for this cluster and emit a sensu event about it."""
     args = parse_args()
+    # Do this check after parsing args so we can emit a useful --help message
+    # even if we're not the mesos leader.
+    is_leader = False
+    try:
+        is_leader = marathon_tools.is_mesos_leader()
+    except marathon_tools.MesosMasterConnectionException as exc:
+        log.debug(repr(exc))
+    if not is_leader:
+        log.warning("You must run this command from a mesos master.")
+        log.warning("y/zookeeper-discovery explains how to check if you are.")
+        log.warning("")
+        log.warning("If you're sure you're on a master, maybe the master is dead! :(")
+        log.warning("y/rb-mesos-master explains how to fix it.")
+        log.debug("Original exception was:")
+        sys.exit(1)
+
     soa_dir = args.soa_dir
     if args.verbose:
         log.setLevel(logging.INFO)
@@ -129,5 +145,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if marathon_tools.is_mesos_leader():
-        main()
+    main()
