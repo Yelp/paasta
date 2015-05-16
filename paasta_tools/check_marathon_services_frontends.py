@@ -28,7 +28,11 @@ log = logging.getLogger(__name__)
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Cleans up stale marathon jobs.')
+    parser = argparse.ArgumentParser(
+        description="Check services deployed in this cluster and send sensu "
+        "alerts for any that are sad. This command isn't really for humans."
+        "NOTE: This command must be run from a mesos master!"
+    )
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
