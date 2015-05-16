@@ -253,7 +253,6 @@ class TestMarathonTools:
         ):
             with raises(marathon_tools.PaastaNotConfigured) as excinfo:
                 marathon_tools.load_marathon_config(fake_dir)
-            assert excinfo.type == marathon_tools.PaastaNotConfigured
             assert str(excinfo.value) == "Could not load marathon config file b: a"
 
     def test_MarathonConfig_get_cluster(self):
