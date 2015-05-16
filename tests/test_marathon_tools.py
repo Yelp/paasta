@@ -3,6 +3,7 @@ import contextlib
 from marathon.models import MarathonApp
 import mock
 from pytest import raises
+import requests
 
 import marathon_tools
 
@@ -790,6 +791,16 @@ class TestMarathonTools:
             mock_response.url = 'http://%s:999' % expected
             assert marathon_tools.get_mesos_leader(fake_master) == expected
             mock_requests_get.assert_called_once_with('http://%s:5050/redirect' % fake_master, timeout=10)
+
+    def test_get_mesos_leader_connection_error(self):
+        fake_master = 'false.authority.yelpcorp.com'
+        with mock.patch(
+            'requests.get',
+            autospec=True,
+            side_effect=requests.exceptions.ConnectionError,
+        ):
+            with raises(marathon_tools.MesosMasterConnectionException):
+                marathon_tools.get_mesos_leader(fake_master)
 
     def test_is_mesos_leader(self):
         fake_host = 'toast.host.roast'

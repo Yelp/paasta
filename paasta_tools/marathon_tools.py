@@ -786,13 +786,23 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
         get_classic_services_running_here_for_nerve(soa_dir)
 
 
+class MesosMasterConnectionException(Exception):
+    pass
+
+
 def get_mesos_leader(hostname=MY_HOSTNAME):
-    """Get the current mesos-master leader's hostname.
+    """Get the current mesos-master leader's hostname. Raise
+    MesosMasterConnectionException if we can't connect.
 
     :param hostname: The hostname to query mesos-master on
     :returns: The current mesos-master hostname"""
     redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
-    r = requests.get(redirect_url, timeout=10)
+    try:
+        r = requests.get(redirect_url, timeout=10)
+    except requests.exceptions.ConnectionError as e:
+        # Repackage the exception so upstream code can handle this case without
+        # knowing our implementation details.
+        raise MesosMasterConnectionException(repr(e))
     r.raise_for_status()
     return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
 
