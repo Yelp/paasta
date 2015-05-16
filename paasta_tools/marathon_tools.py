@@ -98,8 +98,6 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     If a branch isn't specified for a config, the 'branch' key defaults to
     paasta-${cluster}.${instance}.
 
-    If cluster isn't given, it's loaded using get_cluster.
-
     :param name: The service name
     :param instance: The instance of the service to retrieve
     :param cluster: The cluster to read the configuration for
@@ -719,11 +717,11 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
             cluster = get_cluster()
         # In the cases where there is *no* cluster or in the case
         # where there isn't a Paasta configuration file at *all*, then
-        # there must be no marathon_services running here, so we catch
+        # there must be no marathon services running here, so we catch
         # these custom exceptions and return [].
         except (NoMarathonClusterFoundException, PaastaNotConfigured):
             return []
-    # When a cluster is defined in mesos, lets iterate through marathon services
+    # When a cluster is defined in mesos, let's iterate through marathon services
     marathon_services = marathon_services_running_here()
     nerve_list = []
     for name, instance, port in marathon_services:
