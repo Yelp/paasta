@@ -25,7 +25,6 @@ import pysensu_yelp
 
 
 log = logging.getLogger(__name__)
-log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def parse_args():
