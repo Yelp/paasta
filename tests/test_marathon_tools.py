@@ -256,7 +256,7 @@ class TestMarathonTools:
             assert excinfo.type == marathon_tools.PaastaNotConfigured
             assert str(excinfo.value) == "Could not load marathon config file b: a"
 
-    def test_get_cluster(self):
+    def test_MarathonConfig_get_cluster(self):
         fake_config = marathon_tools.MarathonConfig({
             'cluster': 'peanut',
         })
@@ -264,7 +264,7 @@ class TestMarathonTools:
         actual = fake_config.get_cluster()
         assert actual == expected
 
-    def test_get_cluster_dne(self):
+    def test_MarathonConfig_get_cluster_dne(self):
         fake_config = marathon_tools.MarathonConfig()
         with raises(marathon_tools.NoMarathonClusterFoundException):
             fake_config.get_cluster()
