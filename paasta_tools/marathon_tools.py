@@ -304,6 +304,76 @@ class MarathonServiceConfig(object):
         log.info("Complete configuration for instance is: %s", complete_config)
         return complete_config
 
+    def get_healthchecks(self, service_namespace_config):
+        """Returns a list of healthchecks per the spec:
+        https://mesosphere.github.io/marathon/docs/health-checks.html
+        Tries to be very conservative. Currently uses the same configuration
+        that smartstack uses, regarding mode (tcp/http) and http status uri.
+
+        If you have an http service, it uses the default endpoint that smartstack uses.
+        (/status currently)
+
+        Otherwise these do *not* use the same thresholds as smarstack in order to not
+        produce a negative feedback loop, where mesos agressivly kills tasks because they
+        are slow, which causes other things to be slow, etc.
+
+        :param service_config: service config hash
+        :returns: list of healthcheck defines for marathon"""
+
+        mode = self.get_healthcheck_mode(service_namespace_config)
+
+        graceperiodseconds = self.get_healthcheck_grace_period_seconds()
+        intervalseconds = self.get_healthcheck_interval_seconds()
+        timeoutseconds = self.get_healthcheck_timeout_seconds()
+        maxconsecutivefailures = self.get_healthcheck_max_consecutive_failures()
+
+        if mode == 'http':
+            http_path = self.get_healthcheck_uri(service_namespace_config)
+            healthchecks = [
+                {
+                    "protocol": "HTTP",
+                    "path": http_path,
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "portIndex": 0,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
+        elif mode == 'tcp':
+            healthchecks = [
+                {
+                    "protocol": "TCP",
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "portIndex": 0,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
+        else:
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+        return healthchecks
+
+    def get_healthcheck_uri(self, service_namespace_config):
+        return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
+
+    def get_healthcheck_mode(self, service_namespace_config):
+        return self.config_dict.get('healthcheck_mode', service_namespace_config.get_mode())
+
+    def get_healthcheck_grace_period_seconds(self):
+        """How long Marathon should give a service to come up before counting failed healthchecks."""
+        return self.config_dict.get('healthcheck_grace_period_seconds', 60)
+
+    def get_healthcheck_interval_seconds(self):
+        return self.config_dict.get('healthcheck_interval_seconds', 10)
+
+    def get_healthcheck_timeout_seconds(self):
+        return self.config_dict.get('healthcheck_timeout_seconds', 10)
+
+    def get_healthcheck_max_consecutive_failures(self):
+        return self.config_dict.get('healthcheck_max_consecutive_failures', 6)
+
     def get_nerve_namespace(self):
         return self.config_dict.get('nerve_ns', self.instance)
 
@@ -381,57 +451,11 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
 
 
 class ServiceNamespaceConfig(dict):
-    def get_healthchecks(self):
-        """Returns a list of healthchecks per the spec:
-        https://mesosphere.github.io/marathon/docs/health-checks.html
-        Tries to be very conservative. Currently uses the same configuration
-        that smartstack uses, regarding mode (tcp/http) and http status uri.
+    def get_mode(self):
+        return self.get('mode', 'http')
 
-        If you have an http service, it uses the default endpoint that smartstack uses.
-        (/status currently)
-
-        Otherwise these do *not* use the same thresholds as smarstack in order to not
-        produce a negative feedback loop, where mesos agressivly kills tasks because they
-        are slow, which causes other things to be slow, etc.
-
-        :param service_config: service config hash
-        :returns: list of healthcheck defines for marathon"""
-
-        mode = self.get('mode', 'http')
-        # We wait for a minute for a service to come up
-        graceperiodseconds = 60
-        intervalseconds = 10
-        timeoutseconds = 10
-        # And kill it after it has been failing for a minute
-        maxconsecutivefailures = 6
-
-        if mode == 'http':
-            http_path = self.get('healthcheck_uri', '/status')
-            healthchecks = [
-                {
-                    "protocol": "HTTP",
-                    "path": http_path,
-                    "gracePeriodSeconds": graceperiodseconds,
-                    "intervalSeconds": intervalseconds,
-                    "portIndex": 0,
-                    "timeoutSeconds": timeoutseconds,
-                    "maxConsecutiveFailures": maxconsecutivefailures
-                },
-            ]
-        elif mode == 'tcp':
-            healthchecks = [
-                {
-                    "protocol": "TCP",
-                    "gracePeriodSeconds": graceperiodseconds,
-                    "intervalSeconds": intervalseconds,
-                    "portIndex": 0,
-                    "timeoutSeconds": timeoutseconds,
-                    "maxConsecutiveFailures": maxconsecutivefailures
-                },
-            ]
-        else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
-        return healthchecks
+    def get_healthcheck_uri(self):
+        return self.get('healthcheck_uri', '/status')
 
 
 class PaastaNotConfigured(Exception):
@@ -836,7 +860,9 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     partial_id = compose_job_id(name, instance)
     srv_config = load_marathon_service_config(name, instance, get_cluster(), soa_dir=soa_dir)
     docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
-    healthchecks = load_service_namespace_config(name, srv_config.get_nerve_namespace()).get_healthchecks()
+    service_namespace_config = load_service_namespace_config(name, srv_config.get_nerve_namespace())
+    healthchecks = srv_config.get_healthchecks(service_namespace_config)
+
     complete_config = srv_config.format_marathon_app_dict(
         partial_id,
         docker_url,

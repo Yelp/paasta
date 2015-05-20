@@ -55,6 +55,7 @@ class TestMarathonTools:
             },
         ],
     })
+    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
 
     def test_DeploymentsJson_read(self):
         file_mock = mock.MagicMock(spec=file)
@@ -1056,7 +1057,7 @@ class TestMarathonTools:
             mock.patch('marathon_tools.get_config_hash', autospec=True, return_value=fake_hash),
             mock.patch('marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value=fake_code_sha),
             mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
-                       return_value=mock.Mock(get_healthchecks=lambda: []))
+                       return_value=self.fake_service_namespace_config)
         ) as (
             get_cluster_patch,
             read_service_config_patch,
@@ -1131,7 +1132,7 @@ class TestMarathonTools:
             mock.patch('marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
-                       return_value=mock.Mock(get_healthchecks=lambda: []))
+                       return_value=self.fake_service_namespace_config)
         ) as (
             get_cluster_patch,
             read_service_config_patch,
@@ -1214,11 +1215,22 @@ class TestMarathonServiceConfig(object):
         expected = """MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'})"""
         assert actual == expected
 
-
-class TestServiceNamespaceConfig(object):
     def test_get_healthchecks_http_overrides(self):
         fake_path = '/mycoolstatus'
-        fake_config = marathon_tools.ServiceNamespaceConfig({
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            "service",
+            "instance",
+            {
+                "healthcheck_mode": "http",  # Actually the default here, but I want to be specific.
+                "healthcheck_uri": fake_path,
+                "healthcheck_grace_period_seconds": 70,
+                "healthcheck_interval_seconds": 12,
+                "healthcheck_timeout_seconds": 13,
+                "healthcheck_max_consecutive_failures": 7,
+            },
+            {},
+        )
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
             'mode': 'http',
             'healthcheck_uri': fake_path,
         })
@@ -1226,19 +1238,25 @@ class TestServiceNamespaceConfig(object):
             {
                 "protocol": "HTTP",
                 "path": fake_path,
-                "gracePeriodSeconds": 60,
-                "intervalSeconds": 10,
+                "gracePeriodSeconds": 70,
+                "intervalSeconds": 12,
                 "portIndex": 0,
-                "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "timeoutSeconds": 13,
+                "maxConsecutiveFailures": 7,
             },
         ]
 
-        actual = fake_config.get_healthchecks()
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+
+        import pprint
+        pprint.pprint(actual)
+        pprint.pprint(expected)
+
         assert actual == expected
 
     def test_get_healthchecks_http_defaults(self):
-        fake_config = marathon_tools.ServiceNamespaceConfig({})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
         expected = [
             {
                 "protocol": "HTTP",
@@ -1250,11 +1268,12 @@ class TestServiceNamespaceConfig(object):
                 "maxConsecutiveFailures": 6
             },
         ]
-        actual = fake_config.get_healthchecks()
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
     def test_get_healthchecks_tcp(self):
-        fake_config = marathon_tools.ServiceNamespaceConfig({'mode': 'tcp'})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'tcp'})
         expected = [
             {
                 "protocol": "TCP",
@@ -1265,25 +1284,77 @@ class TestServiceNamespaceConfig(object):
                 "maxConsecutiveFailures": 6
             },
         ]
-        actual = fake_config.get_healthchecks()
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
     def test_get_healthchecks_other(self):
-        fake_config = marathon_tools.ServiceNamespaceConfig({'mode': 'other'})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'other'})
         with raises(marathon_tools.InvalidSmartstackMode):
-            fake_config.get_healthchecks()
+            fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
 
-    def test_get_matching_appids(self):
-        fakeapp1 = mock.Mock(id='/fake--service.fake--instance---bouncingold')
-        fakeapp2 = mock.Mock(id='/fake--service.fake--instance---bouncingnew')
-        fakeapp3 = mock.Mock(id='/fake--service.other--instance--bla')
-        fakeapp4 = mock.Mock(id='/other--service')
-        apps = [fakeapp1, fakeapp2, fakeapp3, fakeapp4]
-        list_apps_mock = mock.Mock(return_value=apps)
-        fake_client = mock.Mock(list_apps=list_apps_mock)
-        expected = [
-            '/fake--service.fake--instance---bouncingold',
-            '/fake--service.fake--instance---bouncingnew',
-        ]
-        actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
+
+class TestServiceNamespaceConfig(object):
+    def test_get_mode_default(self):
+        assert marathon_tools.ServiceNamespaceConfig().get_mode() == 'http'
+
+    def test_get_healthcheck_uri_default(self):
+        assert marathon_tools.ServiceNamespaceConfig().get_healthcheck_uri() == '/status'
+
+
+def test_create_complete_config():
+    service_name = "service"
+    instance_name = "instance"
+    fake_marathon_config = marathon_tools.MarathonConfig(docker_registry="registry", docker_volumes=[])
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service_name,
+        instance_name,
+        {},
+        {'docker_image': 'abcdef'},
+    )
+    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+    fake_cluster = "clustername"
+
+    with contextlib.nested(
+        mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
+        mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
+        mock.patch('marathon_tools.get_cluster', return_value=fake_cluster),
+    ) as (
+        mock_load_marathon_service_config,
+        mock_load_service_namespace_config,
+        mock_get_cluster,
+    ):
+        actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
+        expected = {
+            'container': {
+                'docker': {
+                    'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
+                    'image': 'registry/abcdef',
+                    'network': 'BRIDGE'
+                },
+                'type': 'DOCKER',
+                'volumes': [],
+            },
+            'instances': 1,
+            'mem': 1000,
+            'args': [],
+            'backoff_factor': 2,
+            'cpus': 0.25,
+            'uris': ['file:///root/.dockercfg'],
+            'backoff_seconds': 1,
+            'health_checks': [
+                {
+                    'portIndex': 0,
+                    'protocol': 'HTTP',
+                    'timeoutSeconds': 10,
+                    'intervalSeconds': 10,
+                    'gracePeriodSeconds': 60,
+                    'maxConsecutiveFailures': 6,
+                    'path': '/status',
+                }
+            ],
+            'env': {},
+            'id': 'service.instance.gitregistry.config283b55d0',
+            'constraints': None,
+        }
         assert actual == expected
