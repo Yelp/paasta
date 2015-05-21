@@ -16,6 +16,7 @@ from marathon import MarathonClient
 import json
 import service_configuration_lib
 
+from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import list_all_clusters
 from paasta_tools.mesos_tools import fetch_local_slave_state
 
@@ -430,11 +431,6 @@ class ServiceNamespaceConfig(dict):
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)
         return healthchecks
-
-
-# @@@ delete me i am moved!
-class PaastaNotConfigured(Exception):
-    pass
 
 
 class NoMarathonClusterFoundException(Exception):
