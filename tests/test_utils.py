@@ -55,16 +55,21 @@ def test_get_log_name_for_service():
 
 
 def test_load_system_paasta_config():
-    expected = {'foo': 'bar'}
+    expected = utils.SystemPaastaConfig({'foo': 'bar'})
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
         mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.json.loads', autospec=True, return_value=expected)
+        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=expected)
     ) as (
         open_file_patch,
         json_patch
     ):
-        assert utils.load_system_paasta_config() == expected
+        actual = utils.load_system_paasta_config()
+        assert actual == expected
+        # Kinda weird but without this load_system_paasta_config() can (and
+        # did! during development) return a plain dict without the test
+        # complaining.
+        assert actual.__class__ == expected.__class__
         open_file_patch.assert_called_once_with('/etc/paasta_tools/paasta.json')
         json_patch.assert_called_once_with(file_mock.__enter__())
 
