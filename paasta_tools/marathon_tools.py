@@ -318,7 +318,7 @@ class MarathonServiceConfig(object):
         are slow, which causes other things to be slow, etc.
 
         :param service_config: service config hash
-        :returns: list of healthcheck defines for marathon"""
+        :returns: list of healthcheck definitions for marathon"""
 
         mode = self.get_healthcheck_mode(service_namespace_config)
 

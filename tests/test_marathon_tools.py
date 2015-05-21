@@ -1248,10 +1248,6 @@ class TestMarathonServiceConfig(object):
 
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
 
-        import pprint
-        pprint.pprint(actual)
-        pprint.pprint(expected)
-
         assert actual == expected
 
     def test_get_healthchecks_http_defaults(self):
