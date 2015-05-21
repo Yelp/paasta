@@ -81,6 +81,21 @@ def test_load_system_paasta_config_file_dne():
         assert str(excinfo.value) == "Could not load system paasta config file b: a"
 
 
+def test_SystemPaastaConfig_get_cluster():
+    fake_config = utils.SystemPaastaConfig({
+        'cluster': 'peanut',
+    })
+    expected = 'peanut'
+    actual = fake_config.get_cluster()
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_cluster_dne():
+    fake_config = utils.SystemPaastaConfig()
+    with raises(utils.NoMarathonClusterFoundException):
+        fake_config.get_cluster()
+
+
 def test_atomic_file_write():
     with mock.patch('tempfile.NamedTemporaryFile', autospec=True) as ntf_patch:
         file_patch = ntf_patch().__enter__()

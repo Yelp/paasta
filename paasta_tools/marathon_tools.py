@@ -43,6 +43,7 @@ def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
 
 
 class MarathonConfig(dict):
+    # @@@ delete me i am moved!
     def get_cluster(self):
         """Get the cluster defined in this host's marathon config file.
 
@@ -433,6 +434,7 @@ class ServiceNamespaceConfig(dict):
         return healthchecks
 
 
+# @@@ delete me i am moved!
 class NoMarathonClusterFoundException(Exception):
     pass
 

@@ -5,7 +5,7 @@ from subprocess import STDOUT
 import contextlib
 import datetime
 import errno
-import json
+import logging
 import os
 import pwd
 import re
@@ -17,11 +17,12 @@ import threading
 import clog
 import dateutil.tz
 import docker
+import json
 import yaml
 
 
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
-PATH_TO_PAASTA_CONFIG = '/etc/paasta_tools/paasta.json'
+PATH_TO_SYSTEM_PAASTA_CONFIG = '/etc/paasta_tools/paasta.json'
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -262,7 +263,11 @@ class PaastaNotConfigured(Exception):
     pass
 
 
-def load_system_paasta_config(path=PATH_TO_PAASTA_CONFIG):
+class NoMarathonClusterFoundException(Exception):
+    pass
+
+
+def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG):
     """
     Read Marathon configs to get cluster info and volumes
     that we need to bind when runngin a container.
@@ -272,6 +277,21 @@ def load_system_paasta_config(path=PATH_TO_PAASTA_CONFIG):
             return json.loads(f)
     except IOError as e:
         raise PaastaNotConfigured("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
+
+
+class SystemPaastaConfig(dict):
+
+    log = logging.getLogger('__main__')
+
+    def get_cluster(self):
+        """Get the cluster defined in this host's marathon config file.
+
+        :returns: The name of the cluster defined in the marathon configuration"""
+        try:
+            return self['cluster']
+        except KeyError:
+            self.log.warning('Could not find marathon cluster in marathon config at %s' % PATH_TO_SYSTEM_PAASTA_CONFIG)
+            raise NoMarathonClusterFoundException
 
 
 def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
