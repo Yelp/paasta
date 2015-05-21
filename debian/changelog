@@ -1,3 +1,11 @@
+paasta-tools (0.9.72-yelp1) lucid; urgency=low
+
+  * 0.9.72 tagged with 'make release'
+    Commit: Allow Marathon healthcheck parameters to be overridden in
+    marathon.yaml files
+
+ -- Evan Krall <krall@yelp.com>  Thu, 21 May 2015 11:19:27 -0700
+
 paasta-tools (0.9.71-yelp1) lucid; urgency=low
 
   * 0.9.71 tagged with 'make release'
