@@ -274,7 +274,7 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG):
     """
     try:
         with open(path) as f:
-            return json.load(f)
+            return SystemPaastaConfig(json.load(f))
     except IOError as e:
         raise PaastaNotConfigured("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
 

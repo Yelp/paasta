@@ -55,11 +55,12 @@ def test_get_log_name_for_service():
 
 
 def test_load_system_paasta_config():
-    expected = utils.SystemPaastaConfig({'foo': 'bar'})
+    json_load_return_value = {'foo': 'bar'}
+    expected = utils.SystemPaastaConfig(json_load_return_value)
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
         mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=expected)
+        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=json_load_return_value)
     ) as (
         open_file_patch,
         json_patch
