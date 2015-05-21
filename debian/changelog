@@ -1,3 +1,10 @@
+paasta-tools (0.9.71-yelp1) lucid; urgency=low
+
+  * 0.9.71 tagged with 'make release'
+    Commit: Merge branch update_marathon_in_integration_tests
+
+ -- Zsolt Tripolszky <tripy@yelp.com>  Thu, 21 May 2015 04:28:29 -0700
+
 paasta-tools (0.9.70-yelp1) lucid; urgency=low
 
   * 0.9.70 tagged with 'make release'
