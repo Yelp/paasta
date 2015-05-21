@@ -290,7 +290,7 @@ class SystemPaastaConfig(dict):
         try:
             return self['cluster']
         except KeyError:
-            self.log.warning('Could not find marathon cluster in marathon config at %s' % PATH_TO_SYSTEM_PAASTA_CONFIG)
+            self.log.warning('Could not find cluster in system paasta config at %s' % PATH_TO_SYSTEM_PAASTA_CONFIG)
             raise NoMarathonClusterFoundException
 
 
