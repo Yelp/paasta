@@ -12,6 +12,7 @@ import sys
 
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
+import requests_cache
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
@@ -318,10 +319,12 @@ def get_cpu_usage(task):
 
 def get_mem_usage(task):
     try:
-        if task.mem_limit == 0:
+        task_mem_limit = task.mem_limit
+        task_rss = task.rss
+        if task_mem_limit == 0:
             return "Undef"
-        mem_percent = task.rss / task.mem_limit * 100
-        mem_string = "%d/%dMB" % ((task.rss / 1024 / 1024), (task.mem_limit / 1024 / 1024))
+        mem_percent = task_rss / task_mem_limit * 100
+        mem_string = "%d/%dMB" % ((task_rss / 1024 / 1024), (task_mem_limit / 1024 / 1024))
         if mem_percent > 90:
             return PaastaColors.red(mem_string)
         else:
@@ -435,6 +438,9 @@ def main():
     elif command == 'restart':
         restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     elif command == 'status':
+        # Setting up transparent cache for http API calls
+        requests_cache.install_cache('paasta_serviceinit', backend='memory')
+
         print status_desired_state(service, instance, client, complete_job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         if args.verbose:
