@@ -218,7 +218,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
 
     except bounce_lib.LockHeldException:
         log.error("Instance %s already being bounced. Exiting", short_id)
-        return (1, "Instance %s is already being bounced.", short_id)
+        return (1, "Instance %s is already being bounced." % short_id)
 
     if changed:
         _log(

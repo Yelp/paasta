@@ -530,6 +530,68 @@ class TestSetupMarathonJob:
             # 5. bounce finishes
             assert mock_log.call_count == 5
 
+    def test_deploy_service_already_bouncing(self):
+        fake_bounce = 'areallygoodbouncestrategy'
+        fake_name = 'how_many_strings'
+        fake_instance = 'will_i_need_to_think_of'
+        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance, tag='blah')
+        fake_config = {'id': fake_id, 'instances': 2}
+
+        old_app_id = ('%s2' % fake_id)
+        old_task = mock.Mock(id="old_task_id", app_id=old_app_id)
+        old_app = mock.Mock(id=old_app_id, tasks=[old_task])
+
+        fake_client = mock.MagicMock(
+            list_apps=mock.Mock(return_value=[old_app]),
+            kill_task=mock.Mock(spec=lambda app_id, id, scale=False: None),
+        )
+
+        fake_bounce_func = mock.create_autospec(
+            bounce_lib.brutal_bounce,
+            return_value={
+                "create_app": True,
+                "tasks_to_kill": [old_task],
+                "apps_to_kill": [old_app_id],
+            }
+        )
+
+        fake_short_id = marathon_tools.remove_tag_from_job_id(fake_id)
+
+        with contextlib.nested(
+            mock.patch(
+                'paasta_tools.bounce_lib.get_bounce_method_func',
+                return_value=fake_bounce_func,
+                autospec=True,
+            ),
+            mock.patch(
+                'paasta_tools.bounce_lib.bounce_lock_zookeeper',
+                side_effect=bounce_lib.LockHeldException,
+                autospec=True
+            ),
+            mock.patch(
+                'paasta_tools.bounce_lib.get_happy_tasks',
+                autospec=True,
+                side_effect=lambda x, _, __, **kwargs: x,
+            ),
+            mock.patch('setup_marathon_job._log', autospec=True),
+            mock.patch(
+                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
+                return_value='fake_cluster',
+                autospec=True
+            ),
+        ) as (_, _, _, _, _):
+            result = setup_marathon_job.deploy_service(
+                fake_name,
+                fake_instance,
+                fake_id,
+                fake_config,
+                fake_client,
+                fake_bounce,
+                nerve_ns=fake_instance,
+                bounce_health_params={},
+            )
+            assert result == (1, "Instance %s is already being bounced." % fake_short_id)
+
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}
         with mock.patch(
