@@ -46,6 +46,7 @@ mkdir -p /nail/etc
 
 mkdir -p /etc/paasta_tools
 [ -L /etc/paasta_tools/marathon_config.json ] || ln -s /work/yelp_package/itest/marathon_config.json /etc/paasta_tools/marathon_config.json
+[ -L /etc/paasta_tools/paasta.json ] || ln -s /work/yelp_package/itest/paasta.json /etc/paasta_tools/paasta.json
 
 if dpkg -i /work/dist/*.deb; then
   echo "Looks like it installed correctly"
