@@ -54,7 +54,7 @@ def test_get_log_name_for_service():
     assert utils.get_log_name_for_service(service_name) == expected
 
 
-def test_read_marathon_config():
+def test_load_system_paasta_config():
     expected = {'foo': 'bar'}
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
@@ -64,12 +64,12 @@ def test_read_marathon_config():
         open_file_patch,
         json_patch
     ):
-        assert utils.read_marathon_config() == expected
+        assert utils.load_system_paasta_config() == expected
         open_file_patch.assert_called_once_with('/etc/paasta_tools/paasta.json')
         json_patch.assert_called_once_with(file_mock.__enter__())
 
 
-def test_read_marathon_config_file_dne():
+def test_load_system_paasta_config_file_dne():
     fake_path = '/var/dir_of_fake'
     with contextlib.nested(
         mock.patch('paasta_tools.utils.open', create=True, side_effect=IOError(2, 'a', 'b')),
@@ -77,7 +77,7 @@ def test_read_marathon_config_file_dne():
         open_patch,
     ):
         with raises(utils.PaastaNotConfigured) as excinfo:
-            utils.read_marathon_config(fake_path)
+            utils.load_system_paasta_config(fake_path)
         assert str(excinfo.value) == "Could not load system paasta config file b: a"
 
 

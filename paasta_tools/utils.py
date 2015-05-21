@@ -262,7 +262,7 @@ class PaastaNotConfigured(Exception):
     pass
 
 
-def read_marathon_config(path=PATH_TO_PAASTA_CONFIG):
+def load_system_paasta_config(path=PATH_TO_PAASTA_CONFIG):
     """
     Read Marathon configs to get cluster info and volumes
     that we need to bind when runngin a container.
