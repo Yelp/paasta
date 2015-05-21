@@ -530,7 +530,7 @@ class TestSetupMarathonJob:
             # 5. bounce finishes
             assert mock_log.call_count == 5
 
-    def test_deploy_service_already_bounced(self):
+    def test_deploy_service_already_bouncing(self):
         fake_bounce = 'areallygoodbouncestrategy'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
