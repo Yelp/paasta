@@ -230,7 +230,7 @@ class TestMarathonTools:
             assert cmp(expected, actual) == 0
             read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
 
-    def test_get_marathon_config(self):
+    def test_load_marathon_config(self):
         expected = {'foo': 'bar'}
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
@@ -244,15 +244,15 @@ class TestMarathonTools:
             open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             json_patch.assert_called_once_with(file_mock.__enter__())
 
-    def test_get_config_file_dne(self):
-        fake_dir = '/var/dir_of_fake'
+    def test_load_marathon_config_path_dne(self):
+        fake_path = '/var/dir_of_fake'
         with contextlib.nested(
             mock.patch('marathon_tools.open', create=True, side_effect=IOError(2, 'a', 'b')),
         ) as (
             open_patch,
         ):
             with raises(marathon_tools.PaastaNotConfigured) as excinfo:
-                marathon_tools.load_marathon_config(fake_dir)
+                marathon_tools.load_marathon_config(fake_path)
             assert str(excinfo.value) == "Could not load marathon config file b: a"
 
     def test_MarathonConfig_get_cluster(self):
