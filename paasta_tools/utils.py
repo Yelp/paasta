@@ -21,6 +21,7 @@ import yaml
 
 
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
+PATH_TO_PAASTA_CONFIG = '/etc/paasta_tools/paasta.json'
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -257,16 +258,20 @@ def _timeout(process):
                 raise
 
 
-def read_marathon_config():
+class PaastaNotConfigured(Exception):
+    pass
+
+
+def read_marathon_config(path=PATH_TO_PAASTA_CONFIG):
     """
     Read Marathon configs to get cluster info and volumes
     that we need to bind when runngin a container.
     """
-    config_path = '/etc/paasta_tools/paasta.json'
-
-    config = json.loads(open(config_path).read())
-
-    return config
+    try:
+        with open(path) as f:
+            return json.loads(f)
+    except IOError as e:
+        raise PaastaNotConfigured("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
 
 
 def _run(command, env=os.environ, timeout=None, log=False, **kwargs):

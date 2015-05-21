@@ -230,7 +230,7 @@ class TestMarathonTools:
             assert cmp(expected, actual) == 0
             read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
 
-    def test_get_config(self):
+    def test_get_marathon_config(self):
         expected = {'foo': 'bar'}
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(

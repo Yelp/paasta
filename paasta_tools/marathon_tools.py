@@ -432,6 +432,7 @@ class ServiceNamespaceConfig(dict):
         return healthchecks
 
 
+# @@@ delete me i am moved!
 class PaastaNotConfigured(Exception):
     pass
 
