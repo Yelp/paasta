@@ -1,3 +1,11 @@
+paasta-tools (0.10.1-yelp1) lucid; urgency=low
+
+  * 0.10.1 tagged with 'make release'
+    Commit: Merge branch PAASTA-723
+    https://reviewboard.yelpcorp.com/r/98080/
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 21 May 2015 21:18:03 -0700
+
 paasta-tools (0.9.73-yelp1) lucid; urgency=low
 
   * 0.9.73 tagged with 'make release'
