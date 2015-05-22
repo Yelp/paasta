@@ -421,7 +421,7 @@ def main():
     instance = service_instance.split(marathon_tools.ID_SPACER)[1]
 
     marathon_config = marathon_tools.load_marathon_config()
-    cluster = marathon_config.get_cluster()
+    cluster = marathon_tools.get_cluster()
     validate_service_instance(service, instance, cluster)
 
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
