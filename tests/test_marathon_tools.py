@@ -479,8 +479,13 @@ class TestMarathonTools:
             'retries': fake_retries,
             'mode': fake_mode,
             'routes': [
-                {'source': 'oregon', 'destinations': ['indiana']},
-                {'source': 'florida', 'destinations': ['miami', 'beach']}
+                {
+                    'source': 'oregon',
+                    'destinations': ['indiana']
+                },
+                {
+                    'source': 'florida', 'destinations': ['miami', 'beach']
+                },
             ],
             'discover': fake_discover,
             'advertise': fake_advertise,
