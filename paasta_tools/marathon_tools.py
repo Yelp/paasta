@@ -18,6 +18,7 @@ import service_configuration_lib
 
 from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import list_all_clusters
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.mesos_tools import fetch_local_slave_state
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -452,7 +453,7 @@ class NoMarathonConfigurationForService(Exception):
 
 
 def get_cluster():
-    return load_marathon_config().get_cluster()
+    return load_system_paasta_config().get_cluster()
 
 
 def get_marathon_client(url, user, passwd):

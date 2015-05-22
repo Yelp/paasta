@@ -609,6 +609,17 @@ class TestMarathonTools:
         mock_fetch_local_slave_state.assert_called_once_with()
         assert expected == actual
 
+    def test_get_cluster(self):
+        with mock.patch(
+            'marathon_tools.load_system_paasta_config',
+            autospec=True,
+        ) as mock_load_system_paasta_config:
+            marathon_tools.get_cluster()
+            assert mock_load_system_paasta_config.call_count == 1
+            # Setting this up to return a fake SystemPaastaConfig with a
+            # patched-out get_cluster() so we can make sure that part was
+            # called is a pain, so I'm just stopping here.
+
     def test_get_marathon_services_running_here_for_nerve(self):
         cluster = 'edelweiss'
         soa_dir = 'the_sound_of_music'
