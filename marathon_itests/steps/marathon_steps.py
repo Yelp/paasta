@@ -8,6 +8,7 @@ import mock
 sys.path.append('../')
 import paasta_tools
 from paasta_tools import marathon_tools
+from paasta_tools import utils
 
 
 def get_service_connection_string(service_name, port):
@@ -41,6 +42,11 @@ def working_marathon(context):
         context.client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
                                      marathon_config['pass'])
         context.marathon_config = marathon_config
+        system_paasta_config = utils.SystemPaastaConfig({
+            'cluster': 'testcluster',
+            'docker_volumes': [],
+        })
+        context.system_paasta_config = system_paasta_config
     else:
         print "Marathon connection already established"
 
