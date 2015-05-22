@@ -16,6 +16,7 @@ from marathon import MarathonClient
 import json
 import service_configuration_lib
 
+from paasta_tools.utils import NoMarathonClusterFoundException
 from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import list_all_clusters
 from paasta_tools.utils import load_system_paasta_config
@@ -44,17 +45,6 @@ def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
 
 
 class MarathonConfig(dict):
-    # @@@ delete me i am moved!
-    def get_cluster(self):
-        """Get the cluster defined in this host's marathon config file.
-
-        :returns: The name of the cluster defined in the marathon configuration"""
-        try:
-            return self['cluster']
-        except KeyError:
-            log.warning('Could not find marathon cluster in marathon config at %s' % PATH_TO_MARATHON_CONFIG)
-            raise NoMarathonClusterFoundException
-
     def get_docker_registry(self):
         """Get the docker_registry defined in this host's marathon config file.
 
@@ -433,11 +423,6 @@ class ServiceNamespaceConfig(dict):
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)
         return healthchecks
-
-
-# @@@ delete me i am moved!
-class NoMarathonClusterFoundException(Exception):
-    pass
 
 
 class NoDockerImageError(Exception):

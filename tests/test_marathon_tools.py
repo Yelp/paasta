@@ -255,21 +255,6 @@ class TestMarathonTools:
                 marathon_tools.load_marathon_config(fake_path)
             assert str(excinfo.value) == "Could not load marathon config file b: a"
 
-    # @@@ delete me i am moved!
-    def test_MarathonConfig_get_cluster(self):
-        fake_config = marathon_tools.MarathonConfig({
-            'cluster': 'peanut',
-        })
-        expected = 'peanut'
-        actual = fake_config.get_cluster()
-        assert actual == expected
-
-    # @@@ delete me i am moved!
-    def test_MarathonConfig_get_cluster_dne(self):
-        fake_config = marathon_tools.MarathonConfig()
-        with raises(marathon_tools.NoMarathonClusterFoundException):
-            fake_config.get_cluster()
-
     def test_list_clusters_no_service_given_lists_all_of_them(self):
         with mock.patch('marathon_tools.list_all_clusters', autospec=True) as mock_list_all_clusters:
             mock_list_all_clusters.return_value = ['cluster1', 'cluster2']
