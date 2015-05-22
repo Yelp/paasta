@@ -1,11 +1,12 @@
 import sys
+
+from behave import given, when, then
+from fig.cli import command
 import mock
 
-from fig.cli import command
 
 sys.path.append('../')
 import paasta_tools
-from paasta_tools import setup_marathon_job
 from paasta_tools import marathon_tools
 
 
@@ -27,7 +28,7 @@ def working_marathon(context):
     interacting with it in the test."""
     if not hasattr(context, 'client'):
         marathon_connection_string = "http://%s" % get_service_connection_string('marathon', 8080)
-        zk_connection_string = "zk://%s/meoss-testcluster" % get_service_connection_string('zookeeper', 2181)
+        zk_connection_string = "zk://%s/mesos-testcluster" % get_service_connection_string('zookeeper', 2181)
         marathon_config = marathon_tools.MarathonConfig({
           'docker_volumes': [],
           'url': marathon_connection_string,
@@ -44,7 +45,7 @@ def working_marathon(context):
         print "Marathon connection already established"
 
 @when(u'we create a trivial new app')
-def step_impl(context):
+def create_trivial_new_app(context):
     trivial_app_config = {
         'id': 'behavetest',
         'cmd': '/bin/true',
@@ -54,6 +55,6 @@ def step_impl(context):
 
 
 @then(u'we should see it running via the marathon api')
-def step_impl(context):
+def see_it_running(context):
     assert 'behavetest' in paasta_tools.marathon_tools.list_all_marathon_app_ids(context.client)
     assert context.client.get_app('/behavetest')
