@@ -17,7 +17,7 @@ from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import read_marathon_config
+from paasta_tools.utils import load_system_paasta_config
 
 
 BAD_PORT_WARNING = 'This_service_is_listening_on_the_PORT_variable__You_must_use_8888__see_y/paasta_deploy'
@@ -200,7 +200,7 @@ def run_docker_container(docker_client, docker_hash, service, args):
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
     """
-    marathon_config_raw = read_marathon_config()
+    marathon_config_raw = load_system_paasta_config()
 
     volumes = list()
 

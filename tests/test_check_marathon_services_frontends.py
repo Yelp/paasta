@@ -3,7 +3,9 @@ import mock
 import contextlib
 import pysensu_yelp
 
-import marathon_tools
+from pytest import raises
+
+from paasta_tools import marathon_tools
 
 
 def test_build_check_command():
@@ -52,9 +54,9 @@ def test_send_event():
         mock.patch("paasta_tools.monitoring_tools.get_irc_channels",
                    return_value=fake_irc),
         mock.patch("pysensu_yelp.send_event"),
-        mock.patch('paasta_tools.marathon_tools.load_marathon_config',
-                   return_value=marathon_tools.MarathonConfig({'cluster': fake_cluster}),
-                   autospec=True)
+        mock.patch('paasta_tools.marathon_tools.get_cluster',
+                   return_value=fake_cluster,
+                   autospec=True),
     ) as (
         monitoring_tools_get_team_patch,
         monitoring_tools_get_runbook_patch,
@@ -63,7 +65,7 @@ def test_send_event():
         monitoring_tools_get_page_patch,
         monitoring_tools_get_irc_patch,
         pysensu_yelp_send_event_patch,
-        cluster_patch
+        cluster_patch,
     ):
         check_marathon_services_frontends.send_event(fake_service_name,
                                                      fake_instance_name,
@@ -161,11 +163,13 @@ def test_main():
     fake_service_list = [('fake_service1', 'fake_instance1'), ('fake_service2', 'fake_instance2')]
     with contextlib.nested(
             mock.patch("check_marathon_services_frontends.parse_args", return_value=fake_args),
+            mock.patch("paasta_tools.marathon_tools.is_mesos_leader", return_value=True),
             mock.patch("paasta_tools.marathon_tools.get_marathon_services_for_cluster",
                        return_value=fake_service_list),
             mock.patch("check_marathon_services_frontends.check_service_instance"),
     ) as (
         args_patch,
+        is_mesos_leader_patch,
         get_marathon_services_for_cluster_patch,
         check_service_instance_patch
     ):
@@ -175,3 +179,43 @@ def test_main():
         assert check_service_instance_patch.call_count == len(fake_service_list)
         check_service_instance_patch.assert_any_call(fake_service_list[0][0], fake_service_list[0][1], fake_dir)
         check_service_instance_patch.assert_any_call(fake_service_list[1][0], fake_service_list[1][1], fake_dir)
+
+
+def test_main_is_not_mesos_leader():
+    with contextlib.nested(
+            mock.patch("check_marathon_services_frontends.parse_args"),
+            mock.patch("paasta_tools.marathon_tools.is_mesos_leader", return_value=False),
+            mock.patch("paasta_tools.marathon_tools.get_marathon_services_for_cluster"),
+            mock.patch("check_marathon_services_frontends.check_service_instance"),
+    ) as (
+        args_patch,
+        is_mesos_leader_patch,
+        get_marathon_services_for_cluster_patch,
+        check_service_instance_patch
+    ):
+        with raises(SystemExit):
+            check_marathon_services_frontends.main()
+        args_patch.assert_called_once_with()
+        assert get_marathon_services_for_cluster_patch.call_count == 0
+
+
+def test_main_is_not_mesos_leader_connection_error():
+    """This simulates what happens when we run is_mesos_leader() on a non-Mesos master."""
+    with contextlib.nested(
+            mock.patch("check_marathon_services_frontends.parse_args"),
+            mock.patch(
+                "paasta_tools.marathon_tools.is_mesos_leader",
+                side_effect=marathon_tools.MesosMasterConnectionException("your life burns faster"),
+            ),
+            mock.patch("paasta_tools.marathon_tools.get_marathon_services_for_cluster"),
+            mock.patch("check_marathon_services_frontends.check_service_instance"),
+    ) as (
+        args_patch,
+        is_mesos_leader_patch,
+        get_marathon_services_for_cluster_patch,
+        check_service_instance_patch
+    ):
+        with raises(SystemExit):
+            check_marathon_services_frontends.main()
+        args_patch.assert_called_once_with()
+        assert get_marathon_services_for_cluster_patch.call_count == 0

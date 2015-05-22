@@ -25,11 +25,14 @@ import pysensu_yelp
 
 
 log = logging.getLogger(__name__)
-log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Cleans up stale marathon jobs.')
+    parser = argparse.ArgumentParser(
+        description="Check services deployed in this cluster and send sensu "
+        "alerts for any that are sad. This command isn't really for humans."
+        "NOTE: This command must be run from a mesos master!"
+    )
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
@@ -63,7 +66,7 @@ def send_event(service_name, instance_name, check_name, soa_dir, status, output)
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,
-        'source': 'mesos-%s' % marathon_tools.load_marathon_config().get_cluster()
+        'source': 'mesos-%s' % marathon_tools.get_cluster()
     }
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 
@@ -111,9 +114,24 @@ def check_service_instance(service_name, instance_name, soa_dir):
 def main():
     """Check every service instance for this cluster and emit a sensu event about it."""
     args = parse_args()
+    # Do this check after parsing args so we can emit a useful --help message
+    # even if we're not the mesos leader.
+    is_leader = False
+    try:
+        is_leader = marathon_tools.is_mesos_leader()
+    except marathon_tools.MesosMasterConnectionException as exc:
+        log.debug(repr(exc))
+    if not is_leader:
+        log.warning("You must run this command from a mesos master.")
+        log.warning("http://y/zookeeper-discovery explains how to check if you are.")
+        log.warning("")
+        log.warning("If you're sure you're on a master, maybe the master is dead! :(")
+        log.warning("http://y/rb-mesos-master explains how to fix it.")
+        sys.exit(1)
+
     soa_dir = args.soa_dir
     if args.verbose:
-        log.setLevel(logging.INFO)
+        log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
     all_checked_services = []
@@ -129,5 +147,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if marathon_tools.is_mesos_leader():
-        main()
+    main()

@@ -16,7 +16,10 @@ from marathon import MarathonClient
 import json
 import service_configuration_lib
 
+from paasta_tools.utils import NoMarathonClusterFoundException
+from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import list_all_clusters
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.mesos_tools import fetch_local_slave_state
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -42,16 +45,6 @@ def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
 
 
 class MarathonConfig(dict):
-    def get_cluster(self):
-        """Get the cluster defined in this host's marathon config file.
-
-        :returns: The name of the cluster defined in the marathon configuration"""
-        try:
-            return self['cluster']
-        except KeyError:
-            log.warning('Could not find marathon cluster in marathon config at %s' % PATH_TO_MARATHON_CONFIG)
-            raise NoMarathonClusterFoundException
-
     def get_docker_registry(self):
         """Get the docker_registry defined in this host's marathon config file.
 
@@ -97,8 +90,6 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
 
     If a branch isn't specified for a config, the 'branch' key defaults to
     paasta-${cluster}.${instance}.
-
-    If cluster isn't given, it's loaded using get_cluster.
 
     :param name: The service name
     :param instance: The instance of the service to retrieve
@@ -458,14 +449,6 @@ class ServiceNamespaceConfig(dict):
         return self.get('healthcheck_uri', '/status')
 
 
-class PaastaNotConfigured(Exception):
-    pass
-
-
-class NoMarathonClusterFoundException(Exception):
-    pass
-
-
 class NoDockerImageError(Exception):
     pass
 
@@ -479,7 +462,7 @@ class NoMarathonConfigurationForService(Exception):
 
 
 def get_cluster():
-    return load_marathon_config().get_cluster()
+    return load_system_paasta_config().get_cluster()
 
 
 def get_marathon_client(url, user, passwd):
@@ -743,11 +726,11 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
             cluster = get_cluster()
         # In the cases where there is *no* cluster or in the case
         # where there isn't a Paasta configuration file at *all*, then
-        # there must be no marathon_services running here, so we catch
+        # there must be no marathon services running here, so we catch
         # these custom exceptions and return [].
         except (NoMarathonClusterFoundException, PaastaNotConfigured):
             return []
-    # When a cluster is defined in mesos, lets iterate through marathon services
+    # When a cluster is defined in mesos, let's iterate through marathon services
     marathon_services = marathon_services_running_here()
     nerve_list = []
     for name, instance, port in marathon_services:
@@ -810,13 +793,23 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
         get_classic_services_running_here_for_nerve(soa_dir)
 
 
+class MesosMasterConnectionException(Exception):
+    pass
+
+
 def get_mesos_leader(hostname=MY_HOSTNAME):
-    """Get the current mesos-master leader's hostname.
+    """Get the current mesos-master leader's hostname. Raise
+    MesosMasterConnectionException if we can't connect.
 
     :param hostname: The hostname to query mesos-master on
     :returns: The current mesos-master hostname"""
     redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
-    r = requests.get(redirect_url, timeout=10)
+    try:
+        r = requests.get(redirect_url, timeout=10)
+    except requests.exceptions.ConnectionError as e:
+        # Repackage the exception so upstream code can handle this case without
+        # knowing our implementation details.
+        raise MesosMasterConnectionException(repr(e))
     r.raise_for_status()
     return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
 

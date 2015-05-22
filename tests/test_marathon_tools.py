@@ -3,6 +3,7 @@ import contextlib
 from marathon.models import MarathonApp
 import mock
 from pytest import raises
+import requests
 
 import marathon_tools
 
@@ -230,7 +231,7 @@ class TestMarathonTools:
             assert cmp(expected, actual) == 0
             read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
 
-    def test_get_config(self):
+    def test_load_marathon_config(self):
         expected = {'foo': 'bar'}
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
@@ -244,30 +245,16 @@ class TestMarathonTools:
             open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
             json_patch.assert_called_once_with(file_mock.__enter__())
 
-    def test_get_config_file_dne(self):
-        fake_dir = '/var/dir_of_fake'
+    def test_load_marathon_config_path_dne(self):
+        fake_path = '/var/dir_of_fake'
         with contextlib.nested(
             mock.patch('marathon_tools.open', create=True, side_effect=IOError(2, 'a', 'b')),
         ) as (
             open_patch,
         ):
             with raises(marathon_tools.PaastaNotConfigured) as excinfo:
-                marathon_tools.load_marathon_config(fake_dir)
-            assert excinfo.type == marathon_tools.PaastaNotConfigured
+                marathon_tools.load_marathon_config(fake_path)
             assert str(excinfo.value) == "Could not load marathon config file b: a"
-
-    def test_get_cluster(self):
-        fake_config = marathon_tools.MarathonConfig({
-            'cluster': 'peanut',
-        })
-        expected = 'peanut'
-        actual = fake_config.get_cluster()
-        assert actual == expected
-
-    def test_get_cluster_dne(self):
-        fake_config = marathon_tools.MarathonConfig()
-        with raises(marathon_tools.NoMarathonClusterFoundException):
-            fake_config.get_cluster()
 
     def test_list_clusters_no_service_given_lists_all_of_them(self):
         with mock.patch('marathon_tools.list_all_clusters', autospec=True) as mock_list_all_clusters:
@@ -478,8 +465,13 @@ class TestMarathonTools:
             'retries': fake_retries,
             'mode': fake_mode,
             'routes': [
-                {'source': 'oregon', 'destinations': ['indiana']},
-                {'source': 'florida', 'destinations': ['miami', 'beach']}
+                {
+                    'source': 'oregon',
+                    'destinations': ['indiana']
+                },
+                {
+                    'source': 'florida', 'destinations': ['miami', 'beach']
+                },
             ],
             'discover': fake_discover,
             'advertise': fake_advertise,
@@ -603,6 +595,17 @@ class TestMarathonTools:
         mock_fetch_local_slave_state.assert_called_once_with()
         assert expected == actual
 
+    def test_get_cluster(self):
+        with mock.patch(
+            'marathon_tools.load_system_paasta_config',
+            autospec=True,
+        ) as mock_load_system_paasta_config:
+            marathon_tools.get_cluster()
+            assert mock_load_system_paasta_config.call_count == 1
+            # Setting this up to return a fake SystemPaastaConfig with a
+            # patched-out get_cluster() so we can make sure that part was
+            # called is a pain, so I'm just stopping here.
+
     def test_get_marathon_services_running_here_for_nerve(self):
         cluster = 'edelweiss'
         soa_dir = 'the_sound_of_music'
@@ -642,12 +645,9 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         with contextlib.nested(
             mock.patch(
-                'marathon_tools.MarathonConfig',
+                'marathon_tools.get_cluster',
                 autospec=True,
-                return_value=mock.Mock(
-                    spec=marathon_tools.MarathonConfig.get_cluster,
-                    get_cluster=mock.Mock(side_effect=marathon_tools.NoMarathonClusterFoundException)
-                ),
+                side_effect=marathon_tools.NoMarathonClusterFoundException,
             ),
             mock.patch(
                 'marathon_tools.marathon_services_running_here',
@@ -687,10 +687,9 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         with contextlib.nested(
             mock.patch(
-                'marathon_tools.load_marathon_config',
-                return_value=mock.Mock(
-                    get_cluster=mock.Mock(side_effect=Exception, spec=marathon_tools.MarathonConfig.get_cluster)
-                ),
+                'marathon_tools.get_cluster',
+                autospec=True,
+                side_effect=Exception,
             ),
             mock.patch(
                 'marathon_tools.marathon_services_running_here',
@@ -791,6 +790,16 @@ class TestMarathonTools:
             mock_response.url = 'http://%s:999' % expected
             assert marathon_tools.get_mesos_leader(fake_master) == expected
             mock_requests_get.assert_called_once_with('http://%s:5050/redirect' % fake_master, timeout=10)
+
+    def test_get_mesos_leader_connection_error(self):
+        fake_master = 'false.authority.yelpcorp.com'
+        with mock.patch(
+            'requests.get',
+            autospec=True,
+            side_effect=requests.exceptions.ConnectionError,
+        ):
+            with raises(marathon_tools.MesosMasterConnectionException):
+                marathon_tools.get_mesos_leader(fake_master)
 
     def test_is_mesos_leader(self):
         fake_host = 'toast.host.roast'
