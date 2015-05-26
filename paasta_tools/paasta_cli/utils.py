@@ -164,6 +164,12 @@ class PaastaCheckMessages:
         "instead of a tab.",
         "http://y/paasta-contract",
     )
+    MAKEFILE_HAS_DOCKER_TAG = success("The Makefile contains a docker tag")
+    MAKEFILE_HAS_NO_DOCKER_TAG = failure(
+        "The Makefile contains no reference to DOCKER_TAG. Make sure you\n"
+        "specify a DOCKER_TAG and that your itest tags your docker image with $DOCKER_TAG.",
+        "http://y/paasta-contract",
+    )
 
     PIPELINE_FOUND = success("Jenkins build pipeline found")
 

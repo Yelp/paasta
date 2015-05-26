@@ -9,7 +9,9 @@ from paasta_tools.paasta_cli.cmds.check import deploy_has_security_check
 from paasta_tools.paasta_cli.cmds.check import docker_check
 from paasta_tools.paasta_cli.cmds.check import docker_file_reads_from_yelpcorp
 from paasta_tools.paasta_cli.cmds.check import get_marathon_steps
+from paasta_tools.paasta_cli.cmds.check import makefile_check
 from paasta_tools.paasta_cli.cmds.check import makefile_has_a_tab
+from paasta_tools.paasta_cli.cmds.check import makefile_has_docker_tag
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_test
 from paasta_tools.paasta_cli.cmds.check import marathon_check
@@ -482,6 +484,36 @@ def test_makefile_has_a_tab_false():
         assert makefile_has_a_tab(fake_makefile_path) is False
 
 
+def test_makefile_has_docker_tag_true():
+    fake_makefile_path = 'UNUSED'
+    fake_contents = 'DOCKER_TAG ?= something:\ntarget:\n    command'
+    with contextlib.nested(
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.get_file_contents',
+            autospec=True,
+            return_value=fake_contents
+        ),
+    ) as (
+        mock_get_file_contents,
+    ):
+        assert makefile_has_docker_tag(fake_makefile_path) is True
+
+
+def test_makefile_has_docker_tag_false():
+    fake_makefile_path = 'UNUSED'
+    fake_contents = 'target:\n    command'
+    with contextlib.nested(
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.get_file_contents',
+            autospec=True,
+            return_value=fake_contents
+        ),
+    ) as (
+        mock_get_file_contents,
+    ):
+        assert makefile_has_docker_tag(fake_makefile_path) is False
+
+
 @patch('sys.stdout', new_callable=StringIO)
 @patch('paasta_tools.paasta_cli.cmds.check.get_pipeline_config')
 def test_deploy_has_security_check_false(mock_pipeline_config, mock_stdout):
@@ -642,3 +674,44 @@ def test_docker_file_reads_from_yelpcorp_happy(
         'FROM docker-dev.yelpcorp.com/trusty_yelp',
     ]
     assert docker_file_reads_from_yelpcorp("unused") is True
+
+
+def test_makefile_check():
+    fake_makefile_path = 'UNUSED'
+    fake_contents = "DOCKER_TAG ?= something\ntest:\n\tsomething\nitest:\n\tsomething"
+    with contextlib.nested(
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.get_file_contents',
+            autospec=True,
+            return_value=fake_contents
+        ),
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.makefile_has_a_tab',
+        ),
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.makefile_responds_to_test',
+        ),
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.makefile_responds_to_itest',
+        ),
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.makefile_has_docker_tag',
+        ),
+        patch(
+            'paasta_tools.paasta_cli.cmds.check.is_file_in_dir',
+            autospec=True,
+            return_value=fake_makefile_path
+        ),
+    ) as (
+        mock_get_file_contents,
+        mock_makefile_has_a_tab,
+        mock_makefile_responds_to_test,
+        mock_makefile_responds_to_itest,
+        mock_makefile_has_docker_tag,
+        mock_is_file_in_dir,
+    ):
+        makefile_check()
+        assert mock_makefile_has_a_tab.call_count == 1
+        assert mock_makefile_responds_to_test.call_count == 1
+        assert mock_makefile_responds_to_itest.call_count == 1
+        assert mock_makefile_has_docker_tag.call_count == 1
