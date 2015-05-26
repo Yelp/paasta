@@ -1,3 +1,10 @@
+paasta-tools (0.10.3-yelp1) lucid; urgency=low
+
+  * 0.10.3 tagged with 'make release'
+    Commit: add check for DOCKER_TAG in makefile PAASTA-690
+
+ -- Keshav Varma <keshav@yelp.com>  Tue, 26 May 2015 16:40:47 -0700
+
 paasta-tools (0.10.2-yelp1) lucid; urgency=low
 
   * 0.10.2 tagged with 'make release'
