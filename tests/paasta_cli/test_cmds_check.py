@@ -486,7 +486,7 @@ def test_makefile_has_a_tab_false():
 
 def test_makefile_has_docker_tag_true():
     fake_makefile_path = 'UNUSED'
-    fake_contents = 'DOCKER_TAG ?= something:\ntarget:\n    command'
+    fake_contents = 'Blah\nDOCKER_TAG ?= something:\ntarget:\n    command'
     with contextlib.nested(
         patch(
             'paasta_tools.paasta_cli.cmds.check.get_file_contents',

@@ -149,7 +149,7 @@ def makefile_has_a_tab(makefile_path):
 
 def makefile_has_docker_tag(makefile_path):
     contents = get_file_contents(makefile_path)
-    return re.match(r"^DOCKER_TAG\s*\?=", contents) is not None
+    return re.search(r"^DOCKER_TAG\s*\?=", contents, re.MULTILINE) is not None
 
 
 def makefile_check():
