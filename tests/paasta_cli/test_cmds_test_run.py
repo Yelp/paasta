@@ -23,6 +23,21 @@ def test_build_docker_container():
     assert build_docker_container(docker_client, args) == '1234'
 
 
+def test_build_docker_container_fails():
+    docker_client = mock.MagicMock()
+    args = mock.MagicMock()
+
+    docker_client.build.return_value = [
+        '{"stream":null}',
+        '{"stream":"foo\\n"}',
+        '{"stream":"foo\\n"}',
+        '{"stream":"failed\\n"}'
+    ]
+    with raises(SystemExit) as sys_exit:
+        build_docker_container(docker_client, args)
+    assert sys_exit.value.code == 1
+
+
 @mock.patch('os.path.expanduser', autospec=True)
 @mock.patch('os.getcwd', autospec=True)
 def test_validate_environment_fail_in_homedir(
