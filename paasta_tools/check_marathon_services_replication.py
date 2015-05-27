@@ -59,7 +59,7 @@ def send_event(service_name, namespace, soa_dir, status, output):
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,
-        'source': 'mesos-%s' % cluster
+        'source': 'paasta-%s' % cluster
     }
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
     _log(

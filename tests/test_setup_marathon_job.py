@@ -206,7 +206,7 @@ class TestSetupMarathonJob:
             'alert_after': '5m',
             'check_every': '1m',
             'realert_every': -1,
-            'source': 'mesos-fake_cluster',
+            'source': 'paasta-fake_cluster',
         }
         with contextlib.nested(
             mock.patch(

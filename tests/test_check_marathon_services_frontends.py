@@ -38,7 +38,7 @@ def test_send_event():
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,
-        'source': 'mesos-fake_cluster'
+        'source': 'paasta-fake_cluster'
     }
     with contextlib.nested(
         mock.patch("paasta_tools.monitoring_tools.get_team",

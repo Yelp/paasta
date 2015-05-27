@@ -42,7 +42,7 @@ def send_event(status, output):
         'realert_every': -1,
         'status': status,
         'output': output,
-        'source': 'mesos-%s' % paasta_tools.marathon_tools.get_cluster()
+        'source': 'paasta-%s' % paasta_tools.marathon_tools.get_cluster()
     }
     pysensu_yelp.send_event(**result_dict)
 
