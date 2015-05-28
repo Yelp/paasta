@@ -226,22 +226,25 @@ class MarathonServiceConfig(object):
 
         :param service_config: The service instance's configuration dictionary
         :returns: The bounce method specified in the config, or 'upthendown' if not specified"""
-        bounce_method = self.config_dict.get('bounce_method')
-        return bounce_method if bounce_method else 'upthendown'
+        return self.config_dict.get('bounce_method', 'upthendown')
 
-    def get_constraints(self):
+    def get_constraints(self, service_namespace_config):
         """Gets the constraints specified in the service's marathon configuration.
 
         These are Marathon job constraints. See
         https://github.com/mesosphere/marathon/wiki/Constraints
 
-        Defaults to no constraints if none given.
+        Defaults to GROUP_BY <discover_location_type> constraint if none given
+        (<discover_location_type> is defined by the discover attribute in smartstack.yaml).
+        If <discover_location_type> is not defined, defaults to GROUP_BY region.
 
         :param service_config: The service instance's configuration dictionary
-        :returns: The constraints specified in the config, an empty array if not specified"""
-        return self.config_dict.get('constraints')
+        :returns: The constraints specified in the config, [["<discover_location_type>", "GROUP_BY"]]
+                  if not specified"""
+        discover_level = service_namespace_config.get('discover', 'region')
+        return self.config_dict.get('constraints', [[discover_level, "GROUP_BY"]])
 
-    def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, healthchecks):
+    def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):
         """Create the configuration that will be passed to the Marathon REST API.
 
         Currently compiles the following keys into one nice dict:
@@ -284,12 +287,12 @@ class MarathonServiceConfig(object):
             'uris': ['file:///root/.dockercfg', ],
             'backoff_seconds': 1,
             'backoff_factor': 2,
-            'health_checks': healthchecks,
+            'health_checks': self.get_healthchecks(service_namespace_config),
         }
         complete_config['env'] = self.get_env()
         complete_config['mem'] = self.get_mem()
         complete_config['cpus'] = self.get_cpus()
-        complete_config['constraints'] = self.get_constraints()
+        complete_config['constraints'] = self.get_constraints(service_namespace_config)
         complete_config['instances'] = self.get_instances()
         complete_config['args'] = self.get_args()
         log.info("Complete configuration for instance is: %s", complete_config)
@@ -854,13 +857,12 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     srv_config = load_marathon_service_config(name, instance, get_cluster(), soa_dir=soa_dir)
     docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
     service_namespace_config = load_service_namespace_config(name, srv_config.get_nerve_namespace())
-    healthchecks = srv_config.get_healthchecks(service_namespace_config)
 
     complete_config = srv_config.format_marathon_app_dict(
         partial_id,
         docker_url,
         marathon_config.get_docker_volumes(),
-        healthchecks,
+        service_namespace_config,
     )
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(

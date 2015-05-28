@@ -836,6 +836,11 @@ class TestMarathonTools:
         fake_cpus = .42
         fake_instances = 101
         fake_args = ['arg1', 'arg2']
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+            'mode': 'http',
+            'healthcheck_uri': '/health',
+            'discover': 'habitat',
+        })
         fake_healthchecks = [
             {
                 "protocol": "HTTP",
@@ -865,7 +870,7 @@ class TestMarathonTools:
                 'type': 'DOCKER',
                 'volumes': fake_volumes,
             },
-            'constraints': [],
+            'constraints': [["habitat", "GROUP_BY"]],
             'uris': ['file:///root/.dockercfg', ],
             'mem': fake_mem,
             'env': fake_env,
@@ -883,15 +888,18 @@ class TestMarathonTools:
                 'env': fake_env,
                 'mem': fake_mem,
                 'cpus': fake_cpus,
-                'constraints': [],
                 'instances': fake_instances,
                 'args': fake_args,
+                'healthcheck_grace_period_seconds': 3,
+                'healthcheck_interval_seconds':  10,
+                'healthcheck_timeout_seconds':  10,
+                'healthcheck_max_consecutive_failures': 3,
             },
             {'desired_state': 'start'}
         )
 
         actual = config.format_marathon_app_dict(fake_id, fake_url, fake_volumes,
-                                                 fake_healthchecks)
+                                                 fake_service_namespace_config)
         assert actual == expected_conf
 
         # Assert that the complete config can be inserted into the MarathonApp model
@@ -937,13 +945,24 @@ class TestMarathonTools:
         assert fake_conf.get_instances() == 0
 
     def test_get_constraints_in_config(self):
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'constraints': 'so_many_walls'},
                                                          {})
-        assert fake_conf.get_constraints() == 'so_many_walls'
+        assert fake_conf.get_constraints(fake_service_namespace_config) == 'so_many_walls'
 
     def test_get_constraints_default(self):
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_constraints() is None
+        assert fake_conf.get_constraints(fake_service_namespace_config) == [["region", "GROUP_BY"]]
+
+    def test_get_constraints_from_discover(self):
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+            'mode': 'http',
+            'healthcheck_uri': '/status',
+            'discover': 'habitat',
+        })
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY"]]
 
     def test_get_cpus_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cpus': -5}, {})
@@ -1310,6 +1329,7 @@ class TestServiceNamespaceConfig(object):
 def test_create_complete_config():
     service_name = "service"
     instance_name = "instance"
+    fake_job_id = "service.instance.some.hash"
     fake_marathon_config = marathon_tools.MarathonConfig(docker_registry="registry", docker_volumes=[])
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service_name,
@@ -1324,10 +1344,12 @@ def test_create_complete_config():
         mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
         mock.patch('marathon_tools.get_cluster', return_value=fake_cluster),
+        mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
         mock_get_cluster,
+        mock_compose_job_id,
     ):
         actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
         expected = {
@@ -1359,7 +1381,7 @@ def test_create_complete_config():
                 }
             ],
             'env': {},
-            'id': 'service.instance.gitregistry.config283b55d0',
-            'constraints': None,
+            'id': fake_job_id,
+            'constraints': [["region", "GROUP_BY"]],
         }
         assert actual == expected
