@@ -25,7 +25,7 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <bounce_lib.html>`_
 
-  * ``constraints``: Specifies placement constraints for services. Should be defined as an array within an array (E.g ``[["habitat", "GROUP_BY"]]``). Defaults to ``[["<discover_location_type>, "GROUP_BY"]]`` where ``<discover_location_type>`` is defined by the ``discover`` attribute in ``smartstack.yaml``. For more details and other constraint types, see https://mesosphere.github.io/marathon/docs/constraints.html
+  * ``constraints``: Specifies placement constraints for services. Should be defined as an array within an array (E.g ``[["habitat", "GROUP_BY"]]``). Defaults to ``[["<discover_location_type>, "GROUP_BY"]]`` where ``<discover_location_type>`` is defined by the ``discover`` attribute in ``smartstack.yaml``. For more details and other constraint types, see the official `Marathon constraint documentation <https://mesosphere.github.io/marathon/docs/constraints.html>`_.
 
   * ``args``: docker args if you use the "entrypoint" functionality
 
