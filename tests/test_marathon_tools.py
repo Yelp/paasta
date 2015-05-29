@@ -280,10 +280,11 @@ class TestMarathonTools:
             assert actual == expected
             mock_get_clusters_deployed_to.assert_called_once_with(fake_service)
 
-    def test_get_clusters_deployed_to(self):
+    def test_get_clusters_deployed_to_ignores_bogus_clusters(self):
         service = 'fake_service'
         fake_marathon_filenames = ['marathon-cluster1.yaml', 'marathon-cluster2.yaml',
-                                   'marathon-SHARED.yaml', 'marathon-cluster3.yaml']
+                                   'marathon-SHARED.yaml', 'marathon-cluster3.yaml',
+                                   'marathon-BOGUS.yaml']
         expected = ['cluster1', 'cluster2', 'cluster3']
         with contextlib.nested(
             mock.patch('os.path.isdir', autospec=True),
