@@ -3,6 +3,8 @@ import cleanup_marathon_jobs
 import mock
 import contextlib
 
+from pytest import raises
+
 
 class TestCleanupMarathonJobs:
 
@@ -125,6 +127,31 @@ class TestCleanupMarathonJobs:
                 cluster='fake_cluster',
                 line=expected_log_line,
             )
+
+    def test_delete_app_throws_exception(self):
+        app_id = 'example--service.main.git93340779.configddb38a65'
+        client = self.fake_marathon_client
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.get_cluster', autospec=True),
+            mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
+            mock.patch('paasta_tools.bounce_lib.delete_marathon_app', side_effect=ValueError("foo")),
+            mock.patch('cleanup_marathon_jobs._log', autospec=True),
+        ) as (
+            mock_get_cluster,
+            mock_bounce_lock_zookeeper,
+            mock_delete_marathon_app,
+            mock_log,
+        ):
+            with raises(ValueError):
+                cleanup_marathon_jobs.delete_app(app_id, client)
+                mock_log.assert_called_once_with(
+                    instance='main',
+                    service_name='example_service',
+                    level='event',
+                    component='deploy',
+                    cluster='fake_cluster',
+                    line='Exception raised: IOError("foo")'
+                )
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

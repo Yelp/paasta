@@ -61,6 +61,14 @@ def delete_app(app_id, client):
                  line=log_line)
     except IOError:
         log.debug("%s is being bounced, skipping" % app_id)
+    except Exception, e:
+        _log(service_name=service_name,
+             component='deploy',
+             level='event',
+             cluster=marathon_tools.get_cluster(),
+             instance=instance,
+             line="Exception raised: %s" % repr(e))
+        raise
 
 
 def cleanup_apps(soa_dir):
