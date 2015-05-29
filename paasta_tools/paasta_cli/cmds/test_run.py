@@ -243,12 +243,10 @@ def run_docker_container(docker_client, docker_hash, service, args):
 def build_docker_container(docker_client, args):
     """
     Build Docker container from Dockerfile in the current directory or
-    specified in command line args. Resulting image hash.
+    specified in command line args. Resulting image id.
     """
-    result = ''
-
+    image_id = None
     dockerfile_path = os.getcwd()
-
     sys.stdout.write('Building container from Dockerfile in %s\n' % dockerfile_path)
 
     for line in docker_client.build(path=dockerfile_path, tag='latest'):
@@ -261,10 +259,13 @@ def build_docker_container(docker_client, args):
 
         if stream_line and stream_line.startswith('Successfully built '):
             # Strip the beginning of a string and \n in the end.
-            result = stream_line[len('Successfully built '):]
-            result = result[:len(result) - 1]
+            image_id = stream_line[len('Successfully built '):].strip()
 
-    return result
+    if image_id:
+        return image_id
+    else:
+        sys.stderr.write("Error: Failed to build docker image")
+        sys.exit(1)
 
 
 def validate_environment():
