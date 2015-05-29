@@ -1,3 +1,10 @@
+paasta-tools (0.11.0-yelp1) lucid; urgency=low
+
+  * 0.11.0 tagged with 'make release'
+    Commit: Make paasta logs follow the -c == --cluster(s) convention.
+
+ -- Evan Krall <krall@yelp.com>  Thu, 28 May 2015 19:11:50 -0700
+
 paasta-tools (0.10.4-yelp1) lucid; urgency=low
 
   * 0.10.4 tagged with 'make release'
