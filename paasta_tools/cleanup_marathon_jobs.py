@@ -64,7 +64,7 @@ def delete_app(app_id, client):
     except Exception, e:
         _log(service_name=service_name,
              component='deploy',
-             level='event',
+             level='debug',
              cluster=marathon_tools.get_cluster(),
              instance=instance,
              line="Exception raised: %s" % repr(e))
