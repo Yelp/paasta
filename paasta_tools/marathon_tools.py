@@ -234,13 +234,12 @@ class MarathonServiceConfig(object):
         These are Marathon job constraints. See
         https://github.com/mesosphere/marathon/wiki/Constraints
 
-        Defaults to GROUP_BY <discover_location_type> constraint if none given
-        (<discover_location_type> is defined by the discover attribute in smartstack.yaml).
-        If <discover_location_type> is not defined, defaults to GROUP_BY region.
+        Defaults to `GROUP_BY region`.If the service's smartstack configuration
+        specifies a `discover` key, then defaults to `GROUP_BY <value of discover>` instead.
 
-        :param service_config: The service instance's configuration dictionary
-        :returns: The constraints specified in the config, [["<discover_location_type>", "GROUP_BY"]]
-                  if not specified"""
+        :param service_namespace_config: The service instance's configuration dictionary
+        :returns: The constraints specified in the config, or defaults described above
+        """
         discover_level = service_namespace_config.get('discover', 'region')
         return self.config_dict.get('constraints', [[discover_level, "GROUP_BY"]])
 
@@ -265,7 +264,7 @@ class MarathonServiceConfig(object):
         :param docker_url: The url to the docker image the job will actually execute
         :param docker_volumes: The docker volumes to run the image with, via the
                                marathon configuration file
-        :param service_marathon_config: The service instance's configuration dict
+        :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
         complete_config = {
             'id': job_id,
