@@ -1,5 +1,5 @@
 # Edit this release and run "make release"
-RELEASE=0.11.0-yelp1
+RELEASE=0.11.1-yelp1
 
 SHELL=/bin/bash
 

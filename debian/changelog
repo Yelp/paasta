@@ -1,3 +1,10 @@
+paasta-tools (0.11.1-yelp1) lucid; urgency=low
+
+  * 0.11.1 tagged with 'make release'
+    Commit: Merge branch master of git.yelpcorp.com:paasta_tools
+
+ -- Keshav Varma <keshav@yelp.com>  Fri, 29 May 2015 13:42:59 -0700
+
 paasta-tools (0.11.0-yelp1) lucid; urgency=low
 
   * 0.11.0 tagged with 'make release'
