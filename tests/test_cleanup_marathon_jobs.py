@@ -147,7 +147,7 @@ class TestCleanupMarathonJobs:
                 mock_log.assert_called_once_with(
                     instance='main',
                     service_name='example_service',
-                    level='event',
+                    level='debug',
                     component='deploy',
                     cluster='fake_cluster',
                     line='Exception raised: IOError("foo")'
