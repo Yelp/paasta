@@ -129,7 +129,7 @@ class PaastaCheckMessages:
         "Your Dockerfile does not use the standard Yelp images.\n  "
         "This is bad because your `docker pulls` will be slow and you won't be "
         "using the local mirrors.\n"
-        "More info:", "http://y/paasta-runbook-dockerfile")
+        "More info:", "http://y/base-docker-images")
 
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
 
