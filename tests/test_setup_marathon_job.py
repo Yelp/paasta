@@ -5,6 +5,7 @@ import mock
 
 import marathon
 
+from pytest import raises
 from paasta_tools import marathon_tools, bounce_lib
 from paasta_tools.bounce_lib import list_bounce_methods
 import setup_marathon_job
@@ -591,6 +592,38 @@ class TestSetupMarathonJob:
                 bounce_health_params={},
             )
             assert result == (1, "Instance %s is already being bounced." % fake_short_id)
+
+    def test_deploy_service_logs_exceptions(self):
+        fake_bounce = 'WHEEEEEEEEEEEEEEEE'
+        fake_name = 'whoa'
+        fake_instance = 'the_earth_is_tiny'
+        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
+        fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
+        fake_client = mock.MagicMock(
+            list_apps=mock.Mock(return_value=fake_apps))
+        fake_config = {'id': fake_id, 'instances': 2}
+
+        with contextlib.nested(
+            mock.patch('setup_marathon_job._log', autospec=True),
+            mock.patch('setup_marathon_job.bounce_lib.get_bounce_method_func', side_effect=IOError('foo')),
+            mock.patch(
+                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
+                return_value='fake_cluster',
+                autospec=True
+            ),
+        ) as (mock_log, mock_bounce,  mock_get_cluster):
+            with raises(IOError):
+                setup_marathon_job.deploy_service(
+                    fake_name,
+                    fake_instance,
+                    fake_id,
+                    fake_config,
+                    fake_client,
+                    fake_bounce,
+                    nerve_ns=fake_instance,
+                    bounce_health_params={},
+                )
+                assert mock_log.call_count == 1
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}
