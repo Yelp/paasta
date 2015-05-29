@@ -234,7 +234,7 @@ class MarathonServiceConfig(object):
         These are Marathon job constraints. See
         https://github.com/mesosphere/marathon/wiki/Constraints
 
-        Defaults to `GROUP_BY region`.If the service's smartstack configuration
+        Defaults to `GROUP_BY region`. If the service's smartstack configuration
         specifies a `discover` key, then defaults to `GROUP_BY <value of discover>` instead.
 
         :param service_namespace_config: The service instance's configuration dictionary
