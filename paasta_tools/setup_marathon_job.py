@@ -224,7 +224,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     except Exception, e:
         _log(
             service_name=service_name,
-            line='Exception raised: %s' % repr(e),
+            line='Exception raised during deploy: %s' % repr(e),
             component='deploy',
             level='debug',
             cluster=cluster,

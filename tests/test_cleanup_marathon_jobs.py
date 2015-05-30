@@ -132,7 +132,7 @@ class TestCleanupMarathonJobs:
         app_id = 'example--service.main.git93340779.configddb38a65'
         client = self.fake_marathon_client
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.get_cluster', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.get_cluster', return_value="fake_cluster", autospec=True),
             mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
             mock.patch('paasta_tools.bounce_lib.delete_marathon_app', side_effect=ValueError("foo")),
             mock.patch('cleanup_marathon_jobs._log', autospec=True),
@@ -144,14 +144,14 @@ class TestCleanupMarathonJobs:
         ):
             with raises(ValueError):
                 cleanup_marathon_jobs.delete_app(app_id, client)
-                mock_log.assert_called_once_with(
-                    instance='main',
-                    service_name='example_service',
-                    level='debug',
-                    component='deploy',
-                    cluster='fake_cluster',
-                    line='Exception raised: IOError("foo")'
-                )
+            mock_log.assert_called_once_with(
+                instance='main',
+                service_name='example_service',
+                level='debug',
+                component='deploy',
+                cluster='fake_cluster',
+                line="Exception raised during cleanup: ValueError('foo',)"
+            )
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

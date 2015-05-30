@@ -67,7 +67,7 @@ def delete_app(app_id, client):
              level='debug',
              cluster=marathon_tools.get_cluster(),
              instance=instance,
-             line="Exception raised: %s" % repr(e))
+             line="Exception raised during cleanup: %s" % repr(e))
         raise
 
 

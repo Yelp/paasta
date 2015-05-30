@@ -623,7 +623,14 @@ class TestSetupMarathonJob:
                     nerve_ns=fake_instance,
                     bounce_health_params={},
                 )
-                assert mock_log.call_count == 1
+            mock_log.assert_called_once_with(
+                instance=fake_instance,
+                service_name=fake_name,
+                level='debug',
+                component='deploy',
+                cluster='fake_cluster',
+                line="Exception raised during deploy: IOError('foo',)"
+            )
 
     def test_get_marathon_config(self):
         fake_conf = {'oh_no': 'im_a_ghost'}
