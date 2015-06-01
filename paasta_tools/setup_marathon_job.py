@@ -32,6 +32,7 @@ import logging
 import pysensu_yelp
 import service_configuration_lib
 import sys
+import traceback
 
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
@@ -221,10 +222,10 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
         except bounce_lib.LockHeldException:
             log.error("Instance %s already being bounced. Exiting", short_id)
             return (1, "Instance %s is already being bounced." % short_id)
-    except Exception, e:
+    except Exception:
         _log(
             service_name=service_name,
-            line='Exception raised during deploy: %s' % repr(e),
+            line='Exception raised during deploy: %s' % traceback.format_exc(),
             component='deploy',
             level='debug',
             cluster=cluster,

@@ -131,6 +131,14 @@ class TestCleanupMarathonJobs:
     def test_delete_app_throws_exception(self):
         app_id = 'example--service.main.git93340779.configddb38a65'
         client = self.fake_marathon_client
+        fake_line = 'Exception raised during cleanup: Traceback (most recent call last):\n' \
+                    '  File "/nail/home/keshav/pg/paasta_tools/paasta_tools/cleanup_marathon_jobs.py",' \
+                    ' line 55, in delete_app\n    bounce_lib.delete_marathon_app(app_id, client)\n' \
+                    '  File "/nail/home/keshav/pg/paasta_tools/.tox/py/local/lib/python2.7/site-packages/mock.py",' \
+                    ' line 955, in __call__\n    return _mock_self._mock_call(*args, **kwargs)\n' \
+                    '  File "/nail/home/keshav/pg/paasta_tools/.tox/py/local/lib/python2.7/site-packages/mock.py",' \
+                    ' line 1010, in _mock_call\n    raise effect\nValueError: foo\n'
+
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.get_cluster', return_value="fake_cluster", autospec=True),
             mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
@@ -150,7 +158,7 @@ class TestCleanupMarathonJobs:
                 level='debug',
                 component='deploy',
                 cluster='fake_cluster',
-                line="Exception raised during cleanup: ValueError('foo',)"
+                line=fake_line
             )
 
 

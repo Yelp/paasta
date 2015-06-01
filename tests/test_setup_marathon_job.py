@@ -602,6 +602,13 @@ class TestSetupMarathonJob:
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_apps))
         fake_config = {'id': fake_id, 'instances': 2}
+        fake_line = 'Exception raised during deploy: Traceback (most recent call last):\n' \
+                    '  File "/nail/home/keshav/pg/paasta_tools/paasta_tools/setup_marathon_job.py", line 140,' \
+                    ' in deploy_service\n    bounce_func = bounce_lib.get_bounce_method_func(bounce_method)\n' \
+                    '  File "/nail/home/keshav/pg/paasta_tools/.tox/py/local/lib/python2.7/site-packages/mock.py",' \
+                    ' line 955, in __call__\n    return _mock_self._mock_call(*args, **kwargs)\n' \
+                    '  File "/nail/home/keshav/pg/paasta_tools/.tox/py/local/lib/python2.7/site-packages/mock.py",' \
+                    ' line 1010, in _mock_call\n    raise effect\nIOError: foo\n'
 
         with contextlib.nested(
             mock.patch('setup_marathon_job._log', autospec=True),
@@ -629,7 +636,7 @@ class TestSetupMarathonJob:
                 level='debug',
                 component='deploy',
                 cluster='fake_cluster',
-                line="Exception raised during deploy: IOError('foo',)"
+                line=fake_line
             )
 
     def test_get_marathon_config(self):
