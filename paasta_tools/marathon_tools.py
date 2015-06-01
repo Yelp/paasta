@@ -625,9 +625,9 @@ def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
         marathon_files = "%s/marathon-*.yaml" % srv_path
         for marathon_file in glob.glob(marathon_files):
             basename = os.path.basename(marathon_file)
-            cluster = re.search('marathon-(.*).yaml', basename).group(1)
-            clusters.add(cluster)
-    clusters.discard('SHARED')
+            cluster_re_match = re.search('marathon-([0-9a-z-]*).yaml', basename)
+            if cluster_re_match is not None:
+                clusters.add(cluster_re_match.group(1))
     return sorted(clusters)
 
 

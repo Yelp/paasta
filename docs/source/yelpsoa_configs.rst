@@ -9,7 +9,8 @@ marathon-[clustername].yaml
 
 e.g. ``marathon-norcal-prod.yaml``, ``marathon-mesosstage.yaml``. The
 clustername is usually the same as the ``superregion`` in which the cluster
-lives (``norcal-prod``), but not always (``mesosstage``).
+lives (``norcal-prod``), but not always (``mesosstage``). It MUST be all
+lowercase. (non alphanumeric lowercase characters are ignored)
 
 The yaml where marathon jobs are actually defined.
 
