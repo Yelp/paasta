@@ -286,7 +286,7 @@ class TestSetupMarathonJob:
     def test_do_bounce(self):
         fake_bounce_func_return = {
             'create_app': True,
-            'tasks_to_kill': ['fake_task_to_kill'],
+            'tasks_to_kill': [mock.Mock(app_id='fake_task_to_kill_1')],
             'apps_to_kill': ['fake_app_to_kill'],
         }
         fake_bounce_func = mock.create_autospec(
@@ -317,12 +317,14 @@ class TestSetupMarathonJob:
                                          fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
                                          fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name,
                                          fake_marathon_jobid, fake_client)
-            assert mock_log.call_count == 2
+            assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
             assert '%s new tasks' % expected_new_task_count in first_logged_line
             assert '%s to kill' % expected_kill_task_count in first_logged_line
 
             assert mock_create_marathon_app.call_count == 1
+
+            assert fake_client.kill_task.call_count == len(fake_bounce_func_return["tasks_to_kill"])
 
     def test_setup_service_srv_already_exists(self):
         fake_name = 'if_trees_could_talk'

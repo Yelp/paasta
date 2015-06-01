@@ -134,7 +134,21 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
             instance=instance_name
         )
         bounce_lib.create_marathon_app(marathon_jobid, config, client)
-
+    if len(actions['tasks_to_kill']) > 0:
+        # we need the app_id. actions['tasks_to_kill'] set elements has that information, so we
+        # extract a set element and use its app_id
+        app_id = next(iter(actions['tasks_to_kill'])).app_id
+        _log(
+            service_name=service_name,
+            line='%s bounce killing %d old tasks with app_id %s' %
+            (bounce_method, len(actions['tasks_to_kill']), app_id),
+            component='deploy',
+            level='debug',
+            cluster=cluster,
+            instance=instance_name
+        )
+        for task in actions['tasks_to_kill']:
+            client.kill_task(task.app_id, task.id, scale=True)
 
 def deploy_service(service_name, instance_name, marathon_jobid, config, client,
                    bounce_method, nerve_ns, bounce_health_params):
