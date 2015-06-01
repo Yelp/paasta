@@ -97,7 +97,7 @@ def get_main_marathon_config():
 
 
 def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tasks, service_name,
-              bounce_method, serviceinstance, cluster, instance_name):
+              bounce_method, serviceinstance, cluster, instance_name, marathon_jobid, client):
     actions = bounce_func(
         new_config=config,
         new_app_running=new_app_running,
@@ -124,6 +124,16 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
             cluster=cluster,
             instance=instance_name
         )
+    if actions['create_app'] and not new_app_running:
+        _log(
+            service_name=service_name,
+            line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
+            component='deploy',
+            level='debug',
+            cluster=cluster,
+            instance=instance_name
+        )
+        bounce_lib.create_marathon_app(marathon_jobid, config, client)
 
 
 def deploy_service(service_name, instance_name, marathon_jobid, config, client,
