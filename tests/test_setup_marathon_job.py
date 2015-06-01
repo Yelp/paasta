@@ -302,7 +302,7 @@ class TestSetupMarathonJob:
         fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_marathon_jobid = 'fake_marathon_jobid'
+        fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
             marathon.MarathonClient
         )
@@ -312,12 +312,13 @@ class TestSetupMarathonJob:
         with contextlib.nested(
             mock.patch('setup_marathon_job._log', autospec=True),
             mock.patch('setup_marathon_job.bounce_lib.create_marathon_app', autospec=True),
-        ) as (mock_log, mock_create_marathon_app):
+            mock.patch('setup_marathon_job.bounce_lib.kill_old_ids', autospec=True),
+        ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
             setup_marathon_job.do_bounce(fake_bounce_func, fake_config, fake_new_app_running,
                                          fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
                                          fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name,
                                          fake_marathon_jobid, fake_client)
-            assert mock_log.call_count == 3
+            assert mock_log.call_count == 5
             first_logged_line = mock_log.mock_calls[0][2]["line"]
             assert '%s new tasks' % expected_new_task_count in first_logged_line
             assert '%s to kill' % expected_kill_task_count in first_logged_line
@@ -325,6 +326,8 @@ class TestSetupMarathonJob:
             assert mock_create_marathon_app.call_count == 1
 
             assert fake_client.kill_task.call_count == len(fake_bounce_func_return["tasks_to_kill"])
+
+            assert mock_kill_old_ids.call_count == 1
 
     def test_setup_service_srv_already_exists(self):
         fake_name = 'if_trees_could_talk'

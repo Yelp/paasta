@@ -104,6 +104,8 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
         happy_new_tasks=happy_new_tasks,
         old_app_tasks=old_app_tasks,
     )
+    changed = False
+
     if (
         (actions['create_app'] and not new_app_running) or
         (len(actions['tasks_to_kill']) > 0) or
@@ -149,6 +151,35 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
         )
         for task in actions['tasks_to_kill']:
             client.kill_task(task.app_id, task.id, scale=True)
+    if actions['apps_to_kill']:
+        _log(
+            service_name=service_name,
+            line='%s bounce removing old unused apps with app_ids: %s' %
+            (
+                bounce_method,
+                ', '.join(actions['apps_to_kill'])
+            ),
+            component='deploy',
+            level='debug',
+            cluster=cluster,
+            instance=instance_name
+        )
+        bounce_lib.kill_old_ids(actions['apps_to_kill'], client)
+    if changed:
+        _log(
+            service_name=service_name,
+            line='%s bounce on %s finished. Now running %s' %
+            (
+                bounce_method,
+                serviceinstance,
+                marathon_jobid.split('.')[2]
+            ),
+            component='deploy',
+            level='event',
+            cluster=cluster,
+            instance=instance_name
+        )
+
 
 def deploy_service(service_name, instance_name, marathon_jobid, config, client,
                    bounce_method, nerve_ns, bounce_health_params):
