@@ -283,6 +283,38 @@ class TestSetupMarathonJob:
             )
             cluster_patch.assert_called_once_with()
 
+    def test_do_bounce(self):
+        fake_bounce_func_return = {
+            'create_app': True,
+            'tasks_to_kill': ['fake_task_to_kill'],
+            'apps_to_kill': ['fake_app_to_kill'],
+        }
+        fake_bounce_func = mock.create_autospec(
+            bounce_lib.brutal_bounce,
+            return_value=fake_bounce_func_return,
+        )
+        fake_config = {'instances': 5}
+        fake_new_app_running = True
+        fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
+        fake_old_app_tasks = []
+        fake_service_name = 'fake_service'
+        fake_serviceinstance = 'fake_service.fake_instance'
+        fake_cluster = 'fake_cluster'
+        fake_instance_name = 'fake_instance'
+        fake_bounce_method = 'fake_bounce_method'
+
+        expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
+        expected_kill_task_count = len(fake_bounce_func_return['apps_to_kill'])
+
+        with mock.patch('setup_marathon_job._log', autospec=True) as mock_log:
+            setup_marathon_job.do_bounce(fake_bounce_func, fake_config, fake_new_app_running,
+                                         fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
+                                         fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name)
+            assert mock_log.call_count == 1
+            logged_line = mock_log.mock_calls[0][2]["line"]
+            assert '%s new tasks' % expected_new_task_count in logged_line
+            assert '%s to kill' % expected_kill_task_count in logged_line
+
     def test_setup_service_srv_already_exists(self):
         fake_name = 'if_trees_could_talk'
         fake_instance = 'would_they_scream'

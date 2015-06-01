@@ -96,6 +96,36 @@ def get_main_marathon_config():
     return marathon_config
 
 
+def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tasks, service_name,
+              bounce_method, serviceinstance, cluster, instance_name):
+    actions = bounce_func(
+        new_config=config,
+        new_app_running=new_app_running,
+        happy_new_tasks=happy_new_tasks,
+        old_app_tasks=old_app_tasks,
+    )
+    if (
+        (actions['create_app'] and not new_app_running) or
+        (len(actions['tasks_to_kill']) > 0) or
+        actions['apps_to_kill']
+    ):
+        changed = True
+        _log(
+            service_name=service_name,
+            line='%s bounce started on %s. %d new tasks to bring up, %d to kill.' %
+            (
+                bounce_method,
+                serviceinstance,
+                config['instances']-len(happy_new_tasks),
+                len(actions['tasks_to_kill'])
+            ),
+            component='deploy',
+            level='event',
+            cluster=cluster,
+            instance=instance_name
+        )
+
+
 def deploy_service(service_name, instance_name, marathon_jobid, config, client,
                    bounce_method, nerve_ns, bounce_health_params):
     """Deploy the service to marathon, either directly or via a bounce if needed.
