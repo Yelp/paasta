@@ -283,7 +283,7 @@ class TestSetupMarathonJob:
             )
             cluster_patch.assert_called_once_with()
 
-    def test_do_bounce(self):
+    def test_do_bounce_when_create_app_and_new_app_not_running(self):
         fake_bounce_func_return = {
             'create_app': True,
             'tasks_to_kill': [mock.Mock(app_id='fake_task_to_kill_1')],
@@ -307,7 +307,7 @@ class TestSetupMarathonJob:
             marathon.MarathonClient
         )
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
-        expected_kill_task_count = len(fake_bounce_func_return['apps_to_kill'])
+        expected_kill_task_count = len(fake_bounce_func_return['tasks_to_kill'])
 
         with contextlib.nested(
             mock.patch('setup_marathon_job._log', autospec=True),
@@ -324,6 +324,144 @@ class TestSetupMarathonJob:
             assert '%s to kill' % expected_kill_task_count in first_logged_line
 
             assert mock_create_marathon_app.call_count == 1
+
+            assert fake_client.kill_task.call_count == len(fake_bounce_func_return["tasks_to_kill"])
+
+            assert mock_kill_old_ids.call_count == 1
+
+    def test_do_bounce_when_create_app_and_new_app_running(self):
+        fake_bounce_func_return = {
+            'create_app': True,
+            'tasks_to_kill': [mock.Mock(app_id='fake_task_to_kill_1')],
+            'apps_to_kill': ['fake_app_to_kill'],
+        }
+        fake_bounce_func = mock.create_autospec(
+            bounce_lib.brutal_bounce,
+            return_value=fake_bounce_func_return,
+        )
+        fake_config = {'instances': 5}
+        fake_new_app_running = True
+        fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
+        fake_old_app_tasks = []
+        fake_service_name = 'fake_service'
+        fake_serviceinstance = 'fake_service.fake_instance'
+        fake_cluster = 'fake_cluster'
+        fake_instance_name = 'fake_instance'
+        fake_bounce_method = 'fake_bounce_method'
+        fake_marathon_jobid = 'fake.marathon.jobid'
+        fake_client = mock.create_autospec(
+            marathon.MarathonClient
+        )
+        expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
+        expected_kill_task_count = len(fake_bounce_func_return['tasks_to_kill'])
+
+        with contextlib.nested(
+            mock.patch('setup_marathon_job._log', autospec=True),
+            mock.patch('setup_marathon_job.bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('setup_marathon_job.bounce_lib.kill_old_ids', autospec=True),
+        ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
+            setup_marathon_job.do_bounce(fake_bounce_func, fake_config, fake_new_app_running,
+                                         fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
+                                         fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name,
+                                         fake_marathon_jobid, fake_client)
+            assert mock_log.call_count == 4
+            first_logged_line = mock_log.mock_calls[0][2]["line"]
+            assert '%s new tasks' % expected_new_task_count in first_logged_line
+            assert '%s to kill' % expected_kill_task_count in first_logged_line
+
+            assert mock_create_marathon_app.call_count == 0
+
+            assert fake_client.kill_task.call_count == len(fake_bounce_func_return["tasks_to_kill"])
+
+            assert mock_kill_old_ids.call_count == 1
+
+    def test_do_bounce_when_tasks_to_kill(self):
+        fake_bounce_func_return = {
+            'create_app': False,
+            'tasks_to_kill': [mock.Mock(app_id='fake_task_to_kill_1')],
+            'apps_to_kill': [],
+        }
+        fake_bounce_func = mock.create_autospec(
+            bounce_lib.brutal_bounce,
+            return_value=fake_bounce_func_return,
+        )
+        fake_config = {'instances': 5}
+        fake_new_app_running = True
+        fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
+        fake_old_app_tasks = []
+        fake_service_name = 'fake_service'
+        fake_serviceinstance = 'fake_service.fake_instance'
+        fake_cluster = 'fake_cluster'
+        fake_instance_name = 'fake_instance'
+        fake_bounce_method = 'fake_bounce_method'
+        fake_marathon_jobid = 'fake.marathon.jobid'
+        fake_client = mock.create_autospec(
+            marathon.MarathonClient
+        )
+        expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
+        expected_kill_task_count = len(fake_bounce_func_return['tasks_to_kill'])
+
+        with contextlib.nested(
+            mock.patch('setup_marathon_job._log', autospec=True),
+            mock.patch('setup_marathon_job.bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('setup_marathon_job.bounce_lib.kill_old_ids', autospec=True),
+        ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
+            setup_marathon_job.do_bounce(fake_bounce_func, fake_config, fake_new_app_running,
+                                         fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
+                                         fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name,
+                                         fake_marathon_jobid, fake_client)
+            assert mock_log.call_count == 3
+            first_logged_line = mock_log.mock_calls[0][2]["line"]
+            assert '%s new tasks' % expected_new_task_count in first_logged_line
+            assert '%s to kill' % expected_kill_task_count in first_logged_line
+
+            assert mock_create_marathon_app.call_count == 0
+
+            assert fake_client.kill_task.call_count == len(fake_bounce_func_return["tasks_to_kill"])
+
+            assert mock_kill_old_ids.call_count == 0
+
+    def test_do_bounce_when_apps_to_kill(self):
+        fake_bounce_func_return = {
+            'create_app': False,
+            'tasks_to_kill': [],
+            'apps_to_kill': ['fake_app_to_kill_1'],
+        }
+        fake_bounce_func = mock.create_autospec(
+            bounce_lib.brutal_bounce,
+            return_value=fake_bounce_func_return,
+        )
+        fake_config = {'instances': 5}
+        fake_new_app_running = True
+        fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
+        fake_old_app_tasks = []
+        fake_service_name = 'fake_service'
+        fake_serviceinstance = 'fake_service.fake_instance'
+        fake_cluster = 'fake_cluster'
+        fake_instance_name = 'fake_instance'
+        fake_bounce_method = 'fake_bounce_method'
+        fake_marathon_jobid = 'fake.marathon.jobid'
+        fake_client = mock.create_autospec(
+            marathon.MarathonClient
+        )
+        expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
+        expected_kill_task_count = len(fake_bounce_func_return['tasks_to_kill'])
+
+        with contextlib.nested(
+            mock.patch('setup_marathon_job._log', autospec=True),
+            mock.patch('setup_marathon_job.bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('setup_marathon_job.bounce_lib.kill_old_ids', autospec=True),
+        ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
+            setup_marathon_job.do_bounce(fake_bounce_func, fake_config, fake_new_app_running,
+                                         fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
+                                         fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name,
+                                         fake_marathon_jobid, fake_client)
+            assert mock_log.call_count == 3
+            first_logged_line = mock_log.mock_calls[0][2]["line"]
+            assert '%s new tasks' % expected_new_task_count in first_logged_line
+            assert '%s to kill' % expected_kill_task_count in first_logged_line
+
+            assert mock_create_marathon_app.call_count == 0
 
             assert fake_client.kill_task.call_count == len(fake_bounce_func_return["tasks_to_kill"])
 
