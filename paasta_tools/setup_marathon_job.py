@@ -195,7 +195,6 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     :param nerve_ns: The nerve namespace to look in.
     :param bounce_health_params: A dictionary of options for bounce_lib.get_happy_tasks.
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
-    changed = False
     short_id = marathon_tools.remove_tag_from_job_id(marathon_jobid)
 
     # would do embed_failures but we support versions of marathon where https://github.com/mesosphere/marathon/pull/1105
@@ -238,71 +237,8 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
 
         try:
             with bounce_lib.bounce_lock_zookeeper(short_id):
-                actions = bounce_func(
-                    new_config=config,
-                    new_app_running=new_app_running,
-                    happy_new_tasks=happy_new_tasks,
-                    old_app_tasks=old_app_tasks,
-                )
-                if (
-                    (actions['create_app'] and not new_app_running) or
-                    (len(actions['tasks_to_kill']) > 0) or
-                    actions['apps_to_kill']
-                ):
-                    changed = True
-                    _log(
-                        service_name=service_name,
-                        line='%s bounce started on %s. %d new tasks to bring up, %d to kill.' %
-                        (
-                            bounce_method,
-                            serviceinstance,
-                            config['instances']-len(happy_new_tasks),
-                            len(actions['tasks_to_kill'])
-                        ),
-                        component='deploy',
-                        level='event',
-                        cluster=cluster,
-                        instance=instance_name
-                    )
-                if actions['create_app'] and not new_app_running:
-                    _log(
-                        service_name=service_name,
-                        line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
-                        component='deploy',
-                        level='debug',
-                        cluster=cluster,
-                        instance=instance_name
-                    )
-                    bounce_lib.create_marathon_app(marathon_jobid, config, client)
-                if len(actions['tasks_to_kill']) > 0:
-                    # we need the app_id. actions['tasks_to_kill'] set elements has that information, so we
-                    # extract a set element and use its app_id
-                    app_id = next(iter(actions['tasks_to_kill'])).app_id
-                    _log(
-                        service_name=service_name,
-                        line='%s bounce killing %d old tasks with app_id %s' %
-                        (bounce_method, len(actions['tasks_to_kill']), app_id),
-                        component='deploy',
-                        level='debug',
-                        cluster=cluster,
-                        instance=instance_name
-                    )
-                    for task in actions['tasks_to_kill']:
-                        client.kill_task(task.app_id, task.id, scale=True)
-                if actions['apps_to_kill']:
-                    _log(
-                        service_name=service_name,
-                        line='%s bounce removing old unused apps with app_ids: %s' %
-                        (
-                            bounce_method,
-                            ', '.join(actions['apps_to_kill'])
-                        ),
-                        component='deploy',
-                        level='debug',
-                        cluster=cluster,
-                        instance=instance_name
-                    )
-                    bounce_lib.kill_old_ids(actions['apps_to_kill'], client)
+                do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tasks, service_name,
+                          bounce_method, serviceinstance, cluster, instance_name, marathon_jobid, client)
 
         except bounce_lib.LockHeldException:
             log.error("Instance %s already being bounced. Exiting", short_id)
@@ -318,20 +254,6 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
         )
         raise
 
-    if changed:
-        _log(
-            service_name=service_name,
-            line='%s bounce on %s finished. Now running %s' %
-            (
-                bounce_method,
-                serviceinstance,
-                marathon_jobid.split('.')[2]
-            ),
-            component='deploy',
-            level='event',
-            cluster=cluster,
-            instance=instance_name
-        )
     return (0, 'Service deployed.')
 
 
