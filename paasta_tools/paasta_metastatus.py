@@ -6,6 +6,7 @@ from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
+from paasta_tools.utils import PaastaColors
 
 
 def get_mesos_masters_status(state):
@@ -18,22 +19,36 @@ def get_mesos_masters_status(state):
     return num_of_masters, quorum
 
 
+def get_mesos_cpu_status(metrics):
+    """Takes in the mesos metrics and analyzes them, returning the status
+    :param metrics: mesos metrics dictionary
+    :returns: Tuple of the output array and is_ok bool
+    """
+    is_ok = True
+    output = []
+    total = metrics['master/cpus_total']
+    used = metrics['master/cpus_used']
+    available = metrics['master/cpus_total'] - metrics['master/cpus_used']
+    percent_available = round(available / float(total) * 100.0, 2)
+    output.append("    cpus: %d total => %d used, %d available" % (total, used, available))
+    if percent_available < 10:
+        is_ok = False
+        output.append(PaastaColors.red(
+            "    CRITICAL: Less than 10%% CPUs available. (Currently at %.2f%%)" % percent_available
+        ))
+    return output, is_ok
+
+
 def get_mesos_status():
     """Gathers information about the mesos cluster.
-    :return: string containing the status
+    :return: tuple of a string containing the status and a bool representing if it is ok or not
     """
     output = []
     metrics = fetch_mesos_stats()
     state = fetch_mesos_state_from_leader()
     output.append("Mesos:")
-    output.append(
-        "    cpus: %d total => %d used, %d available" %
-        (
-            metrics['master/cpus_total'],
-            metrics['master/cpus_used'],
-            metrics['master/cpus_total']-metrics['master/cpus_used']
-        )
-    )
+    cpu_output, is_cpu_ok = get_mesos_cpu_status(metrics)
+    output.extend(cpu_output)
     output.append(
         "    memory: %0.2f GB total => %0.2f GB used, %0.2f GB available" %
         (
