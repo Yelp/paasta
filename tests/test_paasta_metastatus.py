@@ -2,6 +2,28 @@
 
 from mock import patch
 from paasta_tools import paasta_metastatus
+from paasta_tools.utils import PaastaColors
+
+
+def test_get_mesos_cpu_status_good():
+    fake_metrics = {
+        'master/cpus_total': 3,
+        'master/cpus_used': 1,
+    }
+    (output, is_ok) = paasta_metastatus.get_mesos_cpu_status(fake_metrics)
+    assert is_ok is True
+    assert "    cpus: 3 total => 1 used, 2 available" in output
+
+
+def test_get_mesos_cpu_status_bad():
+    fake_metrics = {
+        'master/cpus_total': 100,
+        'master/cpus_used': 99,
+    }
+    (output, is_ok) = paasta_metastatus.get_mesos_cpu_status(fake_metrics)
+    assert is_ok is False
+    assert '    cpus: 100 total => 99 used, 1 available' in output
+    assert PaastaColors.red('    CRITICAL: Less than 10% CPUs available. (Currently at 1.00%)') in output
 
 
 @patch('socket.getfqdn', autospec=True)
