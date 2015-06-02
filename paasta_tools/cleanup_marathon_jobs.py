@@ -18,6 +18,7 @@ Command line options:
 import argparse
 import logging
 import sys
+import traceback
 
 import service_configuration_lib
 from paasta_tools import marathon_tools
@@ -61,6 +62,14 @@ def delete_app(app_id, client):
                  line=log_line)
     except IOError:
         log.debug("%s is being bounced, skipping" % app_id)
+    except Exception:
+        _log(service_name=service_name,
+             component='deploy',
+             level='debug',
+             cluster=marathon_tools.get_cluster(),
+             instance=instance,
+             line="Exception raised during cleanup: %s" % traceback.format_exc())
+        raise
 
 
 def cleanup_apps(soa_dir):
