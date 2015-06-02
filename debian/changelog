@@ -1,3 +1,10 @@
+paasta-tools (0.11.2-yelp1) lucid; urgency=low
+
+  * 0.11.2 tagged with 'make release'
+    Commit: Merge branch PAASTA-671
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 01 Jun 2015 18:03:58 -0700
+
 paasta-tools (0.11.1-yelp1) lucid; urgency=low
 
   * 0.11.1 tagged with 'make release'
