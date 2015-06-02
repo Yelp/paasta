@@ -145,7 +145,7 @@ class TestCleanupMarathonJobs:
         ):
             with raises(ValueError):
                 cleanup_marathon_jobs.delete_app(app_id, client)
-            assert mock_log.call_count == 1
+            assert 'Traceback' in mock_log.mock_calls[0][2]["line"]
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
