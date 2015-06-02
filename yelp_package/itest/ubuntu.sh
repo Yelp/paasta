@@ -46,6 +46,7 @@ mkdir -p /nail/etc
 
 mkdir -p /etc/paasta_tools
 [ -L /etc/paasta_tools/marathon_config.json ] || ln -s /work/yelp_package/itest/marathon_config.json /etc/paasta_tools/marathon_config.json
+[ -L /etc/paasta_tools/paasta.json ] || ln -s /work/yelp_package/itest/paasta.json /etc/paasta_tools/paasta.json
 
 if dpkg -i /work/dist/*.deb; then
   echo "Looks like it installed correctly"
@@ -98,7 +99,7 @@ paasta version || (echo "paasta version failed to execute!"; exit 1)
 if check_synapse_replication --help >/dev/null; then
   echo "Looks like we can check_synapse_replication with --help"
 else
-  echo "Could not invoke check_synapse_repkication with --help"
+  echo "Could not invoke check_synapse_replication with --help"
   exit 1
 fi
 
@@ -106,6 +107,13 @@ if check_classic_service_replication --help >/dev/null; then
   echo "Looks like we can check_classic_service_replication with --help"
 else
   echo "Could not invoke check_classic_service_replication with --help"
+  exit 1
+fi
+
+if check_marathon_services_frontends --help >/dev/null; then
+  echo "Looks like we can check_marathon_services_frontends with --help"
+else
+  echo "Could not invoke check_marathon_services_frontends with --help"
   exit 1
 fi
 

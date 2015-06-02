@@ -147,6 +147,11 @@ def makefile_has_a_tab(makefile_path):
     return '\t' in contents
 
 
+def makefile_has_docker_tag(makefile_path):
+    contents = get_file_contents(makefile_path)
+    return re.search(r"^DOCKER_TAG\s*\?=", contents, re.MULTILINE) is not None
+
+
 def makefile_check():
     """Detects if you have a makefile and runs some sanity tests against
     it to ensure it is paasta-ready"""
@@ -158,6 +163,11 @@ def makefile_check():
             print PaastaCheckMessages.MAKEFILE_HAS_A_TAB
         else:
             print PaastaCheckMessages.MAKEFILE_HAS_NO_TABS
+
+        if makefile_has_docker_tag(makefile_path):
+            print PaastaCheckMessages.MAKEFILE_HAS_DOCKER_TAG
+        else:
+            print PaastaCheckMessages.MAKEFILE_HAS_NO_DOCKER_TAG
 
         if makefile_responds_to_itest():
             print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST

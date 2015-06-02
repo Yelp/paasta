@@ -32,3 +32,6 @@ done
 for COMMAND in start stop restart; do
     build_man $COMMAND
 done
+
+# And then finally the "main" paasta command
+help2man --name='paasta' --version-string=$VERSION "./paasta_tools/paasta_cli/paasta_cli.py" > docs/man/paasta.1

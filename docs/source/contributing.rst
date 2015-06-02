@@ -10,23 +10,26 @@ Making new versions
 
 * After ShipIts, merge your branch to master.
 
-* Edit ``yelp_package/Makefile`` and bump the version in ``RELEASE``.
-
-* ``make release`` and follow the instructions.
-
-* This version will become live *automatically* if the test suite passes.
+  * This version will become live *automatically* if the test suite passes.
 
   * If you *do not want this*, go to Puppet and pin the ``paasta_tools``
     package to the current (without your changes) version. The ``mesosstage``
     cluster will still pick up your changes (due to that cluster's explicit
     hiera override of version to ``latest``) so you can test them there.
 
-  * When you're done, remove the pin and let your version go out everywhere.
+      * If you do pin a specific version, email paasta@yelp.com to let the rest of the team know.
+
+* Edit ``yelp_package/Makefile`` and bump the version in ``RELEASE``.
+
+* ``make release`` and follow the instructions.
+
+* If you pinned a specific version earlier, remove the pin and let your version go out everywhere when you're done.
 
 
 Testing command-line tab completion
 -----------------------------------
-We use `argcomplete <https://github.com/kislyuk/argcomplete>`_ to provide tab completion on the command-line. Testing it is a little tricky.
+We use `argcomplete <https://github.com/kislyuk/argcomplete>`_ to provide tab completion on the command-line. Testing
+it is a little tricky.
 
 * There's some guidance in `argcomplete's Debugging section <https://github.com/kislyuk/argcomplete#debugging>`_.
 

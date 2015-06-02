@@ -62,6 +62,8 @@ class TestGetSmartstackStanzaTestCase(TestQuestions):
     def fake_expected_stanza(self, fake_suggested_port):
         fake_expected_stanza = {
             "main": {
+                "advertise": ["superregion"],
+                "discover": "superregion",
                 "proxy_port": fake_suggested_port,
                 "extra_advertise": {
                     "ecosystem:testopia": ["ecosystem:testopia"]

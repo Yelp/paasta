@@ -10,14 +10,17 @@ import os
 import re
 import requests
 import socket
-import sys
 import glob
 
 from marathon import MarathonClient
 import json
 import service_configuration_lib
 
+from paasta_tools.utils import NoMarathonClusterFoundException
+from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import list_all_clusters
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.mesos_tools import fetch_local_slave_state
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -25,7 +28,6 @@ from paasta_tools.utils import list_all_clusters
 ID_SPACER = '.'
 MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
-MESOS_SLAVE_PORT = 5051
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -43,16 +45,6 @@ def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
 
 
 class MarathonConfig(dict):
-    def get_cluster(self):
-        """Get the cluster defined in this host's marathon config file.
-
-        :returns: The name of the cluster defined in the marathon configuration"""
-        try:
-            return self['cluster']
-        except KeyError:
-            log.warning('Could not find marathon cluster in marathon config at %s' % PATH_TO_MARATHON_CONFIG)
-            raise NoMarathonClusterFoundException
-
     def get_docker_registry(self):
         """Get the docker_registry defined in this host's marathon config file.
 
@@ -98,8 +90,6 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
 
     If a branch isn't specified for a config, the 'branch' key defaults to
     paasta-${cluster}.${instance}.
-
-    If cluster isn't given, it's loaded using get_cluster.
 
     :param name: The service name
     :param instance: The instance of the service to retrieve
@@ -236,22 +226,24 @@ class MarathonServiceConfig(object):
 
         :param service_config: The service instance's configuration dictionary
         :returns: The bounce method specified in the config, or 'upthendown' if not specified"""
-        bounce_method = self.config_dict.get('bounce_method')
-        return bounce_method if bounce_method else 'upthendown'
+        return self.config_dict.get('bounce_method', 'upthendown')
 
-    def get_constraints(self):
+    def get_constraints(self, service_namespace_config):
         """Gets the constraints specified in the service's marathon configuration.
 
         These are Marathon job constraints. See
         https://github.com/mesosphere/marathon/wiki/Constraints
 
-        Defaults to no constraints if none given.
+        Defaults to `GROUP_BY region`. If the service's smartstack configuration
+        specifies a `discover` key, then defaults to `GROUP_BY <value of discover>` instead.
 
-        :param service_config: The service instance's configuration dictionary
-        :returns: The constraints specified in the config, an empty array if not specified"""
-        return self.config_dict.get('constraints')
+        :param service_namespace_config: The service instance's configuration dictionary
+        :returns: The constraints specified in the config, or defaults described above
+        """
+        discover_level = service_namespace_config.get('discover', 'region')
+        return self.config_dict.get('constraints', [[discover_level, "GROUP_BY"]])
 
-    def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, healthchecks):
+    def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):
         """Create the configuration that will be passed to the Marathon REST API.
 
         Currently compiles the following keys into one nice dict:
@@ -272,7 +264,7 @@ class MarathonServiceConfig(object):
         :param docker_url: The url to the docker image the job will actually execute
         :param docker_volumes: The docker volumes to run the image with, via the
                                marathon configuration file
-        :param service_marathon_config: The service instance's configuration dict
+        :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
         complete_config = {
             'id': job_id,
@@ -294,16 +286,86 @@ class MarathonServiceConfig(object):
             'uris': ['file:///root/.dockercfg', ],
             'backoff_seconds': 1,
             'backoff_factor': 2,
-            'health_checks': healthchecks,
+            'health_checks': self.get_healthchecks(service_namespace_config),
         }
         complete_config['env'] = self.get_env()
         complete_config['mem'] = self.get_mem()
         complete_config['cpus'] = self.get_cpus()
-        complete_config['constraints'] = self.get_constraints()
+        complete_config['constraints'] = self.get_constraints(service_namespace_config)
         complete_config['instances'] = self.get_instances()
         complete_config['args'] = self.get_args()
         log.info("Complete configuration for instance is: %s", complete_config)
         return complete_config
+
+    def get_healthchecks(self, service_namespace_config):
+        """Returns a list of healthchecks per the spec:
+        https://mesosphere.github.io/marathon/docs/health-checks.html
+        Tries to be very conservative. Currently uses the same configuration
+        that smartstack uses, regarding mode (tcp/http) and http status uri.
+
+        If you have an http service, it uses the default endpoint that smartstack uses.
+        (/status currently)
+
+        Otherwise these do *not* use the same thresholds as smarstack in order to not
+        produce a negative feedback loop, where mesos agressivly kills tasks because they
+        are slow, which causes other things to be slow, etc.
+
+        :param service_config: service config hash
+        :returns: list of healthcheck definitions for marathon"""
+
+        mode = self.get_healthcheck_mode(service_namespace_config)
+
+        graceperiodseconds = self.get_healthcheck_grace_period_seconds()
+        intervalseconds = self.get_healthcheck_interval_seconds()
+        timeoutseconds = self.get_healthcheck_timeout_seconds()
+        maxconsecutivefailures = self.get_healthcheck_max_consecutive_failures()
+
+        if mode == 'http':
+            http_path = self.get_healthcheck_uri(service_namespace_config)
+            healthchecks = [
+                {
+                    "protocol": "HTTP",
+                    "path": http_path,
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "portIndex": 0,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
+        elif mode == 'tcp':
+            healthchecks = [
+                {
+                    "protocol": "TCP",
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "portIndex": 0,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
+        else:
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+        return healthchecks
+
+    def get_healthcheck_uri(self, service_namespace_config):
+        return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
+
+    def get_healthcheck_mode(self, service_namespace_config):
+        return self.config_dict.get('healthcheck_mode', service_namespace_config.get_mode())
+
+    def get_healthcheck_grace_period_seconds(self):
+        """How long Marathon should give a service to come up before counting failed healthchecks."""
+        return self.config_dict.get('healthcheck_grace_period_seconds', 60)
+
+    def get_healthcheck_interval_seconds(self):
+        return self.config_dict.get('healthcheck_interval_seconds', 10)
+
+    def get_healthcheck_timeout_seconds(self):
+        return self.config_dict.get('healthcheck_timeout_seconds', 10)
+
+    def get_healthcheck_max_consecutive_failures(self):
+        return self.config_dict.get('healthcheck_max_consecutive_failures', 6)
 
     def get_nerve_namespace(self):
         return self.config_dict.get('nerve_ns', self.instance)
@@ -382,65 +444,11 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
 
 
 class ServiceNamespaceConfig(dict):
-    def get_healthchecks(self):
-        """Returns a list of healthchecks per the spec:
-        https://mesosphere.github.io/marathon/docs/health-checks.html
-        Tries to be very conservative. Currently uses the same configuration
-        that smartstack uses, regarding mode (tcp/http) and http status uri.
+    def get_mode(self):
+        return self.get('mode', 'http')
 
-        If you have an http service, it uses the default endpoint that smartstack uses.
-        (/status currently)
-
-        Otherwise these do *not* use the same thresholds as smarstack in order to not
-        produce a negative feedback loop, where mesos agressivly kills tasks because they
-        are slow, which causes other things to be slow, etc.
-
-        :param service_config: service config hash
-        :returns: list of healthcheck defines for marathon"""
-
-        mode = self.get('mode', 'http')
-        # We wait for a minute for a service to come up
-        graceperiodseconds = 60
-        intervalseconds = 10
-        timeoutseconds = 10
-        # And kill it after it has been failing for a minute
-        maxconsecutivefailures = 6
-
-        if mode == 'http':
-            http_path = self.get('healthcheck_uri', '/status')
-            healthchecks = [
-                {
-                    "protocol": "HTTP",
-                    "path": http_path,
-                    "gracePeriodSeconds": graceperiodseconds,
-                    "intervalSeconds": intervalseconds,
-                    "portIndex": 0,
-                    "timeoutSeconds": timeoutseconds,
-                    "maxConsecutiveFailures": maxconsecutivefailures
-                },
-            ]
-        elif mode == 'tcp':
-            healthchecks = [
-                {
-                    "protocol": "TCP",
-                    "gracePeriodSeconds": graceperiodseconds,
-                    "intervalSeconds": intervalseconds,
-                    "portIndex": 0,
-                    "timeoutSeconds": timeoutseconds,
-                    "maxConsecutiveFailures": maxconsecutivefailures
-                },
-            ]
-        else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
-        return healthchecks
-
-
-class PaastaNotConfigured(Exception):
-    pass
-
-
-class NoMarathonClusterFoundException(Exception):
-    pass
+    def get_healthcheck_uri(self):
+        return self.get('healthcheck_uri', '/status')
 
 
 class NoDockerImageError(Exception):
@@ -456,7 +464,7 @@ class NoMarathonConfigurationForService(Exception):
 
 
 def get_cluster():
-    return load_marathon_config().get_cluster()
+    return load_system_paasta_config().get_cluster()
 
 
 def get_marathon_client(url, user, passwd):
@@ -617,9 +625,9 @@ def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
         marathon_files = "%s/marathon-*.yaml" % srv_path
         for marathon_file in glob.glob(marathon_files):
             basename = os.path.basename(marathon_file)
-            cluster = re.search('marathon-(.*).yaml', basename).group(1)
-            clusters.add(cluster)
-    clusters.discard('SHARED')
+            cluster_re_match = re.search('marathon-([0-9a-z-]*).yaml', basename)
+            if cluster_re_match is not None:
+                clusters.add(cluster_re_match.group(1))
     return sorted(clusters)
 
 
@@ -698,24 +706,10 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     return namespace_list
 
 
-def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, timeout_s=30):
-    """See what services are being run by a mesos-slave via marathon on
-    the given host and port.
-
-    :param hostname: The hostname to query mesos-slave on
-    :param port: The port to query mesos-slave on
-    :timeout_s: The timeout, in seconds, for the mesos-slave state request
+def marathon_services_running_here():
+    """See what marathon services are being run by a mesos-slave on this host.
     :returns: A list of triples of (service_name, instance_name, port)"""
-    state_url = 'http://%s:%s/state.json' % (hostname, port)
-    try:
-        r = requests.get(state_url, timeout=10)
-        r.raise_for_status()
-    except requests.ConnectionError as e:
-        sys.stderr.write('Could not connect to the mesos slave to see which services are running\n')
-        sys.stderr.write('on %s:%s. Is the mesos-slave running?\n' % (hostname, port))
-        sys.stderr.write('Error was: %s\n' % e.message)
-        sys.exit(1)
-    slave_state = r.json()
+    slave_state = fetch_local_slave_state()
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
@@ -728,27 +722,17 @@ def marathon_services_running_on(hostname=MY_HOSTNAME, port=MESOS_SLAVE_PORT, ti
     return srv_list
 
 
-def marathon_services_running_here(port=MESOS_SLAVE_PORT, timeout_s=30):
-    """See what marathon services are being run by a mesos-slave on this host.
-    This is just marathon_services_running_on for localhost.
-
-    :param port: The port to query mesos-slave on
-    :timeout_s: The timeout, in seconds, for the mesos-slave state request
-    :returns: A list of triples of (service_name, instance_name, port)"""
-    return marathon_services_running_on(port=port, timeout_s=timeout_s)
-
-
 def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     if not cluster:
         try:
             cluster = get_cluster()
         # In the cases where there is *no* cluster or in the case
         # where there isn't a Paasta configuration file at *all*, then
-        # there must be no marathon_services running here, so we catch
+        # there must be no marathon services running here, so we catch
         # these custom exceptions and return [].
         except (NoMarathonClusterFoundException, PaastaNotConfigured):
             return []
-    # When a cluster is defined in mesos, lets iterate through marathon services
+    # When a cluster is defined in mesos, let's iterate through marathon services
     marathon_services = marathon_services_running_here()
     nerve_list = []
     for name, instance, port in marathon_services:
@@ -811,13 +795,23 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
         get_classic_services_running_here_for_nerve(soa_dir)
 
 
+class MesosMasterConnectionException(Exception):
+    pass
+
+
 def get_mesos_leader(hostname=MY_HOSTNAME):
-    """Get the current mesos-master leader's hostname.
+    """Get the current mesos-master leader's hostname. Raise
+    MesosMasterConnectionException if we can't connect.
 
     :param hostname: The hostname to query mesos-master on
     :returns: The current mesos-master hostname"""
     redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
-    r = requests.get(redirect_url, timeout=10)
+    try:
+        r = requests.get(redirect_url, timeout=10)
+    except requests.exceptions.ConnectionError as e:
+        # Repackage the exception so upstream code can handle this case without
+        # knowing our implementation details.
+        raise MesosMasterConnectionException(repr(e))
     r.raise_for_status()
     return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
 
@@ -861,12 +855,13 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     partial_id = compose_job_id(name, instance)
     srv_config = load_marathon_service_config(name, instance, get_cluster(), soa_dir=soa_dir)
     docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
-    healthchecks = load_service_namespace_config(name, srv_config.get_nerve_namespace()).get_healthchecks()
+    service_namespace_config = load_service_namespace_config(name, srv_config.get_nerve_namespace())
+
     complete_config = srv_config.format_marathon_app_dict(
         partial_id,
         docker_url,
         marathon_config.get_docker_volumes(),
-        healthchecks,
+        service_namespace_config,
     )
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(

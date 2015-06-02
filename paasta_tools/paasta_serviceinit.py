@@ -12,11 +12,15 @@ import sys
 
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
+import requests_cache
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
 from paasta_tools.mesos_tools import get_running_mesos_tasks_for_service
-from paasta_tools.monitoring.replication_utils import get_replication_for_services
+from paasta_tools.monitoring.replication_utils import (
+    get_replication_for_services,
+    match_backends_and_tasks,
+)
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
@@ -163,7 +167,7 @@ def get_verbose_status_of_marathon_app(app):
         output.append('      {0[0]:<37}{0[1]:<20}{0[2]:<17}({0[3]:})'.format(format_tuple))
     if len(app.tasks) == 0:
         output.append("      No tasks associated with this marathon app")
-    return "\n".join(output)
+    return app.tasks, "\n".join(output)
 
 
 def status_marathon_job_verbose(service, instance, client):
@@ -171,14 +175,17 @@ def status_marathon_job_verbose(service, instance, client):
     and instance. Does not make assumptions about what the *exact*
     appid is, but instead does a fuzzy match on any marathon apps
     that match the given service.instance"""
-    output = []
+    all_tasks = []
+    all_output = []
     # For verbose mode, we want to see *any* matching app. As it may
     # not be the one that we think should be deployed. For example
     # during a bounce we want to see the old and new ones.
     for appid in marathon_tools.get_matching_appids(service, instance, client):
         app = client.get_app(appid)
-        output.append(get_verbose_status_of_marathon_app(app))
-    return "\n".join(output)
+        tasks, output = get_verbose_status_of_marathon_app(app)
+        all_tasks.extend(tasks)
+        all_output.append(output)
+    return all_tasks, "\n".join(all_output)
 
 
 def haproxy_backend_report(normal_instance_count, up_backends):
@@ -213,7 +220,7 @@ def status_smartstack_backends(service, instance, normal_instance_count, cluster
             return "Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance
 
 
-def pretty_print_haproxy_backend(backend):
+def pretty_print_haproxy_backend(backend, is_correct_instance):
     """Pretty Prints the status of a given haproxy backend
     Takes the fields described in the CSV format of haproxy:
     http://www.haproxy.org/download/1.5/doc/configuration.txt
@@ -232,37 +239,38 @@ def pretty_print_haproxy_backend(backend):
     lastcheck = "%s/%s in %sms" % (backend['check_status'], backend['check_code'], backend['check_duration'])
     lastchange = humanize.naturaltime(datetime.timedelta(seconds=int(backend['lastchg'])))
 
-    format_tuple = (
-        pretty_backend_name,
-        lastcheck,
-        lastchange,
-        status,
+    return PaastaColors.color_text(
+        PaastaColors.DEFAULT if is_correct_instance else PaastaColors.GREY,
+        '    {name:<32}{lastcheck:<20}{lastchange:<16}{status:}'.format(
+            name=pretty_backend_name,
+            lastcheck=lastcheck,
+            lastchange=lastchange,
+            status=status,
+        )
     )
-    return '    {0[0]:<32}{0[1]:<20}{0[2]:<16}{0[3]:}'.format(format_tuple)
 
 
-def status_smartstack_backends_verbose(service, instance, cluster):
+def status_smartstack_backends_verbose(service, instance, cluster, tasks):
     """Returns detailed information about smartstack backends for a
     service and instance"""
     nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
     output = []
     # Only bother doing things if we are on the same namespace
-    if instance == nerve_ns:
-        service_instance = "%s.%s" % (service, instance)
-        output.append("  Haproxy Service Name: %s" % service_instance)
-        output.append("  Backends: Name                    LastCheck           LastChange      Status")
-        sorted_backends = sorted(get_backends(service_instance),
-                                 key=lambda backend: backend['status'],
-                                 reverse=True)
-        for backend in sorted_backends:
-            output.append(pretty_print_haproxy_backend(backend))
-        return "\n".join(output)
-    else:
-        return ""
+    service_instance = "%s.%s" % (service, nerve_ns)
+    output.append("  Haproxy Service Name: %s" % service_instance)
+    output.append("  Backends: Name                    LastCheck           LastChange      Status")
+    sorted_backends = sorted(get_backends(service_instance),
+                             key=lambda backend: backend['status'],
+                             reverse=True)
+    for backend, task in match_backends_and_tasks(sorted_backends, tasks):
+        if backend is not None:
+            output.append(pretty_print_haproxy_backend(backend, task is not None))
+    return "\n".join(output)
 
 
 def status_mesos_tasks(service, instance, normal_instance_count):
-    running_tasks = get_running_mesos_tasks_for_service(service, instance)
+    job_id = marathon_tools.compose_job_id(service, instance)
+    running_tasks = get_running_mesos_tasks_for_service(job_id)
     count = len(running_tasks)
     if count >= normal_instance_count:
         status = PaastaColors.green("Healthy")
@@ -311,10 +319,12 @@ def get_cpu_usage(task):
 
 def get_mem_usage(task):
     try:
-        if task.mem_limit == 0:
+        task_mem_limit = task.mem_limit
+        task_rss = task.rss
+        if task_mem_limit == 0:
             return "Undef"
-        mem_percent = task.rss / task.mem_limit * 100
-        mem_string = "%d/%dMB" % ((task.rss / 1024 / 1024), (task.mem_limit / 1024 / 1024))
+        mem_percent = task_rss / task_mem_limit * 100
+        mem_string = "%d/%dMB" % ((task_rss / 1024 / 1024), (task_mem_limit / 1024 / 1024))
         if mem_percent > 90:
             return PaastaColors.red(mem_string)
         else:
@@ -375,7 +385,8 @@ def pretty_format_non_running_mesos_task(task):
 def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
     output = []
-    running_tasks = get_running_mesos_tasks_for_service(service, instance)
+    job_id = marathon_tools.compose_job_id(service, instance)
+    running_tasks = get_running_mesos_tasks_for_service(job_id)
     output.append(RUNNING_TASK_FORMAT.format((
         "  Running Tasks:  Mesos Task ID",
         "Host deployed to",
@@ -385,7 +396,7 @@ def status_mesos_tasks_verbose(service, instance):
     )))
     for task in running_tasks:
         output.append(pretty_format_running_mesos_task(task))
-    non_running_tasks = list(reversed(get_non_running_mesos_tasks_for_service(service, instance)[-10:]))
+    non_running_tasks = list(reversed(get_non_running_mesos_tasks_for_service(job_id)[-10:]))
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
         "  Non-Running Tasks:  Mesos Task ID",
         "Host deployed to",
@@ -410,7 +421,7 @@ def main():
     instance = service_instance.split(marathon_tools.ID_SPACER)[1]
 
     marathon_config = marathon_tools.load_marathon_config()
-    cluster = marathon_config.get_cluster()
+    cluster = marathon_tools.get_cluster()
     validate_service_instance(service, instance, cluster)
 
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
@@ -427,16 +438,20 @@ def main():
     elif command == 'restart':
         restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     elif command == 'status':
+        # Setting up transparent cache for http API calls
+        requests_cache.install_cache('paasta_serviceinit', backend='memory')
+
         print status_desired_state(service, instance, client, complete_job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         if args.verbose:
-            print status_marathon_job_verbose(service, instance, client)
+            tasks, out = status_marathon_job_verbose(service, instance, client)
+            print out
         print status_mesos_tasks(service, instance, normal_instance_count)
         if args.verbose:
             print status_mesos_tasks_verbose(service, instance)
         print status_smartstack_backends(service, instance, normal_smartstack_count, cluster)
         if args.verbose:
-            print status_smartstack_backends_verbose(service, instance, cluster)
+            print status_smartstack_backends_verbose(service, instance, cluster, tasks)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

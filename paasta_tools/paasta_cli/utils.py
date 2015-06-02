@@ -129,7 +129,7 @@ class PaastaCheckMessages:
         "Your Dockerfile does not use the standard Yelp images.\n  "
         "This is bad because your `docker pulls` will be slow and you won't be "
         "using the local mirrors.\n"
-        "More info:", "http://y/paasta-runbook-dockerfile")
+        "More info:", "http://y/base-docker-images")
 
     GIT_REPO_FOUND = success("Git repo found in the expected location.")
 
@@ -137,7 +137,7 @@ class PaastaCheckMessages:
 
     MARATHON_YAML_MISSING = failure(
         "No marathon.yaml exists, so your service cannot be deployed.\n  "
-        "Push a marathon-[ecosystem].yaml and run `paasta generate-pipeline`.\n  "
+        "Push a marathon-[superregion].yaml and run `paasta generate-pipeline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
     MAKEFILE_FOUND = success("A Makefile is present")
@@ -162,6 +162,12 @@ class PaastaCheckMessages:
         "The Makefile contains no tab characters. Make sure you\n"
         "didn't accidentally paste spaces (which `make` does not respect)\n"
         "instead of a tab.",
+        "http://y/paasta-contract",
+    )
+    MAKEFILE_HAS_DOCKER_TAG = success("The Makefile contains a docker tag")
+    MAKEFILE_HAS_NO_DOCKER_TAG = failure(
+        "The Makefile contains no reference to DOCKER_TAG. Make sure you\n"
+        "specify a DOCKER_TAG and that your itest tags your docker image with $DOCKER_TAG.",
         "http://y/paasta-contract",
     )
 

@@ -1,6 +1,7 @@
 import sys
 import time
 
+from behave import when, then
 import mock
 
 sys.path.append('../')
@@ -8,7 +9,7 @@ import paasta_tools
 from paasta_tools import paasta_serviceinit
 
 @when(u'we run the job test-service.main')
-def step_impl(context):
+def run_test_service(context):
     trivial_app_config = {
         'id': 'test-service.main',
         'cmd': '/bin/sleep 1m',
@@ -17,12 +18,12 @@ def step_impl(context):
         paasta_tools.bounce_lib.create_marathon_app('test-service.main', trivial_app_config, context.client)
 
 @when(u'we wait for it to be deployed')
-def step_impl(context):
+def wait_for_deploy(context):
     print "Sleeping 10 seconds to wait for test-service to be deployed."
     time.sleep(10)
 
 @then(u'paasta_serviceinit status_marathon_job should return "Healthy"')
-def step_impl(context):
+def status_marathon_job_returns_healthy(context):
     normal_instance_count = 1
     client = context.client
     app_id = 'test-service.main'
@@ -33,7 +34,7 @@ def step_impl(context):
     assert "Healthy" in output
 
 @then(u'paasta_serviceinit restart should get new task_ids')
-def step_impl(context):
+def restart_gets_new_task_ids(context):
     normal_instance_count = 1
     client = context.client
     cluster = context.marathon_config['cluster']

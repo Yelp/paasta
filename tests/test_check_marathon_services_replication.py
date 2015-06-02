@@ -28,7 +28,7 @@ def test_send_event():
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,
-        'source': 'mesos-fake_cluster',
+        'source': 'paasta-fake_cluster',
     }
     expected_check_name = 'check_marathon_services_replication.%s.%s' % (fake_service_name, fake_namespace)
     with contextlib.nested(

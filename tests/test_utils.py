@@ -1,9 +1,11 @@
-import json
-import mock
+import contextlib
 import os
 import shutil
 import stat
 import tempfile
+
+import json
+import mock
 
 from paasta_tools import utils
 from pytest import raises
@@ -50,6 +52,54 @@ def test_get_log_name_for_service():
     service_name = 'foo'
     expected = 'stream_paasta_%s' % service_name
     assert utils.get_log_name_for_service(service_name) == expected
+
+
+def test_load_system_paasta_config():
+    json_load_return_value = {'foo': 'bar'}
+    expected = utils.SystemPaastaConfig(json_load_return_value)
+    file_mock = mock.MagicMock(spec=file)
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=json_load_return_value)
+    ) as (
+        open_file_patch,
+        json_patch
+    ):
+        actual = utils.load_system_paasta_config()
+        assert actual == expected
+        # Kinda weird but without this load_system_paasta_config() can (and
+        # did! during development) return a plain dict without the test
+        # complaining.
+        assert actual.__class__ == expected.__class__
+        open_file_patch.assert_called_once_with('/etc/paasta_tools/paasta.json')
+        json_patch.assert_called_once_with(file_mock.__enter__())
+
+
+def test_load_system_paasta_config_file_dne():
+    fake_path = '/var/dir_of_fake'
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.open', create=True, side_effect=IOError(2, 'a', 'b')),
+    ) as (
+        open_patch,
+    ):
+        with raises(utils.PaastaNotConfigured) as excinfo:
+            utils.load_system_paasta_config(fake_path)
+        assert str(excinfo.value) == "Could not load system paasta config file b: a"
+
+
+def test_SystemPaastaConfig_get_cluster():
+    fake_config = utils.SystemPaastaConfig({
+        'cluster': 'peanut',
+    })
+    expected = 'peanut'
+    actual = fake_config.get_cluster()
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_cluster_dne():
+    fake_config = utils.SystemPaastaConfig()
+    with raises(utils.NoMarathonClusterFoundException):
+        fake_config.get_cluster()
 
 
 def test_atomic_file_write():
@@ -178,3 +228,20 @@ def test_get_infrastructure_zookeeper_servers(mock_parse_yaml_file):
     expected = ['1.2.3.4', '5.6.7.8']
     assert actual == expected
     mock_parse_yaml_file.assert_called_once_with('/nail/etc/zookeeper_discovery/infrastructure/test-cluster.yaml')
+
+
+def test_color_text():
+    expected = "%shi%s" % (utils.PaastaColors.RED, utils.PaastaColors.DEFAULT)
+    actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "hi")
+    assert actual == expected
+
+
+def test_color_text_nested():
+    expected = "%sred%sblue%sred%s" % (
+        utils.PaastaColors.RED,
+        utils.PaastaColors.BLUE,
+        utils.PaastaColors.DEFAULT + utils.PaastaColors.RED,
+        utils.PaastaColors.DEFAULT,
+    )
+    actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "red%sred" % utils.PaastaColors.blue("blue"))
+    assert actual == expected

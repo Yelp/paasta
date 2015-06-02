@@ -4,10 +4,18 @@ from mock import patch
 from paasta_tools import paasta_metastatus
 
 
+@patch('socket.getfqdn', autospec=True)
+@patch('paasta_tools.paasta_metastatus.get_mesos_masters_status')
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_stats')
+@patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
 def test_get_mesos_status(
+    mock_fetch_mesos_state_from_leader,
     mock_fetch_mesos_stats,
+    mock_get_mesos_masters_status,
+    mock_getfqdn,
 ):
+    mock_getfqdn.return_value = 'fakename'
+    mock_get_mesos_masters_status.return_value = (3, 2)
     mock_fetch_mesos_stats.return_value = {
         'master/cpus_total': 3,
         'master/cpus_used': 2,
@@ -19,6 +27,12 @@ def test_get_mesos_status(
         'master/slaves_active': 4,
         'master/slaves_inactive': 0,
     }
+    mock_fetch_mesos_state_from_leader.return_value = {
+        'flags': {
+            'zk': 'zk://1.1.1.1:2222/fake_cluster',
+            'quorum': 2,
+        }
+    }
     expected_cpus_output = "cpus: 3 total => 2 used, 1 available"
     expected_mem_output = \
         "memory: 10.00 GB total => 2.00 GB used, 8.00 GB available"
@@ -29,14 +43,16 @@ def test_get_mesos_status(
     output = paasta_metastatus.get_mesos_status()
 
     assert mock_fetch_mesos_stats.called_once()
+    assert mock_fetch_mesos_state_from_leader.called_once()
+    assert mock_get_mesos_masters_status.called_once()
     assert expected_cpus_output in output
     assert expected_mem_output in output
     assert expected_tasks_output in output
     assert expected_slaves_output in output
 
 
-@patch('paasta_tools.paasta_metastatus.marathon_tools.get_marathon_client')
-@patch('paasta_tools.paasta_metastatus.marathon_tools.load_marathon_config')
+@patch('paasta_tools.paasta_metastatus.marathon_tools.get_marathon_client', autospec=True)
+@patch('paasta_tools.paasta_metastatus.marathon_tools.load_marathon_config', autospec=True)
 def test_get_marathon_status(
     mock_load_marathon_config,
     mock_get_marathon_client,
@@ -68,3 +84,26 @@ def test_get_marathon_status(
     assert expected_apps_output in output
     assert expected_deployment_output in output
     assert expected_tasks_output in output
+
+
+@patch('paasta_tools.paasta_metastatus.get_number_of_mesos_masters')
+@patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
+@patch('paasta_tools.paasta_metastatus.get_zookeeper_config')
+def test_get_mesos_masters_status(
+    mock_get_zookeeper_config,
+    mock_get_mesos_quorum,
+    mock_get_number_of_mesos_masters,
+):
+    fake_state = {
+        'fake': 'and this is not real'
+    }
+    mock_get_mesos_quorum.return_value = 2
+    mock_get_number_of_mesos_masters.return_value = 3
+
+    expected_output = (3, 2)
+
+    output = paasta_metastatus.get_mesos_masters_status(fake_state)
+
+    assert mock_get_mesos_quorum.called_once()
+    assert mock_get_number_of_mesos_masters.called_once()
+    assert expected_output == output
