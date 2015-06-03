@@ -4,7 +4,9 @@
 # dropwizard format. Otherwise, no special effort is made to extract metadata
 # to enrich the metric information (translation: pyramid uwsgi metrics as emitted
 # as key/value pairs of the leaf nodes with the metric_type set to GAUGE).
+import cPickle
 import json
+import os
 import urllib2
 
 import diamond.collector
@@ -311,13 +313,67 @@ def get_json_metrics(url, log, service_name):
     return result
 
 
+class memoized(object):
+    """Decorator that caches a function's return value each time it is called.
+    If called later with the same arguments, the cached value is returned, and
+    the function is not re-evaluated.
+
+    Based upon from http://wiki.python.org/moin/PythonDecoratorLibrary#Memoize
+    Nota bene: this decorator memoizes /all/ calls to the function.  For a memoization
+    decorator with limited cache size, consider:
+    http://code.activestate.com/recipes/496879-memoize-decorator-function-with-cache-size-limit/
+    """
+    def __init__(self, func):
+        self.func = func
+        self.cache = {}
+
+    def __call__(self, *args, **kwargs):
+        # If the function args cannot be used as a cache hash key, fail fast
+        key = cPickle.dumps((args, kwargs))
+        try:
+            return self.cache[key]
+        except KeyError:
+            value = self.func(*args, **kwargs)
+            self.cache[key] = value
+            return value
+
+    def __repr__(self):
+        """Return the function's docstring."""
+        return self.func.__doc__
+
+    def __get__(self, obj, objtype):
+        """Support instance methods."""
+        return functools.partial(self.__call__, obj)
+
+
+@memoized
+def is_aws():
+    """
+    :return: True if we're running in AWS, false otherwise
+    """
+    url = 'http://169.254.169.254'
+    try:
+        response = urllib2.urlopen(url, timeout=5)
+        return response.code == 200
+    except Exception:
+        return False
+
+
+@memoized
+def is_ephemeral_aws_service_instance():
+    return is_aws() and os.path.exists('/nail/etc/service_name')
+
+
 class SOACollector(diamond.collector.Collector):
 
     def __init__(self, *args, **kwargs):
         super(SOACollector, self).__init__(*args, **kwargs)
         # We don't want to cache YAML beacuse diamond is a long running process.
         # In doing so, we'd never pick up changes to the yaml files on disk.
-        service_configuration_lib.disable_yaml_cache()
+        # The exception being asgard deployed services which only ever have a
+        # single service on the host.
+        if not is_ephemeral_aws_service_instance():
+            service_configuration_lib.disable_yaml_cache()
 
     def get_default_config(self):
         """
