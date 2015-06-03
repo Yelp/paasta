@@ -1,3 +1,11 @@
+paasta-tools (0.11.6-yelp1) lucid; urgency=low
+
+  * 0.11.6 tagged with 'make release'
+    Commit: Optimize soa_collector to not disable scl cache on asgard
+    deployed services
+
+ -- Semir Patel <spatel@yelp.com>  Tue, 02 Jun 2015 20:17:45 -0700
+
 paasta-tools (0.11.5-yelp1) lucid; urgency=low
 
   * 0.11.5 tagged with 'make release'
