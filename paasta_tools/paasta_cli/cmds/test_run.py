@@ -229,16 +229,16 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
     """
-    marathon_config_raw = load_system_paasta_config()
+    system_paasta_config = load_system_paasta_config()
 
     volumes = list()
 
-    for volume in marathon_config_raw['docker_volumes']:
+    for volume in system_paasta_config['docker_volumes']:
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     marathon_config = dict()
 
-    marathon_config['cluster'] = marathon_config_raw['cluster']
+    marathon_config['cluster'] = system_paasta_config['cluster']
     marathon_config['volumes'] = volumes
 
     service_manifest = load_marathon_service_config(service, args.instance, marathon_config['cluster'])
