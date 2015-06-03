@@ -2,6 +2,8 @@ import contextlib
 import mock
 
 from paasta_tools.marathon_tools import NoDeploymentsAvailable
+from paasta_tools.marathon_tools import ServiceNamespaceConfig
+from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.cmds import info
 
 
@@ -37,11 +39,13 @@ def test_get_service_info():
         assert 'Git Repo: git@git.yelpcorp.com:services/fake_service' in actual
         assert 'Jenkins Pipeline: ' in actual
         assert 'Deployed to the following' in actual
-        assert 'clusterA' in actual
-        assert 'clusterB' in actual
+        assert 'clusterA (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterA.yelp/') in actual
+        assert 'clusterB (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterB.yelp/') in actual
         assert 'Smartstack endpoint' in actual
         assert 'http://foo:1234' in actual
         assert 'tcp://bar:1234' in actual
+        assert 'Dashboard' in actual
+        assert '%s (Sensu Alerts)' % PaastaColors.cyan('https://uchiwa.yelpcorp.com/#/events?q=fake_service') in actual
 
 
 def test_deployments_to_clusters():
@@ -53,7 +57,7 @@ def test_deployments_to_clusters():
 
 def test_get_smartstack_endpoints_http():
     with mock.patch(
-        'paasta_tools.paasta_cli.cmds.info.read_service_configuration', autospec=True
+        'service_configuration_lib.read_service_configuration', autospec=True
     ) as mock_read_service_configuration:
         mock_read_service_configuration.return_value = {
             'smartstack': {
@@ -69,7 +73,7 @@ def test_get_smartstack_endpoints_http():
 
 def test_get_smartstack_endpoints_tcp():
     with mock.patch(
-        'paasta_tools.paasta_cli.cmds.info.read_service_configuration', autospec=True
+        'service_configuration_lib.read_service_configuration', autospec=True
     ) as mock_read_service_configuration:
         mock_read_service_configuration.return_value = {
             'smartstack': {
@@ -89,9 +93,21 @@ def test_get_deployments_strings_normal_case():
         'paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True
     ) as mock_get_actual_deployments:
         mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
+        actual = info.get_deployments_strings('fake_service')
+        assert ' - clusterA (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterA.yelp/') in actual
+        assert ' - clusterB (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterB.yelp/') in actual
+
+
+def test_get_deployments_strings_protocol_case():
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.info.load_service_namespace_config', autospec=True),
+    ) as (mock_get_actual_deployments, mock_load_service_namespace_config):
+        mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
+        mock_load_service_namespace_config.return_value = ServiceNamespaceConfig({'mode': 'tcp', 'proxy_port': 8080})
         actual = info.get_deployments_strings('unused')
-        assert ' - clusterA' in actual
-        assert ' - clusterB' in actual
+        assert ' - clusterA (%s)' % PaastaColors.cyan('tcp://paasta-clusterA.yelp:8080/') in actual
+        assert ' - clusterB (%s)' % PaastaColors.cyan('tcp://paasta-clusterB.yelp:8080/') in actual
 
 
 def test_get_deployments_strings_no_deployments():

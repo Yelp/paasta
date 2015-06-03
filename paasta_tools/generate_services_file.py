@@ -6,6 +6,7 @@ a /etc/services compatible file
 import os
 import sys
 import service_configuration_lib
+from marathon_tools import get_all_namespaces_for_service
 
 
 def get_service_lines_for_service(service):
@@ -14,9 +15,9 @@ def get_service_lines_for_service(service):
     port = config.get('port', None)
     if port is not None:
         lines.append("%s (%d/tcp)" % (service, port))
-    smartstack_config = config.get('smartstack', {})
-    for namespace in smartstack_config:
-        proxy_port = smartstack_config[namespace].get('proxy_port', None)
+
+    for namespace, config in get_all_namespaces_for_service(service, full_name=False):
+        proxy_port = config.get('proxy_port', None)
         if proxy_port is not None:
             lines.append("%s.%s (%d/tcp)" % (service, namespace, proxy_port))
     return lines

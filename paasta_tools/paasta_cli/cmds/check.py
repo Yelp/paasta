@@ -8,6 +8,7 @@ import urllib2
 from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_service_instance_list
 from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import is_file_in_dir
@@ -292,18 +293,14 @@ def smartstack_check(service_name, service_path):
     :param service_path: path to loction of smartstack.yaml file"""
     if is_file_in_dir('smartstack.yaml', service_path):
         print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
-        config_dict = read_service_configuration(service_name)
-        smartstack_dict = config_dict.get('smartstack', {})
-        instances = smartstack_dict.keys()
-        if instances:
-            no_ports_found = True
-            for instance in instances:
-                if 'proxy_port' in smartstack_dict[instance]:
-                    no_ports_found = False
+        instances = get_all_namespaces_for_service(service_name)
+        if len(instances) > 0:
+            for namespace, config in get_all_namespaces_for_service(service_name, full_name=False):
+                if 'proxy_port' in config:
                     print PaastaCheckMessages.smartstack_port_found(
-                        instance, smartstack_dict[instance]['proxy_port'])
-            if no_ports_found:
-                print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
+                        namespace, config.get('proxy_port'))
+                else:
+                    print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
         else:
             print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
     else:

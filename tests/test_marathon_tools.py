@@ -326,11 +326,16 @@ class TestMarathonTools:
             'smartstack': {'t1': t1_dict, 't2': t2_dict},
         }
         expected = [('vvvvvv.t2', t2_dict), ('vvvvvv.t1', t1_dict)]
+        expected_short = [('t2', t2_dict), ('t1', t1_dict)]
         with mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
                         return_value=fake_smartstack) as read_service_configuration_patch:
             actual = marathon_tools.get_all_namespaces_for_service(name, soa_dir)
-            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
+            read_service_configuration_patch.assert_any_call(name, soa_dir)
             assert expected == actual
+
+            actual_short = marathon_tools.get_all_namespaces_for_service(name, soa_dir, False)
+            read_service_configuration_patch.assert_any_call(name, soa_dir)
+            assert expected_short == actual_short
 
     def test_get_marathon_services_for_cluster(self):
         cluster = 'honey_bunches_of_oats'

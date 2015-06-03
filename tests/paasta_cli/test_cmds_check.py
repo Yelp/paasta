@@ -296,7 +296,7 @@ def test_check_sensu_check_fail(mock_stdout, mock_is_file_in_dir):
     assert output == expected_output
 
 
-@patch('paasta_tools.paasta_cli.cmds.check.'
+@patch('service_configuration_lib.'
        'read_service_configuration')
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
@@ -326,7 +326,7 @@ def test_check_smartstack_check_pass(mock_stdout, mock_is_file_in_dir,
     assert output == expected_output
 
 
-@patch('paasta_tools.paasta_cli.cmds.check.'
+@patch('service_configuration_lib.'
        'read_service_configuration')
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)

@@ -678,18 +678,25 @@ def get_marathon_services_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     return instance_list
 
 
-def get_all_namespaces_for_service(name, soa_dir=DEFAULT_SOA_DIR):
+def get_all_namespaces_for_service(service_name, soa_dir=DEFAULT_SOA_DIR, full_name=True):
     """Get all the smartstack namespaces listed for a given service name.
 
-    :param name: The service name
+    :param service_name: The service name
     :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of the form (service_name.namespace, namespace_config)"""
-    service_config = service_configuration_lib.read_service_configuration(name, soa_dir)
+    :param full_name: A boolean indicating if the service name should be prepended to the namespace in the
+                      returned tuples as described below (Default: True)
+    :returns: A list of tuples of the form (service_name.namespace, namespace_config) if full_name is true,
+              otherwise of the form (namespace, namespace_config)
+    """
+    service_config = service_configuration_lib.read_service_configuration(service_name, soa_dir)
     smartstack = service_config.get('smartstack', {})
     namespace_list = []
     for namespace in smartstack:
-        full_name = '%s%s%s' % (name, ID_SPACER, namespace)
-        namespace_list.append((full_name, smartstack[namespace]))
+        if full_name:
+            name = '%s%s%s' % (service_name, ID_SPACER, namespace)
+        else:
+            name = namespace
+        namespace_list.append((name, smartstack[namespace]))
     return namespace_list
 
 

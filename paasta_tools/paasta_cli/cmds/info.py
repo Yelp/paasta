@@ -1,5 +1,7 @@
 #!/usr/bin/env python
 from paasta_tools.marathon_tools import NoDeploymentsAvailable
+from paasta_tools.marathon_tools import load_service_namespace_config
+from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.paasta_cli.cmds.status import get_actual_deployments
@@ -38,10 +40,8 @@ def deployments_to_clusters(deployments):
 
 
 def get_smartstack_endpoints(service):
-    service_config = read_service_configuration(service)
-    smartstack_config = service_config.get('smartstack', {})
     endpoints = []
-    for name, config in smartstack_config.iteritems():
+    for name, config in get_all_namespaces_for_service(service, full_name=False):
         mode = config.get('mode', 'http')
         port = config.get('proxy_port')
         endpoints.append("%s://169.254.255.254:%s (%s)" % (
@@ -59,8 +59,20 @@ def get_deployments_strings(service):
     if deployments == {}:
         output.append(' - N/A: Not deployed to any PaaSTA Clusters')
     else:
+        service_config = load_service_namespace_config(service, 'main')
+        service_mode = service_config.get_mode()
         for cluster in deployments_to_clusters(deployments):
-            output.append(' - %s' % cluster)
+            if service_mode == "tcp":
+                service_port = service_config.get('proxy_port')
+                link = PaastaColors.cyan('%s://paasta-%s.yelp:%d/' % (service_mode, cluster, service_port))
+            else:
+                link = PaastaColors.cyan('%s://%s.paasta-%s.yelp/' % (service_mode, service, cluster))
+            output.append(' - %s (%s)' % (cluster, link))
+    return output
+
+
+def get_dashboard_urls(service):
+    output = [' - %s (Sensu Alerts)' % (PaastaColors.cyan('https://uchiwa.yelpcorp.com/#/events?q=%s' % service))]
     return output
 
 
@@ -86,6 +98,8 @@ def get_service_info(service):
         output.append('Smartstack endpoint(s):')
         for endpoint in smartstack_endpoints:
             output.append(' - %s' % endpoint)
+    output.append('Dashboard(s):')
+    output.extend(get_dashboard_urls(service))
 
     return '\n'.join(output)
 
