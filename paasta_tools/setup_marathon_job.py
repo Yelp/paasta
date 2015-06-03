@@ -118,7 +118,7 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
             (
                 bounce_method,
                 serviceinstance,
-                config['instances']-len(happy_new_tasks),
+                config['instances'] - len(happy_new_tasks),
                 len(actions['tasks_to_kill'])
             ),
             component='deploy',
@@ -244,14 +244,17 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
             log.error("Instance %s already being bounced. Exiting", short_id)
             return (1, "Instance %s is already being bounced." % short_id)
     except Exception:
-        _log(
-            service_name=service_name,
-            line='Exception raised during deploy: %s' % traceback.format_exc(),
-            component='deploy',
-            level='debug',
-            cluster=cluster,
-            instance=instance_name
-        )
+        loglines = ['Exception raised during deploy:']
+        loglines.extend(traceback.format_exc().rstrip().split("\n"))
+        for logline in loglines:
+            _log(
+                service_name=service_name,
+                line=logline,
+                component='deploy',
+                level='debug',
+                cluster=cluster,
+                instance=instance_name
+            )
         raise
 
     return (0, 'Service deployed.')

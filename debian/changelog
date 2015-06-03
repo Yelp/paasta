@@ -1,3 +1,26 @@
+paasta-tools (0.11.5-yelp1) lucid; urgency=low
+
+  * 0.11.5 tagged with 'make release'
+    Commit: log one error per line
+
+ -- Keshav Varma <keshav@yelp.com>  Tue, 02 Jun 2015 15:38:33 -0700
+
+paasta-tools (0.11.4-yelp1) lucid; urgency=low
+
+  * 0.11.4 tagged with 'make release'
+    Commit: Disable marathon_integration from itest because PAASTA-695
+    is sad :(
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 02 Jun 2015 15:06:54 -0700
+
+paasta-tools (0.11.3-yelp1) lucid; urgency=low
+
+  * 0.11.3 tagged with 'make release'
+    Commit: Short term workaround for CPU spikes caused by diamond on
+    asgard deployed services
+
+ -- Semir Patel <spatel@yelp.com>  Tue, 02 Jun 2015 12:53:05 -0700
+
 paasta-tools (0.11.2-yelp1) lucid; urgency=low
 
   * 0.11.2 tagged with 'make release'

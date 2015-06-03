@@ -328,7 +328,13 @@ class SOACollector(diamond.collector.Collector):
         return config
 
     def collect(self):
-        services = marathon_tools.get_services_running_here_for_nerve()
+        try:
+            services = marathon_tools.get_services_running_here_for_nerve()
+        except OSError as e:
+            self.log.error(
+                "soa_collector is expected to be broken on asgard deployed "
+                "services. See AD-2307. Error: %s" % str(e))
+            return
 
         for service_name, service_data in services:
             port = service_data.get('port')

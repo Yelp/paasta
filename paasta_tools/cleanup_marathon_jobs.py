@@ -63,12 +63,15 @@ def delete_app(app_id, client):
     except IOError:
         log.debug("%s is being bounced, skipping" % app_id)
     except Exception:
-        _log(service_name=service_name,
-             component='deploy',
-             level='debug',
-             cluster=marathon_tools.get_cluster(),
-             instance=instance,
-             line="Exception raised during cleanup: %s" % traceback.format_exc())
+        loglines = ['Exception raised during cleanup:']
+        loglines.extend(traceback.format_exc().rstrip().split("\n"))
+        for logline in loglines:
+            _log(service_name=service_name,
+                 component='deploy',
+                 level='debug',
+                 cluster=marathon_tools.get_cluster(),
+                 instance=instance,
+                 line=logline)
         raise
 
 
