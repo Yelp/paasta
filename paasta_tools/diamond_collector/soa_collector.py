@@ -5,6 +5,7 @@
 # to enrich the metric information (translation: pyramid uwsgi metrics as emitted
 # as key/value pairs of the leaf nodes with the metric_type set to GAUGE).
 import cPickle
+import functools
 import json
 import os
 import urllib2
