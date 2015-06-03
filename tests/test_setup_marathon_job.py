@@ -807,6 +807,7 @@ class TestSetupMarathonJob:
                     nerve_ns=fake_instance,
                     bounce_health_params={},
                 )
+            assert fake_name in mock_log.mock_calls[0][2]["line"]
             assert 'Traceback' in mock_log.mock_calls[1][2]["line"]
 
     def test_get_marathon_config(self):

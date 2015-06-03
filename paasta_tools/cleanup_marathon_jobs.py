@@ -63,7 +63,7 @@ def delete_app(app_id, client):
     except IOError:
         log.debug("%s is being bounced, skipping" % app_id)
     except Exception:
-        loglines = ['Exception raised during cleanup:']
+        loglines = ['Exception raised during cleanup of service %s:' % service_name]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
             _log(service_name=service_name,

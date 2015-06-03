@@ -244,7 +244,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
             log.error("Instance %s already being bounced. Exiting", short_id)
             return (1, "Instance %s is already being bounced." % short_id)
     except Exception:
-        loglines = ['Exception raised during deploy:']
+        loglines = ['Exception raised during deploy of service %s:' % service_name]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
             _log(

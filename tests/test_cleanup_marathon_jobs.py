@@ -145,6 +145,7 @@ class TestCleanupMarathonJobs:
         ):
             with raises(ValueError):
                 cleanup_marathon_jobs.delete_app(app_id, client)
+            assert 'example_service' in mock_log.mock_calls[0][2]["line"]
             assert 'Traceback' in mock_log.mock_calls[1][2]["line"]
 
 
