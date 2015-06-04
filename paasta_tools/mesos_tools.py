@@ -9,12 +9,31 @@ from kazoo.client import KazooClient
 # mesos.cli.master reads its config file at *import* time, so we must have
 # this environment variable set and ready to go at that time so we can
 # read in the config for zookeeper, etc
-os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
-from mesos.cli import master
+if not 'MESOS_CLI_CONFIG' in os.environ:
+    os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
+
+class MesosCliException(Exception):
+    def __init__(self, message):
+        super(MesosCliException, self).__init__(message)
+
+class MissingMasterException(MesosCliException):
+    def __init__(self, message):
+        super(MissingMasterException, self).__init__(message)
+
+def raise_cli_exception(msg):
+    if msg.startswith("unable to connect to a master"):
+        raise MissingMasterException(msg)
+    else:
+        raise MesosCliException(msg)
+
+# monkey path the log.fatal method to raise an exception rather than a sys.exit
+import mesos.cli.log
+mesos.cli.log.fatal = lambda msg, code = 1: raise_cli_exception(msg)
+
 
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = '5051'
-
+from mesos.cli import master
 
 class MesosSlaveConnectionError(Exception):
     pass

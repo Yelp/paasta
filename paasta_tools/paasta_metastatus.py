@@ -7,6 +7,8 @@ from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
+from paasta_tools.mesos_tools import MesosCliException
+import sys
 
 
 def get_mesos_masters_status(state):
@@ -97,7 +99,11 @@ def get_marathon_status():
 
 
 def main():
-    print get_mesos_status()
+    try:
+        get_mesos_status()
+    except (MesosCliException, MesosQuorumException) as a:
+        print a.message
+        sys.exit(2)
     print get_marathon_status()
 
 
