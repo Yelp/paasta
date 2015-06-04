@@ -1,10 +1,10 @@
 import time
 
+from itest_utils import wait_for_marathon
+
 
 def before_all(context):
-    # TODO: Maybe be smarter and unblock when the marathon port is open?
-    print "Sleeping 10 seconds to allow marathon to start up."
-    time.sleep(10)
+    wait_for_marathon()
 
 
 def after_scenario(context, scenario):
