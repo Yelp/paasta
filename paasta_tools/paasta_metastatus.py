@@ -20,6 +20,25 @@ def get_mesos_masters_status(state):
 
     return num_of_masters, quorum
 
+def get_configured_quorum_size(state):
+    """ Gets the quorum size from mesos state """
+    return get_mesos_quorum(state)
+
+def get_num_masters(state):
+    """ Gets the number of masters from mesos state """
+    return get_number_of_mesos_masters(get_zookeeper_config(state))
+
+def masters_for_quorum(masters):
+    return (masters/2) + 1
+
+def quorum_healthy(quorum_number, state):
+    """ Returns a boolean indicating whether the quorum size
+    is greater than or equal to the configured quorum size.
+    :param quroum_number: the number in the quorum
+    :param state: the mesos state
+    :returns: A boolean indicating whether the number in the quorum
+    is greater than or equal to the configured quorum """
+    return quorum_number >= get_configured_quorum_size(state)
 
 def get_mesos_cpu_status(metrics):
     """Takes in the mesos metrics and analyzes them, returning the status
@@ -50,6 +69,7 @@ def get_mesos_status():
     state = fetch_mesos_state_from_leader()
     output.append("Mesos:")
     cpu_output, is_cpu_ok = get_mesos_cpu_status(metrics)
+    masters, quorum = get_num_masters(state), get_configured_quorum_size(state)
     output.extend(cpu_output)
     output.append(
         "    memory: %0.2f GB total => %0.2f GB used, %0.2f GB available" %
@@ -68,8 +88,9 @@ def get_mesos_status():
         )
     )
     output.append(
-        "    masters: %d masters (%d need for quorum)" %
-        get_mesos_masters_status(state)
+        "    masters: %d masters (%d configured quorum size.)" % (
+        masters, quorum
+        )
     )
     output.append(
         "    slaves: %d active, %d inactive" %
@@ -101,7 +122,7 @@ def get_marathon_status():
 def main():
     try:
         get_mesos_status()
-    except (MesosCliException, MesosQuorumException) as a:
+    except (MesosCliException) as a:
         print a.message
         sys.exit(2)
     print get_marathon_status()
