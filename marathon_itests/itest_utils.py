@@ -37,14 +37,13 @@ def no_marathon():
 
 def wait_for_marathon():
     """Waits for marathon to start. Maximum 30 seconds"""
-    # get_service_connection_string returns '0.0.0.0:<portnumber>'
-    marathon_port = get_service_connection_string('marathon').split(':')[1]
+    marathon_service = get_service_connection_string('marathon')
     reqtimer = threading.Timer(30, no_marathon)
     reqtimer.start()
     while True:
-        print 'Connecting marathon on 127.0.0.1:%s' % marathon_port
+        print 'Connecting marathon on %s' % marathon_service
         try:
-            response = requests.get('http://127.0.0.1:%s/ping' % marathon_port, timeout=5)
+            response = requests.get('http://%s/ping' % marathon_service, timeout=5)
         except (
             requests.exceptions.ConnectionError,
             requests.exceptions.Timeout,
