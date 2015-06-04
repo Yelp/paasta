@@ -9,7 +9,7 @@ def before_all(context):
 
 def after_scenario(context, scenario):
     """If a marathon client object exists in our context, delete any apps in Marathon and wait until they die."""
-    if context.client:
+    if hasattr(context, 'client'):
         while True:
             apps = context.client.list_apps()
             if not apps:
