@@ -1,3 +1,10 @@
+paasta-tools (0.11.9-yelp1) lucid; urgency=low
+
+  * 0.11.9 tagged with 'make release'
+    Commit: Merge branch PAASTA-695
+
+ -- Zsolt Tripolszky <tripy@yelp.com>  Thu, 04 Jun 2015 02:17:51 -0700
+
 paasta-tools (0.11.8-yelp1) lucid; urgency=low
 
   * 0.11.8 tagged with 'make release'
