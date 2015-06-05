@@ -187,17 +187,17 @@ def run_docker_container(
         sys.stderr.write(PaastaColors.yellow(
             "You're running a container in non-interactive mode.\n"
             "This is how Mesos runs containers.\n"
-            "Note that some programs behave differently with no tty attached.\n\n"
+            "Note that some programs behave differently when running with no\n"
+            "tty attached (as your program is about to run).\n\n"
         ))
 
     memory = service_manifest.get_mem()
     random_port = pick_random_port()
     container_name = get_container_name()
     docker_run_cmd = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
-    sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
-    container_started = False
-
     healthcheck_string = get_healthcheck(service, instance, random_port)
+
+    sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
     sys.stdout.write(healthcheck_string)
     if interactive:
         sys.stdout.write(get_cmd_string())
@@ -210,6 +210,7 @@ def run_docker_container(
         # still want to bail out.
         return
 
+    container_started = False
     container_id = None
     # This isn't technically correct/space-safe but I don't care right now.
     # Do this instead:
@@ -218,13 +219,23 @@ def run_docker_container(
     joined_cmd = ' '.join(docker_run_cmd)
     try:
         (returncode, output) = _run(joined_cmd)
-        sys.stdout.write('got returncode %d and output %s\n' % (returncode, output))
         if returncode != 0:
+            sys.stdout.write(
+                'Failure trying to start your container!\n'
+                'Returncode: %d\n'
+                'Output:\n'
+                '%s\n'
+                '\n'
+                'Fix that problem and try again.\n'
+                'http://y/paasta-troubleshooting\n'
+                % (returncode, output)
+            )
             # Container failed to start so no need to cleanup; just bail.
             return
         container_started = True
         container_id = get_container_id(docker_client, container_name)
-        sys.stdout.write('got container_id %s\n' % container_id)
+        sys.stdout.write('Found our container running with CID %s\n' % container_id)
+        sys.stdout.write('Container output follows:\n')
         for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
             sys.stdout.write(line)
     except KeyboardInterrupt:
