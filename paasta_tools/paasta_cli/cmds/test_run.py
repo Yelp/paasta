@@ -218,11 +218,14 @@ def run_docker_container(
     joined_cmd = ' '.join(docker_run_cmd)
     try:
         (returncode, output) = _run(joined_cmd)
-        sys.stdout.write('got returncode %d and output %s' % (returncode, output))
+        sys.stdout.write('got returncode %d and output %s\n' % (returncode, output))
+        if returncode != 0:
+            # Container failed to start so no need to cleanup; just bail.
+            return
         container_started = True
         container_id = get_container_id(docker_client, container_name)
-        sys.stdout.write('got container_id %s' % container_id)
-        for line in docker_client.attach(container_id, stream=True, logs=True):
+        sys.stdout.write('got container_id %s\n' % container_id)
+        for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
             sys.stdout.write(line)
     except KeyboardInterrupt:
         if container_started:
