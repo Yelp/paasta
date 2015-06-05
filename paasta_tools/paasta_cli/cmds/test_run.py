@@ -155,6 +155,11 @@ def get_container_id(docker_client, container_name):
     )
 
 
+def _cleanup_container(docker_client, container_id):
+    docker_client.stop(container_id)
+    docker_client.remove_container(container_id)
+
+
 def run_docker_container(
     docker_client,
     service,
@@ -221,13 +226,11 @@ def run_docker_container(
             sys.stdout.write(line)
     except KeyboardInterrupt:
         if container_started:
-            docker_client.stop(container_id)
-            docker_client.remove_container(container_id)
+            _cleanup_container(docker_client, container_id)
             raise
     # Also cleanup if the container exits on its own.
     # ### if container_started: ???
-    docker_client.stop(container_id)
-    docker_client.remove_container(container_id)
+    _cleanup_container(docker_client, container_id)
 
 
 def configure_and_run_docker_container(docker_client, docker_hash, service, args):
