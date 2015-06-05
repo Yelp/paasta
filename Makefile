@@ -9,9 +9,7 @@ test:
 
 itest: test
 	tox -e general_integration
-	# These tests are good but flaky and screwing us up. Disabling until
-	# PAASTA-695 is fixed.
-	# tox -e marathon_integration
+	tox -e marathon_integration
 
 # See the makefile in yelp_package/Makefile for packaging stuff
 itest_%:
