@@ -200,15 +200,20 @@ def run_docker_container(
     if interactive:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
-        execlp('/usr/bin/docker', *docker_run_cmd)
-        # For testing, when execlp is patched out and doesn't replace us.
+        execlp('docker', *docker_run_cmd)
+        # For testing, when execlp is patched out and doesn't replace us, we
+        # still want to bail out.
         return
 
+    container_id = None
+    # This isn't technically correct/space-safe but I don't care right now.
+    # Do this instead:
+    # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
+    # ya lol this is actually broken i think when i try to -C "bash -c '...'"
+    joined_cmd = ' '.join(docker_run_cmd)
     try:
-        # This isn't technically correct/space-safe but I don't care right now.
-        docker_run_cmd.insert(0, '/usr/bin/docker')
-        joined_cmd = ' '.join(docker_run_cmd)
-        _run(joined_cmd)
+        (returncode, output) = _run(joined_cmd)
+        sys.stdout.write('got returncode %d and output %s' % (returncode, output))
         container_started = True
         container_id = get_container_id(docker_client, container_name)
         sys.stdout.write('got container_id %s' % container_id)
@@ -220,6 +225,7 @@ def run_docker_container(
             docker_client.remove_container(container_id)
             raise
     # Also cleanup if the container exits on its own.
+    # ### if container_started: ???
     docker_client.stop(container_id)
     docker_client.remove_container(container_id)
 

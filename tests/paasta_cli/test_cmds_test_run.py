@@ -194,7 +194,7 @@ def test_get_container_id_name_not_found():
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd_string', autospec=True, return_value='CMD.exe')
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True, return_value=(42, 'fake _run output'))
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_container_id', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_healthcheck',
             autospec=True,
@@ -242,7 +242,7 @@ def test_run_docker_container_non_interactive(
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd_string', autospec=True, return_value='CMD.exe')
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True, return_value=(42, 'fake _run output'))
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_container_id', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_healthcheck',
             autospec=True,
@@ -290,7 +290,7 @@ def test_run_docker_container_interactive(
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd_string', autospec=True, return_value='CMD.exe')
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True, return_value=(42, 'fake _run output'))
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_container_id', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_healthcheck',
             autospec=True,
