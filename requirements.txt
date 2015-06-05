@@ -7,7 +7,7 @@ backports.ssl-match-hostname==3.4.0.2
 blessings==1.5.1
 boto==2.34.0
 dateglob==0.1
-docker-py==0.6.0
+docker-py==1.2.2
 dulwich==0.10.0
 filechunkio==1.5
 future==0.14.3
