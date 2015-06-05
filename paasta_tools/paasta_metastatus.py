@@ -11,14 +11,18 @@ from paasta_tools.mesos_tools import MesosCliException
 import sys
 
 
-def get_mesos_masters_status(state):
-    """Returns a tuple containing the information about mesos
-    masters.
-    :param state: mesos state dictionary"""
-    quorum = get_mesos_quorum(state)
-    num_of_masters = get_number_of_mesos_masters(get_zookeeper_config(state))
+class MesosHealthException(Exception):
+    def __init__(self, message):
+        super(MesosHealthException, self).__init__(message)
 
-    return num_of_masters, quorum
+class MesosQuorumException(MesosHealthException):
+    def __init__(self, message):
+        super(MesosQuorumException, self).__init__(message)
+
+class MesosCPUException(MesosHealthException):
+    def __init__(self, message):
+        super(MesosCPUException, self).__init__(message)
+
 
 def get_configured_quorum_size(state):
     """ Gets the quorum size from mesos state """
@@ -31,46 +35,60 @@ def get_num_masters(state):
 def masters_for_quorum(masters):
     return (masters/2) + 1
 
-def quorum_healthy(quorum_number, state):
-    """ Returns a boolean indicating whether the quorum size
-    is greater than or equal to the configured quorum size.
-    :param quroum_number: the number in the quorum
-    :param state: the mesos state
-    :returns: A boolean indicating whether the number in the quorum
-    is greater than or equal to the configured quorum """
-    return quorum_number >= get_configured_quorum_size(state)
-
 def get_mesos_cpu_status(metrics):
     """Takes in the mesos metrics and analyzes them, returning the status
     :param metrics: mesos metrics dictionary
     :returns: Tuple of the output array and is_ok bool
     """
-    is_ok = True
-    output = []
     total = metrics['master/cpus_total']
     used = metrics['master/cpus_used']
     available = metrics['master/cpus_total'] - metrics['master/cpus_used']
-    percent_available = round(available / float(total) * 100.0, 2)
-    output.append("    cpus: %d total => %d used, %d available" % (total, used, available))
-    if percent_available < 10:
-        is_ok = False
-        output.append(PaastaColors.red(
-            "    CRITICAL: Less than 10%% CPUs available. (Currently at %.2f%%)" % percent_available
-        ))
-    return output, is_ok
+    return total, used, available
 
+
+def quorum_ok(masters, quorum):
+    return masters >= quorum
+
+def cpu_ok(percent_available):
+    return percent_available > 10
 
 def get_mesos_status():
     """Gathers information about the mesos cluster.
     :return: tuple of a string containing the status and a bool representing if it is ok or not
     """
     output = []
-    metrics = fetch_mesos_stats()
-    state = fetch_mesos_state_from_leader()
     output.append("Mesos:")
-    cpu_output, is_cpu_ok = get_mesos_cpu_status(metrics)
+    state = fetch_mesos_state_from_leader()
+
+    #check the quorum
     masters, quorum = get_num_masters(state), get_configured_quorum_size(state)
-    output.extend(cpu_output)
+    output.append(
+            "    Quorum: masters: %d configured quorum: %d " % (masters, quorum)
+    )
+    if not quorum_ok(masters, quorum):
+        output.append(PaastaColors.red(
+            "    CRITICAL: Number of masters (%d) less than configured quorum(%d)."
+            % (masters, quorum)
+        ))
+        raise_exception(MesosQuorumException, output)
+
+    metrics = fetch_mesos_stats()
+
+    #check cpu usage
+    total, used, available = get_mesos_cpu_status(metrics)
+    percent_available = round(available / float(total) * 100.0, 2)
+    output.append(
+            "    cpus: total: %d used: %d available: %d percent_available: %d"
+            % (total, used, available, percent_available)
+    )
+    if not cpu_ok(percent_available):
+        output.append(PaastaColors.red(
+            "    CRITICAL: Less than 10%% CPUs available. (Currently at %.2f%%)"
+            % percent_available
+        ))
+        raise_exception(MesosCPUException, output)
+
+    #check memory usage
     output.append(
         "    memory: %0.2f GB total => %0.2f GB used, %0.2f GB available" %
         (
@@ -88,11 +106,6 @@ def get_mesos_status():
         )
     )
     output.append(
-        "    masters: %d masters (%d configured quorum size.)" % (
-        masters, quorum
-        )
-    )
-    output.append(
         "    slaves: %d active, %d inactive" %
         (
             metrics['master/slaves_active'],
@@ -100,6 +113,9 @@ def get_mesos_status():
         )
     )
     return "\n".join(output)
+
+def raise_exception(exception_class, messages):
+    raise exception_class(("\n").join(messages))
 
 
 def get_marathon_status():
@@ -122,7 +138,7 @@ def get_marathon_status():
 def main():
     try:
         get_mesos_status()
-    except (MesosCliException) as a:
+    except (MesosCliException, MesosHealthException) as a:
         print a.message
         sys.exit(2)
     print get_marathon_status()
