@@ -2,6 +2,7 @@
 import json
 import os
 from os import execlp
+import pipes
 from random import randint
 import shlex
 import socket
@@ -195,9 +196,11 @@ def run_docker_container(
     random_port = pick_random_port()
     container_name = get_container_name()
     docker_run_cmd = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
+    # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
+    joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
     healthcheck_string = get_healthcheck(service, instance, random_port)
 
-    sys.stdout.write('Running docker command:\n%s\n' % ' '.join(docker_run_cmd))
+    sys.stdout.write('Running docker command:\n%s\n' % joined_docker_run_cmd)
     sys.stdout.write(healthcheck_string)
     if interactive:
         sys.stdout.write(get_cmd_string())
@@ -212,13 +215,8 @@ def run_docker_container(
 
     container_started = False
     container_id = None
-    # This isn't technically correct/space-safe but I don't care right now.
-    # Do this instead:
-    # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
-    # ya lol this is actually broken i think when i try to -C "bash -c '...'"
-    joined_cmd = ' '.join(docker_run_cmd)
     try:
-        (returncode, output) = _run(joined_cmd)
+        (returncode, output) = _run(joined_docker_run_cmd)
         if returncode != 0:
             sys.stdout.write(
                 'Failure trying to start your container!\n'
