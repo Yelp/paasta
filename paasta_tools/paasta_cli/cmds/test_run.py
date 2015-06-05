@@ -243,8 +243,8 @@ def run_docker_container(
             _cleanup_container(docker_client, container_id)
             raise
     # Also cleanup if the container exits on its own.
-    # ### if container_started: ???
-    _cleanup_container(docker_client, container_id)
+    if container_started:
+        _cleanup_container(docker_client, container_id)
 
 
 def configure_and_run_docker_container(docker_client, docker_hash, service, args):
