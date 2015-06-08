@@ -45,6 +45,7 @@ def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
 
 
 class MarathonConfig(dict):
+
     def get_docker_registry(self):
         """Get the docker_registry defined in this host's marathon config file.
 
@@ -80,6 +81,7 @@ def load_deployments_json(service_name, soa_dir=DEFAULT_SOA_DIR):
 
 
 class DeploymentsJson(dict):
+
     def get_branch_dict(self, service_name, branch):
         full_branch = '%s:%s' % (service_name, branch)
         return self.get(full_branch, {})
@@ -131,6 +133,7 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
 
 
 class MarathonServiceConfig(object):
+
     def __init__(self, service_name, instance, config_dict, branch_dict):
         self.service_name = service_name
         self.instance = instance
@@ -444,6 +447,7 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
 
 
 class ServiceNamespaceConfig(dict):
+
     def get_mode(self):
         return self.get('mode', 'http')
 
@@ -926,3 +930,19 @@ def get_matching_appids(servicename, instance, client):
     apps running but you don't know the full instance id"""
     jobid = compose_job_id(servicename, instance)
     return [app.id for app in client.list_apps() if app.id.startswith("/%s" % jobid)]
+
+
+def get_healthcheck(service_name, namespace, random_port):
+    """Returns healthcheck url for a given service instance or None if no healthcheck"""
+    smartstack_config = load_service_namespace_config(service_name, namespace)
+    mode = smartstack_config.get_mode()
+    path = smartstack_config.get_healthcheck_uri()
+    hostname = socket.getfqdn()
+
+    if mode == "http":
+        url = '%s://%s:%d%s' % (mode, hostname, random_port, path)
+    elif mode == "tcp":
+        url = '%s://%s:%d' % (mode, hostname, random_port)
+    else:
+        url = None
+    return url
