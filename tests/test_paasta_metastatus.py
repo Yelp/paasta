@@ -51,7 +51,7 @@ def test_assert_memory_health():
     assert ok_health
     assert not failure_health
     assert PaastaColors.red("CRITICAL: Less than 10% memory available. (Currently at 2.34%)") in failure_output
-    assert "memory: 1.00 GB total => 0.50 GB used, 0.50 GB available" in ok_output
+    assert "memory: total: 1.00 GB used: 0.50 GB available: 0.50 GB" in ok_output
 
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
 def test_missing_master_exception(mock_fetch_from_leader):
@@ -105,7 +105,7 @@ def test_assert_slave_health():
             'master/slaves_inactive': 10
     }
     output, ok = paasta_metastatus.assert_slave_health(fake_slave_info)
-    assert "slaves: 10 active, 10 inactive" in output
+    assert "slaves: active: 10 inactive: 10" in output
     assert ok
 
 def test_assert_tasks_running():
@@ -115,7 +115,7 @@ def test_assert_tasks_running():
             'master/tasks_starting': 10,
     }
     output, ok = paasta_metastatus.assert_tasks_running(fake_tasks_info)
-    assert "tasks: 20 running, 10 staging, 10 starting" in output
+    assert "tasks: running: 20 staging: 10 starting: 10" in output
     assert ok
 
 
@@ -126,7 +126,7 @@ def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_quorum_size.return_value = 3
     output, health = paasta_metastatus.assert_quorum_size({})
     assert health
-    assert 'Quorum: masters: 5 configured quorum: 3 ' in output
+    assert 'quorum: masters: 5 configured quorum: 3 ' in output
 
 @patch('paasta_tools.paasta_metastatus.get_configured_quorum_size')
 @patch('paasta_tools.paasta_metastatus.get_num_masters')
@@ -171,13 +171,13 @@ def test_get_mesos_status(
     mock_get_configured_quorum_size.return_value = 3
     expected_cpus_output = "cpus: total: 10 used: 8 available: 2 percent_available: 20"
     expected_mem_output = \
-        "memory: 10.00 GB total => 2.00 GB used, 8.00 GB available"
+        "memory: total: 10.00 GB used: 2.00 GB available: 8.00 GB"
     expected_tasks_output = \
-        "tasks: 3 running, 4 staging, 0 starting"
+        "tasks: running: 3 staging: 4 starting: 0"
     expected_slaves_output = \
-        "slaves: 4 active, 0 inactive"
+        "slaves: active: 4 inactive: 0"
     expected_masters_quorum_output = \
-        "Quorum: masters: 5 configured quorum: 3 "
+        "quorum: masters: 5 configured quorum: 3 "
 
     outputs, oks = paasta_metastatus.get_mesos_status()
 

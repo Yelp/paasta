@@ -62,7 +62,7 @@ def assert_memory_health(metrics):
     perc_available = percent_available(total, available)
 
     if check_threshold(perc_available):
-        return "memory: %0.2f GB total => %0.2f GB used, %0.2f GB available" % (total, used, available), True
+        return "memory: total: %0.2f GB used: %0.2f GB available: %0.2f GB" % (total, used, available), True
     else:
         return (PaastaColors.red(
             "CRITICAL: Less than 10%% memory available. (Currently at %.2f%%)"
@@ -71,16 +71,16 @@ def assert_memory_health(metrics):
 
 def assert_tasks_running(metrics):
     running, staging, starting = metrics['master/tasks_running'], metrics['master/tasks_staging'], metrics['master/tasks_starting'],
-    return "tasks: %d running, %d staging, %d starting" % (running, staging, starting), True
+    return "tasks: running: %d staging: %d starting: %d" % (running, staging, starting), True
 
 def assert_slave_health(metrics):
     active, inactive = metrics['master/slaves_active'], metrics['master/slaves_inactive']
-    return "slaves: %d active, %d inactive" % (active, inactive), True
+    return "slaves: active: %d inactive: %d" % (active, inactive), True
 
 def assert_quorum_size(state):
     masters, quorum = get_num_masters(state), get_configured_quorum_size(state)
     if masters >= quorum:
-        return ("Quorum: masters: %d configured quorum: %d " % (masters, quorum), True)
+        return ("quorum: masters: %d configured quorum: %d " % (masters, quorum), True)
     else:
         return ("CRITICAL: Number of masters (%d) less than configured quorum(%d)." %(masters, quorum), False)
 
@@ -139,7 +139,7 @@ def get_marathon_status():
 def main():
     try:
         mesos_outputs, mesos_oks = get_mesos_status()
-        marathon_outputs, marathon_oks = get_mesos_status()
+        marathon_outputs, marathon_oks = get_marathon_status()
     except MissingMasterException as e:
         # if we can't connect to master at all,
         # then bomb out early
@@ -147,9 +147,9 @@ def main():
         sys.exit(2)
 
     print("Mesos Status:")
-    print(("\n").join(mesos_outputs))
+    print(("\n").join(map(lambda x: "  " + x, mesos_outputs)))
     print("Marathon Status:")
-    print(("\n").join(marathon_outputs))
+    print(("\n").join(map(lambda x: "  " + x, marathon_outputs)))
 
     if False in mesos_oks or False in marathon_oks:
         sys.exit(2)
