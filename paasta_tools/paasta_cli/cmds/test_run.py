@@ -1,6 +1,9 @@
 #!/usr/bin/env python
 import json
 import os
+from os import execlp
+import pipes
+from random import randint
 import shlex
 import socket
 import sys
@@ -14,10 +17,12 @@ from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
-from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import list_services
+from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import get_username
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import _run
 
 
 BAD_PORT_WARNING = 'This_service_is_listening_on_the_PORT_variable__You_must_use_8888__see_y/paasta_deploy'
@@ -47,6 +52,7 @@ def read_local_dockerfile_lines():
 
 
 def get_cmd():
+    """Returns first CMD line from Dockerfile"""
     for line in read_local_dockerfile_lines():
         if line.startswith('CMD'):
             return line.lstrip('CMD ')
@@ -54,6 +60,7 @@ def get_cmd():
 
 
 def get_cmd_string():
+    """Returns get_cmd() with some formatting and explanation."""
     cmd = get_cmd()
     return ('You are in interactive mode, which may not run the exact command\n'
             'that PaaSTA would have run. Run this command yourself to simulate\n'
@@ -103,113 +110,156 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_test_run)
 
 
-def run_docker_container_interactive(service, instance, docker_hash, volumes, command, service_manifest):
-    """
-    Since docker-py has some issues with running a container with TTY attached we're just executing
-    docker run command for interactive mode. For non-interactive mode we're using docker-py.
-    """
-    sys.stderr.write(PaastaColors.yellow(
-        'Warning! You\'re running a container in interactive mode.\n'
-        'This is not how Mesos runs containers. To run container exactly\n'
-        'like Mesos does don\'t use the -I flag.\n\n'
-    ))
+def get_container_name():
+    return 'paasta_test_run_%s_%s' % (get_username(), randint(1, 999999))
 
-    run_args = ['docker', 'run']
 
-    for volume in volumes:
-        run_args.append('--volume=%s' % volume)
-
-    random_port = pick_random_port()
-
-    run_args.append('--tty=true')
-    run_args.append('--interactive=true')
+def get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command):
+    cmd = ['docker', 'run']
     # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
     # be using this variable in surprising ways. See PAASTA-267 for more context.
-    run_args.append('--env=PORT=%s' % BAD_PORT_WARNING)
-    run_args.append('--memory=%dm' % service_manifest.get_mem())
-    run_args.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
-    run_args.append('%s' % docker_hash)
-    run_args.extend(command)
+    cmd.append('--env=PORT=%s' % BAD_PORT_WARNING)
+    cmd.append('--memory=%dm' % memory)
+    cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+    cmd.append('--name=%s' % container_name)
+    for volume in volumes:
+        cmd.append('--volume=%s' % volume)
+    if interactive:
+        cmd.append('--interactive=true')
+        cmd.append('--tty=true')
+    else:
+        cmd.append('--detach=true')
+    cmd.append('%s' % docker_hash)
+    cmd.extend(command)
+    return cmd
 
-    sys.stdout.write('Running docker command:\n%s\n' % ' '.join(run_args))
 
-    healthcheck_string = get_healthcheck(service, instance, random_port)
-    sys.stdout.write(healthcheck_string)
-    sys.stdout.write(get_cmd_string())
-
-    os.execlp('/usr/bin/docker', *run_args)
+class LostContainerException(Exception):
+    pass
 
 
-def run_docker_container_non_interactive(
+def get_container_id(docker_client, container_name):
+    """Use 'docker_client' to find the container we started, identifiable by
+    its 'container_name'. If we can't find the id, raise
+    LostContainerException.
+    """
+    containers = docker_client.containers()
+    for container in containers:
+        if '/%s' % container_name in container.get('Names', []):
+            return container.get('Id')
+    raise LostContainerException(
+        "Can't find the container I just launched so I can't do anything else.\n"
+        "Try docker 'ps --all | grep %s' to see where it went.\n"
+        "Here were all the containers:\n"
+        "%s" % (container_name, containers)
+    )
+
+
+def _cleanup_container(docker_client, container_id):
+    docker_client.stop(container_id)
+    docker_client.remove_container(container_id)
+
+
+def run_docker_container(
     docker_client,
     service,
     instance,
     docker_hash,
     volumes,
+    interactive,
     command,
     service_manifest
 ):
-    """
-    Using docker-py for non-interactive run of a container. In the end of function it stops the container
-    and removes it.
-    """
-    sys.stderr.write(PaastaColors.yellow(
-        'Warning! You\'re running a container in non-interactive mode.\n'
-        'This is how Mesos runs containers. Some programs behave differently\n'
-        'with no tty attach.\n\n'
-    ))
+    """docker-py has issues running a container with a TTY attached, so for
+    consistency we execute 'docker run' directly in both interactive and
+    non-interactive modes.
 
-    create_result = docker_client.create_container(
-        image=docker_hash,
-        command=command,
-        environment=['PORT=%s' % BAD_PORT_WARNING],
-        tty=False,
-        volumes=volumes,
-        mem_limit='%dm' % service_manifest.get_mem(),
-        cpu_shares=service_manifest.get_cpus(),
-        ports=[CONTAINER_PORT],
-        stdin_open=False,
-    )
+    In non-interactive mode when the run is complete, stop the container and
+    remove it (with docker-py).
+    """
+    if interactive:
+        sys.stderr.write(PaastaColors.yellow(
+            "Warning! You're running a container in interactive mode.\n"
+            "This is *NOT* how Mesos runs containers.\n"
+            "To run the container exactly as Mesos does, omit the -I flag.\n\n"
+        ))
+    else:
+        sys.stderr.write(PaastaColors.yellow(
+            "You're running a container in non-interactive mode.\n"
+            "This is how Mesos runs containers.\n"
+            "Note that some programs behave differently when running with no\n"
+            "tty attached (as your program is about to run).\n\n"
+        ))
 
+    memory = service_manifest.get_mem()
     random_port = pick_random_port()
+    container_name = get_container_name()
+    docker_run_cmd = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
+    # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
+    joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
+    healthcheck_string = get_healthcheck(service, instance, random_port)
+
+    sys.stdout.write('Running docker command:\n%s\n' % joined_docker_run_cmd)
+    sys.stdout.write(healthcheck_string)
+    if interactive:
+        sys.stdout.write(get_cmd_string())
+
+    if interactive:
+        # NOTE: This immediately replaces us with the docker run cmd. Docker
+        # run knows how to clean up the running container in this situation.
+        execlp('docker', *docker_run_cmd)
+        # For testing, when execlp is patched out and doesn't replace us, we
+        # still want to bail out.
+        return
+
     container_started = False
+    container_id = None
     try:
-        docker_client.start(create_result['Id'], port_bindings={CONTAINER_PORT: random_port})
-
+        (returncode, output) = _run(joined_docker_run_cmd)
+        if returncode != 0:
+            sys.stdout.write(
+                'Failure trying to start your container!\n'
+                'Returncode: %d\n'
+                'Output:\n'
+                '%s\n'
+                '\n'
+                'Fix that problem and try again.\n'
+                'http://y/paasta-troubleshooting\n'
+                % (returncode, output)
+            )
+            # Container failed to start so no need to cleanup; just bail.
+            return
         container_started = True
-
-        healthcheck_string = get_healthcheck(service, instance, random_port)
-        sys.stdout.write(healthcheck_string)
-
-        for line in docker_client.attach(create_result['Id'], stream=True, logs=True):
+        container_id = get_container_id(docker_client, container_name)
+        sys.stdout.write('Found our container running with CID %s\n' % container_id)
+        sys.stdout.write('Container output follows:\n')
+        for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
             sys.stdout.write(line)
-
     except KeyboardInterrupt:
         if container_started:
-            docker_client.stop(create_result['Id'])
-            docker_client.remove_container(create_result['Id'])
+            _cleanup_container(docker_client, container_id)
             raise
+    # Also cleanup if the container exits on its own.
+    if container_started:
+        _cleanup_container(docker_client, container_id)
 
-    docker_client.stop(create_result['Id'])
-    docker_client.remove_container(create_result['Id'])
 
-
-def run_docker_container(docker_client, docker_hash, service, args):
+def configure_and_run_docker_container(docker_client, docker_hash, service, args):
     """
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
     """
-    marathon_config_raw = load_system_paasta_config()
+    system_paasta_config = load_system_paasta_config()
 
     volumes = list()
 
-    for volume in marathon_config_raw['docker_volumes']:
+    for volume in system_paasta_config['docker_volumes']:
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     marathon_config = dict()
 
-    marathon_config['cluster'] = marathon_config_raw['cluster']
+    marathon_config['cluster'] = system_paasta_config['cluster']
     marathon_config['volumes'] = volumes
 
     service_manifest = load_marathon_service_config(service, args.instance, marathon_config['cluster'])
@@ -219,25 +269,16 @@ def run_docker_container(docker_client, docker_hash, service, args):
     else:
         command = service_manifest.get_args()
 
-    if args.interactive:
-        run_docker_container_interactive(
-            service,
-            args.instance,
-            docker_hash,
-            volumes,
-            command,
-            service_manifest
-        )
-    else:
-        run_docker_container_non_interactive(
-            docker_client,
-            service,
-            args.instance,
-            docker_hash,
-            volumes,
-            command,
-            service_manifest
-        )
+    run_docker_container(
+        docker_client,
+        service,
+        args.instance,
+        docker_hash,
+        volumes,
+        args.interactive,
+        command,
+        service_manifest
+    )
 
 
 def build_docker_container(docker_client, args):
@@ -302,7 +343,7 @@ def paasta_test_run(args):
         sys.exit(1)
 
     try:
-        run_docker_container(docker_client, docker_hash, service, args)
+        configure_and_run_docker_container(docker_client, docker_hash, service, args)
     except errors.APIError as e:
         sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))
         sys.exit(1)
