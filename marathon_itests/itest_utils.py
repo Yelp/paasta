@@ -6,6 +6,10 @@ import requests
 from fig.cli import command
 
 
+def print_container_logs(service_name):
+    print get_fig_service(service_name).get_container().logs()
+
+
 def get_fig_service(service_name):
     """Returns a fig object for the service"""
     cmd = command.Command()
