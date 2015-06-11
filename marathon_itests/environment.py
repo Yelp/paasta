@@ -10,8 +10,11 @@ def before_all(context):
 
 def after_scenario(context, scenario):
     """If a marathon client object exists in our context, delete any apps in Marathon and wait until they die."""
-    print_container_logs('zookeeper')
-    print_container_logs('marathon')
+    if scenario.status != 'passed':
+        print "Zookeeper container logs:"
+        print_container_logs('zookeeper')
+        print "Marathon container logs:"
+        print_container_logs('marathon')
     if context.client:
         while True:
             apps = context.client.list_apps()
