@@ -1,6 +1,7 @@
 import time
 
 from itest_utils import wait_for_marathon
+from itest_utils import print_container_logs
 
 
 def before_all(context):
@@ -9,6 +10,11 @@ def before_all(context):
 
 def after_scenario(context, scenario):
     """If a marathon client object exists in our context, delete any apps in Marathon and wait until they die."""
+    if scenario.status != 'passed':
+        print "Zookeeper container logs:"
+        print_container_logs('zookeeper')
+        print "Marathon container logs:"
+        print_container_logs('marathon')
     if context.client:
         while True:
             apps = context.client.list_apps()
