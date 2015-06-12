@@ -16,6 +16,8 @@ from paasta_tools.monitoring.replication_utils import \
 import marathon_tools
 
 log = logging.getLogger('__main__')
+logging.getLogger("requests").setLevel(logging.WARNING)
+
 DEFAULT_SYNAPSE_HOST = 'localhost:3212'
 ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper
 ZK_LOCK_PATH = '/bounce'
