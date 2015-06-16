@@ -92,24 +92,22 @@ def get_mesos_status():
     """
 
     state = fetch_mesos_state_from_leader()
-    cluster_outputs, cluster_ok = each_with_param(state, [assert_quorum_size])
+    cluster_outputs, cluster_ok = run_healthchecks_with_param(state, [assert_quorum_size])
 
     metrics = fetch_mesos_stats()
-    metrics_outputs, metrics_ok = each_with_param(metrics, [assert_cpu_health, assert_memory_health, assert_slave_health, assert_tasks_running])
+    metrics_outputs, metrics_ok = run_healthchecks_with_param(metrics, [assert_cpu_health, assert_memory_health, assert_slave_health, assert_tasks_running])
 
     cluster_outputs.extend(metrics_outputs)
     cluster_ok.extend(metrics_ok)
     return cluster_outputs, cluster_ok
 
-def each_with_param(param, fns):
-    def is_ok(outputs, fn):
-        # outputs is a pair of outputs, oks
-        output, ok = fn(param)
-        outputs[0].append(output), outputs[-1].append(ok)
-        return outputs
-
-    outputs, ok = reduce(is_ok, fns, ([], []))
-    return outputs, ok
+def run_healthchecks_with_param(param, healthcheck_functions):
+    outputs, oks = [], []
+    for healthcheck in healthcheck_functions:
+        output, ok = healthcheck(param)
+        outputs.append(output)
+        oks.append(ok)
+    return outputs, oks
 
 def assert_marathon_apps(client):
     num_apps = len(client.list_apps())
@@ -143,7 +141,7 @@ def get_marathon_status():
         marathon_config['user'],
         marathon_config['pass']
     )
-    outputs, oks = each_with_param(client, [assert_marathon_apps, assert_marathon_tasks, assert_marathon_deployments])
+    outputs, oks = run_healthchecks_with_param(client, [assert_marathon_apps, assert_marathon_tasks, assert_marathon_deployments])
     return outputs, oks
 
 def main():
