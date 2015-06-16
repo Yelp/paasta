@@ -22,7 +22,7 @@ import yaml
 
 
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
-PATH_TO_SYSTEM_PAASTA_CONFIG = '/etc/paasta_tools/paasta.json'
+PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -37,6 +37,7 @@ no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
 
 class PaastaColors:
+
     """Collection of static variables and methods to assist in coloring text."""
     # ANSI colour codes
     BLUE = '\033[34m'
@@ -267,31 +268,83 @@ class NoMarathonClusterFoundException(Exception):
     pass
 
 
-def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG):
+def get_files_in_dir(directory):
     """
-    Read Marathon configs to get cluster info and volumes
-    that we need to bind when runngin a container.
+    Returns lexically-sorted list of files that are readable in a given directory
     """
+    files = []
+    for f in sorted(os.listdir(directory)):
+        path = os.path.join(directory, f)
+        if os.path.isfile(path) and os.access(path, os.R_OK):
+            files.append(path)
+    return files
+
+
+def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
+    """
+    Reads Paasta configs in specified directory in lexographical order and merges duplicated keys (last file wins)
+    """
+    config = {}
     try:
-        with open(path) as f:
-            return SystemPaastaConfig(json.load(f))
+        for config_file in get_files_in_dir(path):
+            with open(os.path.join(path, config_file)) as f:
+                config.update(json.load(f))
     except IOError as e:
         raise PaastaNotConfigured("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
+    return SystemPaastaConfig(config, path)
 
 
 class SystemPaastaConfig(dict):
 
     log = logging.getLogger('__main__')
 
+    def __init__(self, config, directory):
+        self.directory = directory
+        super(SystemPaastaConfig, self).__init__(config)
+
+    def get_zk_hosts(self):
+        """Get the zk_hosts defined in this hosts's marathon config file.
+        Strips off the zk:// prefix, if it exists, for use with Kazoo.
+
+        :returns: The zk_hosts specified in the marathon configuration"""
+        try:
+            hosts = self['zookeeper']
+        except KeyError:
+            raise PaastaNotConfigured(
+                'Could not find zookeeper connection string in configuration directory: %s' % self.directory)
+
+        # how do python strings not have a method for doing this
+        if hosts.startswith('zk://'):
+            return hosts[len('zk://'):]
+        return hosts
+
+    def get_docker_registry(self):
+        """Get the docker_registry defined in this host's paasta config file.
+
+        :returns: The docker_registry specified in the marathon configuration"""
+        try:
+            return self['docker_registry']
+        except KeyError:
+            raise PaastaNotConfigured('Could not find docker registry in configuration directory: %s' % self.directory)
+
+    def get_volumes(self):
+        """Get the volumes defined in this host's volumes config file.
+
+        :returns: list of volumes"""
+        try:
+            return self['volumes']
+        except KeyError:
+            raise PaastaNotConfigured('Could not find volumes in configuration directory: %s' % self.directory)
+
     def get_cluster(self):
-        """Get the cluster defined in this host's marathon config file.
+        """Get the cluster defined in this host's paasta config file.
 
         :returns: The name of the cluster defined in the marathon configuration"""
         try:
             return self['cluster']
         except KeyError:
-            self.log.warning('Could not find cluster in system paasta config at %s' % PATH_TO_SYSTEM_PAASTA_CONFIG)
-            raise NoMarathonClusterFoundException
+            raise NoMarathonClusterFoundException(
+                'Could not find cluster in configuration directory: %s' % self.directory)
 
 
 def _run(command, env=os.environ, timeout=None, log=False, **kwargs):

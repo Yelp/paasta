@@ -36,7 +36,7 @@ class TestBounceLib:
         with contextlib.nested(
             mock.patch('bounce_lib.KazooClient', return_value=fake_zk, autospec=True),
             mock.patch(
-                'marathon_tools.load_marathon_config',
+                'bounce_lib.load_system_paasta_config',
                 return_value=mock.Mock(
                     get_zk_hosts=lambda: fake_zk_hosts
                 ),
@@ -197,6 +197,7 @@ class TestBounceLib:
 
 
 class TestBrutalBounce:
+
     def test_brutal_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, brutal bounce should try to
         create a marathon app."""
@@ -279,6 +280,7 @@ class TestBrutalBounce:
 
 
 class TestUpthendownBounce:
+
     def test_upthendown_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, upthendown bounce should try to
         create a marathon app."""
@@ -386,6 +388,7 @@ class TestUpthendownBounce:
 
 
 class TestCrossoverBounce:
+
     def test_crossover_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, crossover bounce should try to
         create a marathon app."""
@@ -493,6 +496,7 @@ class TestCrossoverBounce:
 
 
 class TestDownThenUpBounce(object):
+
     def test_downthenup_bounce_no_existing_apps(self):
         """When marathon is unaware of a service, downthenup bounce should try to
         create a marathon app."""

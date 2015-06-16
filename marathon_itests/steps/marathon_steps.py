@@ -20,24 +20,23 @@ def working_marathon(context):
         zk_connection_string = "zk://%s/mesos-testcluster" % \
             get_service_connection_string('zookeeper')
         marathon_config = marathon_tools.MarathonConfig({
-            'docker_volumes': [],
             'url': marathon_connection_string,
-            'zk_hosts': zk_connection_string,
-            'cluster': 'testcluster',
             'user': None,
-            'pass': None,
-            'docker_registry': u'docker-dev.yelpcorp.com'
-        })
+            'password': None,
+        }, '/some_fake_path_to_marathon.json')
         context.client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
-                                     marathon_config['pass'])
+                                                            marathon_config['password'])
         context.marathon_config = marathon_config
         system_paasta_config = utils.SystemPaastaConfig({
             'cluster': 'testcluster',
             'docker_volumes': [],
-        })
+            'docker_registry': u'docker-dev.yelpcorp.com',
+            'zookeeper': zk_connection_string
+        }, '/some_fake_path_to_config_dir/')
         context.system_paasta_config = system_paasta_config
     else:
         print "Marathon connection already established"
+
 
 @when(u'we create a trivial new app')
 def create_trivial_new_app(context):

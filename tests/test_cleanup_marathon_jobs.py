@@ -5,30 +5,19 @@ import contextlib
 
 from pytest import raises
 
+from paasta_tools import marathon_tools
+
 
 class TestCleanupMarathonJobs:
 
     cleanup_marathon_jobs.log = mock.Mock()
     fake_docker_registry = 'http://del.icio.us/'
-    fake_marathon_config = {
-        'cluster': 'mess',
+    fake_cluster = 'fake_test_cluster'
+    fake_marathon_config = marathon_tools.MarathonConfig({
         'url': 'http://mess_url',
         'user': 'namnin',
-        'pass': 'pass_nememim',
-        'docker_registry': fake_docker_registry,
-        'docker_volumes': [
-            {
-                'hostPath': '/var/data/a',
-                'containerPath': '/etc/a',
-                'mode': 'RO',
-            },
-            {
-                'hostPath': '/var/data/b',
-                'containerPath': '/etc/b',
-                'mode': 'RW',
-            },
-        ],
-    }
+        'password': 'pass_nememim',
+    }, '/some/fake/path/fake_file.json')
     fake_marathon_client = mock.Mock()
 
     def test_main(self):
@@ -71,7 +60,7 @@ class TestCleanupMarathonJobs:
             get_marathon_services_for_cluster_patch.assert_called_once_with(soa_dir=soa_dir)
             client_patch.assert_called_once_with(self.fake_marathon_config['url'],
                                                  self.fake_marathon_config['user'],
-                                                 self.fake_marathon_config['pass'])
+                                                 self.fake_marathon_config['password'])
             delete_patch.assert_called_once_with('not-here.oh.no', self.fake_marathon_client)
 
     def test_cleanup_apps_doesnt_delete_unknown_apps(self):

@@ -199,7 +199,7 @@ def test_configure_and_run_explicit_cluster(
     mock_load_system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-        {'cluster': 'fake_cluster_that_will_be_overriden', 'docker_volumes': []})
+        {'cluster': 'fake_cluster_that_will_be_overriden', 'volumes': []}, '/fake_dir/')
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_service = 'fake_service'
     docker_hash = '8' * 40
@@ -220,7 +220,7 @@ def test_configure_and_run_missing_cluster_exception(
     mock_load_marathon_service_config,
     mock_load_system_paasta_config,
 ):
-    mock_load_system_paasta_config.return_value = SystemPaastaConfig({'docker_volumes': []})
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig({'volumes': []}, '/fake_dir/')
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_service = 'fake_service'
     docker_hash = '8' * 40

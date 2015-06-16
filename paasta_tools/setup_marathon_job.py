@@ -4,7 +4,7 @@ Usage: ./setup_marathon_job.py <service_name.instance_name> [options]
 
 Deploy a service instance to Marathon from a configuration file.
 Attempts to load the marathon configuration at
-/etc/paasta_tools/marathon_config.json, and read
+/etc/paasta/marathon.json, and read
 from the soa_dir /nail/etc/services by default.
 
 This script will attempt to load a service's configuration
@@ -326,8 +326,8 @@ def main():
         sys.exit(1)
 
     marathon_config = get_main_marathon_config()
-    client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
-                                                marathon_config['pass'])
+    client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
+                                                marathon_config.get_password())
 
     service_instance_config = marathon_tools.load_marathon_service_config(
         service_name,

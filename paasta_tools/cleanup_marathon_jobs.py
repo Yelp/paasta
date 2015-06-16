@@ -84,8 +84,8 @@ def cleanup_apps(soa_dir):
     log.info("Loading marathon configuration")
     marathon_config = marathon_tools.load_marathon_config()
     log.info("Connecting to marathon")
-    client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
-                                                marathon_config['pass'])
+    client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
+                                                marathon_config.get_password())
 
     valid_services = marathon_tools.get_marathon_services_for_cluster(soa_dir=soa_dir)
     valid_short_app_ids = [marathon_tools.compose_job_id(name, instance) for (name, instance) in valid_services]

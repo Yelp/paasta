@@ -6,6 +6,7 @@ from pytest import raises
 import requests
 
 import marathon_tools
+import utils
 
 
 class TestMarathonTools:
@@ -55,7 +56,7 @@ class TestMarathonTools:
                 'mode': 'RW',
             },
         ],
-    })
+    }, '/some/fake/path/fake_file.json')
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
 
     def test_DeploymentsJson_read(self):
@@ -242,7 +243,7 @@ class TestMarathonTools:
             json_patch
         ):
             assert marathon_tools.load_marathon_config() == expected
-            open_file_patch.assert_called_once_with('/etc/paasta_tools/marathon_config.json')
+            open_file_patch.assert_called_once_with('/etc/paasta/marathon.json')
             json_patch.assert_called_once_with(file_mock.__enter__())
 
     def test_load_marathon_config_path_dne(self):
@@ -1085,6 +1086,7 @@ class TestMarathonTools:
         fake_cluster = 'fake_cluster'
 
         with contextlib.nested(
+            mock.patch('marathon_tools.load_system_paasta_config', autospec=True),
             mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
             mock.patch('marathon_tools.load_marathon_service_config', autospec=True,
                        return_value=self.fake_marathon_job_config),
@@ -1096,6 +1098,7 @@ class TestMarathonTools:
             mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=self.fake_service_namespace_config)
         ) as (
+            load_system_paasta_config_patch,
             get_cluster_patch,
             read_service_config_patch,
             docker_url_patch,
@@ -1133,6 +1136,11 @@ class TestMarathonTools:
         fake_instance = 'fakeinstance'
         fake_url = 'dockervania_from_konami'
         fake_cluster = 'fake_cluster'
+        fake_system_paasta_config = utils.SystemPaastaConfig({
+            'cluster': fake_cluster,
+            'volumes': [],
+            'docker_registry': 'fake_registry'
+        }, '/fake/dir/')
 
         fake_service_config_1 = marathon_tools.MarathonServiceConfig(
             fake_name,
@@ -1165,12 +1173,15 @@ class TestMarathonTools:
         )
 
         with contextlib.nested(
+            mock.patch('marathon_tools.load_system_paasta_config',
+                       autospec=True, return_value=fake_system_paasta_config),
             mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
             mock.patch('marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=self.fake_service_namespace_config)
         ) as (
+            load_system_paasta_config_patch,
             get_cluster_patch,
             read_service_config_patch,
             docker_url_patch,
@@ -1247,6 +1258,7 @@ class TestMarathonTools:
 
 
 class TestMarathonServiceConfig(object):
+
     def test_repr(self):
         actual = repr(marathon_tools.MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'}))
         expected = """MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'})"""
@@ -1328,6 +1340,7 @@ class TestMarathonServiceConfig(object):
 
 
 class TestServiceNamespaceConfig(object):
+
     def test_get_mode_default(self):
         assert marathon_tools.ServiceNamespaceConfig().get_mode() == 'http'
 
@@ -1339,13 +1352,17 @@ def test_create_complete_config():
     service_name = "service"
     instance_name = "instance"
     fake_job_id = "service.instance.some.hash"
-    fake_marathon_config = marathon_tools.MarathonConfig(docker_registry="registry", docker_volumes=[])
+    fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service_name,
         instance_name,
         {},
         {'docker_image': 'abcdef'},
     )
+    fake_system_paasta_config = utils.SystemPaastaConfig({
+        'volumes': [],
+        'docker_registry': 'fake_docker_registry:443'
+    }, '/fake/dir/')
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
     fake_cluster = "clustername"
 
@@ -1354,18 +1371,20 @@ def test_create_complete_config():
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
         mock.patch('marathon_tools.get_cluster', return_value=fake_cluster),
         mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
+        mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config)
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
         mock_get_cluster,
         mock_compose_job_id,
+        mock_system_paasta_config
     ):
         actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
         expected = {
             'container': {
                 'docker': {
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
-                    'image': 'registry/abcdef',
+                    'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE'
                 },
                 'type': 'DOCKER',

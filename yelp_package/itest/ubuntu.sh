@@ -44,9 +44,10 @@ version"
 mkdir -p /nail/etc
 [ -L /nail/etc/services ] || ln -s /work/yelp_package/itest/fake_services /nail/etc/services
 
-mkdir -p /etc/paasta_tools
-[ -L /etc/paasta_tools/marathon_config.json ] || ln -s /work/yelp_package/itest/marathon_config.json /etc/paasta_tools/marathon_config.json
-[ -L /etc/paasta_tools/paasta.json ] || ln -s /work/yelp_package/itest/paasta.json /etc/paasta_tools/paasta.json
+mkdir -p /etc/paasta
+[ -L /etc/paasta/marathon.json ] || ln -s /work/yelp_package/itest/marathon.json /etc/paasta/marathon.json
+[ -L /etc/paasta/volumes.json ] || ln -s /work/yelp_package/itest/volumes.json /etc/paasta/volumes.json
+[ -L /etc/paasta/cluster.json ] || ln -s /work/yelp_package/itest/cluster.json /etc/paasta/cluster.json
 
 if dpkg -i /work/dist/*.deb; then
   echo "Looks like it installed correctly"

@@ -20,6 +20,7 @@ from paasta_tools.utils import NoMarathonClusterFoundException
 from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import list_all_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.mesos_tools import fetch_local_slave_state
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
@@ -32,39 +33,54 @@ CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
 
-PATH_TO_MARATHON_CONFIG = '/etc/paasta_tools/marathon_config.json'
+PATH_TO_MARATHON_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'marathon.json')
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 
 def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
     try:
         with open(path) as f:
-            return MarathonConfig(json.load(f))
+            return MarathonConfig(json.load(f), path)
     except IOError as e:
         raise PaastaNotConfigured("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
 
 
+class MarathonNotConfigured(Exception):
+    pass
+
+
 class MarathonConfig(dict):
 
-    def get_docker_registry(self):
-        """Get the docker_registry defined in this host's marathon config file.
+    def __init__(self, config, path):
+        self.path = path
+        super(MarathonConfig, self).__init__(config)
 
-        :returns: The docker_registry specified in the marathon configuration"""
-        return self['docker_registry']
+    def get_url(self):
+        """Get the Marathon API url
 
-    def get_zk_hosts(self):
-        """Get the zk_hosts defined in this hosts's marathon config file.
-        Strips off the zk:// prefix, if it exists, for use with Kazoo.
+        :returns: The Marathon API endpoint"""
+        try:
+            return self['url']
+        except KeyError:
+            raise MarathonNotConfigured('Could not find marathon url in system marathon config: %s' % self.path)
 
-        :returns: The zk_hosts specified in the marathon configuration"""
-        hosts = self['zk_hosts']
-        # how do python strings not have a method for doing this
-        if hosts.startswith('zk://'):
-            return hosts[len('zk://'):]
-        return hosts
+    def get_username(self):
+        """Get the Marathon API username
 
-    def get_docker_volumes(self):
-        return self['docker_volumes']
+        :returns: The Marathon API username"""
+        try:
+            return self['user']
+        except KeyError:
+            raise MarathonNotConfigured('Could not find marathon user in system marathon config: %s' % self.path)
+
+    def get_password(self):
+        """Get the Marathon API password
+
+        :returns: The Marathon API password"""
+        try:
+            return self['password']
+        except KeyError:
+            raise MarathonNotConfigured('Could not find marathon password in system marathon config: %s' % self.path)
 
 
 class NoDeploymentsAvailable(Exception):
@@ -867,15 +883,16 @@ def is_app_id_running(app_id, client):
 
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
+    system_paasta_config = load_system_paasta_config()
     partial_id = compose_job_id(name, instance)
     srv_config = load_marathon_service_config(name, instance, get_cluster(), soa_dir=soa_dir)
-    docker_url = get_docker_url(marathon_config.get_docker_registry(), srv_config.get_docker_image())
+    docker_url = get_docker_url(system_paasta_config.get_docker_registry(), srv_config.get_docker_image())
     service_namespace_config = load_service_namespace_config(name, srv_config.get_nerve_namespace())
 
     complete_config = srv_config.format_marathon_app_dict(
         partial_id,
         docker_url,
-        marathon_config.get_docker_volumes(),
+        system_paasta_config.get_volumes(),
         service_namespace_config,
     )
     code_sha = get_code_sha_from_dockerurl(docker_url)

@@ -14,6 +14,7 @@ from paasta_tools.monitoring.replication_utils import \
     get_registered_marathon_tasks
 
 import marathon_tools
+from utils import load_system_paasta_config
 
 log = logging.getLogger('__main__')
 DEFAULT_SYNAPSE_HOST = 'localhost:3212'
@@ -24,6 +25,7 @@ WAIT_DELETE_S = 5
 
 
 class TimeoutException(Exception):
+
     """An exception type used by time_limit."""
     pass
 
@@ -83,7 +85,7 @@ def bounce_lock_zookeeper(name):
     This is a contextmanager. Please use it via 'with bounce_lock(name):'.
 
     :param name: The lock name to acquire"""
-    zk = KazooClient(hosts=marathon_tools.load_marathon_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
+    zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
     zk.start()
     lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, name))
     acquired = False
@@ -105,7 +107,7 @@ def create_app_lock():
     due to marathon's extreme lack of resilience with creating multiple
     apps at once, so we use this to not do that and only deploy
     one app at a time."""
-    zk = KazooClient(hosts=marathon_tools.load_marathon_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
+    zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
     zk.start()
     lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, 'create_marathon_app_lock'))
     try:
@@ -276,7 +278,8 @@ def upthendown_bounce(
     if new_app_running and len(happy_new_tasks) == new_config['instances']:
         return {
             "create_app": False,
-            "tasks_to_kill": set.union(set(), *old_app_tasks.values()),  # set.union doesn't like getting zero arguments
+            # set.union doesn't like getting zero arguments
+            "tasks_to_kill": set.union(set(), *old_app_tasks.values()),
             "apps_to_kill": set(old_app_tasks.keys()),
         }
     else:

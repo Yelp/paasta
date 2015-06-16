@@ -14,6 +14,7 @@ import setup_marathon_job
 class TestSetupMarathonJob:
 
     fake_docker_image = 'test_docker:1.0'
+    fake_cluster = 'fake_test_cluster'
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         'servicename',
         'instancename',
@@ -28,25 +29,11 @@ class TestSetupMarathonJob:
         {},
     )
     fake_docker_registry = 'remote_registry.com'
-    fake_marathon_config = {
-        'cluster': 'test_cluster',
+    fake_marathon_config = marathon_tools.MarathonConfig({
         'url': 'http://test_url',
         'user': 'admin',
-        'pass': 'admin_pass',
-        'docker_registry': fake_docker_registry,
-        'docker_volumes': [
-            {
-                'hostPath': '/var/data/a',
-                'containerPath': '/etc/a',
-                'mode': 'RO',
-            },
-            {
-                'hostPath': '/var/data/b',
-                'containerPath': '/etc/b',
-                'mode': 'RW',
-            },
-        ],
-    }
+        'password': 'admin_pass',
+    }, '/fake/fake_file.json')
     fake_args = mock.MagicMock(
         service_instance='what_is_love.bby_dont_hurt_me',
         soa_dir='no_more',
@@ -83,7 +70,7 @@ class TestSetupMarathonJob:
             ),
             mock.patch(
                 'setup_marathon_job.marathon_tools.get_cluster',
-                return_value=self.fake_marathon_config['cluster'],
+                return_value=self.fake_cluster,
                 autospec=True,
             ),
             mock.patch('setup_marathon_job.send_event', autospec=True,),
@@ -104,12 +91,12 @@ class TestSetupMarathonJob:
             get_client_patch.assert_called_once_with(
                 self.fake_marathon_config['url'],
                 self.fake_marathon_config['user'],
-                self.fake_marathon_config['pass'],
+                self.fake_marathon_config['password'],
             )
             read_service_conf_patch.assert_called_once_with(
                 self.fake_args.service_instance.split('.')[0],
                 self.fake_args.service_instance.split('.')[1],
-                self.fake_marathon_config['cluster'],
+                self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir,
             )
             setup_service_patch.assert_called_once_with(
@@ -151,7 +138,7 @@ class TestSetupMarathonJob:
             ),
             mock.patch(
                 'setup_marathon_job.marathon_tools.get_cluster',
-                return_value=self.fake_marathon_config['cluster'],
+                return_value=self.fake_cluster,
                 autospec=True,
             ),
             mock.patch('setup_marathon_job.send_event', autospec=True),
@@ -172,11 +159,11 @@ class TestSetupMarathonJob:
             get_client_patch.assert_called_once_with(
                 self.fake_marathon_config['url'],
                 self.fake_marathon_config['user'],
-                self.fake_marathon_config['pass'])
+                self.fake_marathon_config['password'])
             read_service_conf_patch.assert_called_once_with(
                 self.fake_args.service_instance.split('.')[0],
                 self.fake_args.service_instance.split('.')[1],
-                self.fake_marathon_config['cluster'],
+                self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
                 self.fake_args.service_instance.split('.')[0],
@@ -196,7 +183,7 @@ class TestSetupMarathonJob:
         fake_notification_email = 'fake@notify'
         fake_irc = '#fake'
         fake_soa_dir = '/fake/soa/dir'
-        fake_cluster = 'fake_cluster'
+        self.fake_cluster = 'fake_cluster'
         expected_runbook = 'http://y/paasta-troubleshooting'
         expected_check_name = 'setup_marathon_job.%s.%s' % (
             fake_service_name, fake_instance_name)
@@ -233,7 +220,7 @@ class TestSetupMarathonJob:
             mock.patch("pysensu_yelp.send_event", autospec=True),
             mock.patch(
                 'paasta_tools.marathon_tools.get_cluster',
-                return_value=fake_cluster,
+                return_value=self.fake_cluster,
                 autospec=True,
             )
         ) as (
@@ -299,7 +286,7 @@ class TestSetupMarathonJob:
         fake_old_app_tasks = []
         fake_service_name = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
-        fake_cluster = 'fake_cluster'
+        self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_marathon_jobid = 'fake.marathon.jobid'
@@ -316,8 +303,8 @@ class TestSetupMarathonJob:
         ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
             setup_marathon_job.do_bounce(fake_bounce_func, fake_config, fake_new_app_running,
                                          fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
-                                         fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name,
-                                         fake_marathon_jobid, fake_client)
+                                         fake_bounce_method, fake_serviceinstance, self.fake_cluster,
+                                         fake_instance_name, fake_marathon_jobid, fake_client)
             assert mock_log.call_count == 5
             first_logged_line = mock_log.mock_calls[0][2]["line"]
             assert '%s new tasks' % expected_new_task_count in first_logged_line
@@ -345,7 +332,7 @@ class TestSetupMarathonJob:
         fake_old_app_tasks = []
         fake_service_name = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
-        fake_cluster = 'fake_cluster'
+        self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_marathon_jobid = 'fake.marathon.jobid'
@@ -362,8 +349,8 @@ class TestSetupMarathonJob:
         ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
             setup_marathon_job.do_bounce(fake_bounce_func, fake_config, fake_new_app_running,
                                          fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
-                                         fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name,
-                                         fake_marathon_jobid, fake_client)
+                                         fake_bounce_method, fake_serviceinstance, self.fake_cluster,
+                                         fake_instance_name, fake_marathon_jobid, fake_client)
             assert mock_log.call_count == 4
             first_logged_line = mock_log.mock_calls[0][2]["line"]
             assert '%s new tasks' % expected_new_task_count in first_logged_line
@@ -391,7 +378,7 @@ class TestSetupMarathonJob:
         fake_old_app_tasks = []
         fake_service_name = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
-        fake_cluster = 'fake_cluster'
+        self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_marathon_jobid = 'fake.marathon.jobid'
@@ -408,8 +395,8 @@ class TestSetupMarathonJob:
         ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
             setup_marathon_job.do_bounce(fake_bounce_func, fake_config, fake_new_app_running,
                                          fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
-                                         fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name,
-                                         fake_marathon_jobid, fake_client)
+                                         fake_bounce_method, fake_serviceinstance, self.fake_cluster,
+                                         fake_instance_name, fake_marathon_jobid, fake_client)
             assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
             assert '%s new tasks' % expected_new_task_count in first_logged_line
@@ -437,7 +424,7 @@ class TestSetupMarathonJob:
         fake_old_app_tasks = []
         fake_service_name = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
-        fake_cluster = 'fake_cluster'
+        self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_marathon_jobid = 'fake.marathon.jobid'
@@ -454,8 +441,8 @@ class TestSetupMarathonJob:
         ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
             setup_marathon_job.do_bounce(fake_bounce_func, fake_config, fake_new_app_running,
                                          fake_happy_new_tasks, fake_old_app_tasks, fake_service_name,
-                                         fake_bounce_method, fake_serviceinstance, fake_cluster, fake_instance_name,
-                                         fake_marathon_jobid, fake_client)
+                                         fake_bounce_method, fake_serviceinstance, self.fake_cluster,
+                                         fake_instance_name, fake_marathon_jobid, fake_client)
             assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
             assert '%s new tasks' % expected_new_task_count in first_logged_line

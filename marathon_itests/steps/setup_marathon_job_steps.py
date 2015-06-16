@@ -25,8 +25,10 @@ def create_complete_app(context):
         mock.patch('paasta_tools.marathon_tools.create_complete_config'),
         mock.patch('paasta_tools.marathon_tools.load_marathon_config', return_value=context.marathon_config),
         mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=context.system_paasta_config),
+        mock.patch('paasta_tools.bounce_lib.load_system_paasta_config', return_value=context.system_paasta_config),
     ) as (
         mock_create_complete_config,
+        _,
         _,
         _,
     ):

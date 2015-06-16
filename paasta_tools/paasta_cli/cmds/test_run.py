@@ -291,7 +291,14 @@ def run_docker_container(
     random_port = pick_random_port()
     container_name = get_container_name()
     docker_run_cmd = get_docker_run_cmd(
-        memory, random_port, container_name, volumes, interactive, docker_hash, command)
+        memory,
+        random_port,
+        container_name,
+        volumes,
+        interactive,
+        docker_hash,
+        command
+    )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
     healthcheck_url = get_healthcheck(service, instance, random_port)
@@ -351,7 +358,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
 
     volumes = list()
 
-    for volume in system_paasta_config['docker_volumes']:
+    for volume in system_paasta_config.get_volumes():
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     if args.cluster:
@@ -419,7 +426,7 @@ def validate_environment():
     if not os.path.isfile(os.path.join(os.getcwd(), 'Dockerfile')):
         sys.stderr.write(
             'ERROR: No Dockerfile in the current directory.\n'
-            'Are you in the root folder of the service directory? Does a Dockerfile exist?'
+            'Are you in the root folder of the service directory? Does a Dockerfile exist?\n'
         )
         sys.exit(1)
 

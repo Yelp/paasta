@@ -37,7 +37,7 @@ def status_marathon_job_returns_healthy(context):
 def restart_gets_new_task_ids(context):
     normal_instance_count = 1
     client = context.client
-    cluster = context.marathon_config['cluster']
+    cluster = context.system_paasta_config['cluster']
     app_id = 'test-service.main'
     service = 'test-service'
     instance = 'main'

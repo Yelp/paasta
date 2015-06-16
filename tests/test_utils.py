@@ -54,16 +54,61 @@ def test_get_log_name_for_service():
     assert utils.get_log_name_for_service(service_name) == expected
 
 
+def test_get_files_in_dir_ignores_unreadable():
+    fake_dir = '/fake/dir/'
+    fake_file_contents = {'foo': 'bar'}
+    expected = [os.path.join(fake_dir, 'a.json'), os.path.join(fake_dir, 'c.json')]
+    file_mock = mock.MagicMock(spec=file)
+    with contextlib.nested(
+        mock.patch('os.listdir', autospec=True, return_value=['b.json', 'a.json', 'c.json']),
+        mock.patch('os.path.isfile', autospec=True, return_value=True),
+        mock.patch('os.access', autospec=True, side_effect=[True, False, True]),
+        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=fake_file_contents)
+    ) as (
+        listdir_patch,
+        isfile_patch,
+        access_patch,
+        open_file_patch,
+        json_patch,
+    ):
+        assert utils.get_files_in_dir(fake_dir) == expected
+
+
+def test_get_files_in_dir_is_lexographic():
+    fake_dir = '/fake/dir/'
+    fake_file_contents = {'foo': 'bar'}
+    expected = [os.path.join(fake_dir, 'a.json'), os.path.join(fake_dir, 'b.json')]
+    file_mock = mock.MagicMock(spec=file)
+    with contextlib.nested(
+        mock.patch('os.listdir', autospec=True, return_value=['b.json', 'a.json']),
+        mock.patch('os.path.isfile', autospec=True, return_value=True),
+        mock.patch('os.access', autospec=True, return_value=True),
+        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=fake_file_contents)
+    ) as (
+        listdir_patch,
+        isfile_patch,
+        access_patch,
+        open_file_patch,
+        json_patch,
+    ):
+        assert utils.get_files_in_dir(fake_dir) == expected
+
+
 def test_load_system_paasta_config():
     json_load_return_value = {'foo': 'bar'}
-    expected = utils.SystemPaastaConfig(json_load_return_value)
+    expected = utils.SystemPaastaConfig(json_load_return_value, '/some/fake/dir')
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
         mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('paasta_tools.utils.get_files_in_dir', autospec=True,
+                   return_value=['/some/fake/dir/some_file.json']),
         mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=json_load_return_value)
     ) as (
         open_file_patch,
-        json_patch
+        get_files_in_dir_patch,
+        json_patch,
     ):
         actual = utils.load_system_paasta_config()
         assert actual == expected
@@ -71,35 +116,102 @@ def test_load_system_paasta_config():
         # did! during development) return a plain dict without the test
         # complaining.
         assert actual.__class__ == expected.__class__
-        open_file_patch.assert_called_once_with('/etc/paasta_tools/paasta.json')
-        json_patch.assert_called_once_with(file_mock.__enter__())
+        open_file_patch.assert_any_call('/some/fake/dir/some_file.json')
+        json_patch.assert_any_call(file_mock.__enter__())
+        assert json_patch.call_count == 1
 
 
 def test_load_system_paasta_config_file_dne():
     fake_path = '/var/dir_of_fake'
     with contextlib.nested(
         mock.patch('paasta_tools.utils.open', create=True, side_effect=IOError(2, 'a', 'b')),
+        mock.patch('paasta_tools.utils.get_files_in_dir', autospec=True, return_value=[fake_path]),
     ) as (
         open_patch,
+        get_files_in_dir_patch,
     ):
         with raises(utils.PaastaNotConfigured) as excinfo:
             utils.load_system_paasta_config(fake_path)
         assert str(excinfo.value) == "Could not load system paasta config file b: a"
 
 
+def test_load_system_paasta_config_merge_lexographically():
+    fake_file_a = {'foo': 'this value will be overriden', 'fake': 'fake_data'}
+    fake_file_b = {'foo': 'overriding value'}
+    expected = utils.SystemPaastaConfig({'foo': 'overriding value', 'fake': 'fake_data'}, '/some/fake/dir')
+    file_mock = mock.MagicMock(spec=file)
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('paasta_tools.utils.get_files_in_dir', autospec=True,
+                   return_value=['a', 'b']),
+        mock.patch('paasta_tools.utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b])
+    ) as (
+        open_file_patch,
+        get_files_in_dir_patch,
+        json_patch,
+    ):
+        actual = utils.load_system_paasta_config()
+        assert actual == expected
+
+
 def test_SystemPaastaConfig_get_cluster():
     fake_config = utils.SystemPaastaConfig({
         'cluster': 'peanut',
-    })
+    }, '/some/fake/dir')
     expected = 'peanut'
     actual = fake_config.get_cluster()
     assert actual == expected
 
 
 def test_SystemPaastaConfig_get_cluster_dne():
-    fake_config = utils.SystemPaastaConfig()
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
     with raises(utils.NoMarathonClusterFoundException):
         fake_config.get_cluster()
+
+
+def test_SystemPaastaConfig_get_volumes():
+    fake_config = utils.SystemPaastaConfig({
+        'volumes': [{'fake_path': "fake_other_path"}],
+    }, '/some/fake/dir')
+    expected = [{'fake_path': "fake_other_path"}]
+    actual = fake_config.get_volumes()
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_volumes_dne():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    with raises(utils.PaastaNotConfigured):
+        fake_config.get_volumes()
+
+
+def test_SystemPaastaConfig_get_zk():
+    fake_config = utils.SystemPaastaConfig({
+        'zookeeper': 'zk://fake_zookeeper_host'
+    }, '/some/fake/dir')
+    expected = 'fake_zookeeper_host'
+    actual = fake_config.get_zk_hosts()
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_zk_dne():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    with raises(utils.PaastaNotConfigured):
+        fake_config.get_zk_hosts()
+
+
+def test_SystemPaastaConfig_get_registry():
+    fake_config = utils.SystemPaastaConfig({
+        'docker_registry': 'fake_registry'
+    }, '/some/fake/dir')
+    expected = 'fake_registry'
+    actual = fake_config.get_docker_registry()
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_registry_dne():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    with raises(utils.PaastaNotConfigured):
+        fake_config.get_docker_registry()
 
 
 def test_atomic_file_write():
