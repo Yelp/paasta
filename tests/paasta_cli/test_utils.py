@@ -15,10 +15,10 @@ def test_bad_calculate_remote_master(mock_get_by_hostname):
 
 @patch('paasta_tools.paasta_cli.utils.gethostbyname_ex')
 def test_ok_remote_masters(mock_get_by_hostname):
-    mock_get_by_hostname.return_value = ('myhost', [], ['1.3.4','1.2.3.5'])
+    mock_get_by_hostname.return_value = ('myhost', [], ['1.2.3.4','1.2.3.5'])
     ips, output = utils.calculate_remote_masters('myhost')
     assert output is None
-    assert ips == ['1.3.4','1.2.3.5']
+    assert ips == ['1.2.3.4','1.2.3.5']
 
 
 @patch('paasta_tools.paasta_cli.utils.check_ssh_and_sudo_on_master', autospec=True)
