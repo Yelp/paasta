@@ -5,6 +5,7 @@ from pytest import raises
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_cli.cmds.test_run import LostContainerException
 from paasta_tools.paasta_cli.cmds.test_run import build_docker_container
+from paasta_tools.paasta_cli.cmds.test_run import configure_and_run_docker_container
 from paasta_tools.paasta_cli.cmds.test_run import get_cmd
 from paasta_tools.paasta_cli.cmds.test_run import get_cmd_string
 from paasta_tools.paasta_cli.cmds.test_run import get_container_id
@@ -16,6 +17,8 @@ from paasta_tools.paasta_cli.cmds.test_run import simulate_healthcheck_on_servic
 from paasta_tools.paasta_cli.cmds.test_run import run_healthcheck_on_container
 from paasta_tools.paasta_cli.cmds.test_run import run_docker_container
 from paasta_tools.paasta_cli.cmds.test_run import validate_environment
+from paasta_tools.utils import NoMarathonClusterFoundException
+from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_build_docker_container():
@@ -187,6 +190,49 @@ def test_get_container_name(mock_get_username, mock_randint):
         mock_get_username.return_value, mock_randint.return_value)
     actual = get_container_name()
     assert actual == expected
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.load_marathon_service_config', autospec=True)
+def test_configure_and_run_explicit_cluster(
+    mock_load_marathon_service_config,
+    mock_load_system_paasta_config,
+):
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+        {'cluster': 'fake_cluster_that_will_be_overriden', 'docker_volumes': []})
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    fake_service = 'fake_service'
+    docker_hash = '8' * 40
+    args = mock.MagicMock()
+    args.cmd = 'fake_command'
+    args.service = fake_service
+    args.healthcheck = False
+    args.instance = 'fake_instance'
+    args.interactive = False
+    args.cluster = 'fake_cluster'
+    assert configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
+    mock_load_marathon_service_config.assert_called_once_with(fake_service, args.instance, args.cluster)
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.test_run.load_marathon_service_config', autospec=True)
+def test_configure_and_run_missing_cluster_exception(
+    mock_load_marathon_service_config,
+    mock_load_system_paasta_config,
+):
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig({'docker_volumes': []})
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    fake_service = 'fake_service'
+    docker_hash = '8' * 40
+    args = mock.MagicMock()
+    args.cmd = 'fake_command'
+    args.service = fake_service
+    args.healthcheck = False
+    args.instance = 'fake_instance'
+    args.interactive = False
+    args.cluster = None
+    with raises(NoMarathonClusterFoundException):
+        configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args)
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.test_run.validate_environment', autospec=True)
