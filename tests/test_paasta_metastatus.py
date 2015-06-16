@@ -119,7 +119,7 @@ def test_assert_tasks_running():
     assert ok
 
 
-@patch('paasta_tools.paasta_metastatus.get_configured_quorum_size')
+@patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
 @patch('paasta_tools.paasta_metastatus.get_num_masters')
 def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_num_masters.return_value = 5
@@ -128,7 +128,7 @@ def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     assert health
     assert 'quorum: masters: 5 configured quorum: 3 ' in output
 
-@patch('paasta_tools.paasta_metastatus.get_configured_quorum_size')
+@patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
 @patch('paasta_tools.paasta_metastatus.get_num_masters')
 def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_num_masters.return_value = 1
@@ -138,7 +138,7 @@ def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     assert "CRITICAL: Number of masters (1) less than configured quorum(3)." in output
 
 @patch('socket.getfqdn', autospec=True)
-@patch('paasta_tools.paasta_metastatus.get_configured_quorum_size')
+@patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
 @patch('paasta_tools.paasta_metastatus.get_num_masters')
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_stats')
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')

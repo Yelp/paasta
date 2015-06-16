@@ -10,11 +10,6 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.mesos_tools import MissingMasterException
 import sys
 
-
-def get_configured_quorum_size(state):
-    """ Gets the quorum size from mesos state """
-    return get_mesos_quorum(state)
-
 def get_num_masters(state):
     """ Gets the number of masters from mesos state """
     return get_number_of_mesos_masters(get_zookeeper_config(state))
@@ -78,7 +73,7 @@ def assert_slave_health(metrics):
     return "slaves: active: %d inactive: %d" % (active, inactive), True
 
 def assert_quorum_size(state):
-    masters, quorum = get_num_masters(state), get_configured_quorum_size(state)
+    masters, quorum = get_num_masters(state), get_mesos_quorum(state)
     if masters >= quorum:
         return ("quorum: masters: %d configured quorum: %d " % (masters, quorum), True)
     else:
