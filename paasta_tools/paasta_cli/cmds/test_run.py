@@ -20,6 +20,7 @@ from paasta_tools.marathon_tools import get_healthcheck
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
+from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import get_username
@@ -157,6 +158,10 @@ def add_subparser(subparsers):
         '-s', '--service',
         help='The name of the service you wish to inspect',
     ).completer = lazy_choices_completer(list_services)
+    list_parser.add_argument(
+        '-c', '--cluster',
+        help='The name of the cluster you wish to simulate',
+    ).completer = lazy_choices_completer(list_clusters)
     list_parser.add_argument(
         '-C', '--cmd',
         help=(
@@ -349,7 +354,12 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
     for volume in system_paasta_config['docker_volumes']:
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
-    service_manifest = load_marathon_service_config(service, args.instance, system_paasta_config['cluster'])
+    if args.cluster:
+        cluster = args.cluster
+    else:
+        cluster = system_paasta_config.get_cluster()
+
+    service_manifest = load_marathon_service_config(service, args.instance, cluster)
 
     if args.cmd:
         command = shlex.split(args.cmd)
