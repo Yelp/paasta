@@ -12,13 +12,8 @@ from kazoo.client import KazooClient
 if not 'MESOS_CLI_CONFIG' in os.environ:
     os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
 
-class MesosCliException(Exception):
-    def __init__(self, message):
-        super(MesosCliException, self).__init__(message)
-
-class MissingMasterException(MesosCliException):
-    def __init__(self, message):
-        super(MissingMasterException, self).__init__(message)
+class MissingMasterException(Exception):
+    pass
 
 def raise_cli_exception(msg):
     if msg.startswith("unable to connect to a master"):
@@ -26,7 +21,7 @@ def raise_cli_exception(msg):
     else:
         raise MesosCliException(msg)
 
-# monkey path the log.fatal method to raise an exception rather than a sys.exit
+# monkey patch the log.fatal method to raise an exception rather than a sys.exit
 import mesos.cli.log
 mesos.cli.log.fatal = lambda msg, code = 1: raise_cli_exception(msg)
 
