@@ -1,6 +1,8 @@
 import fnmatch
 import glob
 import os
+from socket import gaierror
+from socket import gethostbyname_ex
 
 import json
 from service_configuration_lib import read_services_configuration
@@ -340,12 +342,18 @@ def list_teams():
 
 
 def calculate_remote_masters(cluster_name):
-    """Given a cluster_name, look it up in the corresponding infrastructure
-    zookeeper topology file. Currently we assume that remote masters are
-    the same as the zookeeper servers
-
-    After looking up, we return the ips of the masters as a list"""
-    return get_infrastructure_zookeeper_servers(cluster_name)
+    """Given a cluster_name, do a DNS lookup of that cluster_name (which
+    happens to point, eventually, to the Mesos masters in that cluster_name).
+    Return IPs of those Mesos masters.
+    """
+    cluster_fqdn = "paasta-%s.yelp" % cluster_name
+    try:
+        _, _, ips = gethostbyname_ex(cluster_fqdn)
+        output = None
+    except gaierror as e:
+        output = 'ERROR while doing DNS lookup of %s:\n%s\n ' % (cluster_fqdn, e.strerror)
+        ips = []
+    return (ips, output)
 
 
 def find_connectable_master(masters):
@@ -423,9 +431,9 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, servic
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
-    masters = calculate_remote_masters(cluster_name)
+    masters, output = calculate_remote_masters(cluster_name)
     if masters == []:
-        return 'ERROR: no master available?'
+        return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
     if not master:
         return (
@@ -453,9 +461,9 @@ def execute_paasta_metastatus_on_remote_master(cluster_name, verbose=False):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
-    masters = calculate_remote_masters(cluster_name)
+    masters, output = calculate_remote_masters(cluster_name)
     if masters == []:
-        return 'ERROR: no master available?'
+        return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
     if not master:
         return (
