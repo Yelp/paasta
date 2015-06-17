@@ -402,7 +402,7 @@ class SOACollector(diamond.collector.Collector):
                 # strip off .main for backwards compatibility with old metrics
                 service_name = service_name.partition('.')[0]
 
-            url = 'http://localhost:%s/status/metrics' % port
+            url = 'http://127.0.0.1:%s/status/metrics' % port
             json_response = get_json_metrics(url, self.log, service_name)
             json_metrics = json_to_metrics(json_response)
 
