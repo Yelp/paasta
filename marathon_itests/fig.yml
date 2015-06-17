@@ -9,4 +9,4 @@ marathon:
     - 8080
   links:
     - zookeeper
-  command: 'marathon'
+  command: bash -c "sed -i -e '/if \[\[.*--no-logger/{n;n;s/\"\$\@\"$/\$\{\@\/\/--no-logger\/\}/}' $(which marathon) && marathon --no-logger"
