@@ -2,7 +2,7 @@ FROM docker-dev.yelpcorp.com/lucid_yelp
 
 RUN apt-get update
 RUN apt-get -y install oracle-java7-jre oracle-java7-jre
-RUN apt-get -y install marathon=0.8.2-yelp1.ubuntu1204
+RUN apt-get -y install marathon=0.8.1-yelp1.ubuntu1204
 
 RUN locale-gen en_US.UTF-8
 RUN apt-get -y install mesos

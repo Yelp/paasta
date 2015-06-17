@@ -9,4 +9,4 @@ marathon:
     - 8080
   links:
     - zookeeper
-  command: 'marathon --no-logger'
+  command: 'marathon'
