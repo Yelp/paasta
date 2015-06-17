@@ -4,9 +4,12 @@ from mock import patch
 from paasta_tools import paasta_metastatus
 from paasta_tools import mesos_tools
 from paasta_tools.utils import PaastaColors
+from pytest import raises
 
-def test_check_threshold():
+def test_ok_check_threshold():
     assert paasta_metastatus.check_threshold(30, 10)
+
+def test_fail_check_threshold():
     assert not paasta_metastatus.check_threshold(10, 30)
 
 def test_get_mesos_cpu_status():
@@ -19,49 +22,48 @@ def test_get_mesos_cpu_status():
     assert used == 1
     assert available == 2
 
-def test_assert_cpu_health():
+def test_ok_cpu_health():
     ok_metrics = {
         'master/cpus_total' : 10,
         'master/cpus_used' : 1,
     }
+    ok_output, ok_health = paasta_metastatus.assert_cpu_health(ok_metrics)
+    assert ok_health
+    assert "cpus: total: 10 used: 1 available: 9 percent_available: 90" in ok_output
+
+def test_bad_cpu_health():
     failure_metrics = {
         'master/cpus_total' : 10,
         'master/cpus_used' : 9,
     }
-    ok_output, ok_health = paasta_metastatus.assert_cpu_health(ok_metrics)
     failure_output, failure_health = paasta_metastatus.assert_cpu_health(failure_metrics)
-
-    assert ok_health
     assert not failure_health
     assert PaastaColors.red("CRITICAL: Less than 10% CPUs available. (Currently at 10.00%)") in failure_output
-    assert "cpus: total: 10 used: 1 available: 9 percent_available: 90" in ok_output
 
 def test_assert_memory_health():
     ok_metrics = {
         'master/mem_total' : 1024,
         'master/mem_used' : 512,
     }
+    ok_output, ok_health = paasta_metastatus.assert_memory_health(ok_metrics)
+    assert ok_health
+    assert "memory: total: 1.00 GB used: 0.50 GB available: 0.50 GB" in ok_output
+
+def test_failing_memory_health():
     failure_metrics = {
         'master/mem_total' : 1024,
         'master/mem_used' : 1000,
     }
-    ok_output, ok_health = paasta_metastatus.assert_memory_health(ok_metrics)
     failure_output, failure_health = paasta_metastatus.assert_memory_health(failure_metrics)
-
-    assert ok_health
     assert not failure_health
     assert PaastaColors.red("CRITICAL: Less than 10% memory available. (Currently at 2.34%)") in failure_output
-    assert "memory: total: 1.00 GB used: 0.50 GB available: 0.50 GB" in ok_output
 
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
 def test_missing_master_exception(mock_fetch_from_leader):
     mock_fetch_from_leader.side_effect = mesos_tools.MissingMasterException('Missing')
-    try:
+    with raises(mesos_tools.MissingMasterException) as exception_info:
         paasta_metastatus.get_mesos_status()
-    except mesos_tools.MissingMasterException as e:
-        assert 'Missing' in e.message
-    else:
-        assert False
+    assert 'Missing' in str(exception_info.value)
 
 @patch('paasta_tools.marathon_tools.get_marathon_client')
 def test_ok_marathon_apps(mock_get_marathon_client):
@@ -77,8 +79,7 @@ def test_ok_marathon_apps(mock_get_marathon_client):
 @patch('paasta_tools.marathon_tools.get_marathon_client')
 def test_no_marathon_apps(mock_get_marathon_client):
     client = mock_get_marathon_client.return_value
-    client.list_apps.return_value = [
-    ]
+    client.list_apps.return_value = []
     output, ok = paasta_metastatus.assert_marathon_apps(client)
     assert PaastaColors.red("CRITICAL: No marathon apps running") in output
     assert not ok
