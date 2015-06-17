@@ -10,7 +10,6 @@ from service_configuration_lib import read_services_configuration
 from paasta_tools.marathon_tools import get_cluster
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
 from paasta_tools.utils import _run
-from paasta_tools.utils import get_infrastructure_zookeeper_servers
 from paasta_tools.utils import PaastaColors
 
 
@@ -86,6 +85,7 @@ def failure(msg, link):
 
 
 class PaastaCheckMessages:
+
     """Collection of message printed out by 'paasta check'.
     Helpful as it avoids cumbersome maintenance of the unit tests."""
 
@@ -239,6 +239,7 @@ class PaastaCheckMessages:
 
 
 class NoSuchService(Exception):
+
     """Exception to be raised in the event that the service
     name can not be guessed."""
     GUESS_ERROR_MSG = "Could not determine service name.\n" \
