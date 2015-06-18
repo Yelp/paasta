@@ -1,3 +1,10 @@
+paasta-tools (0.11.17-yelp1) lucid; urgency=low
+
+  * 0.11.17 tagged with 'make release'
+    Commit: fix failing itests due to json formatting
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 18 Jun 2015 12:55:39 -0700
+
 paasta-tools (0.11.16-yelp1) lucid; urgency=low
 
   * 0.11.16 tagged with 'make release'
