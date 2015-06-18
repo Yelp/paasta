@@ -429,8 +429,8 @@ def main():
     normal_instance_count = complete_job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
 
-    client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
-                                                marathon_config['pass'])
+    client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
+                                                marathon_config.get_password())
     if command == 'start':
         start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     elif command == 'stop':

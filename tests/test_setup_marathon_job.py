@@ -89,9 +89,9 @@ class TestSetupMarathonJob:
             parse_args_patch.assert_called_once_with()
             get_main_conf_patch.assert_called_once_with()
             get_client_patch.assert_called_once_with(
-                self.fake_marathon_config['url'],
-                self.fake_marathon_config['user'],
-                self.fake_marathon_config['password'],
+                self.fake_marathon_config.get_url(),
+                self.fake_marathon_config.get_username(),
+                self.fake_marathon_config.get_password(),
             )
             read_service_conf_patch.assert_called_once_with(
                 self.fake_args.service_instance.split('.')[0],
@@ -157,9 +157,9 @@ class TestSetupMarathonJob:
             parse_args_patch.assert_called_once_with()
             get_main_conf_patch.assert_called_once_with()
             get_client_patch.assert_called_once_with(
-                self.fake_marathon_config['url'],
-                self.fake_marathon_config['user'],
-                self.fake_marathon_config['password'])
+                self.fake_marathon_config.get_url(),
+                self.fake_marathon_config.get_username(),
+                self.fake_marathon_config.get_password())
             read_service_conf_patch.assert_called_once_with(
                 self.fake_args.service_instance.split('.')[0],
                 self.fake_args.service_instance.split('.')[1],

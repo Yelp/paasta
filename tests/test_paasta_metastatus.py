@@ -3,6 +3,7 @@
 from mock import patch
 from paasta_tools import paasta_metastatus
 from paasta_tools.utils import PaastaColors
+from paasta_tools.marathon_tools import MarathonConfig
 
 
 def test_get_mesos_cpu_status_good():
@@ -79,11 +80,11 @@ def test_get_marathon_status(
     mock_load_marathon_config,
     mock_get_marathon_client,
 ):
-    mock_load_marathon_config.return_value = {
+    mock_load_marathon_config.return_value = MarathonConfig({
         'url': 'fakeurl',
         'user': 'fakeuser',
-        'pass': 'fakepass',
-    }
+        'password': 'fakepass',
+    }, '/fake_config/fake_marathon.json')
     client = mock_get_marathon_client.return_value
     client.list_apps.return_value = [
         "MarathonApp::1",

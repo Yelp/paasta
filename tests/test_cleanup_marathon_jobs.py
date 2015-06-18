@@ -58,9 +58,9 @@ class TestCleanupMarathonJobs:
             cleanup_marathon_jobs.cleanup_apps(soa_dir)
             config_patch.assert_called_once_with()
             get_marathon_services_for_cluster_patch.assert_called_once_with(soa_dir=soa_dir)
-            client_patch.assert_called_once_with(self.fake_marathon_config['url'],
-                                                 self.fake_marathon_config['user'],
-                                                 self.fake_marathon_config['password'])
+            client_patch.assert_called_once_with(self.fake_marathon_config.get_url(),
+                                                 self.fake_marathon_config.get_username(),
+                                                 self.fake_marathon_config.get_password())
             delete_patch.assert_called_once_with('not-here.oh.no', self.fake_marathon_client)
 
     def test_cleanup_apps_doesnt_delete_unknown_apps(self):

@@ -85,9 +85,9 @@ def get_marathon_status():
     output = []
     marathon_config = marathon_tools.load_marathon_config()
     client = marathon_tools.get_marathon_client(
-        marathon_config['url'],
-        marathon_config['user'],
-        marathon_config['pass']
+        marathon_config.get_url(),
+        marathon_config.get_username(),
+        marathon_config.get_password()
     )
     output.append("Marathon:")
     output.append("    %d apps" % len(client.list_apps()))

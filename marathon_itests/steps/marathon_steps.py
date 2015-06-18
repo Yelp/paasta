@@ -24,8 +24,8 @@ def working_marathon(context):
             'user': None,
             'password': None,
         }, '/some_fake_path_to_marathon.json')
-        context.client = marathon_tools.get_marathon_client(marathon_config['url'], marathon_config['user'],
-                                                            marathon_config['password'])
+        context.client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
+                                                            marathon_config.get_password())
         context.marathon_config = marathon_config
         system_paasta_config = utils.SystemPaastaConfig({
             'cluster': 'testcluster',
