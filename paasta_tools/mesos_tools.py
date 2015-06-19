@@ -21,7 +21,7 @@ class MesosSlaveConnectionError(Exception):
 
 
 def get_mesos_tasks_from_master(job_id):
-    return master.CURRENT.tasks(fltr=job_id)
+    return master.CURRENT.tasks(fltr=job_id, active_only=True)
 
 
 def get_running_mesos_tasks_for_service(job_id):
