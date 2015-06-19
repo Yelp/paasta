@@ -1,3 +1,10 @@
+paasta-tools (0.11.19-yelp1) lucid; urgency=low
+
+  * 0.11.19 tagged with 'make release'
+    Commit: Aggressively scan for services on asgard until one is found
+
+ -- Semir Patel <spatel@yelp.com>  Fri, 19 Jun 2015 14:45:10 -0700
+
 paasta-tools (0.11.18-yelp1) lucid; urgency=low
 
   * 0.11.18 tagged with 'make release'
