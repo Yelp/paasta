@@ -387,6 +387,17 @@ class SOACollector(diamond.collector.Collector):
     def collect(self):
         try:
             services = marathon_tools.get_services_running_here_for_nerve()
+
+            if is_ephemeral_aws_service_instance():
+                self.log.warn("Services found: %s" % services)
+                if len(services) == 0:
+                    # Disable the cache and force a scan every collection
+                    # interval until a service is found.
+                    service_configuration_lib.disable_yaml_cache()
+                    self.log.warn("SCL cache disabled because no services found!")
+                else:
+                    service_configuration_lib.enable_yaml_cache()
+
         except OSError as e:
             self.log.error(
                 "soa_collector is expected to be broken on asgard deployed "
