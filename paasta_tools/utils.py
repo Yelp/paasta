@@ -285,6 +285,12 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
     Reads Paasta configs in specified directory in lexographical order and merges duplicated keys (last file wins)
     """
     config = {}
+    if not os.path.isdir(path):
+        raise PaastaNotConfigured("Could not find system paasta configuration directory: %s" % path)
+
+    if not os.access(path, os.R_OK):
+        raise PaastaNotConfigured("Could not read from system paasta configuration directory: %s" % path)
+
     try:
         for config_file in get_files_in_dir(path):
             with open(os.path.join(path, config_file)) as f:

@@ -121,12 +121,44 @@ def test_load_system_paasta_config():
         assert json_patch.call_count == 1
 
 
+def test_load_system_paasta_config_file_non_existent_dir():
+    fake_path = '/var/dir_of_fake'
+    with contextlib.nested(
+        mock.patch('os.path.isdir', return_value=False),
+    ) as (
+        isdir_patch,
+    ):
+        with raises(utils.PaastaNotConfigured) as excinfo:
+            utils.load_system_paasta_config(fake_path)
+        expected = "Could not find system paasta configuration directory: %s" % fake_path
+        assert str(excinfo.value) == expected
+
+
+def test_load_system_paasta_config_file_non_readable_dir():
+    fake_path = '/var/dir_of_fake'
+    with contextlib.nested(
+        mock.patch('os.path.isdir', return_value=True),
+        mock.patch('os.access', return_value=False),
+    ) as (
+        isdir_patch,
+        access_patch,
+    ):
+        with raises(utils.PaastaNotConfigured) as excinfo:
+            utils.load_system_paasta_config(fake_path)
+        expected = "Could not read from system paasta configuration directory: %s" % fake_path
+        assert str(excinfo.value) == expected
+
+
 def test_load_system_paasta_config_file_dne():
     fake_path = '/var/dir_of_fake'
     with contextlib.nested(
+        mock.patch('os.path.isdir', return_value=True),
+        mock.patch('os.access', return_value=True),
         mock.patch('paasta_tools.utils.open', create=True, side_effect=IOError(2, 'a', 'b')),
         mock.patch('paasta_tools.utils.get_files_in_dir', autospec=True, return_value=[fake_path]),
     ) as (
+        isdir_patch,
+        access_patch,
         open_patch,
         get_files_in_dir_patch,
     ):
