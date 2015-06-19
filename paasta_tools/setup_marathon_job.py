@@ -106,14 +106,23 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
     )
     changed = False
 
+    def log_bounce_action(line):
+        _log(
+            service_name=service_name,
+            line=line,
+            component='deploy',
+            level='debug',
+            cluster=cluster,
+            instance=instance_name
+        )
+
     if (
         (actions['create_app'] and not new_app_running) or
         (len(actions['tasks_to_kill']) > 0) or
         actions['apps_to_kill']
     ):
         changed = True
-        _log(
-            service_name=service_name,
+        log_bounce_action(
             line='%s bounce started on %s. %d new tasks to bring up, %d to kill.' %
             (
                 bounce_method,
@@ -121,63 +130,39 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
                 config['instances'] - len(happy_new_tasks),
                 len(actions['tasks_to_kill'])
             ),
-            component='deploy',
-            level='event',
-            cluster=cluster,
-            instance=instance_name
         )
     if actions['create_app'] and not new_app_running:
-        _log(
-            service_name=service_name,
+        log_bounce_action(
             line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
-            component='deploy',
-            level='debug',
-            cluster=cluster,
-            instance=instance_name
         )
         bounce_lib.create_marathon_app(marathon_jobid, config, client)
     if len(actions['tasks_to_kill']) > 0:
         # we need the app_id. actions['tasks_to_kill'] set elements has that information, so we
         # extract a set element and use its app_id
         app_id = next(iter(actions['tasks_to_kill'])).app_id
-        _log(
-            service_name=service_name,
+        log_bounce_action(
             line='%s bounce killing %d old tasks with app_id %s' %
             (bounce_method, len(actions['tasks_to_kill']), app_id),
-            component='deploy',
-            level='debug',
-            cluster=cluster,
-            instance=instance_name
         )
         for task in actions['tasks_to_kill']:
             client.kill_task(task.app_id, task.id, scale=True)
     if actions['apps_to_kill']:
-        _log(
-            service_name=service_name,
+        log_bounce_action(
             line='%s bounce removing old unused apps with app_ids: %s' %
             (
                 bounce_method,
                 ', '.join(actions['apps_to_kill'])
             ),
-            component='deploy',
-            level='debug',
-            cluster=cluster,
-            instance=instance_name
         )
         bounce_lib.kill_old_ids(actions['apps_to_kill'], client)
     if changed:
-        _log(
-            service_name=service_name,
+        log_bounce_action(
             line='%s bounce on %s finished. Now running %s' %
             (
                 bounce_method,
                 serviceinstance,
                 marathon_jobid.split('.')[2]
             ),
-            component='deploy',
-            level='event',
-            cluster=cluster,
-            instance=instance_name
         )
 
 
