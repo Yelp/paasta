@@ -15,6 +15,9 @@ itest: test
 itest_%:
 	make -C yelp_package $@
 
+# Steps to release
+# 1. Bump version in yelp_package/Makefile
+# 2. `make release`
 release:
 	make -C yelp_package release
 
