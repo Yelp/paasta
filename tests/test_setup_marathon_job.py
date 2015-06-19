@@ -283,7 +283,7 @@ class TestSetupMarathonJob:
         fake_config = {'instances': 5}
         fake_new_app_running = False
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_tasks = []
+        fake_old_app_tasks = {}
         fake_service_name = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -329,7 +329,7 @@ class TestSetupMarathonJob:
         fake_config = {'instances': 5}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_tasks = []
+        fake_old_app_tasks = {}
         fake_service_name = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -375,7 +375,7 @@ class TestSetupMarathonJob:
         fake_config = {'instances': 5}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_tasks = []
+        fake_old_app_tasks = {}
         fake_service_name = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
@@ -421,7 +421,7 @@ class TestSetupMarathonJob:
         fake_config = {'instances': 5}
         fake_new_app_running = True
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
-        fake_old_app_tasks = []
+        fake_old_app_tasks = {}
         fake_service_name = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
