@@ -23,7 +23,7 @@ setup(
         'humanize >= 0.5.1',
         'isodate >= 0.5.0',
         'kazoo >= 2.0.0',
-        'marathon >= 0.6.13',
+        'marathon >= 0.6.15',
         'mesos.cli >= 0.1.3',
         'ordereddict >= 1.1',
         'pysensu-yelp >= 0.1.5',

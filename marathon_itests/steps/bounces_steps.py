@@ -123,3 +123,16 @@ def then_the_which_app_should_be_configured_to_have_num_instances(context, which
 @then(u'the {which} app should be gone')
 def then_the_which_app_should_be_gone(context, which):
     assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is False
+
+
+@when(u'we wait a bit for the {which} app to disappear')
+def and_we_wait_a_bit_for_the_app_to_disappear(context, which):
+    """ Marathon will not make the app disappear until after all the tasks have died
+    https://github.com/mesosphere/marathon/issues/1431 """
+    for _ in xrange(10):
+        if marathon_tools.is_app_id_running(which_id(context, which), context.client) is True:
+            time.sleep(0.5)
+        else:
+            return True
+    # It better not be running by now!
+    assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is False
