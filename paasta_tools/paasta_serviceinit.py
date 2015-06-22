@@ -15,8 +15,9 @@ from mesos.cli.exceptions import SlaveDoesNotExist
 import requests_cache
 
 from paasta_tools import marathon_tools
-from paasta_tools.mesos_tools import get_non_running_mesos_tasks_for_service
-from paasta_tools.mesos_tools import get_running_mesos_tasks_for_service
+from paasta_tools.mesos_tools import get_current_tasks
+from paasta_tools.mesos_tools import filter_running_tasks
+from paasta_tools.mesos_tools import filter_not_running_tasks
 from paasta_tools.monitoring.replication_utils import (
     get_replication_for_services,
     match_backends_and_tasks,
@@ -268,22 +269,6 @@ def status_smartstack_backends_verbose(service, instance, cluster, tasks):
     return "\n".join(output)
 
 
-def status_mesos_tasks(service, instance, normal_instance_count):
-    job_id = marathon_tools.compose_job_id(service, instance)
-    running_tasks = get_running_mesos_tasks_for_service(job_id)
-    count = len(running_tasks)
-    if count >= normal_instance_count:
-        status = PaastaColors.green("Healthy")
-        count = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
-    elif count == 0:
-        status = PaastaColors.red("Critical")
-        count = PaastaColors.red("(%d/%d)" % (count, normal_instance_count))
-    else:
-        status = PaastaColors.yellow("Warning")
-        count = PaastaColors.yellow("(%d/%d)" % (count, normal_instance_count))
-    running_string = PaastaColors.bold('TASK_RUNNING')
-    return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
-
 
 def get_cpu_usage(task):
     """Calculates a metric of used_cpu/allocated_cpu
@@ -381,12 +366,41 @@ def pretty_format_non_running_mesos_task(task):
     )
     return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
 
+def get_tasks_from_active_frameworks(service, instance):
+    job_id = marathon_tools.compose_job_id(service, instance)
+    return get_current_tasks(job_id)
+
+def get_running_tasks_from_active_frameworks(service, instance):
+    active_framework_tasks = get_tasks_from_active_frameworks(service, instance)
+    running_tasks = filter_running_tasks(active_framework_tasks)
+    return running_tasks
+
+def get_non_running_tasks_from_active_frameworks(service, instance):
+    active_framework_tasks = get_tasks_from_active_frameworks(service, instance)
+    not_running_tasks = filter_not_running_tasks(active_framework_tasks)
+    return not_running_tasks
+
+def status_mesos_tasks(service, instance, normal_instance_count):
+    job_id = marathon_tools.compose_job_id(service, instance)
+    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
+    count = len(running_and_active_tasks)
+    if count >= normal_instance_count:
+        status = PaastaColors.green("Healthy")
+        count = PaastaColors.green("(%d/%d)" % (count, normal_instance_count))
+    elif count == 0:
+        status = PaastaColors.red("Critical")
+        count = PaastaColors.red("(%d/%d)" % (count, normal_instance_count))
+    else:
+        status = PaastaColors.yellow("Warning")
+        count = PaastaColors.yellow("(%d/%d)" % (count, normal_instance_count))
+    running_string = PaastaColors.bold('TASK_RUNNING')
+    return "Mesos:      %s - %s tasks in the %s state." % (status, count, running_string)
+
 
 def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
+    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
     output = []
-    job_id = marathon_tools.compose_job_id(service, instance)
-    running_tasks = get_running_mesos_tasks_for_service(job_id)
     output.append(RUNNING_TASK_FORMAT.format((
         "  Running Tasks:  Mesos Task ID",
         "Host deployed to",
@@ -394,9 +408,9 @@ def status_mesos_tasks_verbose(service, instance):
         "CPU",
         "Deployed at what localtime"
     )))
-    for task in running_tasks:
+    for task in running_and_active_tasks:
         output.append(pretty_format_running_mesos_task(task))
-    non_running_tasks = list(reversed(get_non_running_mesos_tasks_for_service(job_id)[-10:]))
+    non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(service, instance)[-10:]))
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
         "  Non-Running Tasks:  Mesos Task ID",
         "Host deployed to",

@@ -33,20 +33,27 @@ from mesos.cli import master
 class MesosSlaveConnectionError(Exception):
     pass
 
-
-def get_mesos_tasks_from_master(job_id):
+def get_current_tasks(job_id):
+    """ Returns a list of all the tasks with a given job id.
+    Note: this will only return tasks from active frameworks.
+    :param job_id: the job id of the tasks.
+    :return tasks: a list of mesos.cli.Task.
+    """
     return master.CURRENT.tasks(fltr=job_id, active_only=True)
 
+def filter_running_tasks(tasks):
+    """ Filters those tasks where it's state is TASK_RUNNING.
+    :param tasks: a list of mesos.cli.Task
+    :return filtered: a list of running tasks
+    """
+    return [task for task in tasks if task['state'] == 'TASK_RUNNING']
 
-def get_running_mesos_tasks_for_service(job_id):
-    all_tasks = get_mesos_tasks_from_master(job_id)
-    return [task for task in all_tasks if task['state'] == 'TASK_RUNNING']
-
-
-def get_non_running_mesos_tasks_for_service(job_id):
-    all_tasks = get_mesos_tasks_from_master(job_id)
-    return [task for task in all_tasks if task['state'] != 'TASK_RUNNING']
-
+def filter_not_running_tasks(tasks):
+    """ Filters those tasks where it's state is *not* TASK_RUNNING.
+    :param tasks: a list of mesos.cli.Task
+    :return filtered: a list of tasks *not* running
+    """
+    return [task for task in tasks if task['state'] != 'TASK_RUNNING']
 
 def fetch_mesos_stats():
     """Queries the mesos stats api and returns a dictionary of the results"""

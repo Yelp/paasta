@@ -311,8 +311,8 @@ class TestPaastaServiceStatus:
 
     def test_status_mesos_tasks_verbose(self):
         with contextlib.nested(
-            mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_non_running_mesos_tasks_for_service'),
+            mock.patch('paasta_tools.paasta_serviceinit.get_running_tasks_from_active_frameworks'),
+            mock.patch('paasta_tools.paasta_serviceinit.get_non_running_tasks_from_active_frameworks'),
         ) as (
             get_running_mesos_tasks_for_service_patch,
             get_non_running_mesos_tasks_for_service_patch,
@@ -324,7 +324,7 @@ class TestPaastaServiceStatus:
             assert 'Non-Running Tasks' in actual
 
     def test_status_mesos_tasks_working(self):
-        with mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service') as mock_tasks:
+        with mock.patch('paasta_tools.paasta_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
             mock_tasks.return_value = [
                 {'id': 1}, {'id': 2}
             ]
@@ -333,7 +333,7 @@ class TestPaastaServiceStatus:
             assert 'Healthy' in actual
 
     def test_status_mesos_tasks_warning(self):
-        with mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service') as mock_tasks:
+        with mock.patch('paasta_tools.paasta_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
             mock_tasks.return_value = [
                 {'id': 1}, {'id': 2}
             ]
@@ -342,7 +342,7 @@ class TestPaastaServiceStatus:
             assert 'Warning' in actual
 
     def test_status_mesos_tasks_critical(self):
-        with mock.patch('paasta_tools.paasta_serviceinit.get_running_mesos_tasks_for_service') as mock_tasks:
+        with mock.patch('paasta_tools.paasta_serviceinit.get_tasks_from_active_frameworks') as mock_tasks:
             mock_tasks.return_value = []
             normal_count = 10
             actual = paasta_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
