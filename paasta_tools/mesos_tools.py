@@ -4,22 +4,25 @@ import requests
 import json
 import re
 
+
 from kazoo.client import KazooClient
 
 # mesos.cli.master reads its config file at *import* time, so we must have
 # this environment variable set and ready to go at that time so we can
 # read in the config for zookeeper, etc
-if not 'MESOS_CLI_CONFIG' in os.environ:
+if 'MESOS_CLI_CONFIG' not in os.environ:
     os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
+
 
 class MissingMasterException(Exception):
     pass
+
 
 def raise_cli_exception(msg):
     if msg.startswith("unable to connect to a master"):
         raise MissingMasterException(msg)
     else:
-        raise MesosCliException(msg)
+        raise Exception(msg)
 
 # monkey patch the log.fatal method to raise an exception rather than a sys.exit
 import mesos.cli.log
@@ -30,8 +33,10 @@ MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = '5051'
 from mesos.cli import master
 
+
 class MesosSlaveConnectionError(Exception):
     pass
+
 
 def get_current_tasks(job_id):
     """ Returns a list of all the tasks with a given job id.
@@ -41,6 +46,7 @@ def get_current_tasks(job_id):
     """
     return master.CURRENT.tasks(fltr=job_id, active_only=True)
 
+
 def filter_running_tasks(tasks):
     """ Filters those tasks where it's state is TASK_RUNNING.
     :param tasks: a list of mesos.cli.Task
@@ -48,12 +54,14 @@ def filter_running_tasks(tasks):
     """
     return [task for task in tasks if task['state'] == 'TASK_RUNNING']
 
+
 def filter_not_running_tasks(tasks):
     """ Filters those tasks where it's state is *not* TASK_RUNNING.
     :param tasks: a list of mesos.cli.Task
     :return filtered: a list of tasks *not* running
     """
     return [task for task in tasks if task['state'] != 'TASK_RUNNING']
+
 
 def fetch_mesos_stats():
     """Queries the mesos stats api and returns a dictionary of the results"""
