@@ -368,7 +368,7 @@ def pretty_format_non_running_mesos_task(task):
 
 def get_tasks_from_active_frameworks(service, instance):
     job_id = marathon_tools.compose_job_id(service, instance)
-    return get_current_tasks(job_id, True)
+    return get_current_tasks(job_id)
 
 def get_running_tasks_from_active_frameworks(service, instance):
     active_framework_tasks = get_tasks_from_active_frameworks(service, instance)

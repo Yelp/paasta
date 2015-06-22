@@ -19,14 +19,13 @@ MESOS_SLAVE_PORT = '5051'
 class MesosSlaveConnectionError(Exception):
     pass
 
-def get_current_tasks(job_id, active_only=True):
+def get_current_tasks(job_id):
     """ Returns a list of all the tasks with a given job id.
+    Note: this will only return tasks from active frameworks.
     :param job_id: the job id of the tasks.
-    :param active_only: a boolean to indicate if only active frameworks
-    should be considered.
     :return tasks: a list of mesos.cli.Task.
     """
-    return master.CURRENT.tasks(fltr=job_id, active_only=active_only)
+    return master.CURRENT.tasks(fltr=job_id, active_only=True)
 
 def filter_running_tasks(tasks):
     """ Filters those tasks where it's state is TASK_RUNNING.
