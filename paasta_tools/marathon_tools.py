@@ -16,12 +16,12 @@ from marathon import MarathonClient
 import json
 import service_configuration_lib
 
-from paasta_tools.utils import NoMarathonClusterFoundException
-from paasta_tools.utils import PaastaNotConfigured
+from paasta_tools.mesos_tools import fetch_local_slave_state
 from paasta_tools.utils import list_all_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoMarathonClusterFoundException
+from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
-from paasta_tools.mesos_tools import fetch_local_slave_state
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -649,6 +649,19 @@ def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
             if cluster_re_match is not None:
                 clusters.add(cluster_re_match.group(1))
     return sorted(clusters)
+
+
+def get_default_cluster_for_service(service_name):
+    cluster = None
+    try:
+        cluster = load_system_paasta_config().get_cluster()
+    except NoMarathonClusterFoundException:
+        clusters_deployed_to = get_clusters_deployed_to(service_name)
+        if len(clusters_deployed_to) > 0:
+            cluster = clusters_deployed_to[0]
+        else:
+            raise NoMarathonConfigurationForService("No cluster configuration found for service %s" % service_name)
+    return cluster
 
 
 def list_all_marathon_instances_for_service(service):

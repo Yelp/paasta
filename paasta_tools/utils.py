@@ -20,7 +20,6 @@ import docker
 import json
 import yaml
 
-
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (

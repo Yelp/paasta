@@ -299,6 +299,24 @@ class TestMarathonTools:
             actual = marathon_tools.get_clusters_deployed_to(service)
             assert expected == actual
 
+    def test_get_default_cluster_for_service(self):
+        fake_service_name = 'fake_service'
+        fake_clusters = ['fake_cluster-1', 'fake_cluster-2']
+        with (
+            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True, return_value=fake_clusters)
+        ) as mock_get_clusters_deployed_to:
+            assert marathon_tools.get_default_cluster_for_service(fake_service_name) == 'fake_cluster-1'
+            mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
+
+    def test_get_default_cluster_for_service_empty_deploy_config(self):
+        fake_service_name = 'fake_service'
+        with (
+            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True, return_value=[])
+        ) as mock_get_clusters_deployed_to:
+            with raises(marathon_tools.NoMarathonConfigurationForService):
+                marathon_tools.get_default_cluster_for_service(fake_service_name)
+            mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
+
     def test_list_all_marathon_instance_for_service(self):
         service = 'fake_service'
         clusters = ['fake_cluster']

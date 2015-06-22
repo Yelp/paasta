@@ -15,12 +15,14 @@ import requests
 from urlparse import urlparse
 
 from paasta_tools.marathon_tools import CONTAINER_PORT
-from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.marathon_tools import get_default_cluster_for_service
 from paasta_tools.marathon_tools import get_healthcheck
+from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.marathon_tools import NoMarathonConfigurationForService
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
-from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import get_username
@@ -160,7 +162,7 @@ def add_subparser(subparsers):
     ).completer = lazy_choices_completer(list_services)
     list_parser.add_argument(
         '-c', '--cluster',
-        help='The name of the cluster you wish to simulate',
+        help='The name of the cluster you wish to simulate. If omitted, attempts to guess a cluster to simulate',
     ).completer = lazy_choices_completer(list_clusters)
     list_parser.add_argument(
         '-C', '--cmd',
@@ -364,7 +366,14 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
     if args.cluster:
         cluster = args.cluster
     else:
-        cluster = system_paasta_config.get_cluster()
+        try:
+            cluster = get_default_cluster_for_service(service)
+        except NoMarathonConfigurationForService:
+            sys.stdout.write(PaastaColors.red(
+                'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
+            sys.exit(2)
+        sys.stdout.write(PaastaColors.yellow(
+            'Using cluster configuration for %s. To override, use the --cluster option.\n\n' % cluster))
 
     service_manifest = load_marathon_service_config(service, args.instance, cluster)
 
