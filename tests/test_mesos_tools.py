@@ -4,23 +4,26 @@ from pytest import raises
 
 import paasta_tools.mesos_tools as mesos_tools
 
+
 def test_filter_running_tasks():
     tasks = [
-            {'id': 1, 'state': 'TASK_RUNNING', 'framework': { 'active': True}},
-            {'id': 2, 'state': 'TASK_FAILED', 'framework': { 'active': True}},
+        {'id': 1, 'state': 'TASK_RUNNING', 'framework': {'active': True}},
+        {'id': 2, 'state': 'TASK_FAILED', 'framework': {'active': True}},
     ]
     running = mesos_tools.filter_running_tasks(tasks)
     assert len(running) == 1
     assert running[0]['id'] == 1
 
+
 def test_filter_not_running_tasks():
     tasks = [
-        { 'id': 1, 'state': 'TASK_RUNNING' },
-        { 'id': 2, 'state': 'TASK_FAILED' },
+        {'id': 1, 'state': 'TASK_RUNNING'},
+        {'id': 2, 'state': 'TASK_FAILED'},
     ]
     not_running = mesos_tools.filter_not_running_tasks(tasks)
     assert len(not_running) == 1
     assert not_running[0]['id'] == 2
+
 
 def test_get_zookeeper_config():
     zk_hosts = '1.1.1.1:1111,2.2.2.2:2222,3.3.3.3:3333'

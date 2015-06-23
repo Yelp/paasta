@@ -365,16 +365,49 @@ def is_ephemeral_aws_service_instance():
     return is_aws() and os.path.exists('/nail/etc/service_name')
 
 
+def read_file(filename):
+    with open(filename) as f:
+        return f.read().strip()
+
+
+def get_asgard_service(log):
+    """Return tuple (service_name, port) or None if asgard service info
+    not found.
+    """
+    try:
+        if not os.path.exists('/nail/etc/service_name'):
+            log.warn('asgard: /nail/etc/service_name not found')
+            return None
+
+        service_name = read_file('/nail/etc/service_name')
+        if service_name in (None, ''):
+            log.warn('asgard: Contents of /nail/etc/service_name empty')
+            return None
+
+        port_file = '/nail/etc/services/%s/port' % service_name
+        if not os.path.exists(port_file):
+            log.warn('asgard: %s not found' % port_file)
+            return None
+
+        port = read_file(port_file)
+        if port in (None, ''):
+            log.warn('asgard: Contents of %s empty' % port_file)
+            return None
+
+        return service_name, {'port': port}
+    except Exception as e:
+        log.error('asgard: Error getting asgard service info: %s' % str(e),
+                  exc_info=True)
+        return None
+
+
 class SOACollector(diamond.collector.Collector):
 
     def __init__(self, *args, **kwargs):
         super(SOACollector, self).__init__(*args, **kwargs)
-        # We don't want to cache YAML beacuse diamond is a long running process.
+        # We don't want to cache YAML because diamond is a long running process.
         # In doing so, we'd never pick up changes to the yaml files on disk.
-        # The exception being asgard deployed services which only ever have a
-        # single service on the host.
-        if not is_ephemeral_aws_service_instance():
-            service_configuration_lib.disable_yaml_cache()
+        service_configuration_lib.disable_yaml_cache()
 
     def get_default_config(self):
         """
@@ -385,24 +418,14 @@ class SOACollector(diamond.collector.Collector):
         return config
 
     def collect(self):
-        try:
+        if is_ephemeral_aws_service_instance():
+            service = get_asgard_service(self.log)
+            if service is None:
+                return
+            services = [service]
+            self.log.warn('Asgard service: %s' % services)
+        else:
             services = marathon_tools.get_services_running_here_for_nerve()
-
-            if is_ephemeral_aws_service_instance():
-                self.log.warn("Services found: %s" % services)
-                if len(services) == 0:
-                    # Disable the cache and force a scan every collection
-                    # interval until a service is found.
-                    service_configuration_lib.disable_yaml_cache()
-                    self.log.warn("SCL cache disabled because no services found!")
-                else:
-                    service_configuration_lib.enable_yaml_cache()
-
-        except OSError as e:
-            self.log.error(
-                "soa_collector is expected to be broken on asgard deployed "
-                "services. See AD-2307. Error: %s" % str(e))
-            return
 
         for service_name, service_data in services:
             port = service_data.get('port')

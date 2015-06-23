@@ -1,3 +1,10 @@
+paasta-tools (0.11.21-yelp1) lucid; urgency=low
+
+  * 0.11.21 tagged with 'make release'
+    Commit: Merge branch master into simplify_asgard_service_discovery
+
+ -- Semir Patel <spatel@yelp.com>  Mon, 22 Jun 2015 16:56:26 -0700
+
 paasta-tools (0.11.20-yelp1) lucid; urgency=low
 
   * 0.11.20 tagged with 'make release'

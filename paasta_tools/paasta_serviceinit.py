@@ -269,7 +269,6 @@ def status_smartstack_backends_verbose(service, instance, cluster, tasks):
     return "\n".join(output)
 
 
-
 def get_cpu_usage(task):
     """Calculates a metric of used_cpu/allocated_cpu
     To do this, we take the total number of cpu-seconds the task has consumed,
@@ -366,22 +365,25 @@ def pretty_format_non_running_mesos_task(task):
     )
     return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
 
+
 def get_tasks_from_active_frameworks(service, instance):
     job_id = marathon_tools.compose_job_id(service, instance)
     return get_current_tasks(job_id)
+
 
 def get_running_tasks_from_active_frameworks(service, instance):
     active_framework_tasks = get_tasks_from_active_frameworks(service, instance)
     running_tasks = filter_running_tasks(active_framework_tasks)
     return running_tasks
 
+
 def get_non_running_tasks_from_active_frameworks(service, instance):
     active_framework_tasks = get_tasks_from_active_frameworks(service, instance)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
     return not_running_tasks
 
+
 def status_mesos_tasks(service, instance, normal_instance_count):
-    job_id = marathon_tools.compose_job_id(service, instance)
     running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
     count = len(running_and_active_tasks)
     if count >= normal_instance_count:
