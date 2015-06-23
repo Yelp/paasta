@@ -101,11 +101,15 @@ def test_load_system_paasta_config():
     expected = utils.SystemPaastaConfig(json_load_return_value, '/some/fake/dir')
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
+        mock.patch('os.path.isdir', return_value=True),
+        mock.patch('os.access', return_value=True),
         mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
         mock.patch('paasta_tools.utils.get_files_in_dir', autospec=True,
                    return_value=['/some/fake/dir/some_file.json']),
         mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=json_load_return_value)
     ) as (
+        os_is_dir_patch,
+        os_access_patch,
         open_file_patch,
         get_files_in_dir_patch,
         json_patch,
@@ -173,11 +177,15 @@ def test_load_system_paasta_config_merge_lexographically():
     expected = utils.SystemPaastaConfig({'foo': 'overriding value', 'fake': 'fake_data'}, '/some/fake/dir')
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
+        mock.patch('os.path.isdir', return_value=True),
+        mock.patch('os.access', return_value=True),
         mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
         mock.patch('paasta_tools.utils.get_files_in_dir', autospec=True,
                    return_value=['a', 'b']),
         mock.patch('paasta_tools.utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b])
     ) as (
+        os_is_dir_patch,
+        os_access_patch,
         open_file_patch,
         get_files_in_dir_patch,
         json_patch,
