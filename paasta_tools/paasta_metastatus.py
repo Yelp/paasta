@@ -184,7 +184,7 @@ def main():
     print("Mesos Status:")
     print(("\n").join(map(lambda x: "  %s" % x, mesos_outputs)))
     print("Marathon Status:")
-    print(("\n").join(map(lambda x: "  %s" % x, mesos_outputs)))
+    print(("\n").join(map(lambda x: "  %s" % x, marathon_outputs)))
 
     if False in mesos_oks or False in marathon_oks:
         sys.exit(2)
