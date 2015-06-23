@@ -10,8 +10,8 @@ from paasta_tools import marathon_tools
 from paasta_tools import utils
 
 
-@given('a working marathon instance')
-def working_marathon(context):
+@given('a working paasta cluster')
+def working_paasta_cluster(context):
     """Adds a working marathon client as context.client for the purposes of
     interacting with it in the test."""
     if not hasattr(context, 'client'):

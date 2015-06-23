@@ -1,7 +1,7 @@
 Feature: Bounces work as expected
 
   Scenario: The upthendown bounce works
-    Given a working marathon instance
+    Given a working paasta cluster
       And a new app to be deployed
       And an old app to be destroyed
 
@@ -21,7 +21,7 @@ Feature: Bounces work as expected
      Then the old app should be gone
 
   Scenario: The brutal bounce works
-    Given a working marathon instance
+    Given a working paasta cluster
       And a new app to be deployed
       And an old app to be destroyed
      Then the old app should be running
@@ -33,7 +33,7 @@ Feature: Bounces work as expected
      Then the old app should be gone
 
   Scenario: The crossover bounce works
-    Given a working marathon instance
+    Given a working paasta cluster
       And a new app to be deployed
       And an old app to be destroyed
 
@@ -58,7 +58,7 @@ Feature: Bounces work as expected
      Then the old app should be gone
 
   Scenario: The downthenup bounce works
-    Given a working marathon instance
+    Given a working paasta cluster
       And a new app to be deployed
       And an old app to be destroyed
      Then the old app should be running
