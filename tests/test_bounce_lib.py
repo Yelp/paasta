@@ -208,10 +208,10 @@ class TestBrutalBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_tasks={},
+            old_app_live_tasks={},
         ) == {
             "create_app": True,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -227,10 +227,10 @@ class TestBrutalBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_tasks={},
+            old_app_live_tasks={},
         ) == {
             "create_app": False,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -240,7 +240,7 @@ class TestBrutalBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in xrange(5)]
-        old_app_tasks = {
+        old_app_live_tasks = {
             'app1': set(mock.Mock() for _ in xrange(3)),
             'app2': set(mock.Mock() for _ in xrange(2)),
         }
@@ -249,10 +249,10 @@ class TestBrutalBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": False,
-            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "tasks_to_drain": old_app_live_tasks['app1'] | old_app_live_tasks['app2'],
             "apps_to_kill": set(['app1', 'app2']),
         }
 
@@ -262,7 +262,7 @@ class TestBrutalBounce:
         the new one."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        old_app_tasks = {
+        old_app_live_tasks = {
             'app1': set(mock.Mock() for _ in xrange(3)),
             'app2': set(mock.Mock() for _ in xrange(2)),
         }
@@ -271,10 +271,10 @@ class TestBrutalBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=[],
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": True,
-            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "tasks_to_drain": old_app_live_tasks['app1'] | old_app_live_tasks['app2'],
             "apps_to_kill": set(['app1', 'app2']),
         }
 
@@ -291,10 +291,10 @@ class TestUpthendownBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_tasks={},
+            old_app_live_tasks={},
         ) == {
             "create_app": True,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -304,7 +304,7 @@ class TestUpthendownBounce:
         not stop the old one yet."""
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
-        old_app_tasks = {
+        old_app_live_tasks = {
             'app1': set(mock.Mock() for _ in xrange(3)),
             'app2': set(mock.Mock() for _ in xrange(2)),
         }
@@ -313,10 +313,10 @@ class TestUpthendownBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=[],
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": True,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -327,7 +327,7 @@ class TestUpthendownBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in xrange(3)]
-        old_app_tasks = {
+        old_app_live_tasks = {
             'app1': set(mock.Mock() for _ in xrange(3)),
             'app2': set(mock.Mock() for _ in xrange(2)),
         }
@@ -336,10 +336,10 @@ class TestUpthendownBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": False,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -350,7 +350,7 @@ class TestUpthendownBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in xrange(5)]
-        old_app_tasks = {
+        old_app_live_tasks = {
             'app1': set(mock.Mock() for _ in xrange(3)),
             'app2': set(mock.Mock() for _ in xrange(2)),
         }
@@ -359,10 +359,10 @@ class TestUpthendownBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": False,
-            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "tasks_to_drain": old_app_live_tasks['app1'] | old_app_live_tasks['app2'],
             "apps_to_kill": set(['app1', 'app2']),
         }
 
@@ -373,16 +373,16 @@ class TestUpthendownBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in xrange(5)]
-        old_app_tasks = {}
+        old_app_live_tasks = {}
 
         assert bounce_lib.upthendown_bounce(
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": False,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -394,16 +394,16 @@ class TestCrossoverBounce:
         create a marathon app."""
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
-        old_app_tasks = {}
+        old_app_live_tasks = {}
 
         assert bounce_lib.crossover_bounce(
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": True,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -413,7 +413,7 @@ class TestCrossoverBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
-        old_app_tasks = {
+        old_app_live_tasks = {
             'app1': set(mock.Mock() for _ in xrange(3)),
             'app2': set(mock.Mock() for _ in xrange(2)),
         }
@@ -422,10 +422,10 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": True,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -435,7 +435,7 @@ class TestCrossoverBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in xrange(3)]
-        old_app_tasks = {
+        old_app_live_tasks = {
             'app1': set(mock.Mock() for _ in xrange(3)),
             'app2': set(mock.Mock() for _ in xrange(2)),
         }
@@ -444,11 +444,11 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         )
 
         assert actual['create_app'] is False
-        assert len(actual['tasks_to_kill']) == 3
+        assert len(actual['tasks_to_drain']) == 3
         assert actual['apps_to_kill'] == set()
 
     def test_crossover_bounce_cleanup(self):
@@ -458,7 +458,7 @@ class TestCrossoverBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in xrange(5)]
-        old_app_tasks = {
+        old_app_live_tasks = {
             'app1': set(),
             'app2': set(),
         }
@@ -467,10 +467,10 @@ class TestCrossoverBounce:
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": False,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(['app1', 'app2']),
         }
 
@@ -481,16 +481,16 @@ class TestCrossoverBounce:
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in xrange(5)]
-        old_app_tasks = {}
+        old_app_live_tasks = {}
 
         assert bounce_lib.crossover_bounce(
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": False,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -502,16 +502,16 @@ class TestDownThenUpBounce(object):
         create a marathon app."""
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
-        old_app_tasks = {}
+        old_app_live_tasks = {}
 
         assert bounce_lib.downthenup_bounce(
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": True,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -520,7 +520,7 @@ class TestDownThenUpBounce(object):
         yet."""
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = []
-        old_app_tasks = {
+        old_app_live_tasks = {
             'app1': set(mock.Mock() for _ in xrange(3)),
             'app2': set(mock.Mock() for _ in xrange(2)),
         }
@@ -529,10 +529,10 @@ class TestDownThenUpBounce(object):
             new_config=new_config,
             new_app_running=False,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": False,
-            "tasks_to_kill": old_app_tasks['app1'] | old_app_tasks['app2'],
+            "tasks_to_drain": old_app_live_tasks['app1'] | old_app_live_tasks['app2'],
             "apps_to_kill": set(['app1', 'app2']),
         }
 
@@ -542,16 +542,16 @@ class TestDownThenUpBounce(object):
 
         new_config = {'id': 'foo.bar.12345', 'instances': 5}
         happy_tasks = [mock.Mock() for _ in xrange(5)]
-        old_app_tasks = {}
+        old_app_live_tasks = {}
 
         assert bounce_lib.downthenup_bounce(
             new_config=new_config,
             new_app_running=True,
             happy_new_tasks=happy_tasks,
-            old_app_tasks=old_app_tasks,
+            old_app_live_tasks=old_app_live_tasks,
         ) == {
             "create_app": False,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 

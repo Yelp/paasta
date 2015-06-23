@@ -243,7 +243,7 @@ def brutal_bounce(
     new_config,
     new_app_running,
     happy_new_tasks,
-    old_app_tasks,
+    old_app_live_tasks,
 ):
     """Pays no regard to safety. Starts the new app if necessary, and kills any
     old ones. Mostly meant as an example of the simplest working bounce method,
@@ -252,13 +252,15 @@ def brutal_bounce(
     :param new_config: The configuration dictionary representing the desired new app.
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
-    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
-    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
+    :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
+                               that are being drained should not be included in this dictionary.
+    :return: A dictionary with keys create_app, tasks_to_drain, apps_to_kill, representing the desired bounce actions.
     """
     return {
         "create_app": not new_app_running,
-        "tasks_to_kill": set.union(set(), *old_app_tasks.values()),  # set.union doesn't like getting zero arguments
-        "apps_to_kill": set(old_app_tasks.keys()),
+        # set.union doesn't like getting zero arguments
+        "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
+        "apps_to_kill": set(old_app_live_tasks.keys()),
     }
 
 
@@ -267,27 +269,28 @@ def upthendown_bounce(
     new_config,
     new_app_running,
     happy_new_tasks,
-    old_app_tasks,
+    old_app_live_tasks,
 ):
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
     :param new_config: The configuration dictionary representing the desired new app.
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
-    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
-    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
+    :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
+                               that are being drained should not be included in this dictionary.
+    :return: A dictionary with keys create_app, tasks_to_drain, apps_to_kill, representing the desired bounce actions.
     """
     if new_app_running and len(happy_new_tasks) == new_config['instances']:
         return {
             "create_app": False,
             # set.union doesn't like getting zero arguments
-            "tasks_to_kill": set.union(set(), *old_app_tasks.values()),
-            "apps_to_kill": set(old_app_tasks.keys()),
+            "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
+            "apps_to_kill": set(old_app_live_tasks.keys()),
         }
     else:
         return {
             "create_app": not new_app_running,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
 
@@ -297,22 +300,23 @@ def crossover_bounce(
     new_config,
     new_app_running,
     happy_new_tasks,
-    old_app_tasks,
+    old_app_live_tasks,
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
     :param new_config: The configuration dictionary representing the desired new app.
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
-    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
-    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
+    :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
+                               that are being drained should not be included in this dictionary.
+    :return: A dictionary with keys create_app, tasks_to_drain, apps_to_kill, representing the desired bounce actions.
 
     """
 
     if not new_app_running:
         return {
             "create_app": True,
-            "tasks_to_kill": set(),
+            "tasks_to_drain": set(),
             "apps_to_kill": set(),
         }
     else:
@@ -320,14 +324,14 @@ def crossover_bounce(
         needed_count = max(new_config['instances'] - happy_count, 0)
 
         old_tasks = []
-        for app, tasks in old_app_tasks.items():
+        for app, tasks in old_app_live_tasks.items():
             for task in tasks:
                 old_tasks.append(task)
 
         return {
             "create_app": False,
-            "tasks_to_kill": set(set(old_tasks[needed_count:])),
-            "apps_to_kill": set(app_id for (app_id, tasks) in old_app_tasks.items() if len(tasks) == 0),
+            "tasks_to_drain": set(set(old_tasks[needed_count:])),
+            "apps_to_kill": set(app_id for (app_id, tasks) in old_app_live_tasks.items() if len(tasks) == 0),
         }
 
 
@@ -336,20 +340,22 @@ def downthenup_bounce(
     new_config,
     new_app_running,
     happy_new_tasks,
-    old_app_tasks,
+    old_app_live_tasks,
 ):
     """Stops any old apps and waits for them to die before starting a new one.
 
     :param new_config: The configuration dictionary representing the desired new app.
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
-    :param old_app_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service.
-    :return: A dictionary with keys create_app, tasks_to_kill, apps_to_kill, representing the desired bounce actions.
+    :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
+                               that are being drained should not be included in this dictionary.
+    :return: A dictionary with keys create_app, tasks_to_drain, apps_to_kill, representing the desired bounce actions.
     """
     return {
-        "create_app": not old_app_tasks and not new_app_running,
-        "tasks_to_kill": set.union(set(), *old_app_tasks.values()),  # set.union doesn't like getting zero arguments,
-        "apps_to_kill": set(old_app_tasks.keys()),
+        "create_app": not old_app_live_tasks and not new_app_running,
+        # set.union doesn't like getting zero arguments,
+        "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
+        "apps_to_kill": set(old_app_live_tasks.keys()),
     }
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

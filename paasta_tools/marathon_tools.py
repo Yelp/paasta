@@ -247,6 +247,20 @@ class MarathonServiceConfig(object):
         :returns: The bounce method specified in the config, or 'upthendown' if not specified"""
         return self.config_dict.get('bounce_method', 'upthendown')
 
+    def get_drain_method(self):
+        """Get the drain method specified in the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The drain method specified in the config, or 'noop' if not specified"""
+        return self.config_dict.get('drain_method', 'noop')
+
+    def get_drain_policy(self):
+        """Get the drain policy specified in the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The drain policy specified in the config, or 'brutal' if not specified"""
+        return self.config_dict.get('drain_policy', 'brutal')
+
     def get_constraints(self, service_namespace_config):
         """Gets the constraints specified in the service's marathon configuration.
 

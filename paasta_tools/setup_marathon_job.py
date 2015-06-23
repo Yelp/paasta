@@ -35,6 +35,7 @@ import sys
 import traceback
 
 from paasta_tools import bounce_lib
+from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
@@ -96,13 +97,29 @@ def get_main_marathon_config():
     return marathon_config
 
 
-def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tasks, service_name,
-              bounce_method, serviceinstance, cluster, instance_name, marathon_jobid, client):
+def do_bounce(
+    bounce_func,
+    drain_method,
+    drain_policy,
+    config,
+    new_app_running,
+    happy_new_tasks,
+    old_app_live_tasks,
+    old_app_draining_tasks,
+    service_name,
+    bounce_method,
+    serviceinstance,
+    cluster,
+    instance_name,
+    marathon_jobid,
+    client,
+):
+    draining_tasks = set()
     actions = bounce_func(
         new_config=config,
         new_app_running=new_app_running,
         happy_new_tasks=happy_new_tasks,
-        old_app_tasks=old_app_tasks,
+        old_app_live_tasks=old_app_live_tasks,
     )
     changed = False
 
@@ -118,17 +135,17 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
 
     if (
         (actions['create_app'] and not new_app_running) or
-        (len(actions['tasks_to_kill']) > 0) or
+        (len(actions['tasks_to_drain']) > 0) or
         actions['apps_to_kill']
     ):
         changed = True
         log_bounce_action(
-            line='%s bounce started on %s. %d new tasks to bring up, %d to kill.' %
+            line='%s bounce started on %s. %d new tasks to bring up, %d to drain.' %
             (
                 bounce_method,
                 serviceinstance,
                 config['instances'] - len(happy_new_tasks),
-                len(actions['tasks_to_kill'])
+                len(actions['tasks_to_drain'])
             ),
         )
     if actions['create_app'] and not new_app_running:
@@ -136,16 +153,17 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
             line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
         )
         bounce_lib.create_marathon_app(marathon_jobid, config, client)
-    if len(actions['tasks_to_kill']) > 0:
-        # we need the app_id. actions['tasks_to_kill'] set elements has that information, so we
+    if len(actions['tasks_to_drain']) > 0:
+        # we need the app_id. actions['tasks_to_drain'] set elements has that information, so we
         # extract a set element and use its app_id
-        app_id = next(iter(actions['tasks_to_kill'])).app_id
+        app_id = next(iter(actions['tasks_to_drain'])).app_id
         log_bounce_action(
-            line='%s bounce killing %d old tasks with app_id %s' %
-            (bounce_method, len(actions['tasks_to_kill']), app_id),
+            line='%s bounce draining %d old tasks with app_id %s' %
+            (bounce_method, len(actions['tasks_to_drain']), app_id),
         )
-        for task in actions['tasks_to_kill']:
-            client.kill_task(task.app_id, task.id, scale=True)
+        for task in actions['tasks_to_drain']:
+            draining_tasks.add(task)
+            drain_method.down(task)
     if actions['apps_to_kill']:
         log_bounce_action(
             line='%s bounce removing old unused apps with app_ids: %s' %
@@ -165,9 +183,46 @@ def do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tas
             ),
         )
 
+    for app, tasks in old_app_draining_tasks.items():
+        for task in tasks:
+            draining_tasks.add(task)
 
-def deploy_service(service_name, instance_name, marathon_jobid, config, client,
-                   bounce_method, nerve_ns, bounce_health_params):
+    for task in draining_tasks:
+        if drain_policy.safe_to_kill(task):
+            client.kill_task(task.app_id, task.id, scale=True)
+
+
+def get_old_live_draining_tasks(other_apps, drain_method):
+    old_app_live_tasks = {}
+    old_app_draining_tasks = {}
+
+    for app in other_apps:
+        tasks_by_state = {
+            'live': set(),
+            'draining': set(),
+        }
+        for task in app.tasks:
+            state = 'draining' if drain_method.is_downed(task) else 'live'
+            tasks_by_state[state].add(task)
+
+        old_app_live_tasks[app.id] = tasks_by_state['live']
+        old_app_draining_tasks[app.id] = tasks_by_state['draining']
+
+    return old_app_live_tasks, old_app_draining_tasks
+
+
+def deploy_service(
+    service_name,
+    instance_name,
+    marathon_jobid,
+    config,
+    client,
+    bounce_method,
+    drain_method_name,
+    drain_policy_name,
+    nerve_ns,
+    bounce_health_params,
+):
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
 
@@ -177,13 +232,24 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
     :param config: The complete configuration dict to send to marathon
     :param client: A MarathonClient object
     :param bounce_method: The bounce method to use, if needed
+    :param drain_method_name: The name of the traffic draining method to use.
+    :param drain_policy_name: The name of the traffic draining policy to use.
     :param nerve_ns: The nerve namespace to look in.
     :param bounce_health_params: A dictionary of options for bounce_lib.get_happy_tasks.
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
+
+    def __log(errormsg, level='event'):
+        return _log(
+            service_name=service_name,
+            line=errormsg,
+            component='deploy',
+            level='event',
+            cluster=cluster,
+            instance=instance_name
+        )
+
     short_id = marathon_tools.remove_tag_from_job_id(marathon_jobid)
 
-    # would do embed_failures but we support versions of marathon where https://github.com/mesosphere/marathon/pull/1105
-    # isn't fixed.
     cluster = marathon_tools.get_cluster()
     app_list = client.list_apps(embed_failures=True)
     existing_apps = [app for app in app_list if short_id in app.id]
@@ -201,7 +267,23 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
         new_app_running = False
         happy_new_tasks = []
 
-    old_app_tasks = dict([(a.id, set(a.tasks)) for a in other_apps])
+    try:
+        drain_method = drain_lib.DrainMethod.get_drain_method(drain_method_name)
+    except KeyError:
+        errormsg = 'ERROR: drain_method not recognized: %s. Must be one of (%s)' % \
+            (drain_method, ', '.join(drain_lib.list_drain_methods()))
+        __log(errormsg)
+        return (1, errormsg)
+
+    old_app_live_tasks, old_app_draining_tasks = get_old_live_draining_tasks(other_apps, drain_method)
+
+    try:
+        drain_policy = drain_lib.DrainPolicy.get_drain_policy(drain_policy_name)
+    except KeyError:
+        errormsg = 'ERROR: drain_policy not recognized: %s. Must be one of (%s)' % \
+            (drain_policy, ', '.join(drain_lib.list_drain_methods()))
+        __log(errormsg)
+        return (1, errormsg)
 
     # log all uncaught exceptions and raise them again
     try:
@@ -210,20 +292,28 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
         except KeyError:
             errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
                 (bounce_method, ', '.join(bounce_lib.list_bounce_methods()))
-            _log(
-                service_name=service_name,
-                line=errormsg,
-                component='deploy',
-                level='event',
-                cluster=cluster,
-                instance=instance_name
-            )
+            __log(errormsg)
             return (1, errormsg)
 
         try:
             with bounce_lib.bounce_lock_zookeeper(short_id):
-                do_bounce(bounce_func, config, new_app_running, happy_new_tasks, old_app_tasks, service_name,
-                          bounce_method, serviceinstance, cluster, instance_name, marathon_jobid, client)
+                do_bounce(
+                    bounce_func=bounce_func,
+                    drain_method=drain_method,
+                    drain_policy=drain_policy,
+                    config=config,
+                    new_app_running=new_app_running,
+                    happy_new_tasks=happy_new_tasks,
+                    old_app_live_tasks=old_app_live_tasks,
+                    old_app_draining_tasks=old_app_draining_tasks,
+                    service_name=service_name,
+                    bounce_method=bounce_method,
+                    serviceinstance=serviceinstance,
+                    cluster=cluster,
+                    instance_name=instance_name,
+                    marathon_jobid=marathon_jobid,
+                    client=client,
+                )
 
         except bounce_lib.LockHeldException:
             log.error("Instance %s already being bounced. Exiting", short_id)
@@ -232,14 +322,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
         loglines = ['Exception raised during deploy of service %s:' % service_name]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
-            _log(
-                service_name=service_name,
-                line=logline,
-                component='deploy',
-                level='debug',
-                cluster=cluster,
-                instance=instance_name
-            )
+            __log(logline, level='debug')
         raise
 
     return (0, 'Service deployed.')
@@ -275,14 +358,16 @@ def setup_service(service_name, instance_name, client, marathon_config,
 
     log.info("Desired Marathon instance id: %s", full_id)
     return deploy_service(
-        service_name,
-        instance_name,
-        full_id,
-        complete_config,
-        client,
-        service_marathon_config.get_bounce_method(),
-        service_marathon_config.get_nerve_namespace(),
-        service_marathon_config.get_bounce_health_params(),
+        service_name=service_name,
+        instance_name=instance_name,
+        marathon_jobid=full_id,
+        config=complete_config,
+        client=client,
+        bounce_method=service_marathon_config.get_bounce_method(),
+        drain_method_name=service_marathon_config.get_drain_method(),
+        drain_policy_name=service_marathon_config.get_drain_policy(),
+        nerve_ns=service_marathon_config.get_nerve_namespace(),
+        bounce_health_params=service_marathon_config.get_bounce_health_params(),
     )
 
 
