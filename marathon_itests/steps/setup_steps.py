@@ -5,11 +5,17 @@ from paasta_tools import marathon_tools
 from paasta_tools import utils
 
 
+def _get_marathon_connection_string():
+    return 'http://%s' % get_service_connection_string('marathon')
+
+
+def _get_zookeeper_connection_string(chroot):
+    return 'zk://%s/%s' % (get_service_connection_string('zookeeper'), chroot)
+
+
 def setup_marathon_client():
-    marathon_connection_string = "http://%s" % \
-        get_service_connection_string('marathon')
-    zk_connection_string = "zk://%s/mesos-testcluster" % \
-        get_service_connection_string('zookeeper')
+    marathon_connection_string = _get_marathon_connection_string()
+    zk_connection_string  = _get_zookeeper_connection_string('mesos-testcluster')
     marathon_config = marathon_tools.MarathonConfig({
         'url': marathon_connection_string,
         'user': None,
