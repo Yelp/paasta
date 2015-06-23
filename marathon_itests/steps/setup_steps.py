@@ -1,4 +1,7 @@
+from tempfile import NamedTemporaryFile
+
 from behave import given
+import json
 
 from itest_utils import get_service_connection_string
 from paasta_tools import marathon_tools
@@ -34,6 +37,20 @@ def setup_marathon_client():
     return (client, marathon_config, system_paasta_config)
 
 
+def _generate_mesos_cli_config(zk_host_and_port):
+    config = {
+        'master': zk_host_and_port,
+    }
+    return config
+
+
+def write_mesos_cli_config(config):
+    mesos_cli_config_file = NamedTemporaryFile(delete=False)
+    mesos_cli_config_file.write(json.dumps(config))
+    mesos_cli_config_file.close()
+    return mesos_cli_config_file.name
+
+
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
     """Adds a working marathon client as context.client for the purposes of
@@ -41,4 +58,6 @@ def working_paasta_cluster(context):
     if not hasattr(context, 'client'):
         context.client, context.marathon_config, context.system_paasta_config = setup_marathon_client()
     else:
-        print "Marathon connection already established"
+        print 'Marathon connection already established'
+    mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
+    context.mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)

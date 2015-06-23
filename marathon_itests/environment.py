@@ -1,3 +1,4 @@
+import os
 import time
 
 from itest_utils import wait_for_marathon
@@ -9,7 +10,7 @@ def before_all(context):
     wait_for_marathon()
 
 
-def after_scenario(context, scenario):
+def _clean_up_marathon_apps(context):
     """If a marathon client object exists in our context, delete any apps in Marathon and wait until they die."""
     if hasattr(context, 'client'):
         while True:
@@ -29,6 +30,19 @@ def after_scenario(context, scenario):
         while context.client.list_deployments():
             print "after_scenario: There are still marathon deployments in progress. sleeping."
             time.sleep(0.5)
+
+
+def _clean_up_mesos_cli_config(context):
+    """If a mesos cli config file was written, clean it up."""
+    if hasattr(context, 'mesos_cli_config_filename'):
+        print 'Cleaning up %s' % context.mesos_cli_config_filename
+        os.unlink(context.mesos_cli_config_filename)
+        del context.mesos_cli_config_filename
+
+
+def after_scenario(context, scenario):
+    _clean_up_marathon_apps(context)
+    _clean_up_mesos_cli_config(context)
 
 
 def after_step(context, step):
