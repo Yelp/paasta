@@ -39,7 +39,12 @@ def setup_marathon_client():
 
 def _generate_mesos_cli_config(zk_host_and_port):
     config = {
-        'master': zk_host_and_port,
+        'profile': 'default',
+        'default': {
+            'master': zk_host_and_port,
+            'log_level': 'warning',
+            'log_file': 'None',
+        }
     }
     return config
 

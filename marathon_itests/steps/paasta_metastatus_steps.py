@@ -1,11 +1,8 @@
+import os
+
 from behave import when, then
 
 from paasta_tools.utils import _run
-
-
-# get zk path from fig
-# write that into a mesos-cli.json
-# pass path to written mesos-cli.json via env var to paasta_metatstatus (which imports mesos-cli which uses the env var to find its configuration)
 
 # somehow block access to mesos master
 
@@ -19,10 +16,12 @@ def check_metastatus_return(context):
     # We don't want to invoke the "paasta metastatus" wrapper because by
     # default it will check every cluster. This is also the way sensu invokes
     # this check.
-    cmd = ("../paasta_tools/paasta_metastatus.py")
-    print "Running cmd %s" % cmd
-    (returncode, output) = _run(cmd)
-    print "Got returncode %s with output:" % returncode
+    cmd = '../paasta_tools/paasta_metastatus.py'
+    env = dict(os.environ)
+    env['MESOS_CLI_CONFIG'] = context.mesos_cli_config_filename
+    print 'Running cmd %s with MESOS_CLI_CONFIG %s' % (cmd, env['MESOS_CLI_CONFIG'])
+    (returncode, output) = _run(cmd, env=env)
+    print 'Got returncode %s with output:' % returncode
     print output
 
     assert returncode == 2
