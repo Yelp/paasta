@@ -153,7 +153,7 @@ def get_cmd_string():
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'local-run',
-        description='Test run service Docker container',
+        description="Build and run a service's Docker container locally",
         help='Test run service Docker container',
     )
     list_parser.add_argument(
