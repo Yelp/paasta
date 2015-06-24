@@ -152,7 +152,7 @@ def get_cmd_string():
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'test-run',
+        'local-run',
         description='Test run service Docker container',
         help='Test run service Docker container',
     )
@@ -202,11 +202,11 @@ def add_subparser(subparsers):
         default=True,
     )
 
-    list_parser.set_defaults(command=paasta_test_run)
+    list_parser.set_defaults(command=paasta_local_run)
 
 
 def get_container_name():
-    return 'paasta_test_run_%s_%s' % (get_username(), randint(1, 999999))
+    return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
 def get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command):
@@ -425,7 +425,7 @@ def build_docker_container(docker_client, args):
 
 def validate_environment():
     """Validates whether the current directory is good for running
-    paasta test_run"""
+    paasta local_run"""
     if os.getcwd() == os.path.expanduser("~"):
         sys.stderr.write(
             'ERROR: Don\'t run this command from your home directory.\n'
@@ -440,7 +440,7 @@ def validate_environment():
         sys.exit(1)
 
 
-def paasta_test_run(args):
+def paasta_local_run(args):
     validate_environment()
 
     service = figure_out_service_name(args)
