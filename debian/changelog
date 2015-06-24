@@ -1,3 +1,11 @@
+paasta-tools (0.11.24-yelp1) lucid; urgency=low
+
+  * 0.11.24 tagged with 'make release'
+    Commit: Bump push-to-registry timeout to 1 hour so query_lm can
+    succeed
+
+ -- Evan Krall <krall@yelp.com>  Wed, 24 Jun 2015 16:36:31 -0700
+
 paasta-tools (0.11.23-yelp1) lucid; urgency=low
 
   * 0.11.23 tagged with 'make release'
