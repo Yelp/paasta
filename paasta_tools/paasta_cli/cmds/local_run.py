@@ -20,6 +20,7 @@ from paasta_tools.marathon_tools import get_healthcheck
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import NoMarathonConfigurationForService
+from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
@@ -29,6 +30,7 @@ from paasta_tools.utils import get_username
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import _run
+from paasta_tools.utils import get_docker_host
 
 
 BAD_PORT_WARNING = 'This_service_is_listening_on_the_PORT_variable__You_must_use_8888__see_y/paasta_deploy'
@@ -42,60 +44,104 @@ def pick_random_port():
     return port
 
 
-def perform_healthcheck(url, timeout):
+def perform_http_healthcheck(url, timeout):
     """Returns true if healthcheck on url succeeds, false otherwise
 
     :param url: the healthcheck url
     :param timeout: timeout in seconds
     :returns: True if healthcheck succeeds within number of seconds specified by timeout, false otherwise
     """
-
-    url_elem = urlparse(url)
-    if url_elem.scheme == "http":
-        # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
-        try:
-            res = requests.head(url, timeout=timeout)
-            if 'content-type' in res.headers and ',' in res.headers['content-type']:
-                sys.stdout.write(PaastaColors.yellow(
-                    "Multiple content-type headers detected in response."
-                    " The Mesos healthcheck system will treat this as a failure!"))
-                return False
-            if res.status_code >= 200 and res.status_code < 400:
-                return True
-        except requests.ConnectionError:
+    # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
+    try:
+        res = requests.head(url, timeout=timeout)
+        if 'content-type' in res.headers and ',' in res.headers['content-type']:
+            sys.stdout.write(PaastaColors.yellow(
+                "Multiple content-type headers detected in response."
+                " The Mesos healthcheck system will treat this as a failure!"))
             return False
-    elif url_elem.scheme == "tcp":
-        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        sock.settimeout(timeout)
-        result = sock.connect_ex((url_elem.hostname, url_elem.port))
-        if result == 0:
-            sock.close()
+        if res.status_code >= 200 and res.status_code < 400:
             return True
-    else:
-        sys.stdout.write(PaastaColors.yellow(
-            "Healthcheck for '%s' protocol is not currently supported!\n" % url_elem.scheme))
+    except requests.ConnectionError:
         return False
 
 
-def run_healthcheck_on_container(url, timeout, interval, max_failures):
-    """Performs healthcheck on specified url a given number of times at a specified interval
+def perform_tcp_healthcheck(url, timeout):
+    """Returns true if successfully connests to host and port, false otherwise
 
-    :param url: url to healthcheck
+    :param url: the healthcheck url (in the form tcp://host:port)
+    :param timeout: timeout in seconds
+    :returns: True if healthcheck succeeds within number of seconds specified by timeout, false otherwise
+    """
+    url_elem = urlparse(url)
+    # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
+    sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    sock.settimeout(timeout)
+    result = sock.connect_ex((url_elem.hostname, url_elem.port))
+    sock.close()
+    if result == 0:
+        return True
+    else:
+        return False
+
+
+def perform_cmd_healthcheck(docker_client, container_id, command, timeout):
+    """Returns true if return code of command is 0 when executed inside container, false otherwise
+
+    :param docker_client: Docker client object
+    :param container_id: Docker container id
+    :param command: command to execute
+    :param timeout: timeout in seconds
+    :returns: True if command exits with return code 0, false otherwise
+    """
+    (_, return_code) = execute_in_container(docker_client, container_id, pipes.quote(command), timeout)
+    if return_code == 0:
+        return True
+    else:
+        return False
+
+
+def run_healthcheck_on_container(
+    docker_client,
+    container_id,
+    healthcheck_mode,
+    healthcheck_data,
+    timeout,
+    interval,
+    max_failures
+):
+    """Performs healthcheck on a container a given number of times at a specified interval
+
+    :param container_id: Docker container id
+    :param healthcheck_mode: one of 'http', 'tcp', or 'cmd'
+    :param healthcheck_data: a URL when healthcheck_mode is 'http' or 'tcp', a command if healthcheck_mode is 'cmd'
     :param timeout: timeout in seconds for individual check
     :param interval: time in seconds to wait between checks
     :param max_failures: maximum number of consecutive failures allowed
-    :returns: true if healtcheck succeeds, false otherwise
+    :returns: true if healthcheck succeeds, false otherwise
     """
     failure = False
     for attempt in range(1, max_failures + 1):
-        if perform_healthcheck(url, timeout):
-            sys.stdout.write("%s (URL: %s)\n" % (PaastaColors.green("Healthcheck succeeded!"), PaastaColors.cyan(url)))
+        healthcheck_link = PaastaColors.cyan(healthcheck_data)
+        if healthcheck_mode == 'cmd':
+            healthcheck_result = perform_cmd_healthcheck(docker_client, container_id, healthcheck_data, timeout)
+        elif healthcheck_mode == 'http':
+            healthcheck_result = perform_http_healthcheck(healthcheck_data, timeout)
+        elif healthcheck_mode == 'tcp':
+            healthcheck_result = perform_tcp_healthcheck(healthcheck_data, timeout)
+        else:
+            sys.stdout.write(PaastaColors.yellow(
+                "Healthcheck mode '%s' is not currently supported!\n" % healthcheck_mode))
+            return False
+
+        if healthcheck_result:
+            sys.stdout.write("%s (via: %s)\n" %
+                             (PaastaColors.green("Healthcheck succeeded!"), healthcheck_link))
             failure = False
             break
         else:
-            sys.stdout.write("%s (URL: %s)\n" %
+            sys.stdout.write("%s (via: %s)\n" %
                              (PaastaColors.red("Healthcheck Failed! (Attempt %d of %d)" % (attempt, max_failures)),
-                              PaastaColors.cyan(url)))
+                              healthcheck_link))
             failure = True
         time.sleep(interval)
     if failure:
@@ -104,14 +150,24 @@ def run_healthcheck_on_container(url, timeout, interval, max_failures):
         return True
 
 
-def simulate_healthcheck_on_service(service_manifest, healthcheck_url, healthcheck_enabled):
+def simulate_healthcheck_on_service(
+    service_manifest,
+    docker_client,
+    container_id,
+    healthcheck_mode,
+    healthcheck_data,
+    healthcheck_enabled
+):
     """Simulates healthcheck on given service if healthcheck is enabled
 
     :param service_manifest: service manifest
-    :param healthcheck_url: url to healthcheck
+    :param docker_client: Docker client object
+    :param container_id: Docker container id
+    :param healthcheck_data: tuple url to healthcheck
     :param healthcheck_enabled: boolean
     :returns: if healthcheck_enabled is true, then returns output of healthcheck, otherwise simply returns true
     """
+    healthcheck_link = PaastaColors.cyan(healthcheck_data)
     if healthcheck_enabled:
         grace_period = service_manifest.get_healthcheck_grace_period_seconds()
         timeout = service_manifest.get_healthcheck_timeout_seconds()
@@ -119,14 +175,14 @@ def simulate_healthcheck_on_service(service_manifest, healthcheck_url, healthche
         max_failures = service_manifest.get_healthcheck_max_consecutive_failures()
 
         sys.stdout.write('\nWaiting %d seconds before starting health check via\n%s\n' %
-                         (grace_period, PaastaColors.cyan(healthcheck_url)))
+                         (grace_period, healthcheck_link))
         time.sleep(grace_period)
-        status = run_healthcheck_on_container(healthcheck_url, timeout, interval, max_failures)
+        healthcheck_status = run_healthcheck_on_container(
+            docker_client, container_id, healthcheck_mode, healthcheck_data, timeout, interval, max_failures)
     else:
-        sys.stdout.write('\nMesos would have healthchecked your service via\n%s\n' %
-                         PaastaColors.cyan(healthcheck_url))
-        status = True
-    return status
+        sys.stdout.write('\nMesos would have healthchecked your service via\n%s\n' % healthcheck_link)
+        healthcheck_status = True
+    return healthcheck_status
 
 
 def read_local_dockerfile_lines():
@@ -310,9 +366,9 @@ def run_docker_container(
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
-    healthcheck_url = get_healthcheck(service, instance, random_port)
+    healthcheck_mode, healthcheck_data = get_healthcheck(service, instance, service_manifest, random_port)
 
-    sys.stdout.write('Running docker command:\n%s\n' % joined_docker_run_cmd)
+    sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
     if interactive:
         sys.stdout.write(get_cmd_string())
         # NOTE: This immediately replaces us with the docker run cmd. Docker
@@ -342,11 +398,13 @@ def run_docker_container(
         container_started = True
         container_id = get_container_id(docker_client, container_name)
         sys.stdout.write('Found our container running with CID %s\n' % container_id)
-        simulate_healthcheck_on_service(service_manifest, healthcheck_url, healthcheck)
+
+        simulate_healthcheck_on_service(
+            service_manifest, docker_client, container_id, healthcheck_mode, healthcheck_data, healthcheck)
 
         sys.stdout.write('Your service is now running! Tailing stdout and stderr:\n')
         for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
-            sys.stdout.write(line)
+            sys.stdout.write(PaastaColors.grey(line))
 
     except KeyboardInterrupt:
         pass
@@ -415,7 +473,7 @@ def build_docker_container(docker_client, args):
         stream_line = line_dict.get('stream')
 
         if args.verbose and stream_line:
-            sys.stdout.write(stream_line)
+            sys.stdout.write(PaastaColors.grey(stream_line))
 
         if stream_line and stream_line.startswith('Successfully built '):
             # Strip the beginning of a string and \n in the end.
@@ -451,7 +509,7 @@ def paasta_local_run(args):
     service = figure_out_service_name(args)
     validate_service_name(service)
 
-    base_docker_url = os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
+    base_docker_url = get_docker_host()
 
     docker_client = Client(base_url=base_docker_url)
 

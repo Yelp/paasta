@@ -36,6 +36,20 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
     * **WARNING**: A PORT variable is provided to the docker image, but it represents the EXTERNAL port, not the internal one. The internal service MUST listen on 8888, so this PORT variable confuses some service stacks that are listening for this variable. Such services MUST overwrite this environment variable to function. (``PORT=8888 ./uwisgi.py```) We tried to work around this, see `PAASTA-267 <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
 
+In addition, each instancename MAY configure additional Marathon healthcheck options:
+
+  *  ``healthcheck_mode``: One of ``cmd``, ``tcp``, or ``http``. If your service uses Smartstack, then this must match the value of the ``mode`` key defined for this instance in ``smartstack.yaml``. If set to ``cmd`` then PaaSTA will execute ``healthcheck_cmd`` and examine the return code.
+
+  *  ``healthcheck_cmd``: If ``healthcheck_mode`` is set to ``cmd``, then this command is executed inside the container as a healthcheck. It must exit with status code 0 to signify a successful healthcheck. Any other exit code is treated as a failure. Defaults to ``/bin/true`` (that is, always indicate good health) if ``healthcheck_mode`` is ``cmd``.
+
+  *  ``healthcheck_grace_period_seconds``: Marathon will wait this long for a service to come up before counting failed healthchecks. Defaults to 60 seconds.
+
+  *  ``healthcheck_interval_seconds``: Marathon will wait this long between healthchecks. Defaults to 10 seconds.
+
+  *  ``healthcheck_timeout_seconds``: Marathon will wait this long for a healthcheck to return before considering it a failure. Defaults to 10 seconds.
+
+  *  ``healthcheck_max_consecutive_failures``: Marathon will kill the current task if this many healthchecks fail consecutively. Defaults to 6 attempts.
+
 Many of these keys are passed directly to Marathon. Their docs aren't super clear about all these but start there: https://mesosphere.github.io/marathon/docs/rest-api.html
 
 .. [#note] The Marathon docs and the Docker docs are inconsistent in their explanation of args/cmd:

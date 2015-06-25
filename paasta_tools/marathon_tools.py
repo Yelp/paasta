@@ -7,6 +7,7 @@ make the PaaSTA stack work.
 import hashlib
 import logging
 import os
+import pipes
 import re
 import requests
 import socket
@@ -390,12 +391,29 @@ class MarathonServiceConfig(object):
                     "maxConsecutiveFailures": maxconsecutivefailures
                 },
             ]
+        elif mode == 'cmd':
+            command = pipes.quote(self.get_healthcheck_cmd())
+            hc_command = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd '%s' --timeout '%s'" % (
+                command, timeoutseconds)
+            healthchecks = [
+                {
+                    "protocol": "COMMAND",
+                    "command": {"value": hc_command},
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)
         return healthchecks
 
     def get_healthcheck_uri(self, service_namespace_config):
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
+
+    def get_healthcheck_cmd(self):
+        return self.config_dict.get('healthcheck_cmd', '/bin/true')
 
     def get_healthcheck_mode(self, service_namespace_config):
         return self.config_dict.get('healthcheck_mode', service_namespace_config.get_mode())
@@ -989,17 +1007,23 @@ def get_matching_appids(servicename, instance, client):
     return [app.id for app in client.list_apps() if app.id.startswith("/%s" % jobid)]
 
 
-def get_healthcheck(service_name, namespace, random_port):
-    """Returns healthcheck url for a given service instance or None if no healthcheck"""
+def get_healthcheck(service_name, namespace, service_manifest, random_port):
+    """
+    Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
+    or (None, None) if no healthcheck
+    """
     smartstack_config = load_service_namespace_config(service_name, namespace)
-    mode = smartstack_config.get_mode()
-    path = smartstack_config.get_healthcheck_uri()
+    mode = service_manifest.get_healthcheck_mode(smartstack_config)
+    path = service_manifest.get_healthcheck_uri(smartstack_config)
     hostname = socket.getfqdn()
 
     if mode == "http":
-        url = '%s://%s:%d%s' % (mode, hostname, random_port, path)
+        healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
     elif mode == "tcp":
-        url = '%s://%s:%d' % (mode, hostname, random_port)
+        healthcheck_command = '%s://%s:%d' % (mode, hostname, random_port)
+    elif mode == 'cmd':
+        healthcheck_command = service_manifest.get_healthcheck_cmd()
     else:
-        url = None
-    return url
+        mode = None
+        healthcheck_command = None
+    return (mode, healthcheck_command)
