@@ -1,3 +1,12 @@
+paasta-tools (0.12.1-yelp1) lucid; urgency=low
+
+  * 0.12.1 tagged with 'make release'
+    Rename test-run to local-run
+    Commit: Gracefully alert teams when deployments are not found for a
+    configured service
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 24 Jun 2015 18:24:47 -0700
+
 paasta-tools (0.11.24-yelp1) lucid; urgency=low
 
   * 0.11.24 tagged with 'make release'
