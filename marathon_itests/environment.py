@@ -1,12 +1,22 @@
+import os
 import time
 
 from itest_utils import wait_for_marathon
+from itest_utils import cleanup_file
+from itest_utils import setup_mesos_cli_config
 from itest_utils import print_container_logs
 from paasta_tools import marathon_tools
 
 
 def before_all(context):
+    context.cluster = "testcluster"
+    context.mesos_cli_config = os.path.join(os.getcwd(), 'mesos-cli.json')
     wait_for_marathon()
+    setup_mesos_cli_config(context.mesos_cli_config, context.cluster)
+
+
+def after_all(context):
+    cleanup_file(context.mesos_cli_config)
 
 
 def after_scenario(context, scenario):

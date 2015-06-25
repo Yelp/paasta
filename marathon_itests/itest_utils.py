@@ -1,3 +1,5 @@
+import json
+import os
 import threading
 import sys
 import time
@@ -59,3 +61,25 @@ def wait_for_marathon():
             print "Marathon is up and running!"
             break
 
+
+def setup_mesos_cli_config(config_file, cluster):
+    """Creates a mesos-cli.json config file for mesos.cli module.
+    Sets up the environment dictionary to point to that file"""
+    zookeeper_service = get_service_connection_string('zookeeper')
+    mesos_cli_config = {
+        "profile": "default",
+        "default": {
+            "master": "zk://%s/mesos-%s" % (zookeeper_service, cluster),
+            "log_file": "None",
+        }
+    }
+    print 'Generating mesos.cli config file: %s' % config_file
+    with open(config_file, 'w') as fp:
+        json.dump(mesos_cli_config, fp)
+    os.environ['MESOS_CLI_CONFIG'] = config_file
+
+
+def cleanup_file(path_to_file):
+    """Removes the given file"""
+    print "Removing generated file: %s" % path_to_file
+    os.remove(path_to_file)
