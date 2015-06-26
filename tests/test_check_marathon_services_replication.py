@@ -89,56 +89,142 @@ def test_split_id():
     assert check_marathon_services_replication.split_id(fake_id) == expected
 
 
-def test_check_namespaces():
-    namespaces = ['test.one', 'test.two', 'test.three', 'test.four', 'test.five']
+def test_check_smarstack_replication_for_namespace_crit_when_absent():
+    namespace = 'test.one'
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
-    expected = [0, 8, 8, 8, 8]
+    expected_replication_counts = [0, 8, 8, 8, 8]
     soa_dir = 'test_dir'
     crit = 90
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
-                   side_effect=lambda a, b, soa_dir=soa_dir: expected.pop()),
-        mock.patch('check_marathon_services_replication.send_event'),
-        mock.patch('check_marathon_services_replication.get_context'),
+                   side_effect=lambda a, b, soa_dir=soa_dir: expected_replication_counts.pop(), autospec=True),
+        mock.patch('check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('check_marathon_services_replication.get_context', autospec=True),
     ) as (
         expected_patch,
         event_patch,
         context_patch,
     ):
-        check_marathon_services_replication.check_namespaces(namespaces, available, soa_dir, crit)
+        check_marathon_services_replication.check_smartstack_replication_for_namespace(
+            namespace, available, soa_dir, crit
+        )
         expected_patch.assert_any_call('test', 'one', soa_dir=soa_dir)
-        expected_patch.assert_any_call('test', 'two', soa_dir=soa_dir)
-        expected_patch.assert_any_call('test', 'three', soa_dir=soa_dir)
-        expected_patch.assert_any_call('test', 'four', soa_dir=soa_dir)
-        expected_patch.assert_any_call('test', 'five', soa_dir=soa_dir)
-        assert expected_patch.call_count == 5
         event_patch.assert_any_call('test', 'one', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
-        event_patch.assert_any_call('test', 'two', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
-        event_patch.assert_any_call('test', 'three', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
-        event_patch.assert_any_call('test', 'four', soa_dir, pysensu_yelp.Status.OK, mock.ANY)
-        assert event_patch.call_count == 4
-        # Context should have been requested for anything not ok
         context_patch.assert_any_call('test', 'one')
+
+
+def test_check_smarstack_replication_for_namespace_crit_when_zero_replication():
+    namespace = 'test.two'
+    available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
+    expected_replication_counts = [0, 8, 8, 8, 8]
+    soa_dir = 'test_dir'
+    crit = 90
+    with contextlib.nested(
+        mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
+                   side_effect=lambda a, b, soa_dir=soa_dir: expected_replication_counts.pop(), autospec=True),
+        mock.patch('check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('check_marathon_services_replication.get_context', autospec=True),
+    ) as (
+        expected_patch,
+        event_patch,
+        context_patch,
+    ):
+        check_marathon_services_replication.check_smartstack_replication_for_namespace(
+            namespace, available, soa_dir, crit
+        )
+        expected_patch.assert_any_call('test', 'two', soa_dir=soa_dir)
+        event_patch.assert_any_call('test', 'two', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
         context_patch.assert_any_call('test', 'two')
+
+
+def test_check_smarstack_replication_for_namespace_crit_when_low_replication():
+    namespace = 'test.three'
+    available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
+    expected_replication_counts = [0, 8, 8, 8, 8]
+    soa_dir = 'test_dir'
+    crit = 90
+    with contextlib.nested(
+        mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
+                   side_effect=lambda a, b, soa_dir=soa_dir: expected_replication_counts.pop(), autospec=True),
+        mock.patch('check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('check_marathon_services_replication.get_context', autospec=True),
+    ) as (
+        expected_patch,
+        event_patch,
+        context_patch,
+    ):
+        check_marathon_services_replication.check_smartstack_replication_for_namespace(
+            namespace, available, soa_dir, crit
+        )
+        expected_patch.assert_any_call('test', 'three', soa_dir=soa_dir)
+        event_patch.assert_any_call('test', 'three', soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
         context_patch.assert_any_call('test', 'three')
-        assert context_patch.call_count == 3
+
+
+def test_check_smarstack_replication_for_namespace_ok_with_enough_replication():
+    namespace = 'test.four'
+    available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
+    expected_replication_counts = [0, 8, 8, 8, 8]
+    soa_dir = 'test_dir'
+    crit = 90
+    with contextlib.nested(
+        mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
+                   side_effect=lambda a, b, soa_dir=soa_dir: expected_replication_counts.pop(), autospec=True),
+        mock.patch('check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('check_marathon_services_replication.get_context', autospec=True),
+    ) as (
+        expected_patch,
+        event_patch,
+        context_patch,
+    ):
+        check_marathon_services_replication.check_smartstack_replication_for_namespace(
+            namespace, available, soa_dir, crit
+        )
+        expected_patch.assert_any_call('test', 'four', soa_dir=soa_dir)
+        event_patch.assert_any_call('test', 'four', soa_dir, pysensu_yelp.Status.OK, mock.ANY)
+        context_patch.call_count == 0
+
+
+def test_check_smarstack_replication_for_namespace_ignores_bogus_namespaces():
+    namespace = 'test.five'
+    available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
+    expected_replication_counts = [0, 8, 8, 8, 8]
+    soa_dir = 'test_dir'
+    crit = 90
+    with contextlib.nested(
+        mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
+                   side_effect=lambda a, b, soa_dir=soa_dir: expected_replication_counts.pop(), autospec=True),
+        mock.patch('check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('check_marathon_services_replication.get_context', autospec=True),
+    ) as (
+        expected_patch,
+        event_patch,
+        context_patch,
+    ):
+        check_marathon_services_replication.check_smartstack_replication_for_namespace(
+            namespace, available, soa_dir, crit
+        )
+        expected_patch.assert_any_call('test', 'five', soa_dir=soa_dir)
+        event_patch.call_count == 0
+        context_patch.call_count == 0
 
 
 def test_main():
     soa_dir = 'anw'
     crit = 1
-    synapse_host = 'hammer:time'
     namespaces = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
     actual_namespaces = ['a', 'b', 'c', 'd']
     replication = 'reeeeeeeeeeeplicated'
-    args = mock.Mock(soa_dir=soa_dir, crit=crit, synapse_host_port=synapse_host, verbose=False)
+    args = mock.Mock(soa_dir=soa_dir, crit=crit, verbose=False)
     with contextlib.nested(
-        mock.patch('check_marathon_services_replication.parse_args', return_value=args),
+        mock.patch('check_marathon_services_replication.parse_args',
+                   return_value=args, autospec=True),
         mock.patch('paasta_tools.marathon_tools.get_all_namespaces',
-                   return_value=namespaces),
+                   return_value=namespaces, autospec=True),
         mock.patch('paasta_tools.monitoring.replication_utils.get_replication_for_services',
-                   return_value=replication),
-        mock.patch('check_marathon_services_replication.check_namespaces')
+                   return_value=replication, autospec=True),
+        mock.patch('check_marathon_services_replication.check_smartstack_replication_for_namespace',
+                   autospec=True)
     ) as (
         args_patch,
         namespaces_patch,
@@ -148,5 +234,5 @@ def test_main():
         check_marathon_services_replication.main()
         args_patch.assert_called_once_with()
         namespaces_patch.assert_called_once_with()
-        replication_patch.assert_called_once_with(synapse_host, actual_namespaces)
-        check_patch.assert_called_once_with(actual_namespaces, replication, soa_dir, crit)
+        replication_patch.assert_called_once_with(mock.ANY, actual_namespaces)
+        check_patch.call_count = len(namespaces)
