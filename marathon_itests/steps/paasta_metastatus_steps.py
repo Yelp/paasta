@@ -4,8 +4,6 @@ from behave import when, then
 
 from paasta_tools.utils import _run
 
-# somehow block access to mesos master
-
 @when(u'we kill a master')
 def kill_master(context):
     pass
