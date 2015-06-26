@@ -1,6 +1,11 @@
 Feature: check_mesos_resource_utilization can send event
 
-  Scenario: check_mesos_resource_utilization OK on 0%
+  Scenario: check_mesos_resource_utilization 101%
     Given a working marathon instance
-    Then we should get OK when checking mesos utilization 101 percent
-    Then we should get CRITICAL when checking mesos utilization 0 percent
+    When we check mesos utilization with a threshold of 101 percent
+    Then the result is OK
+
+  Scenario: check_mesos_resource_utilization 0%
+    Given a working marathon instance
+    When we check mesos utilization with a threshold of 0 percent
+    Then the result is CRITICAL
