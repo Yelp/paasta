@@ -231,14 +231,29 @@ class MarathonServiceConfig(object):
         cpus = self.config_dict.get('cpus')
         return float(cpus) if cpus else .25
 
+    def get_cmd(self):
+        """Get the docker cmd specified in the service's marathon configuration.
+
+        Defaults to null if not specified in the config.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: A string specified in the config, None if not specified"""
+        return self.config_dict.get('cmd', None)
+
     def get_args(self):
         """Get the docker args specified in the service's marathon configuration.
 
-        Defaults to an empty array if not specified in the config.
+        If not specified in the config and if cmd is not specified, defaults to an empty array.
+        If not specified in the config but cmd is specified, defaults to null.
 
         :param service_config: The service instance's configuration dictionary
-        :returns: An array of args specified in the config, [] if not specified"""
-        return self.config_dict.get('args', [])
+        :returns: An array of args specified in the config,
+        [] if not specified and if cmd is not specified,
+        otherwise None if not specified but cmd is specified"""
+        if self.config_dict.get('cmd', None) is None:
+            return self.config_dict.get('args', [])
+        else:
+            return self.config_dict.get('args', None)
 
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.
@@ -268,16 +283,18 @@ class MarathonServiceConfig(object):
         Currently compiles the following keys into one nice dict:
 
         - id: the ID of the image in Marathon
-        - cmd: currently the docker_url, seemingly needed by Marathon to keep the container field
         - container: a dict containing the docker url and docker launch options. Needed by deimos.
         - uris: blank.
         - ports: an array containing the port.
+        - env: environment variables for the container.
         - mem: the amount of memory required.
         - cpus: the number of cpus required.
         - constraints: the constraints on the Marathon job.
         - instances: the number of instances required.
+        - cmd: the command to be executed.
+        - args: an alternative to cmd that requires the docker container to have an entrypoint.
 
-        The last 5 keys are retrieved using the get_<key> functions defined above.
+        The last 7 keys are retrieved using the get_<key> functions defined above.
 
         :param job_id: The job/app id name
         :param docker_url: The url to the docker image the job will actually execute
@@ -312,6 +329,7 @@ class MarathonServiceConfig(object):
         complete_config['cpus'] = self.get_cpus()
         complete_config['constraints'] = self.get_constraints(service_namespace_config)
         complete_config['instances'] = self.get_instances()
+        complete_config['cmd'] = self.get_cmd()
         complete_config['args'] = self.get_args()
         log.info("Complete configuration for instance is: %s", complete_config)
         return complete_config
