@@ -1,3 +1,27 @@
+paasta-tools (0.12.2-yelp1) lucid; urgency=low
+
+  * 0.12.2 tagged with 'make release'
+    Commit: Merge branch PAASTA-545
+
+ -- Zsolt Tripolszky <tripy@yelp.com>  Fri, 26 Jun 2015 05:53:22 -0700
+
+paasta-tools (0.12.1-yelp1) lucid; urgency=low
+
+  * 0.12.1 tagged with 'make release'
+    Rename test-run to local-run
+    Commit: Gracefully alert teams when deployments are not found for a
+    configured service
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 24 Jun 2015 18:24:47 -0700
+
+paasta-tools (0.11.24-yelp1) lucid; urgency=low
+
+  * 0.11.24 tagged with 'make release'
+    Commit: Bump push-to-registry timeout to 1 hour so query_lm can
+    succeed
+
+ -- Evan Krall <krall@yelp.com>  Wed, 24 Jun 2015 16:36:31 -0700
+
 paasta-tools (0.11.23-yelp1) lucid; urgency=low
 
   * 0.11.23 tagged with 'make release'

@@ -3,20 +3,20 @@ import mock
 from pytest import raises
 
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.paasta_cli.cmds.test_run import LostContainerException
-from paasta_tools.paasta_cli.cmds.test_run import build_docker_container
-from paasta_tools.paasta_cli.cmds.test_run import configure_and_run_docker_container
-from paasta_tools.paasta_cli.cmds.test_run import get_cmd
-from paasta_tools.paasta_cli.cmds.test_run import get_cmd_string
-from paasta_tools.paasta_cli.cmds.test_run import get_container_id
-from paasta_tools.paasta_cli.cmds.test_run import get_container_name
-from paasta_tools.paasta_cli.cmds.test_run import get_docker_run_cmd
-from paasta_tools.paasta_cli.cmds.test_run import paasta_test_run
-from paasta_tools.paasta_cli.cmds.test_run import perform_healthcheck
-from paasta_tools.paasta_cli.cmds.test_run import simulate_healthcheck_on_service
-from paasta_tools.paasta_cli.cmds.test_run import run_healthcheck_on_container
-from paasta_tools.paasta_cli.cmds.test_run import run_docker_container
-from paasta_tools.paasta_cli.cmds.test_run import validate_environment
+from paasta_tools.paasta_cli.cmds.local_run import LostContainerException
+from paasta_tools.paasta_cli.cmds.local_run import build_docker_container
+from paasta_tools.paasta_cli.cmds.local_run import configure_and_run_docker_container
+from paasta_tools.paasta_cli.cmds.local_run import get_cmd
+from paasta_tools.paasta_cli.cmds.local_run import get_cmd_string
+from paasta_tools.paasta_cli.cmds.local_run import get_container_id
+from paasta_tools.paasta_cli.cmds.local_run import get_container_name
+from paasta_tools.paasta_cli.cmds.local_run import get_docker_run_cmd
+from paasta_tools.paasta_cli.cmds.local_run import paasta_local_run
+from paasta_tools.paasta_cli.cmds.local_run import perform_healthcheck
+from paasta_tools.paasta_cli.cmds.local_run import simulate_healthcheck_on_service
+from paasta_tools.paasta_cli.cmds.local_run import run_healthcheck_on_container
+from paasta_tools.paasta_cli.cmds.local_run import run_docker_container
+from paasta_tools.paasta_cli.cmds.local_run import validate_environment
 from paasta_tools.marathon_tools import NoMarathonConfigurationForService
 from paasta_tools.utils import SystemPaastaConfig
 
@@ -97,7 +97,7 @@ def test_perform_healthcheck_http_failure_with_multiple_content_type(mock_http_c
     mock_http_conn.assert_called_once_with(fake_http_url, timeout=fake_timeout)
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.perform_healthcheck')
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.perform_healthcheck')
 @mock.patch('time.sleep')
 def test_run_healthcheck_success(mock_sleep, mock_perform_healthcheck):
     fake_url = 'http://fakehost:666/fake_status_path'
@@ -111,7 +111,7 @@ def test_run_healthcheck_success(mock_sleep, mock_perform_healthcheck):
     assert mock_perform_healthcheck.call_count == 1
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.perform_healthcheck')
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.perform_healthcheck')
 @mock.patch('time.sleep')
 def test_run_healthcheck_fails(mock_sleep, mock_perform_healthcheck):
     fake_url = 'http://fakehost:666/fake_status_path'
@@ -125,7 +125,7 @@ def test_run_healthcheck_fails(mock_sleep, mock_perform_healthcheck):
     assert mock_perform_healthcheck.call_count == fake_max_fail
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.perform_healthcheck')
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.perform_healthcheck')
 @mock.patch('time.sleep')
 def test_run_healthcheck_partial_fail(mock_sleep, mock_perform_healthcheck):
     fake_url = 'http://fakehost:666/fake_status_path'
@@ -176,24 +176,24 @@ def test_validate_environment_fail_no_dockerfile(
     assert sys_exit.value.code == 1
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.randint',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.randint',
             autospec=True,
             # http://operations.irclogs.yelpcorp.com/2015-05-12.html#0/h0,1
             return_value=543534,
             )
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_username',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_username',
             autospec=True,
             return_value='fsmonste',
             )
 def test_get_container_name(mock_get_username, mock_randint):
-    expected = 'paasta_test_run_%s_%s' % (
+    expected = 'paasta_local_run_%s_%s' % (
         mock_get_username.return_value, mock_randint.return_value)
     actual = get_container_name()
     assert actual == expected
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.load_system_paasta_config', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.load_marathon_service_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_marathon_service_config', autospec=True)
 def test_configure_and_run_explicit_cluster(
     mock_load_marathon_service_config,
     mock_load_system_paasta_config,
@@ -214,9 +214,9 @@ def test_configure_and_run_explicit_cluster(
     mock_load_marathon_service_config.assert_called_once_with(fake_service, args.instance, args.cluster)
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.load_system_paasta_config', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.load_marathon_service_config', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_default_cluster_for_service', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_marathon_service_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_default_cluster_for_service', autospec=True)
 def test_configure_and_run_missing_cluster_exception(
     mock_get_default_cluster_for_service,
     mock_load_marathon_service_config,
@@ -239,12 +239,12 @@ def test_configure_and_run_missing_cluster_exception(
     assert excinfo.value.code == 2
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.validate_environment', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.figure_out_service_name', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.validate_service_name', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.configure_and_run_docker_container', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.build_docker_container', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.Client', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.validate_environment', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.figure_out_service_name', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.validate_service_name', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.build_docker_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.Client', autospec=True)
 def test_run_success(
     mock_Client,
     mock_build_docker_container,
@@ -264,7 +264,7 @@ def test_run_success(
     args.service = 'fake_service'
     args.healthcheck = False
     args.interactive = False
-    assert paasta_test_run(args) is None
+    assert paasta_local_run(args) is None
 
 
 def test_get_docker_run_cmd_interactive_false():
@@ -306,14 +306,14 @@ def test_get_docker_run_cmd_interactive_true():
 def test_get_container_id():
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_containers = [
-        {'Names': ['/paasta_test_run_1'], 'Id': '11111'},
-        {'Names': ['/paasta_test_run_2'], 'Id': '22222'},
+        {'Names': ['/paasta_local_run_1'], 'Id': '11111'},
+        {'Names': ['/paasta_local_run_2'], 'Id': '22222'},
     ]
     mock_docker_client.containers = mock.MagicMock(
         spec_set=docker.Client,
         return_value=fake_containers,
     )
-    container_name = 'paasta_test_run_2'
+    container_name = 'paasta_local_run_2'
     expected = '22222'
     actual = get_container_id(mock_docker_client, container_name)
     assert actual == expected
@@ -322,25 +322,25 @@ def test_get_container_id():
 def test_get_container_id_name_not_found():
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_containers = [
-        {'Names': ['/paasta_test_run_1'], 'Id': '11111'},
-        {'Names': ['/paasta_test_run_2'], 'Id': '22222'},
+        {'Names': ['/paasta_local_run_1'], 'Id': '11111'},
+        {'Names': ['/paasta_local_run_2'], 'Id': '22222'},
     ]
     mock_docker_client.containers = mock.MagicMock(
         spec_set=docker.Client,
         return_value=fake_containers,
     )
-    container_name = 'paasta_test_run_DOES_NOT_EXIST'
+    container_name = 'paasta_local_run_DOES_NOT_EXIST'
     with raises(LostContainerException):
         get_container_id(mock_docker_client, container_name)
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.pick_random_port', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd_string', autospec=True, return_value='CMD.exe')
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True, return_value=(0, 'fake _run output'))
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_docker_run_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
             autospec=True,
             return_value="418 I'm a little healthcheck",
             )
@@ -383,13 +383,13 @@ def test_run_docker_container_non_interactive(
     assert mock_docker_client.remove_container.call_count == 1
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.pick_random_port', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd_string', autospec=True, return_value='CMD.exe')
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True, return_value=(0, 'fake _run output'))
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_docker_run_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
             autospec=True,
             return_value="418 I'm a little healthcheck",
             )
@@ -432,13 +432,13 @@ def test_run_docker_container_interactive(
     assert mock_docker_client.remove_container.call_count == 0
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.pick_random_port', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd_string', autospec=True, return_value='CMD.exe')
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True, return_value=(0, 'fake _run output'))
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_docker_run_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
             autospec=True,
             return_value="418 I'm a little healthcheck",
             )
@@ -476,13 +476,13 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
     assert mock_docker_client.remove_container.call_count == 1
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.pick_random_port', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_docker_run_cmd', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.execlp', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd_string', autospec=True, return_value='CMD.exe')
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run._run', autospec=True, return_value=(42, 'fake _run output'))
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_docker_run_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(42, 'fake _run output'))
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
             autospec=True,
             return_value="418 I'm a little healthcheck",
             )
@@ -527,7 +527,7 @@ def test_simulate_healthcheck_on_service_disabled(mock_sleep):
 
 
 @mock.patch('time.sleep', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.run_healthcheck_on_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
 def test_simulate_healthcheck_on_service_enabled_success(mock_run_healthcheck_on_container, mock_sleep):
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     fake_url = 'http://fake_host/fake_status_path'
@@ -536,7 +536,7 @@ def test_simulate_healthcheck_on_service_enabled_success(mock_run_healthcheck_on
 
 
 @mock.patch('time.sleep', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.run_healthcheck_on_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
 def test_simulate_healthcheck_on_service_enabled_failure(mock_run_healthcheck_on_container, mock_sleep):
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     fake_url = 'http://fake_host/fake_status_path'
@@ -544,7 +544,7 @@ def test_simulate_healthcheck_on_service_enabled_failure(mock_run_healthcheck_on
     assert not simulate_healthcheck_on_service(mock_service_manifest, fake_url, True)
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.get_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd', autospec=True)
 def test_get_cmd_string(
     mock_get_cmd,
 ):
@@ -553,7 +553,7 @@ def test_get_cmd_string(
     assert 'fake_cmd' in actual
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.read_local_dockerfile_lines', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.read_local_dockerfile_lines', autospec=True)
 def test_get_cmd_when_working(
     mock_read_local_dockerfile_lines,
 ):
@@ -562,7 +562,7 @@ def test_get_cmd_when_working(
     assert 'BLA' == actual
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.test_run.read_local_dockerfile_lines', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.read_local_dockerfile_lines', autospec=True)
 def test_get_cmd_when_unknown(
     mock_read_local_dockerfile_lines,
 ):

@@ -53,7 +53,7 @@ def paasta_push_to_registry(args):
     loglines = []
     returncode, output = _run(
         cmd,
-        timeout=1800,
+        timeout=3600,
         log=True,
         component='build',
         service_name=service_name,
