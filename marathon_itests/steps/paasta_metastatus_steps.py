@@ -4,7 +4,7 @@ from behave import when, then
 
 from paasta_tools.utils import _run
 
-@when(u'we kill a master')
+@when(u'all masters are unavailable')
 def kill_master(context):
     pass
 
@@ -17,7 +17,7 @@ def check_metastatus_return(context):
     cmd = '../paasta_tools/paasta_metastatus.py'
     env = dict(os.environ)
     env['MESOS_CLI_CONFIG'] = context.mesos_cli_config_filename
-    print 'Running cmd %s with MESOS_CLI_CONFIG %s' % (cmd, env['MESOS_CLI_CONFIG'])
+    print 'Running cmd %s with MESOS_CLI_CONFIG=%s' % (cmd, env['MESOS_CLI_CONFIG'])
     (returncode, output) = _run(cmd, env=env)
     print 'Got returncode %s with output:' % returncode
     print output

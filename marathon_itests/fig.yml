@@ -43,4 +43,4 @@ paastatools:
   # make --no-capture global ???
   volumes:
   - ../:/work:rw
-  command: 'tox -e marathon_integration_inside_container -- --no-capture'
+  command: 'tox -e marathon_integration_inside_container -- --no-capture paasta_metastatus.feature'

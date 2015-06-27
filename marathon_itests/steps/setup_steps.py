@@ -1,3 +1,4 @@
+import os
 from tempfile import NamedTemporaryFile
 
 from behave import given
@@ -56,6 +57,14 @@ def write_mesos_cli_config(config):
     return mesos_cli_config_file.name
 
 
+def write_etc_paasta(marathon_config):
+    paasta_dir = '/etc/paasta'
+    if not os.path.exists(paasta_dir):
+        os.makedirs(paasta_dir)
+    with open(os.path.join(paasta_dir, 'marathon.json'), 'w') as f:
+        f.write(json.dumps(marathon_config))
+
+
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
     """Adds a working marathon client as context.client for the purposes of
@@ -66,3 +75,4 @@ def working_paasta_cluster(context):
         print 'Marathon connection already established'
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     context.mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
+    write_etc_paasta(context.marathon_config)

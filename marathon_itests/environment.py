@@ -4,7 +4,6 @@ import time
 from itest_utils import wait_for_marathon
 from itest_utils import cleanup_file
 from itest_utils import setup_mesos_cli_config
-from itest_utils import print_container_logs
 from paasta_tools import marathon_tools
 
 
@@ -52,11 +51,3 @@ def _clean_up_mesos_cli_config(context):
 def after_scenario(context, scenario):
     _clean_up_marathon_apps(context)
     _clean_up_mesos_cli_config(context)
-
-
-def after_step(context, step):
-    if step.status == "failed":
-        print "Zookeeper container logs:"
-        print_container_logs('zookeeper')
-        print "Marathon container logs:"
-        print_container_logs('marathon')
