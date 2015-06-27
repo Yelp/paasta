@@ -4,8 +4,13 @@ from behave import when, then
 
 from paasta_tools.utils import _run
 
-@when(u'all masters are unavailable')
-def kill_master(context):
+@when(u'all zookeepers are unavailable')
+def all_zookeepers_unavailable(context):
+    pass
+
+
+@when(u'all mesos masters are unavailable')
+def all_mesos_masters_unavailable(context):
     pass
 
 
