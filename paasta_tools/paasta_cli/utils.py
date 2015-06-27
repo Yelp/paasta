@@ -116,14 +116,6 @@ class PaastaCheckMessages:
         "Dockerfile not found. Create a Dockerfile and try again.\n  "
         "More info:", "http://y/paasta-runbook-dockerfile")
 
-    DOCKERFILE_EXPOSES_8888 = success("Found 'EXPOSE 8888' in Dockerfile")
-
-    DOCKERFILE_DOESNT_EXPOSE_8888 = failure(
-        "Couldn't find 'EXPOSE 8888' in Dockerfile. The Dockerfile should\n"
-        "expose that per the doc linked below.\n  More info:",
-        "http://y/paasta-contract",
-    )
-
     DOCKERFILE_YELPCORP = success(
         "Your Dockerfile pulls from the standard Yelp images.")
 

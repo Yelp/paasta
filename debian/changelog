@@ -1,3 +1,10 @@
+paasta-tools (0.12.3-yelp1) lucid; urgency=low
+
+  * 0.12.3 tagged with 'make release'
+    Commit: Remove expose 8888 from paasta check
+
+ -- Daniel Nephin <dnephin@yelp.com>  Fri, 26 Jun 2015 20:21:40 -0700
+
 paasta-tools (0.12.2-yelp1) lucid; urgency=low
 
   * 0.12.2 tagged with 'make release'
