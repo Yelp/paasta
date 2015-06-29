@@ -229,8 +229,8 @@ class TestMarathonTools:
         with mock.patch('service_configuration_lib.read_extra_service_information', autospec=True,
                         return_value=fake_job_config) as read_extra_info_patch:
             actual = marathon_tools.get_service_instance_list(fake_name, fake_cluster, fake_dir)
-            assert cmp(expected, actual) == 0
             read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
+            assert sorted(expected) == sorted(actual)
 
     def test_load_marathon_config(self):
         expected = {'foo': 'bar'}
@@ -350,11 +350,11 @@ class TestMarathonTools:
                         return_value=fake_smartstack) as read_service_configuration_patch:
             actual = marathon_tools.get_all_namespaces_for_service(name, soa_dir)
             read_service_configuration_patch.assert_any_call(name, soa_dir)
-            assert expected == actual
+            assert sorted(expected) == sorted(actual)
 
             actual_short = marathon_tools.get_all_namespaces_for_service(name, soa_dir, False)
             read_service_configuration_patch.assert_any_call(name, soa_dir)
-            assert expected_short == actual_short
+            assert sorted(expected_short) == sorted(actual_short)
 
     def test_get_marathon_services_for_cluster(self):
         cluster = 'honey_bunches_of_oats'
@@ -533,7 +533,7 @@ class TestMarathonTools:
                         return_value=fake_config) as read_service_configuration_patch:
             actual = marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
             read_service_configuration_patch.assert_called_once_with(name, soa_dir)
-            assert actual == expected
+            assert sorted(actual) == sorted(expected)
 
     def test_read_service_namespace_config_no_file(self):
         name = 'a_man'
