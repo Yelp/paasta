@@ -655,9 +655,7 @@ def get_default_cluster_for_service(service_name):
     cluster = None
     try:
         cluster = load_system_paasta_config().get_cluster()
-        print('Loaded system paasta config')
     except NoMarathonClusterFoundException:
-        print('caught NoMarathonClusterFoundException')
         clusters_deployed_to = get_clusters_deployed_to(service_name)
         if len(clusters_deployed_to) > 0:
             cluster = clusters_deployed_to[0]
