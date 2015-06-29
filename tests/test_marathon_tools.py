@@ -303,12 +303,12 @@ class TestMarathonTools:
         fake_service_name = 'fake_service'
         fake_clusters = ['fake_cluster-1', 'fake_cluster-2']
         with contextlib.nested(
-            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True, return_value=fake_clusters),
-            mock.patch('utils.get_cluster', autospec=True, side_effect=utils.NoMarathonClusterFoundException()),
+            mock.patch('paasta_tools.marathon_tools.get_clusters_deployed_to', autospec=True, return_value=fake_clusters),
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True, side_effect=marathon_tools.NoMarathonClusterFoundException),
         ) as (
             mock_get_clusters_deployed_to,
-            mock_get_cluster,
-        )
+            mock_load_system_paasta_config,
+        ):
             assert marathon_tools.get_default_cluster_for_service(fake_service_name) == 'fake_cluster-1'
             mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
 
