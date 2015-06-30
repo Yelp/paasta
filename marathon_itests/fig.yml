@@ -10,3 +10,8 @@ marathon:
   links:
     - zookeeper
   command: 'marathon --no-logger'
+
+hacheck:
+  build: ../yelp_package/dockerfiles/itest/hacheck/
+  ports:
+    - 6666

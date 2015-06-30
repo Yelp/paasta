@@ -287,8 +287,13 @@ def deploy_service(
         happy_new_tasks = []
 
     try:
-        drain_method = drain_lib.DrainMethod.get_drain_method(drain_method_name,
-                                                              drain_method_params=drain_method_params)
+        drain_method = drain_lib.DrainMethod.get_drain_method(
+            drain_method_name,
+            service_name=service_name,
+            instance_name=instance_name,
+            nerve_ns=nerve_ns,
+            drain_method_params=drain_method_params,
+        )
     except KeyError:
         errormsg = 'ERROR: drain_method not recognized: %s. Must be one of (%s)' % \
             (drain_method, ', '.join(drain_lib.list_drain_methods()))
