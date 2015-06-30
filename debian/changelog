@@ -1,3 +1,10 @@
+paasta-tools (0.12.4-yelp1) lucid; urgency=low
+
+  * 0.12.4 tagged with 'make release'
+    Commit: Add eu-prod scribe host; increment version
+
+ -- Lawrence Matthews <lmatthew@yelp.com>  Tue, 30 Jun 2015 12:00:36 -0700
+
 paasta-tools (0.12.3-yelp1) lucid; urgency=low
 
   * 0.12.3 tagged with 'make release'
