@@ -9,7 +9,7 @@ test:
 
 itest: test
 	tox -e general_integration
-	#tox -e marathon_integration
+	tox -e marathon_integration
 
 # See the makefile in yelp_package/Makefile for packaging stuff
 itest_%:

@@ -78,7 +78,7 @@ def when_deploy_service_initiated(context, bounce_method, drain_method):
         mock.patch(
             'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
             autospec=True,
-            return_value='testcluster',
+            return_value=context.cluster,
         ),
     ):
         setup_marathon_job.deploy_service(

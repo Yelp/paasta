@@ -4,6 +4,7 @@ import contextlib
 import mock
 
 import marathon
+from pysensu_yelp import Status
 
 from pytest import raises
 from paasta_tools import marathon_tools, bounce_lib
@@ -172,6 +173,73 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config,
                 self.fake_marathon_service_config)
             sys_exit_patch.assert_called_once_with(0)
+
+    def test_main_sends_event_if_no_deployments(self):
+        fake_client = mock.MagicMock()
+        with contextlib.nested(
+            mock.patch(
+                'setup_marathon_job.parse_args',
+                return_value=self.fake_args,
+                autospec=True,
+            ),
+            mock.patch(
+                'setup_marathon_job.get_main_marathon_config',
+                return_value=self.fake_marathon_config,
+                autospec=True,
+            ),
+            mock.patch(
+                'paasta_tools.marathon_tools.get_marathon_client',
+                return_value=fake_client,
+                autospec=True,
+            ),
+            mock.patch(
+                'paasta_tools.marathon_tools.load_marathon_service_config',
+                side_effect=marathon_tools.NoDeploymentsAvailable(),
+                autospec=True,
+            ),
+            mock.patch(
+                'setup_marathon_job.setup_service',
+                return_value=(1, 'NEVER'),
+                autospec=True,
+            ),
+            mock.patch(
+                'setup_marathon_job.marathon_tools.get_cluster',
+                return_value=self.fake_cluster,
+                autospec=True,
+            ),
+            mock.patch('setup_marathon_job.send_event', autospec=True),
+        ) as (
+            parse_args_patch,
+            get_main_conf_patch,
+            get_client_patch,
+            read_service_conf_patch,
+            setup_service_patch,
+            get_cluster_patch,
+            sensu_patch,
+        ):
+            with raises(SystemExit) as exc_info:
+                setup_marathon_job.main()
+            parse_args_patch.assert_called_once_with()
+            get_main_conf_patch.assert_called_once_with()
+            get_client_patch.assert_called_once_with(
+                self.fake_marathon_config.get_url(),
+                self.fake_marathon_config.get_username(),
+                self.fake_marathon_config.get_password())
+            read_service_conf_patch.assert_called_once_with(
+                self.fake_args.service_instance.split('.')[0],
+                self.fake_args.service_instance.split('.')[1],
+                self.fake_cluster,
+                soa_dir=self.fake_args.soa_dir)
+            expected_string = 'No deployments found for %s in cluster %s' % (
+                self.fake_args.service_instance, self.fake_cluster)
+            sensu_patch.assert_called_once_with(
+                self.fake_args.service_instance.split('.')[0],
+                self.fake_args.service_instance.split('.')[1],
+                self.fake_args.soa_dir,
+                Status.CRITICAL,
+                expected_string
+            )
+            assert exc_info.value.code == 0
 
     def test_send_event(self):
         fake_service_name = 'fake_service'

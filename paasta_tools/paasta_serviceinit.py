@@ -444,6 +444,7 @@ def main():
     app_id = marathon_tools.get_app_id(service, instance, marathon_config)
     normal_instance_count = complete_job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
+    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance)
 
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
@@ -465,9 +466,10 @@ def main():
         print status_mesos_tasks(service, instance, normal_instance_count)
         if args.verbose:
             print status_mesos_tasks_verbose(service, instance)
-        print status_smartstack_backends(service, instance, normal_smartstack_count, cluster)
-        if args.verbose:
-            print status_smartstack_backends_verbose(service, instance, cluster, tasks)
+        if proxy_port is not None:
+            print status_smartstack_backends(service, instance, normal_smartstack_count, cluster)
+            if args.verbose:
+                print status_smartstack_backends_verbose(service, instance, cluster, tasks)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

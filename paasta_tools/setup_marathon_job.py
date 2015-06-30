@@ -415,12 +415,19 @@ def main():
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
 
-    service_instance_config = marathon_tools.load_marathon_service_config(
-        service_name,
-        instance_name,
-        marathon_tools.get_cluster(),
-        soa_dir=soa_dir,
-    )
+    try:
+        service_instance_config = marathon_tools.load_marathon_service_config(
+            service_name,
+            instance_name,
+            marathon_tools.get_cluster(),
+            soa_dir=soa_dir,
+        )
+    except marathon_tools.NoDeploymentsAvailable:
+        error_msg = "No deployments found for %s in cluster %s" % (args.service_instance, marathon_tools.get_cluster())
+        log.error(error_msg)
+        send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
+        sys.exit(0)
 
     if service_instance_config:
         try:

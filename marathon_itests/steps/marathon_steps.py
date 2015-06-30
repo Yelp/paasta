@@ -17,8 +17,11 @@ def working_marathon(context):
     if not hasattr(context, 'client'):
         marathon_connection_string = "http://%s" % \
             get_service_connection_string('marathon')
-        zk_connection_string = "zk://%s/mesos-testcluster" % \
-            get_service_connection_string('zookeeper')
+        zk_connection_string = "zk://%s/mesos-%s" % \
+            (
+                get_service_connection_string('zookeeper'),
+                context.cluster
+            )
         marathon_config = marathon_tools.MarathonConfig({
             'url': marathon_connection_string,
             'user': None,
@@ -28,7 +31,7 @@ def working_marathon(context):
                                                             marathon_config.get_password())
         context.marathon_config = marathon_config
         system_paasta_config = utils.SystemPaastaConfig({
-            'cluster': 'testcluster',
+            'cluster': context.cluster,
             'docker_volumes': [],
             'docker_registry': u'docker-dev.yelpcorp.com',
             'zookeeper': zk_connection_string
