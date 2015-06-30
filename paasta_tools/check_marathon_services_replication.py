@@ -99,41 +99,52 @@ def split_id(fid):
     return (fid.split(ID_SPACER)[0], fid.split(ID_SPACER)[1])
 
 
-def check_smartstack_replication_for_namespace(full_name, available_backends, soa_dir, crit_threshold):
+def get_expected_count(service, instance, soa_dir):
+    try:
+        expected_count = marathon_tools.get_expected_instance_count_for_namespace(
+            service,
+            instance,
+            soa_dir=soa_dir
+        )
+    except (IndexError, KeyError, OSError, ValueError, AttributeError):
+        log.info('%s.%s isn\'t a marathon service' % (service, instance))
+        return None
+    if expected_count == 0:
+        log.info('%s.%s doesn\'t have any expected instances' % (service, instance))
+        return None
+    return expected_count
+
+
+def check_smartstack_replication_for_namespace(
+        service,
+        namespace,
+        available_backends,
+        soa_dir,
+        crit_threshold,
+        expected_count):
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds given.
 
-    :param full_name: A string like example_service.main
+    :param service: A string like example_service
+    :param namespace: A nerve namespace, like "main"
     :param available_backends: A dictionary mapping namespaces to the number of available_backends
     :param soa_dir: The SOA configuration directory to read from
     :param crit_threshold: The fraction of instances that need to be up to avoid a CRITICAL event
     """
+    full_name = "%s%s%s" % (service, ID_SPACER, namespace)
     log.info('Checking namespace %s', full_name)
-    try:
-        service_name, namespace = split_id(full_name)
-        num_expected = marathon_tools.get_expected_instance_count_for_namespace(
-            service_name,
-            namespace,
-            soa_dir=soa_dir
-        )
-    except (IndexError, KeyError, OSError, ValueError, AttributeError):
-        log.info('Namespace %s isn\'t a marathon service', full_name)
-        return  # This isn't a Marathon service
-    if num_expected == 0:
-        log.info('Namespace %s doesn\'t have any expected instances', full_name)
-        return  # This namespace isn't in this cluster
     # We want to make sure that we're expecting some # of backends first!
     if full_name not in available_backends:
         output = 'Service namespace entry %s not found! No instances available!' % full_name
         log.error(output)
-        context = get_context(service_name, namespace)
+        context = get_context(service, namespace)
         output = '%s\n%s' % (output, context)
-        send_event(service_name, namespace, soa_dir, pysensu_yelp.Status.CRITICAL, output)
+        send_event(service, namespace, soa_dir, pysensu_yelp.Status.CRITICAL, output)
         return
     num_available = available_backends[full_name]
-    ratio = (num_available / float(num_expected)) * 100
+    ratio = (num_available / float(expected_count)) * 100
     output = ('Service %s has %d out of %d expected instances available!\n' +
-              '(threshold: %d%%)') % (full_name, num_available, num_expected, crit_threshold)
+              '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
     if ratio < crit_threshold:
         log.error(output)
         status = pysensu_yelp.Status.CRITICAL
@@ -144,9 +155,9 @@ def check_smartstack_replication_for_namespace(full_name, available_backends, so
         status_str = 'OK'
     output = '%s: %s' % (status_str, output)
     if status_str != 'OK':
-        context = get_context(service_name, namespace)
+        context = get_context(service, namespace)
         output = '%s\n%s' % (output, context)
-    send_event(service_name, namespace, soa_dir, status, output)
+    send_event(service, namespace, soa_dir, status, output)
 
 
 def check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold):
@@ -162,12 +173,14 @@ def check_service_replication(service, instance, crit_threshold, available_smart
     :available_smartstack_replication: a special hash that represents the current replication levels in smartstack
     """
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
+    expected_count = get_expected_count(service, instance, soa_dir)
+    if expected_count is None:
+        return
     if proxy_port is not None:
         namespace = marathon_tools.read_namespace_for_service_instance(service, instance, soa_dir=soa_dir)
         if namespace == instance:
-            full_name = "%s%s%s" % (service, ID_SPACER, instance)
             check_smartstack_replication_for_namespace(
-                full_name, available_smartstack_replication, soa_dir, crit_threshold
+                service, namespace, available_smartstack_replication, soa_dir, crit_threshold, expected_count
             )
         else:
             log.debug(
@@ -187,7 +200,8 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     service_instances = marathon_tools.get_marathon_services_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
-    available_smartstack_replication = replication_utils.get_replication_for_services('localhost:3212', service_instances)
+    available_smartstack_replication = replication_utils.get_replication_for_services(
+        'localhost:3212', service_instances)
     for service, instance in service_instances:
         check_service_replication(service, instance, crit_threshold, available_smartstack_replication, soa_dir)
 
