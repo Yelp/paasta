@@ -436,6 +436,27 @@ class TestMarathonTools:
             read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
             read_config_patch.assert_called_once_with(name, namespace, soa_dir)
 
+    def test_get_proxy_port_for_instance_defaults_to_none(self):
+        name = 'thats_no_moon'
+        instance = 'thats_a_space_station'
+        cluster = 'shot_line'
+        soa_dir = 'drink_up'
+        namespace = 'thirsty_mock'
+        expected = None
+        with contextlib.nested(
+            mock.patch('marathon_tools.read_namespace_for_service_instance',
+                       autospec=True, return_value=namespace),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True, return_value={})
+        ) as (
+            read_ns_patch,
+            read_config_patch
+        ):
+            actual = marathon_tools.get_proxy_port_for_instance(name, instance, cluster, soa_dir)
+            assert expected == actual
+            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
+            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
+
     def test_get_mode_for_instance_present(self):
         name = 'stage_env'
         instance = 'in_aws'
