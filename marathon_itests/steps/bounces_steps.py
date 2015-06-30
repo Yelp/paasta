@@ -4,6 +4,7 @@ import time
 
 from behave import given, when, then
 from paasta_tools import bounce_lib
+from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
 
@@ -63,8 +64,8 @@ def when_there_are_num_which_tasks(context, num, which):
     raise Exception("timed out waiting for %d tasks on %s; there are %d" % (context.max_happy_tasks, app_id, happy_count))
 
 
-@when(u'deploy_service with bounce strategy "{bounce_method}" is initiated')
-def when_deploy_service_initiated(context, bounce_method):
+@when(u'deploy_service with bounce strategy "{bounce_method}", drain method "{drain_method}" is initiated')
+def when_deploy_service_initiated(context, bounce_method, drain_method):
     with contextlib.nested(
         mock.patch(
             'paasta_tools.bounce_lib.get_happy_tasks',
@@ -87,7 +88,8 @@ def when_deploy_service_initiated(context, bounce_method):
             config=context.new_config,
             client=context.client,
             bounce_method=bounce_method,
-            drain_method_name='noop',
+            drain_method_name=drain_method,
+            drain_method_params={},
             nerve_ns=context.instance_name,
             bounce_health_params={},
         )
@@ -137,3 +139,9 @@ def and_we_wait_a_bit_for_the_app_to_disappear(context, which):
             return True
     # It better not be running by now!
     assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is False
+
+
+@when(u'a task has drained')
+def when_a_task_has_drained(context):
+    """Tell the TestDrainMethod to mark a task as safe to kill"""
+    drain_lib.TestDrainMethod.mark_a_task_as_safe_to_kill()

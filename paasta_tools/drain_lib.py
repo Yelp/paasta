@@ -46,14 +46,40 @@ class DrainMethod(object):
 @DrainMethod.register('noop')
 class NoopDrainMethod(DrainMethod):
     """This drain policy does nothing and assumes every task is safe to kill."""
-    def down(cls, task):
+    def down(self, task):
         pass
 
-    def up(cls, task):
+    def up(self, task):
         pass
 
-    def is_downed(cls, task):
+    def is_downed(self, task):
         return False
 
-    def safe_to_kill(cls, task):
+    def safe_to_kill(self, task):
         return True
+
+
+@DrainMethod.register('test')
+class TestDrainMethod(DrainMethod):
+    """This drain policy is meant for integration testing. Do not use."""
+
+    # These are variables on the class for ease of use in testing.
+    downed_task_ids = set()
+    safe_to_kill_task_ids = set()
+
+    def down(self, task):
+        self.downed_task_ids.add(task.id)
+
+    def up(self, task):
+        self.downed_task_ids.remove(task.id)
+        self.safe_to_kill_task_ids.remove(task.id)
+
+    def is_downed(self, task):
+        return task.id in (self.downed_task_ids | self.safe_to_kill_task_ids)
+
+    def safe_to_kill(self, task):
+        return task.id in self.safe_to_kill_task_ids
+
+    @classmethod
+    def mark_a_task_as_safe_to_kill(cls):
+        cls.safe_to_kill_task_ids.add(cls.downed_task_ids.pop())
