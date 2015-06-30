@@ -88,7 +88,6 @@ def when_deploy_service_initiated(context, bounce_method):
             client=context.client,
             bounce_method=bounce_method,
             drain_method_name='noop',
-            drain_policy_name='brutal',
             nerve_ns=context.instance_name,
             bounce_health_params={},
         )

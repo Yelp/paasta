@@ -100,7 +100,6 @@ def get_main_marathon_config():
 def do_bounce(
     bounce_func,
     drain_method,
-    drain_policy,
     config,
     new_app_running,
     happy_new_tasks,
@@ -174,7 +173,7 @@ def do_bounce(
     killed_tasks = set()
 
     for task in all_draining_tasks:
-        if drain_policy.safe_to_kill(task):
+        if drain_method.safe_to_kill(task):
             killed_tasks.add(task)
             log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
             client.kill_task(task.app_id, task.id, scale=True)
@@ -240,7 +239,6 @@ def deploy_service(
     client,
     bounce_method,
     drain_method_name,
-    drain_policy_name,
     nerve_ns,
     bounce_health_params,
 ):
@@ -254,7 +252,6 @@ def deploy_service(
     :param client: A MarathonClient object
     :param bounce_method: The bounce method to use, if needed
     :param drain_method_name: The name of the traffic draining method to use.
-    :param drain_policy_name: The name of the traffic draining policy to use.
     :param nerve_ns: The nerve namespace to look in.
     :param bounce_health_params: A dictionary of options for bounce_lib.get_happy_tasks.
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
@@ -298,14 +295,6 @@ def deploy_service(
 
     old_app_live_tasks, old_app_draining_tasks = get_old_live_draining_tasks(other_apps, drain_method)
 
-    try:
-        drain_policy = drain_lib.DrainPolicy.get_drain_policy(drain_policy_name)
-    except KeyError:
-        errormsg = 'ERROR: drain_policy not recognized: %s. Must be one of (%s)' % \
-            (drain_policy, ', '.join(drain_lib.list_drain_methods()))
-        __log(errormsg)
-        return (1, errormsg)
-
     # log all uncaught exceptions and raise them again
     try:
         try:
@@ -321,7 +310,6 @@ def deploy_service(
                 do_bounce(
                     bounce_func=bounce_func,
                     drain_method=drain_method,
-                    drain_policy=drain_policy,
                     config=config,
                     new_app_running=new_app_running,
                     happy_new_tasks=happy_new_tasks,
@@ -386,7 +374,6 @@ def setup_service(service_name, instance_name, client, marathon_config,
         client=client,
         bounce_method=service_marathon_config.get_bounce_method(),
         drain_method_name=service_marathon_config.get_drain_method(),
-        drain_policy_name=service_marathon_config.get_drain_policy(),
         nerve_ns=service_marathon_config.get_nerve_namespace(),
         bounce_health_params=service_marathon_config.get_bounce_health_params(),
     )

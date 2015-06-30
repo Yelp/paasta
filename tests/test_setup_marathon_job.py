@@ -289,8 +289,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock()
-        fake_drain_policy = mock.Mock(safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock(safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
             marathon.MarathonClient
@@ -306,7 +305,6 @@ class TestSetupMarathonJob:
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
-                drain_policy=fake_drain_policy,
                 config=fake_config,
                 new_app_running=fake_new_app_running,
                 happy_new_tasks=fake_happy_new_tasks,
@@ -353,8 +351,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock()
-        fake_drain_policy = mock.Mock(safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock(safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
             marathon.MarathonClient
@@ -370,7 +367,6 @@ class TestSetupMarathonJob:
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
-                drain_policy=fake_drain_policy,
                 config=fake_config,
                 new_app_running=fake_new_app_running,
                 happy_new_tasks=fake_happy_new_tasks,
@@ -415,8 +411,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock()
-        fake_drain_policy = mock.Mock(safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock(safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
             marathon.MarathonClient
@@ -432,7 +427,6 @@ class TestSetupMarathonJob:
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
-                drain_policy=fake_drain_policy,
                 config=fake_config,
                 new_app_running=fake_new_app_running,
                 happy_new_tasks=fake_happy_new_tasks,
@@ -478,7 +472,6 @@ class TestSetupMarathonJob:
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock()
-        fake_drain_policy = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
             marathon.MarathonClient
@@ -493,7 +486,6 @@ class TestSetupMarathonJob:
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
-                drain_policy=fake_drain_policy,
                 config=fake_config,
                 new_app_running=fake_new_app_running,
                 happy_new_tasks=fake_happy_new_tasks,
@@ -539,7 +531,6 @@ class TestSetupMarathonJob:
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock()
-        fake_drain_policy = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
             marathon.MarathonClient
@@ -553,7 +544,6 @@ class TestSetupMarathonJob:
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
-                drain_policy=fake_drain_policy,
                 config=fake_config,
                 new_app_running=fake_new_app_running,
                 happy_new_tasks=fake_happy_new_tasks,
@@ -631,7 +621,6 @@ class TestSetupMarathonJob:
         }
         fake_bounce = 'trampoline'
         fake_drain_method = 'noop'
-        fake_drain_policy = 'brutal'
         with contextlib.nested(
             mock.patch(
                 'paasta_tools.marathon_tools.create_complete_config',
@@ -655,12 +644,6 @@ class TestSetupMarathonJob:
                 return_value=fake_drain_method,
                 autospec=True,
             ),
-            mock.patch.object(
-                self.fake_marathon_service_config,
-                'get_drain_policy',
-                return_value=fake_drain_policy,
-                autospec=True,
-            ),
             mock.patch(
                 'paasta_tools.marathon_tools.load_marathon_service_config',
                 return_value=self.fake_marathon_service_config,
@@ -670,8 +653,7 @@ class TestSetupMarathonJob:
             create_config_patch,
             deploy_service_patch,
             get_bounce_patch,
-            get_dm_patch,
-            get_dp_patch,
+            get_drain_method_patch,
             read_service_conf_patch,
         ):
             status, output = setup_marathon_job.setup_service(
@@ -690,8 +672,7 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config
             )
             get_bounce_patch.assert_called_once_with()
-            get_dm_patch.assert_called_once_with()
-            get_dp_patch.assert_called_once_with()
+            get_drain_method_patch.assert_called_once_with()
 
             deploy_service_patch.assert_called_once_with(
                 service_name=fake_name,
@@ -701,7 +682,6 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
-                drain_policy_name=fake_drain_policy,
                 nerve_ns=self.fake_marathon_service_config.get_nerve_namespace(),
                 bounce_health_params=self.fake_marathon_service_config.get_bounce_health_params(),
             )
@@ -727,7 +707,6 @@ class TestSetupMarathonJob:
     def test_deploy_service_unknown_bounce(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
         fake_drain_method = 'noop'
-        fake_drain_policy = 'brutal'
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
@@ -756,7 +735,6 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
-                drain_policy_name=fake_drain_policy,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
             )
@@ -768,7 +746,6 @@ class TestSetupMarathonJob:
     def test_deploy_service_known_bounce(self):
         fake_bounce = 'areallygoodbouncestrategy'
         fake_drain_method = 'noop'
-        fake_drain_policy = 'brutal'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance, tag='blah')
@@ -815,8 +792,8 @@ class TestSetupMarathonJob:
                 autospec=True
             ),
             mock.patch(
-                'paasta_tools.drain_lib.DrainPolicy.get_drain_policy',
-                return_value=mock.Mock(safe_to_kill=lambda t: True)
+                'paasta_tools.drain_lib.DrainMethod.get_drain_method',
+                return_value=mock.Mock(is_downed=lambda t: False, safe_to_kill=lambda t: True)
             ),
         ) as (_, _, _, kill_old_ids_patch, create_marathon_app_patch, mock_log, mock_get_cluster, _):
             result = setup_marathon_job.deploy_service(
@@ -827,7 +804,6 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
-                drain_policy_name=fake_drain_policy,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
             )
@@ -856,7 +832,6 @@ class TestSetupMarathonJob:
     def test_deploy_service_already_bouncing(self):
         fake_bounce = 'areallygoodbouncestrategy'
         fake_drain_method = 'noop'
-        fake_drain_policy = 'brutal'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance, tag='blah')
@@ -912,7 +887,6 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
-                drain_policy_name=fake_drain_policy,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
             )
@@ -921,7 +895,6 @@ class TestSetupMarathonJob:
     def test_deploy_service_logs_exceptions(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
         fake_drain_method = 'noop'
-        fake_drain_policy = 'brutal'
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
@@ -948,7 +921,6 @@ class TestSetupMarathonJob:
                     client=fake_client,
                     bounce_method=fake_bounce,
                     drain_method_name=fake_drain_method,
-                    drain_policy_name=fake_drain_policy,
                     nerve_ns=fake_instance,
                     bounce_health_params={},
                 )
