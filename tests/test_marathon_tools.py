@@ -894,7 +894,7 @@ class TestMarathonTools:
         fake_env = {'FAKEENV': 'FAKEVALUE'}
         fake_cpus = .42
         fake_instances = 101
-        fake_cmd = 'FAKECMD'
+        fake_cmd = None
         fake_args = ['arg1', 'arg2']
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
             'mode': 'http',
@@ -1076,6 +1076,12 @@ class TestMarathonTools:
     def test_get_args_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'args': ['arg1', 'arg2']}, {})
         assert fake_conf.get_args() == ['arg1', 'arg2']
+
+    def test_get_args_in_config_with_cmd(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'args': ['A'], 'cmd': 'C'}, {})
+        fake_conf.get_cmd()
+        with raises(marathon_tools.InvalidMarathonConfig):
+            fake_conf.get_args()
 
     def test_get_force_bounce(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {'force_bounce': 'blurp'})
