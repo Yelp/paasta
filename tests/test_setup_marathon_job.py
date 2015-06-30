@@ -794,7 +794,7 @@ class TestSetupMarathonJob:
                 autospec=True
             ),
             mock.patch(
-                'paasta_tools.drain_lib.DrainMethod.get_drain_method',
+                'paasta_tools.drain_lib.get_drain_method',
                 return_value=mock.Mock(is_downed=lambda t: False, safe_to_kill=lambda t: True)
             ),
         ) as (_, _, _, kill_old_ids_patch, create_marathon_app_patch, mock_log, mock_get_cluster, _):

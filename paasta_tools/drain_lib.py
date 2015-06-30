@@ -3,6 +3,22 @@ import requests
 import time
 
 
+_drain_methods = {}
+
+
+def register_drain_method(name):
+    """Returns a decorator that registers that bounce function at a given name
+    so get_bounce_method_func can find it."""
+    def outer(drain_method):
+        _drain_methods[name] = drain_method
+        return drain_method
+    return outer
+
+
+def get_drain_method(name, service_name, instance_name, nerve_ns, drain_method_params=None):
+    return _drain_methods[name](service_name, instance_name, nerve_ns, **(drain_method_params or {}))
+
+
 class DrainMethod(object):
     """A drain method is a way of stopping new traffic to tasks without killing them. For example, you might take a task
     out of a load balancer by causing its healthchecks to fail.
@@ -14,22 +30,8 @@ class DrainMethod(object):
                         process, because a bounce may take multiple runs of setup_marathon_job to complete.
      - safe_to_kill(task): Return True if this task is safe to kill, False otherwise.
 
-    When implementing a drain method, be sure to decorate with @DrainMethod.register(name).
+    When implementing a drain method, be sure to decorate with @register_drain_method(name).
     """
-    _drain_methods = {}
-
-    @staticmethod
-    def register(name):
-        """Returns a decorator that registers that bounce function at a given name
-        so get_bounce_method_func can find it."""
-        def outer(drain_method):
-            DrainMethod._drain_methods[name] = drain_method
-            return drain_method
-        return outer
-
-    @staticmethod
-    def get_drain_method(name, service_name, instance_name, nerve_ns, drain_method_params=None):
-        return DrainMethod._drain_methods[name](service_name, instance_name, nerve_ns, **(drain_method_params or {}))
 
     def __init__(self, service_name, instance_name, nerve_ns):
         self.service_name = service_name
@@ -53,7 +55,7 @@ class DrainMethod(object):
         raise NotImplementedError()
 
 
-@DrainMethod.register('noop')
+@register_drain_method('noop')
 class NoopDrainMethod(DrainMethod):
     """This drain policy does nothing and assumes every task is safe to kill."""
     def down(self, task):
@@ -69,7 +71,7 @@ class NoopDrainMethod(DrainMethod):
         return True
 
 
-@DrainMethod.register('test')
+@register_drain_method('test')
 class TestDrainMethod(DrainMethod):
     """This drain policy is meant for integration testing. Do not use."""
 
@@ -95,7 +97,7 @@ class TestDrainMethod(DrainMethod):
         cls.safe_to_kill_task_ids.add(cls.downed_task_ids.pop())
 
 
-@DrainMethod.register('hacheck')
+@register_drain_method('hacheck')
 class HacheckDrainMethod(DrainMethod):
     """This drain policy does nothing and assumes every task is safe to kill."""
     def __init__(self, service_name, instance_name, nerve_ns, delay=120, hacheck_port=6666, expiration=0):
@@ -141,9 +143,9 @@ class HacheckDrainMethod(DrainMethod):
         groupdict = match.groupdict()
         info = {}
         if 'since' in groupdict:
-            info['since'] = float(groupdict['since'])
+            info['since'] = float(groupdict['since'] or 0)
         if 'until' in groupdict:
-            info['until'] = float(groupdict['until'])
+            info['until'] = float(groupdict['until'] or 0)
         if 'reason' in groupdict:
             info['reason'] = groupdict['reason']
         if 'service_name' in groupdict:

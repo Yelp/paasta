@@ -287,7 +287,7 @@ def deploy_service(
         happy_new_tasks = []
 
     try:
-        drain_method = drain_lib.DrainMethod.get_drain_method(
+        drain_method = drain_lib.get_drain_method(
             drain_method_name,
             service_name=service_name,
             instance_name=instance_name,

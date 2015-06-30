@@ -1,4 +1,5 @@
 FROM docker-dev.yelpcorp.com/lucid_yelp
+LABEL break-cache="1"
 
 RUN apt-get update
 RUN apt-get -y install git python2.7 python-virtualenv python-pkg-resources
