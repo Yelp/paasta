@@ -239,6 +239,7 @@ def deploy_service(
     client,
     bounce_method,
     drain_method_name,
+    drain_method_params,
     nerve_ns,
     bounce_health_params,
 ):
@@ -286,7 +287,8 @@ def deploy_service(
         happy_new_tasks = []
 
     try:
-        drain_method = drain_lib.DrainMethod.get_drain_method(drain_method_name)
+        drain_method = drain_lib.DrainMethod.get_drain_method(drain_method_name,
+                                                              drain_method_params=drain_method_params)
     except KeyError:
         errormsg = 'ERROR: drain_method not recognized: %s. Must be one of (%s)' % \
             (drain_method, ', '.join(drain_lib.list_drain_methods()))
@@ -374,6 +376,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
         client=client,
         bounce_method=service_marathon_config.get_bounce_method(),
         drain_method_name=service_marathon_config.get_drain_method(),
+        drain_method_params=service_marathon_config.get_drain_method_params(),
         nerve_ns=service_marathon_config.get_nerve_namespace(),
         bounce_health_params=service_marathon_config.get_bounce_health_params(),
     )

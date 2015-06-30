@@ -23,25 +23,21 @@ class DrainMethod(object):
         return outer
 
     @staticmethod
-    def get_drain_method(name):
-        return DrainMethod._drain_methods[name]
+    def get_drain_method(name, drain_method_params=None):
+        return DrainMethod._drain_methods[name](**(drain_method_params or {}))
 
-    @classmethod
     def down(self, task):
         """Make a task stop receiving new traffic."""
         raise NotImplementedError()
 
-    @classmethod
     def up(self, task):
         """Make a task that has previously been downed start receiving traffic again."""
         raise NotImplementedError()
 
-    @classmethod
     def is_downed(self, task):
         """Return whether a task is being drained."""
         raise NotImplementedError()
 
-    @classmethod
     def safe_to_kill(self, task):
         """Return True if a task is drained and ready to be killed, or False if we should wait."""
         raise NotImplementedError()
@@ -50,18 +46,14 @@ class DrainMethod(object):
 @DrainMethod.register('noop')
 class NoopDrainMethod(DrainMethod):
     """This drain policy does nothing and assumes every task is safe to kill."""
-    @classmethod
     def down(cls, task):
         pass
 
-    @classmethod
     def up(cls, task):
         pass
 
-    @classmethod
     def is_downed(cls, task):
         return False
 
-    @classmethod
     def safe_to_kill(cls, task):
         return True

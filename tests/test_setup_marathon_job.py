@@ -682,6 +682,7 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
+                drain_method_params={},
                 nerve_ns=self.fake_marathon_service_config.get_nerve_namespace(),
                 bounce_health_params=self.fake_marathon_service_config.get_bounce_health_params(),
             )
@@ -735,6 +736,7 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
+                drain_method_params={},
                 nerve_ns=fake_instance,
                 bounce_health_params={},
             )
@@ -804,6 +806,7 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
+                drain_method_params={},
                 nerve_ns=fake_instance,
                 bounce_health_params={},
             )
@@ -887,6 +890,7 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
+                drain_method_params={},
                 nerve_ns=fake_instance,
                 bounce_health_params={},
             )
@@ -921,6 +925,7 @@ class TestSetupMarathonJob:
                     client=fake_client,
                     bounce_method=fake_bounce,
                     drain_method_name=fake_drain_method,
+                    drain_method_params={},
                     nerve_ns=fake_instance,
                     bounce_health_params={},
                 )
