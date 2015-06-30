@@ -49,12 +49,7 @@ Feature: Bounces work as expected
 
      When there are 2 new tasks
       And deploy_service with bounce strategy "crossover" is initiated
-     Then the old app should be running
-      And the old app should be configured to have 0 instances
-
-     When the old app is down to 0 instances
-      And deploy_service with bounce strategy "crossover" is initiated
-     When we wait a bit for the old app to disappear
+      And we wait a bit for the old app to disappear
      Then the old app should be gone
 
   Scenario: The downthenup bounce works

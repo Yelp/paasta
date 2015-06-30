@@ -212,7 +212,6 @@ class TestBrutalBounce:
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
     def test_brutal_bounce_done(self):
@@ -231,7 +230,6 @@ class TestBrutalBounce:
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
     def test_brutal_bounce_mid_bounce(self):
@@ -253,7 +251,6 @@ class TestBrutalBounce:
         ) == {
             "create_app": False,
             "tasks_to_drain": old_app_live_tasks['app1'] | old_app_live_tasks['app2'],
-            "apps_to_kill": set(['app1', 'app2']),
         }
 
     def test_brutal_bounce_old_but_no_new(self):
@@ -275,7 +272,6 @@ class TestBrutalBounce:
         ) == {
             "create_app": True,
             "tasks_to_drain": old_app_live_tasks['app1'] | old_app_live_tasks['app2'],
-            "apps_to_kill": set(['app1', 'app2']),
         }
 
 
@@ -295,7 +291,6 @@ class TestUpthendownBounce:
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
     def test_upthendown_bounce_old_but_no_new(self):
@@ -317,7 +312,6 @@ class TestUpthendownBounce:
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
     def test_upthendown_bounce_mid_bounce(self):
@@ -340,7 +334,6 @@ class TestUpthendownBounce:
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
     def test_upthendown_bounce_cleanup(self):
@@ -363,7 +356,6 @@ class TestUpthendownBounce:
         ) == {
             "create_app": False,
             "tasks_to_drain": old_app_live_tasks['app1'] | old_app_live_tasks['app2'],
-            "apps_to_kill": set(['app1', 'app2']),
         }
 
     def test_upthendown_bounce_done(self):
@@ -383,7 +375,6 @@ class TestUpthendownBounce:
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
 
@@ -404,7 +395,6 @@ class TestCrossoverBounce:
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
     def test_crossover_bounce_old_but_no_new(self):
@@ -426,7 +416,6 @@ class TestCrossoverBounce:
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
     def test_crossover_bounce_mid_bounce(self):
@@ -449,7 +438,6 @@ class TestCrossoverBounce:
 
         assert actual['create_app'] is False
         assert len(actual['tasks_to_drain']) == 3
-        assert actual['apps_to_kill'] == set()
 
     def test_crossover_bounce_cleanup(self):
         """When marathon has the desired app, and there are other copies of
@@ -471,7 +459,6 @@ class TestCrossoverBounce:
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(['app1', 'app2']),
         }
 
     def test_crossover_bounce_done(self):
@@ -491,7 +478,6 @@ class TestCrossoverBounce:
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
 
@@ -512,7 +498,6 @@ class TestDownThenUpBounce(object):
         ) == {
             "create_app": True,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
     def test_downthenup_bounce_old_but_no_new(self):
@@ -533,7 +518,6 @@ class TestDownThenUpBounce(object):
         ) == {
             "create_app": False,
             "tasks_to_drain": old_app_live_tasks['app1'] | old_app_live_tasks['app2'],
-            "apps_to_kill": set(['app1', 'app2']),
         }
 
     def test_downthenup_bounce_done(self):
@@ -552,7 +536,6 @@ class TestDownThenUpBounce(object):
         ) == {
             "create_app": False,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

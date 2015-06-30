@@ -81,14 +81,16 @@ def when_deploy_service_initiated(context, bounce_method):
         ),
     ):
         setup_marathon_job.deploy_service(
-            context.service_name,
-            context.instance_name,
-            context.new_config['id'],
-            context.new_config,
-            context.client,
-            bounce_method,
-            context.instance_name,
-            {},
+            service_name=context.service_name,
+            instance_name=context.instance_name,
+            marathon_jobid=context.new_config['id'],
+            config=context.new_config,
+            client=context.client,
+            bounce_method=bounce_method,
+            drain_method_name='noop',
+            drain_policy_name='brutal',
+            nerve_ns=context.instance_name,
+            bounce_health_params={},
         )
 
 

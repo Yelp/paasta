@@ -254,13 +254,12 @@ def brutal_bounce(
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
                                that are being drained should not be included in this dictionary.
-    :return: A dictionary with keys create_app, tasks_to_drain, apps_to_kill, representing the desired bounce actions.
+    :return: A dictionary with keys create_app, tasks_to_drain, representing the desired bounce actions.
     """
     return {
         "create_app": not new_app_running,
         # set.union doesn't like getting zero arguments
         "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
-        "apps_to_kill": set(old_app_live_tasks.keys()),
     }
 
 
@@ -278,20 +277,18 @@ def upthendown_bounce(
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
                                that are being drained should not be included in this dictionary.
-    :return: A dictionary with keys create_app, tasks_to_drain, apps_to_kill, representing the desired bounce actions.
+    :return: A dictionary with keys create_app, tasks_to_drain, representing the desired bounce actions.
     """
     if new_app_running and len(happy_new_tasks) == new_config['instances']:
         return {
             "create_app": False,
             # set.union doesn't like getting zero arguments
             "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
-            "apps_to_kill": set(old_app_live_tasks.keys()),
         }
     else:
         return {
             "create_app": not new_app_running,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
 
 
@@ -309,7 +306,7 @@ def crossover_bounce(
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
                                that are being drained should not be included in this dictionary.
-    :return: A dictionary with keys create_app, tasks_to_drain, apps_to_kill, representing the desired bounce actions.
+    :return: A dictionary with keys create_app, tasks_to_drain, representing the desired bounce actions.
 
     """
 
@@ -317,7 +314,6 @@ def crossover_bounce(
         return {
             "create_app": True,
             "tasks_to_drain": set(),
-            "apps_to_kill": set(),
         }
     else:
         happy_count = len(happy_new_tasks)
@@ -331,7 +327,6 @@ def crossover_bounce(
         return {
             "create_app": False,
             "tasks_to_drain": set(set(old_tasks[needed_count:])),
-            "apps_to_kill": set(app_id for (app_id, tasks) in old_app_live_tasks.items() if len(tasks) == 0),
         }
 
 
@@ -349,13 +344,12 @@ def downthenup_bounce(
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
                                that are being drained should not be included in this dictionary.
-    :return: A dictionary with keys create_app, tasks_to_drain, apps_to_kill, representing the desired bounce actions.
+    :return: A dictionary with keys create_app, tasks_to_drain, representing the desired bounce actions.
     """
     return {
         "create_app": not old_app_live_tasks and not new_app_running,
         # set.union doesn't like getting zero arguments,
         "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
-        "apps_to_kill": set(old_app_live_tasks.keys()),
     }
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

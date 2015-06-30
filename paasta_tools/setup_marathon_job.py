@@ -114,82 +114,103 @@ def do_bounce(
     marathon_jobid,
     client,
 ):
-    draining_tasks = set()
+    def log_bounce_action(line, level='debug'):
+        return _log(
+            service_name=service_name,
+            line=line,
+            component='deploy',
+            level=level,
+            cluster=cluster,
+            instance=instance_name
+        )
+
+    # log if we're not in a steady state.
+    if any([
+        (not new_app_running),
+        old_app_live_tasks.keys()
+    ]):
+        log_bounce_action(
+            line=' '.join([
+                '%s bounce in progress on %s.' % (bounce_method, serviceinstance),
+                'New marathon app %s %s.' % (marathon_jobid, ('exists' if new_app_running else 'not created yet')),
+                '%d new tasks to bring up.' % (config['instances'] - len(happy_new_tasks)),
+                '%d old tasks receiving traffic.' % sum(len(tasks) for tasks in old_app_live_tasks.values()),
+                '%d old tasks draining.' % sum(len(tasks) for tasks in old_app_draining_tasks.values()),
+                '%d old apps.' % len(old_app_live_tasks.keys()),
+            ]),
+            level='event',
+        )
+
+    all_draining_tasks = set()
     actions = bounce_func(
         new_config=config,
         new_app_running=new_app_running,
         happy_new_tasks=happy_new_tasks,
         old_app_live_tasks=old_app_live_tasks,
     )
-    changed = False
 
-    def log_bounce_action(line):
-        _log(
-            service_name=service_name,
-            line=line,
-            component='deploy',
-            level='debug',
-            cluster=cluster,
-            instance=instance_name
-        )
-
-    if (
-        (actions['create_app'] and not new_app_running) or
-        (len(actions['tasks_to_drain']) > 0) or
-        actions['apps_to_kill']
-    ):
-        changed = True
-        log_bounce_action(
-            line='%s bounce started on %s. %d new tasks to bring up, %d to drain.' %
-            (
-                bounce_method,
-                serviceinstance,
-                config['instances'] - len(happy_new_tasks),
-                len(actions['tasks_to_drain'])
-            ),
-        )
     if actions['create_app'] and not new_app_running:
         log_bounce_action(
             line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
         )
         bounce_lib.create_marathon_app(marathon_jobid, config, client)
     if len(actions['tasks_to_drain']) > 0:
-        # we need the app_id. actions['tasks_to_drain'] set elements has that information, so we
-        # extract a set element and use its app_id
-        app_id = next(iter(actions['tasks_to_drain'])).app_id
-        log_bounce_action(
-            line='%s bounce draining %d old tasks with app_id %s' %
-            (bounce_method, len(actions['tasks_to_drain']), app_id),
-        )
+        tasks_to_drain_by_app_id = {}
         for task in actions['tasks_to_drain']:
-            draining_tasks.add(task)
+            tasks_to_drain_by_app_id.setdefault(task.app_id, set()).add(task)
+        for app_id, tasks in tasks_to_drain_by_app_id.items():
+            app_id = next(iter(actions['tasks_to_drain'])).app_id
+            log_bounce_action(
+                line='%s bounce draining %d old tasks with app_id %s' %
+                (bounce_method, len(tasks), app_id),
+            )
+        for task in actions['tasks_to_drain']:
+            all_draining_tasks.add(task)
             drain_method.down(task)
-    if actions['apps_to_kill']:
+    for app, tasks in old_app_draining_tasks.items():
+        for task in tasks:
+            all_draining_tasks.add(task)
+
+    killed_tasks = set()
+
+    for task in all_draining_tasks:
+        if drain_policy.safe_to_kill(task):
+            killed_tasks.add(task)
+            log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
+            client.kill_task(task.app_id, task.id, scale=True)
+
+    apps_to_kill = []
+    for app in old_app_live_tasks.keys():
+        live_tasks = old_app_live_tasks[app]
+        draining_tasks = old_app_draining_tasks[app]
+
+        if 0 == len((live_tasks | draining_tasks) - killed_tasks):
+            apps_to_kill.append(app)
+
+    if apps_to_kill:
         log_bounce_action(
             line='%s bounce removing old unused apps with app_ids: %s' %
             (
                 bounce_method,
-                ', '.join(actions['apps_to_kill'])
+                ', '.join(apps_to_kill)
             ),
         )
-        bounce_lib.kill_old_ids(actions['apps_to_kill'], client)
-    if changed:
+        bounce_lib.kill_old_ids(apps_to_kill, client)
+
+    # log if we appear to be finished
+    if all([
+        (apps_to_kill or killed_tasks),
+        apps_to_kill == old_app_live_tasks.keys(),
+        killed_tasks == set.union(set(), *(old_app_live_tasks.values() + old_app_draining_tasks.values())),
+    ]):
         log_bounce_action(
-            line='%s bounce on %s finished. Now running %s' %
+            line='%s bounce on %s finishing. Now running %s' %
             (
                 bounce_method,
                 serviceinstance,
                 marathon_jobid.split('.')[2]
             ),
         )
-
-    for app, tasks in old_app_draining_tasks.items():
-        for task in tasks:
-            draining_tasks.add(task)
-
-    for task in draining_tasks:
-        if drain_policy.safe_to_kill(task):
-            client.kill_task(task.app_id, task.id, scale=True)
 
 
 def get_old_live_draining_tasks(other_apps, drain_method):
