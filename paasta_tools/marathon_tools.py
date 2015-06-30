@@ -148,6 +148,10 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     )
 
 
+class InvalidMarathonConfig(Exception):
+    pass
+
+
 class MarathonServiceConfig(object):
 
     def __init__(self, service_name, instance, config_dict, branch_dict):
@@ -245,15 +249,20 @@ class MarathonServiceConfig(object):
 
         If not specified in the config and if cmd is not specified, defaults to an empty array.
         If not specified in the config but cmd is specified, defaults to null.
+        If specified in the config and if cmd is also specified, throws an exception. Only one may be specified.
 
         :param service_config: The service instance's configuration dictionary
         :returns: An array of args specified in the config,
         [] if not specified and if cmd is not specified,
         otherwise None if not specified but cmd is specified"""
-        if self.config_dict.get('cmd', None) is None:
+        if self.get_cmd() is None:
             return self.config_dict.get('args', [])
         else:
-            return self.config_dict.get('args', None)
+            args = self.config_dict.get('args', None)
+            if args is None:
+                return args
+            else:
+                raise InvalidMarathonConfig('Marathon config files can specify cmd or args, but not both.')
 
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.

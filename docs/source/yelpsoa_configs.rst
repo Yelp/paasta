@@ -28,9 +28,9 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``constraints``: Specifies placement constraints for services. Should be defined as an array within an array (E.g ``[["habitat", "GROUP_BY"]]``). Defaults to ``[["<discover_location_type>, "GROUP_BY"]]`` where ``<discover_location_type>`` is defined by the ``discover`` attribute in ``smartstack.yaml``. For more details and other constraint types, see the official `Marathon constraint documentation <https://mesosphere.github.io/marathon/docs/constraints.html>`_.
 
-  * ``cmd``: The command that is executed. Can be used as an alternative to args for containers without an entrypoint. This value is wrapped by Mesos via /bin/sh -c ${app.cmd}. It is invalid to supply both cmd and args in the same app. The Docker docs specify that providing args will override all elements specified using cmd. See `Docker Docs - ENTRYPOINT <https://docs.docker.com/reference/builder/#entrypoint>`_.
+  * ``cmd``: The command that is executed. Can be used as an alternative to args for containers without an entrypoint. This value is wrapped by Mesos via /bin/sh -c ${app.cmd}. The `Marathon docs <https://mesosphere.github.io/marathon/docs/rest-api.html#post-/v2/apps>`_ state that it is invalid to supply both cmd and args in the same app. Parsing the Marathon config file will fail if both args and cmd are specified.
 
-  * ``args``: An array of docker args if you use the "entrypoint" functionality.
+  * ``args``: An array of docker args if you use the `"entrypoint" <https://docs.docker.com/reference/builder/#entrypoint>`_ functionality.
 
   * ``env``: A dictionary of environment variables that will be made available to the container.
 
