@@ -149,6 +149,34 @@ def check_smartstack_replication_for_namespace(full_name, available_backends, so
     send_event(service_name, namespace, soa_dir, status, output)
 
 
+def check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold):
+    pass
+
+
+def check_service_replication(service, instance, crit_threshold, available_smartstack_replication, soa_dir):
+    """Checks a service's replication levels based on how the service's replication
+    should be monitored. (smartstack or mesos)
+
+    :param service: Service name, like "example_service"
+    :param instance: Instance name, like "main" or "canary"
+    :available_smartstack_replication: a special hash that represents the current replication levels in smartstack
+    """
+    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
+    if proxy_port is not None:
+        namespace = marathon_tools.read_namespace_for_service_instance(service, instance, soa_dir=soa_dir)
+        if namespace == instance:
+            full_name = "%s%s%s" % (service, ID_SPACER, instance)
+            check_smartstack_replication_for_namespace(
+                full_name, available_smartstack_replication, soa_dir, crit_threshold
+            )
+        else:
+            log.debug(
+                "Instance %s is announced under namespace: %s, not checking replication for it" % (instance, namespace)
+            )
+    else:
+        check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold)
+
+
 def main():
     args = parse_args()
     soa_dir = args.soa_dir
@@ -158,10 +186,10 @@ def main():
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
-    all_namespaces = [name for name, config in marathon_tools.get_all_namespaces()]
-    all_available = replication_utils.get_replication_for_services('localhost:3212', all_namespaces)
-    for namespace in all_namespaces:
-        check_smartstack_replication_for_namespace(namespace, all_available, soa_dir, crit_threshold)
+    service_instances = marathon_tools.get_marathon_services_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
+    available_smartstack_replication = replication_utils.get_replication_for_services('localhost:3212', service_instances)
+    for service, instance in service_instances:
+        check_service_replication(service, instance, crit_threshold, available_smartstack_replication, soa_dir)
 
 
 if __name__ == "__main__":

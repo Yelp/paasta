@@ -209,30 +209,93 @@ def test_check_smarstack_replication_for_namespace_ignores_bogus_namespaces():
         context_patch.call_count == 0
 
 
+def test_check_service_replication_for_normal_smartstack():
+    service = 'test_service'
+    instance = 'test_instance'
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance',
+                   autospec=True, return_value=666),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
+                   autospec=True, return_value=instance),
+        mock.patch('check_marathon_services_replication.check_smartstack_replication_for_namespace',
+                   autospec=True),
+    ) as (
+        mock_get_proxy_port_for_instance,
+        mock_read_namespace_for_service_instance,
+        mock_get_smartstack_replication_for_service
+    ):
+        check_marathon_services_replication.check_service_replication(service, instance, None, None, None)
+        full_name = "%s.%s" % (service, instance)
+        mock_get_smartstack_replication_for_service.assert_called_once_with(full_name, None, None, None)
+        assert mock_get_smartstack_replication_for_service.call_count == 1
+
+
+def test_check_service_replication_for_smartstack_under_other_namespace():
+    service = 'test_service'
+    instance = 'canary'
+    namespace = 'main'
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance',
+                   autospec=True, return_value=666),
+        mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
+                   autospec=True, return_value=namespace),
+        mock.patch('check_marathon_services_replication.check_smartstack_replication_for_namespace',
+                   autospec=True),
+    ) as (
+        mock_get_proxy_port_for_instance,
+        mock_read_namespace_for_service_instance,
+        mock_get_smartstack_replication_for_service
+    ):
+        check_marathon_services_replication.check_service_replication(service, instance, None, None, None)
+        assert mock_get_smartstack_replication_for_service.call_count == 0
+
+
+def test_check_service_replication_for_non_smartstack():
+    service = 'test_service'
+    instance = 'worker'
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance', autospec=True, return_value=None),
+        mock.patch('check_marathon_services_replication.check_mesos_replication_for_service', autospec=True),
+    ) as (
+        mock_get_proxy_port_for_instance,
+        mock_get_mesos_replication_for_service,
+    ):
+        check_marathon_services_replication.check_service_replication(service, instance, None, None, None)
+        mock_get_mesos_replication_for_service.assert_called_once_with(service, instance, None, None)
+
+
+def test_check_mesos_replication_for_service_good():
+    check_marathon_services_replication.mesos_replication_for_service(
+    pass
+
+
+def test_check_mesos_replication_for_service_bad():
+    pass
+
+
 def test_main():
     soa_dir = 'anw'
     crit = 1
-    namespaces = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
-    actual_namespaces = ['a', 'b', 'c', 'd']
+    services = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
     replication = 'reeeeeeeeeeeplicated'
     args = mock.Mock(soa_dir=soa_dir, crit=crit, verbose=False)
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.parse_args',
                    return_value=args, autospec=True),
-        mock.patch('paasta_tools.marathon_tools.get_all_namespaces',
-                   return_value=namespaces, autospec=True),
+        mock.patch('paasta_tools.marathon_tools.get_marathon_services_for_cluster',
+                   return_value=services, autospec=True),
         mock.patch('paasta_tools.monitoring.replication_utils.get_replication_for_services',
                    return_value=replication, autospec=True),
-        mock.patch('check_marathon_services_replication.check_smartstack_replication_for_namespace',
+        mock.patch('check_marathon_services_replication.check_service_replication',
                    autospec=True)
     ) as (
-        args_patch,
-        namespaces_patch,
-        replication_patch,
-        check_patch
+        mock_parse_args,
+        mock_get_marathon_services_for_cluster,
+        mock_get_replication_for_services,
+        mock_check_service_replication,
     ):
         check_marathon_services_replication.main()
-        args_patch.assert_called_once_with()
-        namespaces_patch.assert_called_once_with()
-        replication_patch.assert_called_once_with(mock.ANY, actual_namespaces)
-        check_patch.call_count = len(namespaces)
+        mock_parse_args.assert_called_once_with()
+        mock_get_marathon_services_for_cluster.assert_called_once_with(cluster=mock.ANY, soa_dir=soa_dir)
+        mock_get_replication_for_services.assert_called_once_with(mock.ANY, services)
+        mock_check_service_replication.call_count = len(services)
