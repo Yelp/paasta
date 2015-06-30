@@ -460,18 +460,17 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
-    with raises(KeyboardInterrupt):
-        run_docker_container(
-            mock_docker_client,
-            'fake_service',
-            'fake_instance',
-            'fake_hash',
-            [],
-            False,  # interactive
-            'fake_command',
-            False,  # healthcheck
-            mock_service_manifest,
-        )
+    run_docker_container(
+        mock_docker_client,
+        'fake_service',
+        'fake_instance',
+        'fake_hash',
+        [],
+        False,  # interactive
+        'fake_command',
+        False,  # healthcheck
+        mock_service_manifest,
+    )
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
 

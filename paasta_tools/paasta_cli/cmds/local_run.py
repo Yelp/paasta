@@ -252,9 +252,16 @@ def get_container_id(docker_client, container_name):
 
 
 def _cleanup_container(docker_client, container_id):
-    sys.stdout.write("Terminating container...\n")
-    docker_client.stop(container_id)
-    docker_client.remove_container(container_id)
+    sys.stdout.write("\nTerminating container...\n")
+    sys.stdout.write("(Please wait or you may leave an orphaned container.)\n")
+    sys.stdout.flush()
+    try:
+        docker_client.stop(container_id)
+        docker_client.remove_container(container_id)
+        sys.stdout.write("...terminated\n")
+    except errors.APIError:
+        sys.stdout.write(PaastaColors.yellow(
+            "Could not clean up container! You should stop and remove container '%s' manually.\n" % container_id))
 
 
 def run_docker_container(
@@ -342,11 +349,9 @@ def run_docker_container(
             sys.stdout.write(line)
 
     except KeyboardInterrupt:
-        if container_started:
-            _cleanup_container(docker_client, container_id)
-            raise
+        pass
 
-    # Also cleanup if the container exits on its own.
+    # Cleanup if the container exits on its own or interrupted.
     if container_started:
         _cleanup_container(docker_client, container_id)
 
