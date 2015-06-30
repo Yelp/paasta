@@ -873,7 +873,6 @@ class TestMarathonTools:
         fake_env = {'FAKEENV': 'FAKEVALUE'}
         fake_cpus = .42
         fake_instances = 101
-        fake_cmd = 'FAKECMD'
         fake_args = ['arg1', 'arg2']
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
             'mode': 'http',
@@ -915,7 +914,6 @@ class TestMarathonTools:
             'env': fake_env,
             'cpus': fake_cpus,
             'instances': fake_instances,
-            'cmd': fake_cmd,
             'args': fake_args,
             'health_checks': fake_healthchecks,
             'backoff_seconds': 1,
@@ -929,7 +927,6 @@ class TestMarathonTools:
                 'mem': fake_mem,
                 'cpus': fake_cpus,
                 'instances': fake_instances,
-                'cmd': fake_cmd,
                 'args': fake_args,
                 'healthcheck_grace_period_seconds': 3,
                 'healthcheck_interval_seconds':  10,
@@ -1036,21 +1033,9 @@ class TestMarathonTools:
             'SPECIAL_ENV': 'TRUE',
         }
 
-    def test_get_cmd_default(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_cmd() is None
-
-    def test_get_cmd_in_config(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cmd': 'FAKECMD'}, {})
-        assert fake_conf.get_cmd() == 'FAKECMD'
-
-    def test_get_args_default_no_cmd(self):
+    def test_get_args_default(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
         assert fake_conf.get_args() == []
-
-    def test_get_args_default_with_cmd(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cmd': 'FAKECMD'}, {})
-        assert fake_conf.get_args() is None
 
     def test_get_args_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'args': ['arg1', 'arg2']}, {})
@@ -1435,7 +1420,6 @@ def test_create_complete_config():
             },
             'instances': 1,
             'mem': 1000,
-            'cmd': None,
             'args': [],
             'backoff_factor': 2,
             'cpus': 0.25,
@@ -1457,6 +1441,3 @@ def test_create_complete_config():
             'constraints': [["region", "GROUP_BY"]],
         }
         assert actual == expected
-
-        # Assert that the complete config can be inserted into the MarathonApp model
-        assert MarathonApp(**actual)
