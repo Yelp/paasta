@@ -344,7 +344,7 @@ def run_docker_container(
         sys.stdout.write('Found our container running with CID %s\n' % container_id)
         simulate_healthcheck_on_service(service_manifest, healthcheck_url, healthcheck)
 
-        sys.stdout.write('Container output follows:\n')
+        sys.stdout.write('Your service is now running! Tailing stdout and stderr:\n')
         for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
             sys.stdout.write(line)
 
