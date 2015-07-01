@@ -202,8 +202,9 @@ def kill_old_ids(old_ids, client):
 
 
 def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_haproxy=False):
-    """Given a list of MarathonTask objects, return the subset which are considered healthy. With the default options,
-    this is a noop - it just returns tasks. For it to do anything interesting, set min_task_uptime or check_haproxy.
+    """Given a list of MarathonTask objects, return the subset which are considered healthy.
+    With the default options, this returns tasks where at least one of the defined Marathon healthchecks passes.
+    For it to do anything interesting, set min_task_uptime or check_haproxy.
 
     :param tasks: A list of MarathonTask objects.
     :param service_name: The name of the service.
@@ -233,6 +234,14 @@ def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_h
             if (now - task.started_at).total_seconds() < min_task_uptime:
                 continue
 
+        if len(task.health_check_results) > 0:
+            task_up = False
+            for health_check_result in task.health_check_results:
+                if health_check_result.alive:
+                    task_up = True
+                    break
+            if not task_up:
+                continue
         happy.append(task)
 
     return happy

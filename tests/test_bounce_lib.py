@@ -175,13 +175,35 @@ class TestBounceLib:
 
     def test_get_happy_tasks_identity(self):
         """With the defaults, all tasks should be considered happy."""
-        tasks = [mock.Mock() for _ in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[]) for _ in xrange(5)]
         assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks
+
+    def test_get_happy_tasks_when_some_unhealthy(self):
+        """With the defaults, all tasks should be considered happy."""
+        fake_failing_healthcheck_results = [mock.Mock(alive=False)]
+        fake_successful_healthcheck_results = [mock.Mock(alive=True)]
+        tasks = [mock.Mock(health_check_results=fake_failing_healthcheck_results),
+                 mock.Mock(health_check_results=fake_failing_healthcheck_results),
+                 mock.Mock(health_check_results=fake_successful_healthcheck_results)]
+        assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks[-1:]
+
+    def test_get_happy_tasks_with_multiple_healthchecks_success(self):
+        """With the defaults, all tasks should be considered happy."""
+        fake_successful_healthcheck_results = [mock.Mock(alive=True), mock.Mock(alive=False)]
+        tasks = [mock.Mock(health_check_results=fake_successful_healthcheck_results)]
+        assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks
+
+    def test_get_happy_tasks_with_multiple_healthchecks_fail(self):
+        """With the defaults, all tasks should be considered happy."""
+        fake_successful_healthcheck_results = [mock.Mock(alive=False), mock.Mock(alive=False)]
+        tasks = [mock.Mock(health_check_results=fake_successful_healthcheck_results)]
+        assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == []
 
     def test_get_happy_tasks_min_task_uptime(self):
         """If we specify a minimum task age, tasks newer than that should not be considered happy."""
         now = datetime.datetime(2000, 1, 1, 0, 0, 0)
-        tasks = [mock.Mock(started_at=(now - datetime.timedelta(minutes=i))) for i in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[], started_at=(now - datetime.timedelta(minutes=i)))
+                 for i in xrange(5)]
 
         # I would have just mocked datetime.datetime.utcnow, but that's apparently difficult; I have to mock
         # datetime.datetime instead, and give it a utcnow attribute.
@@ -191,7 +213,7 @@ class TestBounceLib:
     def test_get_happy_tasks_check_haproxy(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
 
-        tasks = [mock.Mock() for i in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[]) for i in xrange(5)]
         with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
             assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', check_haproxy=True) == tasks[2:]
 
