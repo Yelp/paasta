@@ -28,24 +28,13 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``constraints``: Specifies placement constraints for services. Should be defined as an array within an array (E.g ``[["habitat", "GROUP_BY"]]``). Defaults to ``[["<discover_location_type>, "GROUP_BY"]]`` where ``<discover_location_type>`` is defined by the ``discover`` attribute in ``smartstack.yaml``. For more details and other constraint types, see the official `Marathon constraint documentation <https://mesosphere.github.io/marathon/docs/constraints.html>`_.
 
-  * ``cmd``: The command that is executed. Can be used as an alternative to args for containers without an `entrypoint <https://docs.docker.com/reference/builder/#entrypoint>`_. This value is wrapped by Mesos via ``/bin/sh -c ${app.cmd}``. Parsing the Marathon config file will fail if both args and cmd are specified [#note]_.
-
-  * ``args``: An array of docker args if you use the `"entrypoint" <https://docs.docker.com/reference/builder/#entrypoint>`_ functionality. Parsing the Marathon config file will fail if both args and cmd are specified [#note]_.
+  * ``args``: docker args if you use the "entrypoint" functionality
 
   * ``env``: A dictionary of environment variables that will be made available to the container.
 
     * **WARNING**: A PORT variable is provided to the docker image, but it represents the EXTERNAL port, not the internal one. The internal service MUST listen on 8888, so this PORT variable confuses some service stacks that are listening for this variable. Such services MUST overwrite this environment variable to function. (``PORT=8888 ./uwisgi.py```) We tried to work around this, see `PAASTA-267 <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
 
 Many of these keys are passed directly to Marathon. Their docs aren't super clear about all these but start there: https://mesosphere.github.io/marathon/docs/rest-api.html
-
-.. [#note] The Marathon docs and the Docker docs are inconsistent in their explanation of args/cmd:
-    
-    The `Marathon docs <https://mesosphere.github.io/marathon/docs/rest-api.html#post-/v2/apps>`_ state that it is invalid to supply both cmd and args in the same app.
-    
-    The `Docker docs <https://docs.docker.com/reference/builder/#entrypoint>`_ do not state that it's incorrect to specify both args and cmd. Furthermore, they state that "Command line arguments to docker run <image> will be appended after all elements in an exec form ENTRYPOINT, and will override all elements specified using CMD" which implies that both cmd and args can be provided, but cmd will be silently ignored.
-    
-    To avoid issues resulting from this discrepancy, we abide by the stricter requirements from Marathon and check that no more than one of cmd and args is specified. If both are specified, an exception is thrown with an explanation of the problem, and the program terminates.
-
 
 smartstack.yaml
 ---------------
