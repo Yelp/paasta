@@ -175,7 +175,7 @@ class TestBounceLib:
 
     def test_get_happy_tasks_identity(self):
         """With the defaults, all tasks should be considered happy."""
-        tasks = [mock.Mock(health_check_results=[]) for _ in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for _ in xrange(5)]
         assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks
 
     def test_get_happy_tasks_when_some_unhealthy(self):
@@ -202,7 +202,8 @@ class TestBounceLib:
     def test_get_happy_tasks_min_task_uptime(self):
         """If we specify a minimum task age, tasks newer than that should not be considered happy."""
         now = datetime.datetime(2000, 1, 1, 0, 0, 0)
-        tasks = [mock.Mock(health_check_results=[], started_at=(now - datetime.timedelta(minutes=i)))
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)],
+                           started_at=(now - datetime.timedelta(minutes=i)))
                  for i in xrange(5)]
 
         # I would have just mocked datetime.datetime.utcnow, but that's apparently difficult; I have to mock
@@ -210,10 +211,20 @@ class TestBounceLib:
         with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
             assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', min_task_uptime=121) == tasks[3:]
 
+    def test_get_happy_tasks_min_task_uptime_when_unhealthy(self):
+        """If we specify a minimum task age, tasks newer than that should not be considered happy."""
+        now = datetime.datetime(2000, 1, 1, 0, 0, 0)
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)],
+                           started_at=(now - datetime.timedelta(minutes=i)))
+                 for i in xrange(5)]
+
+        with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
+            assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', min_task_uptime=121) == []
+
     def test_get_happy_tasks_check_haproxy(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
 
-        tasks = [mock.Mock(health_check_results=[]) for i in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in xrange(5)]
         with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
             assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', check_haproxy=True) == tasks[2:]
 
