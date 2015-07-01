@@ -1,11 +1,10 @@
 paasta-tools (0.12.6-yelp1) lucid; urgency=low
 
   * 0.12.6 tagged with 'make release'
-    Commit: Merge branch PAASTA-912  Conflicts:
-    docs/source/yelpsoa_configs.rst  paasta_tools/marathon_tools.py
-    tests/test_marathon_tools.py
+    Commit: Added support for 'cmd' as an alternative to
+    'args' for marathon. PAASTA-912
 
- -- Christopher Carroux <carroux@yelp.com>  Wed, 01 Jul 2015 15:42:33 -0700
+ -- Christopher Carroux <carroux@yelp.com>  Wed, 01 Jul 2015 16:33:15 -0700
 
 paasta-tools (0.12.5-yelp1) lucid; urgency=low
 
