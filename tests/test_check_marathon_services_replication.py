@@ -89,6 +89,30 @@ def test_split_id():
     assert check_marathon_services_replication.split_id(fake_id) == expected
 
 
+def test_get_expected_count_with_errors_returns_none():
+    with mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
+                    autospec=True, side_effect=IndexError) as mock_get_expected_instance_count_for_namespace:
+        actual = check_marathon_services_replication.get_expected_count('fake_service', 'fake_instance', None)
+        mock_get_expected_instance_count_for_namespace.call_count == 1
+        assert actual is None
+
+
+def test_get_expected_count_when_zero_returns_none():
+    with mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
+                    autospec=True, return_value=0) as mock_get_expected_instance_count_for_namespace:
+        actual = check_marathon_services_replication.get_expected_count('fake_service', 'fake_instance', None)
+        mock_get_expected_instance_count_for_namespace.call_count == 1
+        assert actual is None
+
+
+def test_get_expected_count_normals_returns_the_count():
+    with mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
+                    autospec=True, return_value=666) as mock_get_expected_instance_count_for_namespace:
+        actual = check_marathon_services_replication.get_expected_count('fake_service', 'fake_instance', None)
+        mock_get_expected_instance_count_for_namespace.call_count == 1
+        assert actual is 666
+
+
 def test_check_smarstack_replication_for_namespace_crit_when_absent():
     service = 'test'
     namespace = 'some_absent_namespace'
