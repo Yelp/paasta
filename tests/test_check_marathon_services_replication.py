@@ -89,14 +89,6 @@ def test_split_id():
     assert check_marathon_services_replication.split_id(fake_id) == expected
 
 
-def test_get_expected_count_with_errors_returns_none():
-    with mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
-                    autospec=True, side_effect=IndexError) as mock_get_expected_instance_count_for_namespace:
-        actual = check_marathon_services_replication.get_expected_count('fake_service', 'fake_instance', None)
-        mock_get_expected_instance_count_for_namespace.call_count == 1
-        assert actual is None
-
-
 def test_get_expected_count_when_zero_returns_none():
     with mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
                     autospec=True, return_value=0) as mock_get_expected_instance_count_for_namespace:
@@ -249,12 +241,15 @@ def test_check_service_replication_for_smartstack_under_other_namespace():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance',
                    autospec=True, return_value=666),
+        mock.patch('check_marathon_services_replication.get_expected_count',
+                   autospec=True, return_value=100),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=namespace),
         mock.patch('check_marathon_services_replication.check_smartstack_replication_for_namespace',
                    autospec=True),
     ) as (
         mock_get_proxy_port_for_instance,
+        mock_get_expected_count,
         mock_read_namespace_for_service_instance,
         mock_get_smartstack_replication_for_service
     ):

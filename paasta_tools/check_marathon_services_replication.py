@@ -100,15 +100,11 @@ def split_id(fid):
 
 
 def get_expected_count(service, instance, soa_dir):
-    try:
-        expected_count = marathon_tools.get_expected_instance_count_for_namespace(
-            service,
-            instance,
-            soa_dir=soa_dir
-        )
-    except (IndexError, KeyError, OSError, ValueError, AttributeError):
-        log.info('%s.%s isn\'t a marathon service' % (service, instance))
-        return None
+    expected_count = marathon_tools.get_expected_instance_count_for_namespace(
+        service,
+        instance,
+        soa_dir=soa_dir
+    )
     if expected_count == 0:
         log.info('%s.%s doesn\'t have any expected instances' % (service, instance))
         return None
@@ -133,7 +129,6 @@ def check_smartstack_replication_for_namespace(
     """
     full_name = "%s%s%s" % (service, ID_SPACER, namespace)
     log.info('Checking namespace %s', full_name)
-    # We want to make sure that we're expecting some # of backends first!
     if full_name not in available_backends:
         output = 'Service namespace entry %s not found! No instances available!' % full_name
         log.error(output)
@@ -170,12 +165,14 @@ def check_service_replication(service, instance, crit_threshold, available_smart
 
     :param service: Service name, like "example_service"
     :param instance: Instance name, like "main" or "canary"
+    :param crit_threshold: an int from 0-100 representing the percentage threshold for triggering an alert
+    :param soa_dir: The SOA configuration directory to read from
     :available_smartstack_replication: a special hash that represents the current replication levels in smartstack
     """
-    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     expected_count = get_expected_count(service, instance, soa_dir)
     if expected_count is None:
         return
+    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     if proxy_port is not None:
         namespace = marathon_tools.read_namespace_for_service_instance(service, instance, soa_dir=soa_dir)
         if namespace == instance:
