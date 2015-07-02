@@ -19,6 +19,10 @@ def get_drain_method(name, service_name, instance_name, nerve_ns, drain_method_p
     return _drain_methods[name](service_name, instance_name, nerve_ns, **(drain_method_params or {}))
 
 
+def list_drain_methods():
+    return sorted(_drain_methods.keys())
+
+
 class DrainMethod(object):
     """A drain method is a way of stopping new traffic to tasks without killing them. For example, you might take a task
     out of a load balancer by causing its healthchecks to fail.

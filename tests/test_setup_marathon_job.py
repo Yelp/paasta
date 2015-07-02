@@ -773,6 +773,47 @@ class TestSetupMarathonJob:
             expected = 'Docker image for test_service.test_instance not in'
             assert expected in output
 
+    def test_deploy_service_unknown_drain_method(self):
+        fake_bounce = 'exists'
+        fake_drain_method = 'doesntexist'
+        fake_name = 'whoa'
+        fake_instance = 'the_earth_is_tiny'
+        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
+        fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
+        fake_client = mock.MagicMock(
+            list_apps=mock.Mock(return_value=fake_apps))
+        fake_config = {'id': fake_id, 'instances': 2}
+
+        errormsg = 'ERROR: drain_method not recognized: doesntexist. Must be one of (exists1, exists2)'
+        expected = (1, errormsg)
+
+        with contextlib.nested(
+            mock.patch('setup_marathon_job._log', autospec=True),
+            mock.patch(
+                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
+                return_value='fake_cluster',
+                autospec=True
+            ),
+            mock.patch(
+                'paasta_tools.drain_lib._drain_methods',
+                new={'exists1': mock.Mock(), 'exists2': mock.Mock()},
+            )
+        ) as (mock_log, mock_get_cluster, mock_drain_methods):
+            actual = setup_marathon_job.deploy_service(
+                service_name=fake_name,
+                instance_name=fake_instance,
+                marathon_jobid=fake_id,
+                config=fake_config,
+                client=fake_client,
+                bounce_method=fake_bounce,
+                drain_method_name=fake_drain_method,
+                drain_method_params={},
+                nerve_ns=fake_instance,
+                bounce_health_params={},
+            )
+            assert mock_log.call_count == 1
+        assert expected == actual
+
     def test_deploy_service_unknown_bounce(self):
         fake_bounce = 'WHEEEEEEEEEEEEEEEE'
         fake_drain_method = 'noop'

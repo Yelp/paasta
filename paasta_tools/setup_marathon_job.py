@@ -296,7 +296,7 @@ def deploy_service(
         )
     except KeyError:
         errormsg = 'ERROR: drain_method not recognized: %s. Must be one of (%s)' % \
-            (drain_method, ', '.join(drain_lib.list_drain_methods()))
+            (drain_method_name, ', '.join(drain_lib.list_drain_methods()))
         __log(errormsg)
         return (1, errormsg)
 
