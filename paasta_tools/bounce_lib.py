@@ -236,7 +236,7 @@ def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_h
 
         if len(task.health_check_results) > 0:
             # check if at least one healthcheck is passing
-            task_up = len(filter(lambda hc_result: hc_result.alive is True, task.health_check_results)) > 0
+            task_up = any([hc_result.alive is True for hc_result in task.health_check_results])
             if not task_up:
                 continue
         else:

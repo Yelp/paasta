@@ -173,7 +173,7 @@ class TestBounceLib:
         expected = bounce_lib.brutal_bounce
         assert actual == expected
 
-    def test_get_happy_tasks_identity(self):
+    def test_get_happy_tasks_when_all_healthy(self):
         """With the defaults, all tasks should be considered happy."""
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for _ in xrange(5)]
         assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks
@@ -227,6 +227,13 @@ class TestBounceLib:
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in xrange(5)]
         with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
             assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', check_haproxy=True) == tasks[2:]
+
+    def test_get_happy_tasks_check_haproxy_when_unhealthy(self):
+        """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
+
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)]) for i in xrange(5)]
+        with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
+            assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', check_haproxy=True) == []
 
 
 class TestBrutalBounce:
