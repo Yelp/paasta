@@ -284,12 +284,15 @@ def test_check_mesos_replication_for_service_bad():
 def test_main():
     soa_dir = 'anw'
     crit = 1
-    services = [('a', 1), ('b', 2), ('c', 3), ('d', 4)]
+    services = [('a', 'main'), ('b', 'main'), ('c', 'main')]
+    namespaces = [('a.main', 1), ('b.main', 2), ('c.main', 3)]
     replication = 'reeeeeeeeeeeplicated'
     args = mock.Mock(soa_dir=soa_dir, crit=crit, verbose=False)
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.parse_args',
                    return_value=args, autospec=True),
+        mock.patch('paasta_tools.marathon_tools.get_all_namespaces',
+                   return_value=namespaces, autospec=True),
         mock.patch('paasta_tools.marathon_tools.get_marathon_services_for_cluster',
                    return_value=services, autospec=True),
         mock.patch('paasta_tools.monitoring.replication_utils.get_replication_for_services',
@@ -298,12 +301,13 @@ def test_main():
                    autospec=True)
     ) as (
         mock_parse_args,
+        mock_get_all_namespaces,
         mock_get_marathon_services_for_cluster,
         mock_get_replication_for_services,
         mock_check_service_replication,
     ):
         check_marathon_services_replication.main()
         mock_parse_args.assert_called_once_with()
-        mock_get_marathon_services_for_cluster.assert_called_once_with(cluster=mock.ANY, soa_dir=soa_dir)
-        mock_get_replication_for_services.assert_called_once_with(mock.ANY, services)
+        mock_get_marathon_services_for_cluster.assert_called_once_with(soa_dir=soa_dir)
+        mock_get_replication_for_services.assert_called_once_with(mock.ANY, mock.ANY)
         mock_check_service_replication.call_count = len(services)

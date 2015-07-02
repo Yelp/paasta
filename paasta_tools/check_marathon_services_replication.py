@@ -196,9 +196,10 @@ def main():
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
-    service_instances = marathon_tools.get_marathon_services_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
+    service_instances = marathon_tools.get_marathon_services_for_cluster(soa_dir=args.soa_dir)
+    all_namespaces = [name for name, config in marathon_tools.get_all_namespaces()]
     available_smartstack_replication = replication_utils.get_replication_for_services(
-        'localhost:3212', service_instances)
+        'localhost:3212', all_namespaces)
     for service, instance in service_instances:
         check_service_replication(service, instance, crit_threshold, available_smartstack_replication, soa_dir)
 
