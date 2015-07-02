@@ -65,8 +65,10 @@ def get_deployments_strings(service):
             if service_mode == "tcp":
                 service_port = service_config.get('proxy_port')
                 link = PaastaColors.cyan('%s://paasta-%s.yelp:%d/' % (service_mode, cluster, service_port))
-            else:
+            elif service_mode == "http":
                 link = PaastaColors.cyan('%s://%s.paasta-%s.yelp/' % (service_mode, service, cluster))
+            else:
+                link = "N/A"
             output.append(' - %s (%s)' % (cluster, link))
     return output
 

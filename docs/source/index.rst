@@ -30,13 +30,13 @@ Scripts
    :maxdepth: 2
 
    am_i_mesos_leader
-   check_marathon_services_frontends
    check_marathon_services_replication
    cleanup_marathon_jobs
    deploy_marathon_services
    generate_deployments_for_service
    generate_services_yaml
    list_marathon_service_instances
+   paasta_execute_docker_command
    setup_chronos_jobs
    setup_marathon_job
    synapse_srv_namespaces_fact

@@ -6,7 +6,6 @@ am_i_mesos_leader
 synapse_srv_namespaces_fact
 setup_chronos_jobs
 cleanup_marathon_jobs
-check_marathon_services_frontends
 list_marathon_service_instances
 deploy_marathon_services
 generate_deployments_for_service
@@ -110,14 +109,6 @@ else
   echo "Could not invoke check_classic_service_replication with --help"
   exit 1
 fi
-
-if check_marathon_services_frontends --help >/dev/null; then
-  echo "Looks like we can check_marathon_services_frontends with --help"
-else
-  echo "Could not invoke check_marathon_services_frontends with --help"
-  exit 1
-fi
-
 
 # Test generate_services_yaml
 

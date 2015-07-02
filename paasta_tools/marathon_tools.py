@@ -7,6 +7,7 @@ make the PaaSTA stack work.
 import hashlib
 import logging
 import os
+import pipes
 import re
 import requests
 import socket
@@ -148,6 +149,10 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     )
 
 
+class InvalidMarathonConfig(Exception):
+    pass
+
+
 class MarathonServiceConfig(object):
 
     def __init__(self, service_name, instance, config_dict, branch_dict):
@@ -231,14 +236,34 @@ class MarathonServiceConfig(object):
         cpus = self.config_dict.get('cpus')
         return float(cpus) if cpus else .25
 
+    def get_cmd(self):
+        """Get the docker cmd specified in the service's marathon configuration.
+
+        Defaults to null if not specified in the config.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: A string specified in the config, None if not specified"""
+        return self.config_dict.get('cmd', None)
+
     def get_args(self):
         """Get the docker args specified in the service's marathon configuration.
 
-        Defaults to an empty array if not specified in the config.
+        If not specified in the config and if cmd is not specified, defaults to an empty array.
+        If not specified in the config but cmd is specified, defaults to null.
+        If specified in the config and if cmd is also specified, throws an exception. Only one may be specified.
 
         :param service_config: The service instance's configuration dictionary
-        :returns: An array of args specified in the config, [] if not specified"""
-        return self.config_dict.get('args', [])
+        :returns: An array of args specified in the config,
+        [] if not specified and if cmd is not specified,
+        otherwise None if not specified but cmd is specified"""
+        if self.get_cmd() is None:
+            return self.config_dict.get('args', [])
+        else:
+            args = self.config_dict.get('args', None)
+            if args is None:
+                return args
+            else:
+                raise InvalidMarathonConfig('Marathon config files can specify cmd or args, but not both.')
 
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.
@@ -268,16 +293,18 @@ class MarathonServiceConfig(object):
         Currently compiles the following keys into one nice dict:
 
         - id: the ID of the image in Marathon
-        - cmd: currently the docker_url, seemingly needed by Marathon to keep the container field
         - container: a dict containing the docker url and docker launch options. Needed by deimos.
         - uris: blank.
         - ports: an array containing the port.
+        - env: environment variables for the container.
         - mem: the amount of memory required.
         - cpus: the number of cpus required.
         - constraints: the constraints on the Marathon job.
         - instances: the number of instances required.
+        - cmd: the command to be executed.
+        - args: an alternative to cmd that requires the docker container to have an entrypoint.
 
-        The last 5 keys are retrieved using the get_<key> functions defined above.
+        The last 7 keys are retrieved using the get_<key> functions defined above.
 
         :param job_id: The job/app id name
         :param docker_url: The url to the docker image the job will actually execute
@@ -312,6 +339,7 @@ class MarathonServiceConfig(object):
         complete_config['cpus'] = self.get_cpus()
         complete_config['constraints'] = self.get_constraints(service_namespace_config)
         complete_config['instances'] = self.get_instances()
+        complete_config['cmd'] = self.get_cmd()
         complete_config['args'] = self.get_args()
         log.info("Complete configuration for instance is: %s", complete_config)
         return complete_config
@@ -363,12 +391,29 @@ class MarathonServiceConfig(object):
                     "maxConsecutiveFailures": maxconsecutivefailures
                 },
             ]
+        elif mode == 'cmd':
+            command = pipes.quote(self.get_healthcheck_cmd())
+            hc_command = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd '%s' --timeout '%s'" % (
+                command, timeoutseconds)
+            healthchecks = [
+                {
+                    "protocol": "COMMAND",
+                    "command": {"value": hc_command},
+                    "gracePeriodSeconds": graceperiodseconds,
+                    "intervalSeconds": intervalseconds,
+                    "timeoutSeconds": timeoutseconds,
+                    "maxConsecutiveFailures": maxconsecutivefailures
+                },
+            ]
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)
         return healthchecks
 
     def get_healthcheck_uri(self, service_namespace_config):
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
+
+    def get_healthcheck_cmd(self):
+        return self.config_dict.get('healthcheck_cmd', '/bin/true')
 
     def get_healthcheck_mode(self, service_namespace_config):
         return self.config_dict.get('healthcheck_mode', service_namespace_config.get_mode())
@@ -962,17 +1007,23 @@ def get_matching_appids(servicename, instance, client):
     return [app.id for app in client.list_apps() if app.id.startswith("/%s" % jobid)]
 
 
-def get_healthcheck(service_name, namespace, random_port):
-    """Returns healthcheck url for a given service instance or None if no healthcheck"""
+def get_healthcheck(service_name, namespace, service_manifest, random_port):
+    """
+    Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
+    or (None, None) if no healthcheck
+    """
     smartstack_config = load_service_namespace_config(service_name, namespace)
-    mode = smartstack_config.get_mode()
-    path = smartstack_config.get_healthcheck_uri()
+    mode = service_manifest.get_healthcheck_mode(smartstack_config)
+    path = service_manifest.get_healthcheck_uri(smartstack_config)
     hostname = socket.getfqdn()
 
     if mode == "http":
-        url = '%s://%s:%d%s' % (mode, hostname, random_port, path)
+        healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
     elif mode == "tcp":
-        url = '%s://%s:%d' % (mode, hostname, random_port)
+        healthcheck_command = '%s://%s:%d' % (mode, hostname, random_port)
+    elif mode == 'cmd':
+        healthcheck_command = service_manifest.get_healthcheck_cmd()
     else:
-        url = None
-    return url
+        mode = None
+        healthcheck_command = None
+    return (mode, healthcheck_command)

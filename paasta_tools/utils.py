@@ -45,6 +45,7 @@ class PaastaColors:
     DEFAULT = '\033[0m'
     GREEN = '\033[32m'
     GREY = '\033[1m\033[30m'
+    MAGENTA = '\033[35m'
     RED = '\033[31m'
     YELLOW = '\033[33m'
 
@@ -81,6 +82,14 @@ class PaastaColors:
         :param text: a string
         :return: text colour coded with ANSI red"""
         return PaastaColors.color_text(PaastaColors.RED, text)
+
+    @staticmethod
+    def magenta(text):
+        """Return text that can be printed magenta.
+
+        :param text: a string
+        :return: text colour coded with ANSI magenta"""
+        return PaastaColors.color_text(PaastaColors.MAGENTA, text)
 
     @staticmethod
     def color_text(color, text):
@@ -520,3 +529,7 @@ def get_infrastructure_zookeeper_servers(cluster, zk_discovery_path=INFRA_ZK_PAT
     yaml_file = os.path.join(zk_discovery_path, "%s%s" % (cluster, '.yaml'))
     cluster_topology = parse_yaml_file(yaml_file)
     return [host_port[0] for host_port in cluster_topology]
+
+
+def get_docker_host():
+    return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
