@@ -103,7 +103,8 @@ class TestDrainMethod(DrainMethod):
 
 @register_drain_method('hacheck')
 class HacheckDrainMethod(DrainMethod):
-    """This drain policy does nothing and assumes every task is safe to kill."""
+    """This drain policy issues a POST to hacheck's /spool/{service}/{port}/status endpoint to cause healthchecks to
+    fail. It considers tasks safe to kill if they've been down in hacheck for more than a specified delay."""
     def __init__(self, service_name, instance_name, nerve_ns, delay=120, hacheck_port=6666, expiration=0):
         super(HacheckDrainMethod, self).__init__(service_name, instance_name, nerve_ns)
         self.delay = float(delay)
@@ -111,11 +112,12 @@ class HacheckDrainMethod(DrainMethod):
         self.expiration = float(expiration) or float(delay) * 10
 
     def spool_url(self, task):
-        return 'http://%(task_host)s:%(hacheck_port)d/spool/%(service_name)s/%(task_port)d/status' % {
+        return 'http://%(task_host)s:%(hacheck_port)d/spool/%(service_name)s.%(nerve_ns)s/%(task_port)d/status' % {
             'task_host': task.host,
             'task_port': task.ports[0],
             'hacheck_port': self.hacheck_port,
             'service_name': self.service_name,
+            'nerve_ns': self.nerve_ns,
         }
 
     def post_spool(self, task, status):

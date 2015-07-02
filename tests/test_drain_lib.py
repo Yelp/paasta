@@ -19,7 +19,8 @@ class TestHacheckDrainMethod(object):
     def test_spool_url(self):
         fake_task = mock.Mock(host="fake_host", ports=[54321])
         actual = self.drain_method.spool_url(fake_task)
-        expected = 'http://fake_host:12345/spool/srv/54321/status'
+        # Nerve hits /{mode}/{service}.{namespace}/{port}/status
+        expected = 'http://fake_host:12345/spool/srv.ns/54321/status'
         assert actual == expected
 
     def test_get_spool(self):
