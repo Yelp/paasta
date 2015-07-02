@@ -27,14 +27,12 @@ def setup_marathon_client():
     }, '/some_fake_path_to_marathon.json')
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                         marathon_config.get_password())
-    marathon_config = marathon_config
     system_paasta_config = utils.SystemPaastaConfig({
         'cluster': 'testcluster',
         'docker_volumes': [],
         'docker_registry': u'docker-dev.yelpcorp.com',
         'zookeeper': zk_connection_string
     }, '/some_fake_path_to_config_dir/')
-    system_paasta_config = system_paasta_config
     return (client, marathon_config, system_paasta_config)
 
 

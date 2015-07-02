@@ -29,14 +29,14 @@ marathon:
     - zookeeper
   environment:
     -CLUSTER: testcluster
-  command: 'marathon --zk zk://zookeeper:2181/marathon --master zk://zookeeper:2181/mesos-testcluster --no-logger'
+  command: 'marathon --zk zk://zookeeper:2181/marathon-testcluster --master zk://zookeeper:2181/mesos-testcluster --no-logger'
 
 paastatools:
   build: ../yelp_package/dockerfiles/lucid/
   links:
     - marathon
     - mesosmaster
-    # - mesosslave ???
+    - mesosslave
     - zookeeper
   # environment:
     # -CLUSTER: testcluster ???

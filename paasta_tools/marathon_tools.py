@@ -33,6 +33,8 @@ CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
 
+logging.getLogger('marathon').setLevel(logging.WARNING)
+
 PATH_TO_MARATHON_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'marathon.json')
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
