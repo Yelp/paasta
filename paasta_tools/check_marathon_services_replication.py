@@ -119,8 +119,8 @@ def check_smartstack_replication_for_namespace(full_name, available_backends, so
     except (IndexError, KeyError, OSError, ValueError, AttributeError):
         log.info('Namespace %s isn\'t a marathon service', full_name)
         return  # This isn't a Marathon service
-    except (marathon_tools.NoDeploymentsAvailable):
-        log.info('Namespace %s doesn\'t have any deployment configurations available', full_name)
+    except marathon_tools.NoDeploymentsAvailable:
+        log.info('deployments.json missing for %s. Skipping replication monitoring.', full_name)
         return
     if num_expected == 0:
         log.info('Namespace %s doesn\'t have any expected instances', full_name)
