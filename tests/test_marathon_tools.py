@@ -1406,7 +1406,27 @@ class TestMarathonServiceConfig(object):
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
             "service", "instance", {'healthcheck_mode': 'cmd'}, {})
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd '/bin/true' --timeout '10'"
+        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd /bin/true --timeout '10'"
+        expected = [
+            {
+                "protocol": "COMMAND",
+                "command": {"value": expected_cmd},
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 6
+            },
+        ]
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        assert actual == expected
+
+    def test_get_healthchecks_cmd_quotes(self):
+        fake_command = '/bin/fake_command with spaces'
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        expected_cmd = "paasta_execute_docker_command " \
+            "--mesos-id \"$MESOS_TASK_ID\" --cmd '%s' --timeout '10'" % fake_command
         expected = [
             {
                 "protocol": "COMMAND",
@@ -1425,8 +1445,8 @@ class TestMarathonServiceConfig(object):
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
             "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd '%s' --timeout '10'" % (
-            fake_command)
+        expected_cmd = "paasta_execute_docker_command " \
+            "--mesos-id \"$MESOS_TASK_ID\" --cmd %s --timeout '10'" % fake_command
         expected = [
             {
                 "protocol": "COMMAND",
@@ -1450,8 +1470,8 @@ class TestMarathonServiceConfig(object):
             {}
         )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd '%s' --timeout '%s'" % (
-            fake_command, fake_timeout)
+        expected_cmd = "paasta_execute_docker_command " \
+            "--mesos-id \"$MESOS_TASK_ID\" --cmd %s --timeout '%s'" % (fake_command, fake_timeout)
         expected = [
             {
                 "protocol": "COMMAND",

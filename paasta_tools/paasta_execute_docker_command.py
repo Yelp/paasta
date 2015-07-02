@@ -62,7 +62,7 @@ def time_limit(seconds):  # From http://stackoverflow.com/a/601168/1576438
 
 
 def execute_in_container(docker_client, container_id, cmd, timeout):
-    exec_id = docker_client.exec_create(container_id, "/bin/sh -c '%s'" % cmd)['Id']
+    exec_id = docker_client.exec_create(container_id, ['/bin/sh', '-c', cmd])['Id']
     output = docker_client.exec_start(exec_id, stream=False)
     return_code = docker_client.exec_inspect(exec_id)['ExitCode']
     return (output, return_code)
@@ -70,6 +70,11 @@ def execute_in_container(docker_client, container_id, cmd, timeout):
 
 def main():
     args = parse_args()
+
+    if not args.mesos_id:
+        sys.stdout.write(
+            "The Mesos task id you supplied seems to be an empty string! Please provide a valid task id.\n")
+        sys.exit(2)
 
     base_docker_url = get_docker_host()
     docker_client = Client(base_url=base_docker_url)
