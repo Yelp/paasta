@@ -393,9 +393,8 @@ class MarathonServiceConfig(object):
             ]
         elif mode == 'cmd':
             command = pipes.quote(self.get_healthcheck_cmd())
-            hc_command = "/usr/bin/paasta_execute_docker_command " \
-                "--mesos-id \"$MESOS_TASK_ID\" --cmd '%s' --timeout '%s'" % (command, timeoutseconds)
-
+            hc_command = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd '%s' --timeout '%s'" % (
+                command, timeoutseconds)
             healthchecks = [
                 {
                     "protocol": "COMMAND",
