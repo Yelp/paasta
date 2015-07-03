@@ -28,6 +28,7 @@ from paasta_tools.monitoring.context import get_context
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
+from paasta_tools.paasta_serviceinit import get_running_tasks_from_active_frameworks
 
 
 ID_SPACER = marathon_tools.ID_SPACER
@@ -132,18 +133,20 @@ def check_smartstack_replication_for_instance(
         log.debug("Instance %s is announced under namespace: %s, "
                   "not checking replication for it" % (instance, namespace))
         return
-
     full_name = "%s%s%s" % (service, ID_SPACER, instance)
     log.info('Checking namespace %s', full_name)
-    if full_name not in available_backends:
-        output = 'Service instance entry %s not found! No instances available!' % full_name
-        log.error(output)
-        context = get_context(service, instance)
-        output = '%s\n%s' % (output, context)
-        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, output)
-        return
-    num_available = available_backends[full_name]
+    num_available = available_backends.get(full_name, 0)
+    send_event_if_under_replication(service, instance, crit_threshold, expected_count, num_available, soa_dir)
+
+
+def check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold, expected_count):
+    num_available = len(get_running_tasks_from_active_frameworks(service, instance))
+    send_event_if_under_replication(service, instance, crit_threshold, expected_count, num_available, soa_dir)
+
+
+def send_event_if_under_replication(service, instance, crit_threshold, expected_count, num_available, soa_dir):
     ratio = (num_available / float(expected_count)) * 100
+    full_name = "%s%s%s" % (service, ID_SPACER, instance)
     output = ('Service %s has %d out of %d expected instances available!\n' +
               '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
     if ratio < crit_threshold:
@@ -159,10 +162,6 @@ def check_smartstack_replication_for_instance(
         context = get_context(service, instance)
         output = '%s\n%s' % (output, context)
     send_event(service, instance, soa_dir, status, output)
-
-
-def check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold):
-    pass
 
 
 def check_service_replication(service, instance, crit_threshold, available_smartstack_replication, soa_dir):
@@ -184,7 +183,7 @@ def check_service_replication(service, instance, crit_threshold, available_smart
             service, instance, available_smartstack_replication, soa_dir, crit_threshold, expected_count
         )
     else:
-        check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold)
+        check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold, expected_count)
 
 
 def main():
