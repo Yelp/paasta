@@ -89,7 +89,7 @@ def test_split_id():
     assert check_marathon_services_replication.split_id(fake_id) == expected
 
 
-def test_check_smarstack_replication_for_namespace_crit_when_absent():
+def test_check_smartstack_replication_for_namespace_crit_when_absent():
     namespace = 'test.one'
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
     expected_replication_counts = [0, 8, 8, 8, 8]
@@ -113,7 +113,7 @@ def test_check_smarstack_replication_for_namespace_crit_when_absent():
         context_patch.assert_any_call('test', 'one')
 
 
-def test_check_smarstack_replication_for_namespace_crit_when_zero_replication():
+def test_check_smartstack_replication_for_namespace_crit_when_zero_replication():
     namespace = 'test.two'
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
     expected_replication_counts = [0, 8, 8, 8, 8]
@@ -137,7 +137,7 @@ def test_check_smarstack_replication_for_namespace_crit_when_zero_replication():
         context_patch.assert_any_call('test', 'two')
 
 
-def test_check_smarstack_replication_for_namespace_crit_when_low_replication():
+def test_check_smartstack_replication_for_namespace_crit_when_low_replication():
     namespace = 'test.three'
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
     expected_replication_counts = [0, 8, 8, 8, 8]
@@ -161,7 +161,7 @@ def test_check_smarstack_replication_for_namespace_crit_when_low_replication():
         context_patch.assert_any_call('test', 'three')
 
 
-def test_check_smarstack_replication_for_namespace_ok_with_enough_replication():
+def test_check_smartstack_replication_for_namespace_ok_with_enough_replication():
     namespace = 'test.four'
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
     expected_replication_counts = [0, 8, 8, 8, 8]
@@ -185,7 +185,7 @@ def test_check_smarstack_replication_for_namespace_ok_with_enough_replication():
         context_patch.call_count == 0
 
 
-def test_check_smarstack_replication_for_namespace_ignores_bogus_namespaces():
+def test_check_smartstack_replication_for_namespace_ignores_bogus_namespaces():
     namespace = 'test.five'
     available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
     expected_replication_counts = [0, 8, 8, 8, 8]
@@ -207,6 +207,28 @@ def test_check_smarstack_replication_for_namespace_ignores_bogus_namespaces():
         expected_patch.assert_any_call('test', 'five', soa_dir=soa_dir)
         event_patch.call_count == 0
         context_patch.call_count == 0
+
+
+def test_check_smartstack_replication_for_namespace_with_no_deployments():
+    namespace = 'test.six'
+    available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
+    soa_dir = 'test_dir'
+    crit = 90
+    with contextlib.nested(
+        mock.patch('check_marathon_services_replication.marathon_tools.get_expected_instance_count_for_namespace',
+                   autospec=True),
+        mock.patch('check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('check_marathon_services_replication.get_context', autospec=True),
+    ) as (
+        expected_patch,
+        event_patch,
+        context_patch,
+    ):
+        expected_patch.side_effect = check_marathon_services_replication.marathon_tools.NoDeploymentsAvailable
+        check_marathon_services_replication.check_smartstack_replication_for_namespace(
+            namespace, available, soa_dir, crit
+        )
+        assert event_patch.called is False
 
 
 def test_main():
