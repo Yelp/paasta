@@ -88,22 +88,6 @@ def test_split_id():
     assert check_marathon_services_replication.split_id(fake_id) == expected
 
 
-def test_get_expected_count_when_zero_returns_none():
-    with mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
-                    autospec=True, return_value=0) as mock_get_expected_instance_count_for_namespace:
-        actual = check_marathon_services_replication.get_expected_count('fake_service', 'fake_instance', None)
-        mock_get_expected_instance_count_for_namespace.call_count == 1
-        assert actual is None
-
-
-def test_get_expected_count_normals_returns_the_count():
-    with mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
-                    autospec=True, return_value=666) as mock_get_expected_instance_count_for_namespace:
-        actual = check_marathon_services_replication.get_expected_count('fake_service', 'fake_instance', None)
-        mock_get_expected_instance_count_for_namespace.call_count == 1
-        assert actual is 666
-
-
 def test_check_smarstack_replication_for_instance_crit_when_absent():
     service = 'test'
     instance = 'some_absent_instance'
@@ -241,7 +225,7 @@ def test_check_service_replication_for_normal_smartstack():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance',
                    autospec=True, return_value=666),
-        mock.patch('check_marathon_services_replication.get_expected_count',
+        mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
                    autospec=True, return_value=100),
         mock.patch('check_marathon_services_replication.check_smartstack_replication_for_instance',
                    autospec=True),
@@ -261,7 +245,8 @@ def test_check_service_replication_for_non_smartstack():
     instance = 'worker'
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance', autospec=True, return_value=None),
-        mock.patch('check_marathon_services_replication.get_expected_count', autospec=True, return_value=100),
+        mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
+                   autospec=True, return_value=100),
         mock.patch('check_marathon_services_replication.check_mesos_replication_for_service', autospec=True),
     ) as (
         mock_get_proxy_port_for_instance,

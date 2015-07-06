@@ -100,18 +100,6 @@ def split_id(fid):
     return (fid.split(ID_SPACER)[0], fid.split(ID_SPACER)[1])
 
 
-def get_expected_count(service, instance, soa_dir):
-    expected_count = marathon_tools.get_expected_instance_count_for_namespace(
-        service,
-        instance,
-        soa_dir=soa_dir
-    )
-    if expected_count == 0:
-        log.info('%s.%s doesn\'t have any expected instances' % (service, instance))
-        return None
-    return expected_count
-
-
 def check_smartstack_replication_for_instance(
         service,
         instance,
@@ -174,7 +162,7 @@ def check_service_replication(service, instance, crit_threshold, available_smart
     :param soa_dir: The SOA configuration directory to read from
     :available_smartstack_replication: a special hash that represents the current replication levels in smartstack
     """
-    expected_count = get_expected_count(service, instance, soa_dir)
+    expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir)
     if expected_count is None:
         return
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
