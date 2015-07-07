@@ -1,3 +1,10 @@
+paasta-tools (0.12.14-yelp1) lucid; urgency=low
+
+  * 0.12.14 tagged with 'make release'
+    Commit: Remove circular paasta-tools dependency
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 06 Jul 2015 18:27:55 -0700
+
 paasta-tools (0.12.13-yelp1) lucid; urgency=low
 
   * 0.12.13 tagged with 'make release'
