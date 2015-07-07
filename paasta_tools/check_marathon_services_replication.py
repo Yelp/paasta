@@ -165,9 +165,10 @@ def check_service_replication(service, instance, crit_threshold, available_smart
     :param soa_dir: The SOA configuration directory to read from
     :available_smartstack_replication: a special hash that represents the current replication levels in smartstack
     """
-    expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir)
+    expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
     if expected_count is None:
         return
+    log.info("Expecting %d for %s.%s" % (expected_count, service, instance))
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     if proxy_port is not None:
         check_smartstack_replication_for_instance(
