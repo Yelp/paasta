@@ -65,7 +65,7 @@ def when_there_are_num_which_tasks(context, num, which):
                     (context.max_happy_tasks, app_id, happy_count))
 
 
-@when(u'deploy_service with bounce strategy "{bounce_method}", drain method "{drain_method}" is initiated')
+@when(u'deploy_service with bounce strategy "{bounce_method}" and drain method "{drain_method}" is initiated')
 def when_deploy_service_initiated(context, bounce_method, drain_method):
     with contextlib.nested(
         mock.patch(
