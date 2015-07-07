@@ -112,8 +112,8 @@ def test_check_smarstack_replication_for_instance_crit_when_absent():
 
 def test_check_smarstack_replication_for_instance_crit_when_zero_replication():
     service = 'test'
-    instance = 'two'
-    available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
+    instance = 'zero_running'
+    available = {'test.zero_running': 0, 'test.main': 8, 'test.fully_replicated': 8}
     expected_replication_count = 8
     soa_dir = 'test_dir'
     crit = 90
@@ -129,13 +129,13 @@ def test_check_smarstack_replication_for_instance_crit_when_zero_replication():
             service, instance, available, soa_dir, crit, expected_replication_count,
         )
         mock_send_event_if_under_replication.assert_called_once_with(
-            service, instance, crit, expected_replication_count, 1, soa_dir)
+            service, instance, crit, expected_replication_count, 0, soa_dir)
 
 
 def test_check_smarstack_replication_for_instance_crit_when_low_replication():
     service = 'test'
     instance = 'not_enough'
-    available = {'test.two': 1, 'test.not_enough': 4, 'test.four': 8}
+    available = {'test.canary': 1, 'test.not_enough': 4, 'test.fully_replicated': 8}
     expected_replication_count = 8
     soa_dir = 'test_dir'
     crit = 90
@@ -157,7 +157,7 @@ def test_check_smarstack_replication_for_instance_crit_when_low_replication():
 def test_check_smarstack_replication_for_instance_ok_with_enough_replication():
     service = 'test'
     instance = 'everything_up'
-    available = {'test.two': 1, 'test.three': 4, 'test.everything_up': 8}
+    available = {'test.canary': 1, 'test.low_replication': 4, 'test.everything_up': 8}
     expected_replication_count = 8
     soa_dir = 'test_dir'
     crit = 90
@@ -178,8 +178,8 @@ def test_check_smarstack_replication_for_instance_ok_with_enough_replication():
 
 def test_check_smarstack_replication_for_instance_ignores_bogus_instance():
     service = 'test'
-    instance = 'five'
-    available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
+    instance = 'something_random'
+    available = {'test.canary': 1, 'test.main': 4, 'test.fully_replicated': 8}
     expected_replication_count = 8
     soa_dir = 'test_dir'
     crit = 90
@@ -201,7 +201,7 @@ def test_check_smarstack_replication_for_instance_ignores_things_under_a_differe
     service = 'test'
     instance = 'main'
     namespace = 'canary'
-    available = {'test.two': 1, 'test.three': 4, 'test.four': 8}
+    available = {'test.canary': 1, 'test.main': 4, 'test.fully_replicated': 8}
     expected_replication_count = 8
     soa_dir = 'test_dir'
     crit = 90

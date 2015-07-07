@@ -118,11 +118,11 @@ def check_smartstack_replication_for_instance(
     """
     namespace = marathon_tools.read_namespace_for_service_instance(service, instance, soa_dir=soa_dir)
     if namespace != instance:
-        log.debug("Instance %s is announced under namespace: %s, "
-                  "not checking replication for it" % (instance, namespace))
+        log.debug("Instance %s is announced under namespace: %s. "
+                  "Not checking replication for it" % (instance, namespace))
         return
     full_name = "%s%s%s" % (service, ID_SPACER, instance)
-    log.info('Checking namespace %s', full_name)
+    log.info('Checking instance %s', full_name)
     num_available = available_backends.get(full_name, 0)
     send_event_if_under_replication(service, instance, crit_threshold, expected_count, num_available, soa_dir)
 
