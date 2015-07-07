@@ -278,6 +278,63 @@ def test_check_mesos_replication_for_service_good():
             service, instance, crit, expected_tasks, len(running_tasks), None)
 
 
+def test_send_event_if_under_replication_handles_0_expected():
+    service = 'test_service'
+    instance = 'worker'
+    crit = 90
+    expected_count = 0
+    available = 0
+    soa_dir = '/dne'
+    with contextlib.nested(
+        mock.patch('check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('check_marathon_services_replication.get_context', autospec=True),
+    ) as (
+        mock_send_event,
+        mock_get_context,
+    ):
+        check_marathon_services_replication.send_event_if_under_replication(
+            service, instance, crit, expected_count, available, soa_dir)
+        mock_send_event.assert_called_once_with(service, instance, soa_dir, 0, mock.ANY)
+
+
+def test_send_event_if_under_replication_good():
+    service = 'test_service'
+    instance = 'worker'
+    crit = 90
+    expected_count = 100
+    available = 100
+    soa_dir = '/dne'
+    with contextlib.nested(
+        mock.patch('check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('check_marathon_services_replication.get_context', autospec=True),
+    ) as (
+        mock_send_event,
+        mock_get_context,
+    ):
+        check_marathon_services_replication.send_event_if_under_replication(
+            service, instance, crit, expected_count, available, soa_dir)
+        mock_send_event.assert_called_once_with(service, instance, soa_dir, 0, mock.ANY)
+
+
+def test_send_event_if_under_replication_critical():
+    service = 'test_service'
+    instance = 'worker'
+    crit = 90
+    expected_count = 100
+    available = 89
+    soa_dir = '/dne'
+    with contextlib.nested(
+        mock.patch('check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('check_marathon_services_replication.get_context', autospec=True),
+    ) as (
+        mock_send_event,
+        mock_get_context,
+    ):
+        check_marathon_services_replication.send_event_if_under_replication(
+            service, instance, crit, expected_count, available, soa_dir)
+        mock_send_event.assert_called_once_with(service, instance, soa_dir, 2, mock.ANY)
+
+
 def test_main():
     soa_dir = 'anw'
     crit = 1

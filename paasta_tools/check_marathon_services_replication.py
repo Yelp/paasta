@@ -133,7 +133,10 @@ def check_mesos_replication_for_service(service, instance, soa_dir, crit_thresho
 
 
 def send_event_if_under_replication(service, instance, crit_threshold, expected_count, num_available, soa_dir):
-    ratio = (num_available / float(expected_count)) * 100
+    if expected_count == 0:
+        ratio = 100
+    else:
+        ratio = (num_available / float(expected_count)) * 100
     full_name = "%s%s%s" % (service, ID_SPACER, instance)
     output = ('Service %s has %d out of %d expected instances available!\n' +
               '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
