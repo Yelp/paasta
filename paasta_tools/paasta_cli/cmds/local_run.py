@@ -73,7 +73,6 @@ def perform_tcp_healthcheck(url, timeout):
     :returns: True if healthcheck succeeds within number of seconds specified by timeout, false otherwise
     """
     url_elem = urlparse(url)
-    # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.settimeout(timeout)
     result = sock.connect_ex((url_elem.hostname, url_elem.port))
@@ -93,7 +92,7 @@ def perform_cmd_healthcheck(docker_client, container_id, command, timeout):
     :param timeout: timeout in seconds
     :returns: True if command exits with return code 0, false otherwise
     """
-    (_, return_code) = execute_in_container(docker_client, container_id, pipes.quote(command), timeout)
+    (_, return_code) = execute_in_container(docker_client, container_id, command, timeout)
     if return_code == 0:
         return True
     else:

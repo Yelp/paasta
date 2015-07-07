@@ -57,7 +57,7 @@ def test_execute_in_container():
 
     assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
         fake_output, fake_return_code)
-    expected_cmd = "/bin/sh -c '%s'" % fake_command
+    expected_cmd = ['/bin/sh', '-c', fake_command]
     mock_docker_client.exec_create.assert_called_once_with(fake_container_id, expected_cmd)
 
 
@@ -77,12 +77,35 @@ def test_main():
         exec_patch,
         time_limit_patch,
     ):
-        args_patch.return_value.mesos_task_id = 'fake_task_id'
+        args_patch.return_value.mesos_id = 'fake_task_id'
         args_patch.return_value.timeout = fake_timeout
         with pytest.raises(SystemExit) as excinfo:
             main()
         time_limit_patch.assert_called_once_with(fake_timeout)
         assert excinfo.value.code == 0
+
+
+def test_main_with_empty_task_id():
+    fake_container_id = 'fake_container_id'
+    fake_timeout = 3
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_execute_docker_command.get_container_id_for_mesos_id',
+                   return_value=fake_container_id),
+        mock.patch('paasta_tools.paasta_execute_docker_command.parse_args'),
+        mock.patch('paasta_tools.paasta_execute_docker_command.execute_in_container',
+                   return_value=('fake_output', 0)),
+        mock.patch('paasta_tools.paasta_execute_docker_command.time_limit')
+    ) as (
+        get_id_patch,
+        args_patch,
+        exec_patch,
+        time_limit_patch,
+    ):
+        args_patch.return_value.mesos_id = ''
+        args_patch.return_value.timeout = fake_timeout
+        with pytest.raises(SystemExit) as excinfo:
+            main()
+        assert excinfo.value.code == 2
 
 
 def test_main_container_not_found_failure():
@@ -99,7 +122,7 @@ def test_main_container_not_found_failure():
         args_patch,
         time_limit_patch,
     ):
-        args_patch.return_value.mesos_task_id = 'fake_task_id'
+        args_patch.return_value.mesos_id = 'fake_task_id'
         with pytest.raises(SystemExit) as excinfo:
             main()
         assert excinfo.value.code == 1
@@ -120,7 +143,7 @@ def test_main_cmd_unclean_exit_failure():
         args_patch,
         time_limit_patch,
     ):
-        args_patch.return_value.mesos_task_id = 'fake_task_id'
+        args_patch.return_value.mesos_id = 'fake_task_id'
         with pytest.raises(SystemExit) as excinfo:
             main()
         assert excinfo.value.code == 2
@@ -142,7 +165,7 @@ def test_main_timeout_failure():
         exec_patch,
         time_limit_patch,
     ):
-        args_patch.return_value.mesos_task_id = 'fake_task_id'
+        args_patch.return_value.mesos_id = 'fake_task_id'
         args_patch.return_value.timeout = fake_timeout
         with pytest.raises(SystemExit) as excinfo:
             main()

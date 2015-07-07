@@ -11,6 +11,7 @@ deploy_marathon_services
 generate_deployments_for_service
 check_marathon_services_replication
 generate_services_yaml
+paasta_execute_docker_command
 paasta_serviceinit
 paasta_metastatus"
 
