@@ -174,12 +174,12 @@ class TestBounceLib:
         assert actual == expected
 
     def test_get_happy_tasks_when_all_healthy(self):
-        """With the defaults, all tasks should be considered happy."""
+        """All tasks with only passing healthchecks should be happy"""
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for _ in xrange(5)]
         assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks
 
     def test_get_happy_tasks_when_some_unhealthy(self):
-        """With the defaults, all tasks should be considered happy."""
+        """Only tasks with a passing healthcheck should be happy"""
         fake_failing_healthcheck_results = [mock.Mock(alive=False)]
         fake_successful_healthcheck_results = [mock.Mock(alive=True)]
         tasks = [mock.Mock(health_check_results=fake_failing_healthcheck_results),
@@ -188,13 +188,13 @@ class TestBounceLib:
         assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks[-1:]
 
     def test_get_happy_tasks_with_multiple_healthchecks_success(self):
-        """With the defaults, all tasks should be considered happy."""
+        """All tasks with at least one passing healthcheck should be happy"""
         fake_successful_healthcheck_results = [mock.Mock(alive=True), mock.Mock(alive=False)]
         tasks = [mock.Mock(health_check_results=fake_successful_healthcheck_results)]
         assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks
 
     def test_get_happy_tasks_with_multiple_healthchecks_fail(self):
-        """With the defaults, all tasks should be considered happy."""
+        """Only tasks with at least one passing healthcheck should be happy"""
         fake_successful_healthcheck_results = [mock.Mock(alive=False), mock.Mock(alive=False)]
         tasks = [mock.Mock(health_check_results=fake_successful_healthcheck_results)]
         assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == []
