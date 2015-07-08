@@ -37,4 +37,3 @@ chronos:
     - 8080
   links:
     - zookeeper
-  command: '/usr/bin/chronos --master zk://zookeeper:2181/mesos --zk_hosts zookeeper:2181'

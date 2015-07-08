@@ -158,3 +158,17 @@ The following colors should be used for different cases:
 * Warning: Yellow
 * Failed: Red
 
+
+General Python
+==============
+
+In general, in the `paasta_tools` repo we use `flake8` to enforce Python style stuff.
+
+Positional Args Versus Keyword Args
+-----------------------------------
+
+When in doubt, use `keyword arguments <https://docs.python.org/3/faq/programming.html#faq-argument-vs-parameter>`_
+to increase readability of the arguments to your function call, at the expense of verboseness.
+
+Doing so allows arguments to function calls to be "order independent" and can
+eliminate bugs caused by passing in arguments in the wrong order.
