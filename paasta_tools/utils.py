@@ -140,36 +140,42 @@ LOG_COMPONENTS = {
         'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
         'command': 'NA - TODO: tee deploy logs into scribe PAASTA-201',
     },
-    'app_output': {
-        'color': PaastaColors.bold,
-        'help': 'Stderr and stdout of the actual process spawned by Mesos',
-        'command': 'NA - PAASTA-78',
-    },
-    'app_request': {
-        'color': PaastaColors.bold,
-        'help': 'The request log for the service. Defaults to "service_NAME_requests"',
-        'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
-    },
-    'app_errors': {
-        'color': PaastaColors.red,
-        'help': 'Application error log, defaults to "stream_service_NAME_errors"',
-        'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
-    },
-    'lb_requests': {
-        'color': PaastaColors.bold,
-        'help': 'All requests from Smartstack haproxy',
-        'command': 'NA - TODO: SRV-1130',
-    },
-    'lb_errors': {
-        'color': PaastaColors.red,
-        'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
-        'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
-    },
     'monitoring': {
         'color': PaastaColors.green,
         'help': 'Logs from Sensu checks for the service',
         'command': 'NA - TODO log mesos healthcheck and sensu stuff.',
     },
+    # I'm leaving these planned components here since they provide some hints
+    # about where we want to go. See PAASTA-78.
+    #
+    # But I'm commenting them out so they don't delude users into believing we
+    # can expose logs that we cannot actually expose. See PAASTA-927.
+    #
+    # 'app_output': {
+    #     'color': PaastaColors.bold,
+    #     'help': 'Stderr and stdout of the actual process spawned by Mesos',
+    #     'command': 'NA - PAASTA-78',
+    # },
+    # 'app_request': {
+    #     'color': PaastaColors.bold,
+    #     'help': 'The request log for the service. Defaults to "service_NAME_requests"',
+    #     'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
+    # },
+    # 'app_errors': {
+    #     'color': PaastaColors.red,
+    #     'help': 'Application error log, defaults to "stream_service_NAME_errors"',
+    #     'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
+    # },
+    # 'lb_requests': {
+    #     'color': PaastaColors.bold,
+    #     'help': 'All requests from Smartstack haproxy',
+    #     'command': 'NA - TODO: SRV-1130',
+    # },
+    # 'lb_errors': {
+    #     'color': PaastaColors.red,
+    #     'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
+    #     'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
+    # },
 }
 
 
