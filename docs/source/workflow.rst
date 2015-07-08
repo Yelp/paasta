@@ -151,9 +151,20 @@ Valid options are:
 
 Monitoring
 ----------
-`check_marathon_services_replication <check_marathon_services_replication.html>`_
-runs periodically and sends an alert if the actual state of the cluster does
-not match the desired state.
+
+PaaSTA gives you a few `Sensu <https://sensuapp.org/docs/latest/>`_-powered
+monitoring checks for free:
+
+* `setup_marathon_job <generated/paasta_tools.setup_marathon_job.html#module-paasta_tools.setup_marathon_job>`_:
+  Alerts when a Marathon service cannot be deployed or bounced for some reason.
+  It will resolve when a service has been successfully deployed/bounced.
+
+* `check_marathon_services_replication <generated/paasta_tools.check_marathon_services_replication.html>`_:
+  runs periodically and sends an alert if fewer than 50% of the requested
+  instances are deployed on a cluster. If the service is registered in Smartstack
+  it will look in Smartstack to count the available instances. Otherwise it
+  counts the number of healthy tasks in Mesos.
+
 
 Cleanup
 -------
