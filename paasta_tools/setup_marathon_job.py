@@ -158,14 +158,13 @@ def do_bounce(
         for task in actions['tasks_to_drain']:
             tasks_to_drain_by_app_id.setdefault(task.app_id, set()).add(task)
         for app_id, tasks in tasks_to_drain_by_app_id.items():
-            app_id = next(iter(actions['tasks_to_drain'])).app_id
             log_bounce_action(
                 line='%s bounce draining %d old tasks with app_id %s' %
                 (bounce_method, len(tasks), app_id),
             )
         for task in actions['tasks_to_drain']:
             all_draining_tasks.add(task)
-            drain_method.down(task)
+            drain_method.drain(task)
     for app, tasks in old_app_draining_tasks.items():
         for task in tasks:
             all_draining_tasks.add(task)
@@ -173,7 +172,7 @@ def do_bounce(
     killed_tasks = set()
 
     for task in all_draining_tasks:
-        if drain_method.safe_to_kill(task):
+        if drain_method.is_safe_to_kill(task):
             killed_tasks.add(task)
             log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
             client.kill_task(task.app_id, task.id, scale=True)
@@ -222,7 +221,7 @@ def get_old_live_draining_tasks(other_apps, drain_method):
             'draining': set(),
         }
         for task in app.tasks:
-            state = 'draining' if drain_method.is_downed(task) else 'live'
+            state = 'draining' if drain_method.is_draining(task) else 'live'
             tasks_by_state[state].add(task)
 
         old_app_live_tasks[app.id] = tasks_by_state['live']
@@ -257,7 +256,7 @@ def deploy_service(
     :param bounce_health_params: A dictionary of options for bounce_lib.get_happy_tasks.
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
 
-    def __log(errormsg, level='event'):
+    def log_deploy_error(errormsg, level='event'):
         return _log(
             service_name=service_name,
             line=errormsg,
@@ -297,7 +296,7 @@ def deploy_service(
     except KeyError:
         errormsg = 'ERROR: drain_method not recognized: %s. Must be one of (%s)' % \
             (drain_method_name, ', '.join(drain_lib.list_drain_methods()))
-        __log(errormsg)
+        log_deploy_error(errormsg)
         return (1, errormsg)
 
     old_app_live_tasks, old_app_draining_tasks = get_old_live_draining_tasks(other_apps, drain_method)
@@ -309,7 +308,7 @@ def deploy_service(
         except KeyError:
             errormsg = 'ERROR: bounce_method not recognized: %s. Must be one of (%s)' % \
                 (bounce_method, ', '.join(bounce_lib.list_bounce_methods()))
-            __log(errormsg)
+            log_deploy_error(errormsg)
             return (1, errormsg)
 
         try:
@@ -338,7 +337,7 @@ def deploy_service(
         loglines = ['Exception raised during deploy of service %s:' % service_name]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
-            __log(logline, level='debug')
+            log_deploy_error(logline, level='debug')
         raise
 
     return (0, 'Service deployed.')

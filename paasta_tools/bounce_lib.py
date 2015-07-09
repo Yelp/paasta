@@ -253,8 +253,10 @@ def brutal_bounce(
     :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
-                               that are being drained should not be included in this dictionary.
-    :return: A dictionary with keys create_app, tasks_to_drain, representing the desired bounce actions.
+                               that are being drained are not included in this dictionary.
+    :return: A dictionary representing the desired bounce actions. Should have the following keys:
+              - create_app: True if we should start the new Marathon app yet, False otherwise.
+              - tasks_to_drain: a set of task objects which should be drained and killed. May be empty.
     """
     return {
         "create_app": not new_app_running,
@@ -272,12 +274,7 @@ def upthendown_bounce(
 ):
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
-    :param new_config: The configuration dictionary representing the desired new app.
-    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
-    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
-    :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
-                               that are being drained should not be included in this dictionary.
-    :return: A dictionary with keys create_app, tasks_to_drain, representing the desired bounce actions.
+    See the docstring for brutal_bounce() for parameters and return value.
     """
     if new_app_running and len(happy_new_tasks) == new_config['instances']:
         return {
@@ -301,13 +298,7 @@ def crossover_bounce(
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
-    :param new_config: The configuration dictionary representing the desired new app.
-    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
-    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
-    :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
-                               that are being drained should not be included in this dictionary.
-    :return: A dictionary with keys create_app, tasks_to_drain, representing the desired bounce actions.
-
+    See the docstring for brutal_bounce() for parameters and return value.
     """
 
     if not new_app_running:
@@ -339,12 +330,7 @@ def downthenup_bounce(
 ):
     """Stops any old apps and waits for them to die before starting a new one.
 
-    :param new_config: The configuration dictionary representing the desired new app.
-    :param new_app_running: Whether there is an app in Marathon with the same ID as the new config.
-    :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
-    :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
-                               that are being drained should not be included in this dictionary.
-    :return: A dictionary with keys create_app, tasks_to_drain, representing the desired bounce actions.
+    See the docstring for brutal_bounce() for parameters and return value.
     """
     return {
         "create_app": not old_app_live_tasks and not new_app_running,

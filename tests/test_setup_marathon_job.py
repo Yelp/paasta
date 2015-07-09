@@ -357,7 +357,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock(safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
             marathon.MarathonClient
@@ -396,7 +396,7 @@ class TestSetupMarathonJob:
 
             assert mock_create_marathon_app.call_count == 1
             assert fake_client.kill_task.call_count == 0
-            assert fake_drain_method.down.call_count == len(fake_bounce_func_return["tasks_to_drain"])
+            assert fake_drain_method.drain.call_count == len(fake_bounce_func_return["tasks_to_drain"])
             assert mock_kill_old_ids.call_count == 0
 
     def test_do_bounce_when_create_app_and_new_app_running(self):
@@ -419,7 +419,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock(safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
             marathon.MarathonClient
@@ -457,7 +457,7 @@ class TestSetupMarathonJob:
             assert mock_create_marathon_app.call_count == 0
             assert fake_client.kill_task.call_count == 0
             assert mock_kill_old_ids.call_count == 0
-            assert fake_drain_method.down.call_count == len(fake_bounce_func_return["tasks_to_drain"])
+            assert fake_drain_method.drain.call_count == len(fake_bounce_func_return["tasks_to_drain"])
 
     def test_do_bounce_when_tasks_to_drain(self):
         fake_task_to_drain = mock.Mock(app_id='fake_app_to_kill_1')
@@ -479,7 +479,7 @@ class TestSetupMarathonJob:
         self.fake_cluster = 'fake_cluster'
         fake_instance_name = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
-        fake_drain_method = mock.Mock(safe_to_kill=lambda t: False)
+        fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
         fake_client = mock.create_autospec(
             marathon.MarathonClient
@@ -518,7 +518,7 @@ class TestSetupMarathonJob:
             assert mock_create_marathon_app.call_count == 0
             assert fake_client.kill_task.call_count == 0
             assert mock_kill_old_ids.call_count == 0
-            assert fake_drain_method.down.call_count == expected_drain_task_count
+            assert fake_drain_method.drain.call_count == expected_drain_task_count
 
     def test_do_bounce_when_apps_to_kill(self):
         fake_bounce_func_return = {
@@ -627,7 +627,7 @@ class TestSetupMarathonJob:
             )
             assert mock_log.call_count == 0
             assert mock_create_marathon_app.call_count == 0
-            assert fake_drain_method.down.call_count == 0
+            assert fake_drain_method.drain.call_count == 0
             assert mock_kill_old_ids.call_count == 0
 
     def test_setup_service_srv_already_exists(self):
@@ -904,7 +904,7 @@ class TestSetupMarathonJob:
             ),
             mock.patch(
                 'paasta_tools.drain_lib.get_drain_method',
-                return_value=mock.Mock(is_downed=lambda t: False, safe_to_kill=lambda t: True)
+                return_value=mock.Mock(is_draining=lambda t: False, is_safe_to_kill=lambda t: True)
             ),
         ) as (_, _, _, kill_old_ids_patch, create_marathon_app_patch, mock_log, mock_get_cluster, _):
             result = setup_marathon_job.deploy_service(
@@ -1068,7 +1068,7 @@ class TestSetupMarathonJob:
             fake_apps[1].id: set(),
         }
 
-        fake_drain_method = mock.Mock(is_downed=lambda _: True)
+        fake_drain_method = mock.Mock(is_draining=lambda _: True)
 
         actual = setup_marathon_job.get_old_live_draining_tasks(fake_apps, fake_drain_method)
         actual_live_tasks, actual_draining_tasks = actual
@@ -1096,7 +1096,7 @@ class TestSetupMarathonJob:
             fake_apps[1].id: set([fake_apps[1].tasks[1]]),
         }
 
-        fake_drain_method = mock.Mock(is_downed=lambda t: t._drain_state == 'down')
+        fake_drain_method = mock.Mock(is_draining=lambda t: t._drain_state == 'down')
 
         actual = setup_marathon_job.get_old_live_draining_tasks(fake_apps, fake_drain_method)
         actual_live_tasks, actual_draining_tasks = actual

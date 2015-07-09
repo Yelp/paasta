@@ -145,4 +145,4 @@ def and_we_wait_a_bit_for_the_app_to_disappear(context, which):
 @when(u'a task has drained')
 def when_a_task_has_drained(context):
     """Tell the TestDrainMethod to mark a task as safe to kill"""
-    drain_lib.TestDrainMethod.mark_a_task_as_safe_to_kill()
+    drain_lib.TestDrainMethod.mark_arbitrary_task_as_safe_to_kill()
