@@ -263,6 +263,14 @@ def add_subparser(subparsers):
         required=False,
         default=True,
     )
+    list_parser.add_argument(
+        '-t', '--healthcheck-only',
+        help='Terminates container after healthcheck (exits with status code 0 on success, 1 otherwise)',
+        dest='healthcheck_only',
+        action='store_true',
+        required=False,
+        default=False,
+    )
 
     list_parser.set_defaults(command=paasta_local_run)
 
@@ -335,6 +343,7 @@ def run_docker_container(
     interactive,
     command,
     healthcheck,
+    healthcheck_only,
     service_manifest
 ):
     """docker-py has issues running a container with a TTY attached, so for
@@ -405,8 +414,15 @@ def run_docker_container(
         container_id = get_container_id(docker_client, container_name)
         sys.stdout.write('Found our container running with CID %s\n' % container_id)
 
-        simulate_healthcheck_on_service(
+        status = simulate_healthcheck_on_service(
             service_manifest, docker_client, container_id, healthcheck_mode, healthcheck_data, healthcheck)
+        if healthcheck_only:
+            if container_started:
+                _cleanup_container(docker_client, container_id)
+            if status:
+                sys.exit(0)
+            else:
+                sys.exit(1)
 
         sys.stdout.write('Your service is now running! Tailing stdout and stderr:\n')
         for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
@@ -460,6 +476,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         args.interactive,
         command,
         args.healthcheck,
+        args.healthcheck_only,
         service_manifest
     )
 

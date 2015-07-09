@@ -433,6 +433,7 @@ def test_run_docker_container_non_interactive(
         False,  # interactive
         'fake_command',
         False,  # healthcheck
+        False,  # terminate after healthcheck
         mock_service_manifest,
     )
     mock_service_manifest.get_mem.assert_called_once_with()
@@ -482,6 +483,7 @@ def test_run_docker_container_interactive(
         True,  # interactive
         'fake_command',
         False,  # healthcheck
+        False,  # terminate after healthcheck
         mock_service_manifest,
     )
     mock_service_manifest.get_mem.assert_called_once_with()
@@ -534,6 +536,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
         False,  # interactive
         'fake_command',
         False,  # healthcheck
+        False,  # terminate after healthcheck
         mock_service_manifest,
     )
     assert mock_docker_client.stop.call_count == 1
@@ -576,11 +579,102 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
         False,  # interactive
         'fake_command',
         False,  # healthcheck
+        False,  # terminate after healthcheck
         mock_service_manifest,
     )
     # Cleanup wont' be necessary and the function should bail out early.
     assert mock_docker_client.stop.call_count == 0
     assert mock_docker_client.remove_container.call_count == 0
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_docker_run_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
+            autospec=True,
+            return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
+            )
+def test_run_docker_container_terminates_with_healthcheck_only_success(
+    mock_get_healthcheck,
+    mock_get_container_id,
+    mock_run,
+    mock_get_cmd_string,
+    mock_execlp,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+    mock_simulate_healthcheck
+):
+    mock_pick_random_port.return_value = 666
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
+    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    with raises(SystemExit) as excinfo:
+        run_docker_container(
+            mock_docker_client,
+            'fake_service',
+            'fake_instance',
+            'fake_hash',
+            [],
+            False,  # interactive
+            'fake_command',
+            False,  # healthcheck
+            True,  # terminate after healthcheck
+            mock_service_manifest,
+        )
+    assert mock_docker_client.stop.call_count == 1
+    assert mock_docker_client.remove_container.call_count == 1
+    assert excinfo.value.code == 0
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=False)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_docker_run_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
+            autospec=True,
+            return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
+            )
+def test_run_docker_container_terminates_with_healthcheck_only_fail(
+    mock_get_healthcheck,
+    mock_get_container_id,
+    mock_run,
+    mock_get_cmd_string,
+    mock_execlp,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+    mock_simulate_healthcheck
+):
+    mock_pick_random_port.return_value = 666
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
+    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    with raises(SystemExit) as excinfo:
+        run_docker_container(
+            mock_docker_client,
+            'fake_service',
+            'fake_instance',
+            'fake_hash',
+            [],
+            False,  # interactive
+            'fake_command',
+            False,  # healthcheck
+            True,  # terminate after healthcheck
+            mock_service_manifest,
+        )
+    assert mock_docker_client.stop.call_count == 1
+    assert mock_docker_client.remove_container.call_count == 1
+    assert excinfo.value.code == 1
 
 
 @mock.patch('time.sleep', autospec=True)
@@ -686,9 +780,6 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
         # only one healthcheck will be performed silently
         'healthcheck_grace_period_seconds': 1,
-        'healthcheck_interval_seconds':  10,
-        'healthcheck_timeout_seconds':  10,
-        'healthcheck_max_consecutive_failures': 5,
     }, {})
 
     fake_container_id = 'fake_container_id'
