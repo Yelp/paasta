@@ -61,7 +61,8 @@ def when_there_are_num_which_tasks(context, num, which):
         if happy_count >= context.max_happy_tasks:
             return
         time.sleep(0.5)
-    raise Exception("timed out waiting for %d tasks on %s; there are %d" % (context.max_happy_tasks, app_id, happy_count))
+    raise Exception("timed out waiting for %d tasks on %s; there are %d" %
+                    (context.max_happy_tasks, app_id, happy_count))
 
 
 @when(u'deploy_service with bounce strategy "{bounce_method}", drain method "{drain_method}" is initiated')

@@ -26,7 +26,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
 
 
-DEFAULT_COMPONENTS = ['build', 'deploy', 'app_output', 'lb_errors', 'monitoring']
+DEFAULT_COMPONENTS = ['build', 'deploy', 'monitoring']
 
 log = logging.getLogger('__main__')
 

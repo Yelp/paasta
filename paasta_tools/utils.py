@@ -45,6 +45,7 @@ class PaastaColors:
     DEFAULT = '\033[0m'
     GREEN = '\033[32m'
     GREY = '\033[1m\033[30m'
+    MAGENTA = '\033[35m'
     RED = '\033[31m'
     YELLOW = '\033[33m'
 
@@ -81,6 +82,14 @@ class PaastaColors:
         :param text: a string
         :return: text colour coded with ANSI red"""
         return PaastaColors.color_text(PaastaColors.RED, text)
+
+    @staticmethod
+    def magenta(text):
+        """Return text that can be printed magenta.
+
+        :param text: a string
+        :return: text colour coded with ANSI magenta"""
+        return PaastaColors.color_text(PaastaColors.MAGENTA, text)
 
     @staticmethod
     def color_text(color, text):
@@ -131,36 +140,42 @@ LOG_COMPONENTS = {
         'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
         'command': 'NA - TODO: tee deploy logs into scribe PAASTA-201',
     },
-    'app_output': {
-        'color': PaastaColors.bold,
-        'help': 'Stderr and stdout of the actual process spawned by Mesos',
-        'command': 'NA - PAASTA-78',
-    },
-    'app_request': {
-        'color': PaastaColors.bold,
-        'help': 'The request log for the service. Defaults to "service_NAME_requests"',
-        'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
-    },
-    'app_errors': {
-        'color': PaastaColors.red,
-        'help': 'Application error log, defaults to "stream_service_NAME_errors"',
-        'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
-    },
-    'lb_requests': {
-        'color': PaastaColors.bold,
-        'help': 'All requests from Smartstack haproxy',
-        'command': 'NA - TODO: SRV-1130',
-    },
-    'lb_errors': {
-        'color': PaastaColors.red,
-        'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
-        'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
-    },
     'monitoring': {
         'color': PaastaColors.green,
         'help': 'Logs from Sensu checks for the service',
         'command': 'NA - TODO log mesos healthcheck and sensu stuff.',
     },
+    # I'm leaving these planned components here since they provide some hints
+    # about where we want to go. See PAASTA-78.
+    #
+    # But I'm commenting them out so they don't delude users into believing we
+    # can expose logs that we cannot actually expose. See PAASTA-927.
+    #
+    # 'app_output': {
+    #     'color': PaastaColors.bold,
+    #     'help': 'Stderr and stdout of the actual process spawned by Mesos',
+    #     'command': 'NA - PAASTA-78',
+    # },
+    # 'app_request': {
+    #     'color': PaastaColors.bold,
+    #     'help': 'The request log for the service. Defaults to "service_NAME_requests"',
+    #     'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
+    # },
+    # 'app_errors': {
+    #     'color': PaastaColors.red,
+    #     'help': 'Application error log, defaults to "stream_service_NAME_errors"',
+    #     'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
+    # },
+    # 'lb_requests': {
+    #     'color': PaastaColors.bold,
+    #     'help': 'All requests from Smartstack haproxy',
+    #     'command': 'NA - TODO: SRV-1130',
+    # },
+    # 'lb_errors': {
+    #     'color': PaastaColors.red,
+    #     'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
+    #     'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
+    # },
 }
 
 
@@ -520,3 +535,7 @@ def get_infrastructure_zookeeper_servers(cluster, zk_discovery_path=INFRA_ZK_PAT
     yaml_file = os.path.join(zk_discovery_path, "%s%s" % (cluster, '.yaml'))
     cluster_topology = parse_yaml_file(yaml_file)
     return [host_port[0] for host_port in cluster_topology]
+
+
+def get_docker_host():
+    return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')

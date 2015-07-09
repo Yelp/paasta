@@ -12,6 +12,7 @@ usr/share/python/paasta-tools/bin/generate_services_yaml.py usr/bin/generate_ser
 usr/share/python/paasta-tools/bin/generate_services_file.py usr/bin/generate_services_file
 usr/share/python/paasta-tools/bin/list_marathon_service_instances.py usr/bin/list_marathon_service_instances
 usr/share/python/paasta-tools/bin/paasta_cli.py usr/bin/paasta
+usr/share/python/paasta-tools/bin/paasta_execute_docker_command.py usr/bin/paasta_execute_docker_command
 usr/share/python/paasta-tools/bin/paasta_serviceinit.py usr/bin/paasta_serviceinit
 usr/share/python/paasta-tools/bin/paasta_metastatus.py usr/bin/paasta_metastatus
 usr/share/python/paasta-tools/bin/paasta_tabcomplete.sh /etc/bash_completion.d/paasta.bash
