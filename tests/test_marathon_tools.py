@@ -1346,7 +1346,6 @@ class TestMarathonTools:
                        autospec=True,
                        return_value=fake_service_namespace_config),
             mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
-
         ) as (
             read_config_patch,
             load_service_namespace_config_patch,
@@ -1375,7 +1374,6 @@ class TestMarathonTools:
                        autospec=True,
                        return_value=fake_service_namespace_config),
             mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
-
         ) as (
             read_config_patch,
             load_service_namespace_config_patch,
@@ -1405,7 +1403,6 @@ class TestMarathonTools:
                        autospec=True,
                        return_value=fake_service_namespace_config),
             mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
-
         ) as (
             read_config_patch,
             load_service_namespace_config_patch,
@@ -1433,7 +1430,6 @@ class TestMarathonTools:
                        autospec=True,
                        return_value=fake_service_namespace_config),
             mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
-
         ) as (
             read_config_patch,
             load_service_namespace_config_patch,
