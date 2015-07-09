@@ -88,8 +88,8 @@ def when_deploy_service_initiated(context, bounce_method):
         mock.patch(
             'paasta_tools.bounce_lib.get_happy_tasks',
             autospec=True,
-            # Wrap function call so we can select a subset of tasks to test with so we
-            # can test intermediate steps where the app is not completely up
+            # Wrap function call so we can select a subset of tasks or test
+            # intermediate steps, like when an app is not completely up
             side_effect=lambda app, _, __, **kwargs: get_happy_tasks(
                 app, context.service_name, "fake_nerve_ns")[:context.max_tasks],
         ),
