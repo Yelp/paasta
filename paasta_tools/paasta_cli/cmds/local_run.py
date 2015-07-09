@@ -16,7 +16,7 @@ from urlparse import urlparse
 
 from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_default_cluster_for_service
-from paasta_tools.marathon_tools import get_healthcheck
+from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import NoMarathonConfigurationForService
@@ -157,19 +157,19 @@ def simulate_healthcheck_on_service(
         # silenty start performing health checks until grace period ends or first check succeeds
         graceperiod_end_time = time.time() + grace_period
         while True:
-            healthcheck_output = run_healthcheck_on_container(
+            healthcheck_succeeded = run_healthcheck_on_container(
                 docker_client, container_id, healthcheck_mode, healthcheck_data, timeout)
-            if healthcheck_output or time.time() > graceperiod_end_time:
+            if healthcheck_succeeded or time.time() > graceperiod_end_time:
                 break
             else:
-                sys.stdout.write("%s\n" % "Healthcheck failed! (disregarded due to grace period)")
+                sys.stdout.write("%s\n" % PaastaColors.grey("Healthcheck failed (disregarded due to grace period)"))
             time.sleep(interval)
 
         failure = False
         for attempt in range(1, max_failures + 1):
-            healthcheck_output = run_healthcheck_on_container(
+            healthcheck_succeeded = run_healthcheck_on_container(
                 docker_client, container_id, healthcheck_mode, healthcheck_data, timeout)
-            if healthcheck_output:
+            if healthcheck_succeeded:
                 sys.stdout.write("%s (via: %s)\n" %
                                  (PaastaColors.green("Healthcheck succeeded!"), healthcheck_link))
                 failure = False
@@ -381,7 +381,7 @@ def run_docker_container(
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
-    healthcheck_mode, healthcheck_data = get_healthcheck(service, instance, service_manifest, random_port)
+    healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(service, instance, service_manifest, random_port)
 
     sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
     if interactive:
@@ -414,9 +414,17 @@ def run_docker_container(
         container_id = get_container_id(docker_client, container_name)
         sys.stdout.write('Found our container running with CID %s\n' % container_id)
 
-        status = simulate_healthcheck_on_service(
-            service_manifest, docker_client, container_id, healthcheck_mode, healthcheck_data, healthcheck)
+        # If the service has a healthcheck, simulate it
+        if healthcheck_mode:
+            status = simulate_healthcheck_on_service(
+                service_manifest, docker_client, container_id, healthcheck_mode, healthcheck_data, healthcheck)
+        else:
+            status = True
+            sys.stdout.write(PaastaColors.yellow(
+                'Your service does not have a healthcheck configured (it is optional, but recommended).\n'))
+
         if healthcheck_only:
+            sys.stdout.write('Detected --healthcheck-only flag, exiting now.\n')
             if container_started:
                 _cleanup_container(docker_client, container_id)
             if status:

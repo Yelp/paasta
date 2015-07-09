@@ -1008,12 +1008,12 @@ def get_matching_appids(servicename, instance, client):
     return [app.id for app in client.list_apps() if app.id.startswith("/%s" % jobid)]
 
 
-def get_healthcheck(service_name, namespace, service_manifest, random_port):
+def get_healthcheck_for_instance(service_name, instance, service_manifest, random_port):
     """
     Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
     or (None, None) if no healthcheck
     """
-    smartstack_config = load_service_namespace_config(service_name, namespace)
+    smartstack_config = load_service_namespace_config(service_name, instance)
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     path = service_manifest.get_healthcheck_uri(smartstack_config)
     hostname = socket.getfqdn()

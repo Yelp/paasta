@@ -405,12 +405,12 @@ def test_get_container_id_name_not_found():
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck_for_instance',
             autospec=True,
             return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
             )
 def test_run_docker_container_non_interactive(
-    mock_get_healthcheck,
+    mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
     mock_get_cmd_string,
@@ -439,7 +439,7 @@ def test_run_docker_container_non_interactive(
     mock_service_manifest.get_mem.assert_called_once_with()
     mock_pick_random_port.assert_called_once_with()
     assert mock_get_docker_run_cmd.call_count == 1
-    assert mock_get_healthcheck.call_count == 1
+    assert mock_get_healthcheck_for_instance.call_count == 1
     assert mock_get_cmd_string.call_count == 0
     assert mock_execlp.call_count == 0
     assert mock_run.call_count == 1
@@ -455,12 +455,12 @@ def test_run_docker_container_non_interactive(
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck_for_instance',
             autospec=True,
             return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
             )
 def test_run_docker_container_interactive(
-    mock_get_healthcheck,
+    mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
     mock_get_cmd_string,
@@ -489,7 +489,7 @@ def test_run_docker_container_interactive(
     mock_service_manifest.get_mem.assert_called_once_with()
     mock_pick_random_port.assert_called_once_with()
     assert mock_get_docker_run_cmd.call_count == 1
-    assert mock_get_healthcheck.call_count == 1
+    assert mock_get_healthcheck_for_instance.call_count == 1
     assert mock_get_cmd_string.call_count == 1
     assert mock_execlp.call_count == 1
     assert mock_run.call_count == 0
@@ -505,12 +505,12 @@ def test_run_docker_container_interactive(
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck_for_instance',
             autospec=True,
             return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
             )
 def test_run_docker_container_non_interactive_keyboard_interrupt(
-    mock_get_healthcheck,
+    mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
     mock_get_cmd_string,
@@ -549,12 +549,12 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(42, 'fake _run output'))
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck_for_instance',
             autospec=True,
             return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
             )
 def test_run_docker_container_non_interactive_run_returns_nonzero(
-    mock_get_healthcheck,
+    mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
     mock_get_cmd_string,
@@ -594,12 +594,12 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck_for_instance',
             autospec=True,
             return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
             )
 def test_run_docker_container_terminates_with_healthcheck_only_success(
-    mock_get_healthcheck,
+    mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
     mock_get_cmd_string,
@@ -639,12 +639,12 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd_string', autospec=True, return_value='CMD.exe')
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck',
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_healthcheck_for_instance',
             autospec=True,
             return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
             )
 def test_run_docker_container_terminates_with_healthcheck_only_fail(
-    mock_get_healthcheck,
+    mock_get_healthcheck_for_instance,
     mock_get_container_id,
     mock_run,
     mock_get_cmd_string,
