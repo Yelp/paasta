@@ -29,4 +29,11 @@ marathon:
     - zookeeper
   environment:
     -CLUSTER: testcluster
-  command: 'marathon --zk zk://zookeeper:2181/marathon --master zk://zookeeper:2181/mesos-testcluster --no-logger'
+  command: 'marathon --zk zk://zookeeper:2181/marathon --master zk://zookeeper:2181/mesos-testcluster'
+
+chronos:
+  build: ../yelp_package/dockerfiles/itest/chronos/
+  ports:
+    - 8081
+  links:
+    - zookeeper

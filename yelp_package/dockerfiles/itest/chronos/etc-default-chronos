@@ -1,4 +1,0 @@
-MASTER=zk://mesos:2181/mesos
-MESOS_NATIVE_LIBRARY=/usr/local/lib/libmesos.so
-ZK_HOSTS=zookeeper:2181
-ZK_PATH=/chronos/state
