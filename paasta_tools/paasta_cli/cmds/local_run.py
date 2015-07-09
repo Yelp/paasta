@@ -104,49 +104,27 @@ def run_healthcheck_on_container(
     container_id,
     healthcheck_mode,
     healthcheck_data,
-    timeout,
-    interval,
-    max_failures
+    timeout
 ):
-    """Performs healthcheck on a container a given number of times at a specified interval
+    """Performs healthcheck on a container
 
     :param container_id: Docker container id
     :param healthcheck_mode: one of 'http', 'tcp', or 'cmd'
     :param healthcheck_data: a URL when healthcheck_mode is 'http' or 'tcp', a command if healthcheck_mode is 'cmd'
     :param timeout: timeout in seconds for individual check
-    :param interval: time in seconds to wait between checks
-    :param max_failures: maximum number of consecutive failures allowed
     :returns: true if healthcheck succeeds, false otherwise
     """
-    failure = False
-    for attempt in range(1, max_failures + 1):
-        healthcheck_link = PaastaColors.cyan(healthcheck_data)
-        if healthcheck_mode == 'cmd':
-            healthcheck_result = perform_cmd_healthcheck(docker_client, container_id, healthcheck_data, timeout)
-        elif healthcheck_mode == 'http':
-            healthcheck_result = perform_http_healthcheck(healthcheck_data, timeout)
-        elif healthcheck_mode == 'tcp':
-            healthcheck_result = perform_tcp_healthcheck(healthcheck_data, timeout)
-        else:
-            sys.stdout.write(PaastaColors.yellow(
-                "Healthcheck mode '%s' is not currently supported!\n" % healthcheck_mode))
-            return False
-
-        if healthcheck_result:
-            sys.stdout.write("%s (via: %s)\n" %
-                             (PaastaColors.green("Healthcheck succeeded!"), healthcheck_link))
-            failure = False
-            break
-        else:
-            sys.stdout.write("%s (via: %s)\n" %
-                             (PaastaColors.red("Healthcheck Failed! (Attempt %d of %d)" % (attempt, max_failures)),
-                              healthcheck_link))
-            failure = True
-        time.sleep(interval)
-    if failure:
-        return False
+    healthcheck_result = False
+    if healthcheck_mode == 'cmd':
+        healthcheck_result = perform_cmd_healthcheck(docker_client, container_id, healthcheck_data, timeout)
+    elif healthcheck_mode == 'http':
+        healthcheck_result = perform_http_healthcheck(healthcheck_data, timeout)
+    elif healthcheck_mode == 'tcp':
+        healthcheck_result = perform_tcp_healthcheck(healthcheck_data, timeout)
     else:
-        return True
+        sys.stdout.write(PaastaColors.yellow(
+            "Healthcheck mode '%s' is not currently supported!\n" % healthcheck_mode))
+    return healthcheck_result
 
 
 def simulate_healthcheck_on_service(
@@ -157,7 +135,7 @@ def simulate_healthcheck_on_service(
     healthcheck_data,
     healthcheck_enabled
 ):
-    """Simulates healthcheck on given service if healthcheck is enabled
+    """Simulates Marathon-style healthcheck on given service if healthcheck is enabled
 
     :param service_manifest: service manifest
     :param docker_client: Docker client object
@@ -173,11 +151,40 @@ def simulate_healthcheck_on_service(
         interval = service_manifest.get_healthcheck_interval_seconds()
         max_failures = service_manifest.get_healthcheck_max_consecutive_failures()
 
-        sys.stdout.write('\nWaiting %d seconds before starting health check via\n%s\n' %
-                         (grace_period, healthcheck_link))
-        time.sleep(grace_period)
-        healthcheck_status = run_healthcheck_on_container(
-            docker_client, container_id, healthcheck_mode, healthcheck_data, timeout, interval, max_failures)
+        sys.stdout.write('\nStarting health check via %s (waiting %s seconds before '
+                         'considering failures due to grace period):\n' % (healthcheck_link, grace_period))
+
+        # silenty start performing health checks until grace period ends or first check succeeds
+        graceperiod_end_time = time.time() + grace_period
+        while True:
+            healthcheck_output = run_healthcheck_on_container(
+                docker_client, container_id, healthcheck_mode, healthcheck_data, timeout)
+            if healthcheck_output or time.time() > graceperiod_end_time:
+                break
+            else:
+                sys.stdout.write("%s\n" % "Healthcheck failed! (disregarded due to grace period)")
+            time.sleep(interval)
+
+        failure = False
+        for attempt in range(1, max_failures + 1):
+            healthcheck_output = run_healthcheck_on_container(
+                docker_client, container_id, healthcheck_mode, healthcheck_data, timeout)
+            if healthcheck_output:
+                sys.stdout.write("%s (via: %s)\n" %
+                                 (PaastaColors.green("Healthcheck succeeded!"), healthcheck_link))
+                failure = False
+                break
+            else:
+                sys.stdout.write("%s (via: %s)\n" %
+                                 (PaastaColors.red("Healthcheck failed! (Attempt %d of %d)" % (attempt, max_failures)),
+                                  healthcheck_link))
+                failure = True
+            time.sleep(interval)
+
+        if failure:
+            healthcheck_status = False
+        else:
+            healthcheck_status = True
     else:
         sys.stdout.write('\nMesos would have healthchecked your service via\n%s\n' % healthcheck_link)
         healthcheck_status = True

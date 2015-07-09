@@ -118,14 +118,11 @@ def test_run_healthcheck_http_success(mock_sleep, mock_perform_http_healthcheck)
     fake_mode = 'http'
     fake_url = 'http://fakehost:666/fake_status_path'
     fake_timeout = 10
-    fake_interval = 10
-    fake_max_fail = 3
 
     mock_perform_http_healthcheck.return_value = True
     assert run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout, fake_interval, fake_max_fail)
-    assert mock_sleep.call_count == 0
-    assert mock_perform_http_healthcheck.call_count == 1
+        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout)
+    mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.perform_http_healthcheck')
@@ -136,14 +133,11 @@ def test_run_healthcheck_http_fails(mock_sleep, mock_perform_http_healthcheck):
     fake_mode = 'http'
     fake_url = 'http://fakehost:666/fake_status_path'
     fake_timeout = 10
-    fake_interval = 10
-    fake_max_fail = 3
 
     mock_perform_http_healthcheck.return_value = False
     assert not run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout, fake_interval, fake_max_fail)
-    assert mock_sleep.call_count == fake_max_fail
-    assert mock_perform_http_healthcheck.call_count == fake_max_fail
+        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout)
+    mock_perform_http_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.perform_tcp_healthcheck')
@@ -154,13 +148,10 @@ def test_run_healthcheck_tcp_success(mock_sleep, mock_perform_tcp_healthcheck):
     fake_mode = 'tcp'
     fake_url = 'tcp://fakehost:666'
     fake_timeout = 10
-    fake_interval = 10
-    fake_max_fail = 3
 
     mock_perform_tcp_healthcheck.return_value = True
     assert run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout, fake_interval, fake_max_fail)
-    assert mock_sleep.call_count == 0
+        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout)
     assert mock_perform_tcp_healthcheck.call_count == 1
     mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
@@ -173,14 +164,12 @@ def test_run_healthcheck_tcp_fails(mock_sleep, mock_perform_tcp_healthcheck):
     fake_mode = 'tcp'
     fake_url = 'tcp://fakehost:666'
     fake_timeout = 10
-    fake_interval = 10
-    fake_max_fail = 3
 
     mock_perform_tcp_healthcheck.return_value = False
     assert not run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout, fake_interval, fake_max_fail)
-    assert mock_sleep.call_count == fake_max_fail
-    assert mock_perform_tcp_healthcheck.call_count == fake_max_fail
+        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout)
+    assert mock_perform_tcp_healthcheck.call_count == 1
+    mock_perform_tcp_healthcheck.assert_called_once_with(fake_url, fake_timeout)
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.perform_cmd_healthcheck')
@@ -191,13 +180,10 @@ def test_run_healthcheck_cmd_success(mock_sleep, mock_perform_cmd_healthcheck):
     fake_mode = 'cmd'
     fake_cmd = '/bin/true'
     fake_timeout = 10
-    fake_interval = 10
-    fake_max_fail = 3
 
     mock_perform_cmd_healthcheck.return_value = True
     assert run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_cmd, fake_timeout, fake_interval, fake_max_fail)
-    assert mock_sleep.call_count == 0
+        mock_docker_client, fake_container_id, fake_mode, fake_cmd, fake_timeout)
     assert mock_perform_cmd_healthcheck.call_count == 1
     mock_perform_cmd_healthcheck.assert_called_once_with(mock_docker_client, fake_container_id, fake_cmd, fake_timeout)
 
@@ -210,32 +196,12 @@ def test_run_healthcheck_cmd_fails(mock_sleep, mock_perform_cmd_healthcheck):
     fake_mode = 'cmd'
     fake_cmd = '/bin/true'
     fake_timeout = 10
-    fake_interval = 10
-    fake_max_fail = 3
 
     mock_perform_cmd_healthcheck.return_value = False
     assert not run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_cmd, fake_timeout, fake_interval, fake_max_fail)
-    assert mock_sleep.call_count == fake_max_fail
-    assert mock_perform_cmd_healthcheck.call_count == fake_max_fail
-
-
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.perform_http_healthcheck')
-@mock.patch('time.sleep')
-def test_run_healthcheck_partial_fail(mock_sleep, mock_perform_http_healthcheck):
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    fake_container_id = 'fake_container_id'
-    fake_mode = 'http'
-    fake_url = 'http://fakehost:666/fake_status_path'
-    fake_timeout = 10
-    fake_interval = 10
-    fake_max_fail = 6
-
-    mock_perform_http_healthcheck.side_effect = [False, False, False, True]
-    assert run_healthcheck_on_container(
-        mock_docker_client, fake_container_id, fake_mode, fake_url, fake_timeout, fake_interval, fake_max_fail)
-    assert mock_sleep.call_count == 3
-    assert mock_perform_http_healthcheck.call_count == 4
+        mock_docker_client, fake_container_id, fake_mode, fake_cmd, fake_timeout)
+    assert mock_perform_cmd_healthcheck.call_count == 1
+    mock_perform_cmd_healthcheck.assert_called_once_with(mock_docker_client, fake_container_id, fake_cmd, fake_timeout)
 
 
 @mock.patch('os.path.expanduser', autospec=True)
@@ -632,7 +598,9 @@ def test_simulate_healthcheck_on_service_disabled(mock_sleep):
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
 def test_simulate_healthcheck_on_service_enabled_success(mock_run_healthcheck_on_container, mock_sleep):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
+        'healthcheck_grace_period_seconds': 0,
+    }, {})
     fake_container_id = 'fake_container_id'
     fake_mode = 'http'
     fake_url = 'http://fake_host/fake_status_path'
@@ -645,13 +613,91 @@ def test_simulate_healthcheck_on_service_enabled_success(mock_run_healthcheck_on
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
 def test_simulate_healthcheck_on_service_enabled_failure(mock_run_healthcheck_on_container, mock_sleep):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
+        'healthcheck_grace_period_seconds': 0,
+    }, {})
+    mock_service_manifest
+
     fake_container_id = 'fake_container_id'
     fake_mode = 'http'
     fake_url = 'http://fake_host/fake_status_path'
     mock_run_healthcheck_on_container.return_value = False
     assert not simulate_healthcheck_on_service(
         mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
+
+
+@mock.patch('time.sleep', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_healthcheck_on_container',
+            autospec=True, side_effect=[False, False, False, False, True])
+def test_simulate_healthcheck_on_service_enabled_partial_failure(mock_run_healthcheck_on_container, mock_sleep):
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
+        'healthcheck_grace_period_seconds': 0,
+    }, {})
+
+    fake_container_id = 'fake_container_id'
+    fake_mode = 'http'
+    fake_url = 'http://fake_host/fake_status_path'
+    assert simulate_healthcheck_on_service(
+        mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
+    # First run_healthcheck_on_container call happens silently
+    assert mock_run_healthcheck_on_container.call_count == 5
+    assert mock_sleep.call_count == 3
+
+
+@mock.patch('time.sleep', autospec=True)
+@mock.patch('time.time', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_healthcheck_on_container',
+            autospec=True, return_value=True)
+def test_simulate_healthcheck_on_service_enabled_during_grace_period(
+    mock_run_healthcheck_on_container,
+    mock_time,
+    mock_sleep
+):
+    # prevent grace period from ending
+    mock_time.side_effect = [0, 0]
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
+        'healthcheck_grace_period_seconds': 1,
+    }, {})
+
+    fake_container_id = 'fake_container_id'
+    fake_mode = 'http'
+    fake_url = 'http://fake_host/fake_status_path'
+    assert simulate_healthcheck_on_service(
+        mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
+    assert mock_sleep.call_count == 0
+    # First run_healthcheck_on_container call happens silently
+    assert mock_run_healthcheck_on_container.call_count == 2
+
+
+@mock.patch('time.sleep', autospec=True)
+@mock.patch('time.time', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_healthcheck_on_container',
+            autospec=True, return_value=[False, True])
+def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
+    mock_run_healthcheck_on_container,
+    mock_time,
+    mock_sleep
+):
+    # change time to make sure we are sufficiently past grace period
+    mock_time.side_effect = [0, 2]
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
+        # only one healthcheck will be performed silently
+        'healthcheck_grace_period_seconds': 1,
+        'healthcheck_interval_seconds':  10,
+        'healthcheck_timeout_seconds':  10,
+        'healthcheck_max_consecutive_failures': 5,
+    }, {})
+
+    fake_container_id = 'fake_container_id'
+    fake_mode = 'http'
+    fake_url = 'http://fake_host/fake_status_path'
+    assert simulate_healthcheck_on_service(
+        mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
+    assert mock_sleep.call_count == 0
+    assert mock_run_healthcheck_on_container.call_count == 2
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd', autospec=True)
