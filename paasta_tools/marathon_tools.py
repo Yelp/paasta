@@ -353,7 +353,7 @@ class MarathonServiceConfig(object):
         If you have an http service, it uses the default endpoint that smartstack uses.
         (/status currently)
 
-        Otherwise these do *not* use the same thresholds as smarstack in order to not
+        Otherwise these do *not* use the same thresholds as smartstack in order to not
         produce a negative feedback loop, where mesos agressivly kills tasks because they
         are slow, which causes other things to be slow, etc.
 
@@ -407,7 +407,7 @@ class MarathonServiceConfig(object):
                 },
             ]
         else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+            healthchecks = []
         return healthchecks
 
     def get_healthcheck_uri(self, service_namespace_config):
@@ -493,6 +493,8 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
         if key in key_whitelist:
             service_namespace_config[key] = value
 
+    service_namespace_config['mode'] = service_namespace_config.get_mode()
+
     if 'routes' in namespace_config_from_file:
         service_namespace_config['routes'] = [(route['source'], dest)
                                               for route in namespace_config_from_file['routes']
@@ -511,17 +513,16 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
 class ServiceNamespaceConfig(dict):
 
     def get_mode(self):
-        return self.get('mode', 'http')
+        if self.get('proxy_port') is None:
+            return self.get('mode', None)
+        else:
+            return self.get('mode', 'http')
 
     def get_healthcheck_uri(self):
         return self.get('healthcheck_uri', '/status')
 
 
 class NoDockerImageError(Exception):
-    pass
-
-
-class InvalidSmartstackMode(Exception):
     pass
 
 
@@ -643,27 +644,6 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
-
-
-def get_mode_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get the mode defined in the namespace configuration for a service instances.
-    Defaults to http if one isn't defined.
-
-    This means that the namespace first has to be loaded from the service instance's
-    configuration, and then the mode has to loaded from the smartstack configuration
-    for that namespace.
-
-    :param name: The service name
-    :param instance: The instance of the service
-    :param cluster: The cluster to read the configuration for
-    :param soa_dir: The SOA config directory to read from
-    :returns: The mode for the service instance, or 'http' if not defined
-    """
-    if not cluster:
-        cluster = get_cluster()
-    namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
-    return nerve_dict.get('mode', 'http')
 
 
 def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
