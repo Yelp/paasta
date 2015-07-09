@@ -461,8 +461,8 @@ class TestMarathonTools:
         name = 'eman'
         namespace = 'ecapseman'
         soa_dir = 'rid_aos'
+        mode = 'http'
         fake_uri = 'energy'
-        fake_mode = 'ZTP'
         fake_timeout = -10103
         fake_port = 777
         fake_retries = 9001
@@ -476,7 +476,7 @@ class TestMarathonTools:
             'timeout_server_ms': 291,
             'timeout_client_ms': 912,
             'retries': fake_retries,
-            'mode': fake_mode,
+            'mode': mode,
             'routes': [
                 {
                     'source': 'oregon',
@@ -506,7 +506,7 @@ class TestMarathonTools:
             'timeout_server_ms': 291,
             'timeout_client_ms': 912,
             'retries': fake_retries,
-            'mode': fake_mode,
+            'mode': mode,
             'routes': [
                 ('oregon', 'indiana'), ('florida', 'miami'), ('florida', 'beach')
             ],
@@ -528,16 +528,12 @@ class TestMarathonTools:
         namespace = 'ecapseman'
         soa_dir = 'rid_aos'
         fake_config = {}
-        expected = {
-            'mode': None,
-        }
         with mock.patch('service_configuration_lib.read_service_configuration',
                         autospec=True,
                         return_value=fake_config) as read_service_configuration_patch:
             actual = marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
             read_service_configuration_patch.assert_called_once_with(name, soa_dir)
             assert actual.get('mode') is None
-            assert sorted(actual) == sorted(expected)
 
     def test_read_service_namespace_config_no_mode_with_smartstack(self):
         name = 'eman'
@@ -545,18 +541,15 @@ class TestMarathonTools:
         soa_dir = 'rid_aos'
         fake_config = {
             'smartstack': {
-                'some_other_namespace': {'proxy_port': 9001},
+                namespace: {'proxy_port': 9001},
             },
-        }
-        expected = {
-            'mode': 'http',
         }
         with mock.patch('service_configuration_lib.read_service_configuration',
                         autospec=True,
                         return_value=fake_config) as read_service_configuration_patch:
             actual = marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
             read_service_configuration_patch.assert_called_once_with(name, soa_dir)
-            assert sorted(actual) == sorted(expected)
+            assert actual.get('mode') == 'http'
 
     def test_read_service_namespace_config_no_file(self):
         name = 'a_man'
@@ -1477,15 +1470,16 @@ class TestMarathonServiceConfig(object):
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
-    def test_get_healthchecks_other(self):
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'other'})
-        assert fake_marathon_service_config.get_healthchecks(fake_service_namespace_config) == []
-
     def test_get_healthchecks_empty(self):
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
         assert fake_marathon_service_config.get_healthchecks(fake_service_namespace_config) == []
+
+    def test_get_healthchecks_invalid_mode(self):
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'other'})
+        with raises(marathon_tools.InvalidSmartstackMode):
+            fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
 
 
 class TestServiceNamespaceConfig(object):
@@ -1495,7 +1489,7 @@ class TestServiceNamespaceConfig(object):
 
     def test_get_mode_default_when_port_specified(self):
         config = {'proxy_port': 1234}
-        assert marathon_tools.ServiceNamespaceConfig(config).get_mode() is 'http'
+        assert marathon_tools.ServiceNamespaceConfig(config).get_mode() == 'http'
 
     def test_get_healthcheck_uri_default(self):
         assert marathon_tools.ServiceNamespaceConfig().get_healthcheck_uri() == '/status'

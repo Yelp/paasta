@@ -345,10 +345,7 @@ class MarathonServiceConfig(object):
         return complete_config
 
     def get_healthchecks(self, service_namespace_config):
-        """Returns a list of healthchecks per the spec:
-        https://mesosphere.github.io/marathon/docs/health-checks.html
-        Tries to be very conservative. Currently uses the same configuration
-        that smartstack uses, regarding mode (tcp/http) and http status uri.
+        """Returns a list of healthchecks per `the Marathon docs`_.
 
         If you have an http service, it uses the default endpoint that smartstack uses.
         (/status currently)
@@ -356,6 +353,15 @@ class MarathonServiceConfig(object):
         Otherwise these do *not* use the same thresholds as smartstack in order to not
         produce a negative feedback loop, where mesos agressivly kills tasks because they
         are slow, which causes other things to be slow, etc.
+
+        If the mode of the service is None, indicating that it was not specified in the service config
+        and smartstack is not used by the service, no healthchecks are passed to Marathon. This ensures that
+        it falls back to Mesos' knowledge of the task state as described in `the Marathon docs`_.
+        In this case, we provide an empty array of healthchecks per `the Marathon API docs`_
+        (scroll down to the healthChecks subsection).
+
+        .. _the Marathon docs: https://mesosphere.github.io/marathon/docs/health-checks.html
+        .. _the Marathon API docs: https://mesosphere.github.io/marathon/docs/rest-api.html#post-/v2/apps
 
         :param service_config: service config hash
         :returns: list of healthcheck definitions for marathon"""
@@ -406,8 +412,10 @@ class MarathonServiceConfig(object):
                     "maxConsecutiveFailures": maxconsecutivefailures
                 },
             ]
-        else:
+        elif mode is None:
             healthchecks = []
+        else:
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
         return healthchecks
 
     def get_healthcheck_uri(self, service_namespace_config):
@@ -493,6 +501,9 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
         if key in key_whitelist:
             service_namespace_config[key] = value
 
+    # Other code in paasta_tools checks 'mode' after the config file
+    # is loaded, so this ensures that it is set to the appropriate default
+    # if not otherwise specified, even if appropriate default is None.
     service_namespace_config['mode'] = service_namespace_config.get_mode()
 
     if 'routes' in namespace_config_from_file:
@@ -513,16 +524,34 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
 class ServiceNamespaceConfig(dict):
 
     def get_mode(self):
-        if self.get('proxy_port') is None:
-            return self.get('mode', None)
+    """Get the mode that the service runs in and check that we support it.
+    If the mode is not specified, we check whether the service uses smartstack
+    in order to determine the appropriate default value. If proxy_port is specified
+    in the config, the service uses smartstack, and we can thus safely assume its mode is http.
+    If the mode is not defined and the service does not use smartstack, we set the mode to None
+    so that any healthchecks of the service will fall back to Mesos' knowledge of the task state
+    as described `in the Marathon docs <https://mesosphere.github.io/marathon/docs/health-checks.html>`_.
+    """
+        mode = self.get('mode', None)
+        if mode is None:
+            if self.get('proxy_port') is None:
+                return mode
+            else:
+                return 'http'
+        elif mode in ['http', 'tcp', 'cmd']:
+            return mode
         else:
-            return self.get('mode', 'http')
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
 
     def get_healthcheck_uri(self):
         return self.get('healthcheck_uri', '/status')
 
 
 class NoDockerImageError(Exception):
+    pass
+
+
+class InvalidSmartstackMode(Exception):
     pass
 
 

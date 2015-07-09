@@ -19,7 +19,7 @@ def test_get_service_info():
         mock_get_team,
         mock_get_runbook,
         mock_read_service_configuration,
-        mock_read_service_configuration_scl,
+        mock_scl_read_service_configuration,
         mock_get_actual_deployments,
         mock_get_smartstack_endpoints,
     ):
@@ -34,7 +34,7 @@ def test_get_service_info():
                 }
             }
         }
-        mock_read_service_configuration_scl.return_value = {
+        mock_scl_read_service_configuration.return_value = {
             'description': 'a fake service that does stuff',
             'external_link': 'http://bla',
             'smartstack': {
@@ -137,13 +137,13 @@ def test_get_deployments_strings_protocol_tcp_case():
         assert ' - clusterB (%s)' % PaastaColors.cyan('tcp://paasta-clusterB.yelp:8080/') in actual
 
 
-def test_get_deployments_strings_unknown_protocol_case():
+def test_get_deployments_strings_non_listening_service():
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.info.load_service_namespace_config', autospec=True),
     ) as (mock_get_actual_deployments, mock_load_service_namespace_config):
         mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
-        mock_load_service_namespace_config.return_value = ServiceNamespaceConfig({'mode': 'fake_protocol'})
+        mock_load_service_namespace_config.return_value = ServiceNamespaceConfig()
         actual = info.get_deployments_strings('unused')
         assert ' - clusterA (N/A)' in actual
         assert ' - clusterB (N/A)' in actual
