@@ -1,5 +1,6 @@
 Feature: paasta_tools can interact with chronos
 
-  Scenario: Listing chronos jobs
+  Scenario: Trivial chronos interaction
     Given a working chronos instance
-    Then we should be able to list jobs
+    When we create a trivial chronos job
+    Then we should be able to see it when we list jobs
