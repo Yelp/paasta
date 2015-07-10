@@ -82,6 +82,12 @@ def assert_tasks_running(metrics):
 
 
 def assert_no_duplicate_frameworks(state):
+    """Takes in the current state of the Mesos master and pulls out the running frameworks.
+    Counts up the number of running instances of each framework and reports an error
+    if there are duplicate frameworks running.
+    param state: the state info from the Mesos master
+    returns: log messages and a not-ok status if duplicate running frameworks were found, else an ok status
+    """
     frameworks = state['frameworks']
     framework_counts = Counter()
     output = []

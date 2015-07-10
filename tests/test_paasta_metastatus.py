@@ -231,10 +231,10 @@ def test_get_mesos_status(
         },
         'frameworks': [
             {
-                'name': 'framework1',
+                'name': 'test_framework1',
             },
             {
-                'name': 'framework2',
+                'name': 'test_framework1',
             },
         ]
     }
@@ -245,7 +245,8 @@ def test_get_mesos_status(
         "memory: total: 10.00 GB used: 2.00 GB available: 8.00 GB"
     expected_tasks_output = \
         "tasks: running: 3 staging: 4 starting: 0"
-    expected_duplicate_frameworks_output = ""
+    expected_duplicate_frameworks_output = \
+        PaastaColors.red("CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1.")
     expected_slaves_output = \
         "slaves: active: 4 inactive: 0"
     expected_masters_quorum_output = \
