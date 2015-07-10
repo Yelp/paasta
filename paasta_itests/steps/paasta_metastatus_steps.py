@@ -8,6 +8,7 @@ sys.path.append('../')
 from paasta_tools.utils import _run
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
+from marathon import MarathonApp
 
 fake_service_name = 'fake_complete_service'
 fake_instance_name = 'fake_instance'
@@ -33,32 +34,7 @@ def all_mesos_masters_unavailable(context):
 
 @when(u'a task consuming most available memory is launched')
 def run_paasta_metastatus_high_load(context):
-    with contextlib.nested(
-        mock.patch(
-            'paasta_tools.bounce_lib.get_happy_tasks',
-            autospec=True,
-            side_effect=lambda t, _, __, **kwargs: t[:context.max_happy_tasks],
-        ),
-        mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
-        mock.patch('paasta_tools.bounce_lib.create_app_lock', autospec=True),
-        mock.patch('paasta_tools.bounce_lib.time.sleep', autospec=True),
-        mock.patch(
-            'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
-            autospec=True,
-            return_value=context.cluster,
-        ),
-    ):
-        setup_marathon_job.deploy_service(
-            fake_service_name,
-            fake_instance_name,
-            fake_appid,
-            fake_service_config,
-            context.client,
-            'upthendown',
-            fake_instance_name,
-            {},
-        )
-        context.client.list_tasks()
+        context.client.create_app('memtest', MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
 
 
 @then(u'metastatus returns 2')
