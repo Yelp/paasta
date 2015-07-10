@@ -414,8 +414,6 @@ class MarathonServiceConfig(object):
             ]
         elif mode is None:
             healthchecks = []
-        else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
         return healthchecks
 
     def get_healthcheck_uri(self, service_namespace_config):
@@ -425,7 +423,12 @@ class MarathonServiceConfig(object):
         return self.config_dict.get('healthcheck_cmd', '/bin/true')
 
     def get_healthcheck_mode(self, service_namespace_config):
-        return self.config_dict.get('healthcheck_mode', service_namespace_config.get_mode())
+        mode = self.config_dict.get('healthcheck_mode', None)
+        if mode is None:
+            mode = service_namespace_config.get_mode()
+        elif mode not in ['http', 'tcp', 'cmd']:
+            raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
+        return mode
 
     def get_healthcheck_grace_period_seconds(self):
         """How long Marathon should give a service to come up before counting failed healthchecks."""
@@ -524,24 +527,21 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
 class ServiceNamespaceConfig(dict):
 
     def get_mode(self):
-    """Get the mode that the service runs in and check that we support it.
-    If the mode is not specified, we check whether the service uses smartstack
-    in order to determine the appropriate default value. If proxy_port is specified
-    in the config, the service uses smartstack, and we can thus safely assume its mode is http.
-    If the mode is not defined and the service does not use smartstack, we set the mode to None
-    so that any healthchecks of the service will fall back to Mesos' knowledge of the task state
-    as described `in the Marathon docs <https://mesosphere.github.io/marathon/docs/health-checks.html>`_.
-    """
+        """Get the mode that the service runs in and check that we support it.
+        If the mode is not specified, we check whether the service uses smartstack
+        in order to determine the appropriate default value. If proxy_port is specified
+        in the config, the service uses smartstack, and we can thus safely assume its mode is http.
+        If the mode is not defined and the service does not use smartstack, we set the mode to None."""
         mode = self.get('mode', None)
         if mode is None:
             if self.get('proxy_port') is None:
                 return mode
             else:
                 return 'http'
-        elif mode in ['http', 'tcp', 'cmd']:
+        elif mode in ['http', 'tcp']:
             return mode
         else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+            raise InvalidPaastaServiceMode("Unknown mode: %s" % mode)
 
     def get_healthcheck_uri(self):
         return self.get('healthcheck_uri', '/status')
@@ -551,7 +551,11 @@ class NoDockerImageError(Exception):
     pass
 
 
-class InvalidSmartstackMode(Exception):
+class InvalidPaastaServiceMode(Exception):
+    pass
+
+
+class InvalidHealthcheckMode(Exception):
     pass
 
 

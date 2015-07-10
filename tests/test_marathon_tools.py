@@ -1319,6 +1319,27 @@ class TestMarathonServiceConfig(object):
         expected = """MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'})"""
         assert actual == expected
 
+    def test_get_healthcheck_mode_default(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        assert marathon_config.get_healthcheck_mode(namespace_config) is None
+
+    def test_get_healthcheck_mode_default_from_namespace_config(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({'proxy_port': 1234})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        assert marathon_config.get_healthcheck_mode(namespace_config) == 'http'
+
+    def test_get_healthcheck_mode_valid(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'tcp'}, {})
+        assert marathon_config.get_healthcheck_mode(namespace_config) == 'tcp'
+
+    def test_get_healthcheck_mode_invalid(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'udp'}, {})
+        with raises(marathon_tools.InvalidHealthcheckMode):
+            marathon_config.get_healthcheck_mode(namespace_config)
+
     def test_get_healthchecks_http_overrides(self):
         fake_path = '/mycoolstatus'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
@@ -1476,10 +1497,10 @@ class TestMarathonServiceConfig(object):
         assert fake_marathon_service_config.get_healthchecks(fake_service_namespace_config) == []
 
     def test_get_healthchecks_invalid_mode(self):
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'other'})
-        with raises(marathon_tools.InvalidSmartstackMode):
-            fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'none'}, {})
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        with raises(marathon_tools.InvalidHealthcheckMode):
+            marathon_config.get_healthchecks(namespace_config)
 
 
 class TestServiceNamespaceConfig(object):
@@ -1490,6 +1511,15 @@ class TestServiceNamespaceConfig(object):
     def test_get_mode_default_when_port_specified(self):
         config = {'proxy_port': 1234}
         assert marathon_tools.ServiceNamespaceConfig(config).get_mode() == 'http'
+
+    def test_get_mode_valid(self):
+        config = {'mode': 'tcp'}
+        assert marathon_tools.ServiceNamespaceConfig(config).get_mode() == 'tcp'
+
+    def test_get_mode_invalid(self):
+        config = {'mode': 'paasta'}
+        with raises(marathon_tools.InvalidPaastaServiceMode):
+            marathon_tools.ServiceNamespaceConfig(config).get_mode()
 
     def test_get_healthcheck_uri_default(self):
         assert marathon_tools.ServiceNamespaceConfig().get_healthcheck_uri() == '/status'
