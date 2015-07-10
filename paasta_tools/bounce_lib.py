@@ -201,17 +201,19 @@ def kill_old_ids(old_ids, client):
             continue
 
 
-def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_haproxy=False):
-    """Given a list of MarathonTask objects, return the subset which are considered healthy. With the default options,
-    this is a noop - it just returns tasks. For it to do anything interesting, set min_task_uptime or check_haproxy.
+def get_happy_tasks(app, service_name, nerve_ns, min_task_uptime=None, check_haproxy=False):
+    """Given a MarathonApp object, return the subset of tasks which are considered healthy.
+    With the default options, this returns tasks where at least one of the defined Marathon healthchecks passes.
+    For it to do anything interesting, set min_task_uptime or check_haproxy.
 
-    :param tasks: A list of MarathonTask objects.
+    :param app: A MarathonApp object.
     :param service_name: The name of the service.
     :param nerve_ns: The nerve namespace
     :param min_task_uptime: Minimum number of seconds that a task must be running before we consider it healthy. Useful
                             if tasks take a while to start up.
     :param check_haproxy: Whether to check the local haproxy to make sure this task has been registered and discovered.
     """
+    tasks = app.tasks
     happy = []
     now = datetime.datetime.utcnow()
 
@@ -233,6 +235,15 @@ def get_happy_tasks(tasks, service_name, nerve_ns, min_task_uptime=None, check_h
             if (now - task.started_at).total_seconds() < min_task_uptime:
                 continue
 
+        # if there are healthchecks defined for the app but none have executed yet, then task is unhappy
+        if len(app.health_checks) > 0 and len(task.health_check_results) == 0:
+            continue
+
+        # if there are health check results, check if at least one healthcheck is passing
+        if len(task.health_check_results) > 0:
+            task_up = any([hc_result.alive is True for hc_result in task.health_check_results])
+            if not task_up:
+                continue
         happy.append(task)
 
     return happy
