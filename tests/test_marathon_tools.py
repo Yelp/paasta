@@ -916,7 +916,7 @@ class TestMarathonTools:
                 'type': 'DOCKER',
                 'volumes': fake_volumes,
             },
-            'constraints': [["habitat", "GROUP_BY"]],
+            'constraints': [["habitat", "GROUP_BY", 1]],
             'uris': ['file:///root/.dockercfg', ],
             'mem': fake_mem,
             'env': fake_env,
@@ -946,12 +946,14 @@ class TestMarathonTools:
             {'desired_state': 'start'}
         )
 
-        actual = config.format_marathon_app_dict(fake_id, fake_url, fake_volumes,
-                                                 fake_service_namespace_config)
-        assert actual == expected_conf
+        with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}}
+            actual = config.format_marathon_app_dict(fake_id, fake_url, fake_volumes,
+                                                     fake_service_namespace_config)
+            assert actual == expected_conf
 
-        # Assert that the complete config can be inserted into the MarathonApp model
-        assert MarathonApp(**actual)
+            # Assert that the complete config can be inserted into the MarathonApp model
+            assert MarathonApp(**actual)
 
     def test_instances_is_zero_when_desired_state_is_stop(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
@@ -996,12 +998,16 @@ class TestMarathonTools:
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'constraints': 'so_many_walls'},
                                                          {})
-        assert fake_conf.get_constraints(fake_service_namespace_config) == 'so_many_walls'
+        with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
+            assert fake_conf.get_constraints(fake_service_namespace_config) == 'so_many_walls'
+            assert get_slaves_patch.call_count == 0
 
     def test_get_constraints_default(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_constraints(fake_service_namespace_config) == [["region", "GROUP_BY"]]
+        with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}}
+            assert fake_conf.get_constraints(fake_service_namespace_config) == [["region", "GROUP_BY", 1]]
 
     def test_get_constraints_from_discover(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
@@ -1010,7 +1016,10 @@ class TestMarathonTools:
             'discover': 'habitat',
         })
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY"]]
+        with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}, 'fake_other_region': {}}
+            assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY", 2]]
+            get_slaves_patch.assert_called_once_with('habitat')
 
     def test_get_cpus_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cpus': -5}, {})
@@ -1256,13 +1265,16 @@ class TestMarathonTools:
             mock.patch('marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
-                       return_value=self.fake_service_namespace_config)
+                       return_value=self.fake_service_namespace_config),
+            mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
+                       autospec=True, return_value={'fake_region': {}})
         ) as (
             load_system_paasta_config_patch,
             get_cluster_patch,
             read_service_config_patch,
             docker_url_patch,
             _,
+            __,
         ):
             read_service_config_patch.return_value = fake_service_config_1
             first_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
@@ -1660,6 +1672,9 @@ class TestServiceNamespaceConfig(object):
     def test_get_healthcheck_uri_default(self):
         assert marathon_tools.ServiceNamespaceConfig().get_healthcheck_uri() == '/status'
 
+    def test_get_discover_default(self):
+        assert marathon_tools.ServiceNamespaceConfig().get_discover() == 'region'
+
 
 def test_create_complete_config_no_smartstack():
     service_name = "service"
@@ -1684,13 +1699,16 @@ def test_create_complete_config_no_smartstack():
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
         mock.patch('marathon_tools.get_cluster', return_value=fake_cluster),
         mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
-        mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config)
+        mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
+                   autospec=True, return_value={'fake_region': {}})
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
         mock_get_cluster,
         mock_compose_job_id,
-        mock_system_paasta_config
+        mock_system_paasta_config,
+        _
     ):
         actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
         expected = {
@@ -1785,7 +1803,7 @@ def test_create_complete_config_with_smartstack():
             ],
             'env': {},
             'id': fake_job_id,
-            'constraints': [["region", "GROUP_BY"]],
+            'constraints': [["region", "GROUP_BY", 1]],
         }
         assert actual == expected
 

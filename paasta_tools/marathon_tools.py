@@ -20,6 +20,7 @@ import json
 import service_configuration_lib
 
 from paasta_tools.mesos_tools import fetch_local_slave_state
+from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import list_all_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoMarathonClusterFoundException
@@ -289,8 +290,12 @@ class MarathonServiceConfig(object):
         :param service_namespace_config: The service instance's configuration dictionary
         :returns: The constraints specified in the config, or defaults described above
         """
-        discover_level = service_namespace_config.get('discover', 'region')
-        return self.config_dict.get('constraints', [[discover_level, "GROUP_BY"]])
+        if 'constraints' in self.config_dict:
+            return self.config_dict.get('constraints')
+        else:
+            discover_level = service_namespace_config.get_discover()
+            locations = get_mesos_slaves_grouped_by_attribute(discover_level)
+            return [[discover_level, "GROUP_BY", len(locations)]]
 
     def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):
         """Create the configuration that will be passed to the Marathon REST API.
@@ -553,6 +558,9 @@ class ServiceNamespaceConfig(dict):
 
     def get_healthcheck_uri(self):
         return self.get('healthcheck_uri', '/status')
+
+    def get_discover(self):
+        return self.get('discover', 'region')
 
 
 class NoDockerImageError(Exception):
