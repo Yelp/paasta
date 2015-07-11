@@ -531,11 +531,12 @@ class ServiceNamespaceConfig(dict):
         If the mode is not specified, we check whether the service uses smartstack
         in order to determine the appropriate default value. If proxy_port is specified
         in the config, the service uses smartstack, and we can thus safely assume its mode is http.
-        If the mode is not defined and the service does not use smartstack, we set the mode to None."""
+        If the mode is not defined and the service does not use smartstack, we set the mode to None.
+        """
         mode = self.get('mode', None)
         if mode is None:
             if self.get('proxy_port') is None:
-                return mode
+                return None
             else:
                 return 'http'
         elif mode in ['http', 'tcp']:
