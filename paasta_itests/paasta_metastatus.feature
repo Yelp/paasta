@@ -7,7 +7,14 @@ Feature: paasta_metastatus describes the state of the paasta cluster
 
   Scenario: High memory usage
     Given a working paasta cluster
-    When a task consuming most available memory is launched
+    When an app called "memtest" using high memory is launched
+    And a task with id "memtest" is in the task list
+    Then metastatus returns 2
+
+  Scenario: High cpu usage
+    Given a working paasta cluster
+    When an app called "cputest" using high cpu is launched
+    And a task with id "cputest" is in the task list
     Then metastatus returns 2
 
 #  Scenario: Mesos master unreachable

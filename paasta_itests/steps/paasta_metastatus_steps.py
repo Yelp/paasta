@@ -3,12 +3,14 @@ import contextlib
 import sys
 from behave import when, then
 import mock
+from time import sleep
 
 sys.path.append('../')
 from paasta_tools.utils import _run
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
 from marathon import MarathonApp
+from marathon import NotFoundError
 
 fake_service_name = 'fake_complete_service'
 fake_instance_name = 'fake_instance'
@@ -32,10 +34,42 @@ def all_zookeepers_unavailable(context):
 def all_mesos_masters_unavailable(context):
     pass
 
-@when(u'a task consuming most available memory is launched')
-def run_paasta_metastatus_high_load(context):
-        context.client.create_app('memtest', MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
+@when(u'an app called "{app_id}" using high memory is launched')
+def run_paasta_metastatus_high_mem(context, app_id):
+    print 'launching app with id %s' % app_id
+    context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
 
+@when(u'an app called "{app_id}" using high cpu is launched')
+def run_paasta_metastatus_high_cpu(context, app_id):
+    print 'launching app with id %s' % app_id
+    context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1))
+
+
+@when(u'a task with id "{app_id}" is in the task list')
+def task_is_ready(context, app_id):
+    """ wait for a task with a matching task name to be ready. time out in 1 minute """
+    count = 60
+    tries = 0
+    while tries < count:
+        try:
+            tasks = context.client.list_tasks(app_id=app_id)
+            if len(tasks) > 0:
+                print tasks[0].started_at
+                print 'found task belonging to app %s' % app_id
+                return
+            else:
+                tries = tries + 1
+                print 'sleeping'
+                sleep(10)
+        except NotFoundError:
+            print 'no app found. sleeping'
+            tries = tries + 1
+            sleep(10)
+    raise Exception("Timed out waiting for task with belonging to app with id %s to appear in the task list" % app_id)
+
+@when(u'a task consuming high cpu is launched')
+def run_paasta_metastatus_high_cpu(context):
+        context.client.create_app('memtest', MarathonApp(cmd='/bin/sleep infinity', cpus=2, instances=1))
 
 @then(u'metastatus returns 2')
 def check_metastatus_return(context):
