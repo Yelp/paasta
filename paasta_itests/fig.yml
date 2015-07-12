@@ -18,7 +18,7 @@ mesosslave:
     - zookeeper
   environment:
     -CLUSTER: testcluster
-  command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources=mem:512'
+  command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512"'
 
 marathon:
   build: ../yelp_package/dockerfiles/itest/marathon/
