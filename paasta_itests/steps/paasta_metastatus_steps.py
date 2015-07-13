@@ -66,8 +66,8 @@ def task_is_ready(context, app_id):
     raise Exception("Timed out waiting for task with belonging to app with id %s to appear in the task list" % app_id)
 
 
-@then(u'metastatus returns 2')
-def check_metastatus_return(context):
+@then(u'paasta_metastatus exits with return code "{expected_return_code}" and output "{expected_output}"')
+def check_metastatus_return_code(context, expected_return_code, expected_output):
     # We don't want to invoke the "paasta metastatus" wrapper because by
     # default it will check every cluster. This is also the way sensu invokes
     # this check.
@@ -75,8 +75,8 @@ def check_metastatus_return(context):
     env = dict(os.environ)
     env['MESOS_CLI_CONFIG'] = context.mesos_cli_config_filename
     print 'Running cmd %s with MESOS_CLI_CONFIG=%s' % (cmd, env['MESOS_CLI_CONFIG'])
-    (returncode, output) = _run(cmd, env=env)
-    print 'Got returncode %s with output:' % returncode
-    print output
+    (exit_code, output) = _run(cmd, env=env)
+    print 'Got exitcode %s with output: \n %s'  % (exit_code, output)
 
-    assert returncode == 2
+    assert exit_code == int(expected_return_code)
+    assert expected_output in output
