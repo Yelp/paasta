@@ -9,10 +9,6 @@ import argparse
 import datetime
 import logging
 import sys
-import signal
-import errno
-import os
-from functools import wraps
 
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
@@ -30,6 +26,8 @@ from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import timeout
+from paasta_tools.utils import TimeoutError
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -38,29 +36,6 @@ SYNAPSE_HOST_PORT = "localhost:3212"
 
 RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
 NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'
-
-
-class TimeoutError(Exception):
-    pass
-
-
-def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
-    def decorator(func):
-        def _handle_timeout(signum, frame):
-            raise TimeoutError(error_message)
-
-        def wrapper(*args, **kwargs):
-            signal.signal(signal.SIGALRM, _handle_timeout)
-            signal.alarm(seconds)
-            try:
-                result = func(*args, **kwargs)
-            finally:
-                signal.alarm(0)
-            return result
-
-        return wraps(func)(wrapper)
-
-    return decorator
 
 
 def parse_args():

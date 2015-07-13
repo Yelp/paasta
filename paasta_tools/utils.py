@@ -1,4 +1,5 @@
 from __future__ import print_function
+from functools import wraps
 from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
@@ -9,6 +10,7 @@ import logging
 import os
 import pwd
 import re
+import signal
 import shlex
 import sys
 import tempfile
@@ -539,3 +541,26 @@ def get_infrastructure_zookeeper_servers(cluster, zk_discovery_path=INFRA_ZK_PAT
 
 def get_docker_host():
     return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
+
+
+class TimeoutError(Exception):
+    pass
+
+
+def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
+    def decorator(func):
+        def _handle_timeout(signum, frame):
+            raise TimeoutError(error_message)
+
+        def wrapper(*args, **kwargs):
+            signal.signal(signal.SIGALRM, _handle_timeout)
+            signal.alarm(seconds)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                signal.alarm(0)
+            return result
+
+        return wraps(func)(wrapper)
+
+    return decorator
