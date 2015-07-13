@@ -10,8 +10,8 @@ import logging
 import os
 import pwd
 import re
-import signal
 import shlex
+import signal
 import sys
 import tempfile
 import threading
