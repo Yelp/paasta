@@ -65,9 +65,6 @@ def task_is_ready(context, app_id):
             sleep(1)
     raise Exception("Timed out waiting for task with belonging to app with id %s to appear in the task list" % app_id)
 
-@when(u'a task consuming high cpu is launched')
-def run_paasta_metastatus_high_cpu(context):
-        context.client.create_app('memtest', MarathonApp(cmd='/bin/sleep infinity', cpus=2, instances=1))
 
 @then(u'metastatus returns 2')
 def check_metastatus_return(context):
