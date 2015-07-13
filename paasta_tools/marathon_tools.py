@@ -269,8 +269,8 @@ class MarathonServiceConfig(object):
         """Get the bounce method specified in the service's marathon configuration.
 
         :param service_config: The service instance's configuration dictionary
-        :returns: The bounce method specified in the config, or 'upthendown' if not specified"""
-        return self.config_dict.get('bounce_method', 'upthendown')
+        :returns: The bounce method specified in the config, or 'crossover' if not specified"""
+        return self.config_dict.get('bounce_method', 'crossover')
 
     def get_constraints(self, service_namespace_config):
         """Gets the constraints specified in the service's marathon configuration.

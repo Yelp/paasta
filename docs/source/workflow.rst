@@ -136,8 +136,8 @@ There are four bounce methods available:
 
 A service author can select a bounce method by setting ``bounce_method`` in
 the marathon configuration file. (e.g. ``marathon-SHARED.yaml``) This setting
-is set per-instance. See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>_`
-file.
+is set per-instance. If not set, it will default to the ``crossover`` method.
+See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>_` file.
 
 Additionally, a service author can configure how the bounce code determines
 which instances are healthy by setting ``bounce_health_params``. This
