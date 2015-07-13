@@ -36,35 +36,33 @@ def all_mesos_masters_unavailable(context):
 
 @when(u'an app called "{app_id}" using high memory is launched')
 def run_paasta_metastatus_high_mem(context, app_id):
-    print 'launching app with id %s' % app_id
     context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
+
 
 @when(u'an app called "{app_id}" using high cpu is launched')
 def run_paasta_metastatus_high_cpu(context, app_id):
-    print 'launching app with id %s' % app_id
     context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1))
 
 
 @when(u'a task with id "{app_id}" is in the task list')
 def task_is_ready(context, app_id):
-    """ wait for a task with a matching task name to be ready. time out in 1 minute """
+    """ wait for a task with a matching task name to be ready. time out in 60 seconds """
     count = 60
     tries = 0
     while tries < count:
         try:
             tasks = context.client.list_tasks(app_id=app_id)
             if len(tasks) > 0:
-                print tasks[0].started_at
-                print 'found task belonging to app %s' % app_id
+                print 'Found task belonging to app %s, started at %s' % (app_id, tasks[0].started_at)
                 return
             else:
+                print 'Sleeping for 1 second...'
                 tries = tries + 1
-                print 'sleeping'
-                sleep(10)
+                sleep(1)
         except NotFoundError:
-            print 'no app found. sleeping'
+            print 'No app found. sleeping for 1 second...'
             tries = tries + 1
-            sleep(10)
+            sleep(1)
     raise Exception("Timed out waiting for task with belonging to app with id %s to appear in the task list" % app_id)
 
 @when(u'a task consuming high cpu is launched')
