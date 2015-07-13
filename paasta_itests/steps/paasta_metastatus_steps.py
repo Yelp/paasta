@@ -12,19 +12,6 @@ from paasta_tools import setup_marathon_job
 from marathon import MarathonApp
 from marathon import NotFoundError
 
-fake_service_name = 'fake_complete_service'
-fake_instance_name = 'fake_instance'
-fake_appid = 'fake--complete--service.gitdeadbeef.configdeadbeef2'
-fake_service_config = {
-        'id': 'bounce.test1.newapp',
-        'cmd': '/bin/sleep infinity',
-        'instances': 1,
-        'backoff_seconds': 0.1,
-        'backoff_factor': 1,
-        'mem': 480,
-    }
-
-
 @when(u'all zookeepers are unavailable')
 def all_zookeepers_unavailable(context):
     pass
