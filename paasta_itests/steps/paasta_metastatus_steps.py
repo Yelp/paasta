@@ -34,6 +34,7 @@ def all_zookeepers_unavailable(context):
 def all_mesos_masters_unavailable(context):
     pass
 
+
 @when(u'an app called "{app_id}" using high memory is launched')
 def run_paasta_metastatus_high_mem(context, app_id):
     context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
@@ -44,7 +45,7 @@ def run_paasta_metastatus_high_cpu(context, app_id):
     context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1))
 
 
-@when(u'a task with id "{app_id}" is in the task list')
+@when(u'a task belonging to the app with id "{app_id}" is in the task list')
 def task_is_ready(context, app_id):
     """ wait for a task with a matching task name to be ready. time out in 60 seconds """
     count = 60
