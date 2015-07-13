@@ -9,6 +9,10 @@ import argparse
 import datetime
 import logging
 import sys
+import signal
+import errno
+import os
+from functools import wraps
 
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
@@ -34,6 +38,29 @@ SYNAPSE_HOST_PORT = "localhost:3212"
 
 RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
 NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'
+
+
+class TimeoutError(Exception):
+    pass
+
+
+def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
+    def decorator(func):
+        def _handle_timeout(signum, frame):
+            raise TimeoutError(error_message)
+
+        def wrapper(*args, **kwargs):
+            signal.signal(signal.SIGALRM, _handle_timeout)
+            signal.alarm(seconds)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                signal.alarm(0)
+            return result
+
+        return wraps(func)(wrapper)
+
+    return decorator
 
 
 def parse_args():
@@ -269,6 +296,7 @@ def status_smartstack_backends_verbose(service, instance, cluster, tasks):
     return "\n".join(output)
 
 
+@timeout()
 def get_cpu_usage(task):
     """Calculates a metric of used_cpu/allocated_cpu
     To do this, we take the total number of cpu-seconds the task has consumed,
@@ -299,8 +327,11 @@ def get_cpu_usage(task):
             return percent_string
     except (AttributeError, SlaveDoesNotExist):
         return "None"
+    except TimeoutError:
+        return "Timed Out"
 
 
+@timeout()
 def get_mem_usage(task):
     try:
         task_mem_limit = task.mem_limit
@@ -315,6 +346,8 @@ def get_mem_usage(task):
             return mem_string
     except (AttributeError, SlaveDoesNotExist):
         return "None"
+    except TimeoutError:
+        return "Timed Out"
 
 
 def get_task_uuid(taskid):
@@ -322,14 +355,18 @@ def get_task_uuid(taskid):
     return taskid.split(".")[-1]
 
 
+@timeout()
 def get_short_hostname_from_task(task):
     try:
         slave_hostname = task.slave['hostname']
         return slave_hostname.split(".")[0]
     except (AttributeError, SlaveDoesNotExist):
         return 'Unknown'
+    except TimeoutError:
+        "Timed Out"
 
 
+@timeout()
 def get_first_status_timestamp(task):
     """Gets the first status timestamp from a task id and returns a human
     readable string with the local time and a humanized duration:
@@ -341,6 +378,8 @@ def get_first_status_timestamp(task):
         return "%s (%s)" % (start_time.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(start_time))
     except (IndexError, SlaveDoesNotExist):
         return "Unknown"
+    except TimeoutError:
+        "Timed Out"
 
 
 def pretty_format_running_mesos_task(task):
