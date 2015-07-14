@@ -98,7 +98,7 @@ def test_get_deployments_strings_normal_case():
         assert ' - clusterB (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterB.yelp/') in actual
 
 
-def test_get_deployments_strings_protocol_case():
+def test_get_deployments_strings_protocol_tcp_case():
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.info.load_service_namespace_config', autospec=True),
@@ -108,6 +108,18 @@ def test_get_deployments_strings_protocol_case():
         actual = info.get_deployments_strings('unused')
         assert ' - clusterA (%s)' % PaastaColors.cyan('tcp://paasta-clusterA.yelp:8080/') in actual
         assert ' - clusterB (%s)' % PaastaColors.cyan('tcp://paasta-clusterB.yelp:8080/') in actual
+
+
+def test_get_deployments_strings_unknown_protocol_case():
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.info.load_service_namespace_config', autospec=True),
+    ) as (mock_get_actual_deployments, mock_load_service_namespace_config):
+        mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
+        mock_load_service_namespace_config.return_value = ServiceNamespaceConfig({'mode': 'fake_protocol'})
+        actual = info.get_deployments_strings('unused')
+        assert ' - clusterA (N/A)' in actual
+        assert ' - clusterB (N/A)' in actual
 
 
 def test_get_deployments_strings_no_deployments():

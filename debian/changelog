@@ -1,3 +1,113 @@
+paasta-tools (0.12.17-yelp1) lucid; urgency=low
+
+  * 0.12.17 tagged with 'make release'
+    Commit: Fix comments
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 09 Jul 2015 15:12:01 -0700
+
+paasta-tools (0.12.16-yelp1) lucid; urgency=low
+
+  * 0.12.16 tagged with 'make release'
+    Commit: Merge branch troscoe_PAASTA-927
+    https://reviewboard.yelpcorp.com/r/105631/
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 08 Jul 2015 16:29:24 -0700
+
+paasta-tools (0.12.15-yelp1) lucid; urgency=low
+
+  * 0.12.15 tagged with 'make release'
+    Commit: Merge branch master of git.yelpcorp.com:paasta_tools
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 07 Jul 2015 14:18:11 -0700
+
+paasta-tools (0.12.14-yelp1) lucid; urgency=low
+
+  * 0.12.14 tagged with 'make release'
+    Commit: Remove circular paasta-tools dependency
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 06 Jul 2015 18:27:55 -0700
+
+paasta-tools (0.12.13-yelp1) lucid; urgency=low
+
+  * 0.12.13 tagged with 'make release'
+    Commit: Directly import requirements.txt from setup.py
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 06 Jul 2015 18:17:10 -0700
+
+paasta-tools (0.12.12-yelp1) lucid; urgency=low
+
+  * 0.12.12 tagged with 'make release'
+    Commit: Log error rather than halt service replication checks
+    if a service has no deployments. PAASTA-902
+
+ -- Christopher Carroux <carroux@yelp.com>  Thu, 02 Jul 2015 18:49:42 -0700
+
+paasta-tools (0.12.11-yelp1) lucid; urgency=low
+
+  * 0.12.11 tagged with 'make release'
+    Commit: Revert "Use absolute path for healthcheck wrapper"  This
+    reverts commit a6a0f290a148f1a5cfe8443c73d01301425b7a11.
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 02 Jul 2015 16:30:01 -0700
+
+paasta-tools (0.12.10-yelp1) lucid; urgency=low
+
+  * 0.12.10 tagged with 'make release'
+    Commit: Use absolute path for healthcheck wrapper
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 02 Jul 2015 16:14:12 -0700
+
+paasta-tools (0.12.9-yelp1) lucid; urgency=low
+
+  * 0.12.9 tagged with 'make release'
+    Commit: Add missing debian link for cmd healthchecks wrapper
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 02 Jul 2015 14:55:33 -0700
+
+paasta-tools (0.12.8-yelp1) lucid; urgency=low
+
+  * 0.12.8 tagged with 'make release'
+    Commit: Support command health checks executed within context of
+    containers
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 02 Jul 2015 12:00:41 -0700
+
+paasta-tools (0.12.7-yelp1) lucid; urgency=low
+
+  * 0.12.7 tagged with 'make release'
+    Commit: Fixed problems with 0.12.6 release
+
+ -- Christopher Carroux <carroux@yelp.com>  Wed, 01 Jul 2015 17:45:32 -0700
+
+paasta-tools (0.12.6-yelp1) lucid; urgency=low
+
+  * 0.12.6 tagged with 'make release'
+    Commit: Added support for 'cmd' as an alternative to
+    'args' for marathon. PAASTA-912
+
+ -- Christopher Carroux <carroux@yelp.com>  Wed, 01 Jul 2015 16:33:15 -0700
+
+paasta-tools (0.12.5-yelp1) lucid; urgency=low
+
+  * 0.12.5 tagged with 'make release'
+    Commit: Use a more up-to-date scribereader
+
+ -- Lawrence Matthews <lmatthew@yelp.com>  Tue, 30 Jun 2015 16:49:56 -0700
+
+paasta-tools (0.12.4-yelp1) lucid; urgency=low
+
+  * 0.12.4 tagged with 'make release'
+    Commit: Add eu-prod scribe host; increment version
+
+ -- Lawrence Matthews <lmatthew@yelp.com>  Tue, 30 Jun 2015 12:00:36 -0700
+
+paasta-tools (0.12.3-yelp1) lucid; urgency=low
+
+  * 0.12.3 tagged with 'make release'
+    Commit: Remove expose 8888 from paasta check
+
+ -- Daniel Nephin <dnephin@yelp.com>  Fri, 26 Jun 2015 20:21:40 -0700
+
 paasta-tools (0.12.2-yelp1) lucid; urgency=low
 
   * 0.12.2 tagged with 'make release'

@@ -211,7 +211,7 @@ def deploy_service(service_name, instance_name, marathon_jobid, config, client,
         if len(new_app_list) != 1:
             raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
         new_app_running = True
-        happy_new_tasks = bounce_lib.get_happy_tasks(new_app.tasks, service_name, nerve_ns, **bounce_health_params)
+        happy_new_tasks = bounce_lib.get_happy_tasks(new_app, service_name, nerve_ns, **bounce_health_params)
     else:
         new_app_running = False
         happy_new_tasks = []

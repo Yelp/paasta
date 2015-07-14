@@ -4,6 +4,7 @@ import time
 
 from behave import given, when, then
 from paasta_tools import bounce_lib
+from paasta_tools.bounce_lib import get_happy_tasks
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
 
@@ -16,8 +17,15 @@ def which_id(context, which):
     return config['id']
 
 
-@given(u'a new app to be deployed')
-def given_a_new_app_to_be_deployed(context):
+@given(u'a new {state} app to be deployed')
+def given_a_new_app_to_be_deployed(context, state):
+    if state == "healthy":
+        cmd = "/bin/true"
+    elif state == "unhealthy":
+        cmd = "/bin/false"
+    else:
+        return ValueError("can't start test app with unknown state %s", state)
+
     context.service_name = 'bounce'
     context.instance_name = 'test1'
     context.new_config = {
@@ -26,6 +34,12 @@ def given_a_new_app_to_be_deployed(context):
         'instances': 2,
         'backoff_seconds': 0.1,
         'backoff_factor': 1,
+        'health_checks': [
+            {
+                "protocol": "COMMAND",
+                "command": {"value": cmd}
+            }
+        ]
     }
 
 
@@ -48,19 +62,24 @@ def given_an_old_app_to_be_destroyed(context):
         bounce_lib.create_marathon_app(old_app_name, context.old_app_config, context.client)
 
 
-@when(u'there are {num} {which} tasks')
-def when_there_are_num_which_tasks(context, num, which):
-    context.max_happy_tasks = int(num)
+@when(u'there are {num} {which} {state} tasks')
+def when_there_are_num_which_tasks(context, num, which, state):
+    context.max_tasks = int(num)
     app_id = which_id(context, which)
 
     # 120 * 0.5 = 60 seconds
     for _ in xrange(120):
-        tasks = context.client.list_tasks(app_id)
-        happy_count = len([t for t in tasks if t.started_at])
-        if happy_count >= context.max_happy_tasks:
-            return
+        app = context.client.get_app(app_id, embed_tasks=True)
+        happy_count = len(get_happy_tasks(app, context.service_name, "fake_nerve_ns"))
+        if state == "healthy":
+            if happy_count >= context.max_tasks:
+                return
+        elif state == "unhealthy":
+            if len(app.tasks) - happy_count >= context.max_tasks:
+                return
         time.sleep(0.5)
-    raise Exception("timed out waiting for %d tasks on %s; there are %d" % (context.max_happy_tasks, app_id, happy_count))
+    raise Exception("timed out waiting for %d %s tasks on %s; there are %d" %
+                    (context.max_tasks, state, app_id, app.tasks))
 
 
 @when(u'deploy_service with bounce strategy "{bounce_method}" is initiated')
@@ -69,7 +88,10 @@ def when_deploy_service_initiated(context, bounce_method):
         mock.patch(
             'paasta_tools.bounce_lib.get_happy_tasks',
             autospec=True,
-            side_effect=lambda t, _, __, **kwargs: t[:context.max_happy_tasks],
+            # Wrap function call so we can select a subset of tasks or test
+            # intermediate steps, like when an app is not completely up
+            side_effect=lambda app, _, __, **kwargs: get_happy_tasks(
+                app, context.service_name, "fake_nerve_ns")[:context.max_tasks],
         ),
         mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
         mock.patch('paasta_tools.bounce_lib.create_app_lock', autospec=True),
@@ -117,7 +139,7 @@ def then_the_which_app_should_be_configured_to_have_num_instances(context, which
             return
         time.sleep(0.5)
 
-    raise ValueError("Expected there to be %d instances, but there were %d", int(num), app.instances)
+    raise ValueError("Expected there to be %d instances, but there were %d" % (int(num), app.instances))
 
 
 @then(u'the {which} app should be gone')

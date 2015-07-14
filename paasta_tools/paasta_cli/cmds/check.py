@@ -5,7 +5,6 @@ import os
 import re
 import urllib2
 
-from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_service_instance_list
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
@@ -69,19 +68,6 @@ def deploy_has_performance_check(service_name):
         return False
 
 
-def expose_8888_in_dockerfile(path):
-    """Ensure Dockerfile contains line 'EXPOSE 8888'.
-
-    :param path : path to a Dockerfile
-    :return : A boolean that is True if the Dockerfile contains 'EXPOSE 8888'
-    """
-    pattern = re.compile("EXPOSE\s+%d.*" % CONTAINER_PORT)
-    for line in read_dockerfile_lines(path):
-        if pattern.match(line):
-            return True
-    return False
-
-
 def docker_file_reads_from_yelpcorp(path):
     """Ensure Dockerfile is valid.
 
@@ -106,11 +92,6 @@ def docker_check():
             print PaastaCheckMessages.DOCKERFILE_YELPCORP
         else:
             print PaastaCheckMessages.DOCKERFILE_NOT_YELPCORP
-
-        if expose_8888_in_dockerfile(docker_file_path):
-            print PaastaCheckMessages.DOCKERFILE_EXPOSES_8888
-        else:
-            print PaastaCheckMessages.DOCKERFILE_DOESNT_EXPOSE_8888
     else:
         print PaastaCheckMessages.DOCKERFILE_MISSING
 

@@ -173,27 +173,86 @@ class TestBounceLib:
         expected = bounce_lib.brutal_bounce
         assert actual == expected
 
-    def test_get_happy_tasks_identity(self):
-        """With the defaults, all tasks should be considered happy."""
-        tasks = [mock.Mock() for _ in xrange(5)]
-        assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace') == tasks
+    def test_get_happy_tasks_when_running_without_healthchecks_defined(self):
+        """All running tasks with no health checks results are healthy if the app does not define healthchecks"""
+        tasks = [mock.Mock(health_check_results=[]) for _ in xrange(5)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == tasks
+
+    def test_get_happy_tasks_when_running_with_healthchecks_defined(self):
+        """All running tasks with no health check results are unhealthy if the app defines healthchecks"""
+        tasks = [mock.Mock(health_check_results=[]) for _ in xrange(5)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=["fake_healthcheck_definition"])
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == []
+
+    def test_get_happy_tasks_when_all_healthy(self):
+        """All tasks with only passing healthchecks should be happy"""
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for _ in xrange(5)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == tasks
+
+    def test_get_happy_tasks_when_some_unhealthy(self):
+        """Only tasks with a passing healthcheck should be happy"""
+        fake_failing_healthcheck_results = [mock.Mock(alive=False)]
+        fake_successful_healthcheck_results = [mock.Mock(alive=True)]
+        tasks = [mock.Mock(health_check_results=fake_failing_healthcheck_results),
+                 mock.Mock(health_check_results=fake_failing_healthcheck_results),
+                 mock.Mock(health_check_results=fake_successful_healthcheck_results)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == tasks[-1:]
+
+    def test_get_happy_tasks_with_multiple_healthchecks_success(self):
+        """All tasks with at least one passing healthcheck should be happy"""
+        fake_successful_healthcheck_results = [mock.Mock(alive=True), mock.Mock(alive=False)]
+        tasks = [mock.Mock(health_check_results=fake_successful_healthcheck_results)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == tasks
+
+    def test_get_happy_tasks_with_multiple_healthchecks_fail(self):
+        """Only tasks with at least one passing healthcheck should be happy"""
+        fake_successful_healthcheck_results = [mock.Mock(alive=False), mock.Mock(alive=False)]
+        tasks = [mock.Mock(health_check_results=fake_successful_healthcheck_results)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == []
 
     def test_get_happy_tasks_min_task_uptime(self):
         """If we specify a minimum task age, tasks newer than that should not be considered happy."""
         now = datetime.datetime(2000, 1, 1, 0, 0, 0)
-        tasks = [mock.Mock(started_at=(now - datetime.timedelta(minutes=i))) for i in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[], started_at=(now - datetime.timedelta(minutes=i)))
+                 for i in xrange(5)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
 
         # I would have just mocked datetime.datetime.utcnow, but that's apparently difficult; I have to mock
         # datetime.datetime instead, and give it a utcnow attribute.
         with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
-            assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', min_task_uptime=121) == tasks[3:]
+            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', min_task_uptime=121) == tasks[3:]
+
+    def test_get_happy_tasks_min_task_uptime_when_unhealthy(self):
+        """If we specify a minimum task age, tasks newer than that should not be considered happy."""
+        now = datetime.datetime(2000, 1, 1, 0, 0, 0)
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)],
+                           started_at=(now - datetime.timedelta(minutes=i)))
+                 for i in xrange(5)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
+
+        with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
+            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', min_task_uptime=121) == []
 
     def test_get_happy_tasks_check_haproxy(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
 
-        tasks = [mock.Mock() for i in xrange(5)]
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in xrange(5)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
         with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
-            assert bounce_lib.get_happy_tasks(tasks, 'service', 'namespace', check_haproxy=True) == tasks[2:]
+            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', check_haproxy=True) == tasks[2:]
+
+    def test_get_happy_tasks_check_haproxy_when_unhealthy(self):
+        """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
+
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)]) for i in xrange(5)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
+        with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
+            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', check_haproxy=True) == []
 
 
 class TestBrutalBounce:

@@ -5,7 +5,7 @@
 mkdir -p /nail/etc/services
 
 mkdir -p docs/man/
-. .tox/py/bin/activate
+. .tox/manpages/bin/activate
 
 VERSION=`./paasta_tools/paasta_cli/paasta_cli.py version`
 

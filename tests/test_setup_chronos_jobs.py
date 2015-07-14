@@ -68,7 +68,7 @@ def test_extract_chronos_jobs():
             'schedule': 'R/2014-07-11T18:10:00Z/P1D',
         },
     ]
-    assert expected == actual
+    assert sorted(expected) == sorted(actual)
 
 
 def test_get_name():
@@ -296,4 +296,4 @@ def test_parse_job_config():
         'schedule': 'R1Y',
         'uris': ['test-repository/test_image'],
     }
-    assert expected == actual
+    assert sorted(expected) == sorted(actual)

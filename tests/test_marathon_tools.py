@@ -229,8 +229,8 @@ class TestMarathonTools:
         with mock.patch('service_configuration_lib.read_extra_service_information', autospec=True,
                         return_value=fake_job_config) as read_extra_info_patch:
             actual = marathon_tools.get_service_instance_list(fake_name, fake_cluster, fake_dir)
-            assert cmp(expected, actual) == 0
             read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
+            assert sorted(expected) == sorted(actual)
 
     def test_load_marathon_config(self):
         expected = {'foo': 'bar'}
@@ -302,17 +302,27 @@ class TestMarathonTools:
     def test_get_default_cluster_for_service(self):
         fake_service_name = 'fake_service'
         fake_clusters = ['fake_cluster-1', 'fake_cluster-2']
-        with (
-            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True, return_value=fake_clusters)
-        ) as mock_get_clusters_deployed_to:
+        with contextlib.nested(
+            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True, return_value=fake_clusters),
+            mock.patch('marathon_tools.load_system_paasta_config', autospec=True),
+        ) as (
+            mock_get_clusters_deployed_to,
+            mock_load_system_paasta_config,
+        ):
+            mock_load_system_paasta_config.side_effect = marathon_tools.NoMarathonClusterFoundException
             assert marathon_tools.get_default_cluster_for_service(fake_service_name) == 'fake_cluster-1'
             mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
 
     def test_get_default_cluster_for_service_empty_deploy_config(self):
         fake_service_name = 'fake_service'
-        with (
-            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True, return_value=[])
-        ) as mock_get_clusters_deployed_to:
+        with contextlib.nested(
+            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True, return_value=[]),
+            mock.patch('marathon_tools.load_system_paasta_config', autospec=True),
+        ) as (
+            mock_get_clusters_deployed_to,
+            mock_load_system_paasta_config,
+        ):
+            mock_load_system_paasta_config.side_effect = marathon_tools.NoMarathonClusterFoundException
             with raises(marathon_tools.NoMarathonConfigurationForService):
                 marathon_tools.get_default_cluster_for_service(fake_service_name)
             mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
@@ -350,11 +360,11 @@ class TestMarathonTools:
                         return_value=fake_smartstack) as read_service_configuration_patch:
             actual = marathon_tools.get_all_namespaces_for_service(name, soa_dir)
             read_service_configuration_patch.assert_any_call(name, soa_dir)
-            assert expected == actual
+            assert sorted(expected) == sorted(actual)
 
             actual_short = marathon_tools.get_all_namespaces_for_service(name, soa_dir, False)
             read_service_configuration_patch.assert_any_call(name, soa_dir)
-            assert expected_short == actual_short
+            assert sorted(expected_short) == sorted(actual_short)
 
     def test_get_marathon_services_for_cluster(self):
         cluster = 'honey_bunches_of_oats'
@@ -423,6 +433,27 @@ class TestMarathonTools:
         ):
             actual = marathon_tools.get_proxy_port_for_instance(name, instance, cluster, soa_dir)
             assert fake_port == actual
+            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
+            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
+
+    def test_get_proxy_port_for_instance_defaults_to_none(self):
+        name = 'thats_no_moon'
+        instance = 'thats_a_space_station'
+        cluster = 'shot_line'
+        soa_dir = 'drink_up'
+        namespace = 'thirsty_mock'
+        expected = None
+        with contextlib.nested(
+            mock.patch('marathon_tools.read_namespace_for_service_instance',
+                       autospec=True, return_value=namespace),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True, return_value={})
+        ) as (
+            read_ns_patch,
+            read_config_patch
+        ):
+            actual = marathon_tools.get_proxy_port_for_instance(name, instance, cluster, soa_dir)
+            assert expected == actual
             read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
             read_config_patch.assert_called_once_with(name, namespace, soa_dir)
 
@@ -533,7 +564,7 @@ class TestMarathonTools:
                         return_value=fake_config) as read_service_configuration_patch:
             actual = marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
             read_service_configuration_patch.assert_called_once_with(name, soa_dir)
-            assert actual == expected
+            assert sorted(actual) == sorted(expected)
 
     def test_read_service_namespace_config_no_file(self):
         name = 'a_man'
@@ -863,6 +894,7 @@ class TestMarathonTools:
         fake_env = {'FAKEENV': 'FAKEVALUE'}
         fake_cpus = .42
         fake_instances = 101
+        fake_cmd = None
         fake_args = ['arg1', 'arg2']
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
             'mode': 'http',
@@ -904,6 +936,7 @@ class TestMarathonTools:
             'env': fake_env,
             'cpus': fake_cpus,
             'instances': fake_instances,
+            'cmd': fake_cmd,
             'args': fake_args,
             'health_checks': fake_healthchecks,
             'backoff_seconds': 1,
@@ -917,6 +950,7 @@ class TestMarathonTools:
                 'mem': fake_mem,
                 'cpus': fake_cpus,
                 'instances': fake_instances,
+                'cmd': fake_cmd,
                 'args': fake_args,
                 'healthcheck_grace_period_seconds': 3,
                 'healthcheck_interval_seconds':  10,
@@ -1023,13 +1057,31 @@ class TestMarathonTools:
             'SPECIAL_ENV': 'TRUE',
         }
 
-    def test_get_args_default(self):
+    def test_get_cmd_default(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_cmd() is None
+
+    def test_get_cmd_in_config(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cmd': 'FAKECMD'}, {})
+        assert fake_conf.get_cmd() == 'FAKECMD'
+
+    def test_get_args_default_no_cmd(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
         assert fake_conf.get_args() == []
+
+    def test_get_args_default_with_cmd(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cmd': 'FAKECMD'}, {})
+        assert fake_conf.get_args() is None
 
     def test_get_args_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'args': ['arg1', 'arg2']}, {})
         assert fake_conf.get_args() == ['arg1', 'arg2']
+
+    def test_get_args_in_config_with_cmd(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'args': ['A'], 'cmd': 'C'}, {})
+        fake_conf.get_cmd()
+        with raises(marathon_tools.InvalidMarathonConfig):
+            fake_conf.get_args()
 
     def test_get_force_bounce(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {'force_bounce': 'blurp'})
@@ -1350,6 +1402,89 @@ class TestMarathonServiceConfig(object):
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
+    def test_get_healthchecks_cmd(self):
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            "service", "instance", {'healthcheck_mode': 'cmd'}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd /bin/true --timeout '10'"
+        expected = [
+            {
+                "protocol": "COMMAND",
+                "command": {"value": expected_cmd},
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 6
+            },
+        ]
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        assert actual == expected
+
+    def test_get_healthchecks_cmd_quotes(self):
+        fake_command = '/bin/fake_command with spaces'
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        expected_cmd = "paasta_execute_docker_command " \
+            "--mesos-id \"$MESOS_TASK_ID\" --cmd '%s' --timeout '10'" % fake_command
+        expected = [
+            {
+                "protocol": "COMMAND",
+                "command": {"value": expected_cmd},
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 6
+            },
+        ]
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        assert actual == expected
+
+    def test_get_healthchecks_cmd_overrides(self):
+        fake_command = '/bin/fake_command'
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        expected_cmd = "paasta_execute_docker_command " \
+            "--mesos-id \"$MESOS_TASK_ID\" --cmd %s --timeout '10'" % fake_command
+        expected = [
+            {
+                "protocol": "COMMAND",
+                "command": {"value": expected_cmd},
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "timeoutSeconds": 10,
+                "maxConsecutiveFailures": 6
+            },
+        ]
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        assert actual == expected
+
+    def test_get_healthchecks_cmd_overrides_timeout(self):
+        fake_command = '/bin/fake_command'
+        fake_timeout = 4
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            "service",
+            "instance",
+            {'healthcheck_mode': 'cmd', 'healthcheck_timeout_seconds': fake_timeout, 'healthcheck_cmd': fake_command},
+            {}
+        )
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        expected_cmd = "paasta_execute_docker_command " \
+            "--mesos-id \"$MESOS_TASK_ID\" --cmd %s --timeout '%s'" % (fake_command, fake_timeout)
+        expected = [
+            {
+                "protocol": "COMMAND",
+                "command": {"value": expected_cmd},
+                "gracePeriodSeconds": 60,
+                "intervalSeconds": 10,
+                "timeoutSeconds": fake_timeout,
+                "maxConsecutiveFailures": 6
+            },
+        ]
+        actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        assert actual == expected
+
     def test_get_healthchecks_other(self):
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'other'})
@@ -1410,6 +1545,7 @@ def test_create_complete_config():
             },
             'instances': 1,
             'mem': 1000,
+            'cmd': None,
             'args': [],
             'backoff_factor': 2,
             'cpus': 0.25,
@@ -1431,3 +1567,6 @@ def test_create_complete_config():
             'constraints': [["region", "GROUP_BY"]],
         }
         assert actual == expected
+
+        # Assert that the complete config can be inserted into the MarathonApp model
+        assert MarathonApp(**actual)
