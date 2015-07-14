@@ -1337,7 +1337,7 @@ class TestMarathonServiceConfig(object):
     def test_get_healthcheck_mode_invalid(self):
         namespace_config = marathon_tools.ServiceNamespaceConfig({})
         marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'udp'}, {})
-        with raises(marathon_tools.InvalidHealthcheckMode):
+        with raises(marathon_tools.InvalidMarathonHealthcheckMode):
             marathon_config.get_healthcheck_mode(namespace_config)
 
     def test_get_healthchecks_http_overrides(self):
@@ -1499,7 +1499,7 @@ class TestMarathonServiceConfig(object):
     def test_get_healthchecks_invalid_mode(self):
         marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'none'}, {})
         namespace_config = marathon_tools.ServiceNamespaceConfig({})
-        with raises(marathon_tools.InvalidHealthcheckMode):
+        with raises(marathon_tools.InvalidMarathonHealthcheckMode):
             marathon_config.get_healthchecks(namespace_config)
 
 
@@ -1518,7 +1518,7 @@ class TestServiceNamespaceConfig(object):
 
     def test_get_mode_invalid(self):
         config = {'mode': 'paasta'}
-        with raises(marathon_tools.InvalidPaastaServiceMode):
+        with raises(marathon_tools.InvalidSmartstackMode):
             marathon_tools.ServiceNamespaceConfig(config).get_mode()
 
     def test_get_healthcheck_uri_default(self):

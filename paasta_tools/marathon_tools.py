@@ -414,6 +414,8 @@ class MarathonServiceConfig(object):
             ]
         elif mode is None:
             healthchecks = []
+        else:
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
         return healthchecks
 
     def get_healthcheck_uri(self, service_namespace_config):
@@ -427,7 +429,7 @@ class MarathonServiceConfig(object):
         if mode is None:
             mode = service_namespace_config.get_mode()
         elif mode not in ['http', 'tcp', 'cmd']:
-            raise InvalidHealthcheckMode("Unknown mode: %s" % mode)
+            raise InvalidMarathonHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
     def get_healthcheck_grace_period_seconds(self):
@@ -542,7 +544,7 @@ class ServiceNamespaceConfig(dict):
         elif mode in ['http', 'tcp']:
             return mode
         else:
-            raise InvalidPaastaServiceMode("Unknown mode: %s" % mode)
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
 
     def get_healthcheck_uri(self):
         return self.get('healthcheck_uri', '/status')
@@ -552,11 +554,11 @@ class NoDockerImageError(Exception):
     pass
 
 
-class InvalidPaastaServiceMode(Exception):
+class InvalidSmartstackMode(Exception):
     pass
 
 
-class InvalidHealthcheckMode(Exception):
+class InvalidMarathonHealthcheckMode(Exception):
     pass
 
 
