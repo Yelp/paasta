@@ -61,7 +61,7 @@ def check_metastatus_return_code(context, expected_return_code, expected_output)
     env['MESOS_CLI_CONFIG'] = context.mesos_cli_config_filename
     print 'Running cmd %s with MESOS_CLI_CONFIG=%s' % (cmd, env['MESOS_CLI_CONFIG'])
     (exit_code, output) = _run(cmd, env=env)
-    print 'Got exitcode %s with output: \n %s' % (exit_code, output)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
 
     assert exit_code == int(expected_return_code)
     assert expected_output in output
