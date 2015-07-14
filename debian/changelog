@@ -1,3 +1,11 @@
+paasta-tools (0.12.18-yelp1) lucid; urgency=low
+
+  * 0.12.18 tagged with 'make release'
+    Commit: Merge branch PAASTA-945: Change default healthchecks mode to
+    support long-running non-http services
+
+ -- Christopher Carroux <carroux@yelp.com>  Tue, 14 Jul 2015 14:30:37 -0700
+
 paasta-tools (0.12.17-yelp1) lucid; urgency=low
 
   * 0.12.17 tagged with 'make release'
