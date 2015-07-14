@@ -67,6 +67,51 @@ def test_failing_memory_health():
     assert PaastaColors.red("CRITICAL: Less than 10% memory available. (Currently at 2.34%)") in failure_output
 
 
+def test_assert_no_duplicate_frameworks():
+    state = {
+        'frameworks': [
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework2',
+            },
+            {
+                'name': 'test_framework3',
+            },
+            {
+                'name': 'test_framework4',
+            },
+        ]
+    }
+    output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
+    assert output == ''
+    assert ok
+
+
+def test_duplicate_frameworks():
+    state = {
+        'frameworks': [
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework2',
+            },
+        ]
+    }
+    output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
+    assert PaastaColors.red("CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1."
+                            ) in output
+    assert not ok
+
+
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
 def test_missing_master_exception(mock_fetch_from_leader):
     mock_fetch_from_leader.side_effect = mesos_tools.MissingMasterException('Missing')
@@ -183,7 +228,15 @@ def test_get_mesos_status(
         'flags': {
             'zk': 'zk://1.1.1.1:2222/fake_cluster',
             'quorum': 2,
-        }
+        },
+        'frameworks': [
+            {
+                'name': 'test_framework1',
+            },
+            {
+                'name': 'test_framework1',
+            },
+        ]
     }
     mock_get_num_masters.return_value = 5
     mock_get_configured_quorum_size.return_value = 3
@@ -192,6 +245,8 @@ def test_get_mesos_status(
         "memory: total: 10.00 GB used: 2.00 GB available: 8.00 GB"
     expected_tasks_output = \
         "tasks: running: 3 staging: 4 starting: 0"
+    expected_duplicate_frameworks_output = \
+        PaastaColors.red("CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1.")
     expected_slaves_output = \
         "slaves: active: 4 inactive: 0"
     expected_masters_quorum_output = \
@@ -205,6 +260,7 @@ def test_get_mesos_status(
     assert expected_cpus_output in outputs
     assert expected_mem_output in outputs
     assert expected_tasks_output in outputs
+    assert expected_duplicate_frameworks_output in outputs
     assert expected_slaves_output in outputs
 
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 
+from collections import Counter
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import fetch_mesos_stats
 from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
@@ -80,6 +81,30 @@ def assert_tasks_running(metrics):
             True)
 
 
+def assert_no_duplicate_frameworks(state):
+    """Takes in the current state of the Mesos master and pulls out the running frameworks.
+    Counts up the number of running instances of each framework and reports an error
+    if there are duplicate frameworks running.
+    param state: the state info from the Mesos master
+    returns: log messages and a not-ok status if duplicate running frameworks were found, else an ok status
+    """
+    frameworks = state['frameworks']
+    framework_counts = Counter()
+    output = []
+    ok = True
+
+    for fw in frameworks:
+        framework_counts[fw.get('name')] += 1
+
+    for fw in framework_counts:
+        if framework_counts[fw] > 1:
+            ok = False
+            output.append(PaastaColors.red(
+                          "CRITICAL: Framework %s has %d instances running--expected no more than 1."
+                          % (fw, framework_counts[fw])))
+    return (("\n").join(output), ok)
+
+
 def assert_slave_health(metrics):
     active, inactive = metrics['master/slaves_active'], metrics['master/slaves_inactive']
     return ("slaves: active: %d inactive: %d"
@@ -106,7 +131,8 @@ def get_mesos_status():
     """
 
     state = fetch_mesos_state_from_leader()
-    cluster_outputs, cluster_ok = run_healthchecks_with_param(state, [assert_quorum_size])
+    cluster_outputs, cluster_ok = run_healthchecks_with_param(state, [assert_quorum_size,
+                                                                      assert_no_duplicate_frameworks])
 
     metrics = fetch_mesos_stats()
     metrics_outputs, metrics_ok = run_healthchecks_with_param(metrics, [
