@@ -332,6 +332,21 @@ def test_run_success(
     assert paasta_local_run(args) is None
 
 
+def test_get_docker_run_cmd_without_additional_args():
+    memory = 555
+    random_port = 666
+    container_name = 'Docker' * 6 + 'Doc'
+    volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    interactive = False
+    docker_hash = '8' * 40
+    command = None
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
+    # Since we can't assert that the command isn't present in the output, we do
+    # the next best thing and check that the docker hash is the last thing in
+    # the docker run command (the command would have to be after it if it existed)
+    assert actual[-1] == docker_hash
+
+
 def test_get_docker_run_cmd_interactive_false():
     memory = 555
     random_port = 666

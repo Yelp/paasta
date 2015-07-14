@@ -296,7 +296,8 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, interactive
     else:
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
-    cmd.extend(command)
+    if command:
+        cmd.extend(command)
     return cmd
 
 
