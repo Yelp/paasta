@@ -1326,6 +1326,120 @@ class TestMarathonTools:
         actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
         assert actual == expected
 
+    def test_get_healthcheck_for_instance_http(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+
+        fake_path = '/fake_path'
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+            'mode': 'http',
+            'healthcheck_uri': fake_path,
+        })
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = ('http', 'http://%s:%d%s' % (fake_hostname, fake_random_port, fake_path))
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
+            assert expected == actual
+
+    def test_get_healthcheck_for_instance_tcp(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+            'mode': 'tcp',
+        })
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = ('tcp', 'tcp://%s:%d' % (fake_hostname, fake_random_port))
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
+            assert expected == actual
+
+    def test_get_healthcheck_for_instance_cmd(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+        fake_cmd = '/bin/fake_command'
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
+            'healthcheck_mode': 'cmd',
+            'healthcheck_cmd': fake_cmd
+        }, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = ('cmd', fake_cmd)
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
+            assert expected == actual
+
+    def test_get_healthcheck_for_instance_other(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
+            'healthcheck_mode': None,
+        }, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = (None, None)
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
+            assert expected == actual
+
 
 class TestMarathonServiceConfig(object):
 
