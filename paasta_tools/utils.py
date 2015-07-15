@@ -44,7 +44,7 @@ class PaastaColors:
     CYAN = '\033[36m'
     DEFAULT = '\033[0m'
     GREEN = '\033[32m'
-    GREY = '\033[1m\033[30m'
+    GREY = '\033[37m'
     MAGENTA = '\033[35m'
     RED = '\033[31m'
     YELLOW = '\033[33m'
