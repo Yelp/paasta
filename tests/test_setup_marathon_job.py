@@ -1051,9 +1051,11 @@ class TestSetupMarathonJob:
             assert setup_marathon_job.get_main_marathon_config() == fake_conf
             get_conf_patch.assert_called_once_with()
 
+    def test_get_old_live_draining_tasks_empty(self):
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
         fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
+
         fake_apps = [
             mock.Mock(id=fake_id, tasks=[]),
             mock.Mock(id=('%s2' % fake_id), tasks=[])

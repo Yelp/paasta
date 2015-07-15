@@ -265,8 +265,8 @@ def brutal_bounce(
     :param happy_new_tasks: Set of MarathonTasks belonging to the new application that are considered healthy and up.
     :param old_app_live_tasks: Dictionary of app_id -> set(Tasks) belonging to apps for old apps for this service. Tasks
                                that are being drained are not included in this dictionary.
-    :return: A dictionary representing the desired bounce actions. Should have the following keys:
-              - create_app: True if we should start the new Marathon app yet, False otherwise.
+    :return: A dictionary representing the desired bounce actions and containing the following keys:
+              - create_app: True if we should start the new Marathon app, False otherwise.
               - tasks_to_drain: a set of task objects which should be drained and killed. May be empty.
     """
     return {

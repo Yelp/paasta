@@ -29,7 +29,7 @@ class DrainMethod(object):
 
     A drain method must have the following methods:
      - drain(task): Begin draining traffic from a task. This should be idempotent.
-     - undrain(task): Stop draining traffic from a task. This should be idempotent.
+     - stop_draining(task): Stop draining traffic from a task. This should be idempotent.
      - is_draining(task): Whether a task has already been marked as downed. Note that this state should be stored out of
                           process, because a bounce may take multiple runs of setup_marathon_job to complete.
      - is_safe_to_kill(task): Return True if this task is safe to kill, False otherwise.
@@ -46,7 +46,7 @@ class DrainMethod(object):
         """Make a task stop receiving new traffic."""
         raise NotImplementedError()
 
-    def undrain(self, task):
+    def stop_draining(self, task):
         """Make a task that has previously been downed start receiving traffic again."""
         raise NotImplementedError()
 
@@ -65,7 +65,7 @@ class NoopDrainMethod(DrainMethod):
     def drain(self, task):
         pass
 
-    def undrain(self, task):
+    def stop_draining(self, task):
         pass
 
     def is_draining(self, task):
@@ -86,7 +86,7 @@ class TestDrainMethod(DrainMethod):
     def drain(self, task):
         self.downed_task_ids.add(task.id)
 
-    def undrain(self, task):
+    def stop_draining(self, task):
         self.downed_task_ids.remove(task.id)
         self.safe_to_kill_task_ids.remove(task.id)
 
@@ -162,7 +162,7 @@ class HacheckDrainMethod(DrainMethod):
     def drain(self, task):
         self.post_spool(task, 'down')
 
-    def undrain(self, task):
+    def stop_draining(self, task):
         self.post_spool(task, 'up')
 
     def is_draining(self, task):

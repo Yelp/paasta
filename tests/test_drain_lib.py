@@ -6,11 +6,11 @@ from paasta_tools import drain_lib
 def test_register_drain_method():
 
     with mock.patch('drain_lib._drain_methods'):
-        @drain_lib.register_drain_method('REMOVEME')
-        class REMOVEMEDrainMethod(drain_lib.DrainMethod):
+        @drain_lib.register_drain_method('FAKEDRAINMETHOD')
+        class FakeDrainMethod(drain_lib.DrainMethod):
             pass
 
-        assert type(drain_lib.get_drain_method('REMOVEME', 'srv', 'inst', 'ns')) == REMOVEMEDrainMethod
+        assert type(drain_lib.get_drain_method('FAKEDRAINMETHOD', 'srv', 'inst', 'ns')) == FakeDrainMethod
 
 
 class TestHacheckDrainMethod(object):
