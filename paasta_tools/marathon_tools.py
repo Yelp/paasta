@@ -14,6 +14,7 @@ import socket
 import glob
 
 from marathon import MarathonClient
+from marathon import NotFoundError
 import json
 import service_configuration_lib
 
@@ -957,6 +958,24 @@ def is_app_id_running(app_id, client):
 
     all_app_ids = list_all_marathon_app_ids(client)
     return app_id in all_app_ids
+
+
+def app_has_tasks(client, app_id, expected_tasks):
+    """ Returns a boolean indicating whether an app has launched *at least* as many
+    tasks as indicated by the expected_tasks parameter.
+
+    Raises a rathon.NotFoundError when no app with matching id is found.
+
+    :param client: the marathon client
+    :param app_id: the app_id to which the tasks should belong
+    :param minimum_tasks: the minimum number of tasks to check for
+    """
+    try:
+        tasks = client.list_tasks(app_id=app_id)
+    except NotFoundError as e:
+        print("no app with id %s found")
+        raise e
+    return len(tasks) >= expected_tasks
 
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):

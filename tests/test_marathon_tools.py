@@ -2,6 +2,7 @@ import contextlib
 
 from marathon.models import MarathonApp
 import mock
+from mock import patch
 from pytest import raises
 import requests
 
@@ -1130,6 +1131,27 @@ class TestMarathonTools:
         ) as list_all_marathon_app_ids_patch:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is False
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
+
+    @patch('marathon_tools.MarathonClient.list_tasks')
+    def test_app_has_tasks_exact(self, patch_list_tasks):
+        fake_client = mock.Mock()
+        fake_client.list_tasks = patch_list_tasks
+        patch_list_tasks.return_value = [{},{},{}]
+        assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 3) is True
+
+    @patch('marathon_tools.MarathonClient.list_tasks')
+    def test_app_has_tasks_less(self, patch_list_tasks):
+        fake_client = mock.Mock()
+        fake_client.list_tasks = patch_list_tasks
+        patch_list_tasks.return_value = [{},{},{}]
+        assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 2) is True
+
+    @patch('marathon_tools.MarathonClient.list_tasks')
+    def test_app_has_tasks_more(self, patch_list_tasks):
+        fake_client = mock.Mock()
+        fake_client.list_tasks = patch_list_tasks
+        patch_list_tasks.return_value = [{},{},{}]
+        assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4) is False
 
     def test_get_app_id(self):
         fake_name = 'fakeapp'
