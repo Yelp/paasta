@@ -1,3 +1,12 @@
+paasta-tools (0.12.21-yelp1) lucid; urgency=low
+
+  * 0.12.21 tagged with 'make release'
+    Commit: Revert "Support the new marathon python bindings and go back
+    to marathon 0.8.2"  This reverts commit
+    5ab36ee551b26427d7a503f9ac131d22db3fe25f.
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 16 Jul 2015 16:58:11 -0700
+
 paasta-tools (0.12.20-yelp1) lucid; urgency=low
 
   * 0.12.20 tagged with 'make release'
