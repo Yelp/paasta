@@ -341,12 +341,10 @@ def test_check_smartstack_check_missing_instance(
 
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_smartstack_check_fail(mock_stdout, mock_is_file_in_dir):
-    # smartstack.yaml doest exist
+def test_check_smartstack_check_is_ok_when_no_smartstack(mock_stdout, mock_is_file_in_dir):
 
     mock_is_file_in_dir.return_value = False
-    expected_output = "%s\n" % PaastaCheckMessages.SMARTSTACK_YAML_MISSING
-
+    expected_output = ""
     smartstack_check('fake_service', 'path')
     output = mock_stdout.getvalue()
 

@@ -26,6 +26,8 @@ from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import timeout
+from paasta_tools.utils import TimeoutError
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -269,6 +271,7 @@ def status_smartstack_backends_verbose(service, instance, cluster, tasks):
     return "\n".join(output)
 
 
+@timeout()
 def get_cpu_usage(task):
     """Calculates a metric of used_cpu/allocated_cpu
     To do this, we take the total number of cpu-seconds the task has consumed,
@@ -299,8 +302,11 @@ def get_cpu_usage(task):
             return percent_string
     except (AttributeError, SlaveDoesNotExist):
         return "None"
+    except TimeoutError:
+        return "Timed Out"
 
 
+@timeout()
 def get_mem_usage(task):
     try:
         task_mem_limit = task.mem_limit
@@ -315,6 +321,8 @@ def get_mem_usage(task):
             return mem_string
     except (AttributeError, SlaveDoesNotExist):
         return "None"
+    except TimeoutError:
+        return "Timed Out"
 
 
 def get_task_uuid(taskid):

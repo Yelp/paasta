@@ -18,3 +18,4 @@ debian/paasta-tools.debhelper.log
 
 # Itest artifacts
 fake_service_uno/
+paasta_itests/mesos-cli.json
