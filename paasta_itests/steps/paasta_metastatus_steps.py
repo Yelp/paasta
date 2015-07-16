@@ -5,6 +5,7 @@ from time import sleep
 
 sys.path.append('../')
 from paasta_tools.utils import _run
+from paasta_tools import marathon_tools
 from marathon import MarathonApp
 from marathon import NotFoundError
 
@@ -19,12 +20,12 @@ def all_mesos_masters_unavailable(context):
     pass
 
 
-@when(u'an app called "{app_id}" using high memory is launched')
+@when(u'an app with id "{app_id}" using high memory is launched')
 def run_paasta_metastatus_high_mem(context, app_id):
     context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
 
 
-@when(u'an app called "{app_id}" using high cpu is launched')
+@when(u'an app with id "{app_id}" using high cpu is launched')
 def run_paasta_metastatus_high_cpu(context, app_id):
     context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1))
 
