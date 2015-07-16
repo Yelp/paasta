@@ -330,18 +330,14 @@ def get_task_uuid(taskid):
     return taskid.split(".")[-1]
 
 
-@timeout()
 def get_short_hostname_from_task(task):
     try:
         slave_hostname = task.slave['hostname']
         return slave_hostname.split(".")[0]
     except (AttributeError, SlaveDoesNotExist):
         return 'Unknown'
-    except TimeoutError:
-        "Timed Out"
 
 
-@timeout()
 def get_first_status_timestamp(task):
     """Gets the first status timestamp from a task id and returns a human
     readable string with the local time and a humanized duration:
@@ -353,8 +349,6 @@ def get_first_status_timestamp(task):
         return "%s (%s)" % (start_time.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(start_time))
     except (IndexError, SlaveDoesNotExist):
         return "Unknown"
-    except TimeoutError:
-        "Timed Out"
 
 
 def pretty_format_running_mesos_task(task):
