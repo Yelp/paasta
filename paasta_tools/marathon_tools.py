@@ -961,14 +961,16 @@ def is_app_id_running(app_id, client):
 
 
 def app_has_tasks(client, app_id, expected_tasks):
-    """ Returns a boolean indicating whether an app has launched *at least* as many
-    tasks as indicated by the expected_tasks parameter.
+    """ A predicate function indicating whether an app has launched *at least* expected_tasks
+    tasks.
 
-    Raises a rathon.NotFoundError when no app with matching id is found.
+    Raises a marathon.NotFoundError when no app with matching id is found.
 
     :param client: the marathon client
     :param app_id: the app_id to which the tasks should belong
     :param minimum_tasks: the minimum number of tasks to check for
+    :returns a boolean indicating whether there are atleast expected_tasks tasks with
+    an app id matching app_id:
     """
     try:
         tasks = client.list_tasks(app_id=app_id)
