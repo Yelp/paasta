@@ -345,17 +345,23 @@ class MarathonServiceConfig(object):
         return complete_config
 
     def get_healthchecks(self, service_namespace_config):
-        """Returns a list of healthchecks per the spec:
-        https://mesosphere.github.io/marathon/docs/health-checks.html
-        Tries to be very conservative. Currently uses the same configuration
-        that smartstack uses, regarding mode (tcp/http) and http status uri.
+        """Returns a list of healthchecks per `the Marathon docs`_.
 
         If you have an http service, it uses the default endpoint that smartstack uses.
         (/status currently)
 
-        Otherwise these do *not* use the same thresholds as smarstack in order to not
+        Otherwise these do *not* use the same thresholds as smartstack in order to not
         produce a negative feedback loop, where mesos agressivly kills tasks because they
         are slow, which causes other things to be slow, etc.
+
+        If the mode of the service is None, indicating that it was not specified in the service config
+        and smartstack is not used by the service, no healthchecks are passed to Marathon. This ensures that
+        it falls back to Mesos' knowledge of the task state as described in `the Marathon docs`_.
+        In this case, we provide an empty array of healthchecks per `the Marathon API docs`_
+        (scroll down to the healthChecks subsection).
+
+        .. _the Marathon docs: https://mesosphere.github.io/marathon/docs/health-checks.html
+        .. _the Marathon API docs: https://mesosphere.github.io/marathon/docs/rest-api.html#post-/v2/apps
 
         :param service_config: service config hash
         :returns: list of healthcheck definitions for marathon"""
@@ -406,6 +412,8 @@ class MarathonServiceConfig(object):
                     "maxConsecutiveFailures": maxconsecutivefailures
                 },
             ]
+        elif mode is None:
+            healthchecks = []
         else:
             raise InvalidSmartstackMode("Unknown mode: %s" % mode)
         return healthchecks
@@ -417,7 +425,12 @@ class MarathonServiceConfig(object):
         return self.config_dict.get('healthcheck_cmd', '/bin/true')
 
     def get_healthcheck_mode(self, service_namespace_config):
-        return self.config_dict.get('healthcheck_mode', service_namespace_config.get_mode())
+        mode = self.config_dict.get('healthcheck_mode', None)
+        if mode is None:
+            mode = service_namespace_config.get_mode()
+        elif mode not in ['http', 'tcp', 'cmd']:
+            raise InvalidMarathonHealthcheckMode("Unknown mode: %s" % mode)
+        return mode
 
     def get_healthcheck_grace_period_seconds(self):
         """How long Marathon should give a service to come up before counting failed healthchecks."""
@@ -493,6 +506,11 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
         if key in key_whitelist:
             service_namespace_config[key] = value
 
+    # Other code in paasta_tools checks 'mode' after the config file
+    # is loaded, so this ensures that it is set to the appropriate default
+    # if not otherwise specified, even if appropriate default is None.
+    service_namespace_config['mode'] = service_namespace_config.get_mode()
+
     if 'routes' in namespace_config_from_file:
         service_namespace_config['routes'] = [(route['source'], dest)
                                               for route in namespace_config_from_file['routes']
@@ -511,7 +529,22 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
 class ServiceNamespaceConfig(dict):
 
     def get_mode(self):
-        return self.get('mode', 'http')
+        """Get the mode that the service runs in and check that we support it.
+        If the mode is not specified, we check whether the service uses smartstack
+        in order to determine the appropriate default value. If proxy_port is specified
+        in the config, the service uses smartstack, and we can thus safely assume its mode is http.
+        If the mode is not defined and the service does not use smartstack, we set the mode to None.
+        """
+        mode = self.get('mode', None)
+        if mode is None:
+            if self.get('proxy_port') is None:
+                return None
+            else:
+                return 'http'
+        elif mode in ['http', 'tcp']:
+            return mode
+        else:
+            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
 
     def get_healthcheck_uri(self):
         return self.get('healthcheck_uri', '/status')
@@ -522,6 +555,10 @@ class NoDockerImageError(Exception):
 
 
 class InvalidSmartstackMode(Exception):
+    pass
+
+
+class InvalidMarathonHealthcheckMode(Exception):
     pass
 
 
@@ -643,27 +680,6 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
-
-
-def get_mode_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Get the mode defined in the namespace configuration for a service instances.
-    Defaults to http if one isn't defined.
-
-    This means that the namespace first has to be loaded from the service instance's
-    configuration, and then the mode has to loaded from the smartstack configuration
-    for that namespace.
-
-    :param name: The service name
-    :param instance: The instance of the service
-    :param cluster: The cluster to read the configuration for
-    :param soa_dir: The SOA config directory to read from
-    :returns: The mode for the service instance, or 'http' if not defined
-    """
-    if not cluster:
-        cluster = get_cluster()
-    namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
-    nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
-    return nerve_dict.get('mode', 'http')
 
 
 def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
@@ -1008,12 +1024,12 @@ def get_matching_appids(servicename, instance, client):
     return [app.id for app in client.list_apps() if app.id.startswith("/%s" % jobid)]
 
 
-def get_healthcheck(service_name, namespace, service_manifest, random_port):
+def get_healthcheck_for_instance(service_name, instance, service_manifest, random_port):
     """
     Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
     or (None, None) if no healthcheck
     """
-    smartstack_config = load_service_namespace_config(service_name, namespace)
+    smartstack_config = load_service_namespace_config(service_name, instance)
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     path = service_manifest.get_healthcheck_uri(smartstack_config)
     hostname = socket.getfqdn()
