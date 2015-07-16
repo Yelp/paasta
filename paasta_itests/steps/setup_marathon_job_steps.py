@@ -17,35 +17,7 @@ fake_service_marathon_config = marathon_tools.MarathonServiceConfig(
     {},
     {'docker_image': 'test-image'},
 )
-fake_service_config = {
-    'id': fake_appid,
-    'container': {
-        'docker': {
-            'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
-            'image': 'localhost/fake_docker_url',
-            'network': 'BRIDGE'
-            },
-        'type': 'DOCKER',
-        'volumes': [
-            {'hostPath': '/nail/etc/habitat', 'containerPath': '/nail/etc/habitat', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/datacenter', 'containerPath': '/nail/etc/datacenter', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/ecosystem', 'containerPath': '/nail/etc/ecosystem', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/rntimeenv', 'containerPath': '/nail/etc/rntimeenv', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/region', 'containerPath': '/nail/etc/region', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/sperregion', 'containerPath': '/nail/etc/sperregion', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/topology_env', 'containerPath': '/nail/etc/topology_env', 'mode': 'RO'},
-            {'hostPath': '/nail/srv', 'containerPath': '/nail/srv', 'mode': 'RO'},
-            {'hostPath': '/etc/boto_cfg', 'containerPath': '/etc/boto_cfg', 'mode': 'RO'}]
-        },
-    'instances': 1,
-    'mem': 300,
-    'args': [],
-    'backoff_factor': 2,
-    'cpus': 0.25,
-    'uris': ['file:///root/.dockercfg'],
-    'backoff_seconds': 1,
-    'constraints': None
-}
+fake_service_config = {'container': {'docker': {'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}], 'image': u'localhost/fake_docker_url', 'network': 'BRIDGE'}, 'type': 'DOCKER', 'volumes': [{u'hostPath': u'/nail/etc/habitat', u'containerPath': u'/nail/etc/habitat', u'mode': u'RO'}, {u'hostPath': u'/nail/etc/datacenter', u'containerPath': u'/nail/etc/datacenter', u'mode': u'RO'}, {u'hostPath': u'/nail/etc/ecosystem', u'containerPath': u'/nail/etc/ecosystem', u'mode': u'RO'}, {u'hostPath': u'/nail/etc/runtimeenv', u'containerPath': u'/nail/etc/runtimeenv', u'mode': u'RO'}, {u'hostPath': u'/nail/etc/region', u'containerPath': u'/nail/etc/region', u'mode': u'RO'}, {u'hostPath': u'/nail/etc/superregion', u'containerPath': u'/nail/etc/superregion', u'mode': u'RO'}, {u'hostPath': u'/nail/etc/topology_env', u'containerPath': u'/nail/etc/topology_env', u'mode': u'RO'}, {u'hostPath': u'/nail/srv', u'containerPath': u'/nail/srv', u'mode': u'RO'}, {u'hostPath': u'/etc/boto_cfg', u'containerPath': u'/etc/boto_cfg', u'mode': u'RO'}]}, 'instances': 1, 'mem': 300, 'args': [], 'backoff_factor': 2, 'cpus': 0.25, 'uris': ['file:///root/.dockercfg'], 'backoff_seconds': 1, 'id': fake_appid, 'constraints': None}
 
 @when(u'we create a complete app')
 def create_complete_app(context):
