@@ -975,9 +975,9 @@ def app_has_tasks(client, app_id, expected_tasks):
     """
     try:
         tasks = client.list_tasks(app_id=app_id)
-    except NotFoundError as e:
+    except NotFoundError:
         print "no app with id %s found" %s app_id
-        raise e
+        raise
     return len(tasks) >= expected_tasks
 
 
