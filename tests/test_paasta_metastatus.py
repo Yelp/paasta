@@ -5,6 +5,7 @@ from paasta_tools import paasta_metastatus
 from paasta_tools import mesos_tools
 from paasta_tools.utils import PaastaColors
 from paasta_tools.marathon_tools import MarathonConfig
+from chronos import ChronosClient
 from pytest import raises
 
 
@@ -312,3 +313,14 @@ def test_get_marathon_client():
     client = paasta_metastatus.get_marathon_client(fake_config)
     assert client.servers == ['fakeurl']
     assert client.auth == ('fakeuser', 'fakepass')
+
+def test_assert_chronos_scheduled_jobs():
+    mock_client = ChronosClient(hostname="fake_hostname")
+    mock_client.list = lambda : []
+    output, ok = paasta_metastatus.assert_chronos_scheduled_jobs(mock_client)
+    assert output == 'chronos jobs: 0'
+    assert ok
+
+
+def test_get_chronos_status():
+    assert True
