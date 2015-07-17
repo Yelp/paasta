@@ -10,7 +10,7 @@ Feature: paasta_metastatus describes the state of the paasta cluster
   # this value was chosen as a tradeoff between reducing the requirements of
   # the machine running the itests and providing enough resources for the tests
   # to be performant. If you set it to a lower value, other tests seem to run
-  # slowly and often fai.
+  # slowly and often fail.
   Scenario: High memory usage
     Given a working paasta cluster
     When an app with id "memtest" using high memory is launched
