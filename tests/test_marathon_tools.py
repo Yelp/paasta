@@ -967,7 +967,7 @@ class TestMarathonTools:
 
     def test_get_bounce_method_default(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        fake_conf.get_bounce_method() == 'upthendown'
+        assert fake_conf.get_bounce_method() == 'crossover'
 
     def test_get_instances_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
