@@ -1,3 +1,11 @@
+paasta-tools (0.12.23-yelp1) lucid; urgency=low
+
+  * 0.12.23 tagged with 'make release'
+    Commit: Use 256-color codes for grey for consistency across
+    terminals.
+
+ -- Evan Krall <krall@yelp.com>  Fri, 17 Jul 2015 11:10:33 -0700
+
 paasta-tools (0.12.22-yelp1) lucid; urgency=low
 
   * 0.12.22 tagged with 'make release'
