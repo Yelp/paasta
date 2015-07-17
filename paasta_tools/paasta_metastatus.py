@@ -214,10 +214,13 @@ def main():
         print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
 
+    def print_outputs(outputs):
+        print(("\n").join(map(lambda x: "  %s" % x, outputs)))
+
     print("Mesos Status:")
-    print(("\n").join(map(lambda x: "  %s" % x, mesos_outputs)))
+    print_outputs(mesos_outputs)
     print("Marathon Status:")
-    print(("\n").join(map(lambda x: "  %s" % x, marathon_outputs)))
+    print_outputs(marathon_outputs)
 
     if False in mesos_oks or False in marathon_oks:
         sys.exit(2)
