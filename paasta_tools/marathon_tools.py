@@ -12,6 +12,7 @@ import re
 import requests
 import socket
 import glob
+from time import sleep
 
 from marathon import MarathonClient
 from marathon import NotFoundError
@@ -976,8 +977,9 @@ def app_has_tasks(client, app_id, expected_tasks):
     try:
         tasks = client.list_tasks(app_id=app_id)
     except NotFoundError:
-        print "no app with id %s found" %s app_id
+        print "no app with id %s found" % app_id
         raise
+    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks)
     return len(tasks) >= expected_tasks
 
 
@@ -998,6 +1000,9 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks):
             pass
         if found:
             return
+        else:
+            print "waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks)
+            sleep(0.5)
 
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
