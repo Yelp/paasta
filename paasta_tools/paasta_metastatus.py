@@ -181,26 +181,33 @@ def assert_marathon_deployments(client):
             True)
 
 
-def get_marathon_status():
+def get_marathon_status(client):
     """ Gathers information about marathon.
     :return: string containing the status.  """
-    marathon_config = marathon_tools.load_marathon_config()
-    client = marathon_tools.get_marathon_client(
-        marathon_config.get_url(),
-        marathon_config.get_username(),
-        marathon_config.get_password()
-    )
     outputs, oks = run_healthchecks_with_param(client, [
         assert_marathon_apps,
         assert_marathon_tasks,
         assert_marathon_deployments])
     return outputs, oks
 
+def get_marathon_client(marathon_config):
+    """ Given a MarathonConfig object, return
+    a client.
+    :param marathon_config: a MarathonConfig object
+    :returns client: a marathon client
+    """
+    return marathon_tools.get_marathon_client(
+        marathon_config.get_url(),
+        marathon_config.get_username(),
+        marathon_config.get_password()
+    )
 
 def main():
+    marathon_config = marathon_tools.load_marathon_config()
+    marathon_client = get_marathon_client(marathon_config)
     try:
         mesos_outputs, mesos_oks = get_mesos_status()
-        marathon_outputs, marathon_oks = get_marathon_status()
+        marathon_outputs, marathon_oks = get_marathon_status(marathon_client)
     except MissingMasterException as e:
         # if we can't connect to master at all,
         # then bomb out early
