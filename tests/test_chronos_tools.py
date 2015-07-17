@@ -94,11 +94,11 @@ def test_get_retries_rejects_invalid():
         chronos_tools.get_retries(job_config)
 
 
-# TODO set fake_owner instead of twice specifying it as a literal
 def test_get_owner():
-    job_config = {'failure_contact_email': 'developer@example.com'}
+    fake_owner = 'developer@example.com'
+    job_config = {'failure_contact_email': fake_owner}
     actual = chronos_tools.get_owner(job_config)
-    expected = 'developer@example.com'
+    expected = fake_owner
     assert actual == expected
 
 
@@ -249,10 +249,10 @@ def test_create_chronos_config():
         'disabled': chronos_tools.DEFAULT_DISABLED,
     }
     with contextlib.nested(
-        mock.patch('chronos_tools.read_chronos_soa_config', autospec=True, return_value=fake_config),
+        mock.patch('chronos_tools.load_chronos_job_config', autospec=True, return_value=fake_config),
     ) as (
-        mock_read_chronos_soa_config,
+        mock_load_chronos_job_config,
     ):
         actual = chronos_tools.create_chronos_config('test_service', 'mesosstage', '/tmp/fake/soa/dir')
-        assert mock_read_chronos_soa_config.call_count == 1
+        assert mock_load_chronos_job_config.call_count == 1
         assert sorted(actual) == sorted(expected)
