@@ -3,6 +3,8 @@
 pipeline."""
 import sys
 
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
+from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import \
     guess_service_name, NoSuchService, validate_service_name
 from paasta_tools.utils import _run
@@ -17,9 +19,8 @@ def add_subparser(subparsers):
         help='Configure a Jenkins build pipeline.')
 
     list_parser.add_argument('-s', '--service',
-                             help='Name of service for which you wish to '
-                                  'generate a Jenkins pipeline',
-                             )
+                             help='Name of service for which you wish to generate a Jenkins pipeline',
+                             ).completer = lazy_choices_completer(list_services)
 
     list_parser.set_defaults(command=paasta_generate_pipeline)
 
