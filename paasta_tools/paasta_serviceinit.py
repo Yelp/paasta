@@ -154,11 +154,11 @@ def get_verbose_status_of_marathon_app(app):
     create_datetime = datetime_from_utc_to_local(datetime.datetime.strptime(app.version, "%Y-%m-%dT%H:%M:%S.%fZ"))
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
-    output.append("    Tasks:  Mesos Task ID                  Host deployed to    Deployed at what localtime")
+    output.append("    Tasks:  Mesos Task ID                  Host deployed to         Deployed at what localtime")
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
         if task.host is not None:
-            hostname = task.host.split(".")[0]
+            hostname = "%s:%s" % (task.host.split(".")[0], task.ports[0])
         else:
             hostname = "Unknown"
         format_tuple = (
@@ -167,7 +167,7 @@ def get_verbose_status_of_marathon_app(app):
             local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
             humanize.naturaltime(local_deployed_datetime),
         )
-        output.append('      {0[0]:<37}{0[1]:<20}{0[2]:<17}({0[3]:})'.format(format_tuple))
+        output.append('      {0[0]:<37}{0[1]:<25} {0[2]:<17}({0[3]:})'.format(format_tuple))
     if len(app.tasks) == 0:
         output.append("      No tasks associated with this marathon app")
     return app.tasks, "\n".join(output)

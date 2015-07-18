@@ -135,13 +135,14 @@ class TestPaastaServiceStatus:
         fake_task = mock.create_autospec(marathon.models.app.MarathonTask)
         fake_task.id = 'fake_task_id'
         fake_task.host = 'fake_deployed_host'
+        fake_task.ports = [6666]
         fake_task.staged_at = datetime.datetime.fromtimestamp(0)
         fake_app.tasks = [fake_task]
         tasks, out = paasta_serviceinit.get_verbose_status_of_marathon_app(fake_app)
         assert 'fake_task_id' in out
         assert '/fake--service' in out
         assert 'App created: 2015-01-14 21:30:49' in out
-        assert 'fake_deployed_host' in out
+        assert 'fake_deployed_host:6666' in out
         assert tasks == [fake_task]
 
     def test_status_marathon_job_when_running(self):
