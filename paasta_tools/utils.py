@@ -129,7 +129,6 @@ class PaastaColors:
     def default(text):
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
-
 LOG_COMPONENTS = {
     'build': {
         'color': PaastaColors.blue,

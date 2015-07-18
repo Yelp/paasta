@@ -26,6 +26,7 @@ from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
@@ -242,15 +243,17 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
     lastcheck = "%s/%s in %sms" % (backend['check_status'], backend['check_code'], backend['check_duration'])
     lastchange = humanize.naturaltime(datetime.timedelta(seconds=int(backend['lastchg'])))
 
-    return PaastaColors.color_text(
-        PaastaColors.DEFAULT if is_correct_instance else PaastaColors.GREY,
-        '    {name:<32}{lastcheck:<20}{lastchange:<16}{status:}'.format(
-            name=pretty_backend_name,
-            lastcheck=lastcheck,
-            lastchange=lastchange,
-            status=status,
-        )
+    status_text = '    {name:<32}{lastcheck:<20}{lastchange:<16}{status:}'.format(
+        name=pretty_backend_name,
+        lastcheck=lastcheck,
+        lastchange=lastchange,
+        status=status,
     )
+
+    if is_correct_instance:
+        return PaastaColors.color_text(PaastaColors.DEFAULT, status_text)
+    else:
+        return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
 
 
 def status_smartstack_backends_verbose(service, instance, cluster, tasks):

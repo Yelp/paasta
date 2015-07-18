@@ -257,6 +257,63 @@ class TestPaastaServiceStatus:
             assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.DEFAULT), actual)
             assert re.search(r"%s[^\n]*hostname2:1002" % re.escape(PaastaColors.GREY), actual)
 
+    def test_status_smartstack_backends_verbose_emphasizes_maint_instances(self):
+        service = 'my_service'
+        instance = 'my_instance'
+        cluster = 'fake_cluster'
+
+        good_task = mock.Mock()
+        other_task = mock.Mock()
+        fake_backend = {'status': 'MAINT', 'lastchg': '1', 'last_chk': 'OK',
+                        'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+                        'check_status': 'L7OK', 'check_duration': 1}
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True),
+            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks', autospec=True),
+        ) as (
+            mock_read_namespace_for_service_instance,
+            mock_get_backends,
+            mock_match_backends_and_tasks,
+        ):
+            mock_read_namespace_for_service_instance.return_value = instance
+            mock_get_backends.return_value = [fake_backend]
+            mock_match_backends_and_tasks.return_value = [
+                (fake_backend, good_task),
+            ]
+            tasks = [good_task, other_task]
+            actual = paasta_serviceinit.status_smartstack_backends_verbose(service, instance, cluster, tasks)
+            assert PaastaColors.red('MAINT') in actual
+
+    def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unrelated_tasks(self):
+        service = 'my_service'
+        instance = 'my_instance'
+        cluster = 'fake_cluster'
+
+        good_task = mock.Mock()
+        other_task = mock.Mock()
+        fake_backend = {'status': 'MAINT', 'lastchg': '1', 'last_chk': 'OK',
+                        'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
+                        'check_status': 'L7OK', 'check_duration': 1}
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance', autospec=True),
+            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True),
+            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks', autospec=True),
+        ) as (
+            mock_read_namespace_for_service_instance,
+            mock_get_backends,
+            mock_match_backends_and_tasks,
+        ):
+            mock_read_namespace_for_service_instance.return_value = instance
+            mock_get_backends.return_value = [fake_backend]
+            mock_match_backends_and_tasks.return_value = [
+                (fake_backend, None),
+            ]
+            tasks = [good_task, other_task]
+            actual = paasta_serviceinit.status_smartstack_backends_verbose(service, instance, cluster, tasks)
+            assert PaastaColors.red('MAINT') not in actual
+            assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.GREY), actual)
+
     def test_status_smartstack_backends_different_nerve_ns(self):
         service = 'my_service'
         instance = 'my_instance'
