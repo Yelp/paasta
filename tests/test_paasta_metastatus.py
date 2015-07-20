@@ -86,7 +86,8 @@ def test_assert_no_duplicate_frameworks():
     }
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
 
-    expected_output = "\n".join(["frameworks:"] + map(lambda x: '  framework: %s count: 1' % x['name'], state['frameworks']))
+    expected_output = "\n".join(["frameworks:"] +
+                                map(lambda x: '  framework: %s count: 1' % x['name'], state['frameworks']))
     assert output == expected_output
     assert ok
 
