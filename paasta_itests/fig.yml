@@ -2,7 +2,6 @@ zookeeper:
   build: ../yelp_package/dockerfiles/itest/zookeeper/
   ports:
     - 2181
-
 mesosmaster:
   build: ../yelp_package/dockerfiles/itest/mesos/
   ports:
@@ -19,7 +18,7 @@ mesosslave:
     - zookeeper
   environment:
     -CLUSTER: testcluster
-  command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster'
+  command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512"'
 
 marathon:
   build: ../yelp_package/dockerfiles/itest/marathon/
@@ -30,8 +29,21 @@ marathon:
   environment:
     -CLUSTER: testcluster
   command: 'marathon --zk zk://zookeeper:2181/marathon --master zk://zookeeper:2181/mesos-testcluster'
-  # no logger option only applies to 0.8.2
-  # command: 'marathon --zk zk://zookeeper:2181/marathon --master zk://zookeeper:2181/mesos-testcluster --no-logger'
+
+paastatools:
+  build: ../yelp_package/dockerfiles/lucid/
+  links:
+    - marathon
+    - mesosmaster
+    - mesosslave
+    - zookeeper
+    - chronos
+  # environment:
+    # -CLUSTER: testcluster ???
+  # make --no-capture global ???
+  volumes:
+  - ../:/work:rw
+  command: 'tox -e marathon_integration_inside_container -- --no-capture'
 
 chronos:
   build: ../yelp_package/dockerfiles/itest/chronos/

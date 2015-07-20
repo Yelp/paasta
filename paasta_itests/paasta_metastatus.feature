@@ -1,0 +1,40 @@
+Feature: paasta_metastatus describes the state of the paasta cluster
+
+  #Scenario: Zookeeper unreachable
+    #Given a working paasta cluster
+    #When all zookeepers are unavailable
+    #Then metastatus returns 2
+
+  # paasta_metastatus defines 'high' memory usage as > 90% of the total cluster
+  # capacity. In fig.yml, we set memory at 512MB for the 1 mesos slave in use;
+  # this value was chosen as a tradeoff between reducing the requirements of
+  # the machine running the itests and providing enough resources for the tests
+  # to be performant. If you set it to a lower value, other tests seem to run
+  # slowly and often fail.
+  Scenario: High memory usage
+    Given a working paasta cluster
+    When an app with id "memtest" using high memory is launched
+    And a task belonging to the app with id "memtest" is in the task list
+    Then paasta_metastatus exits with return code "2" and output "CRITICAL: Less than 10% memory available."
+
+  # paasta_metastatus defines 'high' cpu usage as > 90% of the total cluster
+  # capactiy. in fig.yml, we set cpus at 10 for the 1 mesos slave in use;
+  # mainly this is just to use a round number. It's important to note that this
+  # is a *limit* on the number of cpus used. The app that is launched in this
+  # task is set to require 9 cpus, though again, it doesn't use this number,
+  # just asks that mesos allocates 9 cpus of it's capacity to this task. As a
+  # result, we have an easy way of simulating an app using 90% of the CPUs
+  # available to mesos, whilst still consuming minimal resources whilst running
+  # the test.
+  Scenario: High cpu usage
+    Given a working paasta cluster
+    When an app with id "cputest" using high cpu is launched
+    And a task belonging to the app with id "cputest" is in the task list
+    Then paasta_metastatus exits with return code "2" and output "CRITICAL: Less than 10% CPUs available."
+
+#  Scenario: Mesos master unreachable
+#    Given a working paasta cluster
+#    When all masters are unavailable
+#    Then metastatus returns 2
+
+# vim: set ts=2 sw=2

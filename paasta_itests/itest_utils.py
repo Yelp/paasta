@@ -7,8 +7,6 @@ import time
 from functools import wraps
 
 import requests
-from fig.cli import command
-
 
 class TimeoutError(Exception):
     pass
@@ -33,31 +31,17 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
     return decorator
 
 
-def print_container_logs(service_name):
-    print get_fig_service(service_name).get_container().logs()
-
-
-def get_fig_service(service_name):
-    """Returns a fig object for the service"""
-    cmd = command.Command()
-    project = cmd.get_project(cmd.get_config_path())
-    return project.get_service(service_name)
-
-
 def get_service_connection_string(service_name):
     """Given a container name this function returns
     the host and ephemeral port that you need to use to connect to. For example
     if you are spinning up a 'web' container that inside listens on 80, this
     function would return 0.0.0.0:23493 or whatever ephemeral forwarded port
     it has from fig"""
-    service_port = get_service_internal_port(service_name)
-    return get_fig_service(service_name).get_container().get_local_port(service_port)
-
-
-def get_service_internal_port(service_name):
-    """Gets the exposed port for service_name from fig.yml. If there are
-    multiple ports. It returns the first one."""
-    return get_fig_service(service_name).options['ports'][0]
+    service_name = service_name.upper()
+    raw_host_port = os.environ['%s_PORT' % service_name]
+    # Remove leading tcp:// or similar
+    host_port = raw_host_port.split("://")[1]
+    return host_port
 
 
 @timeout(30, error_message='Marathon service is not available. Cancelling integration tests')
