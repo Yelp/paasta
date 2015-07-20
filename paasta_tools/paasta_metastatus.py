@@ -82,7 +82,7 @@ def assert_tasks_running(metrics):
 
 
 def assert_no_duplicate_frameworks(state):
-    """A predicate which asserts that there are no duplicate frameworks running, where
+    """A function which asserts that there are no duplicate frameworks running, where
     frameworks are identified by their name.
 
     :param state: the state info from the Mesos master
@@ -190,6 +190,7 @@ def get_marathon_status(client):
         assert_marathon_deployments])
     return outputs, oks
 
+
 def get_marathon_client(marathon_config):
     """ Given a MarathonConfig object, return
     a client.
@@ -201,6 +202,7 @@ def get_marathon_client(marathon_config):
         marathon_config.get_username(),
         marathon_config.get_password()
     )
+
 
 def main():
     marathon_config = marathon_tools.load_marathon_config()
@@ -215,7 +217,8 @@ def main():
         sys.exit(2)
 
     def print_outputs(outputs):
-        print(("\n").join(map(lambda x: "  %s" % x, outputs)))
+        for output in outputs:
+            print "  %s" % output
 
     print("Mesos Status:")
     print_outputs(mesos_outputs)
