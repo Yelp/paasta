@@ -85,7 +85,10 @@ def test_assert_no_duplicate_frameworks():
         ]
     }
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
-    assert output == ''
+
+    expected_output = "\n".join(["frameworks:"] +
+                                map(lambda x: '  framework: %s count: 1' % x['name'], state['frameworks']))
+    assert output == expected_output
     assert ok
 
 
@@ -107,8 +110,8 @@ def test_duplicate_frameworks():
         ]
     }
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
-    assert PaastaColors.red("CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1."
-                            ) in output
+    assert PaastaColors.red("  CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1.") \
+        in output
     assert not ok
 
 
@@ -246,7 +249,8 @@ def test_get_mesos_status(
     expected_tasks_output = \
         "tasks: running: 3 staging: 4 starting: 0"
     expected_duplicate_frameworks_output = \
-        PaastaColors.red("CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1.")
+        "frameworks:\n%s" % \
+        PaastaColors.red("  CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1.")
     expected_slaves_output = \
         "slaves: active: 4 inactive: 0"
     expected_masters_quorum_output = \
@@ -292,8 +296,19 @@ def test_get_marathon_status(
     expected_deployment_output = "marathon deployments: 1"
     expected_tasks_output = "marathon tasks: 3"
 
-    output, oks = paasta_metastatus.get_marathon_status()
+    output, oks = paasta_metastatus.get_marathon_status(client)
 
     assert expected_apps_output in output
     assert expected_deployment_output in output
     assert expected_tasks_output in output
+
+
+def test_get_marathon_client():
+    fake_config = MarathonConfig({
+        'url': 'fakeurl',
+        'user': 'fakeuser',
+        'password': 'fakepass',
+    }, '/fake_config/fake_marathon.json')
+    client = paasta_metastatus.get_marathon_client(fake_config)
+    assert client.servers == ['fakeurl']
+    assert client.auth == ('fakeuser', 'fakepass')

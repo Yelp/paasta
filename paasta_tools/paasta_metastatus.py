@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import Counter
+from collections import Counter, OrderedDict
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import fetch_mesos_stats
 from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
@@ -8,6 +8,7 @@ from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import print_with_indent
 from paasta_tools.mesos_tools import MissingMasterException
 import sys
 
@@ -82,26 +83,31 @@ def assert_tasks_running(metrics):
 
 
 def assert_no_duplicate_frameworks(state):
-    """Takes in the current state of the Mesos master and pulls out the running frameworks.
-    Counts up the number of running instances of each framework and reports an error
-    if there are duplicate frameworks running.
-    param state: the state info from the Mesos master
-    returns: log messages and a not-ok status if duplicate running frameworks were found, else an ok status
+    """A function which asserts that there are no duplicate frameworks running, where
+    frameworks are identified by their name.
+
+    Note the extra spaces in the output strings: this is to account for the extra indentation
+    we add, so we can have:
+        frameworks:
+          framework: marathon count: 1
+
+    :param state: the state info from the Mesos master
+    :return a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
+    indicating if there are any duplicate frameworks.
     """
     frameworks = state['frameworks']
-    framework_counts = Counter()
-    output = []
+    framework_counts = OrderedDict(sorted(Counter([fw['name'] for fw in frameworks]).items()))
+    output = ["frameworks:"]
     ok = True
 
-    for fw in frameworks:
-        framework_counts[fw.get('name')] += 1
-
-    for fw in framework_counts:
-        if framework_counts[fw] > 1:
+    for framework, count in framework_counts.iteritems():
+        if count > 1:
             ok = False
             output.append(PaastaColors.red(
-                          "CRITICAL: Framework %s has %d instances running--expected no more than 1."
-                          % (fw, framework_counts[fw])))
+                          "    CRITICAL: Framework %s has %d instances running--expected no more than 1."
+                          % (framework, count)))
+        else:
+            output.append("    framework: %s count: %d" % (framework, count))
     return (("\n").join(output), ok)
 
 
@@ -181,15 +187,9 @@ def assert_marathon_deployments(client):
             True)
 
 
-def get_marathon_status():
+def get_marathon_status(client):
     """ Gathers information about marathon.
     :return: string containing the status.  """
-    marathon_config = marathon_tools.load_marathon_config()
-    client = marathon_tools.get_marathon_client(
-        marathon_config.get_url(),
-        marathon_config.get_username(),
-        marathon_config.get_password()
-    )
     outputs, oks = run_healthchecks_with_param(client, [
         assert_marathon_apps,
         assert_marathon_tasks,
@@ -197,10 +197,25 @@ def get_marathon_status():
     return outputs, oks
 
 
+def get_marathon_client(marathon_config):
+    """ Given a MarathonConfig object, return
+    a client.
+    :param marathon_config: a MarathonConfig object
+    :returns client: a marathon client
+    """
+    return marathon_tools.get_marathon_client(
+        marathon_config.get_url(),
+        marathon_config.get_username(),
+        marathon_config.get_password()
+    )
+
+
 def main():
+    marathon_config = marathon_tools.load_marathon_config()
+    marathon_client = get_marathon_client(marathon_config)
     try:
         mesos_outputs, mesos_oks = get_mesos_status()
-        marathon_outputs, marathon_oks = get_marathon_status()
+        marathon_outputs, marathon_oks = get_marathon_status(marathon_client)
     except MissingMasterException as e:
         # if we can't connect to master at all,
         # then bomb out early
@@ -208,9 +223,11 @@ def main():
         sys.exit(2)
 
     print("Mesos Status:")
-    print(("\n").join(map(lambda x: "  %s" % x, mesos_outputs)))
+    for line in mesos_outputs:
+        print_with_indent(line, 2)
     print("Marathon Status:")
-    print(("\n").join(map(lambda x: "  %s" % x, marathon_outputs)))
+    for line in marathon_outputs:
+        print_with_indent(line, 2)
 
     if False in mesos_oks or False in marathon_oks:
         sys.exit(2)
