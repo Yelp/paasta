@@ -20,7 +20,7 @@ humanize==0.5.1
 importlib==1.0.3
 isodate==0.5.0
 kazoo==2.0.post1
-marathon==0.6.15
+marathon==0.7.1-yelp1
 mesos.cli==0.1.3
 mesos.interface==0.20.1
 mrjob==0.4.4.post1
