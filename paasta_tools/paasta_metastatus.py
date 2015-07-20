@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-from collections import Counter
+from collections import Counter, OrderedDict
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import fetch_mesos_stats
 from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
@@ -90,7 +90,7 @@ def assert_no_duplicate_frameworks(state):
     indicating if there are any duplicate frameworks.
     """
     frameworks = state['frameworks']
-    framework_counts = Counter([fw['name'] for fw in frameworks])
+    framework_counts = OrderedDict(sorted(Counter([fw['name'] for fw in frameworks]).items()))
     output = ["frameworks:"]
     ok = True
 

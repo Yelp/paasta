@@ -86,9 +86,8 @@ def test_assert_no_duplicate_frameworks():
     }
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
 
-    # can't check the exact output because dicts are unordered
-    for framework in state['frameworks']:
-        assert 'framework: %s count: 1' % framework['name'] in output
+    expected_output = "\n".join(["frameworks:"] + map(lambda x: '  framework: %s count: 1' % x['name'], state['frameworks']))
+    assert output == expected_output
     assert ok
 
 
