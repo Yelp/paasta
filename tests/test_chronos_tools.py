@@ -32,6 +32,21 @@ class TestChronosTools:
         'schedule_time_zone': '',
     })
 
+    def test_load_chronos_job_config(self):
+        fake_service_name = 'test_service'
+        fake_cluster = 'penguin'
+        fake_soa_dir = '/tmp/'
+        expected_chronos_conf_file = 'chronos-penguin'
+        with contextlib.nested(
+            mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
+        ) as (
+            mock_read_extra_service_information,
+        ):
+            chronos_tools.load_chronos_job_config(fake_service_name, fake_cluster, fake_soa_dir)
+            mock_read_extra_service_information.assert_called_once_with(fake_service_name,
+                                                                        expected_chronos_conf_file,
+                                                                        soa_dir=fake_soa_dir)
+
     def test_get_name_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_name()
@@ -62,17 +77,6 @@ class TestChronosTools:
         expected = '/bin/sleep 40'
         assert actual == expected
 
-    def test_get_shell_default(self):
-        job_config = chronos_tools.ChronosJobConfig({})
-        actual = job_config.get_shell()
-        expected = chronos_tools.DEFAULT_SHELL
-        assert actual == expected
-
-    def test_get_shell_specified(self):
-        actual = self.fake_chronos_job_config.get_shell()
-        expected = 'false'
-        assert actual == expected
-
     def test_get_epsilon_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_epsilon()
@@ -88,33 +92,6 @@ class TestChronosTools:
         job_config = chronos_tools.ChronosJobConfig({'epsilon': 'this is not valid'})
         with raises(isodate.ISO8601Error):
             job_config.get_epsilon()
-
-    def test_get_executor_default(self):
-        job_config = chronos_tools.ChronosJobConfig({})
-        actual = job_config.get_executor()
-        expected = chronos_tools.DEFAULT_EXECUTOR
-        assert actual == expected
-
-    def test_get_executor_specified(self):
-        actual = self.fake_chronos_job_config.get_executor()
-        expected = 'test-executor'
-        assert actual == expected
-
-    # def mock_get_docker_url_for_image(docker_image):
-    #     return 'test-repository/%s' % docker_image
-
-    # @patch('paasta_tools.chronos_tools.get_docker_url_for_image', mock_get_docker_url_for_image)
-    # def test_get_executor_flags(self):
-    #     job_config = {
-    #         'docker_image': 'test_docker_image',
-    #         'docker_volumes': ['option_1', 'option_2'],
-    #     }
-    #     expected = json.dumps({'container': {
-    #         'image': 'test-repository/test_docker_image',
-    #         'options': ['option_1', 'option_2'],
-    #     }})
-    #     actual = self.fake_chronos_job_config.get_executor_flags()
-    #     assert actual == expected
 
     def test_get_retries_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
@@ -146,11 +123,6 @@ class TestChronosTools:
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_async()
         expected = chronos_tools.DEFAULT_ASYNC
-        assert actual == expected
-
-    def test_get_async_specified(self):
-        actual = self.fake_chronos_job_config.get_async()
-        expected = 'true'
         assert actual == expected
 
     def test_get_cpus_default(self):
@@ -212,15 +184,6 @@ class TestChronosTools:
         expected = 'true'
         assert actual == expected
 
-    # @patch('paasta_tools.chronos_tools.get_docker_url_for_image', mock_get_docker_url_for_image)
-    # def test_uris(self):
-    #     job_config = {
-    #         'docker_image': 'test_docker_image',
-    #     }
-    #     expected = ['test-repository/test_docker_image']
-    #     actual = self.fake_chronos_job_config.get_uris()
-    #     assert actual == expected
-
     def test_get_schedule_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_schedule()
@@ -245,48 +208,22 @@ class TestChronosTools:
         with raises(chronos_tools.InvalidChronosConfig):
             job_config.check_scheduled_job_reqs()
 
-    # @patch('paasta_tools.chronos_tools.get_docker_url_for_image', mock_get_docker_url_for_image)
-    # def test_parse_(self):
-    #     job_config = {
-    #         'name': 'my_test_job',
-    #         'command': '/bin/true',
-    #         'failure_contact_email': 'developer@example.com',
-    #         'schedule': 'R1Y',
-    #         'docker_image': 'test_image',
-    #     }
-    #
-    #     actual = self.fake_chronos_job_config.parse_job_config(job_config)
-    #     expected = {
-    #         'async': False,
-    #         'command': '/bin/true',
-    #         'cpus': 0.1,
-    #         'disabled': False,
-    #         'disk': 100,
-    #         'epsilon': 'PT60S',
-    #         'executor': '',
-    #         'executorFlags': '{"container": {"image": "test-repository/test_image", "options": []}}',
-    #         'mem': 100,
-    #         'name': 'my_test_job',
-    #         'owner': 'developer@example.com',
-    #         'retries': 2,
-    #         'schedule': 'R1Y',
-    #         'uris': ['test-repository/test_image'],
-    #     }
-    #     assert sorted(actual) == sorted(expected)
-
     def test_format_chronos_job_dict(self):
         fake_service_name = 'test_service'
+        fake_description = 'this service is just a test'
         fake_command = 'echo foo >> /tmp/test_service_log'
         fake_schedule = 'R10/2012-10-01T05:52:00Z/PT1M'
         fake_owner = 'bob@example.com'
         actual = chronos_tools.ChronosJobConfig({
             'name': fake_service_name,
+            'description': fake_description,
             'command': fake_command,
             'schedule': fake_schedule,
             'owner': fake_owner,
         })
         expected = chronos_tools.ChronosJobConfig({
             'name': fake_service_name,
+            'description': fake_description,
             'command': fake_command,
             'schedule': fake_schedule,
             'epsilon': chronos_tools.DEFAULT_EPSILON,
