@@ -362,24 +362,23 @@ def test_remove_ansi_escape_sequences():
     assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
 
 
-@mock.patch('os.listdir', autospec=True)
-def test_list_all_clusters(mock_os_listdir):
-    mock_os_listdir.return_value = ['cluster1.yaml', 'cluster2.yaml']
+@mock.patch('glob.glob', autospec=True)
+def test_list_all_clusters(mock_glob):
+    mock_glob.return_value = ['/nail/etc/services/service1/marathon-cluster1.yaml',
+                              '/nail/etc/services/service2/chronos-cluster2.yaml']
     expected = set(['cluster1', 'cluster2'])
     actual = utils.list_all_clusters()
     assert actual == expected
 
 
-@mock.patch('paasta_tools.utils.parse_yaml_file', autospec=True)
-def test_get_infrastructure_zookeeper_servers(mock_parse_yaml_file):
-    mock_parse_yaml_file.return_value = [
-        ['1.2.3.4', 22181],
-        ['5.6.7.8', 22181],
-    ]
-    actual = utils.get_infrastructure_zookeeper_servers('test-cluster')
-    expected = ['1.2.3.4', '5.6.7.8']
+@mock.patch('glob.glob', autospec=True)
+def test_list_all_clusters_ignores_bogus_files(mock_glob):
+    mock_glob.return_value = ['/nail/etc/services/service1/marathon-clustera.yaml',
+                              '/nail/etc/services/service2/chronos-SHARED.yaml',
+                              '/nail/etc/services/service2/marathon-DEVSTAGE.yaml']
+    expected = set(['clustera'])
+    actual = utils.list_all_clusters()
     assert actual == expected
-    mock_parse_yaml_file.assert_called_once_with('/nail/etc/zookeeper_discovery/infrastructure/test-cluster.yaml')
 
 
 def test_color_text():

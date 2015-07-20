@@ -6,6 +6,7 @@ from subprocess import STDOUT
 import contextlib
 import datetime
 import errno
+import glob
 import logging
 import os
 import pwd
@@ -20,7 +21,9 @@ import clog
 import dateutil.tz
 import docker
 import json
+import service_configuration_lib
 import yaml
+
 
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
@@ -516,26 +519,20 @@ def get_username():
     return pwd.getpwuid(os.getuid())[0]
 
 
-def list_all_clusters(zk_discovery_path=INFRA_ZK_PATH):
-    """Returns a set of all infrastructure zookeeper clusters.
-    This makes the assumption that paasta clusters and zookeeper
-    clusters are the same"""
+def list_all_clusters(soadir=service_configuration_lib.DEFAULT_SOA_DIR):
+    """Returns a set of all clusters. Includes every cluster that has
+    a marathon or chronos file associated with it.
+    """
     clusters = set()
-    for yaml_file in os.listdir(zk_discovery_path):
-        clusters.add(yaml_file.split('.')[0])
+    for yaml_file in glob.glob('%s/*/*.yaml' % soadir):
+        cluster_re_match = re.search('/.*/(marathon|chronos)-([0-9a-z-]*).yaml$', yaml_file)
+        if cluster_re_match is not None:
+            clusters.add(cluster_re_match.group(2))
     return clusters
 
 
 def parse_yaml_file(yaml_file):
     return yaml.load(open(yaml_file))
-
-
-def get_infrastructure_zookeeper_servers(cluster, zk_discovery_path=INFRA_ZK_PATH):
-    """Reads a yelp zookeeper toplogy file for a given cluster and returns
-    a list of the zookeeper server ips"""
-    yaml_file = os.path.join(zk_discovery_path, "%s%s" % (cluster, '.yaml'))
-    cluster_topology = parse_yaml_file(yaml_file)
-    return [host_port[0] for host_port in cluster_topology]
 
 
 def get_docker_host():
