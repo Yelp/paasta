@@ -12,8 +12,10 @@ import re
 import requests
 import socket
 import glob
+from time import sleep
 
 from marathon import MarathonClient
+from marathon import NotFoundError
 import json
 import service_configuration_lib
 
@@ -23,6 +25,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoMarathonClusterFoundException
 from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+from paasta_tools.utils import timeout
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -957,6 +960,49 @@ def is_app_id_running(app_id, client):
 
     all_app_ids = list_all_marathon_app_ids(client)
     return app_id in all_app_ids
+
+
+def app_has_tasks(client, app_id, expected_tasks):
+    """ A predicate function indicating whether an app has launched *at least* expected_tasks
+    tasks.
+
+    Raises a marathon.NotFoundError when no app with matching id is found.
+
+    :param client: the marathon client
+    :param app_id: the app_id to which the tasks should belong
+    :param minimum_tasks: the minimum number of tasks to check for
+    :returns a boolean indicating whether there are atleast expected_tasks tasks with
+    an app id matching app_id:
+    """
+    try:
+        tasks = client.list_tasks(app_id=app_id)
+    except NotFoundError:
+        print "no app with id %s found" % app_id
+        raise
+    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks)
+    return len(tasks) >= expected_tasks
+
+
+@timeout()
+def wait_for_app_to_launch_tasks(client, app_id, expected_tasks):
+    """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
+        and retry. Times out after 30 seconds.
+
+       :param client: The marathon client
+       :param app_id: The app id to which the tasks belong
+       :param num_tasks: The number of tasks to wait for
+    """
+    found = False
+    while not found:
+        try:
+            found = app_has_tasks(client, app_id, expected_tasks)
+        except NotFoundError:
+            pass
+        if found:
+            return
+        else:
+            print "waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks)
+            sleep(0.5)
 
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
