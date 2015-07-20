@@ -7,16 +7,16 @@ DOCKER_JOB_REQS = ['name', 'command', 'container', 'epsilon', 'owner', 'async']
 
 # Default values for options if they aren't specified in the config, per the Chronos API docs:
 # https://github.com/mesos/chronos/blob/master/docs/docs/api.md
-DEFAULT_SHELL = True
+DEFAULT_SHELL = 'true'  # this is a boolean value, not a shell name like /bin/true or /bin/sh
 DEFAULT_EPSILON = 'PT60S'  # if the job can't be run at its scheduled time, retry within 60 seconds
 DEFAULT_EXECUTOR = ''
 DEFAULT_RETRIES = 2
-DEFAULT_ASYNC = False
+DEFAULT_ASYNC = 'false'
 DEFAULT_CPUS = 0.1
 DEFAULT_MEM = 128
 DEFAULT_DISK = 256
-DEFAULT_DISABLED = False
-DEFAULT_DATAJOB = False
+DEFAULT_DISABLED = 'false'
+DEFAULT_DATAJOB = 'false'
 
 
 class InvalidChronosConfig(Exception):
@@ -57,7 +57,8 @@ class ChronosJobConfig(dict):
 
     def get_epsilon(self):
         epsilon = self.get('epsilon', DEFAULT_EPSILON)
-        isodate.parse_duration(epsilon)  # throws isodate.ISO8601Error << TODO then we should deal with it
+        isodate.parse_duration(epsilon)  # throws isodate.ISO8601Error
+        # TODO might want to wrap the isodate call in try/except to provide more helpful info if format except thrown
         return epsilon
 
     def get_executor(self):
@@ -77,16 +78,15 @@ class ChronosJobConfig(dict):
         return int(self.get('retries', DEFAULT_RETRIES))
 
     def get_owner(self):
-        return self.get('failure_contact_email', None)
-
-    def get_owner_name(self):  # TODO is this necessary and what is it named in the REST API?
         return self.get('owner', None)
+
+    # def get_owner_name(self):  # TODO is this necessary and what is it named in the REST API?
+    #     return self.get('owner', None)
 
     def get_async(self):
         """Async Chronos jobs seem like the sort of thing that we should
         explore and have a framework for before we allow them"""
-        # return self.get('async', DEFAULT_ASYNC)
-        return False  # TODO do we want to support async Chronos jobs?
+        return self.get('async', DEFAULT_ASYNC)  # TODO do we want to support async Chronos jobs?
 
     def get_cpus(self):
         """Python likes to output floats with as much precision as possible.
@@ -95,10 +95,10 @@ class ChronosJobConfig(dict):
         return float(self.get('cpus', DEFAULT_CPUS))
 
     def get_mem(self):
-        return int(self.get('mem', DEFAULT_MEM))
+        return float(self.get('mem', DEFAULT_MEM))
 
     def get_disk(self):
-        return int(self.get('disk', DEFAULT_DISK))
+        return float(self.get('disk', DEFAULT_DISK))
 
     def get_disabled(self):
         return self.get('disabled', DEFAULT_DISABLED)
@@ -121,9 +121,9 @@ class ChronosJobConfig(dict):
     def get_schedule(self):
         schedule = self.get('schedule', None)
         if schedule is not None:
-            repeat, start_time, interval = str.split(schedule, '/')  # separate the parts isodate can and can't validate
-            isodate.parse_datetime(start_time)  # we don't need to parse into a different format, this is just validation
-            # TODO check that it won't be an issue that isodate can return either a datetime.timedelta or Duration object
+            repeat, start_time, interval = str.split(schedule, '/')  # separate the parts isodate can/can't validate
+            isodate.parse_datetime(start_time)  # we don't need the time in a different format, this is just validation
+            # TODO check that it won't be an issue that isodate can return either a datetime.timedelta or Duration
             isodate.parse_duration(interval)  # 'interval' and 'duration' are interchangeable terms
             # TODO: should we catch ISO8601Error exceptions and print some additional debug info
             # or fallback to the built-in message?
@@ -133,15 +133,15 @@ class ChronosJobConfig(dict):
         else:
             return None
 
-    def get_schedule_time_zone(self):
-        time_zone = self.get('schedule_time_zone', None)
-        if time_zone is not None:
-            time_zone = isodate.parse_tzinfo(time_zone)
-            # TODO we should use pytz for best possible tz info and validation
-            # TODO if tz specified in start_time, compare to the schedule_time_zone and warn if they differ
-            # TODO if tz not specified in start_time, set it to time_zone
-        else:
-            return None
+    # def get_schedule_time_zone(self):
+    #     time_zone = self.get('schedule_time_zone', None)
+    #     if time_zone is not None:
+    #         time_zone = isodate.parse_tzinfo(time_zone)
+    #         # TODO we should use pytz for best possible tz info and validation
+    #         # TODO if tz specified in start_time, compare to the schedule_time_zone and warn if they differ
+    #         # TODO if tz not specified in start_time, set it to time_zone
+    #     else:
+    #         return None
 
     # TODO implement these later, just support basic scheduled task configs for now
     # def get_args(self):
@@ -153,21 +153,21 @@ class ChronosJobConfig(dict):
     # def get_constraints(self):
 
     def check_scheduled_job_reqs(self):
-        # TODO add scheduleTimeZone
+        # TODO add schedule_time_zone
         for param in SCHEDULED_JOB_REQS:
             if self[param] is None:
                 raise InvalidChronosConfig('Your Chronos config is missing \'%s\', \
                                            a required parameter for a scheduled job.' % param)
 
     def check_dependent_job_reqs(self):
-        # TODO add scheduleTimeZone
+        # TODO add schedule_time_zone
         for param in DEPENDENT_JOB_REQS:
             if self[param] is None:
                 raise InvalidChronosConfig('Your Chronos config is missing \'%s\', \
                                            a required parameter for a dependent job.' % param)
 
     def check_docker_job_reqs(self):
-        # TODO add scheduleTimeZone
+        # TODO add schedule_time_zone
         for param in DOCKER_JOB_REQS:
             if self[param] is None:
                 raise InvalidChronosConfig('Your Chronos config is missing \'%s\', \
@@ -177,26 +177,23 @@ class ChronosJobConfig(dict):
         elif self['schedule'] is not None and self['parents'] is not None:
             raise InvalidChronosConfig('Your Chronos config contains both schedule and parents. Only one is allowed.')
 
-    # scheduled job required params: name, command, schedule, scheduleTimeZone (if not in schedule), epsilon, owner, async
-    # dependent job required params: same as 'scheduled job' except req dependencies, NO SCHEDULE
-    # Docker job    required params: same as 'scheduled job' except req either dependencies OR schedule
+    # scheduled job req'd params: name, command, schedule, scheduleTimeZone (if not in schedule), epsilon, owner, async
+    # dependent job req'd params: same as 'scheduled job' except it requires dependencies, NO SCHEDULE
+    # Docker job    req'd params: same as 'scheduled job' except it requires either dependencies OR schedule
     def format_chronos_job_dict(self):
-        config = {
-            'name': get_name(self),
-            'command': get_command(self),
-            'epsilon': get_epsilon(self),
-            # 'executor': get_executor(self),
-            # 'executorFlags': get_executor_flags(self),
-            'retries': get_retries(self),
-            'owner': get_owner(self),
-            'async': get_async(self),
-            'cpus': get_cpus(self),
-            'mem': get_mem(self),
-            'disk': get_disk(self),
-            'disabled': get_disabled(self),
-            # 'uris': get_uris(self),
-            'schedule': get_schedule(self),
-        }
+        self['name'] = self.get_name()
+        self['command'] = self.get_command()
+        self['epsilon'] = self.get_epsilon()
+        # self['executor'] = self.get_executor()
+        # self['executor_flags'] = self.get_executor_flags()
+        self['retries'] = self.get_retries()
+        self['owner'] = self.get_owner()
+        self['async'] = self.get_async()
+        self['cpus'] = self.get_cpus()
+        self['mem'] = self.get_mem()
+        self['disk'] = self.get_disk()
+        self['disabled'] = self.get_disabled()
+        # self['uris'] = self.get_uris()
+        self['schedule'] = self.get_schedule()
 
-        check_scheduled_job_reqs(config)  # TODO better to have this here or in the constructor?
-        return ChronosJobConfig(config)
+        self.check_scheduled_job_reqs()  # TODO better to have this here or in the constructor?
