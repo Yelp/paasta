@@ -6,7 +6,7 @@ Feature: paasta_metastatus describes the state of the paasta cluster
     #Then metastatus returns 2
 
   # paasta_metastatus defines 'high' memory usage as > 90% of the total cluster
-  # capacity. In fig.yml, we set memory at 512MB for the 1 mesos slave in use;
+  # capacity. In docker-compose.yml, we set memory at 512MB for the 1 mesos slave in use;
   # this value was chosen as a tradeoff between reducing the requirements of
   # the machine running the itests and providing enough resources for the tests
   # to be performant. If you set it to a lower value, other tests seem to run
@@ -18,7 +18,7 @@ Feature: paasta_metastatus describes the state of the paasta cluster
     Then paasta_metastatus exits with return code "2" and output "CRITICAL: Less than 10% memory available."
 
   # paasta_metastatus defines 'high' cpu usage as > 90% of the total cluster
-  # capactiy. in fig.yml, we set cpus at 10 for the 1 mesos slave in use;
+  # capactiy. in docker-compose.yml, we set cpus at 10 for the 1 mesos slave in use;
   # mainly this is just to use a round number. It's important to note that this
   # is a *limit* on the number of cpus used. The app that is launched in this
   # task is set to require 9 cpus, though again, it doesn't use this number,

@@ -26,7 +26,7 @@ changes. This usually drives the orchestration sequence as follows:
 #. Run the integration tests to ensure the new client works with the existing
    marathon container.
 
-   #. Verify the marathon container version in the fig.yml used by the integration tests.
+   #. Verify the marathon container version in the docker-compose.yml used by the integration tests.
    #. Run the tests (``tox -e marathon_integration``).
 
 #. If passing, deploy the new version of paasta_tools with the new client library.

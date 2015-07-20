@@ -36,7 +36,7 @@ def get_service_connection_string(service_name):
     the host and ephemeral port that you need to use to connect to. For example
     if you are spinning up a 'web' container that inside listens on 80, this
     function would return 0.0.0.0:23493 or whatever ephemeral forwarded port
-    it has from fig"""
+    it has from docker-compose"""
     service_name = service_name.upper()
     raw_host_port = os.environ['%s_PORT' % service_name]
     # Remove leading tcp:// or similar
