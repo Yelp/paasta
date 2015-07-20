@@ -87,7 +87,7 @@ def test_assert_no_duplicate_frameworks():
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
 
     expected_output = "\n".join(["frameworks:"] +
-                                map(lambda x: '  framework: %s count: 1' % x['name'], state['frameworks']))
+                                map(lambda x: '    framework: %s count: 1' % x['name'], state['frameworks']))
     assert output == expected_output
     assert ok
 
@@ -110,7 +110,7 @@ def test_duplicate_frameworks():
         ]
     }
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
-    assert PaastaColors.red("  CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1.") \
+    assert PaastaColors.red("    CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1.") \
         in output
     assert not ok
 
@@ -250,7 +250,7 @@ def test_get_mesos_status(
         "tasks: running: 3 staging: 4 starting: 0"
     expected_duplicate_frameworks_output = \
         "frameworks:\n%s" % \
-        PaastaColors.red("  CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1.")
+        PaastaColors.red("    CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1.")
     expected_slaves_output = \
         "slaves: active: 4 inactive: 0"
     expected_masters_quorum_output = \
