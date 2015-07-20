@@ -9,7 +9,7 @@ blessings==1.5.1
 boto==2.34.0
 chronos-python==0.32.1-yelp1
 dateglob==0.1
-docker-py==1.2.2
+docker-py==1.2.3
 dulwich==0.10.0
 filechunkio==1.5
 future==0.14.3
