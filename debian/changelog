@@ -1,3 +1,11 @@
+paasta-tools (0.12.24-yelp1) lucid; urgency=low
+
+  * 0.12.24 tagged with 'make release'
+    Commit: Bump to latest version of marathon python bindings for
+    PAASTA-707
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 20 Jul 2015 12:57:51 -0700
+
 paasta-tools (0.12.23-yelp1) lucid; urgency=low
 
   * 0.12.23 tagged with 'make release'
