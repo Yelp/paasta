@@ -86,6 +86,11 @@ def assert_no_duplicate_frameworks(state):
     """A function which asserts that there are no duplicate frameworks running, where
     frameworks are identified by their name.
 
+    Note the extra spaces in the output strings: this is to account for the extra indentation
+    we add, so we can have:
+        frameworks:
+          framework: marathon count: 1
+
     :param state: the state info from the Mesos master
     :return a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
     indicating if there are any duplicate frameworks.
@@ -99,10 +104,10 @@ def assert_no_duplicate_frameworks(state):
         if count > 1:
             ok = False
             output.append(PaastaColors.red(
-                          "  CRITICAL: Framework %s has %d instances running--expected no more than 1."
+                          "    CRITICAL: Framework %s has %d instances running--expected no more than 1."
                           % (framework, count)))
         else:
-            output.append("  framework: %s count: %d" % (framework, count))
+            output.append("    framework: %s count: %d" % (framework, count))
     return (("\n").join(output), ok)
 
 
@@ -218,9 +223,11 @@ def main():
         sys.exit(2)
 
     print("Mesos Status:")
-    print_with_indent(mesos_outputs, 2)
+    for line in mesos_outputs:
+        print_with_indent(line, 2)
     print("Marathon Status:")
-    print_with_indent(marathon_outputs, 2)
+    for line in marathon_outputs:
+        print_with_indent(line, 2)
 
     if False in mesos_oks or False in marathon_oks:
         sys.exit(2)

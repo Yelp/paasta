@@ -567,4 +567,4 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
 
 def print_with_indent(line, indent=2):
     """ Print a line with a given indent level """
-    print  (" "*indent + line)
+    print(" "*indent + line)
