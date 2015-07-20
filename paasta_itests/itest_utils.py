@@ -2,7 +2,6 @@ import json
 import errno
 import os
 import signal
-import sys
 import time
 from functools import wraps
 
