@@ -8,6 +8,7 @@ from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import print_with_indent
 from paasta_tools.mesos_tools import MissingMasterException
 import sys
 
@@ -216,14 +217,10 @@ def main():
         print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
 
-    def print_outputs(outputs):
-        for output in outputs:
-            print "  %s" % output
-
     print("Mesos Status:")
-    print_outputs(mesos_outputs)
+    print_with_indent(mesos_outputs, 2)
     print("Marathon Status:")
-    print_outputs(marathon_outputs)
+    print_with_indent(marathon_outputs, 2)
 
     if False in mesos_oks or False in marathon_oks:
         sys.exit(2)
