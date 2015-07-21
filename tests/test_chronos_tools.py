@@ -6,6 +6,7 @@ import contextlib
 import chronos_tools
 
 
+
 def test_chronos_config_object_normal():
     fake_json_contents = {
         'user': 'fake_user',
@@ -63,14 +64,12 @@ def test_load_chronos_config_bad():
 
 def test_get_chronos_client():
     with contextlib.nested(
-        mock.patch('chronos_tools.load_chronos_config', autospec=True),
         mock.patch('chronos.connect', autospec=True),
     ) as (
-        mock_load_chronos_config,
         mock_connect,
     ):
-        chronos_tools.get_chronos_client()
-        assert mock_load_chronos_config.call_count == 1
+        fake_config = chronos_tools.ChronosConfig({'user': 'test', 'password': 'pass'}, '/fake/path')
+        chronos_tools.get_chronos_client(fake_config)
         assert mock_connect.call_count == 1
 
 
