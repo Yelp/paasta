@@ -6,7 +6,6 @@ import contextlib
 import chronos_tools
 
 
-
 def test_chronos_config_object_normal():
     fake_json_contents = {
         'user': 'fake_user',

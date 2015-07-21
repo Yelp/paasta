@@ -314,9 +314,10 @@ def test_get_marathon_client():
     assert client.servers == ['fakeurl']
     assert client.auth == ('fakeuser', 'fakepass')
 
+
 def test_assert_chronos_scheduled_jobs():
     mock_client = ChronosClient(hostname="fake_hostname")
-    mock_client.list = lambda : []
+    mock_client.list = lambda: []
     output, ok = paasta_metastatus.assert_chronos_scheduled_jobs(mock_client)
     assert output == 'chronos jobs: 0'
     assert ok

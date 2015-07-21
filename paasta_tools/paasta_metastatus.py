@@ -197,9 +197,11 @@ def get_marathon_status(client):
         assert_marathon_deployments])
     return outputs, oks
 
+
 def assert_chronos_scheduled_jobs(client):
     num_deployments = len(client.list())
     return ("chronos jobs: %d" % num_deployments, True)
+
 
 def get_chronos_status(chronos_client):
     """ Gather information about chronos.
@@ -209,6 +211,7 @@ def get_chronos_status(chronos_client):
         assert_chronos_scheduled_jobs,
     ])
     return outputs, oks
+
 
 def get_marathon_client(marathon_config):
     """ Given a MarathonConfig object, return
