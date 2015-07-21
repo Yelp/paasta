@@ -1,17 +1,21 @@
-#!/usskr/bin/env python
+#!/usr/bin/env python
 """PaaSTA log reader for humans"""
 import argparse
 import datetime
+import dateutil
 import json
 import logging
 from multiprocessing import Process
 from multiprocessing import Queue
 from Queue import Empty
+import re
 import sys
 
+import isodate
 from scribereader import scribereader
 from scribereader.scribereader import StreamTailerSetupError
 
+from paasta_tools.marathon_tools import compose_job_id
 from paasta_tools.marathon_tools import get_clusters_deployed_to
 from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
@@ -19,8 +23,10 @@ from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import ANY_CLUSTER
+from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
+from paasta_tools.utils import format_log_line
 from paasta_tools.utils import LOG_COMPONENTS
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
@@ -132,7 +138,7 @@ def cluster_to_scribe_env(cluster):
         return env
 
 
-def line_passes_filter(line, levels, components, clusters):
+def paasta_log_line_passes_filter(line, levels, service, components, clusters):
     """Given a (JSON-formatted) log line, return True if the line should be
     displayed given the provided levels, components, and clusters; return False
     otherwise.
@@ -152,7 +158,42 @@ def line_passes_filter(line, levels, components, clusters):
     )
 
 
-def scribe_tail(scribe_env, service, levels, components, clusters, queue):
+def parse_marathon_log_line(line, clusters):
+    # Extract ISO 8601 date per http://www.pelagodesign.com/blog/2009/05/20/iso-8601-date-validation-that-doesnt-suck/
+    iso_re = r'^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|' \
+        r'(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+' \
+        r'(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)? '
+
+    tokens = re.match(iso_re, line)
+    if not tokens:
+        # Could not parse line
+        return ''
+    timestamp = tokens.group(0).strip()
+    dt = isodate.parse_datetime(timestamp)
+    utc_timestamp = datetime_convert_timezone(dt, dt.tzinfo, dateutil.tz.tzutc())
+    return format_log_line(
+        level='event',
+        cluster=clusters[0],
+        instance='ALL',
+        component='marathon',
+        line=line.strip(),
+        timestamp=utc_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f"),
+    )
+
+
+def marathon_log_line_passes_filter(line, levels, service, components, clusters):
+    """Given a (JSON-formatted) log line where the message is a Marathon log line,
+    return True if the line should be displayed given the provided service; return False
+    otherwise."""
+    try:
+        parsed_line = json.loads(line)
+    except ValueError:
+        log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
+        return False
+    return compose_job_id(service, '') in parsed_line.get('message', '')
+
+
+def scribe_tail(scribe_env, stream_name, service, levels, components, clusters, queue, filter_fn, parse_fn=None):
     """Creates a scribetailer for a particular environment.
 
     When it encounters a line that it should report, it sticks it into the
@@ -161,14 +202,15 @@ def scribe_tail(scribe_env, service, levels, components, clusters, queue):
     This code is designed to run in a thread as spawned by tail_paasta_logs().
     """
     try:
-        log.debug("Going to tail scribe in %s" % scribe_env)
-        stream_name = get_log_name_for_service(service)
+        log.debug("Going to tail %s scribe stream in %s" % (stream_name, scribe_env))
         host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
         host = host_and_port['host']
         port = host_and_port['port']
         tailer = scribereader.get_stream_tailer(stream_name, host, port)
         for line in tailer:
-            if line_passes_filter(line, levels, components, clusters):
+            if parse_fn:
+                line = parse_fn(line, clusters)
+            if filter_fn(line, levels, service, components, clusters):
                 queue.put(line)
     except KeyboardInterrupt:
         # Die peacefully rather than printing N threads worth of stack
@@ -285,19 +327,40 @@ def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
     queue = Queue()
     spawned_processes = []
     for scribe_env in scribe_envs:
-        # Start a thread that tails scribe in this env
-        kw = {
-            'scribe_env': scribe_env,
-            'service': service,
-            'levels': levels,
-            'components': components,
-            'clusters': clusters,
-            'queue': queue,
-        }
-        process = Process(target=scribe_tail, kwargs=kw)
-        spawned_processes.append(process)
-        process.start()
+        # Tail stream_paasta_<service_name> for build or deploy components
+        if any([component in components for component in DEFAULT_COMPONENTS]):
+            # Start a thread that tails scribe in this env
+            kw = {
+                'scribe_env': scribe_env,
+                'stream_name': get_log_name_for_service(service),
+                'service': service,
+                'levels': levels,
+                'components': components,
+                'clusters': clusters,
+                'queue': queue,
+                'filter_fn': paasta_log_line_passes_filter,
+            }
+            process = Process(target=scribe_tail, kwargs=kw)
+            spawned_processes.append(process)
+            process.start()
 
+        # Tail Marathon logs for the relevant clusters for this service
+        if 'marathon' in components:
+            for cluster in clusters:
+                kw = {
+                    'scribe_env': scribe_env,
+                    'stream_name': 'tmp_marathon_%s' % cluster,
+                    'service': service,
+                    'levels': levels,
+                    'components': components,
+                    'clusters': [cluster],
+                    'queue': queue,
+                    'parse_fn': parse_marathon_log_line,
+                    'filter_fn': marathon_log_line_passes_filter,
+                }
+                process = Process(target=scribe_tail, kwargs=kw)
+                spawned_processes.append(process)
+                process.start()
     # Pull things off the queue and output them. If any thread dies we are no
     # longer presenting the user with the full picture so we quit.
     #

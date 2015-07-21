@@ -149,6 +149,11 @@ LOG_COMPONENTS = {
         'help': 'Logs from Sensu checks for the service',
         'command': 'NA - TODO log mesos healthcheck and sensu stuff.',
     },
+    'marathon': {
+        'color': PaastaColors.magenta,
+        'help': 'Logs from Marathon for the service',
+        'command': 'NA - TODO log marathon stuff.',
+    },
     # I'm leaving these planned components here since they provide some hints
     # about where we want to go. See PAASTA-78.
     #
@@ -223,17 +228,18 @@ def remove_ansi_escape_sequences(line):
     return no_escape.sub('', line)
 
 
-def format_log_line(level, cluster, instance, component, line):
+def format_log_line(level, cluster, instance, component, line, timestamp=None):
     """Accepts a string 'line'.
 
     Returns an appropriately-formatted dictionary which can be serialized to
     JSON for logging and which contains 'line'.
     """
     validate_log_component(component)
-    now = _now()
+    if not timestamp:
+        timestamp = _now()
     line = remove_ansi_escape_sequences(line)
     message = json.dumps({
-        'timestamp': now,
+        'timestamp': timestamp,
         'level': level,
         'cluster': cluster,
         'instance': instance,
@@ -502,14 +508,14 @@ def check_docker_image(service_name, tag):
 
 
 def datetime_from_utc_to_local(utc_datetime):
-    local_tz = dateutil.tz.tzlocal()
-    # We make out datetime timezone aware
-    utc_datetime = utc_datetime.replace(tzinfo=dateutil.tz.tzutc())
-    # We convert to the local timezone
-    local_datetime = utc_datetime.astimezone(local_tz)
-    # We need to remove timezone awareness because of humanize
-    local_datetime = local_datetime.replace(tzinfo=None)
-    return local_datetime
+    return datetime_convert_timezone(utc_datetime, dateutil.tz.tzutc(), dateutil.tz.tzlocal())
+
+
+def datetime_convert_timezone(datetime, from_zone, to_zone):
+    datetime = datetime.replace(tzinfo=from_zone)
+    converted_datetime = datetime.astimezone(to_zone)
+    converted_datetime = converted_datetime.replace(tzinfo=None)
+    return converted_datetime
 
 
 def get_username():
@@ -564,4 +570,4 @@ def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
 
 def print_with_indent(line, indent=2):
     """ Print a line with a given indent level """
-    print(" "*indent + line)
+    print(" " * indent + line)
