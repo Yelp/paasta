@@ -2,6 +2,7 @@
 
 from collections import Counter, OrderedDict
 from paasta_tools import marathon_tools
+from paasta_tools.chronos_tools import get_chronos_client, load_chronos_config
 from paasta_tools.mesos_tools import fetch_mesos_stats
 from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_quorum
@@ -225,9 +226,13 @@ def get_marathon_client(marathon_config):
 def main():
     marathon_config = marathon_tools.load_marathon_config()
     marathon_client = get_marathon_client(marathon_config)
+    chronos_config = load_chronos_config()
+    chronos_client = get_chronos_client(chronos_config)
     try:
         mesos_outputs, mesos_oks = get_mesos_status()
         marathon_outputs, marathon_oks = get_marathon_status(marathon_client)
+        chronos_outputs, chronos_oks = get_chronos_status(chronos_client)
+
     except MissingMasterException as e:
         # if we can't connect to master at all,
         # then bomb out early
@@ -239,6 +244,9 @@ def main():
         print_with_indent(line, 2)
     print("Marathon Status:")
     for line in marathon_outputs:
+        print_with_indent(line, 2)
+    print("Chronos Status:")
+    for line in chronos_outputs:
         print_with_indent(line, 2)
 
     if False in mesos_oks or False in marathon_oks:
