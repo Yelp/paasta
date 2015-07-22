@@ -38,7 +38,7 @@ clean:
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete
 
-#TODO: Move into fig
+#TODO: Move into docker-compose
 test_chronos: package_lucid setup_chronos_itest
 	$(DOCKER_RUN_CHRONOS) /work/yelp_package/itest/chronos.sh
 	make cleanup_chronos_itest
