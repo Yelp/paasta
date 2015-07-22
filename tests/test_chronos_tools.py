@@ -1,6 +1,5 @@
 import contextlib
 
-import isodate
 import mock
 from pytest import raises
 
@@ -11,28 +10,38 @@ class TestChronosTools:
 
     fake_chronos_job_config = chronos_tools.ChronosJobConfig({
         'name': 'test',
-        'command': '/bin/sleep 40',
         'description': 'This is a test Chronos job.',
-        'shell': 'false',
+        'command': '/bin/sleep 40',
         'epsilon': 'PT30M',
-        'executor': 'test-executor',
-        'executor_flags': '',
+        'shell': 'false',
         'retries': 5,
         'owner': 'test@test.com',
-        'disabled': 'true',
         'async': 'true',
         'cpus': 5.5,
-        'disk': 2048.5,
         'mem': 1024.4,
-        'uris': [],
-        'environment_variables': [],
-        'arguments': [],
-        'run_as_user': 'root',
+        'disk': 2048.5,
+        'disabled': 'true',
         'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
         'schedule_time_zone': '',
     })
 
     def test_load_chronos_job_config(self):
+        fake_config = {
+            'name': 'test',
+            'description': 'This is a test Chronos job.',
+            'command': '/bin/sleep 40',
+            'epsilon': 'PT30M',
+            'shell': 'false',
+            'retries': 5,
+            'owner': 'test@test.com',
+            'async': 'true',
+            'cpus': 5.5,
+            'mem': 1024.4,
+            'disk': 2048.5,
+            'disabled': 'true',
+            'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
+            'schedule_time_zone': '',
+        }
         fake_service_name = 'test_service'
         fake_cluster = 'penguin'
         fake_soa_dir = '/tmp/'
@@ -42,10 +51,12 @@ class TestChronosTools:
         ) as (
             mock_read_extra_service_information,
         ):
-            chronos_tools.load_chronos_job_config(fake_service_name, fake_cluster, fake_soa_dir)
+            mock_read_extra_service_information.return_value = fake_config
+            actual = chronos_tools.load_chronos_job_config(fake_service_name, fake_cluster, fake_soa_dir)
             mock_read_extra_service_information.assert_called_once_with(fake_service_name,
                                                                         expected_chronos_conf_file,
                                                                         soa_dir=fake_soa_dir)
+            assert sorted(actual) == sorted(self.fake_chronos_job_config)
 
     def test_get_name_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
@@ -80,7 +91,7 @@ class TestChronosTools:
     def test_get_epsilon_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_epsilon()
-        expected = chronos_tools.DEFAULT_EPSILON
+        expected = 'PT60S'
         assert actual == expected
 
     def test_get_epsilon_specified(self):
@@ -90,13 +101,15 @@ class TestChronosTools:
 
     def test_get_epsilon_invalid(self):
         job_config = chronos_tools.ChronosJobConfig({'epsilon': 'this is not valid'})
-        with raises(isodate.ISO8601Error):
+        with raises(chronos_tools.InvalidChronosConfigError) as excinfo:
             job_config.get_epsilon()
+        assert str(excinfo.value) == ('The specified epsilon value \'this is not valid\' '
+                                      'does not conform to the ISO8601 format')
 
     def test_get_retries_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_retries()
-        expected = chronos_tools.DEFAULT_RETRIES
+        expected = 2
         assert actual == expected
 
     def test_get_retries_specified(self):
@@ -122,13 +135,13 @@ class TestChronosTools:
     def test_get_async_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_async()
-        expected = chronos_tools.DEFAULT_ASYNC
+        expected = 'false'
         assert actual == expected
 
     def test_get_cpus_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_cpus()
-        expected = chronos_tools.DEFAULT_CPUS
+        expected = 0.1
         assert actual == expected
 
     def test_get_cpus_specified(self):
@@ -144,7 +157,7 @@ class TestChronosTools:
     def test_get_mem_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_mem()
-        expected = chronos_tools.DEFAULT_MEM
+        expected = 128
         assert actual == expected
 
     def test_get_mem_specified(self):
@@ -160,7 +173,7 @@ class TestChronosTools:
     def test_get_disk_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_disk()
-        expected = chronos_tools.DEFAULT_DISK
+        expected = 256
         assert actual == expected
 
     def test_get_disk_specified(self):
@@ -176,7 +189,7 @@ class TestChronosTools:
     def test_get_disabled_default(self):
         job_config = chronos_tools.ChronosJobConfig({})
         actual = job_config.get_disabled()
-        expected = chronos_tools.DEFAULT_DISABLED
+        expected = 'false'
         assert actual == expected
 
     def test_get_disabled_specified(self):
@@ -194,19 +207,35 @@ class TestChronosTools:
         expected = 'R/2015-03-25T19:36:35Z/PT5M'
         assert actual == expected
 
+    def test_get_schedule_specified_with_start_time_now(self):
+        job_config = chronos_tools.ChronosJobConfig({'schedule': 'R//PT5M'})
+        actual = job_config.get_schedule()
+        expected = 'R//PT5M'
+        assert actual == expected
+
+    def test_get_schedule_invalid_start_time(self):
+        job_config = chronos_tools.ChronosJobConfig({'schedule': 'R/12345/PT5M'})
+        with raises(chronos_tools.InvalidChronosConfigError) as excinfo:
+            job_config.get_schedule()
+        assert str(excinfo.value) == ('The specified start time \'12345\' in schedule \'R/12345/PT5M\' '
+                                      'does not conform to the ISO 8601 format')
+
+    def test_get_schedule_invalid_interval(self):
+        job_config = chronos_tools.ChronosJobConfig({'schedule': 'R//12345'})
+        with raises(chronos_tools.InvalidChronosConfigError) as excinfo:
+            job_config.get_schedule()
+        assert str(excinfo.value) == ('The specified interval \'12345\' in schedule \'R//12345\' '
+                                      'does not conform to the ISO 8601 format')
+
     def test_check_scheduled_job_reqs_complete(self):
-        with contextlib.nested(
-            mock.patch('chronos_tools.InvalidChronosConfig', autospec=True),
-        ) as (
-            fake_InvalidChronosConfig,
-        ):
-            self.fake_chronos_job_config.check_scheduled_job_reqs()
-            assert fake_InvalidChronosConfig.call_count == 0
+        self.fake_chronos_job_config.check_scheduled_job_reqs()
 
     def test_check_scheduled_job_reqs_incomplete(self):
         job_config = chronos_tools.ChronosJobConfig({'name': None})
-        with raises(chronos_tools.InvalidChronosConfig):
+        with raises(chronos_tools.InvalidChronosConfigError) as excinfo:
             job_config.check_scheduled_job_reqs()
+        assert str(excinfo.value) == ('Your Chronos config is missing \'name\', '
+                                      'a required parameter for a scheduled job.')
 
     def test_format_chronos_job_dict(self):
         fake_service_name = 'test_service'
@@ -226,14 +255,14 @@ class TestChronosTools:
             'description': fake_description,
             'command': fake_command,
             'schedule': fake_schedule,
-            'epsilon': chronos_tools.DEFAULT_EPSILON,
+            'epsilon': 'PT60S',
             'owner': fake_owner,
-            'async': chronos_tools.DEFAULT_ASYNC,
-            'cpus': chronos_tools.DEFAULT_CPUS,
-            'mem': chronos_tools.DEFAULT_MEM,
-            'disk': chronos_tools.DEFAULT_DISK,
-            'retries': chronos_tools.DEFAULT_RETRIES,
-            'disabled': chronos_tools.DEFAULT_DISABLED,
+            'async': 'false',
+            'cpus': 0.1,
+            'mem': 128,
+            'disk': 256,
+            'retries': 2,
+            'disabled': 'false',
         })
         actual.format_chronos_job_dict()
         assert sorted(actual) == sorted(expected)

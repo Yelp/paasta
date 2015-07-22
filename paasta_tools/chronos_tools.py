@@ -6,28 +6,12 @@ import service_configuration_lib
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
 
-SCHEDULED_JOB_REQS = ['name', 'command', 'schedule', 'epsilon', 'owner', 'async']
-# DEPENDENT_JOB_REQS = ['name', 'command', 'parents', 'epsilon', 'owner', 'async']
-# DOCKER_JOB_REQS = ['name', 'command', 'container', 'epsilon', 'owner', 'async']
 
-# Default values for options if they aren't specified in the config, per the Chronos API docs:
-# https://github.com/mesos/chronos/blob/master/docs/docs/api.md
-DEFAULT_SHELL = 'true'  # this is a boolean value, not a shell name like /bin/true or /bin/sh
-DEFAULT_EPSILON = 'PT60S'  # if the job can't be run at its scheduled time, retry within 60 seconds
-DEFAULT_EXECUTOR = ''
-DEFAULT_RETRIES = 2
-DEFAULT_ASYNC = 'false'
-DEFAULT_CPUS = 0.1
-DEFAULT_MEM = 128
-DEFAULT_DISK = 256
-DEFAULT_DISABLED = 'false'
-DEFAULT_DATAJOB = 'false'
-
-
-class InvalidChronosConfig(Exception):
+class InvalidChronosConfigError(Exception):
     pass
 
 
+# TODO support multiple jobs in one config file (like service instances for Marathon)
 def load_chronos_job_config(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
 
@@ -38,7 +22,7 @@ def load_chronos_job_config(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
         soa_dir=soa_dir
     )
 
-    return service_chronos_config
+    return ChronosJobConfig(service_chronos_config)
 
 
 class ChronosJobConfig(dict):
@@ -58,13 +42,16 @@ class ChronosJobConfig(dict):
         Epsilon must be formatted like an ISO 8601 Duration.
         See https://en.wikipedia.org/wiki/ISO_8601#Durations
         """
-        epsilon = self.get('epsilon', DEFAULT_EPSILON)
-        isodate.parse_duration(epsilon)  # throws isodate.ISO8601Error
-        # TODO might want to wrap the isodate call in try/except to provide more helpful info if format except thrown
+        epsilon = self.get('epsilon', 'PT60S')  # default is to retry within 60 seconds
+        try:
+            isodate.parse_duration(epsilon)  # throws isodate.ISO8601Error
+        except isodate.ISO8601Error:
+            raise InvalidChronosConfigError('The specified epsilon value \'%s\' does not conform to the ISO8601 format'
+                                            % epsilon)
         return epsilon
 
     def get_retries(self):
-        return int(self.get('retries', DEFAULT_RETRIES))
+        return int(self.get('retries', 2))
 
     def get_owner(self):
         return self.get('owner', None)
@@ -74,23 +61,23 @@ class ChronosJobConfig(dict):
         This method only exists because the Chronos API specifies async as a required option,
         so we need to include it as a parameter when talking to the Chronos API.
         """
-        # return self.get('async', DEFAULT_ASYNC)  # if we ever want to support async, use this
-        return DEFAULT_ASYNC
+        # return self.get('async', 'false')  # if we ever want to support async, use this
+        return 'false'
 
     def get_cpus(self):
         """Python likes to output floats with as much precision as possible.
         The chronos API seems to round, so be aware that some difference may
         occur"""
-        return float(self.get('cpus', DEFAULT_CPUS))
+        return float(self.get('cpus', 0.1))
 
     def get_mem(self):
-        return float(self.get('mem', DEFAULT_MEM))
+        return float(self.get('mem', 128))
 
     def get_disk(self):
-        return float(self.get('disk', DEFAULT_DISK))
+        return float(self.get('disk', 256))
 
     def get_disabled(self):
-        return self.get('disabled', DEFAULT_DISABLED)
+        return self.get('disabled', 'false')
 
     # def validate_repeat(repeat_string):
     # TODO check that it conforms to the Chronos docs
@@ -102,11 +89,18 @@ class ChronosJobConfig(dict):
         schedule = self.get('schedule', None)
         if schedule is not None:
             repeat, start_time, interval = str.split(schedule, '/')  # separate the parts isodate can/can't validate
-            isodate.parse_datetime(start_time)  # we don't need the time in a different format, this is just validation
-            # TODO check that it won't be an issue that isodate can return either a datetime.timedelta or Duration
-            isodate.parse_duration(interval)  # 'interval' and 'duration' are interchangeable terms
-            # TODO: should we catch ISO8601Error exceptions and print some additional debug info
-            # or fallback to the built-in message?
+            if start_time != '':  # an empty start time is not valid ISO8601 but Chronos accepts it as the current time
+                try:
+                    isodate.parse_datetime(start_time)
+                except isodate.ISO8601Error:
+                    raise InvalidChronosConfigError('The specified start time \'%s\' in schedule \'%s\' '
+                                                    'does not conform to the ISO 8601 format' % (start_time, schedule))
+            try:
+                # TODO check that it won't be an issue that isodate can return either a datetime.timedelta or Duration
+                isodate.parse_duration(interval)  # 'interval' and 'duration' are interchangeable terms
+            except isodate.ISO8601Error:
+                raise InvalidChronosConfigError('The specified interval \'%s\' in schedule \'%s\' '
+                                                'does not conform to the ISO 8601 format' % (interval, schedule))
             # TODO validate the 'repeat' portion of the schedule
             # validate_repeat(repeat)
             return schedule
@@ -126,30 +120,32 @@ class ChronosJobConfig(dict):
 
     def check_scheduled_job_reqs(self):
         # TODO add schedule_time_zone
-        for param in SCHEDULED_JOB_REQS:
+        for param in ['name', 'command', 'schedule', 'epsilon', 'owner', 'async']:
             if self[param] is None:
-                raise InvalidChronosConfig('Your Chronos config is missing \'%s\', \
-                                           a required parameter for a scheduled job.' % param)
+                raise InvalidChronosConfigError('Your Chronos config is missing \'%s\', '
+                                                'a required parameter for a scheduled job.' % param)
 
     # TODO for now just support scheduled jobs
     # def check_dependent_job_reqs(self):
     #     # TODO add schedule_time_zone
-    #     for param in DEPENDENT_JOB_REQS:
+    #     for param in ['name', 'command', 'parents', 'epsilon', 'owner', 'async']:
     #         if self[param] is None:
-    #             raise InvalidChronosConfig('Your Chronos config is missing \'%s\', \
+    #             raise InvalidChronosConfigError('Your Chronos config is missing \'%s\', \
     #                                        a required parameter for a dependent job.' % param)
 
     # TODO for now just support scheduled jobs
     # def check_docker_job_reqs(self):
     #     # TODO add schedule_time_zone
-    #     for param in DOCKER_JOB_REQS:
+    #     for param in ['name', 'command', 'container', 'epsilon', 'owner', 'async']:
     #         if self[param] is None:
-    #             raise InvalidChronosConfig('Your Chronos config is missing \'%s\', \
+    #             raise InvalidChronosConfigError('Your Chronos config is missing \'%s\', \
     #                                        a required parameter for a Docker job.' % param)
     #     if self['schedule'] is None and self['parents'] is None:
-    #       raise InvalidChronosConfig('Your Chronos config contains neither a schedule nor parents. One is required.')
+    #       raise InvalidChronosConfigError('Your Chronos config contains '
+    #                                       'neither a schedule nor parents. One is required.')
     #     elif self['schedule'] is not None and self['parents'] is not None:
-    #       raise InvalidChronosConfig('Your Chronos config contains both schedule and parents. Only one is allowed.')
+    #       raise InvalidChronosConfigError('Your Chronos config contains '
+    #                                       'both schedule and parents. Only one is allowed.')
 
     # scheduled job req'd params: name, command, schedule, scheduleTimeZone (if not in schedule), epsilon, owner, async
     # dependent job req'd params: same as 'scheduled job' except it requires dependencies, NO SCHEDULE
@@ -168,4 +164,4 @@ class ChronosJobConfig(dict):
         self['disabled'] = self.get_disabled()
         self['schedule'] = self.get_schedule()
 
-        self.check_scheduled_job_reqs()  # TODO better to have this here or in the constructor?
+        self.check_scheduled_job_reqs()

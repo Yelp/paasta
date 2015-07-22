@@ -18,7 +18,7 @@ geogrid==1.0.8
 httplib2==0.9
 humanize==0.5.1
 importlib==1.0.3
-isodate==0.5.0
+isodate==0.5.1
 kazoo==2.0.post1
 marathon==0.7.0-yelp2
 mesos.cli==0.1.3
