@@ -11,6 +11,7 @@ from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 from paasta_tools.mesos_tools import MissingMasterException
+from httplib2 import ServerNotFoundError
 import sys
 
 
@@ -199,8 +200,21 @@ def get_marathon_status(client):
 
 
 def assert_chronos_scheduled_jobs(client):
-    num_deployments = len(client.list())
-    return ("chronos jobs: %d" % num_deployments, True)
+    """
+      Attempts to assert the number of chronos
+      jobs. It's ok if we can't connect for now,
+      chronos isn't always available.
+
+      FIXME: once chronos is widely available, do
+      the right thing here.
+    """
+    try:
+        num_jobs = len(client.list())
+    except ServerNotFoundError:
+        print ("There was an error connecting to chronos.")
+        num_jobs = 0
+        pass
+    return ("chronos jobs: %d" % num_jobs, True)
 
 
 def get_chronos_status(chronos_client):
@@ -235,7 +249,6 @@ def main():
         mesos_outputs, mesos_oks = get_mesos_status()
         marathon_outputs, marathon_oks = get_marathon_status(marathon_client)
         chronos_outputs, chronos_oks = get_chronos_status(chronos_client)
-
     except MissingMasterException as e:
         # if we can't connect to master at all,
         # then bomb out early
@@ -252,7 +265,7 @@ def main():
     for line in chronos_outputs:
         print_with_indent(line, 2)
 
-    if False in mesos_oks or False in marathon_oks:
+    if False in mesos_oks or False in marathon_oks or False in chronos_oks:
         sys.exit(2)
 
 
