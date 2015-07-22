@@ -1708,7 +1708,7 @@ def test_create_complete_config_no_smartstack():
         mock_get_cluster,
         mock_compose_job_id,
         mock_system_paasta_config,
-        _
+        _,
     ):
         actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
         expected = {
@@ -1732,7 +1732,7 @@ def test_create_complete_config_no_smartstack():
             'health_checks': [],
             'env': {},
             'id': fake_job_id,
-            'constraints': [["region", "GROUP_BY"]],
+            'constraints': [["region", "GROUP_BY", 1]],
         }
         assert actual == expected
 
@@ -1763,13 +1763,16 @@ def test_create_complete_config_with_smartstack():
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
         mock.patch('marathon_tools.get_cluster', return_value=fake_cluster),
         mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
-        mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config)
+        mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
+                   autospec=True, return_value={'fake_region': {}})
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
         mock_get_cluster,
         mock_compose_job_id,
-        mock_system_paasta_config
+        mock_system_paasta_config,
+        _,
     ):
         actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
         expected = {
