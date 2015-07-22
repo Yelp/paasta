@@ -45,9 +45,8 @@ def load_chronos_config(path=PATH_TO_CHRONOS_CONFIG):
         raise ChronosNotConfigured("Could not load chronos config file %s: %s" % (e.filename, e.strerror))
 
 
-def get_chronos_client():
+def get_chronos_client(config):
     """Returns a chronos client object for interacting with the API"""
-    config = load_chronos_config()
     chronos_hostname = "localhost:%d" % CHRONOS_PORT
     return chronos.connect(hostname=chronos_hostname,
                            username=config.get_username(),

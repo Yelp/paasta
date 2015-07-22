@@ -2,6 +2,7 @@
 
 from collections import Counter, OrderedDict
 from paasta_tools import marathon_tools
+from paasta_tools.chronos_tools import get_chronos_client, load_chronos_config
 from paasta_tools.mesos_tools import fetch_mesos_stats
 from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_quorum
@@ -10,6 +11,7 @@ from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 from paasta_tools.mesos_tools import MissingMasterException
+from httplib2 import ServerNotFoundError
 import sys
 
 
@@ -197,6 +199,34 @@ def get_marathon_status(client):
     return outputs, oks
 
 
+def assert_chronos_scheduled_jobs(client):
+    """
+      Attempts to assert the number of chronos
+      jobs. It's ok if we can't connect for now,
+      chronos isn't always available.
+
+      FIXME: once chronos is widely available, do
+      the right thing here.
+    """
+    try:
+        num_jobs = len(client.list())
+    except ServerNotFoundError:
+        print ("There was an error connecting to chronos.")
+        num_jobs = 0
+        pass
+    return ("chronos jobs: %d" % num_jobs, True)
+
+
+def get_chronos_status(chronos_client):
+    """ Gather information about chronos.
+    :return: string containing the status
+    """
+    outputs, oks = run_healthchecks_with_param(chronos_client, [
+        assert_chronos_scheduled_jobs,
+    ])
+    return outputs, oks
+
+
 def get_marathon_client(marathon_config):
     """ Given a MarathonConfig object, return
     a client.
@@ -213,9 +243,12 @@ def get_marathon_client(marathon_config):
 def main():
     marathon_config = marathon_tools.load_marathon_config()
     marathon_client = get_marathon_client(marathon_config)
+    chronos_config = load_chronos_config()
+    chronos_client = get_chronos_client(chronos_config)
     try:
         mesos_outputs, mesos_oks = get_mesos_status()
         marathon_outputs, marathon_oks = get_marathon_status(marathon_client)
+        chronos_outputs, chronos_oks = get_chronos_status(chronos_client)
     except MissingMasterException as e:
         # if we can't connect to master at all,
         # then bomb out early
@@ -228,8 +261,11 @@ def main():
     print("Marathon Status:")
     for line in marathon_outputs:
         print_with_indent(line, 2)
+    print("Chronos Status:")
+    for line in chronos_outputs:
+        print_with_indent(line, 2)
 
-    if False in mesos_oks or False in marathon_oks:
+    if False in mesos_oks or False in marathon_oks or False in chronos_oks:
         sys.exit(2)
 
 

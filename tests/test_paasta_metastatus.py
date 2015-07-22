@@ -5,7 +5,9 @@ from paasta_tools import paasta_metastatus
 from paasta_tools import mesos_tools
 from paasta_tools.utils import PaastaColors
 from paasta_tools.marathon_tools import MarathonConfig
+from chronos import ChronosClient
 from pytest import raises
+from httplib2 import ServerNotFoundError
 
 
 def test_ok_check_threshold():
@@ -312,3 +314,34 @@ def test_get_marathon_client():
     client = paasta_metastatus.get_marathon_client(fake_config)
     assert client.servers == ['fakeurl']
     assert client.auth == ('fakeuser', 'fakepass')
+
+
+def test_assert_chronos_scheduled_jobs():
+    mock_client = ChronosClient(hostname="fake_hostname")
+    mock_client.list = lambda: []
+    output, ok = paasta_metastatus.assert_chronos_scheduled_jobs(mock_client)
+    assert output == 'chronos jobs: 0'
+    assert ok
+
+
+def test_get_chronos_status():
+    assert True
+
+
+def test_get_chronos_status_no_chronos():
+    """ Asserts that chronos checks return ok, even when chronos
+        is not available. This needs to be removed and fixed when
+        we have chronos available everywhere, but worth verifying
+        it works as expected for now """
+    def force_error():
+        raise ServerNotFoundError
+    mock_client = ChronosClient(hostname="fake_hostname")
+
+    # force the raising of the error rather than
+    # relying on the hostname of the config being
+    # unavailable.
+    mock_client.list = force_error
+
+    outputs, oks = paasta_metastatus.get_chronos_status(mock_client)
+    assert outputs == ['chronos jobs: 0']
+    assert all(oks)

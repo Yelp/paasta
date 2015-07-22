@@ -70,7 +70,8 @@ def main():
     (service, instance) = service_instance.split(marathon_tools.ID_SPACER)
 
     job_id = chronos_tools.get_job_id(service, instance)
-    client = chronos_tools.get_chronos_client()
+    config = chronos_tools.load_chronos_config()
+    client = chronos_tools.get_chronos_client(config)
 
     if command == 'status':
         # Setting up transparent cache for http API calls
