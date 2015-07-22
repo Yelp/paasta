@@ -10,10 +10,12 @@ def test_chronos_config_object_normal():
     fake_json_contents = {
         'user': 'fake_user',
         'password': 'fake_password',
+        'url': 'fake_host'
     }
     fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
     assert fake_config.get_username() == 'fake_user'
     assert fake_config.get_password() == 'fake_password'
+    assert fake_config.get_url() == 'fake_host'
 
 
 def test_chronos_config_object_no_user():
@@ -32,6 +34,15 @@ def test_chronos_config_object_no_password():
     fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
     with raises(chronos_tools.ChronosNotConfigured):
         fake_config.get_password()
+
+
+def test_chronos_config_object_no_url():
+    fake_json_contents = {
+        'user': 'fake_user',
+    }
+    fake_config = chronos_tools.ChronosConfig(fake_json_contents, 'fake_path')
+    with raises(chronos_tools.ChronosNotConfigured):
+        fake_config.get_url()
 
 
 def test_load_chronos_config_good():
@@ -67,7 +78,8 @@ def test_get_chronos_client():
     ) as (
         mock_connect,
     ):
-        fake_config = chronos_tools.ChronosConfig({'user': 'test', 'password': 'pass'}, '/fake/path')
+        fake_config = chronos_tools.ChronosConfig(
+            {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')
         chronos_tools.get_chronos_client(fake_config)
         assert mock_connect.call_count == 1
 
