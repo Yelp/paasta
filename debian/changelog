@@ -1,3 +1,11 @@
+paasta-tools (0.12.26-yelp1) lucid; urgency=low
+
+  * 0.12.26 tagged with 'make release'
+    Commit: Enable smarter replication monitoring for services across
+    multiple regions/habitats
+
+ -- Keshav Varma <keshav@yelp.com>  Wed, 22 Jul 2015 14:11:47 -0700
+
 paasta-tools (0.12.25-yelp1) lucid; urgency=low
 
   * 0.12.25 tagged with 'make release'
