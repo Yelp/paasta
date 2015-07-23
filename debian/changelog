@@ -1,3 +1,10 @@
+paasta-tools (0.12.31-yelp1) lucid; urgency=low
+
+  * 0.12.31 tagged with 'make release'
+    Commit: Released 0.12.30-yelp1 via make release
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 16:37:15 -0700
+
 paasta-tools (0.12.30-yelp1) lucid; urgency=low
 
   * 0.12.30 tagged with 'make release'
