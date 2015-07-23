@@ -1,13 +1,12 @@
 import os
 import sys
+
 from behave import when, then
-from time import sleep
 
 sys.path.append('../')
 from paasta_tools.utils import _run
 from paasta_tools import marathon_tools
 from marathon import MarathonApp
-from marathon import NotFoundError
 
 
 @when(u'all zookeepers are unavailable')
