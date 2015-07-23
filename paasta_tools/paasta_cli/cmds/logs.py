@@ -113,8 +113,14 @@ def determine_scribereader_envs(components, cluster):
 
 
 def cluster_to_scribe_env(cluster):
-    """Looks up the particular scribe env associated with a given paasta
-    cluster."""
+    """Looks up the particular scribe env associated with a given paasta cluster.
+
+    Scribe has its own "environment" key, which doesn't always map 1:1 with our
+    cluster names, so we have to maintain a manual mapping.
+
+    To update this list, run `paasta list-clusters` and guess which scribe
+    environment matches them (from scribereader -h).
+    """
     lookup_map = {
         'paasta-cluster': 'scribe-environment',
     }
