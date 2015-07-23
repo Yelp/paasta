@@ -31,6 +31,8 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_host
+from paasta_tools.utils import Timeout
+from paasta_tools.utils import TimeoutError
 
 
 BAD_PORT_WARNING = 'This_service_is_listening_on_the_PORT_variable__You_must_use_8888__see_y/paasta_deploy'
@@ -51,18 +53,23 @@ def perform_http_healthcheck(url, timeout):
     :param timeout: timeout in seconds
     :returns: True if healthcheck succeeds within number of seconds specified by timeout, false otherwise
     """
-    # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
     try:
-        res = requests.head(url, timeout=timeout)
-        if 'content-type' in res.headers and ',' in res.headers['content-type']:
-            sys.stdout.write(PaastaColors.yellow(
-                "Multiple content-type headers detected in response."
-                " The Mesos healthcheck system will treat this as a failure!"))
-            return False
-        if res.status_code >= 200 and res.status_code < 400:
-            return True
-    except requests.ConnectionError:
+        with Timeout(seconds=timeout):
+            try:
+                res = requests.head(url)
+            except requests.ConnectionError:
+                return False
+    except TimeoutError:
         return False
+
+    if 'content-type' in res.headers and ',' in res.headers['content-type']:
+        sys.stdout.write(PaastaColors.yellow(
+            "Multiple content-type headers detected in response."
+            " The Mesos healthcheck system will treat this as a failure!"))
+        return False
+    # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
+    elif res.status_code >= 200 and res.status_code < 400:
+        return True
 
 
 def perform_tcp_healthcheck(url, timeout):

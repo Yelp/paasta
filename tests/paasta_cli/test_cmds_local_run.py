@@ -21,6 +21,7 @@ from paasta_tools.paasta_cli.cmds.local_run import run_docker_container
 from paasta_tools.paasta_cli.cmds.local_run import validate_environment
 from paasta_tools.marathon_tools import NoMarathonConfigurationForService
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import TimeoutError
 
 
 def test_build_docker_container():
@@ -86,7 +87,7 @@ def test_perform_http_healthcheck_success(mock_http_conn):
 
     mock_http_conn.return_value = mock.Mock(status_code=200, headers={})
     assert perform_http_healthcheck(fake_http_url, fake_timeout)
-    mock_http_conn.assert_called_once_with(fake_http_url, timeout=fake_timeout)
+    mock_http_conn.assert_called_once_with(fake_http_url)
 
 
 @mock.patch('requests.head')
@@ -96,7 +97,16 @@ def test_perform_http_healthcheck_failure(mock_http_conn):
 
     mock_http_conn.return_value = mock.Mock(status_code=400, headers={})
     assert not perform_http_healthcheck(fake_http_url, fake_timeout)
-    mock_http_conn.assert_called_once_with(fake_http_url, timeout=fake_timeout)
+    mock_http_conn.assert_called_once_with(fake_http_url)
+
+
+@mock.patch('requests.head', side_effect=TimeoutError)
+def test_perform_http_healthcheck_timeout(mock_http_conn):
+    fake_http_url = "http://fakehost:1234/fake_status_path"
+    fake_timeout = 10
+
+    assert not perform_http_healthcheck(fake_http_url, fake_timeout)
+    mock_http_conn.assert_called_once_with(fake_http_url)
 
 
 @mock.patch('requests.head')
@@ -107,7 +117,7 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
     mock_http_conn.return_value = mock.Mock(
         status_code=200, headers={'content-type': 'fake_content_type_1, fake_content_type_2'})
     assert not perform_http_healthcheck(fake_http_url, fake_timeout)
-    mock_http_conn.assert_called_once_with(fake_http_url, timeout=fake_timeout)
+    mock_http_conn.assert_called_once_with(fake_http_url)
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.perform_http_healthcheck')
