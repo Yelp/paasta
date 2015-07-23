@@ -916,7 +916,7 @@ class TestMarathonTools:
                 'type': 'DOCKER',
                 'volumes': fake_volumes,
             },
-            'constraints': [["habitat", "GROUP_BY", 1]],
+            'constraints': [["habitat", "GROUP_BY", "1"]],
             'uris': ['file:///root/.dockercfg', ],
             'mem': fake_mem,
             'env': fake_env,
@@ -1007,7 +1007,7 @@ class TestMarathonTools:
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
         with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
-            assert fake_conf.get_constraints(fake_service_namespace_config) == [["region", "GROUP_BY", 1]]
+            assert fake_conf.get_constraints(fake_service_namespace_config) == [["region", "GROUP_BY", "1"]]
 
     def test_get_constraints_from_discover(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
@@ -1018,7 +1018,7 @@ class TestMarathonTools:
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
         with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}, 'fake_other_region': {}}
-            assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY", 2]]
+            assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY", "2"]]
             get_slaves_patch.assert_called_once_with('habitat')
 
     def test_get_cpus_in_config(self):
@@ -1732,7 +1732,7 @@ def test_create_complete_config_no_smartstack():
             'health_checks': [],
             'env': {},
             'id': fake_job_id,
-            'constraints': [["region", "GROUP_BY", 1]],
+            'constraints': [["region", "GROUP_BY", "1"]],
         }
         assert actual == expected
 
@@ -1806,7 +1806,7 @@ def test_create_complete_config_with_smartstack():
             ],
             'env': {},
             'id': fake_job_id,
-            'constraints': [["region", "GROUP_BY", 1]],
+            'constraints': [["region", "GROUP_BY", "1"]],
         }
         assert actual == expected
 
