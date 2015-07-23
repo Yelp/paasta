@@ -295,7 +295,7 @@ class MarathonServiceConfig(object):
         else:
             discover_level = service_namespace_config.get_discover()
             locations = get_mesos_slaves_grouped_by_attribute(discover_level)
-            return [[discover_level, "GROUP_BY", len(locations)]]
+            return [[discover_level, "GROUP_BY", str(len(locations))]]
 
     def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):
         """Create the configuration that will be passed to the Marathon REST API.
