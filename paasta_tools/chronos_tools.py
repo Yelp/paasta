@@ -73,7 +73,7 @@ def get_job_id(service, instance):
 @timeout()
 def wait_for_job(client, job_name):
     """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
-      and retry. Times out after 30 seconds.
+      and retry. Times out after 10 seconds.
 
      :param client: The marathon client
      :param app_id: The app id to which the tasks belong
