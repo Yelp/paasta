@@ -3,8 +3,10 @@ import json
 import logging
 import os
 import urlparse
+from time import sleep
 
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+from paasta_tools.utils import timeout
 
 
 # In Marathon spaces are not allowed, in Chronos periods are not allowed.
@@ -66,3 +68,21 @@ def get_chronos_client(config):
 
 def get_job_id(service, instance):
     return "%s%s%s" % (service, SPACER, instance)
+
+@timeout()
+def wait_for_job(client, job_name):
+  """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
+      and retry. Times out after 30 seconds.
+
+     :param client: The marathon client
+     :param app_id: The app id to which the tasks belong
+     :param num_tasks: The number of tasks to wait for
+  """
+  found = False
+  while not found:
+      found = job_name in map(lambda job: job['name'], client.list())
+      if found:
+          return
+      else:
+          print "waiting for job %s to launch. retrying" % (job_name)
+          sleep(0.5)
