@@ -38,6 +38,32 @@ def test_format_log_line():
         assert actual == expected
 
 
+def test_format_log_line_with_timestamp():
+    input_line = 'foo'
+    fake_cluster = 'fake_cluster'
+    fake_instance = 'fake_instance'
+    fake_component = 'build'
+    fake_level = 'debug'
+    fake_timestamp = 'fake_timestamp'
+    expected = json.dumps({
+        'timestamp': fake_timestamp,
+        'level': fake_level,
+        'cluster': fake_cluster,
+        'instance': fake_instance,
+        'component': fake_component,
+        'message': input_line,
+    }, sort_keys=True)
+    actual = utils.format_log_line(
+        fake_level,
+        fake_cluster,
+        fake_instance,
+        fake_component,
+        input_line,
+        timestamp=fake_timestamp
+    )
+    assert actual == expected
+
+
 def test_format_log_line_rejects_invalid_components():
     with raises(utils.NoSuchLogComponent):
         utils.format_log_line('fake_service', 'fake_line', 'BOGUS_COMPONENT', 'debug', 'fake_input')

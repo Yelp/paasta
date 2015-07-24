@@ -1,3 +1,39 @@
+paasta-tools (0.12.32-yelp1) lucid; urgency=low
+
+  * 0.12.32 tagged with 'make release'
+    Commit: Revert docker-py version to work with exsiting Docker
+    servers
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 18:06:38 -0700
+
+paasta-tools (0.12.31-yelp1) lucid; urgency=low
+
+  * 0.12.31 tagged with 'make release'
+    Commit: Released 0.12.30-yelp1 via make release
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 16:37:15 -0700
+
+paasta-tools (0.12.30-yelp1) lucid; urgency=low
+
+  * 0.12.30 tagged with 'make release'
+    Commit: Add Marathon logging component to paasta logs
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 16:35:03 -0700
+
+paasta-tools (0.12.29-yelp1) lucid; urgency=low
+
+  * 0.12.29 tagged with 'make release'
+    Commit: Fix broken tests
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 10:37:00 -0700
+
+paasta-tools (0.12.28-yelp1) lucid; urgency=low
+
+  * 0.12.28 tagged with 'make release'
+    Commit: Fix constraint data type
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 10:06:43 -0700
+
 paasta-tools (0.12.27-yelp1) lucid; urgency=low
 
   * 0.12.27 tagged with 'make release'

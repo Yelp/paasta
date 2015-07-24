@@ -58,6 +58,20 @@ def build_command(
     return cmd
 
 
+def get_loglines(returncode, cmd, output, args):
+    loglines = []
+    if returncode != 0:
+        loglines.append('ERROR: Failed to mark %s for deployment in %s.' % (args.commit, args.clusterinstance))
+        loglines.append("Ran: '%s'" % cmd)
+        loglines.append("Output: %s" % output)
+        output_url = get_jenkins_build_output_url()
+        if output_url:
+            loglines.append('See Jenkins output at %s' % output)
+    else:
+        loglines.append('Marked %s in %s for deployment.' % (args.commit, args.clusterinstance))
+    return loglines
+
+
 def paasta_mark_for_deployment(args):
     """Mark a docker image for deployment"""
     service_name = args.service
@@ -67,18 +81,11 @@ def paasta_mark_for_deployment(args):
     cmd = build_command(args.git_url, args.commit, args.clusterinstance)
     # Clusterinstance should be in cluster.instance format
     cluster, instance = args.clusterinstance.split('.')
-    loglines = []
     returncode, output = _run(
         cmd,
         timeout=30,
     )
-    if returncode != 0:
-        loglines.append('ERROR: Failed to mark %s for deployment in %s.' % (args.commit, args.clusterinstance))
-        output = get_jenkins_build_output_url()
-        if output:
-            loglines.append('See output: %s' % output)
-    else:
-        loglines.append('Marked %s in %s for deployment.' % (args.commit, args.clusterinstance))
+    loglines = get_loglines(returncode=returncode, cmd=cmd, output=output, args=args)
     for logline in loglines:
         _log(
             service_name=service_name,
