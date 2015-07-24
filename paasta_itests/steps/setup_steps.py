@@ -85,6 +85,7 @@ def working_paasta_cluster(context):
     if not hasattr(context, 'client'):
         context.client, context.marathon_config, context.system_paasta_config = setup_marathon_client()
         context.chronos_config = setup_chronos_config()
+        context.chronos_client = chronos_tools.get_chronos_client(context.chronos_config)
     else:
         print 'Marathon connection already established'
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
