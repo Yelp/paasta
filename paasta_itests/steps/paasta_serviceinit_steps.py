@@ -9,7 +9,7 @@ import paasta_tools
 from paasta_tools import paasta_serviceinit
 
 @when(u'we run the marathon job test-service.main')
-def run_test_service(context):
+def run_marathon_test_service(context):
     trivial_app_config = {
         'id': 'test-service.main',
         'cmd': '/bin/sleep 1m',
