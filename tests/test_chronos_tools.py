@@ -87,3 +87,21 @@ def test_get_chronos_client():
 def test_get_job_id():
     actual = chronos_tools.get_job_id('service', 'instance')
     assert actual == "service instance"
+
+
+def test_wait_for_job():
+    fake_config = chronos_tools.ChronosConfig(
+        {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')
+    client = chronos_tools.get_chronos_client(fake_config)
+
+    # this simulates the behaviour of the list
+    # function by only returning the correct data
+    # the third time it's called.
+    def counted(fn):
+        def wrapper(*args, **kwargs):
+            wrapper.called += 1
+            return fn(wrapper.called)
+        wrapper.called = 0
+        return wrapper
+    client.list = counted(lambda x: [] if x < 3 else [{'name': 'foo'}])
+    assert chronos_tools.wait_for_job(client, 'foo')
