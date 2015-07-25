@@ -19,7 +19,7 @@ def run_marathon_test_service(context):
 
 @when(u'we wait for it to be deployed')
 def wait_for_deploy(context):
-    print "Sleeping 10 seconds to wait for test-service to be deployed."
+    print "Sleeping 10 seconds to wait for deployment..."
     time.sleep(10)
 
 @then(u'paasta_serviceinit status_marathon_job should return "Healthy"')

@@ -1,5 +1,3 @@
-import sys
-
 from behave import given, when, then
 
 import chronos
