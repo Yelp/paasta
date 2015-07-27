@@ -83,62 +83,62 @@ class TestChronosTools:
         assert actual is None
 
     def test_check_epsilon_valid(self):
-        status, msgs = chronos_tools.check_epsilon(self.fake_chronos_job_config)
+        status, msgs = self.fake_chronos_job_config.check_epsilon()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_epsilon_invalid(self):
-        status, msgs = chronos_tools.check_epsilon(self.fake_invalid_chronos_job_config)
+        status, msgs = self.fake_invalid_chronos_job_config.check_epsilon()
         assert status is False
         assert 'The specified epsilon value \'nolispe\' does not conform to the ISO8601 format.' in msgs
 
     def test_check_retries_valid(self):
-        status, msgs = chronos_tools.check_retries(self.fake_chronos_job_config)
+        status, msgs = self.fake_chronos_job_config.check_retries()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_retries_invalid(self):
-        status, msgs = chronos_tools.check_retries(self.fake_invalid_chronos_job_config)
+        status, msgs = self.fake_invalid_chronos_job_config.check_retries()
         assert status is False
         assert 'The specified retries value \'5.7\' is not a valid int.' in msgs
 
     def test_check_async_valid(self):
-        status, msgs = chronos_tools.check_async(self.fake_chronos_job_config)
+        status, msgs = self.fake_chronos_job_config.check_async()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_async_invalid(self):
-        status, msgs = chronos_tools.check_async(self.fake_invalid_chronos_job_config)
+        status, msgs = self.fake_invalid_chronos_job_config.check_async()
         assert status is False
         assert 'The config specifies that the job is async, which we don\'t support.' in msgs
 
     def test_check_cpus_valid(self):
-        status, msgs = chronos_tools.check_cpus(self.fake_chronos_job_config)
+        status, msgs = self.fake_chronos_job_config.check_cpus()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_cpus_invalid(self):
-        status, msgs = chronos_tools.check_cpus(self.fake_invalid_chronos_job_config)
+        status, msgs = self.fake_invalid_chronos_job_config.check_cpus()
         assert status is False
         assert 'The specified cpus value \'intel\' is not a valid float.' in msgs
 
     def test_check_mem_valid(self):
-        status, msgs = chronos_tools.check_mem(self.fake_chronos_job_config)
+        status, msgs = self.fake_chronos_job_config.check_mem()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_mem_invalid(self):
-        status, msgs = chronos_tools.check_mem(self.fake_invalid_chronos_job_config)
+        status, msgs = self.fake_invalid_chronos_job_config.check_mem()
         assert status is False
         assert 'The specified mem value \'lots\' is not a valid float.' in msgs
 
     def test_check_disk_valid(self):
-        status, msgs = chronos_tools.check_disk(self.fake_chronos_job_config)
+        status, msgs = self.fake_chronos_job_config.check_disk()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_disk_invalid(self):
-        status, msgs = chronos_tools.check_disk(self.fake_invalid_chronos_job_config)
+        status, msgs = self.fake_invalid_chronos_job_config.check_disk()
         assert status is False
         assert 'The specified disk value \'all of it\' is not a valid float.' in msgs
 
@@ -149,21 +149,21 @@ class TestChronosTools:
         assert True  # TODO test this once regex matching implemented
 
     def test_check_schedule_valid_complete(self):
-        status, msgs = chronos_tools.check_schedule(self.fake_chronos_job_config)
+        status, msgs = self.fake_chronos_job_config.check_schedule()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_schedule_valid_empty_start_time(self):
         fake_schedule = 'R10//PT2S'
         chronos_config = chronos_tools.ChronosJobConfig('', {'schedule': fake_schedule}, {})
-        status, msgs = chronos_tools.check_schedule(chronos_config)
+        status, msgs = chronos_config.check_schedule()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_schedule_invalid_start_time(self):
         fake_schedule = 'R10/now/PT2S'
         chronos_config = chronos_tools.ChronosJobConfig('', {'schedule': fake_schedule}, {})
-        status, msgs = chronos_tools.check_schedule(chronos_config)
+        status, msgs = chronos_config.check_schedule()
         assert status is False
         assert ('The specified start time \'now\' in schedule \'%s\' does not conform to the ISO 8601 format.'
                 % fake_schedule) in msgs
@@ -171,7 +171,7 @@ class TestChronosTools:
     def test_check_schedule_invalid_empty_interval(self):
         fake_schedule = 'R10//'
         chronos_config = chronos_tools.ChronosJobConfig('', {'schedule': fake_schedule}, {})
-        status, msgs = chronos_tools.check_schedule(chronos_config)
+        status, msgs = chronos_config.check_schedule()
         assert status is False
         assert ('The specified interval \'\' in schedule \'%s\' does not conform to the ISO 8601 format.'
                 % fake_schedule) in msgs
@@ -179,7 +179,7 @@ class TestChronosTools:
     def test_check_schedule_invalid_interval(self):
         fake_schedule = 'R10//Mondays'
         chronos_config = chronos_tools.ChronosJobConfig('', {'schedule': fake_schedule}, {})
-        status, msgs = chronos_tools.check_schedule(chronos_config)
+        status, msgs = chronos_config.check_schedule()
         assert status is False
         assert ('The specified interval \'Mondays\' in schedule \'%s\' does not conform to the ISO 8601 format.'
                 % fake_schedule) in msgs
@@ -187,7 +187,7 @@ class TestChronosTools:
     def test_check_schedule_invalid_empty_repeat(self):
         fake_schedule = '//PT2S'
         chronos_config = chronos_tools.ChronosJobConfig('', {'schedule': fake_schedule}, {})
-        status, msgs = chronos_tools.check_schedule(chronos_config)
+        status, msgs = chronos_config.check_schedule()
         assert status is False
         assert ('The specified repeat \'\' in schedule \'%s\' does not conform to the ISO 8601 format.'
                 % fake_schedule) in msgs
@@ -195,7 +195,7 @@ class TestChronosTools:
     def test_check_schedule_invalid_repeat(self):
         fake_schedule = 'forever//PT2S'
         chronos_config = chronos_tools.ChronosJobConfig('', {'schedule': fake_schedule}, {})
-        status, msgs = chronos_tools.check_schedule(chronos_config)
+        status, msgs = chronos_config.check_schedule()
         assert status is True  # FIXME implement the validator
         assert len(msgs) == 0  # FIXME implement the validator
         # assert status is False
@@ -203,18 +203,18 @@ class TestChronosTools:
         #         % fake_schedule) in msgs
 
     def test_check_schedule_time_zone_valid(self):
-        status, msgs = chronos_tools.check_schedule_time_zone(self.fake_chronos_job_config)
+        status, msgs = self.fake_chronos_job_config.check_schedule_time_zone()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_schedule_time_zone_valid_empty(self):
         chronos_config = chronos_tools.ChronosJobConfig('', {'schedule_time_zone': ''}, {})
-        status, msgs = chronos_tools.check_schedule_time_zone(chronos_config)
+        status, msgs = chronos_config.check_schedule_time_zone()
         assert status is True
         assert len(msgs) == 0
 
     def test_check_schedule_time_zone_invalid(self):
-        status, msgs = chronos_tools.check_schedule_time_zone(self.fake_invalid_chronos_job_config)
+        status, msgs = self.fake_invalid_chronos_job_config.check_schedule_time_zone()
         assert status is True  # FIXME implement the validator
         assert len(msgs) == 0  # FIXME implement the validator
         # assert status is False
@@ -222,26 +222,26 @@ class TestChronosTools:
 
     def test_check_param_with_check(self):
         with contextlib.nested(
-            mock.patch('chronos_tools.check_cpus', autospec=True),
+            mock.patch('chronos_tools.ChronosJobConfig.check_cpus', autospec=True),
         ) as (
             mock_check_cpus,
         ):
             mock_check_cpus.return_value = True, ''
             param = 'cpus'
-            status, msgs = chronos_tools.check(self.fake_chronos_job_config, param)
+            status, msgs = self.fake_chronos_job_config.check(param)
             assert mock_check_cpus.call_count == 1
             assert status is True
             assert len(msgs) == 0
 
     def test_check_param_without_check(self):
         param = 'name'
-        status, msgs = chronos_tools.check(self.fake_chronos_job_config, param)
+        status, msgs = self.fake_chronos_job_config.check(param)
         assert status is True
         assert len(msgs) == 0
 
     def test_check_unknown_param(self):
         param = 'boat'
-        status, msgs = chronos_tools.check(self.fake_chronos_job_config, param)
+        status, msgs = self.fake_chronos_job_config.check(param)
         assert status is False
         assert 'Your Chronos config specifies \'boat\', an unsupported parameter.' in msgs
 
