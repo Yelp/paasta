@@ -1,3 +1,10 @@
+paasta-tools (0.12.34-yelp1) lucid; urgency=low
+
+  * 0.12.34 tagged with 'make release'
+    Commit: Handle timeouts during healthcheck in local-run
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 27 Jul 2015 14:10:37 -0700
+
 paasta-tools (0.12.33-yelp1) lucid; urgency=low
 
   * 0.12.33 tagged with 'make release'
