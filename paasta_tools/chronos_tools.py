@@ -1,5 +1,6 @@
 import isodate
 import logging
+import copy
 
 import service_configuration_lib
 
@@ -29,17 +30,18 @@ def load_chronos_job_config(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
         soa_dir=soa_dir
     )
 
-    return ChronosJobConfig(service_name, branch_dict, service_chronos_config)
+    return ChronosJobConfig(service_name, service_chronos_config, branch_dict)
 
 
 class ChronosJobConfig(dict):
 
-    def __init__(self, service_name, config_dict):
+    def __init__(self, service_name, config_dict, branch_dict):
         self.service_name = service_name
         self.config_dict = config_dict
+        self.branch_dict = branch_dict
 
     def get(self, param):
-        config_dict_params = ['name', 'description', 'command', 'args', 'shell', 'epsilon', 'executor', 
+        config_dict_params = ['name', 'description', 'command', 'args', 'shell', 'epsilon', 'executor',
                               'executor_flags', 'retries', 'owner', 'owner_name', 'async', 'cpus', 'mem',
                               'disk', 'disabled', 'uris', 'schedule', 'schedule_time_zone', 'parents',
                               'user_to_run_as', 'container', 'data_job', 'environment_variables', 'constraints']
@@ -65,113 +67,144 @@ class ChronosJobConfig(dict):
         occur"""
         """Must be specified in the cryptic ISO 8601 format: https://en.wikipedia.org/wiki/ISO_8601"""
 
-    # TODO maybe these should be private (e.g. _check_mem) since only check_param should call them?
-    def check_epsilon(self):
-        try:
-            isodate.parse_duration(epsilon)
-        except isodate.ISO8601Error:
-            return False, 'The specified epsilon value \'%s\' does not conform to the ISO8601 format.' % epsilon
-        return True, ''
 
-    def check_retries(self):
-        if self.get('retries') is not None:
-            if not isinstance(self.get('retries'), int):  # TODO is this Pythonic? is there a better way to check if int?
-                return False, 'The specified retries value \'%s\' is not a valid int.' % self.get('retries')
-        return True, ''
+# TODO maybe these should be private (e.g. _check_mem) since only check_param should call them?
+def check_epsilon(chronos_job_config):
+    try:
+        isodate.parse_duration(chronos_job_config.get('epsilon'))
+    except isodate.ISO8601Error:
+        return False, ('The specified epsilon value \'%s\' does not conform to the ISO8601 format.'
+                       % chronos_job_config.get('epsilon'))
+    return True, ''
 
-    def check_cpus(self):
-        if self.get('cpus') is not None:
-            if not isinstance(self.get('cpus'), float):  # TODO is this Pythonic? is there a better way to check if float?
-                return False, 'The specified cpus value \'%s\' is not a valid float.' % self.get('cpus')
-        return True, ''
 
-    def check_mem(self):
-        if self.get('mem') is not None:
-            if not isinstance(self.get('mem'), float):  # TODO is this Pythonic? is there a better way to check if float?
-                return False, 'The specified mem value \'%s\' is not a valid float.' % self.get('mem')
-        return True, ''
+def check_retries(chronos_job_config):
+    if chronos_job_config.get('retries') is not None:
+        # TODO is this Pythonic? is there a better way to check if int?
+        if not isinstance(chronos_job_config.get('retries'), int):
+            return False, 'The specified retries value \'%s\' is not a valid int.' % chronos_job_config.get('retries')
+    return True, ''
 
-    def check_disk(self):
-        if self.get('disk') is not None:
-            if not isinstance(self.get('disk'), float):  # TODO is this Pythonic? is there a better way to check if float?
-                return False, 'The specified disk value \'%s\' is not a valid float.' % self.get('disk')
-        return True, ''
 
-    # TODO check that it conforms to the Chronos docs
-    # by compiling regex like isodate does and match to regex
-    def validate_repeat(repeat_string):
-        return True
+def check_async(chronos_job_config):
+    if chronos_job_config.get('async') is not None:
+        if chronos_job_config.get('async') is True:
+            return False, 'The config specifies that the job is async, which we don\'t support.'
+    return True, ''
 
-    def check_schedule(self):
-        schedule = self.get('schedule')
-        if schedule is not None:
-            repeat, start_time, interval = str.split(schedule, '/')  # the parts have separate validators
-            if start_time != '':  # an empty start time is not valid ISO8601 but Chronos accepts it as the current time
-                try:
-                    isodate.parse_datetime(start_time)
-                except isodate.ISO8601Error:
-                    return False, ('The specified start time \'%s\' in schedule \'%s\' '
-                                   'does not conform to the ISO 8601 format' % (start_time, schedule))
 
+def check_cpus(chronos_job_config):
+    if chronos_job_config.get('cpus') is not None:
+        # TODO is this Pythonic? is there a better way to check if float?
+        if (not isinstance(chronos_job_config.get('cpus'), float)
+                and not isinstance(chronos_job_config.get('cpus'), int)):
+            return False, 'The specified cpus value \'%s\' is not a valid float.' % chronos_job_config.get('cpus')
+    return True, ''
+
+
+def check_mem(chronos_job_config):
+    if chronos_job_config.get('mem') is not None:
+        # TODO is this Pythonic? is there a better way to check if float?
+        if (not isinstance(chronos_job_config.get('mem'), float)
+                and not isinstance(chronos_job_config.get('mem'), int)):
+            return False, 'The specified mem value \'%s\' is not a valid float.' % chronos_job_config.get('mem')
+    return True, ''
+
+
+def check_disk(chronos_job_config):
+    if chronos_job_config.get('disk') is not None:
+        # TODO is this Pythonic? is there a better way to check if float?
+        if (not isinstance(chronos_job_config.get('disk'), float)
+                and not isinstance(chronos_job_config.get('disk'), int)):
+            return False, 'The specified disk value \'%s\' is not a valid float.' % chronos_job_config.get('disk')
+    return True, ''
+
+
+# TODO check that it conforms to the Chronos docs
+# by compiling regex like isodate does and match to regex
+def validate_repeat(chronos_job_config, repeat_string):
+    return True
+
+
+def check_schedule(chronos_job_config):
+    schedule = chronos_job_config.get('schedule')
+    if schedule is not None:
+        repeat, start_time, interval = str.split(schedule, '/')  # the parts have separate validators
+        if start_time != '':  # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
             try:
-                isodate.parse_duration(interval)  # 'interval' and 'duration' are interchangeable terms
+                isodate.parse_datetime(start_time)
             except isodate.ISO8601Error:
-                return False, ('The specified interval \'%s\' in schedule \'%s\' '
-                               'does not conform to the ISO 8601 format' % (interval, schedule))
+                return False, ('The specified start time \'%s\' in schedule \'%s\' '
+                               'does not conform to the ISO 8601 format.' % (start_time, schedule))
 
-            if repeat == '' or not validate_repeat(repeat):
-                return False, ('The specified repeat \'$s\' in schedule \'%s\' '
-                               'does not conform to the ISO 8601 format.' % (repeat, schedule))
+        try:
+            isodate.parse_duration(interval)  # 'interval' and 'duration' are interchangeable terms
+        except isodate.ISO8601Error:
+            return False, ('The specified interval \'%s\' in schedule \'%s\' '
+                           'does not conform to the ISO 8601 format.' % (interval, schedule))
 
-        return True
+        if repeat == '' or not validate_repeat(chronos_job_config, repeat):  # TODO write the validator
+            return False, ('The specified repeat \'%s\' in schedule \'%s\' '
+                           'does not conform to the ISO 8601 format.' % (repeat, schedule))
 
-    # TODO support get/check time zone later, for now just specify time zone in schedule
-    # def get_schedule_time_zone(self):
-    #     time_zone = self.get('schedule_time_zone')
-    #     if time_zone is not None:
-    #         time_zone = isodate.parse_tzinfo(time_zone)
-    #         # TODO we should use pytz for best possible tz info and validation
-    #         # TODO if tz specified in start_time, compare to the schedule_time_zone and warn if they differ
-    #         # TODO if tz not specified in start_time, set it to time_zone
-    #     else:
-    #         return None
+    return True, ''
 
-    def check(self, param):
-        check_methods = {
-            'epsilon': self.check_epsilon,
-            'retries': self.check_retries,
-            'cpus': self.check_cpus,
-            'mem': self.check_mem,
-            'disk': self.check_disk,
-            'schedule': self.check_schedule,
-            'schedule_time_zone': self.check_schedule_time_zone,
-        }
-        supported_params_without_checks = ['name', 'description', 'command', 'owner', 'disabled']
-        if param in check_methods:
-            return check_methods[param]
-        elif param in supported_params_without_checks:
-            return True, ''  # TODO what should we do if someone tries to check a supported param that has no check defined?
-        else:
-            return False, 'Your Chronos config specifies \'%s\', an unsupported parameter.' % param
+
+# TODO we should use pytz for best possible tz info and validation
+# TODO if tz specified in start_time, compare to the schedule_time_zone and warn if they differ
+# TODO if tz not specified in start_time, set it to time_zone
+# NOTE confusingly, the accepted time zone format for 'schedule_time_zone' is different than in 'schedule'!
+# 'schedule_time_zone': tz database format (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
+# 'schedule': ISO 8601 format (https://en.wikipedia.org/wiki/ISO_8601#Time_zone_designators)
+def check_schedule_time_zone(chronos_job_config):
+    time_zone = chronos_job_config.get('schedule_time_zone')
+    if time_zone is not None:
+        return True, ''
+        # try:
+        #     # TODO validate tz format
+        # except isodate.ISO8601Error:
+        #     return False, 'The specified time zone \'%s\' does not conform to the tz database format.' % time_zone
+    return True, ''
+
+
+def check(chronos_job_config, param):
+    check_methods = {
+        'epsilon': check_epsilon,
+        'retries': check_retries,
+        'async': check_async,
+        'cpus': check_cpus,
+        'mem': check_mem,
+        'disk': check_disk,
+        'schedule': check_schedule,
+        'schedule_time_zone': check_schedule_time_zone,
+    }
+    supported_params_without_checks = ['name', 'description', 'command', 'owner', 'disabled']
+    if param in check_methods:
+        return check_methods[param](chronos_job_config)
+    elif param in supported_params_without_checks:
+        # TODO what should we do if someone tries to check a supported param that has no check defined?
+        return True, ''
+    else:
+        return False, 'Your Chronos config specifies \'%s\', an unsupported parameter.' % param
 
 
 # defaults taken from the Chronos API docs https://mesos.github.io/chronos/docs/api.html#job-configuration
 def set_missing_params_to_defaults(chronos_job_config):
     new_chronos_job_config = copy.deepcopy(chronos_job_config)
     chronos_config_defaults = {
-        'shell': 'true',
+        # 'shell': 'true',  # we don't support this param, but it does have a default specified by the Chronos docs
         'epsilon': 'PT60S',
         'retries': 2,
-        'async': False,
+        'async': False,  # we don't support this param, but it does have a default specified by the Chronos docs
         'cpus': 0.1,
         'mem': 128,
         'disk': 256,
         'disabled': False,
-        'data_job': False,
+        # 'data_job': False,  # we don't support this param, but it does have a default specified by the Chronos docs
     }
 
-    for param in chronos_config_defaults:
-        if chronos_job_config.get(param) is None:
+    for param in chronos_config_defaults.keys():
+        if new_chronos_job_config.get(param) is None:
             new_chronos_job_config.config_dict[param] = chronos_config_defaults[param]
             # TODO if we want defaults for values outside of config_dict, we need add'l logic to handle them
     return new_chronos_job_config
@@ -190,53 +223,65 @@ def check_job_reqs(chronos_job_config, job_type):
 # TODO should these be made "private" (e.g. _check_scheduled_job_reqs) b/c they should only be called by check_job_reqs?
 # TODO these should also return an error message in addition to False if params are missing, like check_[param] should
 def check_scheduled_job_reqs(chronos_job_config):
+    okay = True
+    msgs = []
     # TODO add schedule_time_zone
     for param in ['name', 'command', 'schedule', 'epsilon', 'owner', 'async']:
-        if self.get(param) is None:
-            return False, 'Your Chronos config is missing \'%s\', a required parameter for a \'scheduled job\'.' % param
+        if chronos_job_config.get(param) is None:
+            okay = False
+            msgs.append('Your Chronos config is missing \'%s\', a required parameter for a \'scheduled job\'.' % param)
 
-    return True, ''
+    return okay, msgs
 
 
-def check_dependent_job_reqs(self):
+def check_dependent_job_reqs(chronos_job_config):
+    okay = True
+    msgs = []
     # TODO add schedule_time_zone
     for param in ['name', 'command', 'parents', 'epsilon', 'owner', 'async']:
-        if self.get(param) is None:
-            return False, 'Your Chronos config is missing \'%s\', a required parameter for a \'dependent job\'.' % param
+        if chronos_job_config.get(param) is None:
+            okay = False
+            msgs.append('Your Chronos config is missing \'%s\', a required parameter for a \'dependent job\'.' % param)
 
-    return True, ''
+    return okay, msgs
 
 
-def check_docker_job_reqs(self):
+def check_docker_job_reqs(chronos_job_config):
+    okay = True
+    msgs = []
     # TODO add schedule_time_zone
     for param in ['name', 'command', 'container', 'epsilon', 'owner', 'async']:
-        if self.get(param) is None:
-            return False, 'Your Chronos config is missing \'%s\', a required parameter for a \'Docker job\'.' % param
-    if self.get('schedule') is None and self.get('parents') is None:
-      return False, 'Your Chronos config contains neither a schedule nor parents. One is required.'
-    elif self.get('schedule') is not None and self.get('parents') is not None:
-      return False, 'Your Chronos config contains both schedule and parents. Only one is allowed.'
+        if chronos_job_config.get(param) is None:
+            okay = False
+            msgs.append('Your Chronos config is missing \'%s\', a required parameter for a \'Docker job\'.' % param)
+    if chronos_job_config.get('schedule') is None and chronos_job_config.get('parents') is None:
+        okay = False
+        msgs.append('Your Chronos config contains neither a schedule nor parents. One is required.')
+    elif chronos_job_config.get('schedule') is not None and chronos_job_config.get('parents') is not None:
+        okay = False
+        msgs.append('Your Chronos config contains both schedule and parents. Only one is allowed.')
 
-    return True, ''
+    return okay, msgs
 
 
 def format_chronos_job_dict(chronos_job_config, job_type):
-    chronos_params = ['name', 'description', 'command', 'args', 'shell', 'epsilon', 'executor', 
-                      'executor_flags', 'retries', 'owner', 'owner_name', 'async', 'cpus', 'mem',
-                      'disk', 'disabled', 'uris', 'schedule', 'schedule_time_zone', 'parents',
-                      'user_to_run_as', 'container', 'data_job', 'environment_variables', 'constraints']
     complete_config_dict = dict()
     complete_chronos_job_config = set_missing_params_to_defaults(chronos_job_config)
+    error_msgs = []
 
-    for param in complete_chronos_job_config.config_dict.keys():  # TODO once we use multiple config files, this needs to accomodate that
-        check_passed, check_msg = complete_chronos_job_config.check(param)
+    # TODO once we use multiple config files, this needs to accomodate that
+    for param in complete_chronos_job_config.config_dict.keys():
+        check_passed, check_msg = check(complete_chronos_job_config, param)
         if check_passed:
             complete_config_dict[param] = complete_chronos_job_config.get(param)
         else:
-            raise InvalidChronosConfigError(check_msg)
+            error_msgs.append(check_msg)
 
-    reqs_passed, reqs_msg = check_job_reqs(complete_config_dict, job_type)
+    reqs_passed, reqs_msgs = check_job_reqs(complete_chronos_job_config, job_type)
     if not reqs_passed:
-        raise InvalidChronosConfigError(reqs_msg)
+        error_msgs += reqs_msgs
+
+    if len(error_msgs) > 0:
+        raise InvalidChronosConfigError('\n'.join(error_msgs))
 
     return complete_config_dict
