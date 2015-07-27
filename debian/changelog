@@ -1,3 +1,10 @@
+paasta-tools (0.12.33-yelp1) lucid; urgency=low
+
+  * 0.12.33 tagged with 'make release'
+    Commit: Handle missing marathon configs in metastatus
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 27 Jul 2015 10:38:08 -0700
+
 paasta-tools (0.12.32-yelp1) lucid; urgency=low
 
   * 0.12.32 tagged with 'make release'
