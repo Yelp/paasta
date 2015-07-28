@@ -4,6 +4,7 @@ import mock
 from multiprocessing import Queue
 from Queue import Empty
 
+import isodate
 from pytest import raises
 
 from paasta_tools.paasta_cli.cmds import logs
@@ -128,6 +129,59 @@ def test_marathon_log_line_passes_filter_false_when_service_name_missing():
         assert not logs.marathon_log_line_passes_filter(line, levels, service, components, clusters)
 
 
+def test_chronos_log_line_passes_filter_true_when_service_name_in_string():
+    service = 'fake_service'
+    levels = []
+    components = []
+    clusters = []
+    line = format_log_line(
+        'fake_level',
+        clusters,
+        'fake_instance',
+        'chronos',
+        'fake message with service name %s' % service,
+    )
+    with mock.patch('paasta_tools.chronos_tools.get_job_id', autospec=True) as compose_job_id_patch:
+        compose_job_id_patch.return_value = service
+        assert logs.chronos_log_line_passes_filter(line, levels, service, components, clusters)
+
+
+def test_chronos_log_line_passes_filter_false_when_service_name_missing():
+    service = 'fake_service'
+    levels = []
+    components = []
+    clusters = []
+    line = format_log_line(
+        'fake_level',
+        clusters,
+        'fake_instance',
+        'chronos',
+        'fake message without service name',
+    )
+
+    with mock.patch('paasta_tools.chronos_tools.get_job_id', autospec=True) as compose_job_id_patch:
+        compose_job_id_patch.return_value = service
+        assert not logs.chronos_log_line_passes_filter(line, levels, service, components, clusters)
+
+
+def test_extract_utc_timestamp_from_log_line_ok():
+    fake_timestamp = '2015-07-22T10:38:46-07:00'
+    fake_utc_timestamp = isodate.parse_datetime('2015-07-22T17:38:46.000000')
+
+    line = '%s this is a fake syslog test message' % fake_timestamp
+    assert logs.extract_utc_timestamp_from_log_line(line) == fake_utc_timestamp
+
+
+def test_extract_utc_timestamp_from_log_line_when_missing_date():
+    line = 'this is a fake invalid syslog message'
+    assert not logs.extract_utc_timestamp_from_log_line(line)
+
+
+def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
+    line = 'Jul 22 10:39:08 this is a fake invalid syslog message'
+    assert not logs.extract_utc_timestamp_from_log_line(line)
+
+
 def test_parse_marathon_log_line_ok():
     fake_timestamp = '2015-07-22T10:38:46-07:00'
     fake_utc_timestamp = '2015-07-22T17:38:46.000000'
@@ -145,16 +199,21 @@ def test_parse_marathon_log_line_ok():
     assert sorted(logs.parse_marathon_log_line(line, clusters)) == sorted(expected)
 
 
-def test_parse_marathon_log_line_when_missing_date():
-    line = 'this is a fake invalid syslog message'
-    clusters = ['fake_cluster']
-    assert logs.parse_marathon_log_line(line, clusters) == ''
+def test_parse_chronos_log_line_ok():
+    fake_timestamp = '2015-07-22T10:38:46-07:00'
+    fake_utc_timestamp = '2015-07-22T17:38:46.000000'
 
-
-def test_parse_marathon_log_line_when_invalid_date_format():
-    line = 'Jul 22 10:39:08 this is a fake invalid syslog message'
+    line = '%s this is a fake syslog test message' % fake_timestamp
     clusters = ['fake_cluster']
-    assert logs.parse_marathon_log_line(line, clusters) == ''
+    expected = json.dumps({
+        'timestamp': fake_utc_timestamp,
+        'component': 'chronos',
+        'cluster': clusters[0],
+        'instance': 'ALL',
+        'level': 'event',
+        'message': line
+    })
+    assert sorted(logs.parse_chronos_log_line(line, clusters)) == sorted(expected)
 
 
 def test_scribe_tail_log_everything():

@@ -154,6 +154,11 @@ LOG_COMPONENTS = {
         'help': 'Logs from Marathon for the service',
         'command': 'NA - TODO log marathon stuff.',
     },
+    'chronos': {
+        'color': PaastaColors.magenta,
+        'help': 'Logs from Chronos for the service',
+        'command': 'NA - TODO log chronos stuff.',
+    },
     # I'm leaving these planned components here since they provide some hints
     # about where we want to go. See PAASTA-78.
     #
