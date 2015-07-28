@@ -349,7 +349,7 @@ def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
             for cluster in clusters:
                 kw = {
                     'scribe_env': scribe_env,
-                    'stream_name': 'tmp_marathon_%s' % cluster,
+                    'stream_name': 'stream_marathon_%s' % cluster,
                     'service': service,
                     'levels': levels,
                     'components': components,
