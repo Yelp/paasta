@@ -1,8 +1,11 @@
-import isodate
-import logging
 import copy
+import logging
+import re
+
+import isodate
 
 import service_configuration_lib
+
 
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -113,33 +116,38 @@ class ChronosJobConfig(dict):
                 return False, 'The specified disk value \'%s\' is not a valid float.' % self.get('disk')
         return True, ''
 
-    # TODO check that it conforms to the Chronos docs
-    # by compiling regex like isodate does and match to regex
-    def validate_repeat(self, repeat_string):
-        return True
+    # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
+    # more info: https://en.wikipedia.org/wiki/ISO_8601#Repeating_intervals
+    def _check_schedule_repeat_helper(self, repeat_string):
+        pattern = re.compile('^R\d*$')
+        return pattern.match(repeat_string) is not None
 
     def check_schedule(self):
+        msgs = []
         schedule = self.get('schedule')
+
         if schedule is not None:
             repeat, start_time, interval = str.split(schedule, '/')  # the parts have separate validators
             if start_time != '':  # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
+                # TODO isodate accepts a time without time zone given (like 19:20:30 vs. 19:20:30-0800) as local time
+                # do we want a time zone to be explicitly specified or is this default okay?
                 try:
                     isodate.parse_datetime(start_time)
-                except isodate.ISO8601Error:
-                    return False, ('The specified start time \'%s\' in schedule \'%s\' '
-                                   'does not conform to the ISO 8601 format.' % (start_time, schedule))
+                except isodate.ISO8601Error as exc:
+                    msgs.append('The specified start time \'%s\' in schedule \'%s\' '
+                                'does not conform to the ISO 8601 format:\n%s' % (start_time, schedule, str(exc)))
 
             try:
                 isodate.parse_duration(interval)  # 'interval' and 'duration' are interchangeable terms
             except isodate.ISO8601Error:
-                return False, ('The specified interval \'%s\' in schedule \'%s\' '
-                               'does not conform to the ISO 8601 format.' % (interval, schedule))
+                msgs.append('The specified interval \'%s\' in schedule \'%s\' '
+                            'does not conform to the ISO 8601 format.' % (interval, schedule))
 
-            if repeat == '' or not self.validate_repeat(repeat):  # TODO write the validator
-                return False, ('The specified repeat \'%s\' in schedule \'%s\' '
-                               'does not conform to the ISO 8601 format.' % (repeat, schedule))
+            if not self._check_schedule_repeat_helper(repeat):
+                msgs.append('The specified repeat \'%s\' in schedule \'%s\' '
+                            'does not conform to the ISO 8601 format.' % (repeat, schedule))
 
-        return True, ''
+        return len(msgs) == 0, '\n'.join(msgs)
 
     # TODO we should use pytz for best possible tz info and validation
     # TODO if tz specified in start_time, compare to the schedule_time_zone and warn if they differ
@@ -147,14 +155,17 @@ class ChronosJobConfig(dict):
     # NOTE confusingly, the accepted time zone format for 'schedule_time_zone' is different than in 'schedule'!
     # 'schedule_time_zone': tz database format (https://en.wikipedia.org/wiki/List_of_tz_database_time_zones)
     # 'schedule': ISO 8601 format (https://en.wikipedia.org/wiki/ISO_8601#Time_zone_designators)
+    # TODO maybe we don't even want to support this a a separate parameter? instead require it to be specified
+    # as a component of the 'schedule' parameter?
     def check_schedule_time_zone(self):
         time_zone = self.get('schedule_time_zone')
         if time_zone is not None:
             return True, ''
             # try:
             #     # TODO validate tz format
-            # except isodate.ISO8601Error:
-            #     return False, 'The specified time zone \'%s\' does not conform to the tz database format.' % time_zone
+            # except isodate.ISO8601Error as exc:
+            #     return False, ('The specified time zone \'%s\' does not conform to the tz database format:\n%s'
+            #                    % (time_zone, str(exc)))
         return True, ''
 
     def check(self, param):
@@ -172,7 +183,6 @@ class ChronosJobConfig(dict):
         if param in check_methods:
             return check_methods[param]()
         elif param in supported_params_without_checks:
-            # TODO what should we do if someone tries to check a supported param that has no check defined?
             return True, ''
         else:
             return False, 'Your Chronos config specifies \'%s\', an unsupported parameter.' % param
@@ -200,58 +210,68 @@ def set_missing_params_to_defaults(chronos_job_config):
     return new_chronos_job_config
 
 
-# TODO is this too much decomposition? how far down the rabbit hole should we go?
-def check_job_reqs(chronos_job_config, job_type):
-    job_checks = {
-        'scheduled': check_scheduled_job_reqs,
-        'dependent': check_dependent_job_reqs,
-        'docker': check_docker_job_reqs,
-    }
-    return job_checks[job_type](chronos_job_config)
-
-
-# TODO should these be made "private" (e.g. _check_scheduled_job_reqs) b/c they should only be called by check_job_reqs?
-# TODO these should also return an error message in addition to False if params are missing, like check_[param] should
-def check_scheduled_job_reqs(chronos_job_config):
-    okay = True
+def _check_scheduled_job_reqs_helper(chronos_job_config, job_type):
+    missing_param_msg = 'Your Chronos config is missing \'%s\', a required parameter for a \'%s job\'.'
     msgs = []
-    # TODO add schedule_time_zone
-    for param in ['name', 'command', 'schedule', 'epsilon', 'owner', 'async']:
-        if chronos_job_config.get(param) is None:
-            okay = False
-            msgs.append('Your Chronos config is missing \'%s\', a required parameter for a \'scheduled job\'.' % param)
 
-    return okay, msgs
+    if chronos_job_config.get('schedule') is None:
+        msgs.append(missing_param_msg % ('schedule', job_type))
+    if chronos_job_config.get('parents') is not None:
+        msgs.append('Your Chronos config specifies \'parents\', an invalid parameter for a \'scheduled job\'.')
+
+    return msgs
 
 
-def check_dependent_job_reqs(chronos_job_config):
-    okay = True
+def _check_dependent_job_reqs_helper(chronos_job_config, job_type):
+    missing_param_msg = 'Your Chronos config is missing \'%s\', a required parameter for a \'%s job\'.'
     msgs = []
-    # TODO add schedule_time_zone
-    for param in ['name', 'command', 'parents', 'epsilon', 'owner', 'async']:
-        if chronos_job_config.get(param) is None:
-            okay = False
-            msgs.append('Your Chronos config is missing \'%s\', a required parameter for a \'dependent job\'.' % param)
 
-    return okay, msgs
+    if chronos_job_config.get('parents') is None:
+        msgs.append(missing_param_msg % ('parents', job_type))
+    if chronos_job_config.get('schedule') is not None:
+        msgs.append('Your Chronos config specifies \'schedule\', an invalid parameter for a \'dependent job\'.')
+
+    return msgs
 
 
-def check_docker_job_reqs(chronos_job_config):
-    okay = True
+def _check_docker_job_reqs_helper(chronos_job_config, job_type):
+    missing_param_msg = 'Your Chronos config is missing \'%s\', a required parameter for a \'%s job\'.'
     msgs = []
-    # TODO add schedule_time_zone
-    for param in ['name', 'command', 'container', 'epsilon', 'owner', 'async']:
-        if chronos_job_config.get(param) is None:
-            okay = False
-            msgs.append('Your Chronos config is missing \'%s\', a required parameter for a \'Docker job\'.' % param)
+
+    if chronos_job_config.get('container') is None:
+        msgs.append(missing_param_msg % ('container', job_type))
     if chronos_job_config.get('schedule') is None and chronos_job_config.get('parents') is None:
-        okay = False
-        msgs.append('Your Chronos config contains neither a schedule nor parents. One is required.')
+        msgs.append('Your Chronos config contains neither \'schedule\' nor \'parents\'. '
+                    'One is required for a \'docker job\'.')
     elif chronos_job_config.get('schedule') is not None and chronos_job_config.get('parents') is not None:
-        okay = False
-        msgs.append('Your Chronos config contains both schedule and parents. Only one is allowed.')
+        msgs.append('Your Chronos config contains both \'schedule\' and \'parents\'. '
+                    'Only one may be specified for a \'docker job\'.')
 
-    return okay, msgs
+    return msgs
+
+
+# 'scheduled job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-scheduled-job
+# 'dependent job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-dependent-job
+# 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
+def check_job_reqs(chronos_job_config, job_type):
+    missing_param_msg = 'Your Chronos config is missing \'%s\', a required parameter for a \'%s job\'.'
+    msgs = []
+
+    if job_type == 'scheduled':
+        msgs += _check_scheduled_job_reqs_helper(chronos_job_config, job_type)
+    elif job_type == 'dependent':
+        msgs += _check_dependent_job_reqs_helper(chronos_job_config, job_type)
+    elif job_type == 'docker':
+        msgs += _check_docker_job_reqs_helper(chronos_job_config, job_type)
+    else:
+        return False, '\'%s\' is not a supported job type. Aborting job requirements check.' % job_type
+
+    # TODO add schedule_time_zone
+    for param in ['name', 'command', 'epsilon', 'owner', 'async']:
+        if chronos_job_config.get(param) is None:
+            msgs.append(missing_param_msg % (param, job_type))
+
+    return len(msgs) == 0, msgs
 
 
 def format_chronos_job_dict(chronos_job_config, job_type):
