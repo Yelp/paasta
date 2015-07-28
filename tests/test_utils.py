@@ -38,6 +38,32 @@ def test_format_log_line():
         assert actual == expected
 
 
+def test_format_log_line_with_timestamp():
+    input_line = 'foo'
+    fake_cluster = 'fake_cluster'
+    fake_instance = 'fake_instance'
+    fake_component = 'build'
+    fake_level = 'debug'
+    fake_timestamp = 'fake_timestamp'
+    expected = json.dumps({
+        'timestamp': fake_timestamp,
+        'level': fake_level,
+        'cluster': fake_cluster,
+        'instance': fake_instance,
+        'component': fake_component,
+        'message': input_line,
+    }, sort_keys=True)
+    actual = utils.format_log_line(
+        fake_level,
+        fake_cluster,
+        fake_instance,
+        fake_component,
+        input_line,
+        timestamp=fake_timestamp
+    )
+    assert actual == expected
+
+
 def test_format_log_line_rejects_invalid_components():
     with raises(utils.NoSuchLogComponent):
         utils.format_log_line('fake_service', 'fake_line', 'BOGUS_COMPONENT', 'debug', 'fake_input')
@@ -362,24 +388,23 @@ def test_remove_ansi_escape_sequences():
     assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
 
 
-@mock.patch('os.listdir', autospec=True)
-def test_list_all_clusters(mock_os_listdir):
-    mock_os_listdir.return_value = ['cluster1.yaml', 'cluster2.yaml']
+@mock.patch('glob.glob', autospec=True)
+def test_list_all_clusters(mock_glob):
+    mock_glob.return_value = ['/nail/etc/services/service1/marathon-cluster1.yaml',
+                              '/nail/etc/services/service2/chronos-cluster2.yaml']
     expected = set(['cluster1', 'cluster2'])
     actual = utils.list_all_clusters()
     assert actual == expected
 
 
-@mock.patch('paasta_tools.utils.parse_yaml_file', autospec=True)
-def test_get_infrastructure_zookeeper_servers(mock_parse_yaml_file):
-    mock_parse_yaml_file.return_value = [
-        ['1.2.3.4', 22181],
-        ['5.6.7.8', 22181],
-    ]
-    actual = utils.get_infrastructure_zookeeper_servers('test-cluster')
-    expected = ['1.2.3.4', '5.6.7.8']
+@mock.patch('glob.glob', autospec=True)
+def test_list_all_clusters_ignores_bogus_files(mock_glob):
+    mock_glob.return_value = ['/nail/etc/services/service1/marathon-clustera.yaml',
+                              '/nail/etc/services/service2/chronos-SHARED.yaml',
+                              '/nail/etc/services/service2/marathon-DEVSTAGE.yaml']
+    expected = set(['clustera'])
+    actual = utils.list_all_clusters()
     assert actual == expected
-    mock_parse_yaml_file.assert_called_once_with('/nail/etc/zookeeper_discovery/infrastructure/test-cluster.yaml')
 
 
 def test_color_text():

@@ -4,7 +4,6 @@ import time
 from itest_utils import wait_for_marathon
 from itest_utils import cleanup_file
 from itest_utils import setup_mesos_cli_config
-from itest_utils import print_container_logs
 from paasta_tools import marathon_tools
 
 
@@ -19,7 +18,7 @@ def after_all(context):
     cleanup_file(context.mesos_cli_config)
 
 
-def after_scenario(context, scenario):
+def _clean_up_marathon_apps(context):
     """If a marathon client object exists in our context, delete any apps in Marathon and wait until they die."""
     if hasattr(context, 'client'):
         while True:
@@ -41,9 +40,14 @@ def after_scenario(context, scenario):
             time.sleep(0.5)
 
 
-def after_step(context, step):
-    if step.status == "failed":
-        print "Zookeeper container logs:"
-        print_container_logs('zookeeper')
-        print "Marathon container logs:"
-        print_container_logs('marathon')
+def _clean_up_mesos_cli_config(context):
+    """If a mesos cli config file was written, clean it up."""
+    if hasattr(context, 'mesos_cli_config_filename'):
+        print 'Cleaning up %s' % context.mesos_cli_config_filename
+        os.unlink(context.mesos_cli_config_filename)
+        del context.mesos_cli_config_filename
+
+
+def after_scenario(context, scenario):
+    _clean_up_marathon_apps(context)
+    _clean_up_mesos_cli_config(context)

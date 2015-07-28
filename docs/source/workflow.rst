@@ -92,6 +92,8 @@ configuration for the running image:
 
   * ``/nail/etc/zookeeper_discovery`` (`Zookeeper discovery files <https://docs.google.com/document/d/1Iongm7TSlnd0Zahsa2BoyyR6o2dxNh5AvOetVtJcXho/edit>`_)
 
+  * ``/nail/etc/kafka_discovery`` (`Kafka discovery files <http://servicedocs.yelpcorp.com/docs/yelp_kafka/index.html>`_)
+
 
 * ``--workdir``: Mesos containers are launched in a temporary "workspace"
   directory on disk. Use the workdir sparingly and try not to output files.
@@ -136,8 +138,8 @@ There are four bounce methods available:
 
 A service author can select a bounce method by setting ``bounce_method`` in
 the marathon configuration file. (e.g. ``marathon-SHARED.yaml``) This setting
-is set per-instance. See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>_`
-file.
+is set per-instance. If not set, it will default to the ``crossover`` method.
+See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>_` file.
 
 Additionally, a service author can configure how the bounce code determines
 which instances are healthy by setting ``bounce_health_params``. This
@@ -151,9 +153,20 @@ Valid options are:
 
 Monitoring
 ----------
-`check_marathon_services_replication <check_marathon_services_replication.html>`_
-runs periodically and sends an alert if the actual state of the cluster does
-not match the desired state.
+
+PaaSTA gives you a few `Sensu <https://sensuapp.org/docs/latest/>`_-powered
+monitoring checks for free:
+
+* `setup_marathon_job <generated/paasta_tools.setup_marathon_job.html#module-paasta_tools.setup_marathon_job>`_:
+  Alerts when a Marathon service cannot be deployed or bounced for some reason.
+  It will resolve when a service has been successfully deployed/bounced.
+
+* `check_marathon_services_replication <generated/paasta_tools.check_marathon_services_replication.html>`_:
+  runs periodically and sends an alert if fewer than 50% of the requested
+  instances are deployed on a cluster. If the service is registered in Smartstack
+  it will look in Smartstack to count the available instances. Otherwise it
+  counts the number of healthy tasks in Mesos.
+
 
 Cleanup
 -------

@@ -1,15 +1,18 @@
 from __future__ import print_function
+from functools import wraps
 from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
 import contextlib
 import datetime
 import errno
+import glob
 import logging
 import os
 import pwd
 import re
 import shlex
+import signal
 import sys
 import tempfile
 import threading
@@ -18,7 +21,9 @@ import clog
 import dateutil.tz
 import docker
 import json
+import service_configuration_lib
 import yaml
+
 
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
@@ -44,7 +49,7 @@ class PaastaColors:
     CYAN = '\033[36m'
     DEFAULT = '\033[0m'
     GREEN = '\033[32m'
-    GREY = '\033[1m\033[30m'
+    GREY = '\033[38;5;242m'
     MAGENTA = '\033[35m'
     RED = '\033[31m'
     YELLOW = '\033[33m'
@@ -127,7 +132,6 @@ class PaastaColors:
     def default(text):
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
-
 LOG_COMPONENTS = {
     'build': {
         'color': PaastaColors.blue,
@@ -144,6 +148,11 @@ LOG_COMPONENTS = {
         'color': PaastaColors.green,
         'help': 'Logs from Sensu checks for the service',
         'command': 'NA - TODO log mesos healthcheck and sensu stuff.',
+    },
+    'marathon': {
+        'color': PaastaColors.magenta,
+        'help': 'Logs from Marathon for the service',
+        'command': 'NA - TODO log marathon stuff.',
     },
     # I'm leaving these planned components here since they provide some hints
     # about where we want to go. See PAASTA-78.
@@ -219,17 +228,18 @@ def remove_ansi_escape_sequences(line):
     return no_escape.sub('', line)
 
 
-def format_log_line(level, cluster, instance, component, line):
+def format_log_line(level, cluster, instance, component, line, timestamp=None):
     """Accepts a string 'line'.
 
     Returns an appropriately-formatted dictionary which can be serialized to
     JSON for logging and which contains 'line'.
     """
     validate_log_component(component)
-    now = _now()
+    if not timestamp:
+        timestamp = _now()
     line = remove_ansi_escape_sequences(line)
     message = json.dumps({
-        'timestamp': now,
+        'timestamp': timestamp,
         'level': level,
         'cluster': cluster,
         'instance': instance,
@@ -498,14 +508,14 @@ def check_docker_image(service_name, tag):
 
 
 def datetime_from_utc_to_local(utc_datetime):
-    local_tz = dateutil.tz.tzlocal()
-    # We make out datetime timezone aware
-    utc_datetime = utc_datetime.replace(tzinfo=dateutil.tz.tzutc())
-    # We convert to the local timezone
-    local_datetime = utc_datetime.astimezone(local_tz)
-    # We need to remove timezone awareness because of humanize
-    local_datetime = local_datetime.replace(tzinfo=None)
-    return local_datetime
+    return datetime_convert_timezone(utc_datetime, dateutil.tz.tzutc(), dateutil.tz.tzlocal())
+
+
+def datetime_convert_timezone(datetime, from_zone, to_zone):
+    datetime = datetime.replace(tzinfo=from_zone)
+    converted_datetime = datetime.astimezone(to_zone)
+    converted_datetime = converted_datetime.replace(tzinfo=None)
+    return converted_datetime
 
 
 def get_username():
@@ -515,13 +525,15 @@ def get_username():
     return pwd.getpwuid(os.getuid())[0]
 
 
-def list_all_clusters(zk_discovery_path=INFRA_ZK_PATH):
-    """Returns a set of all infrastructure zookeeper clusters.
-    This makes the assumption that paasta clusters and zookeeper
-    clusters are the same"""
+def list_all_clusters(soadir=service_configuration_lib.DEFAULT_SOA_DIR):
+    """Returns a set of all clusters. Includes every cluster that has
+    a marathon or chronos file associated with it.
+    """
     clusters = set()
-    for yaml_file in os.listdir(zk_discovery_path):
-        clusters.add(yaml_file.split('.')[0])
+    for yaml_file in glob.glob('%s/*/*.yaml' % soadir):
+        cluster_re_match = re.search('/.*/(marathon|chronos)-([0-9a-z-]*).yaml$', yaml_file)
+        if cluster_re_match is not None:
+            clusters.add(cluster_re_match.group(2))
     return clusters
 
 
@@ -529,13 +541,51 @@ def parse_yaml_file(yaml_file):
     return yaml.load(open(yaml_file))
 
 
-def get_infrastructure_zookeeper_servers(cluster, zk_discovery_path=INFRA_ZK_PATH):
-    """Reads a yelp zookeeper toplogy file for a given cluster and returns
-    a list of the zookeeper server ips"""
-    yaml_file = os.path.join(zk_discovery_path, "%s%s" % (cluster, '.yaml'))
-    cluster_topology = parse_yaml_file(yaml_file)
-    return [host_port[0] for host_port in cluster_topology]
-
-
 def get_docker_host():
     return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
+
+
+class TimeoutError(Exception):
+    pass
+
+
+def timeout(seconds=10, error_message=os.strerror(errno.ETIME)):
+    def decorator(func):
+        def _handle_timeout(signum, frame):
+            raise TimeoutError(error_message)
+
+        def wrapper(*args, **kwargs):
+            signal.signal(signal.SIGALRM, _handle_timeout)
+            signal.alarm(seconds)
+            try:
+                result = func(*args, **kwargs)
+            finally:
+                signal.alarm(0)
+            return result
+
+        return wraps(func)(wrapper)
+
+    return decorator
+
+
+class Timeout:
+    # From http://stackoverflow.com/questions/2281850/timeout-function-if-it-takes-too-long-to-finish
+
+    def __init__(self, seconds=1, error_message='Timeout'):
+        self.seconds = seconds
+        self.error_message = error_message
+
+    def handle_timeout(self, signum, frame):
+        raise TimeoutError(self.error_message)
+
+    def __enter__(self):
+        signal.signal(signal.SIGALRM, self.handle_timeout)
+        signal.alarm(self.seconds)
+
+    def __exit__(self, type, value, traceback):
+        signal.alarm(0)
+
+
+def print_with_indent(line, indent=2):
+    """ Print a line with a given indent level """
+    print(" " * indent + line)

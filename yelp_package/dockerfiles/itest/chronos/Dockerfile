@@ -1,9 +1,12 @@
 FROM docker-dev.yelpcorp.com/lucid_yelp
-MAINTAINER Sophie Haskins <shaskins@yelp.com>
 
 RUN apt-get update
-RUN apt-get -y install chronos
+RUN apt-get -y install oracle-java7-jre
+
+RUN locale-gen en_US.UTF-8
 RUN apt-get -y install mesos=0.20.1-yelp4
+
+RUN apt-get -y install chronos
 # Chronos will look in here for zk config, so we blow away the bogus defaults
 RUN rm -rf /etc/mesos/
 

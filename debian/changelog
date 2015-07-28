@@ -1,3 +1,137 @@
+paasta-tools (0.12.35-yelp1) lucid; urgency=low
+
+  * 0.12.35 tagged with 'make release'
+    Commit: Merge branch jlynch_be_nice_to_callers
+
+ -- Joseph Lynch <jlynch@yelp.com>  Tue, 28 Jul 2015 10:53:01 -0700
+
+paasta-tools (0.12.34-yelp1) lucid; urgency=low
+
+  * 0.12.34 tagged with 'make release'
+    Commit: Handle timeouts during healthcheck in local-run
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 27 Jul 2015 14:10:37 -0700
+
+paasta-tools (0.12.33-yelp1) lucid; urgency=low
+
+  * 0.12.33 tagged with 'make release'
+    Commit: Handle missing marathon configs in metastatus
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 27 Jul 2015 10:38:08 -0700
+
+paasta-tools (0.12.32-yelp1) lucid; urgency=low
+
+  * 0.12.32 tagged with 'make release'
+    Commit: Revert docker-py version to work with exsiting Docker
+    servers
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 18:06:38 -0700
+
+paasta-tools (0.12.31-yelp1) lucid; urgency=low
+
+  * 0.12.31 tagged with 'make release'
+    Commit: Released 0.12.30-yelp1 via make release
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 16:37:15 -0700
+
+paasta-tools (0.12.30-yelp1) lucid; urgency=low
+
+  * 0.12.30 tagged with 'make release'
+    Commit: Add Marathon logging component to paasta logs
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 16:35:03 -0700
+
+paasta-tools (0.12.29-yelp1) lucid; urgency=low
+
+  * 0.12.29 tagged with 'make release'
+    Commit: Fix broken tests
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 10:37:00 -0700
+
+paasta-tools (0.12.28-yelp1) lucid; urgency=low
+
+  * 0.12.28 tagged with 'make release'
+    Commit: Fix constraint data type
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 23 Jul 2015 10:06:43 -0700
+
+paasta-tools (0.12.27-yelp1) lucid; urgency=low
+
+  * 0.12.27 tagged with 'make release'
+    Commit: Fix chronos related itests
+
+ -- Keshav Varma <keshav@yelp.com>  Wed, 22 Jul 2015 17:15:03 -0700
+
+paasta-tools (0.12.26-yelp1) lucid; urgency=low
+
+  * 0.12.26 tagged with 'make release'
+    Commit: Enable smarter replication monitoring for services across
+    multiple regions/habitats
+
+ -- Keshav Varma <keshav@yelp.com>  Wed, 22 Jul 2015 14:11:47 -0700
+
+paasta-tools (0.12.25-yelp1) lucid; urgency=low
+
+  * 0.12.25 tagged with 'make release'
+    Commit: Re-enable itests for safety
+
+ -- Keshav Varma <keshav@yelp.com>  Tue, 21 Jul 2015 17:21:51 -0700
+
+paasta-tools (0.12.24-yelp1) lucid; urgency=low
+
+  * 0.12.24 tagged with 'make release'
+    Commit: Bump to latest version of marathon python bindings for
+    PAASTA-707
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 20 Jul 2015 12:57:51 -0700
+
+paasta-tools (0.12.23-yelp1) lucid; urgency=low
+
+  * 0.12.23 tagged with 'make release'
+    Commit: Use 256-color codes for grey for consistency across
+    terminals.
+
+ -- Evan Krall <krall@yelp.com>  Fri, 17 Jul 2015 11:10:33 -0700
+
+paasta-tools (0.12.22-yelp1) lucid; urgency=low
+
+  * 0.12.22 tagged with 'make release'
+    Commit: Merge branch PAASTA-939: Switch default bounce strategy
+    upthendown => crossover
+
+ -- Christopher Carroux <carroux@yelp.com>  Fri, 17 Jul 2015 09:38:44 -0700
+
+paasta-tools (0.12.21-yelp1) lucid; urgency=low
+
+  * 0.12.21 tagged with 'make release'
+    Commit: Revert "Support the new marathon python bindings and go back
+    to marathon 0.8.2"  This reverts commit
+    5ab36ee551b26427d7a503f9ac131d22db3fe25f.
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 16 Jul 2015 16:58:11 -0700
+
+paasta-tools (0.12.20-yelp1) lucid; urgency=low
+
+  * 0.12.20 tagged with 'make release'
+    Commit: Merge branch PAASTA-981
+
+ -- Keshav Varma <keshav@yelp.com>  Thu, 16 Jul 2015 10:49:51 -0700
+
+paasta-tools (0.12.19-yelp1) lucid; urgency=low
+
+  * 0.12.19 tagged with 'make release'
+    Commit: Merge branch PAASTA-707b
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 15 Jul 2015 13:43:51 -0700
+
+paasta-tools (0.12.18-yelp1) lucid; urgency=low
+
+  * 0.12.18 tagged with 'make release'
+    Commit: Merge branch PAASTA-945: Change default healthchecks mode to
+    support long-running non-http services
+
+ -- Christopher Carroux <carroux@yelp.com>  Tue, 14 Jul 2015 14:30:37 -0700
+
 paasta-tools (0.12.17-yelp1) lucid; urgency=low
 
   * 0.12.17 tagged with 'make release'

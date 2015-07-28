@@ -2,6 +2,7 @@ import contextlib
 
 from marathon.models import MarathonApp
 import mock
+from mock import patch
 from pytest import raises
 import requests
 
@@ -457,55 +458,12 @@ class TestMarathonTools:
             read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
             read_config_patch.assert_called_once_with(name, namespace, soa_dir)
 
-    def test_get_mode_for_instance_present(self):
-        name = 'stage_env'
-        instance = 'in_aws'
-        cluster = 'thats_crazy'
-        soa_dir = 'the_future'
-        namespace = 'is_here'
-        fake_mode = 'banana'
-        fake_nerve = marathon_tools.ServiceNamespaceConfig({'mode': fake_mode})
-        with contextlib.nested(
-            mock.patch('marathon_tools.read_namespace_for_service_instance',
-                       autospec=True, return_value=namespace),
-            mock.patch('marathon_tools.load_service_namespace_config',
-                       autospec=True, return_value=fake_nerve)
-        ) as (
-            read_ns_patch,
-            read_config_patch
-        ):
-            actual = marathon_tools.get_mode_for_instance(name, instance, cluster, soa_dir)
-            assert fake_mode == actual
-            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
-            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
-
-    def test_get_mode_for_instance_default(self):
-        name = 'stage_env'
-        instance = 'in_aws'
-        cluster = 'thats_crazy'
-        soa_dir = 'the_future'
-        namespace = 'is_here'
-        expected = 'http'
-        with contextlib.nested(
-            mock.patch('marathon_tools.read_namespace_for_service_instance',
-                       autospec=True, return_value=namespace),
-            mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
-                       return_value=marathon_tools.ServiceNamespaceConfig())
-        ) as (
-            read_ns_patch,
-            read_config_patch
-        ):
-            actual = marathon_tools.get_mode_for_instance(name, instance, cluster, soa_dir)
-            assert expected == actual
-            read_ns_patch.assert_called_once_with(name, instance, cluster, soa_dir)
-            read_config_patch.assert_called_once_with(name, namespace, soa_dir)
-
     def test_read_service_namespace_config_exists(self):
         name = 'eman'
         namespace = 'ecapseman'
         soa_dir = 'rid_aos'
+        mode = 'http'
         fake_uri = 'energy'
-        fake_mode = 'ZTP'
         fake_timeout = -10103
         fake_port = 777
         fake_retries = 9001
@@ -519,7 +477,7 @@ class TestMarathonTools:
             'timeout_server_ms': 291,
             'timeout_client_ms': 912,
             'retries': fake_retries,
-            'mode': fake_mode,
+            'mode': mode,
             'routes': [
                 {
                     'source': 'oregon',
@@ -549,7 +507,7 @@ class TestMarathonTools:
             'timeout_server_ms': 291,
             'timeout_client_ms': 912,
             'retries': fake_retries,
-            'mode': fake_mode,
+            'mode': mode,
             'routes': [
                 ('oregon', 'indiana'), ('florida', 'miami'), ('florida', 'beach')
             ],
@@ -565,6 +523,34 @@ class TestMarathonTools:
             actual = marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
             read_service_configuration_patch.assert_called_once_with(name, soa_dir)
             assert sorted(actual) == sorted(expected)
+
+    def test_read_service_namespace_config_no_mode_with_no_smartstack(self):
+        name = 'eman'
+        namespace = 'ecapseman'
+        soa_dir = 'rid_aos'
+        fake_config = {}
+        with mock.patch('service_configuration_lib.read_service_configuration',
+                        autospec=True,
+                        return_value=fake_config) as read_service_configuration_patch:
+            actual = marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
+            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
+            assert actual.get('mode') is None
+
+    def test_read_service_namespace_config_no_mode_with_smartstack(self):
+        name = 'eman'
+        namespace = 'ecapseman'
+        soa_dir = 'rid_aos'
+        fake_config = {
+            'smartstack': {
+                namespace: {'proxy_port': 9001},
+            },
+        }
+        with mock.patch('service_configuration_lib.read_service_configuration',
+                        autospec=True,
+                        return_value=fake_config) as read_service_configuration_patch:
+            actual = marathon_tools.load_service_namespace_config(name, namespace, soa_dir)
+            read_service_configuration_patch.assert_called_once_with(name, soa_dir)
+            assert actual.get('mode') == 'http'
 
     def test_read_service_namespace_config_no_file(self):
         name = 'a_man'
@@ -930,7 +916,7 @@ class TestMarathonTools:
                 'type': 'DOCKER',
                 'volumes': fake_volumes,
             },
-            'constraints': [["habitat", "GROUP_BY"]],
+            'constraints': [["habitat", "GROUP_BY", "1"]],
             'uris': ['file:///root/.dockercfg', ],
             'mem': fake_mem,
             'env': fake_env,
@@ -960,12 +946,14 @@ class TestMarathonTools:
             {'desired_state': 'start'}
         )
 
-        actual = config.format_marathon_app_dict(fake_id, fake_url, fake_volumes,
-                                                 fake_service_namespace_config)
-        assert actual == expected_conf
+        with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}}
+            actual = config.format_marathon_app_dict(fake_id, fake_url, fake_volumes,
+                                                     fake_service_namespace_config)
+            assert actual == expected_conf
 
-        # Assert that the complete config can be inserted into the MarathonApp model
-        assert MarathonApp(**actual)
+            # Assert that the complete config can be inserted into the MarathonApp model
+            assert MarathonApp(**actual)
 
     def test_instances_is_zero_when_desired_state_is_stop(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
@@ -982,7 +970,7 @@ class TestMarathonTools:
 
     def test_get_bounce_method_default(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        fake_conf.get_bounce_method() == 'upthendown'
+        assert fake_conf.get_bounce_method() == 'crossover'
 
     def test_get_instances_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
@@ -1010,12 +998,16 @@ class TestMarathonTools:
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'constraints': 'so_many_walls'},
                                                          {})
-        assert fake_conf.get_constraints(fake_service_namespace_config) == 'so_many_walls'
+        with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
+            assert fake_conf.get_constraints(fake_service_namespace_config) == 'so_many_walls'
+            assert get_slaves_patch.call_count == 0
 
     def test_get_constraints_default(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_constraints(fake_service_namespace_config) == [["region", "GROUP_BY"]]
+        with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}}
+            assert fake_conf.get_constraints(fake_service_namespace_config) == [["region", "GROUP_BY", "1"]]
 
     def test_get_constraints_from_discover(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
@@ -1024,7 +1016,10 @@ class TestMarathonTools:
             'discover': 'habitat',
         })
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY"]]
+        with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}, 'fake_other_region': {}}
+            assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY", "2"]]
+            get_slaves_patch.assert_called_once_with('habitat')
 
     def test_get_cpus_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cpus': -5}, {})
@@ -1146,6 +1141,27 @@ class TestMarathonTools:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is False
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
 
+    @patch('marathon_tools.MarathonClient.list_tasks')
+    def test_app_has_tasks_exact(self, patch_list_tasks):
+        fake_client = mock.Mock()
+        fake_client.list_tasks = patch_list_tasks
+        patch_list_tasks.return_value = [{}, {}, {}]
+        assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 3) is True
+
+    @patch('marathon_tools.MarathonClient.list_tasks')
+    def test_app_has_tasks_less(self, patch_list_tasks):
+        fake_client = mock.Mock()
+        fake_client.list_tasks = patch_list_tasks
+        patch_list_tasks.return_value = [{}, {}, {}]
+        assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 2) is True
+
+    @patch('marathon_tools.MarathonClient.list_tasks')
+    def test_app_has_tasks_more(self, patch_list_tasks):
+        fake_client = mock.Mock()
+        fake_client.list_tasks = patch_list_tasks
+        patch_list_tasks.return_value = [{}, {}, {}]
+        assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4) is False
+
     def test_get_app_id(self):
         fake_name = 'fakeapp'
         fake_instance = 'fakeinstance'
@@ -1249,13 +1265,16 @@ class TestMarathonTools:
             mock.patch('marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
-                       return_value=self.fake_service_namespace_config)
+                       return_value=self.fake_service_namespace_config),
+            mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
+                       autospec=True, return_value={'fake_region': {}})
         ) as (
             load_system_paasta_config_patch,
             get_cluster_patch,
             read_service_config_patch,
             docker_url_patch,
             _,
+            __,
         ):
             read_service_config_patch.return_value = fake_service_config_1
             first_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
@@ -1326,6 +1345,120 @@ class TestMarathonTools:
         actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
         assert actual == expected
 
+    def test_get_healthcheck_for_instance_http(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+
+        fake_path = '/fake_path'
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+            'mode': 'http',
+            'healthcheck_uri': fake_path,
+        })
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = ('http', 'http://%s:%d%s' % (fake_hostname, fake_random_port, fake_path))
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
+            assert expected == actual
+
+    def test_get_healthcheck_for_instance_tcp(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {}, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+            'mode': 'tcp',
+        })
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = ('tcp', 'tcp://%s:%d' % (fake_hostname, fake_random_port))
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
+            assert expected == actual
+
+    def test_get_healthcheck_for_instance_cmd(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+        fake_cmd = '/bin/fake_command'
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
+            'healthcheck_mode': 'cmd',
+            'healthcheck_cmd': fake_cmd
+        }, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = ('cmd', fake_cmd)
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
+            assert expected == actual
+
+    def test_get_healthcheck_for_instance_other(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
+            'healthcheck_mode': None,
+        }, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = (None, None)
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
+            assert expected == actual
+
 
 class TestMarathonServiceConfig(object):
 
@@ -1333,6 +1466,27 @@ class TestMarathonServiceConfig(object):
         actual = repr(marathon_tools.MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'}))
         expected = """MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'})"""
         assert actual == expected
+
+    def test_get_healthcheck_mode_default(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        assert marathon_config.get_healthcheck_mode(namespace_config) is None
+
+    def test_get_healthcheck_mode_default_from_namespace_config(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({'proxy_port': 1234})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        assert marathon_config.get_healthcheck_mode(namespace_config) == 'http'
+
+    def test_get_healthcheck_mode_valid(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'tcp'}, {})
+        assert marathon_config.get_healthcheck_mode(namespace_config) == 'tcp'
+
+    def test_get_healthcheck_mode_invalid(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'udp'}, {})
+        with raises(marathon_tools.InvalidMarathonHealthcheckMode):
+            marathon_config.get_healthcheck_mode(namespace_config)
 
     def test_get_healthchecks_http_overrides(self):
         fake_path = '/mycoolstatus'
@@ -1371,7 +1525,7 @@ class TestMarathonServiceConfig(object):
 
     def test_get_healthchecks_http_defaults(self):
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'http'})
         expected = [
             {
                 "protocol": "HTTP",
@@ -1485,23 +1639,44 @@ class TestMarathonServiceConfig(object):
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
         assert actual == expected
 
-    def test_get_healthchecks_other(self):
+    def test_get_healthchecks_empty(self):
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'other'})
-        with raises(marathon_tools.InvalidSmartstackMode):
-            fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        assert fake_marathon_service_config.get_healthchecks(fake_service_namespace_config) == []
+
+    def test_get_healthchecks_invalid_mode(self):
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'none'}, {})
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        with raises(marathon_tools.InvalidMarathonHealthcheckMode):
+            marathon_config.get_healthchecks(namespace_config)
 
 
 class TestServiceNamespaceConfig(object):
 
     def test_get_mode_default(self):
-        assert marathon_tools.ServiceNamespaceConfig().get_mode() == 'http'
+        assert marathon_tools.ServiceNamespaceConfig().get_mode() is None
+
+    def test_get_mode_default_when_port_specified(self):
+        config = {'proxy_port': 1234}
+        assert marathon_tools.ServiceNamespaceConfig(config).get_mode() == 'http'
+
+    def test_get_mode_valid(self):
+        config = {'mode': 'tcp'}
+        assert marathon_tools.ServiceNamespaceConfig(config).get_mode() == 'tcp'
+
+    def test_get_mode_invalid(self):
+        config = {'mode': 'paasta'}
+        with raises(marathon_tools.InvalidSmartstackMode):
+            marathon_tools.ServiceNamespaceConfig(config).get_mode()
 
     def test_get_healthcheck_uri_default(self):
         assert marathon_tools.ServiceNamespaceConfig().get_healthcheck_uri() == '/status'
 
+    def test_get_discover_default(self):
+        assert marathon_tools.ServiceNamespaceConfig().get_discover() == 'region'
 
-def test_create_complete_config():
+
+def test_create_complete_config_no_smartstack():
     service_name = "service"
     instance_name = "instance"
     fake_job_id = "service.instance.some.hash"
@@ -1524,13 +1699,80 @@ def test_create_complete_config():
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
         mock.patch('marathon_tools.get_cluster', return_value=fake_cluster),
         mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
-        mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config)
+        mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
+                   autospec=True, return_value={'fake_region': {}})
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
         mock_get_cluster,
         mock_compose_job_id,
-        mock_system_paasta_config
+        mock_system_paasta_config,
+        _,
+    ):
+        actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
+        expected = {
+            'container': {
+                'docker': {
+                    'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
+                    'image': 'fake_docker_registry:443/abcdef',
+                    'network': 'BRIDGE'
+                },
+                'type': 'DOCKER',
+                'volumes': [],
+            },
+            'instances': 1,
+            'mem': 1000,
+            'cmd': None,
+            'args': [],
+            'backoff_factor': 2,
+            'cpus': 0.25,
+            'uris': ['file:///root/.dockercfg'],
+            'backoff_seconds': 1,
+            'health_checks': [],
+            'env': {},
+            'id': fake_job_id,
+            'constraints': [["region", "GROUP_BY", "1"]],
+        }
+        assert actual == expected
+
+        # Assert that the complete config can be inserted into the MarathonApp model
+        assert MarathonApp(**actual)
+
+
+def test_create_complete_config_with_smartstack():
+    service_name = "service"
+    instance_name = "instance"
+    fake_job_id = "service.instance.some.hash"
+    fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service_name,
+        instance_name,
+        {},
+        {'docker_image': 'abcdef'},
+    )
+    fake_system_paasta_config = utils.SystemPaastaConfig({
+        'volumes': [],
+        'docker_registry': 'fake_docker_registry:443'
+    }, '/fake/dir/')
+    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'proxy_port': 9001})
+    fake_cluster = "clustername"
+
+    with contextlib.nested(
+        mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
+        mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
+        mock.patch('marathon_tools.get_cluster', return_value=fake_cluster),
+        mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
+        mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
+                   autospec=True, return_value={'fake_region': {}})
+    ) as (
+        mock_load_marathon_service_config,
+        mock_load_service_namespace_config,
+        mock_get_cluster,
+        mock_compose_job_id,
+        mock_system_paasta_config,
+        _,
     ):
         actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
         expected = {
@@ -1564,7 +1806,7 @@ def test_create_complete_config():
             ],
             'env': {},
             'id': fake_job_id,
-            'constraints': [["region", "GROUP_BY"]],
+            'constraints': [["region", "GROUP_BY", "1"]],
         }
         assert actual == expected
 
