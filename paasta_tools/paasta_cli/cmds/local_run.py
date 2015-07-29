@@ -481,7 +481,11 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
     if args.cmd:
         command = shlex.split(args.cmd)
     else:
-        command = service_manifest.get_args()
+        command_from_config = service_manifest.get_cmd()
+        if command_from_config:
+            command = shlex.split(command_from_config)
+        else:
+            command = service_manifest.get_args()
 
     run_docker_container(
         docker_client,

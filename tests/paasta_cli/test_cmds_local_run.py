@@ -1,3 +1,5 @@
+import shlex
+
 import docker
 import mock
 from pytest import raises
@@ -312,6 +314,45 @@ def test_configure_and_run_missing_cluster_exception(
     with raises(SystemExit) as excinfo:
         configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args)
     assert excinfo.value.code == 2
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_docker_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_marathon_service_config', autospec=True)
+def test_configure_and_run_command_uses_cmd_from_config(
+    mock_load_marathon_service_config,
+    mock_load_system_paasta_config,
+    mock_run_docker_container,
+):
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+        {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    fake_service = 'fake_service'
+    docker_hash = '8' * 40
+    args = mock.MagicMock()
+    args.cmd = ''
+    args.service = fake_service
+    args.healthcheck = False
+    args.healthcheck_only = False
+    args.instance = 'fake_instance'
+    args.interactive = False
+    args.cluster = 'fake_cluster'
+
+    mock_load_marathon_service_config.return_value.get_cmd.return_value = 'fake_command'
+
+    configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
+    mock_run_docker_container.assert_called_once_with(
+        mock_docker_client,
+        fake_service,
+        args.instance,
+        docker_hash,
+        [],
+        args.interactive,
+        shlex.split(mock_load_marathon_service_config.return_value.get_cmd.return_value),
+        args.healthcheck,
+        args.healthcheck_only,
+        mock_load_marathon_service_config.return_value
+    )
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.validate_environment', autospec=True)
