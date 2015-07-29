@@ -1,3 +1,10 @@
+paasta-tools (0.12.38-yelp1) lucid; urgency=low
+
+  * 0.12.38 tagged with 'make release'
+    Commit: Fix bug in is_draining / get_spool when you get status 200
+
+ -- Evan Krall <krall@yelp.com>  Wed, 29 Jul 2015 11:43:22 -0700
+
 paasta-tools (0.12.37-yelp1) lucid; urgency=low
 
   * 0.12.37 tagged with 'make release'
