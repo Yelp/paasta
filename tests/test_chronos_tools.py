@@ -563,3 +563,41 @@ class TestChronosTools:
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
             chronos_tools.format_chronos_job_dict(incomplete_config, 'scheduled')
             assert exc.value == 'Your Chronos config is missing \'name\', a required parameter for a \'scheduled job\'.'
+
+    def test_get_service_job_list(self):
+        fake_name = 'vegetables'
+        fake_job_1 = 'carrot'
+        fake_job_2 = 'celery'
+        fake_cluster = 'broccoli'
+        fake_dir = '/nail/home/veggies'
+        fake_job_config = {fake_job_1: self.fake_config_dict,
+                           fake_job_2: self.fake_config_dict}
+        expected = [(fake_name, fake_job_1), (fake_name, fake_job_2)]
+        with mock.patch('service_configuration_lib.read_extra_service_information', autospec=True,
+                        return_value=fake_job_config) as read_extra_info_patch:
+            actual = chronos_tools.get_service_job_list(fake_name, fake_cluster, fake_dir)
+            read_extra_info_patch.assert_called_once_with(fake_name, "chronos-broccoli", soa_dir=fake_dir)
+            assert sorted(expected) == sorted(actual)
+
+    def test_get_chronos_jobs_for_cluster(self):
+        cluster = 'mainframe_42'
+        soa_dir = 'my_computer'
+        jobs = [['boop', 'beep'], ['bop']]
+        expected = ['beep', 'bop', 'boop']
+        with contextlib.nested(
+            mock.patch('os.path.abspath', autospec=True, return_value='windows_explorer'),
+            mock.patch('os.listdir', autospec=True, return_value=['dir1', 'dir2']),
+            mock.patch('chronos_tools.get_service_job_list',
+                       side_effect=lambda a, b, c: jobs.pop())
+        ) as (
+            abspath_patch,
+            listdir_patch,
+            get_jobs_patch,
+        ):
+            actual = chronos_tools.get_chronos_jobs_for_cluster(cluster, soa_dir)
+            assert sorted(expected) == sorted(actual)
+            abspath_patch.assert_called_once_with(soa_dir)
+            listdir_patch.assert_called_once_with('windows_explorer')
+            get_jobs_patch.assert_any_call('dir1', cluster, soa_dir)
+            get_jobs_patch.assert_any_call('dir2', cluster, soa_dir)
+            assert get_jobs_patch.call_count == 2
