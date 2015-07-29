@@ -1,3 +1,11 @@
+paasta-tools (0.12.37-yelp1) lucid; urgency=low
+
+  * 0.12.37 tagged with 'make release'
+    Commit: Make local-run use the cmd specified in Marathon configs if
+    defined
+
+ -- Keshav Varma <keshav@yelp.com>  Wed, 29 Jul 2015 11:07:51 -0700
+
 paasta-tools (0.12.36-yelp1) lucid; urgency=low
 
   * 0.12.36 tagged with 'make release'
