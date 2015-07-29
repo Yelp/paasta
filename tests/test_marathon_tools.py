@@ -795,13 +795,18 @@ class TestMarathonTools:
                 side_effect=lambda: ['a', 'b', 'c']
             ),
             mock.patch(
-                'marathon_tools.get_classic_service_information_for_nerve',
+                'marathon_tools.get_all_namespaces_for_service',
                 autospec=True,
-                side_effect=lambda x, _: '%s.foo' % x
+                side_effect=lambda x, y, full_name: [('foo', {})]
+            ),
+            mock.patch(
+                'marathon_tools._namespaced_get_classic_service_information_for_nerve',
+                autospec=True,
+                side_effect=lambda x, y, _: ('%s.%s' % (x, y), {})
             ),
         ):
             assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
-                'a.foo', 'b.foo', 'c.foo',
+                ('a.foo', {}), ('b.foo', {}), ('c.foo', {}),
             ]
 
     def test_get_services_running_here_for_nerve(self):

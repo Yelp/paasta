@@ -894,18 +894,24 @@ def get_classic_services_that_run_here():
 
 
 def get_classic_service_information_for_nerve(name, soa_dir):
-    nerve_dict = load_service_namespace_config(name, 'main', soa_dir)
+    return _namespaced_get_classic_service_information_for_nerve(name, 'main', soa_dir)
+
+
+def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_dir):
+    nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
-    nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
+    nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
     return (nerve_name, nerve_dict)
 
 
 def get_classic_services_running_here_for_nerve(soa_dir):
-    return [
-        get_classic_service_information_for_nerve(name, soa_dir)
-        for name in get_classic_services_that_run_here()
-    ]
+    classic_services = []
+    for name in get_classic_services_that_run_here():
+        for namespace in get_all_namespaces_for_service(name, soa_dir, full_name=False):
+            classic_services.append(_namespaced_get_classic_service_information_for_nerve(
+                name, namespace[0], soa_dir))
+    return classic_services
 
 
 def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
