@@ -287,17 +287,17 @@ class TestSetupMarathonJob:
                 return_value=fake_irc,
                 autospec=True,
             ),
-             mock.patch(
+            mock.patch(
                 "paasta_tools.monitoring_tools.get_ticket",
                 return_value=False,
                 autospec=True,
             ),
-             mock.patch(
+            mock.patch(
                 "paasta_tools.monitoring_tools.get_project",
                 return_value=None,
                 autospec=True,
             ),
-           mock.patch("pysensu_yelp.send_event", autospec=True),
+            mock.patch("pysensu_yelp.send_event", autospec=True),
             mock.patch(
                 'paasta_tools.marathon_tools.get_cluster',
                 return_value=self.fake_cluster,

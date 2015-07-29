@@ -52,7 +52,7 @@ In addition, each instancename MAY configure additional Marathon healthcheck opt
 
 Many of these keys are passed directly to Marathon. Their docs aren't super clear about all these but start there: https://mesosphere.github.io/marathon/docs/rest-api.html
 
-Also, each instance MAY configure overrides for monitoring parameters that
+Each instance MAY configure overrides for monitoring parameters that
 will take precidence over what is in ``monitoring.yaml``. These are things like
 ``team``, ``page``, etc. See the `monitoring.yaml`_ section for a list of valid
 monitoring keys and values.
@@ -91,11 +91,11 @@ ops``, and the ``dailyadsjob`` instance can be set with ``ticket: true`` and ``t
 
 Here is a list of options that PaaSTA will pass through:
 
- * ``team``: Sensu team that owns the instance.
+ * ``team``: Team that will be notified by Sensu
 
- * ``page``: Boolean to indicate if a instance should alert pagerduty if it is failing.
+ * ``page``: Boolean to indicate if an instance should alert PagerDuty if it is failing.
 
- * ``runbook``: An optional but *highly* recommended field. Try to use shortlinks when possible as sometimes the runbook url will need to be copied from a small screen.
+ * ``runbook``: An optional but *highly* recommended field. Try to use shortlinks (y/rb-my-service) when possible as sometimes the runbook url will need to be copied from a small screen.
 
  * ``tip``: An optional one-line version of the runbook to help with common issues. For example: "Check to see if it is bing first!"
 
@@ -105,7 +105,7 @@ Here is a list of options that PaaSTA will pass through:
 
  * ``ticket``: Boolean to indicate if an alert should make a JIRA ticket.
 
- * ``project``: String to override the JIRA project to make a ticket on, if not set globally for the team.
+ * ``project``: String naming the project where JIRA tickets will be created. Overrides the global default for the team.
 
 
 Where does paasta_tools look for yelpsoa-configs?
