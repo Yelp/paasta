@@ -1,3 +1,10 @@
+paasta-tools (0.12.40-yelp1) lucid; urgency=low
+
+  * 0.12.40 tagged with 'make release'
+    Commit: Pin to exact scribereader version
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 29 Jul 2015 16:45:49 -0700
+
 paasta-tools (0.12.39-yelp1) lucid; urgency=low
 
   * 0.12.39 tagged with 'make release'
