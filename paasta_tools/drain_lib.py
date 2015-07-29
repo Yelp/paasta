@@ -135,7 +135,9 @@ class HacheckDrainMethod(DrainMethod):
         """Query hacheck for the state of a task, and parse the result into a dictionary."""
         response = requests.get(self.spool_url(task))
         if response.status_code == 200:
-            return False
+            return {
+                'state': 'up',
+            }
 
         regex = ''.join([
             "^",

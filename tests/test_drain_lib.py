@@ -40,3 +40,21 @@ class TestHacheckDrainMethod(object):
             'until': 1435694178.780000,
         }
         assert actual == expected
+
+    def test_is_draining_yes(self):
+        fake_response = mock.Mock(
+            status_code=503,
+            text="Service service in down state since 1435694078.778886 until 1435694178.780000: Drained by Paasta",
+        )
+        fake_task = mock.Mock(host="fake_host", ports=[54321])
+        with mock.patch('requests.get', return_value=fake_response):
+            assert self.drain_method.is_draining(fake_task) is True
+
+    def test_is_draining_no(self):
+        fake_response = mock.Mock(
+            status_code=200,
+            text="",
+        )
+        fake_task = mock.Mock(host="fake_host", ports=[54321])
+        with mock.patch('requests.get', return_value=fake_response):
+            assert self.drain_method.is_draining(fake_task) is False
