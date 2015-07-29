@@ -278,6 +278,20 @@ class MarathonServiceConfig(object):
         :returns: The bounce method specified in the config, or 'crossover' if not specified"""
         return self.config_dict.get('bounce_method', 'crossover')
 
+    def get_drain_method(self):
+        """Get the drain method specified in the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The drain method specified in the config, or 'noop' if not specified"""
+        return self.config_dict.get('drain_method', 'noop')
+
+    def get_drain_method_params(self):
+        """Get the drain method parameters specified in the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
+        return self.config_dict.get('drain_method_params', {})
+
     def get_constraints(self, service_namespace_config):
         """Gets the constraints specified in the service's marathon configuration.
 
