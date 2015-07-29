@@ -38,7 +38,7 @@ setup(
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.9.2',
         # scribereader requires this version
-        'yelp_clog >= 2.1.2',
+        'yelp_clog == 2.1.2',
     ],
     scripts = [
         'paasta_tools/setup_marathon_job.py',
