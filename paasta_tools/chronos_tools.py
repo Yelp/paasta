@@ -15,8 +15,7 @@ class InvalidChronosConfigError(Exception):
     pass
 
 
-# TODO support multiple jobs in one config file? (like service instances for Marathon)
-def load_chronos_job_config(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
+def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
 
     log.info("Reading Chronos configuration file: %s.yaml", chronos_conf_file)
@@ -27,13 +26,16 @@ def load_chronos_job_config(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
         'full_branch': 'paasta-%s-%s' % (service_name, cluster),
     }
 
-    service_chronos_config = service_configuration_lib.read_extra_service_information(
+    service_chronos_jobs = service_configuration_lib.read_extra_service_information(
         service_name,
         chronos_conf_file,
         soa_dir=soa_dir
     )
 
-    return ChronosJobConfig(service_name, service_chronos_config, branch_dict)
+    if job_name not in service_chronos_jobs:
+        raise InvalidChronosConfigError('No job named \'%s\' in config file %s.yaml' % (job_name, chronos_conf_file))
+
+    return ChronosJobConfig(service_name, service_chronos_jobs[job_name], branch_dict)
 
 
 class ChronosJobConfig(dict):
@@ -59,17 +61,6 @@ class ChronosJobConfig(dict):
         else:
             return None
 
-    # TODO put these docstrings somewhere useful, like a spec for the yaml
-        """If Chronos misses the scheduled run time for any reason,
-        it will still run the job if the time is within this interval.
-        Epsilon must be formatted like an ISO 8601 Duration.
-        See https://en.wikipedia.org/wiki/ISO_8601#Durations
-        """
-        """Python likes to output floats with as much precision as possible.
-        The chronos API seems to round, so be aware that some difference may
-        occur"""
-        """Must be specified in the cryptic ISO 8601 format: https://en.wikipedia.org/wiki/ISO_8601"""
-
     # TODO maybe these should be private (e.g. _check_mem) since only check_param should call them?
     def check_epsilon(self):
         try:
@@ -81,7 +72,6 @@ class ChronosJobConfig(dict):
 
     def check_retries(self):
         if self.get('retries') is not None:
-            # TODO is this Pythonic? is there a better way to check if int?
             if not isinstance(self.get('retries'), int):
                 return False, 'The specified retries value \'%s\' is not a valid int.' % self.get('retries')
         return True, ''
@@ -94,7 +84,6 @@ class ChronosJobConfig(dict):
 
     def check_cpus(self):
         if self.get('cpus') is not None:
-            # TODO is this Pythonic? is there a better way to check if float?
             if (not isinstance(self.get('cpus'), float)
                     and not isinstance(self.get('cpus'), int)):
                 return False, 'The specified cpus value \'%s\' is not a valid float.' % self.get('cpus')
@@ -102,7 +91,6 @@ class ChronosJobConfig(dict):
 
     def check_mem(self):
         if self.get('mem') is not None:
-            # TODO is this Pythonic? is there a better way to check if float?
             if (not isinstance(self.get('mem'), float)
                     and not isinstance(self.get('mem'), int)):
                 return False, 'The specified mem value \'%s\' is not a valid float.' % self.get('mem')
@@ -110,7 +98,6 @@ class ChronosJobConfig(dict):
 
     def check_disk(self):
         if self.get('disk') is not None:
-            # TODO is this Pythonic? is there a better way to check if float?
             if (not isinstance(self.get('disk'), float)
                     and not isinstance(self.get('disk'), int)):
                 return False, 'The specified disk value \'%s\' is not a valid float.' % self.get('disk')

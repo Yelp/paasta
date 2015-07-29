@@ -61,6 +61,36 @@ Many of these keys are passed directly to Marathon. Their docs aren't super clea
     To avoid issues resulting from this discrepancy, we abide by the stricter requirements from Marathon and check that no more than one of cmd and args is specified. If both are specified, an exception is thrown with an explanation of the problem, and the program terminates.
 
 
+chronos-[clustername].yaml
+--------------------------
+
+The yaml where Chronos jobs are defined. Top-level keys are the job names.
+
+Each job configuration may specify the following options (see below for the requirements of different job types):
+
+Most of these descriptions are taken directly from the Chronos API docs, which can be found here: https://mesos.github.io/chronos/docs/api.html#job-configuration
+
+  * ``name``: The name of the job. This must match the top-level key it falls under.
+  * ``description``: A description of what the job does
+  * ``command``: The command to execute
+  * ``epsilon``: If Chronos misses the scheduled run time for any reason, it will still run the job if the time is within this interval. The value must be formatted like an ISO 8601 Duration. See: https://en.wikipedia.org/wiki/ISO_8601#Durations
+  * ``retries``: Number of retries to attempt if a command returns a non-zero exit status
+  * ``owner``: Email addresses to send job failure notifications. Use comma-separated list for multiple addresses.
+  * ``cpus``: Amount of "Mesos CPUs" for this job.
+  * ``mem``: Amount of Mesos Memory in MB for this job.
+  * ``disk``: Amount of Mesos disk in MB for this job.
+  * ``disabled``: If set to ``True``, this job will not be run.
+  * ``schedule``: When the job should run. The value must be specified in the cryptic ISO 8601 format. See: https://en.wikipedia.org/wiki/ISO_8601 and https://mesos.github.io/chronos/docs/api.html#adding-a-scheduled-job
+
+Required parameters for each type of job:
+
+  * "scheduled job": ``name``, ``command``, ``schedule``, ``epsilon``, ``owner``
+  * "dependent job": ``name``, ``command``, ``parents``, ``epsilon``, ``owner``
+  * "Docker job": ``name``, ``command``, ``schedule`` **OR**  ``parents``, ``epsilon``, ``owner``, ``container``
+
+**NOTE**: Currently, only "scheduled jobs" are supported. Therefore this document does not cover the other job "types" defined by the Chronos API.
+
+
 smartstack.yaml
 ---------------
 

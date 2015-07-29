@@ -9,9 +9,10 @@ import chronos_tools
 class TestChronosTools:
 
     fake_service_name = 'test_service'
+    fake_job_name = 'test'
     fake_cluster = 'penguin'
     fake_config_dict = {
-        'name': 'test',
+        'name': fake_job_name,
         'description': 'This is a test Chronos job.',
         'command': '/bin/sleep 40',
         'epsilon': 'PT30M',
@@ -43,6 +44,10 @@ class TestChronosTools:
     fake_invalid_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service_name,
                                                                      fake_invalid_config_dict,
                                                                      fake_branch_dict)
+    fake_config_file = {
+        fake_job_name: fake_config_dict,
+        'bad_job': fake_invalid_config_dict,
+    }
 
     def test_load_chronos_job_config(self):
         fake_soa_dir = '/tmp/'
@@ -52,12 +57,35 @@ class TestChronosTools:
         ) as (
             mock_read_extra_service_information,
         ):
-            mock_read_extra_service_information.return_value = self.fake_config_dict
-            actual = chronos_tools.load_chronos_job_config(self.fake_service_name, self.fake_cluster, fake_soa_dir)
+            mock_read_extra_service_information.return_value = self.fake_config_file
+            actual = chronos_tools.load_chronos_job_config(self.fake_service_name,
+                                                           self.fake_job_name,
+                                                           self.fake_cluster,
+                                                           fake_soa_dir)
             mock_read_extra_service_information.assert_called_once_with(self.fake_service_name,
                                                                         expected_chronos_conf_file,
                                                                         soa_dir=fake_soa_dir)
             assert actual == self.fake_chronos_job_config
+
+    def test_load_chronos_job_config_unknown_job(self):
+        fake_soa_dir = '/tmp/'
+        expected_chronos_conf_file = 'chronos-penguin'
+        fake_job_name = 'polar bear'
+        with contextlib.nested(
+            mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
+        ) as (
+            mock_read_extra_service_information,
+        ):
+            mock_read_extra_service_information.return_value = self.fake_config_file
+            with raises(chronos_tools.InvalidChronosConfigError) as exc:
+                chronos_tools.load_chronos_job_config(self.fake_service_name,
+                                                      fake_job_name,
+                                                      self.fake_cluster,
+                                                      fake_soa_dir)
+                mock_read_extra_service_information.assert_called_once_with(self.fake_service_name,
+                                                                            expected_chronos_conf_file,
+                                                                            soa_dir=fake_soa_dir)
+                assert exc.value == 'No job named \'polar bear\' in config file chronos-penguin.yaml'
 
     def test_get_config_dict_param(self):
         param = 'epsilon'
@@ -285,7 +313,7 @@ class TestChronosTools:
             # 'shell': 'true',  # we don't support this param, but it does have a default specified by the Chronos docs
             'epsilon': 'PT60S',
             'retries': 2,
-            # 'async': False,  # we don't support this param, but it does have a default specified by the Chronos docs
+            'async': False,  # we don't support this param, but it does have a default specified by the Chronos docs
             'cpus': 0.1,
             'mem': 128,
             'disk': 256,
