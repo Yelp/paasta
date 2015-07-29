@@ -208,6 +208,7 @@ def do_bounce(
                 serviceinstance,
                 marathon_jobid.split('.')[2]
             ),
+            level='event',
         )
 
 
