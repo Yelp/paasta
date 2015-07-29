@@ -62,6 +62,16 @@ def get_dependencies(framework, service_name, instance_name=None,
     return __get_monitoring_config_value('dependencies', framework, service_name, instance_name, soa_dir)
 
 
+def get_ticket(framework, service_name, instance_name=None,
+               soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('ticket', framework, service_name, instance_name, soa_dir)
+
+
+def get_project(framework, service_name, instance_name=None,
+                soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('project', framework, service_name, instance_name, soa_dir)
+
+
 def __get_monitoring_config_value(key, framework, service_name, instance_name=None,
                                   soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
     general_config = service_configuration_lib.read_service_configuration(service_name, soa_dir=soa_dir)
@@ -83,5 +93,7 @@ def monitoring_defaults(key):
                    'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
         'tip': 'Please set a `tip` field in your monitoring.yaml. Docs: '
                'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
+        'ticket': false,
+        'project': None,
     }
     return defaults.get(key, False)
