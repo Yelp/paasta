@@ -93,7 +93,7 @@ def monitoring_defaults(key):
                    'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
         'tip': 'Please set a `tip` field in your monitoring.yaml. Docs: '
                'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
-        'ticket': false,
+        'ticket': False,
         'project': None,
     }
     return defaults.get(key, False)
