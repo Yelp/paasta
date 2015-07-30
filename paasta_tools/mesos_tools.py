@@ -116,3 +116,20 @@ def get_number_of_mesos_masters(zk_config):
     result = [info for info in root_entries if info.startswith('info_')]
     zk.stop()
     return len(result)
+
+
+def get_mesos_slaves_grouped_by_attribute(attribute):
+    """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
+
+    :param attribute: an attribute to filter
+    :returns: a dictionary of the form {'<attribute_value>': [<list of hosts with attribute=attribute_value>]}
+              (response can contain multiple 'attribute_value)
+    """
+    attr_map = {}
+    mesos_state = fetch_mesos_state_from_leader()
+    for slave in mesos_state['slaves']:
+        if attribute in slave['attributes']:
+            attr_val = slave['attributes'][attribute]
+            attr_map.setdefault(attr_val, []).append(slave['hostname'])
+
+    return attr_map

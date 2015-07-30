@@ -4,12 +4,12 @@ import mock
 from multiprocessing import Queue
 from Queue import Empty
 
+import isodate
 from pytest import raises
 
 from paasta_tools.paasta_cli.cmds import logs
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import format_log_line
-from paasta_tools.utils import get_log_name_for_service
 from scribereader.scribereader import StreamTailerSetupError
 
 
@@ -24,37 +24,41 @@ def test_cluster_to_scribe_env_bad():
         assert sys_exit.value.code == 1
 
 
-def test_line_passes_filter_true():
+def test_paasta_log_line_passes_filter_true():
+    service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
     formatted_line = format_log_line(levels[0], clusters[0], instance, components[0], line)
-    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is True
+    assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is True
 
 
-def test_line_passes_filter_true_when_default_cluster():
+def test_paasta_log_line_passes_filter_true_when_default_cluster():
+    service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
     formatted_line = format_log_line(levels[0], ANY_CLUSTER, instance, components[0], line)
-    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is True
+    assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is True
 
 
-def test_line_passes_filter_false_when_wrong_level():
+def test_paasta_log_line_passes_filter_false_when_wrong_level():
+    service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
     formatted_line = format_log_line('BOGUS_LEVEL', clusters[0], instance, components[0], line)
-    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is False
+    assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is False
 
 
-def test_line_passes_filter_false_when_wrong_component():
+def test_paasta_log_line_passes_filter_false_when_wrong_component():
+    service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
@@ -63,10 +67,11 @@ def test_line_passes_filter_false_when_wrong_component():
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(levels[0], clusters[0], instance, 'monitoring', line)
-    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is False
+    assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is False
 
 
-def test_line_passes_filter_false_when_wrong_cluster():
+def test_paasta_log_line_passes_filter_false_when_wrong_cluster():
+    service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
@@ -75,27 +80,153 @@ def test_line_passes_filter_false_when_wrong_cluster():
     # component must be legit as well as not in the list of requested
     # components
     formatted_line = format_log_line(levels[0], 'BOGUS_CLUSTER', instance, components[0], line)
-    assert logs.line_passes_filter(formatted_line, levels, components, clusters) is False
+    assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is False
 
 
-def test_line_passes_filter_false_when_line_not_valid_json():
+def test_paasta_log_line_passes_filter_false_when_line_not_valid_json():
+    service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     clusters = ['fake_cluster1', 'fake_cluster2']
     components = ['build', 'deploy']
     line = 'i am definitely not json'
     # component must be legit as well as not in the list of requested
     # components
-    assert logs.line_passes_filter(line, levels, components, clusters) is False
+    assert logs.paasta_log_line_passes_filter(line, levels, service, components, clusters) is False
+
+
+def test_marathon_log_line_passes_filter_true_when_service_name_in_string():
+    service = 'fake_service'
+    levels = []
+    components = []
+    clusters = []
+    line = format_log_line(
+        'fake_level',
+        clusters,
+        'fake_instance',
+        'marathon',
+        'fake message with service name %s' % service,
+    )
+    with mock.patch('paasta_tools.paasta_cli.cmds.logs.compose_job_id', autospec=True) as compose_job_id_patch:
+        compose_job_id_patch.return_value = service
+        assert logs.marathon_log_line_passes_filter(line, levels, service, components, clusters)
+
+
+def test_marathon_log_line_passes_filter_false_when_service_name_missing():
+    service = 'fake_service'
+    levels = []
+    components = []
+    clusters = []
+    line = format_log_line(
+        'fake_level',
+        clusters,
+        'fake_instance',
+        'marathon',
+        'fake message without service name',
+    )
+
+    with mock.patch('paasta_tools.paasta_cli.cmds.logs.compose_job_id', autospec=True) as compose_job_id_patch:
+        compose_job_id_patch.return_value = service
+        assert not logs.marathon_log_line_passes_filter(line, levels, service, components, clusters)
+
+
+def test_chronos_log_line_passes_filter_true_when_service_name_in_string():
+    service = 'fake_service'
+    levels = []
+    components = []
+    clusters = []
+    line = format_log_line(
+        'fake_level',
+        clusters,
+        'fake_instance',
+        'chronos',
+        'fake message with service name %s' % service,
+    )
+    with mock.patch('paasta_tools.chronos_tools.get_job_id', autospec=True) as compose_job_id_patch:
+        compose_job_id_patch.return_value = service
+        assert logs.chronos_log_line_passes_filter(line, levels, service, components, clusters)
+
+
+def test_chronos_log_line_passes_filter_false_when_service_name_missing():
+    service = 'fake_service'
+    levels = []
+    components = []
+    clusters = []
+    line = format_log_line(
+        'fake_level',
+        clusters,
+        'fake_instance',
+        'chronos',
+        'fake message without service name',
+    )
+
+    with mock.patch('paasta_tools.chronos_tools.get_job_id', autospec=True) as compose_job_id_patch:
+        compose_job_id_patch.return_value = service
+        assert not logs.chronos_log_line_passes_filter(line, levels, service, components, clusters)
+
+
+def test_extract_utc_timestamp_from_log_line_ok():
+    fake_timestamp = '2015-07-22T10:38:46-07:00'
+    fake_utc_timestamp = isodate.parse_datetime('2015-07-22T17:38:46.000000')
+
+    line = '%s this is a fake syslog test message' % fake_timestamp
+    assert logs.extract_utc_timestamp_from_log_line(line) == fake_utc_timestamp
+
+
+def test_extract_utc_timestamp_from_log_line_when_missing_date():
+    line = 'this is a fake invalid syslog message'
+    assert not logs.extract_utc_timestamp_from_log_line(line)
+
+
+def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
+    line = 'Jul 22 10:39:08 this is a fake invalid syslog message'
+    assert not logs.extract_utc_timestamp_from_log_line(line)
+
+
+def test_parse_marathon_log_line_ok():
+    fake_timestamp = '2015-07-22T10:38:46-07:00'
+    fake_utc_timestamp = '2015-07-22T17:38:46.000000'
+
+    line = '%s this is a fake syslog test message' % fake_timestamp
+    clusters = ['fake_cluster']
+    expected = json.dumps({
+        'timestamp': fake_utc_timestamp,
+        'component': 'marathon',
+        'cluster': clusters[0],
+        'instance': 'ALL',
+        'level': 'event',
+        'message': line
+    })
+    assert sorted(logs.parse_marathon_log_line(line, clusters)) == sorted(expected)
+
+
+def test_parse_chronos_log_line_ok():
+    fake_timestamp = '2015-07-22T10:38:46-07:00'
+    fake_utc_timestamp = '2015-07-22T17:38:46.000000'
+
+    line = '%s this is a fake syslog test message' % fake_timestamp
+    clusters = ['fake_cluster']
+    expected = json.dumps({
+        'timestamp': fake_utc_timestamp,
+        'component': 'chronos',
+        'cluster': clusters[0],
+        'instance': 'ALL',
+        'level': 'event',
+        'message': line
+    })
+    assert sorted(logs.parse_chronos_log_line(line, clusters)) == sorted(expected)
 
 
 def test_scribe_tail_log_everything():
     env = 'fake_env'
+    stream_name = 'fake_stream'
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['build', 'deploy']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     queue = Queue()
+    filter_fn = lambda *_: True
+
     tailer = iter([
         format_log_line(
             levels[0],
@@ -114,28 +245,27 @@ def test_scribe_tail_log_everything():
     ])
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.logs.line_passes_filter', autospec=True),
     ) as (
         mock_scribereader,
-        mock_line_passes_filter,
     ):
         mock_scribereader.get_env_scribe_host.return_value = {
             'host': 'fake_host',
             'port': 'fake_port',
         }
         mock_scribereader.get_stream_tailer.return_value = tailer
-        mock_line_passes_filter.return_value = True
         logs.scribe_tail(
             env,
+            stream_name,
             service,
             levels,
             components,
             clusters,
             queue,
+            filter_fn
         )
         assert mock_scribereader.get_env_scribe_host.call_count == 1
         mock_scribereader.get_stream_tailer.assert_called_once_with(
-            get_log_name_for_service(service),
+            stream_name,
             'fake_host',
             'fake_port',
         )
@@ -152,12 +282,15 @@ def test_scribe_tail_log_everything():
 
 def test_scribe_tail_log_nothing():
     env = 'fake_env'
+    stream_name = 'fake_stream'
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['build', 'deploy']
     clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     queue = Queue()
+    filter_fn = lambda *_: False
+
     tailer = iter([
         format_log_line(
             levels[0],
@@ -176,46 +309,47 @@ def test_scribe_tail_log_nothing():
     ])
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.logs.line_passes_filter', autospec=True),
     ) as (
         mock_scribereader,
-        mock_line_passes_filter,
     ):
         mock_scribereader.get_env_scribe_host.return_value = {
             'host': 'fake_host',
             'port': 'fake_port',
         }
         mock_scribereader.get_stream_tailer.return_value = tailer
-        mock_line_passes_filter.return_value = False
         logs.scribe_tail(
             env,
+            stream_name,
             service,
             levels,
             components,
             clusters,
             queue,
+            filter_fn,
         )
         assert queue.qsize() == 0
 
 
 class FakeKeyboardInterrupt(KeyboardInterrupt):
+
     """Raising a real KeyboardInterrupt causes pytest to, y'know, stop."""
     pass
 
 
 def test_scribe_tail_ctrl_c():
     env = 'fake_env'
+    stream_name = 'fake_stream'
     service = 'fake_service'
     levels = ['fake_level1', 'fake_level2']
     components = ['build', 'deploy']
     clusters = ['fake_cluster1', 'fake_cluster2']
     queue = Queue()
+    filter_fn = lambda *_: True
+
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.logs.line_passes_filter', autospec=True),
     ) as (
         mock_scribereader,
-        mock_line_passes_filter,
     ):
         # There's no reason this method is the one that raises the
         # KeyboardInterrupt. This just happens to be the first convenient place
@@ -224,11 +358,13 @@ def test_scribe_tail_ctrl_c():
         try:
             logs.scribe_tail(
                 env,
+                stream_name,
                 service,
                 levels,
                 components,
                 clusters,
                 queue,
+                filter_fn,
             )
         # We have to catch this ourselves otherwise it will fool pytest too!
         except FakeKeyboardInterrupt:
@@ -239,31 +375,34 @@ def test_scribe_tail_ctrl_c():
 
 def test_scribe_tail_handles_StreamTailerSetupError():
     env = 'fake_env'
+    stream_name = 'fake_stream'
     service = 'fake_service'
     levels = ['fake_level1']
     components = ['build']
     clusters = ['fake_cluster1']
     queue = Queue()
+    filter_fn = lambda *_: True
+
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_cli.cmds.logs.scribereader', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.logs.line_passes_filter', autospec=True),
         mock.patch('paasta_tools.paasta_cli.cmds.logs.log', autospec=True),
     ) as (
         mock_scribereader,
-        mock_line_passes_filter,
         mock_log,
     ):
         mock_scribereader.get_stream_tailer.side_effect = StreamTailerSetupError('bla', 'unused1', 'unused2')
         with raises(StreamTailerSetupError):
             logs.scribe_tail(
                 env,
+                stream_name,
                 service,
                 levels,
                 components,
                 clusters,
                 queue,
+                filter_fn,
             )
-        mock_log.error.assert_any_call('Failed to setup stream tailing for stream_paasta_fake_service in fake_env')
+        mock_log.error.assert_any_call('Failed to setup stream tailing for %s in fake_env' % stream_name)
 
 
 def test_prettify_timestamp():
@@ -496,6 +635,40 @@ def test_tail_paasta_logs_empty_clusters():
         logs.tail_paasta_logs(service, levels, components, clusters)
         assert process_patch.call_count == 0
         assert print_log_patch.call_count == 0
+
+
+def test_tail_paasta_logs_marathon():
+    service = 'fake_service'
+    clusters = ['fake_cluster']
+    levels = ['fake_level1', 'fake_level2']
+    components = ['marathon']
+    with contextlib.nested(
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.log', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.print_log', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.Queue', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.Process', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.parse_marathon_log_line', autospec=True),
+        mock.patch('paasta_tools.paasta_cli.cmds.logs.marathon_log_line_passes_filter', autospec=True),
+    ) as (
+        determine_scribereader_envs_patch,
+        scribe_tail_patch,
+        log_patch,
+        print_log_patch,
+        queue_patch,
+        process_patch,
+        parse_marathon_log_line_patch,
+        marathon_log_line_passes_filter_patch,
+    ):
+        determine_scribereader_envs_patch.return_value = ['env1']
+        fake_queue = mock.MagicMock(spec_set=Queue())
+        # Prevent tail_paasta_logs from reading from queue forever by simulating a Ctrl-C
+        fake_queue.get.side_effect = KeyboardInterrupt
+        queue_patch.return_value = fake_queue
+
+        logs.tail_paasta_logs(service, levels, components, clusters)
+        assert process_patch.call_count == 1
 
 
 def test_determine_scribereader_envs():

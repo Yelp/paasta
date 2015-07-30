@@ -59,3 +59,45 @@ def test_fetch_local_slave_state_connection_error(
 
     with raises(mesos_tools.MesosSlaveConnectionError):
         mesos_tools.fetch_local_slave_state()
+
+
+@mock.patch('paasta_tools.mesos_tools.fetch_mesos_state_from_leader', autospec=True)
+def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
+    fake_attribute = 'fake_attribute'
+    fake_value_1 = 'fake_value_1'
+    fake_value_2 = 'fake_value_2'
+    mock_fetch_state.return_value = {
+        'slaves': [
+            {
+                'hostname': 'fake_host_1',
+                'attributes': {
+                    'fake_attribute': fake_value_1,
+                }
+            },
+            {
+                'hostname': 'fake_host_2',
+                'attributes': {
+                    'fake_attribute': fake_value_2,
+                }
+            },
+            {
+                'hostname': 'fake_host_3',
+                'attributes': {
+                    'fake_attribute': fake_value_1,
+                }
+            },
+            {
+                'hostname': 'fake_host_4',
+                'attributes': {
+                    'fake_attribute': 'fake_other_value',
+                }
+            }
+        ]
+    }
+    expected = {
+        'fake_value_1': ['fake_host_1', 'fake_host_3'],
+        'fake_value_2': ['fake_host_2'],
+        'fake_other_value': ['fake_host_4'],
+    }
+    actual = mesos_tools.get_mesos_slaves_grouped_by_attribute(fake_attribute)
+    assert actual == expected

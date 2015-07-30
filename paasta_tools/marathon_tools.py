@@ -12,17 +12,21 @@ import re
 import requests
 import socket
 import glob
+from time import sleep
 
 from marathon import MarathonClient
+from marathon import NotFoundError
 import json
 import service_configuration_lib
 
 from paasta_tools.mesos_tools import fetch_local_slave_state
+from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import list_all_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoMarathonClusterFoundException
 from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+from paasta_tools.utils import timeout
 
 # DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -33,6 +37,8 @@ MESOS_MASTER_PORT = 5050
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
+
+logging.getLogger('marathon').setLevel(logging.WARNING)
 
 PATH_TO_MARATHON_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'marathon.json')
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
@@ -269,8 +275,22 @@ class MarathonServiceConfig(object):
         """Get the bounce method specified in the service's marathon configuration.
 
         :param service_config: The service instance's configuration dictionary
-        :returns: The bounce method specified in the config, or 'upthendown' if not specified"""
-        return self.config_dict.get('bounce_method', 'upthendown')
+        :returns: The bounce method specified in the config, or 'crossover' if not specified"""
+        return self.config_dict.get('bounce_method', 'crossover')
+
+    def get_drain_method(self):
+        """Get the drain method specified in the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The drain method specified in the config, or 'noop' if not specified"""
+        return self.config_dict.get('drain_method', 'noop')
+
+    def get_drain_method_params(self):
+        """Get the drain method parameters specified in the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
+        return self.config_dict.get('drain_method_params', {})
 
     def get_constraints(self, service_namespace_config):
         """Gets the constraints specified in the service's marathon configuration.
@@ -284,8 +304,12 @@ class MarathonServiceConfig(object):
         :param service_namespace_config: The service instance's configuration dictionary
         :returns: The constraints specified in the config, or defaults described above
         """
-        discover_level = service_namespace_config.get('discover', 'region')
-        return self.config_dict.get('constraints', [[discover_level, "GROUP_BY"]])
+        if 'constraints' in self.config_dict:
+            return self.config_dict.get('constraints')
+        else:
+            discover_level = service_namespace_config.get_discover()
+            locations = get_mesos_slaves_grouped_by_attribute(discover_level)
+            return [[discover_level, "GROUP_BY", str(len(locations))]]
 
     def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):
         """Create the configuration that will be passed to the Marathon REST API.
@@ -548,6 +572,9 @@ class ServiceNamespaceConfig(dict):
 
     def get_healthcheck_uri(self):
         return self.get('healthcheck_uri', '/status')
+
+    def get_discover(self):
+        return self.get('discover', 'region')
 
 
 class NoDockerImageError(Exception):
@@ -867,18 +894,24 @@ def get_classic_services_that_run_here():
 
 
 def get_classic_service_information_for_nerve(name, soa_dir):
-    nerve_dict = load_service_namespace_config(name, 'main', soa_dir)
+    return _namespaced_get_classic_service_information_for_nerve(name, 'main', soa_dir)
+
+
+def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_dir):
+    nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
-    nerve_name = '%s%s%s' % (name, ID_SPACER, 'main')
+    nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
     return (nerve_name, nerve_dict)
 
 
 def get_classic_services_running_here_for_nerve(soa_dir):
-    return [
-        get_classic_service_information_for_nerve(name, soa_dir)
-        for name in get_classic_services_that_run_here()
-    ]
+    classic_services = []
+    for name in get_classic_services_that_run_here():
+        for namespace in get_all_namespaces_for_service(name, soa_dir, full_name=False):
+            classic_services.append(_namespaced_get_classic_service_information_for_nerve(
+                name, namespace[0], soa_dir))
+    return classic_services
 
 
 def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -955,6 +988,49 @@ def is_app_id_running(app_id, client):
 
     all_app_ids = list_all_marathon_app_ids(client)
     return app_id in all_app_ids
+
+
+def app_has_tasks(client, app_id, expected_tasks):
+    """ A predicate function indicating whether an app has launched *at least* expected_tasks
+    tasks.
+
+    Raises a marathon.NotFoundError when no app with matching id is found.
+
+    :param client: the marathon client
+    :param app_id: the app_id to which the tasks should belong
+    :param minimum_tasks: the minimum number of tasks to check for
+    :returns a boolean indicating whether there are atleast expected_tasks tasks with
+    an app id matching app_id:
+    """
+    try:
+        tasks = client.list_tasks(app_id=app_id)
+    except NotFoundError:
+        print "no app with id %s found" % app_id
+        raise
+    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks)
+    return len(tasks) >= expected_tasks
+
+
+@timeout()
+def wait_for_app_to_launch_tasks(client, app_id, expected_tasks):
+    """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
+        and retry. Times out after 30 seconds.
+
+       :param client: The marathon client
+       :param app_id: The app id to which the tasks belong
+       :param num_tasks: The number of tasks to wait for
+    """
+    found = False
+    while not found:
+        try:
+            found = app_has_tasks(client, app_id, expected_tasks)
+        except NotFoundError:
+            pass
+        if found:
+            return
+        else:
+            print "waiting for app %s to have %d tasks. retrying" % (app_id, expected_tasks)
+            sleep(0.5)
 
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):

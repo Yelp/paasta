@@ -14,12 +14,13 @@ def test_get_paasta_execute_docker_healthcheck():
     fake_container_id = 'fake_container_id'
     fake_mesos_id = 'fake_mesos_id'
     fake_container_info = [
+        {'Config': {'Env': None}},
         {'Config': {'Env': ['fake_key1=fake_value1', 'MESOS_TASK_ID=fake_other_mesos_id']}, 'Id': '11111'},
         {'Config': {'Env': ['fake_key2=fake_value2', 'MESOS_TASK_ID=%s' % fake_mesos_id]}, 'Id': fake_container_id},
     ]
     mock_docker_client.containers = mock.MagicMock(
         spec_set=docker.Client,
-        return_value=['fake_container_1', 'fake_container_2'],
+        return_value=['fake_container_1', 'fake_container_2', 'fake_container_3'],
     )
     mock_docker_client.inspect_container = mock.MagicMock(
         spec_set=docker.Client,

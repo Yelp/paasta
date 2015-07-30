@@ -14,6 +14,7 @@ usr/share/python/paasta-tools/bin/list_marathon_service_instances.py usr/bin/lis
 usr/share/python/paasta-tools/bin/paasta_cli.py usr/bin/paasta
 usr/share/python/paasta-tools/bin/paasta_execute_docker_command.py usr/bin/paasta_execute_docker_command
 usr/share/python/paasta-tools/bin/paasta_serviceinit.py usr/bin/paasta_serviceinit
+usr/share/python/paasta-tools/bin/paasta_chronos_serviceinit.py usr/bin/paasta_chronos_serviceinit
 usr/share/python/paasta-tools/bin/paasta_metastatus.py usr/bin/paasta_metastatus
 usr/share/python/paasta-tools/bin/paasta_tabcomplete.sh /etc/bash_completion.d/paasta.bash
 usr/share/python/paasta-tools/bin/setup_chronos_jobs.py usr/bin/setup_chronos_jobs

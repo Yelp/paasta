@@ -26,6 +26,9 @@ from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import remove_ansi_escape_sequences
+from paasta_tools.utils import timeout
+from paasta_tools.utils import TimeoutError
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -152,11 +155,11 @@ def get_verbose_status_of_marathon_app(app):
     create_datetime = datetime_from_utc_to_local(datetime.datetime.strptime(app.version, "%Y-%m-%dT%H:%M:%S.%fZ"))
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
-    output.append("    Tasks:  Mesos Task ID                  Host deployed to    Deployed at what localtime")
+    output.append("    Tasks:  Mesos Task ID                  Host deployed to         Deployed at what localtime")
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
         if task.host is not None:
-            hostname = task.host.split(".")[0]
+            hostname = "%s:%s" % (task.host.split(".")[0], task.ports[0])
         else:
             hostname = "Unknown"
         format_tuple = (
@@ -165,7 +168,7 @@ def get_verbose_status_of_marathon_app(app):
             local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
             humanize.naturaltime(local_deployed_datetime),
         )
-        output.append('      {0[0]:<37}{0[1]:<20}{0[2]:<17}({0[3]:})'.format(format_tuple))
+        output.append('      {0[0]:<37}{0[1]:<25} {0[2]:<17}({0[3]:})'.format(format_tuple))
     if len(app.tasks) == 0:
         output.append("      No tasks associated with this marathon app")
     return app.tasks, "\n".join(output)
@@ -240,15 +243,17 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
     lastcheck = "%s/%s in %sms" % (backend['check_status'], backend['check_code'], backend['check_duration'])
     lastchange = humanize.naturaltime(datetime.timedelta(seconds=int(backend['lastchg'])))
 
-    return PaastaColors.color_text(
-        PaastaColors.DEFAULT if is_correct_instance else PaastaColors.GREY,
-        '    {name:<32}{lastcheck:<20}{lastchange:<16}{status:}'.format(
-            name=pretty_backend_name,
-            lastcheck=lastcheck,
-            lastchange=lastchange,
-            status=status,
-        )
+    status_text = '    {name:<32}{lastcheck:<20}{lastchange:<16}{status:}'.format(
+        name=pretty_backend_name,
+        lastcheck=lastcheck,
+        lastchange=lastchange,
+        status=status,
     )
+
+    if is_correct_instance:
+        return PaastaColors.color_text(PaastaColors.DEFAULT, status_text)
+    else:
+        return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
 
 
 def status_smartstack_backends_verbose(service, instance, cluster, tasks):
@@ -269,6 +274,7 @@ def status_smartstack_backends_verbose(service, instance, cluster, tasks):
     return "\n".join(output)
 
 
+@timeout()
 def get_cpu_usage(task):
     """Calculates a metric of used_cpu/allocated_cpu
     To do this, we take the total number of cpu-seconds the task has consumed,
@@ -299,8 +305,11 @@ def get_cpu_usage(task):
             return percent_string
     except (AttributeError, SlaveDoesNotExist):
         return "None"
+    except TimeoutError:
+        return "Timed Out"
 
 
+@timeout()
 def get_mem_usage(task):
     try:
         task_mem_limit = task.mem_limit
@@ -315,6 +324,8 @@ def get_mem_usage(task):
             return mem_string
     except (AttributeError, SlaveDoesNotExist):
         return "None"
+    except TimeoutError:
+        return "Timed Out"
 
 
 def get_task_uuid(taskid):

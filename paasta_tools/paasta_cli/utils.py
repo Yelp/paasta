@@ -185,11 +185,6 @@ class PaastaCheckMessages:
 
     SMARTSTACK_YAML_FOUND = success("Found smartstack.yaml file")
 
-    SMARTSTACK_YAML_MISSING = failure(
-        "Your service is not setup on smartstack yet and will not be "
-        "automatically load balanced.\n  "
-        "More info:", "http://y/smartstack-cep323")
-
     SMARTSTACK_PORT_MISSING = failure(
         "Could not determine port. "
         "Ensure 'proxy_port' is set in smartstack.yaml.\n  "

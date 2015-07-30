@@ -22,20 +22,20 @@ fake_service_config = {
     'container': {
         'docker': {
             'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
-            'image': 'localhost/fake_docker_url',
+            'image': u'localhost/fake_docker_url',
             'network': 'BRIDGE'
             },
         'type': 'DOCKER',
         'volumes': [
-            {'hostPath': '/nail/etc/habitat', 'containerPath': '/nail/etc/habitat', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/datacenter', 'containerPath': '/nail/etc/datacenter', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/ecosystem', 'containerPath': '/nail/etc/ecosystem', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/rntimeenv', 'containerPath': '/nail/etc/rntimeenv', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/region', 'containerPath': '/nail/etc/region', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/sperregion', 'containerPath': '/nail/etc/sperregion', 'mode': 'RO'},
-            {'hostPath': '/nail/etc/topology_env', 'containerPath': '/nail/etc/topology_env', 'mode': 'RO'},
-            {'hostPath': '/nail/srv', 'containerPath': '/nail/srv', 'mode': 'RO'},
-            {'hostPath': '/etc/boto_cfg', 'containerPath': '/etc/boto_cfg', 'mode': 'RO'}]
+            {'hostPath': u'/nail/etc/habitat', 'containerPath': '/nail/etc/habitat', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/datacenter', 'containerPath': '/nail/etc/datacenter', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/ecosystem', 'containerPath': '/nail/etc/ecosystem', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/rntimeenv', 'containerPath': '/nail/etc/rntimeenv', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/region', 'containerPath': '/nail/etc/region', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/sperregion', 'containerPath': '/nail/etc/sperregion', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/topology_env', 'containerPath': '/nail/etc/topology_env', 'mode': 'RO'},
+            {'hostPath': u'/nail/srv', 'containerPath': '/nail/srv', 'mode': 'RO'},
+            {'hostPath': u'/etc/boto_cfg', 'containerPath': '/etc/boto_cfg', 'mode': 'RO'}]
         },
     'instances': 1,
     'mem': 300,

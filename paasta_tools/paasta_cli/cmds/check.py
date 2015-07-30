@@ -284,8 +284,6 @@ def smartstack_check(service_name, service_path):
                     print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
         else:
             print PaastaCheckMessages.SMARTSTACK_PORT_MISSING
-    else:
-        print PaastaCheckMessages.SMARTSTACK_YAML_MISSING
 
 
 def paasta_check(args):

@@ -37,10 +37,11 @@ def get_container_id_for_mesos_id(client, mesos_task_id):
     container_id = None
     for container in running_containers:
         info = client.inspect_container(container)
-        for env_var in info['Config']['Env']:
-            if ('MESOS_TASK_ID=%s' % mesos_task_id) in env_var:
-                container_id = info['Id']
-                break
+        if info['Config']['Env']:
+            for env_var in info['Config']['Env']:
+                if ('MESOS_TASK_ID=%s' % mesos_task_id) in env_var:
+                    container_id = info['Id']
+                    break
 
     return container_id
 

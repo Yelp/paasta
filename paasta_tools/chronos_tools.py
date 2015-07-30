@@ -1,20 +1,78 @@
 import copy
+import json
 import logging
 import os
 import re
+import urlparse
 
+import chronos
 import isodate
 
 import marathon_tools
 import service_configuration_lib
+from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
 
-# DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
-# OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
-# It's used to compose a job's full ID from its service name and job name
-ID_SPACER = '.'
+# In Marathon spaces are not allowed, in Chronos periods are not allowed.
+# In the Chronos docs a space is suggested as the natural separator
+SPACER = " "
+PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
+
+
+class ChronosNotConfigured(Exception):
+    pass
+
+
+class ChronosConfig(dict):
+
+    def __init__(self, config, path):
+        self.path = path
+        super(ChronosConfig, self).__init__(config)
+
+    def get_url(self):
+        """:returns: The Chronos API endpoint"""
+        try:
+            return self['url']
+        except KeyError:
+            raise ChronosNotConfigured('Could not find chronos url in system chronos config: %s' % self.path)
+
+    def get_username(self):
+        """:returns: The Chronos API username"""
+        try:
+            return self['user']
+        except KeyError:
+            raise ChronosNotConfigured('Could not find chronos user in system chronos config: %s' % self.path)
+
+    def get_password(self):
+        """:returns: The Chronos API password"""
+        try:
+            return self['password']
+        except KeyError:
+            raise ChronosNotConfigured('Could not find chronos password in system chronos config: %s' % self.path)
+
+
+def load_chronos_config(path=PATH_TO_CHRONOS_CONFIG):
+    try:
+        with open(path) as f:
+            return ChronosConfig(json.load(f), path)
+    except IOError as e:
+        raise ChronosNotConfigured("Could not load chronos config file %s: %s" % (e.filename, e.strerror))
+
+
+def get_chronos_client(config):
+    """Returns a chronos client object for interacting with the API"""
+    chronos_url = config.get_url()[0]
+    chronos_hostname = urlparse.urlsplit(chronos_url).netloc
+    log.info("Connecting to Chronos server at: %s", chronos_url)
+    return chronos.connect(hostname=chronos_hostname,
+                           username=config.get_username(),
+                           password=config.get_password())
+
+
+def get_job_id(service, instance):
+    return "%s%s%s" % (service, SPACER, instance)
 
 
 class InvalidChronosConfigError(Exception):
@@ -41,18 +99,19 @@ def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA
     if job_name not in service_chronos_jobs:
         raise InvalidChronosConfigError('No job named \'%s\' in config file %s.yaml' % (job_name, chronos_conf_file))
 
-    return ChronosJobConfig(service_name, service_chronos_jobs[job_name], branch_dict)
+    return ChronosJobConfig(service_name, job_name, service_chronos_jobs[job_name], branch_dict)
 
 
 class ChronosJobConfig(dict):
 
-    def __init__(self, service_name, config_dict, branch_dict):
+    def __init__(self, service_name, job_name, config_dict, branch_dict):
         self.service_name = service_name
+        self.job_name = job_name
         self.config_dict = config_dict
         self.branch_dict = branch_dict
 
     def get(self, param):
-        config_dict_params = ['name', 'description', 'command', 'args', 'shell', 'epsilon', 'executor',
+        config_dict_params = ['description', 'command', 'args', 'shell', 'epsilon', 'executor',
                               'executor_flags', 'retries', 'owner', 'owner_name', 'async', 'cpus', 'mem',
                               'disk', 'disabled', 'uris', 'schedule', 'schedule_time_zone', 'parents',
                               'user_to_run_as', 'container', 'data_job', 'environment_variables', 'constraints']
@@ -64,6 +123,8 @@ class ChronosJobConfig(dict):
             return self.branch_dict.get(param)
         elif param == 'service_name':
             return self.service_name
+        elif param == 'job_name':
+            return self.job_name
         else:
             return None
 
@@ -172,7 +233,7 @@ class ChronosJobConfig(dict):
             'schedule': self.check_schedule,
             'schedule_time_zone': self.check_schedule_time_zone,
         }
-        supported_params_without_checks = ['name', 'description', 'command', 'owner', 'disabled']
+        supported_params_without_checks = ['description', 'command', 'owner', 'disabled']
         if param in check_methods:
             return check_methods[param]()
         elif param in supported_params_without_checks:
@@ -260,7 +321,7 @@ def check_job_reqs(chronos_job_config, job_type):
         return False, '\'%s\' is not a supported job type. Aborting job requirements check.' % job_type
 
     # TODO add schedule_time_zone
-    for param in ['name', 'command', 'epsilon', 'owner', 'async']:
+    for param in ['command', 'epsilon', 'owner', 'async']:
         if chronos_job_config.get(param) is None:
             msgs.append(missing_param_msg % (param, job_type))
 
@@ -279,6 +340,9 @@ def format_chronos_job_dict(chronos_job_config, job_type):
             complete_config_dict[param] = complete_chronos_job_config.get(param)
         else:
             error_msgs.append(check_msg)
+
+    # 'name' is the term Chronos uses, we store that value as 'job_name' to differentiate from 'service_name'
+    complete_config_dict['name'] = complete_chronos_job_config.get('job_name')
 
     reqs_passed, reqs_msgs = check_job_reqs(complete_chronos_job_config, job_type)
     if not reqs_passed:

@@ -31,11 +31,13 @@ def tail_paasta_logs_let_threads_be_threads(context):
 
         def scribe_tail_side_effect(
             scribe_env,
+            stream_name,
             service,
             levels,
             components,
             clusters,
             queue,
+            filter_fn,
         ):
             # The print here is just for debugging
             print 'fake log line added for %s' % scribe_env

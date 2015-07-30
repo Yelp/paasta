@@ -5,6 +5,7 @@ import time
 from behave import given, when, then
 from paasta_tools import bounce_lib
 from paasta_tools.bounce_lib import get_happy_tasks
+from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
 
@@ -82,8 +83,8 @@ def when_there_are_num_which_tasks(context, num, which, state):
                     (context.max_tasks, state, app_id, app.tasks))
 
 
-@when(u'deploy_service with bounce strategy "{bounce_method}" is initiated')
-def when_deploy_service_initiated(context, bounce_method):
+@when(u'deploy_service with bounce strategy "{bounce_method}" and drain method "{drain_method}" is initiated')
+def when_deploy_service_initiated(context, bounce_method, drain_method):
     with contextlib.nested(
         mock.patch(
             'paasta_tools.bounce_lib.get_happy_tasks',
@@ -103,14 +104,16 @@ def when_deploy_service_initiated(context, bounce_method):
         ),
     ):
         setup_marathon_job.deploy_service(
-            context.service_name,
-            context.instance_name,
-            context.new_config['id'],
-            context.new_config,
-            context.client,
-            bounce_method,
-            context.instance_name,
-            {},
+            service_name=context.service_name,
+            instance_name=context.instance_name,
+            marathon_jobid=context.new_config['id'],
+            config=context.new_config,
+            client=context.client,
+            bounce_method=bounce_method,
+            drain_method_name=drain_method,
+            drain_method_params={},
+            nerve_ns=context.instance_name,
+            bounce_health_params={},
         )
 
 
@@ -158,3 +161,15 @@ def and_we_wait_a_bit_for_the_app_to_disappear(context, which):
             return True
     # It better not be running by now!
     assert marathon_tools.is_app_id_running(which_id(context, which), context.client) is False
+
+
+@when(u'a task has drained')
+def when_a_task_has_drained(context):
+    """Tell the TestDrainMethod to mark a task as safe to kill.
+
+    Normal drain methods, like hacheck, require waiting for something to happen in the background. The bounce code can
+    cause a task to go from up -> draining, but the draining->drained transition normally happens outside of Paasta.
+    With TestDrainMethod, we can control the draining->drained transition to emulate that external code, and that's what
+    this step does.
+    """
+    drain_lib.TestDrainMethod.mark_arbitrary_task_as_safe_to_kill()

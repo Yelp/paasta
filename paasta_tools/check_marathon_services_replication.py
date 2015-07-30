@@ -26,6 +26,7 @@ import sys
 from paasta_tools.monitoring import replication_utils
 from paasta_tools.monitoring.context import get_context
 from paasta_tools import marathon_tools
+from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.paasta_serviceinit import get_running_tasks_from_active_frameworks
@@ -101,18 +102,25 @@ def split_id(fid):
 
 
 def check_smartstack_replication_for_instance(
-        service,
-        instance,
-        available_backends,
-        soa_dir,
-        crit_threshold,
-        expected_count):
+    service,
+    instance,
+    smartstack_replication_info,
+    soa_dir,
+    crit_threshold,
+    expected_count,
+):
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds given.
 
     :param service: A string like example_service
     :param namespace: A nerve namespace, like "main"
-    :param available_backends: A dictionary mapping namespaces to the number of available_backends
+    :param smartstack_replication_info: a dictionary of the form:
+                                        {
+                                            'unique_location_name': {
+                                                'service_name.instance_name': <# ofavailable backends>
+                                            },
+                                            'other_unique_location_name': ...
+                                        }
     :param soa_dir: The SOA configuration directory to read from
     :param crit_threshold: The fraction of instances that need to be up to avoid a CRITICAL event
     """
@@ -123,39 +131,94 @@ def check_smartstack_replication_for_instance(
         return
     full_name = "%s%s%s" % (service, ID_SPACER, instance)
     log.info('Checking instance %s', full_name)
-    num_available = available_backends.get(full_name, 0)
-    send_event_if_under_replication(service, instance, crit_threshold, expected_count, num_available, soa_dir)
+
+    if len(smartstack_replication_info) == 0:
+        status = pysensu_yelp.Status.CRITICAL
+        output = ('Service %s has no Smartstack replication info. Make sure the discover key in your smartstack.yaml '
+                  'is valid!\n') % full_name
+        output = add_context_to_event(service, instance, output)
+        log.error(output)
+    else:
+        expected_count_per_location = int(expected_count / len(smartstack_replication_info))
+        output = ''
+        under_replication_per_location = []
+
+        for location, available_backends in sorted(smartstack_replication_info.iteritems()):
+            num_available_in_location = available_backends.get(full_name, 0)
+            under_replicated, ratio = is_under_replicated(
+                num_available_in_location, expected_count_per_location, crit_threshold)
+            if under_replicated:
+                output += '- Service %s has %d out of %d expected instances in %s (CRITICAL: %d%%)\n' % (
+                    full_name, num_available_in_location, expected_count_per_location, location, ratio)
+            else:
+                output += '- Service %s has %d out of %d expected instances in %s (OK: %d%%)\n' % (
+                    full_name, num_available_in_location, expected_count_per_location, location, ratio)
+            under_replication_per_location.append(under_replicated)
+
+        if any(under_replication_per_location):
+            status = pysensu_yelp.Status.CRITICAL
+            output = add_context_to_event(service, instance, output)
+            log.error(output)
+        else:
+            status = pysensu_yelp.Status.OK
+            log.info(output)
+    send_event(service, instance, soa_dir, status, output)
 
 
-def check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold, expected_count):
-    num_available = len(get_running_tasks_from_active_frameworks(service, instance))
-    send_event_if_under_replication(service, instance, crit_threshold, expected_count, num_available, soa_dir)
+def add_context_to_event(service, instance, output):
+    context = get_context(service, instance)
+    output = '%s\n%s' % (output, context)
+    return output
 
 
-def send_event_if_under_replication(service, instance, crit_threshold, expected_count, num_available, soa_dir):
+def is_under_replicated(num_available, expected_count, crit_threshold):
     if expected_count == 0:
         ratio = 100
     else:
         ratio = (num_available / float(expected_count)) * 100
+
+    if ratio < crit_threshold:
+        return (True, ratio)
+    else:
+        return (False, ratio)
+
+
+def check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold, expected_count):
+    num_available = len(get_running_tasks_from_active_frameworks(service, instance))
+    # Non-Smartstack services aren't aware of replication within specific
+    # locations (since they don't define an advertise/discover level)
+    send_event_if_under_replication(
+        service=service,
+        instance=instance,
+        crit_threshold=crit_threshold,
+        expected_count=expected_count,
+        num_available=num_available,
+        soa_dir=soa_dir,
+    )
+
+
+def send_event_if_under_replication(
+    service,
+    instance,
+    crit_threshold,
+    expected_count,
+    num_available,
+    soa_dir,
+):
     full_name = "%s%s%s" % (service, ID_SPACER, instance)
     output = ('Service %s has %d out of %d expected instances available!\n' +
               '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
-    if ratio < crit_threshold:
+    under_replicated, _ = is_under_replicated(num_available, expected_count, crit_threshold)
+    if under_replicated:
         log.error(output)
         status = pysensu_yelp.Status.CRITICAL
-        status_str = 'CRITICAL'
     else:
         log.info(output)
         status = pysensu_yelp.Status.OK
-        status_str = 'OK'
-    output = '%s: %s' % (status_str, output)
-    if status_str != 'OK':
-        context = get_context(service, instance)
-        output = '%s\n%s' % (output, context)
     send_event(service, instance, soa_dir, status, output)
 
 
-def check_service_replication(service, instance, crit_threshold, available_smartstack_replication, soa_dir):
+def check_service_replication(service, instance, crit_threshold, smartstack_replication_info, soa_dir):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
@@ -163,7 +226,12 @@ def check_service_replication(service, instance, crit_threshold, available_smart
     :param instance: Instance name, like "main" or "canary"
     :param crit_threshold: an int from 0-100 representing the percentage threshold for triggering an alert
     :param soa_dir: The SOA configuration directory to read from
-    :available_smartstack_replication: a special hash that represents the current replication levels in smartstack
+    :smartstack_replication_info: a dictionary of locations where the key is the name of the location
+                                      (e.g. 'ca-datacenter1') and the value is a dictionary that contains
+                                      the current replication levels from smartstack of the form
+                                      {'service_name.instance_name': <available backend count>}. More info
+                                      about locations can be found at
+                                      https://trac.yelpcorp.com/wiki/Habitat_Datacenter_Ecosystem_Runtimeenv_Region_Superregion
     """
     try:
         expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
@@ -172,14 +240,63 @@ def check_service_replication(service, instance, crit_threshold, available_smart
         return
     if expected_count is None:
         return
-    log.info("Expecting %d for %s.%s" % (expected_count, service, instance))
+    log.info("Expecting %d total tasks for %s.%s" % (expected_count, service, instance))
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     if proxy_port is not None:
-        check_smartstack_replication_for_instance(
-            service, instance, available_smartstack_replication, soa_dir, crit_threshold, expected_count
-        )
+        check_smartstack_replication_for_instance(service, instance, smartstack_replication_info,
+                                                  soa_dir, crit_threshold, expected_count)
     else:
         check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold, expected_count)
+
+
+def load_smartstack_info_for_services(service_instances, namespaces, soa_dir):
+    """Retrives number of available backends for given services
+
+    :param service_instances: A list of tuples of (service_name, instance_name)
+    :param namespaces: list of Smartstack namespaces
+    :returns: a dictionary of the form:
+              {
+                'location_type': {
+                    'unique_location_name': {
+                        'service_name.instance_name': <# ofavailable backends>
+                    },
+                    'other_unique_location_name': ...
+                }
+              }
+    """
+    smartstack_replication_info = {}
+    location_types = set()
+    for service_name, instance_name in service_instances:
+        service_namespace_config = marathon_tools.load_service_namespace_config(service_name, instance_name,
+                                                                                soa_dir=soa_dir)
+        discover_location_type = service_namespace_config.get_discover()
+        location_types.add(discover_location_type)
+
+    for location_type in location_types:
+        smartstack_replication_info[location_type] = get_smartstack_replication_for_attribute(
+            location_type, namespaces)
+
+    return smartstack_replication_info
+
+
+def get_smartstack_replication_for_attribute(attribute, namespaces):
+    """Loads smartstack replication from a host with the specified attribute
+
+    :param attribute: a Mesos attribute
+    :param namespaces: list of Smartstack namespaces
+    :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
+              (the dictionary will contain keys for unique all attribute values)
+  """
+    replication_info = {}
+    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute)
+
+    for value, hosts in unique_values.iteritems():
+        # arbitrarily choose the first host with a given attribute to query for replication stats
+        synapse_host = hosts[0]
+        repl_info = replication_utils.get_replication_for_services('%s:3212' % synapse_host, namespaces)
+        replication_info[value] = repl_info
+
+    return replication_info
 
 
 def main():
@@ -193,10 +310,20 @@ def main():
         log.setLevel(logging.WARNING)
     service_instances = marathon_tools.get_marathon_services_for_cluster(soa_dir=args.soa_dir)
     all_namespaces = [name for name, config in marathon_tools.get_all_namespaces()]
-    available_smartstack_replication = replication_utils.get_replication_for_services(
-        'localhost:3212', all_namespaces)
+
+    smartstack_replication_info = load_smartstack_info_for_services(service_instances, all_namespaces, soa_dir)
+
     for service, instance in service_instances:
-        check_service_replication(service, instance, crit_threshold, available_smartstack_replication, soa_dir)
+        service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
+        discover_location_type = service_namespace_config.get_discover()
+
+        check_service_replication(
+            service,
+            instance,
+            crit_threshold,
+            smartstack_replication_info[discover_location_type],
+            soa_dir
+        )
 
 
 if __name__ == "__main__":

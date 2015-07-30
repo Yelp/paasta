@@ -1,5 +1,7 @@
+from mock import Mock
 from mock import patch
 
+from paasta_tools.paasta_cli.cmds.mark_for_deployment import get_loglines
 from paasta_tools.paasta_cli.cmds.mark_for_deployment import paasta_mark_for_deployment
 
 
@@ -37,3 +39,28 @@ def test_mark_for_deployment_success(
 ):
     mock_run.return_value = (0, 'Interminate!')
     assert paasta_mark_for_deployment(fake_args) is None
+
+
+def test_get_loglines_good_hides_output():
+    returncode = 0
+    cmd = 'testcmd'
+    output = 'goodoutput'
+    args = Mock()
+    args.commit = 'testcommit'
+    args.clusterinstance = 'test-clusterinstance'
+    actual = get_loglines(returncode=returncode, cmd=cmd, output=output, args=args)
+    assert 'Marked %s in %s for deployment.' % (args.commit, args.clusterinstance) in actual
+    assert 'Output: %s' % output not in actual
+
+
+def test_get_loglines_bad_return_outputs_the_error():
+    returncode = 1
+    cmd = 'testcmd'
+    output = 'BAD OUTPUT'
+    args = Mock()
+    args.commit = 'testcommit'
+    args.clusterinstance = 'test-clusterinstance'
+    actual = get_loglines(returncode=returncode, cmd=cmd, output=output, args=args)
+    assert 'Output: %s' % output in actual
+    assert "Ran: '%s'" % cmd in actual
+    assert 'ERROR: Failed to mark %s for deployment in %s.' % (args.commit, args.clusterinstance) in actual
