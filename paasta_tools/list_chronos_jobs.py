@@ -21,7 +21,7 @@ from paasta_tools import chronos_tools
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Lists marathon instances for a service.')
+    parser = argparse.ArgumentParser(description='Lists Chronos jobs for a service.')
     parser.add_argument('-c', '--cluster', dest="cluster", metavar="CLUSTER",
                         default=None,
                         help="define a specific cluster to read from")
@@ -37,7 +37,7 @@ def main():
     jobs = chronos_tools.get_chronos_jobs_for_cluster(cluster=args.cluster, soa_dir=args.soa_dir)
     composed = []
     for name, job in jobs:
-        composed.append('%s%s%s' % (name, chronos_tools.ID_SPACER, job))
+        composed.append('%s.%s' % (name, job))
     print ' '.join(composed)
     sys.exit(0)
 
