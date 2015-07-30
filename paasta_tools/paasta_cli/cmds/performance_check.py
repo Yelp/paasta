@@ -1,5 +1,11 @@
 #!/usr/bin/env python
+import os
+import json
 import sys
+
+import requests
+
+from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
 
 def add_subparser(subparsers):
@@ -17,10 +23,39 @@ def add_subparser(subparsers):
                              help='Git sha of the image to check',
                              required=True,
                              )
-
     list_parser.set_defaults(command=perform_performance_check)
 
 
+def load_performance_check_config():
+    config_file = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'performance-check.json')
+    try:
+        with open(config_file) as f:
+            return json.load(f)
+    except IOError as e:
+        print "No performance check config to use. Safely bailing."
+        print e.strerror
+        sys.exit(0)
+
+
+def submit_performance_check_job(service, commit):
+    performance_check_config = load_performance_check_config()
+    payload = {
+        'service': service,
+        'commit': commit,
+        'submitter': 'jenkins',
+    }
+    r = requests.post(
+        url=performance_check_config['endpoint'],
+        data=payload,
+    )
+    print "Posted a submission to the PaaSTA performance-check service:"
+    print r.text
+
+
 def perform_performance_check(args):
-    print 'Not implemented yet'
-    sys.exit(0)
+    try:
+        submit_performance_check_job(service=args.service, commit=args.commit)
+    except Exception as e:
+        print "Something went wrong with the performance check. Safely bailing. No need to panic."
+        print "Here was the error:"
+        print str(e)
