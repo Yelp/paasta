@@ -108,8 +108,8 @@ def get_deploy_stanza():
     stanza["pipeline"] = [
         {"instancename": "itest", },
         {"instancename": "security-check", },
-        {"instancename": "performance-check", },
         {"instancename": "push-to-registry", },
+        {"instancename": "performance-check", },
         {"instancename": "pnw-stagea.canary", },
         {"instancename": "pnw-stagea.main", },
         {"instancename": "norcal-stageb.canary", },
