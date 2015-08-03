@@ -8,6 +8,7 @@ import urlparse
 import chronos
 import isodate
 
+import marathon_tools
 import service_configuration_lib
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
@@ -351,3 +352,43 @@ def format_chronos_job_dict(chronos_job_config, job_type):
         raise InvalidChronosConfigError('\n'.join(error_msgs))
 
     return complete_config_dict
+
+
+def get_service_job_list(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Enumerate the Chronos jobs defined for a service as a list of tuples.
+
+    :param name: The service name
+    :param cluster: The cluster to read the configuration for
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (name, job) for each job defined for the service name"""
+    if not cluster:
+        # TODO we should move functions not specific to Marathon (like this) out of marathon_tools
+        cluster = marathon_tools.get_cluster()
+    chronos_conf_file = "chronos-%s" % cluster
+    log.info("Enumerating all jobs from config file: %s/*/%s.yaml", soa_dir, chronos_conf_file)
+    jobs = service_configuration_lib.read_extra_service_information(
+        service_name,
+        chronos_conf_file,
+        soa_dir=soa_dir
+    )
+    job_list = []
+    for job in jobs:
+        job_list.append((service_name, job))
+    log.debug("Enumerated the following jobs: %s", job_list)
+    return job_list
+
+
+def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
+    """Retrieve all Chronos jobs defined to run on a cluster.
+
+    :param cluster: The cluster to read the configuration for
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (service_name, job_name)"""
+    if not cluster:
+        cluster = marathon_tools.get_cluster()
+    rootdir = os.path.abspath(soa_dir)
+    log.info("Retrieving all Chronos job names from %s for cluster %s", rootdir, cluster)
+    job_list = []
+    for srv_dir in os.listdir(rootdir):
+        job_list += get_service_job_list(srv_dir, cluster, soa_dir)
+    return job_list
