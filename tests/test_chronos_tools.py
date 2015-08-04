@@ -127,7 +127,7 @@ class TestChronosTools:
         actual = chronos_tools.get_job_id('service', 'instance')
         assert actual == "service instance"
 
-    def test_load_chronos_job_config(self):
+    def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'
         expected_chronos_conf_file = 'chronos-penguin'
         with contextlib.nested(
@@ -136,13 +136,29 @@ class TestChronosTools:
             mock_read_extra_service_information,
         ):
             mock_read_extra_service_information.return_value = self.fake_config_file
+            actual = chronos_tools.read_chronos_jobs_for_service(self.fake_service_name,
+                                                                 self.fake_cluster,
+                                                                 fake_soa_dir)
+            assert actual == self.fake_config_file
+            mock_read_extra_service_information.assert_called_once_with(self.fake_service_name,
+                                                                        expected_chronos_conf_file,
+                                                                        soa_dir=fake_soa_dir)
+
+    def test_load_chronos_job_config(self):
+        fake_soa_dir = '/tmp/'
+        with contextlib.nested(
+            mock.patch('chronos_tools.read_chronos_jobs_for_service', autospec=True),
+        ) as (
+            mock_read_chronos_jobs_for_service,
+        ):
+            mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
             actual = chronos_tools.load_chronos_job_config(self.fake_service_name,
                                                            self.fake_job_name,
                                                            self.fake_cluster,
                                                            fake_soa_dir)
-            mock_read_extra_service_information.assert_called_once_with(self.fake_service_name,
-                                                                        expected_chronos_conf_file,
-                                                                        soa_dir=fake_soa_dir)
+            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
+                                                                       self.fake_cluster,
+                                                                       soa_dir=fake_soa_dir)
             assert actual == self.fake_chronos_job_config
 
     def test_load_chronos_job_config_unknown_job(self):
@@ -150,19 +166,19 @@ class TestChronosTools:
         expected_chronos_conf_file = 'chronos-penguin'
         fake_job_name = 'polar bear'
         with contextlib.nested(
-            mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
+            mock.patch('chronos_tools.read_chronos_jobs_for_service', autospec=True),
         ) as (
-            mock_read_extra_service_information,
+            mock_read_chronos_jobs_for_service,
         ):
-            mock_read_extra_service_information.return_value = self.fake_config_file
+            mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
             with raises(chronos_tools.InvalidChronosConfigError) as exc:
                 chronos_tools.load_chronos_job_config(self.fake_service_name,
                                                       fake_job_name,
                                                       self.fake_cluster,
                                                       fake_soa_dir)
-                mock_read_extra_service_information.assert_called_once_with(self.fake_service_name,
-                                                                            expected_chronos_conf_file,
-                                                                            soa_dir=fake_soa_dir)
+                mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
+                                                                           expected_chronos_conf_file,
+                                                                           soa_dir=fake_soa_dir)
                 assert exc.value == 'No job named \'polar bear\' in config file chronos-penguin.yaml'
 
     def test_get_config_dict_param(self):
@@ -644,7 +660,7 @@ class TestChronosTools:
             chronos_tools.format_chronos_job_dict(incomplete_config, 'docker')
             assert exc.value == 'Your Chronos config is missing \'command\', a required parameter for a \'docker job\'.'
 
-    def test_get_service_job_list(self):
+    def test_list_job_names(self):
         fake_name = 'vegetables'
         fake_job_1 = 'carrot'
         fake_job_2 = 'celery'
@@ -655,7 +671,7 @@ class TestChronosTools:
         expected = [(fake_name, fake_job_1), (fake_name, fake_job_2)]
         with mock.patch('service_configuration_lib.read_extra_service_information', autospec=True,
                         return_value=fake_job_config) as read_extra_info_patch:
-            actual = chronos_tools.get_service_job_list(fake_name, fake_cluster, fake_dir)
+            actual = chronos_tools.list_job_names(fake_name, fake_cluster, fake_dir)
             read_extra_info_patch.assert_called_once_with(fake_name, "chronos-broccoli", soa_dir=fake_dir)
             assert sorted(expected) == sorted(actual)
 
@@ -667,17 +683,17 @@ class TestChronosTools:
         with contextlib.nested(
             mock.patch('os.path.abspath', autospec=True, return_value='windows_explorer'),
             mock.patch('os.listdir', autospec=True, return_value=['dir1', 'dir2']),
-            mock.patch('chronos_tools.get_service_job_list',
+            mock.patch('chronos_tools.list_job_names',
                        side_effect=lambda a, b, c: jobs.pop())
         ) as (
             abspath_patch,
             listdir_patch,
-            get_jobs_patch,
+            list_jobs_patch,
         ):
             actual = chronos_tools.get_chronos_jobs_for_cluster(cluster, soa_dir)
             assert sorted(expected) == sorted(actual)
             abspath_patch.assert_called_once_with(soa_dir)
             listdir_patch.assert_called_once_with('windows_explorer')
-            get_jobs_patch.assert_any_call('dir1', cluster, soa_dir)
-            get_jobs_patch.assert_any_call('dir2', cluster, soa_dir)
-            assert get_jobs_patch.call_count == 2
+            list_jobs_patch.assert_any_call('dir1', cluster, soa_dir)
+            list_jobs_patch.assert_any_call('dir2', cluster, soa_dir)
+            assert list_jobs_patch.call_count == 2
