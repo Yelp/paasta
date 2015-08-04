@@ -79,10 +79,18 @@ class InvalidChronosConfigError(Exception):
     pass
 
 
-def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA_DIR):
+def get_chronos_jobs_for_service(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
+    log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml", (soa_dir, service_name, cluster))
 
-    log.info("Reading Chronos configuration file: %s.yaml", chronos_conf_file)
+    return service_configuration_lib.read_extra_service_information(
+        service_name,
+        chronos_conf_file,
+        soa_dir=soa_dir
+    )
+
+
+def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA_DIR):
 
     # TODO we need to decide what info from the service configs is relevant to chronos,
     # and move the related functionality out of marathon_tools into utils or something similar
@@ -90,14 +98,10 @@ def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA
         'full_branch': 'paasta-%s-%s' % (service_name, cluster),
     }
 
-    service_chronos_jobs = service_configuration_lib.read_extra_service_information(
-        service_name,
-        chronos_conf_file,
-        soa_dir=soa_dir
-    )
+    service_chronos_jobs = get_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir)
 
     if job_name not in service_chronos_jobs:
-        raise InvalidChronosConfigError('No job named \'%s\' in config file %s.yaml' % (job_name, chronos_conf_file))
+        raise InvalidChronosConfigError('No job named \'%s\' in config file chronos-%s.yaml' % (job_name, cluster))
 
     return ChronosJobConfig(service_name, job_name, service_chronos_jobs[job_name], branch_dict)
 
@@ -312,11 +316,11 @@ def check_job_reqs(chronos_job_config, job_type):
     msgs = []
 
     if job_type == 'scheduled':
-        msgs += _check_scheduled_job_reqs_helper(chronos_job_config, job_type)
+        msgs.extend(_check_scheduled_job_reqs_helper(chronos_job_config, job_type))
     elif job_type == 'dependent':
-        msgs += _check_dependent_job_reqs_helper(chronos_job_config, job_type)
+        msgs.extend(_check_dependent_job_reqs_helper(chronos_job_config, job_type))
     elif job_type == 'docker':
-        msgs += _check_docker_job_reqs_helper(chronos_job_config, job_type)
+        msgs.extend(_check_docker_job_reqs_helper(chronos_job_config, job_type))
     else:
         return False, '\'%s\' is not a supported job type. Aborting job requirements check.' % job_type
 
@@ -346,7 +350,7 @@ def format_chronos_job_dict(chronos_job_config, job_type):
 
     reqs_passed, reqs_msgs = check_job_reqs(complete_chronos_job_config, job_type)
     if not reqs_passed:
-        error_msgs += reqs_msgs
+        error_msgs.extend(reqs_msgs)
 
     if len(error_msgs) > 0:
         raise InvalidChronosConfigError('\n'.join(error_msgs))
@@ -354,25 +358,18 @@ def format_chronos_job_dict(chronos_job_config, job_type):
     return complete_config_dict
 
 
-def get_service_job_list(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the Chronos jobs defined for a service as a list of tuples.
 
     :param name: The service name
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, job) for each job defined for the service name"""
-    if not cluster:
-        # TODO we should move functions not specific to Marathon (like this) out of marathon_tools
-        cluster = marathon_tools.get_cluster()
-    chronos_conf_file = "chronos-%s" % cluster
-    log.info("Enumerating all jobs from config file: %s/*/%s.yaml", soa_dir, chronos_conf_file)
-    jobs = service_configuration_lib.read_extra_service_information(
-        service_name,
-        chronos_conf_file,
-        soa_dir=soa_dir
-    )
     job_list = []
-    for job in jobs:
+    if not cluster:
+        cluster = marathon_tools.get_cluster()
+
+    for job in get_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir):
         job_list.append((service_name, job))
     log.debug("Enumerated the following jobs: %s", job_list)
     return job_list
@@ -389,6 +386,6 @@ def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     rootdir = os.path.abspath(soa_dir)
     log.info("Retrieving all Chronos job names from %s for cluster %s", rootdir, cluster)
     job_list = []
-    for srv_dir in os.listdir(rootdir):
-        job_list += get_service_job_list(srv_dir, cluster, soa_dir)
+    for service in os.listdir(rootdir):
+        job_list.extend(list_job_names(service, cluster, soa_dir))
     return job_list
