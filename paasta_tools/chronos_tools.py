@@ -79,7 +79,7 @@ class InvalidChronosConfigError(Exception):
     pass
 
 
-def get_chronos_jobs_for_service(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
+def read_chronos_jobs_for_service(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
     log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml", (soa_dir, service_name, cluster))
 
@@ -98,7 +98,7 @@ def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA
         'full_branch': 'paasta-%s-%s' % (service_name, cluster),
     }
 
-    service_chronos_jobs = get_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir)
+    service_chronos_jobs = read_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir)
 
     if job_name not in service_chronos_jobs:
         raise InvalidChronosConfigError('No job named \'%s\' in config file chronos-%s.yaml' % (job_name, cluster))
@@ -369,7 +369,7 @@ def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     if not cluster:
         cluster = marathon_tools.get_cluster()
 
-    for job in get_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir):
+    for job in read_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir):
         job_list.append((service_name, job))
     log.debug("Enumerated the following jobs: %s", job_list)
     return job_list

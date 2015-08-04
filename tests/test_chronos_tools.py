@@ -127,7 +127,7 @@ class TestChronosTools:
         actual = chronos_tools.get_job_id('service', 'instance')
         assert actual == "service instance"
 
-    def test_get_chronos_jobs_for_service(self):
+    def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'
         expected_chronos_conf_file = 'chronos-penguin'
         with contextlib.nested(
@@ -136,9 +136,9 @@ class TestChronosTools:
             mock_read_extra_service_information,
         ):
             mock_read_extra_service_information.return_value = self.fake_config_file
-            actual = chronos_tools.get_chronos_jobs_for_service(self.fake_service_name,
-                                                                self.fake_cluster,
-                                                                fake_soa_dir)
+            actual = chronos_tools.read_chronos_jobs_for_service(self.fake_service_name,
+                                                                 self.fake_cluster,
+                                                                 fake_soa_dir)
             assert actual == self.fake_config_file
             mock_read_extra_service_information.assert_called_once_with(self.fake_service_name,
                                                                         expected_chronos_conf_file,
@@ -147,18 +147,18 @@ class TestChronosTools:
     def test_load_chronos_job_config(self):
         fake_soa_dir = '/tmp/'
         with contextlib.nested(
-            mock.patch('chronos_tools.get_chronos_jobs_for_service', autospec=True),
+            mock.patch('chronos_tools.read_chronos_jobs_for_service', autospec=True),
         ) as (
-            mock_get_chronos_jobs_for_service,
+            mock_read_chronos_jobs_for_service,
         ):
-            mock_get_chronos_jobs_for_service.return_value = self.fake_config_file
+            mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
             actual = chronos_tools.load_chronos_job_config(self.fake_service_name,
                                                            self.fake_job_name,
                                                            self.fake_cluster,
                                                            fake_soa_dir)
-            mock_get_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
-                                                                      self.fake_cluster,
-                                                                      soa_dir=fake_soa_dir)
+            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
+                                                                       self.fake_cluster,
+                                                                       soa_dir=fake_soa_dir)
             assert actual == self.fake_chronos_job_config
 
     def test_load_chronos_job_config_unknown_job(self):
@@ -166,19 +166,19 @@ class TestChronosTools:
         expected_chronos_conf_file = 'chronos-penguin'
         fake_job_name = 'polar bear'
         with contextlib.nested(
-            mock.patch('chronos_tools.get_chronos_jobs_for_service', autospec=True),
+            mock.patch('chronos_tools.read_chronos_jobs_for_service', autospec=True),
         ) as (
-            mock_get_chronos_jobs_for_service,
+            mock_read_chronos_jobs_for_service,
         ):
-            mock_get_chronos_jobs_for_service.return_value = self.fake_config_file
+            mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
             with raises(chronos_tools.InvalidChronosConfigError) as exc:
                 chronos_tools.load_chronos_job_config(self.fake_service_name,
                                                       fake_job_name,
                                                       self.fake_cluster,
                                                       fake_soa_dir)
-                mock_get_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
-                                                                          expected_chronos_conf_file,
-                                                                          soa_dir=fake_soa_dir)
+                mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
+                                                                           expected_chronos_conf_file,
+                                                                           soa_dir=fake_soa_dir)
                 assert exc.value == 'No job named \'polar bear\' in config file chronos-penguin.yaml'
 
     def test_get_config_dict_param(self):
