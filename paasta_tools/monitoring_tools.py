@@ -10,6 +10,7 @@ Everything in here is private, and you shouldn't worry about it.
 
 import service_configuration_lib
 import marathon_tools
+from paasta_tools.paasta_cli.utils import _load_sensu_team_data
 
 
 def get_team(framework, service_name, instance_name=None,
@@ -85,3 +86,36 @@ def monitoring_defaults(key):
                'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
     }
     return defaults.get(key, False)
+
+
+def get_team_email_address(service, framework=None, instance=None):
+    """ Looks up the team email address from the most specific to least specific order
+    going from the specific marathon or chronos config, to monitoring.yaml, then
+    to the global Sensu team_data.json. Returns None if nothing is available.
+
+    This function is most useful for when you *really* need an email address to use
+    for non-Sensu applications. (chronos, jenkins, etc)
+
+    This function should *not* be used with Sensu stuff. Instead you should
+    leave `notification_email` absent and just let Sensu do its thing."""
+
+    email_address = __get_monitoring_config_value('notification_email', framework=framework,
+                                                  service_name=service, instance_name=instance)
+    if not email_address:
+        team = get_team(framework=framework, service_name=service, instance_name=instance)
+        email_address = get_sensu_team_data(team).get('notification_email', None)
+    return email_address
+
+
+def get_sensu_team_data(team):
+    """Takes a team and returns the dictionary of Sensu configuration
+    settings for that team. The data is in this format:
+    https://github.com/Yelp/sensu_handlers#teams
+    Returns an empty dictionary if there is nothing to return.
+
+    Not all teams specify all the different types of configuration settings.
+    for example a team may not specify a `nofitication_email`. It is up
+    to the caller of this function to handle that case.
+    """
+    global_team_data = _load_sensu_team_data()['team_data']
+    return global_team_data.get(team, {})

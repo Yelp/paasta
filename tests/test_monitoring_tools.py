@@ -194,3 +194,49 @@ class TestMonitoring_Tools:
             read_service_patch.assert_called_once_with(self.service_name, self.instance_name, 'clustername',
                                                        soa_dir=self.soa_dir)
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
+
+    def test_get_team_email_address_uses_instance_config_if_specified(self):
+        expected = 'fake_email'
+        with contextlib.nested(
+            mock.patch('monitoring_tools.__get_monitoring_config_value', autospec=True),
+        ) as (
+            mock_get_monitoring_config_value,
+        ):
+            mock_get_monitoring_config_value.return_value = 'fake_email'
+            actual = monitoring_tools.get_team_email_address('fake_service')
+            assert actual == expected
+
+    def test_get_team_email_address_uses_team_data_as_last_resort(self):
+        expected = 'team_data_email'
+        with contextlib.nested(
+            mock.patch('monitoring_tools.__get_monitoring_config_value', autospec=True),
+            mock.patch('monitoring_tools.get_sensu_team_data', autospec=True),
+            mock.patch('monitoring_tools.get_team', autospec=True),
+        ) as (
+            mock_get_monitoring_config_value,
+            mock_get_sensu_team_data,
+            mock_get_team,
+        ):
+            mock_get_team.return_value = 'test_team'
+            mock_get_monitoring_config_value.return_value = False
+            mock_get_sensu_team_data.return_value = {
+                'notification_email': expected
+            }
+            actual = monitoring_tools.get_team_email_address('fake_service')
+            assert actual == expected
+
+    def test_get_team_email_address_returns_none_if_not_available(self):
+        with contextlib.nested(
+            mock.patch('monitoring_tools.__get_monitoring_config_value', autospec=True),
+            mock.patch('monitoring_tools.get_sensu_team_data', autospec=True),
+            mock.patch('monitoring_tools.get_team', autospec=True),
+        ) as (
+            mock_get_monitoring_config_value,
+            mock_get_sensu_team_data,
+            mock_get_team,
+        ):
+            mock_get_team.return_value = 'test_team'
+            mock_get_monitoring_config_value.return_value = False
+            mock_get_sensu_team_data.return_value = {}
+            actual = monitoring_tools.get_team_email_address('fake_service')
+            assert actual is None
