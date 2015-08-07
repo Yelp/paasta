@@ -7,10 +7,10 @@ on the framework that is asking, and still allows you to set your team
 
 Everything in here is private, and you shouldn't worry about it.
 """
+import json
 
 import service_configuration_lib
 import marathon_tools
-from paasta_tools.paasta_cli.utils import _load_sensu_team_data
 
 
 def get_team(framework, service_name, instance_name=None,
@@ -119,3 +119,9 @@ def get_sensu_team_data(team):
     """
     global_team_data = _load_sensu_team_data()['team_data']
     return global_team_data.get(team, {})
+
+
+def _load_sensu_team_data():
+    with open('/etc/sensu/team_data.json') as f:
+        team_data = json.load(f)
+    return team_data
