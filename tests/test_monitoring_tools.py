@@ -107,6 +107,18 @@ class TestMonitoring_Tools:
             get_monitoring_config_value_patch.assert_called_once_with('dependencies', self.framework, self.service_name,
                                                                       self.instance_name, self.soa_dir)
 
+    def test_get_ticket(self):
+        with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
+            monitoring_tools.get_ticket(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('ticket', self.framework, self.service_name,
+                                                                      self.instance_name, self.soa_dir)
+
+    def test_get_project(self):
+        with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
+            monitoring_tools.get_project(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('project', self.framework, self.service_name,
+                                                                      self.instance_name, self.soa_dir)
+
     def test_get_monitoring_config_value_with_job_config(self):
         expected = 'job_test_team'
         with contextlib.nested(

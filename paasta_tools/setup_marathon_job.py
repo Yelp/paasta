@@ -82,6 +82,8 @@ def send_event(name, instance, soa_dir, status, output):
         'tip': monitoring_tools.get_tip(framework, name, instance, soa_dir),
         'notification_email': monitoring_tools.get_notification_email(framework, name, instance, soa_dir),
         'irc_channels': monitoring_tools.get_irc_channels(framework, name, instance, soa_dir),
+        'ticket': monitoring_tools.get_ticket(framework, name, instance, soa_dir),
+        'project': monitoring_tools.get_project(framework, name, instance, soa_dir),
         'alert_after': '5m',
         'check_every': '1m',
         'realert_every': -1,

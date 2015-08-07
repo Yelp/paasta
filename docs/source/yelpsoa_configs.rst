@@ -52,6 +52,14 @@ In addition, each instancename MAY configure additional Marathon healthcheck opt
 
 Many of these keys are passed directly to Marathon. Their docs aren't super clear about all these but start there: https://mesosphere.github.io/marathon/docs/rest-api.html
 
+Each instance MAY configure overrides for monitoring parameters that
+will take precidence over what is in ``monitoring.yaml``. These are things like
+``team``, ``page``, etc. See the `monitoring.yaml`_ section for a list of valid
+monitoring keys and values.
+
+
+Notes:
+
 .. [#note] The Marathon docs and the Docker docs are inconsistent in their explanation of args/cmd:
     
     The `Marathon docs <https://mesosphere.github.io/marathon/docs/rest-api.html#post-/v2/apps>`_ state that it is invalid to supply both cmd and args in the same app.
@@ -59,7 +67,6 @@ Many of these keys are passed directly to Marathon. Their docs aren't super clea
     The `Docker docs <https://docs.docker.com/reference/builder/#entrypoint>`_ do not state that it's incorrect to specify both args and cmd. Furthermore, they state that "Command line arguments to docker run <image> will be appended after all elements in an exec form ENTRYPOINT, and will override all elements specified using CMD" which implies that both cmd and args can be provided, but cmd will be silently ignored.
     
     To avoid issues resulting from this discrepancy, we abide by the stricter requirements from Marathon and check that no more than one of cmd and args is specified. If both are specified, an exception is thrown with an explanation of the problem, and the program terminates.
-
 
 chronos-[clustername].yaml
 --------------------------
@@ -101,7 +108,6 @@ Required parameters for each type of job:
 
 **NOTE**: Currently, only "scheduled jobs" are supported. Therefore this document does not cover the other job "types" defined by the Chronos API.
 
-
 smartstack.yaml
 ---------------
 
@@ -114,8 +120,32 @@ monitoring.yaml
 
 The yaml where monitoring for the service is defined.
 
-See `the wiki
-<https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml>`_
+Defaults for a *team* can be set globally with the global Sensu configuration
+(distributed via Puppet). ``team`` is the only mandatory key, but overrides can
+be set for the entire service with ``monitoring.yaml``.
+
+Additionally these settings can be overridden on a *per-instance* basis. For
+example a ``canary`` instance can be set with ``page: false`` and ``team:
+devs``, while the ``main`` instance can bet set to ``page: true`` and ``team:
+ops``, and the ``dailyadsjob`` instance can be set with ``ticket: true`` and ``team: ads``.
+
+Here is a list of options that PaaSTA will pass through:
+
+ * ``team``: Team that will be notified by Sensu
+
+ * ``page``: Boolean to indicate if an instance should alert PagerDuty if it is failing.
+
+ * ``runbook``: An optional but *highly* recommended field. Try to use shortlinks (y/rb-my-service) when possible as sometimes the runbook url will need to be copied from a small screen.
+
+ * ``tip``: An optional one-line version of the runbook to help with common issues. For example: "Check to see if it is bing first!"
+
+ * ``notification_email``: String representing an email address to send the notifications to. This will default to the team email address if is is already set globally. For multiple emails, use a comma separated list.
+
+ * ``irc_channels``: Array of irc_channels to post notifications to.
+
+ * ``ticket``: Boolean to indicate if an alert should make a JIRA ticket.
+
+ * ``project``: String naming the project where JIRA tickets will be created. Overrides the global default for the team.
 
 
 Where does paasta_tools look for yelpsoa-configs?
