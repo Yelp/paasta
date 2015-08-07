@@ -7,6 +7,7 @@ on the framework that is asking, and still allows you to set your team
 
 Everything in here is private, and you shouldn't worry about it.
 """
+import json
 
 import service_configuration_lib
 import marathon_tools
@@ -85,3 +86,42 @@ def monitoring_defaults(key):
                'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
     }
     return defaults.get(key, False)
+
+
+def get_team_email_address(service, framework=None, instance=None):
+    """Looks up the team email address from specific marathon or chronos config
+    (most specific) to monitoring.yaml, or the global Sensu team_data.json.
+    (least specific). Returns None if nothing is available.
+
+    This function is most useful for when you *really* need an email address to use
+    for non-Sensu applications. (chronos, jenkins, etc)
+
+    This function should *not* be used with Sensu stuff. Instead you should
+    leave `notification_email` absent and just let Sensu do its thing."""
+
+    email_address = __get_monitoring_config_value('notification_email', framework=framework,
+                                                  service_name=service, instance_name=instance)
+    if not email_address:
+        team = get_team(framework=framework, service_name=service, instance_name=instance)
+        email_address = get_sensu_team_data(team).get('notification_email', None)
+    return email_address
+
+
+def get_sensu_team_data(team):
+    """Takes a team and returns the dictionary of Sensu configuration
+    settings for that team. The data is in this format:
+    https://github.com/Yelp/sensu_handlers#teams
+    Returns an empty dictionary if there is nothing to return.
+
+    Not all teams specify all the different types of configuration settings.
+    for example, a team may not specify a `nofitication_email`. It is up
+    to the caller of this function to handle that case.
+    """
+    global_team_data = _load_sensu_team_data()['team_data']
+    return global_team_data.get(team, {})
+
+
+def _load_sensu_team_data():
+    with open('/etc/sensu/team_data.json') as f:
+        team_data = json.load(f)
+    return team_data
