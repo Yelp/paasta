@@ -145,8 +145,7 @@ class ChronosJobConfig(dict):
         try:
             isodate.parse_duration(epsilon)
         except isodate.ISO8601Error:
-            return False, ('The specified epsilon value "%s" does not conform to the ISO8601 format.'
-                           % epsilon)
+            return False, 'The specified epsilon value "%s" does not conform to the ISO8601 format.' % epsilon
         return True, ''
 
     def check_retries(self):
@@ -166,24 +165,21 @@ class ChronosJobConfig(dict):
     def check_cpus(self):
         cpus = self.get('cpus')
         if cpus is not None:
-            if (not isinstance(cpus, float)
-                    and not isinstance(cpus, int)):
+            if not isinstance(cpus, float) and not isinstance(cpus, int):
                 return False, 'The specified cpus value "%s" is not a valid float.' % cpus
         return True, ''
 
     def check_mem(self):
         mem = self.get('mem')
         if mem is not None:
-            if (not isinstance(mem, float)
-                    and not isinstance(mem, int)):
+            if not isinstance(mem, float) and not isinstance(mem, int):
                 return False, 'The specified mem value "%s" is not a valid float.' % mem
         return True, ''
 
     def check_disk(self):
         disk = self.get('disk')
         if disk is not None:
-            if (not isinstance(disk, float)
-                    and not isinstance(disk, int)):
+            if not isinstance(disk, float) and not isinstance(disk, int):
                 return False, 'The specified disk value "%s" is not a valid float.' % disk
         return True, ''
 
@@ -200,7 +196,7 @@ class ChronosJobConfig(dict):
         if schedule is not None:
             repeat, start_time, interval = str.split(schedule, '/')  # the parts have separate validators
             if start_time != '':  # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
-                # TODO isodate accepts a time without time zone given (like 19:20:30 vs. 19:20:30-0800) as local time
+                # NOTE isodate accepts a time without time zone given (like 19:20:30 vs. 19:20:30-0800) as local time
                 # do we want a time zone to be explicitly specified or is this default okay?
                 try:
                     isodate.parse_datetime(start_time)
@@ -338,7 +334,6 @@ def get_service_job_list(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, job) for each job defined for the service name"""
     if not cluster:
-        # TODO we should move functions not specific to Marathon (like this) out of marathon_tools
         cluster = load_system_paasta_config().get_cluster()
     chronos_conf_file = "chronos-%s" % cluster
     log.info("Enumerating all jobs from config file: %s/*/%s.yaml", soa_dir, chronos_conf_file)
