@@ -89,9 +89,9 @@ def monitoring_defaults(key):
 
 
 def get_team_email_address(service, framework=None, instance=None):
-    """ Looks up the team email address from the most specific to least specific order
-    going from the specific marathon or chronos config, to monitoring.yaml, then
-    to the global Sensu team_data.json. Returns None if nothing is available.
+    """Looks up the team email address from specific marathon or chronos config
+    (most specific) to monitoring.yaml, or the global Sensu team_data.json.
+    (least specific). Returns None if nothing is available.
 
     This function is most useful for when you *really* need an email address to use
     for non-Sensu applications. (chronos, jenkins, etc)
@@ -114,7 +114,7 @@ def get_sensu_team_data(team):
     Returns an empty dictionary if there is nothing to return.
 
     Not all teams specify all the different types of configuration settings.
-    for example a team may not specify a `nofitication_email`. It is up
+    for example, a team may not specify a `nofitication_email`. It is up
     to the caller of this function to handle that case.
     """
     global_team_data = _load_sensu_team_data()['team_data']
