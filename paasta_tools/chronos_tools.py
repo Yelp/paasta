@@ -283,9 +283,9 @@ def check_job_reqs(chronos_job_config):
     msgs = []
 
     if chronos_job_config.get('schedule') is None and chronos_job_config.get('parents') is None:
-        msgs.append('Your Chronos config contains neither "schedule" nor "parents".')
+        msgs.append('Your Chronos config contains neither "schedule" nor "parents". One is required.')
     elif chronos_job_config.get('schedule') is not None and chronos_job_config.get('parents') is not None:
-        msgs.append('Your Chronos config contains both "schedule" and "parents".')
+        msgs.append('Your Chronos config contains both "schedule" and "parents". Only one is allowed.')
 
     # TODO add schedule_time_zone
     for param in ['command', 'epsilon', 'owner', 'async']:
@@ -381,6 +381,8 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(complete_config)
     tag = "%s%s%s" % (code_sha, SPACER, config_hash)
+    # Chronos clears the history for a job whenever it is updated, so we use a new job name for each revision
+    # so that we can keep history of old job revisions rather than just the latest version
     full_id = get_job_id(service, job_name, tag)
     complete_config['name'] = full_id
     return complete_config
