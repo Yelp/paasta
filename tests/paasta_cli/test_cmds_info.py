@@ -1,10 +1,10 @@
 import contextlib
 import mock
 
-from paasta_tools.marathon_tools import NoDeploymentsAvailable
 from paasta_tools.marathon_tools import ServiceNamespaceConfig
 from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.cmds import info
+from paasta_tools.utils import NoDeploymentsAvailable
 
 
 def test_get_service_info():

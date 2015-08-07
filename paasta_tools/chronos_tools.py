@@ -8,10 +8,15 @@ import urlparse
 import chronos
 import isodate
 
-import marathon_tools
 import service_configuration_lib
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 
+from paasta_tools.utils import load_deployments_json
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import get_code_sha_from_dockerurl
+from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import get_default_branch
+from paasta_tools.utils import get_docker_url
 
 # In Marathon spaces are not allowed, in Chronos periods are not allowed.
 # In the Chronos docs a space is suggested as the natural separator
@@ -71,8 +76,11 @@ def get_chronos_client(config):
                            password=config.get_password())
 
 
-def get_job_id(service, instance):
-    return "%s%s%s" % (service, SPACER, instance)
+def get_job_id(service, instance, tag=None):
+    output = "%s%s%s" % (service, SPACER, instance)
+    if tag:
+        output = "%s%s%s%s%s" % (service, SPACER, instance, SPACER, tag)
+    return output
 
 
 class InvalidChronosConfigError(Exception):
@@ -83,13 +91,6 @@ def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA
     chronos_conf_file = 'chronos-%s' % cluster
 
     log.info("Reading Chronos configuration file: %s.yaml", chronos_conf_file)
-
-    # TODO we need to decide what info from the service configs is relevant to chronos,
-    # and move the related functionality out of marathon_tools into utils or something similar
-    branch_dict = {  # FIXME this is just a placeholder until we define what we need outside of the job config yaml
-        'full_branch': 'paasta-%s-%s' % (service_name, cluster),
-    }
-
     service_chronos_jobs = service_configuration_lib.read_extra_service_information(
         service_name,
         chronos_conf_file,
@@ -97,7 +98,11 @@ def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA
     )
 
     if job_name not in service_chronos_jobs:
-        raise InvalidChronosConfigError('No job named \'%s\' in config file %s.yaml' % (job_name, chronos_conf_file))
+        raise InvalidChronosConfigError('No job named "%s" in config file %s.yaml' % (job_name, chronos_conf_file))
+
+    deployments_json = load_deployments_json(service_name, soa_dir=soa_dir)
+    branch = get_default_branch(cluster, job_name)
+    branch_dict = deployments_json.get_branch_dict(service_name, branch)
 
     return ChronosJobConfig(service_name, job_name, service_chronos_jobs[job_name], branch_dict)
 
@@ -110,12 +115,18 @@ class ChronosJobConfig(dict):
         self.config_dict = config_dict
         self.branch_dict = branch_dict
 
+    def __eq__(self, other):
+        return ((self.service_name == other.service_name)
+                and (self.job_name == other.job_name)
+                and (self.config_dict == other.config_dict)
+                and (self.branch_dict == other.branch_dict))
+
     def get(self, param):
         config_dict_params = ['description', 'command', 'args', 'shell', 'epsilon', 'executor',
                               'executor_flags', 'retries', 'owner', 'owner_name', 'async', 'cpus', 'mem',
                               'disk', 'disabled', 'uris', 'schedule', 'schedule_time_zone', 'parents',
                               'user_to_run_as', 'container', 'data_job', 'environment_variables', 'constraints']
-        branch_dict_params = ['full_branch']  # TODO fill in with the actual params in branch_dict
+        branch_dict_params = ['docker_image', 'desired_state', 'force_bounce']
 
         if param in config_dict_params:
             return self.config_dict.get(param)
@@ -130,44 +141,50 @@ class ChronosJobConfig(dict):
 
     # TODO maybe these should be private (e.g. _check_mem) since only check_param should call them?
     def check_epsilon(self):
+        epsilon = self.get('epsilon')
         try:
-            isodate.parse_duration(self.get('epsilon'))
+            isodate.parse_duration(epsilon)
         except isodate.ISO8601Error:
-            return False, ('The specified epsilon value \'%s\' does not conform to the ISO8601 format.'
-                           % self.get('epsilon'))
+            return False, ('The specified epsilon value "%s" does not conform to the ISO8601 format.'
+                           % epsilon)
         return True, ''
 
     def check_retries(self):
-        if self.get('retries') is not None:
+        retries = self.get('retries')
+        if retries is not None:
             if not isinstance(self.get('retries'), int):
-                return False, 'The specified retries value \'%s\' is not a valid int.' % self.get('retries')
+                return False, 'The specified retries value "%s" is not a valid int.' % retries
         return True, ''
 
     def check_async(self):
-        if self.get('async') is not None:
-            if self.get('async') is True:
+        async = self.get('async')
+        if async is not None:
+            if async is True:
                 return False, 'The config specifies that the job is async, which we don\'t support.'
         return True, ''
 
     def check_cpus(self):
-        if self.get('cpus') is not None:
-            if (not isinstance(self.get('cpus'), float)
-                    and not isinstance(self.get('cpus'), int)):
-                return False, 'The specified cpus value \'%s\' is not a valid float.' % self.get('cpus')
+        cpus = self.get('cpus')
+        if cpus is not None:
+            if (not isinstance(cpus, float)
+                    and not isinstance(cpus, int)):
+                return False, 'The specified cpus value "%s" is not a valid float.' % cpus
         return True, ''
 
     def check_mem(self):
-        if self.get('mem') is not None:
-            if (not isinstance(self.get('mem'), float)
-                    and not isinstance(self.get('mem'), int)):
-                return False, 'The specified mem value \'%s\' is not a valid float.' % self.get('mem')
+        mem = self.get('mem')
+        if mem is not None:
+            if (not isinstance(mem, float)
+                    and not isinstance(mem, int)):
+                return False, 'The specified mem value "%s" is not a valid float.' % mem
         return True, ''
 
     def check_disk(self):
-        if self.get('disk') is not None:
-            if (not isinstance(self.get('disk'), float)
-                    and not isinstance(self.get('disk'), int)):
-                return False, 'The specified disk value \'%s\' is not a valid float.' % self.get('disk')
+        disk = self.get('disk')
+        if disk is not None:
+            if (not isinstance(disk, float)
+                    and not isinstance(disk, int)):
+                return False, 'The specified disk value "%s" is not a valid float.' % disk
         return True, ''
 
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
@@ -188,17 +205,17 @@ class ChronosJobConfig(dict):
                 try:
                     isodate.parse_datetime(start_time)
                 except isodate.ISO8601Error as exc:
-                    msgs.append('The specified start time \'%s\' in schedule \'%s\' '
+                    msgs.append('The specified start time "%s" in schedule "%s" '
                                 'does not conform to the ISO 8601 format:\n%s' % (start_time, schedule, str(exc)))
 
             try:
                 isodate.parse_duration(interval)  # 'interval' and 'duration' are interchangeable terms
             except isodate.ISO8601Error:
-                msgs.append('The specified interval \'%s\' in schedule \'%s\' '
+                msgs.append('The specified interval "%s" in schedule "%s" '
                             'does not conform to the ISO 8601 format.' % (interval, schedule))
 
             if not self._check_schedule_repeat_helper(repeat):
-                msgs.append('The specified repeat \'%s\' in schedule \'%s\' '
+                msgs.append('The specified repeat "%s" in schedule "%s" '
                             'does not conform to the ISO 8601 format.' % (repeat, schedule))
 
         return len(msgs) == 0, '\n'.join(msgs)
@@ -216,9 +233,9 @@ class ChronosJobConfig(dict):
         if time_zone is not None:
             return True, ''
             # try:
-            #     # TODO validate tz format
+            # TODO validate tz format
             # except isodate.ISO8601Error as exc:
-            #     return False, ('The specified time zone \'%s\' does not conform to the tz database format:\n%s'
+            #     return False, ('The specified time zone "%s" does not conform to the tz database format:\n%s'
             #                    % (time_zone, str(exc)))
         return True, ''
 
@@ -239,7 +256,7 @@ class ChronosJobConfig(dict):
         elif param in supported_params_without_checks:
             return True, ''
         else:
-            return False, 'Your Chronos config specifies \'%s\', an unsupported parameter.' % param
+            return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
 
 
 # defaults taken from the Chronos API docs https://mesos.github.io/chronos/docs/api.html#job-configuration
@@ -264,71 +281,25 @@ def set_missing_params_to_defaults(chronos_job_config):
     return new_chronos_job_config
 
 
-def _check_scheduled_job_reqs_helper(chronos_job_config, job_type):
-    missing_param_msg = 'Your Chronos config is missing \'%s\', a required parameter for a \'%s job\'.'
-    msgs = []
-
-    if chronos_job_config.get('schedule') is None:
-        msgs.append(missing_param_msg % ('schedule', job_type))
-    if chronos_job_config.get('parents') is not None:
-        msgs.append('Your Chronos config specifies \'parents\', an invalid parameter for a \'scheduled job\'.')
-
-    return msgs
-
-
-def _check_dependent_job_reqs_helper(chronos_job_config, job_type):
-    missing_param_msg = 'Your Chronos config is missing \'%s\', a required parameter for a \'%s job\'.'
-    msgs = []
-
-    if chronos_job_config.get('parents') is None:
-        msgs.append(missing_param_msg % ('parents', job_type))
-    if chronos_job_config.get('schedule') is not None:
-        msgs.append('Your Chronos config specifies \'schedule\', an invalid parameter for a \'dependent job\'.')
-
-    return msgs
-
-
-def _check_docker_job_reqs_helper(chronos_job_config, job_type):
-    missing_param_msg = 'Your Chronos config is missing \'%s\', a required parameter for a \'%s job\'.'
-    msgs = []
-
-    if chronos_job_config.get('container') is None:
-        msgs.append(missing_param_msg % ('container', job_type))
-    if chronos_job_config.get('schedule') is None and chronos_job_config.get('parents') is None:
-        msgs.append('Your Chronos config contains neither \'schedule\' nor \'parents\'. '
-                    'One is required for a \'docker job\'.')
-    elif chronos_job_config.get('schedule') is not None and chronos_job_config.get('parents') is not None:
-        msgs.append('Your Chronos config contains both \'schedule\' and \'parents\'. '
-                    'Only one may be specified for a \'docker job\'.')
-
-    return msgs
-
-
-# 'scheduled job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-scheduled-job
-# 'dependent job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-dependent-job
 # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
-def check_job_reqs(chronos_job_config, job_type):
-    missing_param_msg = 'Your Chronos config is missing \'%s\', a required parameter for a \'%s job\'.'
+def check_job_reqs(chronos_job_config):
+    missing_param_msg = 'Your Chronos config is missing "%s", which is a required parameter.'
     msgs = []
 
-    if job_type == 'scheduled':
-        msgs += _check_scheduled_job_reqs_helper(chronos_job_config, job_type)
-    elif job_type == 'dependent':
-        msgs += _check_dependent_job_reqs_helper(chronos_job_config, job_type)
-    elif job_type == 'docker':
-        msgs += _check_docker_job_reqs_helper(chronos_job_config, job_type)
-    else:
-        return False, '\'%s\' is not a supported job type. Aborting job requirements check.' % job_type
+    if chronos_job_config.get('schedule') is None and chronos_job_config.get('parents') is None:
+        msgs.append('Your Chronos config contains neither "schedule" nor "parents".')
+    elif chronos_job_config.get('schedule') is not None and chronos_job_config.get('parents') is not None:
+        msgs.append('Your Chronos config contains both "schedule" and "parents".')
 
     # TODO add schedule_time_zone
     for param in ['command', 'epsilon', 'owner', 'async']:
         if chronos_job_config.get(param) is None:
-            msgs.append(missing_param_msg % (param, job_type))
+            msgs.append(missing_param_msg % param)
 
     return len(msgs) == 0, msgs
 
 
-def format_chronos_job_dict(chronos_job_config, job_type):
+def format_chronos_job_dict(chronos_job_config, docker_url, docker_volumes):
     complete_config_dict = dict()
     complete_chronos_job_config = set_missing_params_to_defaults(chronos_job_config)
     error_msgs = []
@@ -343,8 +314,13 @@ def format_chronos_job_dict(chronos_job_config, job_type):
 
     # 'name' is the term Chronos uses, we store that value as 'job_name' to differentiate from 'service_name'
     complete_config_dict['name'] = complete_chronos_job_config.get('job_name')
-
-    reqs_passed, reqs_msgs = check_job_reqs(complete_chronos_job_config, job_type)
+    complete_config_dict['container'] = {
+        'image': docker_url,
+        'network': 'BRIDGE',
+        'type': 'DOCKER',
+        'volumes': docker_volumes
+    }
+    reqs_passed, reqs_msgs = check_job_reqs(complete_chronos_job_config)
     if not reqs_passed:
         error_msgs += reqs_msgs
 
@@ -363,7 +339,7 @@ def get_service_job_list(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     :returns: A list of tuples of (name, job) for each job defined for the service name"""
     if not cluster:
         # TODO we should move functions not specific to Marathon (like this) out of marathon_tools
-        cluster = marathon_tools.get_cluster()
+        cluster = load_system_paasta_config().get_cluster()
     chronos_conf_file = "chronos-%s" % cluster
     log.info("Enumerating all jobs from config file: %s/*/%s.yaml", soa_dir, chronos_conf_file)
     jobs = service_configuration_lib.read_extra_service_information(
@@ -385,10 +361,31 @@ def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service_name, job_name)"""
     if not cluster:
-        cluster = marathon_tools.get_cluster()
+        cluster = load_system_paasta_config().get_cluster()
     rootdir = os.path.abspath(soa_dir)
     log.info("Retrieving all Chronos job names from %s for cluster %s", rootdir, cluster)
     job_list = []
     for srv_dir in os.listdir(rootdir):
         job_list += get_service_job_list(srv_dir, cluster, soa_dir)
     return job_list
+
+
+def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
+    """Generates a complete dictionary to be POST'ed to create a job on Chronos"""
+    system_paasta_config = load_system_paasta_config()
+    chronos_job_config = load_chronos_job_config(
+        service, job_name, system_paasta_config.get_cluster(), soa_dir=soa_dir)
+    docker_url = get_docker_url(
+        system_paasta_config.get_docker_registry(), chronos_job_config.get('docker_image'))
+
+    complete_config = format_chronos_job_dict(
+        chronos_job_config,
+        docker_url,
+        system_paasta_config.get_volumes(),
+    )
+    code_sha = get_code_sha_from_dockerurl(docker_url)
+    config_hash = get_config_hash(complete_config)
+    tag = "%s%s%s" % (code_sha, SPACER, config_hash)
+    full_id = get_job_id(service, job_name, tag)
+    complete_config['name'] = full_id
+    return complete_config

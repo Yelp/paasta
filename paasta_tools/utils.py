@@ -1,12 +1,9 @@
 from __future__ import print_function
-from functools import wraps
-from subprocess import PIPE
-from subprocess import Popen
-from subprocess import STDOUT
 import contextlib
 import datetime
 import errno
 import glob
+import hashlib
 import logging
 import os
 import pwd
@@ -16,13 +13,18 @@ import signal
 import sys
 import tempfile
 import threading
+from functools import wraps
+from subprocess import PIPE
+from subprocess import Popen
+from subprocess import STDOUT
 
 import clog
 import dateutil.tz
 import docker
 import json
-import service_configuration_lib
 import yaml
+
+import service_configuration_lib
 
 
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
@@ -594,3 +596,62 @@ class Timeout:
 def print_with_indent(line, indent=2):
     """ Print a line with a given indent level """
     print(" " * indent + line)
+
+
+class NoDeploymentsAvailable(Exception):
+    pass
+
+
+def load_deployments_json(service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    deployment_file = os.path.join(soa_dir, service_name, 'deployments.json')
+    if os.path.isfile(deployment_file):
+        with open(deployment_file) as f:
+            return DeploymentsJson(json.load(f)['v1'])
+    else:
+        raise NoDeploymentsAvailable
+
+
+class DeploymentsJson(dict):
+
+    def get_branch_dict(self, service_name, branch):
+        full_branch = '%s:%s' % (service_name, branch)
+        return self.get(full_branch, {})
+
+
+def get_default_branch(cluster, instance):
+    return 'paasta-%s.%s' % (cluster, instance)
+
+
+class NoDockerImageError(Exception):
+    pass
+
+
+def get_docker_url(registry_uri, docker_image):
+    """Compose the docker url.
+
+    :param registry_uri: The URI of the docker registry
+    :param docker_image: The docker image name, with tag if desired
+    :returns: '<registry_uri>/<docker_image>'"""
+    if not docker_image:
+        raise NoDockerImageError('Docker url not available because there is no docker_image')
+    docker_url = '%s/%s' % (registry_uri, docker_image)
+    return docker_url
+
+
+def get_config_hash(config, force_bounce=None):
+    """Create an MD5 hash of the configuration dictionary to be sent to
+    Marathon. Or anything really, so long as str(config) works. Returns
+    the first 8 characters so things are not really long.
+
+    :param config: The configuration to hash
+    :returns: A MD5 hash of str(config)"""
+    hasher = hashlib.md5()
+    hasher.update(str(config) + (force_bounce or ''))
+    return "config%s" % hasher.hexdigest()[:8]
+
+
+def get_code_sha_from_dockerurl(docker_url):
+    """We encode the sha of the code that built a docker image *in* the docker
+    url. This function takes that url as input and outputs the partial sha"""
+    parts = docker_url.split('-')
+    return "git%s" % parts[-1][:8]

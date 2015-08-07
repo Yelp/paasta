@@ -40,6 +40,8 @@ from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import configure_log
+from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import NoDockerImageError
 
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
@@ -360,7 +362,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
     log.info("Setting up instance %s for service %s", instance_name, service_name)
     try:
         complete_config = marathon_tools.create_complete_config(service_name, instance_name, marathon_config)
-    except marathon_tools.NoDockerImageError:
+    except NoDockerImageError:
         error_msg = (
             "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"
         ).format(
@@ -422,7 +424,7 @@ def main():
             marathon_tools.get_cluster(),
             soa_dir=soa_dir,
         )
-    except marathon_tools.NoDeploymentsAvailable:
+    except NoDeploymentsAvailable:
         error_msg = "No deployments found for %s in cluster %s" % (args.service_instance, marathon_tools.get_cluster())
         log.error(error_msg)
         send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)

@@ -60,38 +60,6 @@ class TestMarathonTools:
     }, '/some/fake/path/fake_file.json')
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
 
-    def test_DeploymentsJson_read(self):
-        file_mock = mock.MagicMock(spec=file)
-        fake_dir = '/var/dir_of_fake'
-        fake_path = '/var/dir_of_fake/fake_service/deployments.json'
-        fake_json = {
-            'v1': {
-                'no_srv:blaster': {
-                    'docker_image': 'test_rocker:9.9',
-                    'desired_state': 'start',
-                    'force_bounce': None,
-                },
-                'dont_care:about': {
-                    'docker_image': 'this:guy',
-                    'desired_state': 'stop',
-                    'force_bounce': '12345',
-                },
-            },
-        }
-        with contextlib.nested(
-            mock.patch('marathon_tools.open', create=True, return_value=file_mock),
-            mock.patch('json.load', autospec=True, return_value=fake_json),
-            mock.patch('paasta_tools.marathon_tools.os.path.isfile', autospec=True, return_value=True),
-        ) as (
-            open_patch,
-            json_patch,
-            isfile_patch,
-        ):
-            actual = marathon_tools.load_deployments_json('fake_service', fake_dir)
-            open_patch.assert_called_once_with(fake_path)
-            json_patch.assert_called_once_with(file_mock.__enter__())
-            assert actual == fake_json['v1']
-
     def test_read_monitoring_config(self):
         fake_name = 'partial'
         fake_fname = 'acronyms'
@@ -171,7 +139,7 @@ class TestMarathonTools:
 
         fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
         deployments_json_mock = mock.Mock(
-            spec=marathon_tools.DeploymentsJson,
+            spec=utils.DeploymentsJson,
             get_branch_dict=mock.Mock(return_value=fake_branch_dict),
         )
 
@@ -857,15 +825,6 @@ class TestMarathonTools:
             assert marathon_tools.is_mesos_leader(fake_host)
             get_leader_patch.assert_called_once_with(fake_host)
 
-    def test_compose_job_id_full(self):
-        fake_name = 'someone_scheduled_docker_image'
-        fake_id = 'docker_isnt_deployed'
-        fake_instance = 'then_who_was_job'
-        spacer = marathon_tools.ID_SPACER
-        expected = '%s%s%s%s%s' % (fake_name.replace('_', '--'), spacer, fake_id.replace('_', '--'),
-                                   spacer, fake_instance.replace('_', '--'))
-        assert marathon_tools.compose_job_id(fake_name, fake_id, fake_instance) == expected
-
     def test_format_marathon_app_dict(self):
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'dockervania_from_konami'
@@ -1094,16 +1053,6 @@ class TestMarathonTools:
     def test_get(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'foo': 'bar'}, {})
         assert fake_conf.get('foo') == 'bar'
-
-    def test_get_docker_url_no_error(self):
-        fake_registry = "im.a-real.vm"
-        fake_image = "and-i-can-run:1.0"
-        expected = "%s/%s" % (fake_registry, fake_image)
-        assert marathon_tools.get_docker_url(fake_registry, fake_image) == expected
-
-    def test_get_docker_url_with_no_docker_image(self):
-        with raises(marathon_tools.NoDockerImageError):
-            marathon_tools.get_docker_url('fake_registry', None)
 
     def test_get_marathon_client(self):
         fake_url = "nothing_for_me_to_do_but_dance"

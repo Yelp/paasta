@@ -425,7 +425,7 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock_get_expected_count,
         mock_get_mesos_replication_for_service,
     ):
-        mock_get_expected_count.side_effect = check_marathon_services_replication.marathon_tools.NoDeploymentsAvailable
+        mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(service, instance, None, None, None)
         assert mock_get_proxy_port_for_instance.call_count == 0
 

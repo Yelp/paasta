@@ -4,7 +4,6 @@ that interact with marathon. There's config parsers, url composers,
 and a number of other things used by other components in order to
 make the PaaSTA stack work.
 """
-import hashlib
 import logging
 import os
 import pipes
@@ -22,7 +21,12 @@ import service_configuration_lib
 from paasta_tools.mesos_tools import fetch_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import list_all_clusters
+from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import get_config_hash
+from paasta_tools.utils import get_code_sha_from_dockerurl
+from paasta_tools.utils import get_default_branch
+from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import NoMarathonClusterFoundException
 from paasta_tools.utils import PaastaNotConfigured
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
@@ -88,26 +92,6 @@ class MarathonConfig(dict):
             return self['password']
         except KeyError:
             raise MarathonNotConfigured('Could not find marathon password in system marathon config: %s' % self.path)
-
-
-class NoDeploymentsAvailable(Exception):
-    pass
-
-
-def load_deployments_json(service_name, soa_dir=DEFAULT_SOA_DIR):
-    deployment_file = os.path.join(soa_dir, service_name, 'deployments.json')
-    if os.path.isfile(deployment_file):
-        with open(deployment_file) as f:
-            return DeploymentsJson(json.load(f)['v1'])
-    else:
-        raise NoDeploymentsAvailable
-
-
-class DeploymentsJson(dict):
-
-    def get_branch_dict(self, service_name, branch):
-        full_branch = '%s:%s' % (service_name, branch)
-        return self.get(full_branch, {})
 
 
 def load_marathon_service_config(service_name, instance, cluster, deployments_json=None, soa_dir=DEFAULT_SOA_DIR):
@@ -577,10 +561,6 @@ class ServiceNamespaceConfig(dict):
         return self.get('discover', 'region')
 
 
-class NoDockerImageError(Exception):
-    pass
-
-
 class InvalidSmartstackMode(Exception):
     pass
 
@@ -630,39 +610,6 @@ def remove_tag_from_job_id(job_id):
     :param job_id: The job_id.
     :returns: The job_id with the tag removed, if there was one."""
     return '%s%s%s' % (job_id.split(ID_SPACER)[0], ID_SPACER, job_id.split(ID_SPACER)[1])
-
-
-def get_default_branch(cluster, instance):
-    return 'paasta-%s.%s' % (cluster, instance)
-
-
-def get_docker_url(registry_uri, docker_image):
-    """Compose the docker url.
-
-    If verify is true, checks if the URL will point to a
-    valid image first, returning an empty string if it doesn't.
-
-    :param registry_uri: The URI of the docker registry
-    :param docker_image: The docker image name, with tag if desired
-    :param verify: Set to False to not verify the composed docker url
-    :returns: '<registry_uri>/<docker_image>', or '' if URL didn't verify"""
-    if not docker_image:
-        raise NoDockerImageError('Docker url not available because there is no docker_image')
-    docker_url = '%s/%s' % (registry_uri, docker_image)
-    log.info("Docker URL: %s", docker_url)
-    return docker_url
-
-
-def get_config_hash(config, force_bounce=None):
-    """Create an MD5 hash of the configuration dictionary to be sent to
-    Marathon. Or anything really, so long as str(config) works. Returns
-    the first 8 characters so things are not really long.
-
-    :param config: The configuration to hash
-    :returns: A MD5 hash of str(config)"""
-    hasher = hashlib.md5()
-    hasher.update(str(config) + (force_bounce or ''))
-    return "config%s" % hasher.hexdigest()[:8]
 
 
 def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
@@ -1063,13 +1010,6 @@ def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     services because they will see an "old" version of the marathon app deployed,
     and a new one with the new hash will try to be deployed"""
     return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir)['id']
-
-
-def get_code_sha_from_dockerurl(docker_url):
-    """We encode the sha of the code that built a docker image *in* the docker
-    url. This function takes that url as input and outputs the partial sha"""
-    parts = docker_url.split('-')
-    return "git%s" % parts[-1][:8]
 
 
 def get_expected_instance_count_for_namespace(service_name, namespace, cluster=None, soa_dir=DEFAULT_SOA_DIR):
