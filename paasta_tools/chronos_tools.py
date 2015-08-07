@@ -10,7 +10,6 @@ import isodate
 
 import service_configuration_lib
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
-
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_code_sha_from_dockerurl
