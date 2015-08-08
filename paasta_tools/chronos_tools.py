@@ -86,18 +86,22 @@ class InvalidChronosConfigError(Exception):
     pass
 
 
-def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA_DIR):
+def read_chronos_jobs_for_service(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
+    log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml", (soa_dir, service_name, cluster))
 
-    log.info("Reading Chronos configuration file: %s.yaml", chronos_conf_file)
-    service_chronos_jobs = service_configuration_lib.read_extra_service_information(
+    return service_configuration_lib.read_extra_service_information(
         service_name,
         chronos_conf_file,
         soa_dir=soa_dir
     )
 
+
+def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA_DIR):
+    service_chronos_jobs = read_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir)
+
     if job_name not in service_chronos_jobs:
-        raise InvalidChronosConfigError('No job named "%s" in config file %s.yaml' % (job_name, chronos_conf_file))
+        raise InvalidChronosConfigError('No job named "%s" in config file chronos-%s.yaml' % (job_name, cluster))
 
     deployments_json = load_deployments_json(service_name, soa_dir=soa_dir)
     branch = get_default_branch(cluster, job_name)
@@ -317,7 +321,7 @@ def format_chronos_job_dict(chronos_job_config, docker_url, docker_volumes):
     }
     reqs_passed, reqs_msgs = check_job_reqs(complete_chronos_job_config)
     if not reqs_passed:
-        error_msgs += reqs_msgs
+        error_msgs.extend(reqs_msgs)
 
     if len(error_msgs) > 0:
         raise InvalidChronosConfigError('\n'.join(error_msgs))
@@ -325,24 +329,20 @@ def format_chronos_job_dict(chronos_job_config, docker_url, docker_volumes):
     return complete_config_dict
 
 
-def get_service_job_list(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the Chronos jobs defined for a service as a list of tuples.
 
     :param name: The service name
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, job) for each job defined for the service name"""
+    job_list = []
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     chronos_conf_file = "chronos-%s" % cluster
     log.info("Enumerating all jobs from config file: %s/*/%s.yaml", soa_dir, chronos_conf_file)
-    jobs = service_configuration_lib.read_extra_service_information(
-        service_name,
-        chronos_conf_file,
-        soa_dir=soa_dir
-    )
-    job_list = []
-    for job in jobs:
+
+    for job in read_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir):
         job_list.append((service_name, job))
     log.debug("Enumerated the following jobs: %s", job_list)
     return job_list
@@ -359,8 +359,8 @@ def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     rootdir = os.path.abspath(soa_dir)
     log.info("Retrieving all Chronos job names from %s for cluster %s", rootdir, cluster)
     job_list = []
-    for srv_dir in os.listdir(rootdir):
-        job_list += get_service_job_list(srv_dir, cluster, soa_dir)
+    for service in os.listdir(rootdir):
+        job_list.extend(list_job_names(service, cluster, soa_dir))
     return job_list
 
 

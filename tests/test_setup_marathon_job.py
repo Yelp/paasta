@@ -261,6 +261,8 @@ class TestSetupMarathonJob:
             'tip': fake_tip,
             'notification_email': fake_notification_email,
             'irc_channels': fake_irc,
+            'project': None,
+            'ticket': False,
             'alert_after': '5m',
             'check_every': '1m',
             'realert_every': -1,
@@ -287,6 +289,16 @@ class TestSetupMarathonJob:
                 return_value=fake_irc,
                 autospec=True,
             ),
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_ticket",
+                return_value=False,
+                autospec=True,
+            ),
+            mock.patch(
+                "paasta_tools.monitoring_tools.get_project",
+                return_value=None,
+                autospec=True,
+            ),
             mock.patch("pysensu_yelp.send_event", autospec=True),
             mock.patch(
                 'paasta_tools.marathon_tools.get_cluster',
@@ -298,6 +310,8 @@ class TestSetupMarathonJob:
             get_tip_patch,
             get_notification_email_patch,
             get_irc_patch,
+            get_ticket_patch,
+            get_project_patch,
             pysensu_yelp_send_event_patch,
             cluster_patch,
         ):

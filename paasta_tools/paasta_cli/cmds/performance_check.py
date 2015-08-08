@@ -7,6 +7,7 @@ import requests
 
 from paasta_tools.utils import get_username
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+from paasta_tools.utils import timeout
 
 
 def add_subparser(subparsers):
@@ -56,6 +57,7 @@ def submit_performance_check_job(service, commit, image):
     print r.text
 
 
+@timeout()
 def perform_performance_check(args):
     try:
         submit_performance_check_job(service=args.service, commit=args.commit, image=args.image)

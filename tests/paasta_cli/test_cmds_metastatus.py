@@ -30,4 +30,8 @@ def test_get_cluster_dashboards():
     output_text = metastatus.get_cluster_dashboards('fake-cluster')
     assert 'http://paasta-fake-cluster.yelp:5050' in output_text
     assert 'http://paasta-fake-cluster.yelp:5052' in output_text
+    assert 'http://paasta-fake-cluster.yelp:5053' in output_text
     assert 'http://paasta-fake-cluster.yelp:3212' in output_text
+    assert 'http://chronos.paasta-fake-cluster.yelp/' in output_text
+    assert 'http://mesos.paasta-fake-cluster.yelp/' in output_text
+    assert 'http://marathon.paasta-fake-cluster.yelp/' in output_text

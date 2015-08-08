@@ -4,11 +4,11 @@ import os
 from socket import gaierror
 from socket import gethostbyname_ex
 
-import json
 from service_configuration_lib import read_services_configuration
 
 from paasta_tools.marathon_tools import get_cluster
 from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
+from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import PaastaColors
 
@@ -312,12 +312,6 @@ def list_instances():
             for instance in list_instances_for_service(service_name):
                 all_instances.add(instance)
     return sorted(all_instances)
-
-
-def _load_sensu_team_data():
-    with open('/etc/sensu/team_data.json') as f:
-        team_data = json.load(f)
-    return team_data
 
 
 def list_teams():

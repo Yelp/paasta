@@ -59,6 +59,8 @@ def send_event(service_name, namespace, soa_dir, status, output):
         'notification_email': monitoring_tools.get_notification_email(framework, service_name, soa_dir=soa_dir),
         'page': monitoring_tools.get_page(framework, service_name, soa_dir=soa_dir),
         'irc_channels': monitoring_tools.get_irc_channels(framework, service_name, soa_dir=soa_dir),
+        'ticket': monitoring_tools.get_ticket(framework, service_name, soa_dir=soa_dir),
+        'project': monitoring_tools.get_project(framework, service_name, soa_dir=soa_dir),
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,
