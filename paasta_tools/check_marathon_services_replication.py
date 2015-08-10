@@ -29,6 +29,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.paasta_serviceinit import get_running_tasks_from_active_frameworks
 
 
@@ -237,7 +238,7 @@ def check_service_replication(service, instance, crit_threshold, smartstack_repl
     """
     try:
         expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
-    except marathon_tools.NoDeploymentsAvailable:
+    except NoDeploymentsAvailable:
         log.info('deployments.json missing for %s.%s. Skipping replication monitoring.' % (service, instance))
         return
     if expected_count is None:

@@ -9,6 +9,8 @@ from pysensu_yelp import Status
 from pytest import raises
 from paasta_tools import marathon_tools, bounce_lib
 from paasta_tools.bounce_lib import list_bounce_methods
+from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import NoDockerImageError
 import setup_marathon_job
 
 
@@ -194,7 +196,7 @@ class TestSetupMarathonJob:
             ),
             mock.patch(
                 'paasta_tools.marathon_tools.load_marathon_service_config',
-                side_effect=marathon_tools.NoDeploymentsAvailable(),
+                side_effect=NoDeploymentsAvailable(),
                 autospec=True,
             ),
             mock.patch(
@@ -774,7 +776,7 @@ class TestSetupMarathonJob:
         fake_instance = 'test_instance'
         with mock.patch(
             'setup_marathon_job.marathon_tools.create_complete_config',
-            side_effect=marathon_tools.NoDockerImageError,
+            side_effect=NoDockerImageError,
         ):
             status, output = setup_marathon_job.setup_service(
                 fake_name,

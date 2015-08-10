@@ -422,3 +422,48 @@ def test_color_text_nested():
     )
     actual = utils.PaastaColors.color_text(utils.PaastaColors.RED, "red%sred" % utils.PaastaColors.blue("blue"))
     assert actual == expected
+
+
+def test_DeploymentsJson_read():
+    file_mock = mock.MagicMock(spec=file)
+    fake_dir = '/var/dir_of_fake'
+    fake_path = '/var/dir_of_fake/fake_service/deployments.json'
+    fake_json = {
+        'v1': {
+            'no_srv:blaster': {
+                'docker_image': 'test_rocker:9.9',
+                'desired_state': 'start',
+                'force_bounce': None,
+            },
+            'dont_care:about': {
+                'docker_image': 'this:guy',
+                'desired_state': 'stop',
+                'force_bounce': '12345',
+            },
+        },
+    }
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('json.load', autospec=True, return_value=fake_json),
+        mock.patch('paasta_tools.utils.os.path.isfile', autospec=True, return_value=True),
+    ) as (
+        open_patch,
+        json_patch,
+        isfile_patch,
+    ):
+        actual = utils.load_deployments_json('fake_service', fake_dir)
+        open_patch.assert_called_once_with(fake_path)
+        json_patch.assert_called_once_with(file_mock.__enter__())
+        assert actual == fake_json['v1']
+
+
+def test_get_docker_url_no_error():
+    fake_registry = "im.a-real.vm"
+    fake_image = "and-i-can-run:1.0"
+    expected = "%s/%s" % (fake_registry, fake_image)
+    assert utils.get_docker_url(fake_registry, fake_image) == expected
+
+
+def test_get_docker_url_with_no_docker_image():
+    with raises(utils.NoDockerImageError):
+        utils.get_docker_url('fake_registry', None)

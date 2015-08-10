@@ -4,7 +4,7 @@ from mock import MagicMock
 from pytest import raises
 from StringIO import StringIO
 
-from paasta_tools import marathon_tools
+from paasta_tools import utils
 from paasta_tools.paasta_cli.utils import \
     NoSuchService, PaastaColors, PaastaCheckMessages
 from paasta_tools.paasta_cli.cmds.status import paasta_status, \
@@ -249,7 +249,7 @@ def test_status_pending_pipeline_build_message(
 
 @patch('paasta_tools.paasta_cli.cmds.status.load_deployments_json', autospec=True)
 def test_get_actual_deployments(mock_get_deployments,):
-    mock_get_deployments.return_value = marathon_tools.DeploymentsJson({
+    mock_get_deployments.return_value = utils.DeploymentsJson({
         'fake_service:paasta-b_cluster.b_instance': {
             'docker_image': 'this_is_a_sha',
         },

@@ -26,7 +26,7 @@ class TestChronosTools:
         'schedule_time_zone': 'Zulu',
     }
     fake_branch_dict = {
-        'full_branch': 'paasta-%s-%s' % (fake_service_name, fake_cluster),
+        'docker_image': 'paasta-%s-%s' % (fake_service_name, fake_cluster),
     }
     fake_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service_name,
                                                              fake_job_name,
@@ -139,23 +139,27 @@ class TestChronosTools:
             actual = chronos_tools.read_chronos_jobs_for_service(self.fake_service_name,
                                                                  self.fake_cluster,
                                                                  fake_soa_dir)
-            assert actual == self.fake_config_file
             mock_read_extra_service_information.assert_called_once_with(self.fake_service_name,
                                                                         expected_chronos_conf_file,
                                                                         soa_dir=fake_soa_dir)
+            assert actual == self.fake_config_file
 
     def test_load_chronos_job_config(self):
         fake_soa_dir = '/tmp/'
         with contextlib.nested(
+            mock.patch('chronos_tools.load_deployments_json', autospec=True,),
             mock.patch('chronos_tools.read_chronos_jobs_for_service', autospec=True),
         ) as (
+            mock_load_deployments_json,
             mock_read_chronos_jobs_for_service,
         ):
+            mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
             mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
             actual = chronos_tools.load_chronos_job_config(self.fake_service_name,
                                                            self.fake_job_name,
                                                            self.fake_cluster,
                                                            fake_soa_dir)
+            mock_load_deployments_json.assert_called_once_with(self.fake_service_name, soa_dir=fake_soa_dir)
             mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
                                                                        self.fake_cluster,
                                                                        soa_dir=fake_soa_dir)
@@ -166,20 +170,24 @@ class TestChronosTools:
         expected_chronos_conf_file = 'chronos-penguin'
         fake_job_name = 'polar bear'
         with contextlib.nested(
+            mock.patch('chronos_tools.load_deployments_json', autospec=True,),
             mock.patch('chronos_tools.read_chronos_jobs_for_service', autospec=True),
         ) as (
+            mock_load_deployments_json,
             mock_read_chronos_jobs_for_service,
         ):
+            mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
             mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
             with raises(chronos_tools.InvalidChronosConfigError) as exc:
                 chronos_tools.load_chronos_job_config(self.fake_service_name,
                                                       fake_job_name,
                                                       self.fake_cluster,
                                                       fake_soa_dir)
+                mock_load_deployments_json.assert_called_once_with(self.fake_service_name, soa_dir=fake_soa_dir)
                 mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
                                                                            expected_chronos_conf_file,
                                                                            soa_dir=fake_soa_dir)
-                assert exc.value == 'No job named \'polar bear\' in config file chronos-penguin.yaml'
+                assert exc.value == 'No job named "polar bear" in config file chronos-penguin.yaml'
 
     def test_get_config_dict_param(self):
         param = 'epsilon'
@@ -188,8 +196,8 @@ class TestChronosTools:
         assert actual == expected
 
     def test_get_branch_dict_param(self):
-        param = 'full_branch'
-        expected = 'paasta-test_service-penguin'
+        param = 'docker_image'
+        expected = self.fake_branch_dict['docker_image']
         actual = self.fake_chronos_job_config.get(param)
         assert actual == expected
 
@@ -212,7 +220,7 @@ class TestChronosTools:
     def test_check_epsilon_invalid(self):
         okay, msg = self.fake_invalid_chronos_job_config.check_epsilon()
         assert okay is False
-        assert msg == 'The specified epsilon value \'nolispe\' does not conform to the ISO8601 format.'
+        assert msg == 'The specified epsilon value "nolispe" does not conform to the ISO8601 format.'
 
     def test_check_retries_valid(self):
         okay, msg = self.fake_chronos_job_config.check_retries()
@@ -222,7 +230,7 @@ class TestChronosTools:
     def test_check_retries_invalid(self):
         okay, msg = self.fake_invalid_chronos_job_config.check_retries()
         assert okay is False
-        assert msg == 'The specified retries value \'5.7\' is not a valid int.'
+        assert msg == 'The specified retries value "5.7" is not a valid int.'
 
     def test_check_async_valid(self):
         okay, msg = self.fake_chronos_job_config.check_async()
@@ -242,7 +250,7 @@ class TestChronosTools:
     def test_check_cpus_invalid(self):
         okay, msg = self.fake_invalid_chronos_job_config.check_cpus()
         assert okay is False
-        assert msg == 'The specified cpus value \'intel\' is not a valid float.'
+        assert msg == 'The specified cpus value "intel" is not a valid float.'
 
     def test_check_mem_valid(self):
         okay, msg = self.fake_chronos_job_config.check_mem()
@@ -252,7 +260,7 @@ class TestChronosTools:
     def test_check_mem_invalid(self):
         okay, msg = self.fake_invalid_chronos_job_config.check_mem()
         assert okay is False
-        assert msg == 'The specified mem value \'lots\' is not a valid float.'
+        assert msg == 'The specified mem value "lots" is not a valid float.'
 
     def test_check_disk_valid(self):
         okay, msg = self.fake_chronos_job_config.check_disk()
@@ -262,7 +270,7 @@ class TestChronosTools:
     def test_check_disk_invalid(self):
         okay, msg = self.fake_invalid_chronos_job_config.check_disk()
         assert okay is False
-        assert msg == 'The specified disk value \'all of it\' is not a valid float.'
+        assert msg == 'The specified disk value "all of it" is not a valid float.'
 
     def test_check_schedule_repeat_helper_valid(self):
         assert self.fake_invalid_chronos_job_config._check_schedule_repeat_helper('R32') is True
@@ -304,7 +312,7 @@ class TestChronosTools:
         fake_isodate_exception = 'ISO 8601 time designator \'T\' missing. Unable to parse datetime string \'now\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
-        assert msg == ('The specified start time \'%s\' in schedule \'%s\' does not conform to the ISO 8601 format:\n%s'
+        assert msg == ('The specified start time "%s" in schedule "%s" does not conform to the ISO 8601 format:\n%s'
                        % (fake_start_time, fake_schedule, fake_isodate_exception))
 
     def test_check_schedule_invalid_start_time_bad_date(self):
@@ -314,7 +322,7 @@ class TestChronosTools:
         fake_isodate_exception = 'Unrecognised ISO 8601 date format: \'today\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
-        assert msg == ('The specified start time \'%s\' in schedule \'%s\' does not conform to the ISO 8601 format:\n%s'
+        assert msg == ('The specified start time "%s" in schedule "%s" does not conform to the ISO 8601 format:\n%s'
                        % (fake_start_time, fake_schedule, fake_isodate_exception))
 
     def test_check_schedule_invalid_start_time_bad_time(self):
@@ -324,7 +332,7 @@ class TestChronosTools:
         fake_isodate_exception = 'Unrecognised ISO 8601 time format: \'morning\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
-        assert msg == ('The specified start time \'%s\' in schedule \'%s\' does not conform to the ISO 8601 format:\n%s'
+        assert msg == ('The specified start time "%s" in schedule "%s" does not conform to the ISO 8601 format:\n%s'
                        % (fake_start_time, fake_schedule, fake_isodate_exception))
 
     def test_check_schedule_invalid_empty_interval(self):
@@ -332,7 +340,7 @@ class TestChronosTools:
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         okay, msg = chronos_config.check_schedule()
         assert okay is False
-        assert msg == ('The specified interval \'\' in schedule \'%s\' does not conform to the ISO 8601 format.'
+        assert msg == ('The specified interval "" in schedule "%s" does not conform to the ISO 8601 format.'
                        % fake_schedule)
 
     def test_check_schedule_invalid_interval(self):
@@ -340,7 +348,7 @@ class TestChronosTools:
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         okay, msg = chronos_config.check_schedule()
         assert okay is False
-        assert msg == ('The specified interval \'Mondays\' in schedule \'%s\' does not conform to the ISO 8601 format.'
+        assert msg == ('The specified interval "Mondays" in schedule "%s" does not conform to the ISO 8601 format.'
                        % fake_schedule)
 
     def test_check_schedule_invalid_empty_repeat(self):
@@ -348,7 +356,7 @@ class TestChronosTools:
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         okay, msg = chronos_config.check_schedule()
         assert okay is False
-        assert msg == ('The specified repeat \'\' in schedule \'%s\' does not conform to the ISO 8601 format.'
+        assert msg == ('The specified repeat "" in schedule "%s" does not conform to the ISO 8601 format.'
                        % fake_schedule)
 
     def test_check_schedule_invalid_repeat(self):
@@ -356,7 +364,7 @@ class TestChronosTools:
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         okay, msg = chronos_config.check_schedule()
         assert okay is False
-        assert msg == ('The specified repeat \'forever\' in schedule \'%s\' does not conform to the ISO 8601 format.'
+        assert msg == ('The specified repeat "forever" in schedule "%s" does not conform to the ISO 8601 format.'
                        % fake_schedule)
 
     def test_check_schedule_time_zone_valid(self):
@@ -375,7 +383,7 @@ class TestChronosTools:
         assert okay is True  # FIXME implement the validator
         assert msg == ''  # FIXME implement the validator
         # assert okay is False
-        # assert msg == 'The specified time zone \'+0200\' does not conform to the tz database format.'
+        # assert msg == 'The specified time zone "+0200" does not conform to the tz database format.'
 
     def test_check_param_with_check(self):
         with contextlib.nested(
@@ -400,7 +408,7 @@ class TestChronosTools:
         param = 'boat'
         okay, msg = self.fake_chronos_job_config.check(param)
         assert okay is False
-        assert msg == 'Your Chronos config specifies \'boat\', an unsupported parameter.'
+        assert msg == 'Your Chronos config specifies "boat", an unsupported parameter.'
 
     def test_set_missing_params_to_defaults(self):
         chronos_config_defaults = {
@@ -434,30 +442,17 @@ class TestChronosTools:
         for param in chronos_config_dict:
             assert completed_chronos_job_config.get(param) == chronos_config_dict[param]
 
-    def test_check_job_reqs(self):
-        with contextlib.nested(
-            mock.patch('chronos_tools._check_scheduled_job_reqs_helper', autospec=True),
-        ) as (
-            mock_check_scheduled_job_reqs_helper,
-        ):
-            mock_check_scheduled_job_reqs_helper.return_value = ''
-            job_type = 'scheduled'
-            okay, msgs = chronos_tools.check_job_reqs(self.fake_chronos_job_config, job_type)
-            mock_check_scheduled_job_reqs_helper.assert_called_once_with(self.fake_chronos_job_config, job_type)
-            assert okay is True
-            assert len(msgs) == 0
-
     def test_check_job_reqs_scheduled_complete(self):
-        okay, msgs = chronos_tools.check_job_reqs(self.fake_chronos_job_config, 'scheduled')
+        okay, msgs = chronos_tools.check_job_reqs(self.fake_chronos_job_config)
         assert okay is True
         assert len(msgs) == 0
 
     def test_check_job_reqs_scheduled_incomplete(self):
         fake_chronos_job_config = chronos_tools.ChronosJobConfig('', '', {}, {})
-        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config, 'scheduled')
+        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config)
         assert okay is False
-        assert 'Your Chronos config is missing \'owner\', a required parameter for a \'scheduled job\'.' in msgs
-        assert 'Your Chronos config is missing \'schedule\', a required parameter for a \'scheduled job\'.' in msgs
+        assert 'Your Chronos config is missing "owner", which is a required parameter.' in msgs
+        assert 'Your Chronos config contains neither "schedule" nor "parents". One is required.' in msgs
 
     def test_check_job_reqs_dependent_complete(self):
         fake_config_dict = {
@@ -477,16 +472,16 @@ class TestChronosTools:
                                                                  self.fake_job_name,
                                                                  fake_config_dict,
                                                                  {})
-        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config, 'dependent')
+        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config)
         assert okay is True
         assert len(msgs) == 0
 
     def test_check_job_reqs_dependent_incomplete(self):
         fake_chronos_job_config = chronos_tools.ChronosJobConfig('', '', {}, {})
-        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config, 'dependent')
+        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config)
         assert okay is False
-        assert 'Your Chronos config is missing \'owner\', a required parameter for a \'dependent job\'.' in msgs
-        assert 'Your Chronos config is missing \'parents\', a required parameter for a \'dependent job\'.' in msgs
+        assert 'Your Chronos config is missing "owner", which is a required parameter.' in msgs
+        assert 'Your Chronos config contains neither "schedule" nor "parents". One is required.' in msgs
 
     def test_check_job_reqs_docker_complete(self):
         fake_config_dict = {
@@ -510,16 +505,15 @@ class TestChronosTools:
             },
         }
         fake_chronos_job_config = chronos_tools.ChronosJobConfig('', self.fake_job_name, fake_config_dict, {})
-        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config, 'docker')
+        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config)
         assert okay is True
         assert len(msgs) == 0
 
     def test_check_job_reqs_docker_incomplete(self):
         fake_chronos_job_config = chronos_tools.ChronosJobConfig('', '', {}, {})
-        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config, 'docker')
+        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config)
         assert okay is False
-        assert 'Your Chronos config is missing \'owner\', a required parameter for a \'docker job\'.' in msgs
-        assert 'Your Chronos config is missing \'container\', a required parameter for a \'docker job\'.' in msgs
+        assert 'Your Chronos config is missing "owner", which is a required parameter.' in msgs
 
     def test_check_job_reqs_docker_invalid_neither_schedule_nor_parents(self):
         fake_config_dict = {
@@ -541,10 +535,9 @@ class TestChronosTools:
             },
         }
         fake_chronos_job_config = chronos_tools.ChronosJobConfig('', self.fake_job_name, fake_config_dict, {})
-        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config, 'docker')
+        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config)
         assert okay is False
-        assert ('Your Chronos config contains neither \'schedule\' nor \'parents\'. '
-                'One is required for a \'docker job\'.') in msgs
+        assert 'Your Chronos config contains neither "schedule" nor "parents". One is required.' in msgs
 
     def test_check_job_reqs_docker_invalid_both_schedule_and_parents(self):
         fake_config_dict = {
@@ -569,17 +562,9 @@ class TestChronosTools:
             },
         }
         fake_chronos_job_config = chronos_tools.ChronosJobConfig('', self.fake_job_name, fake_config_dict, {})
-        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config, 'docker')
+        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config)
         assert okay is False
-        assert ('Your Chronos config contains both \'schedule\' and \'parents\'. '
-                'Only one may be specified for a \'docker job\'.') in msgs
-
-    def test_check_job_reqs_invalid_job_type(self):
-        fake_job_type = 'boogaloo'
-        fake_chronos_job_config = chronos_tools.ChronosJobConfig('', '', {}, {})
-        okay, msgs = chronos_tools.check_job_reqs(fake_chronos_job_config, fake_job_type)
-        assert okay is False
-        assert msgs == '\'%s\' is not a supported job type. Aborting job requirements check.' % fake_job_type
+        assert 'Your Chronos config contains both "schedule" and "parents". Only one is allowed.' in msgs
 
     def test_format_chronos_job_dict(self):
         fake_service_name = 'test_service'
@@ -588,6 +573,9 @@ class TestChronosTools:
         fake_command = 'echo foo >> /tmp/test_service_log'
         fake_schedule = 'R10/2012-10-01T05:52:00Z/PT1M'
         fake_owner = 'bob@example.com'
+        fake_docker_url = 'fake_docker_image_url'
+        fake_docker_volumes = ['fake_docker_volume']
+
         incomplete_config = chronos_tools.ChronosJobConfig(
             fake_service_name,
             fake_job_name,
@@ -612,9 +600,14 @@ class TestChronosTools:
             'disk': 256,
             'retries': 2,
             'disabled': False,
+            'container': {
+                'docker': {'image': 'fake_docker_image_url'},
+                'type': 'DOCKER',
+                'volumes': ['fake_docker_volume']
+            }
         }
-        actual = chronos_tools.format_chronos_job_dict(incomplete_config, 'scheduled')
-        assert actual == expected
+        actual = chronos_tools.format_chronos_job_dict(incomplete_config, fake_docker_url, fake_docker_volumes)
+        assert sorted(actual) == sorted(expected)
 
     def test_format_chronos_job_dict_invalid_param(self):
         fake_service_name = 'test_service'
@@ -636,8 +629,8 @@ class TestChronosTools:
             {}
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
-            chronos_tools.format_chronos_job_dict(incomplete_config, 'scheduled')
-            assert exc.value == 'Your Chronos config specifies \'ship\', an unsupported parameter.'
+            chronos_tools.format_chronos_job_dict(incomplete_config, '', [])
+            assert exc.value == 'Your Chronos config specifies "ship", an unsupported parameter.'
 
     def test_format_chronos_job_dict_incomplete(self):
         fake_service_name = 'test_service'
@@ -657,8 +650,8 @@ class TestChronosTools:
             {}
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
-            chronos_tools.format_chronos_job_dict(incomplete_config, 'docker')
-            assert exc.value == 'Your Chronos config is missing \'command\', a required parameter for a \'docker job\'.'
+            chronos_tools.format_chronos_job_dict(incomplete_config, '', [])
+            assert exc.value == 'Your Chronos config is missing "command", a required parameter.'
 
     def test_list_job_names(self):
         fake_name = 'vegetables'

@@ -274,7 +274,6 @@ def status_smartstack_backends(service, instance, cluster, tasks, expected_count
             expected_count,
             verbose
         ))
-
     return "\n".join(output)
 
 
