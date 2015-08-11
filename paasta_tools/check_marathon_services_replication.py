@@ -49,18 +49,24 @@ def send_event(service_name, namespace, soa_dir, status, output):
     # This function assumes the input is a string like "mumble.main"
     framework = 'marathon'
     check_name = 'check_marathon_services_replication.%s%s%s' % (service_name, ID_SPACER, namespace)
-    team = monitoring_tools.get_team(framework, service_name, soa_dir=soa_dir)
+    team = monitoring_tools.get_team(framework, service_name, instance=namespace, soa_dir=soa_dir)
     if not team:
         return
-    runbook = monitoring_tools.get_runbook(framework, service_name, soa_dir=soa_dir)
+    runbook = monitoring_tools.get_runbook(framework, service_name, instance=namespace, soa_dir=soa_dir)
     cluster = marathon_tools.get_cluster()
     result_dict = {
-        'tip': monitoring_tools.get_tip(framework, service_name, soa_dir=soa_dir),
-        'notification_email': monitoring_tools.get_notification_email(framework, service_name, soa_dir=soa_dir),
-        'page': monitoring_tools.get_page(framework, service_name, soa_dir=soa_dir),
-        'irc_channels': monitoring_tools.get_irc_channels(framework, service_name, soa_dir=soa_dir),
-        'ticket': monitoring_tools.get_ticket(framework, service_name, soa_dir=soa_dir),
-        'project': monitoring_tools.get_project(framework, service_name, soa_dir=soa_dir),
+        'tip': monitoring_tools.get_tip(
+            framework, service_name, instance=namespace, soa_dir=soa_dir),
+        'notification_email': monitoring_tools.get_notification_email(
+            framework, service_name, instance=namespace, soa_dir=soa_dir),
+        'page': monitoring_tools.get_page(
+            framework, service_name, instance=namespace, soa_dir=soa_dir),
+        'irc_channels': monitoring_tools.get_irc_channels(
+            framework, service_name, instance=namespace, soa_dir=soa_dir),
+        'ticket': monitoring_tools.get_ticket(
+            framework, service_name, instance=namespace, soa_dir=soa_dir),
+        'project': monitoring_tools.get_project(
+            framework, service_name, instance=namespace, soa_dir=soa_dir),
         'alert_after': '2m',
         'check_every': '1m',
         'realert_every': -1,

@@ -41,83 +41,83 @@ class TestMonitoring_Tools:
     }
     empty_monitor_config = {}
     framework = 'fake_framework'
-    instance_name = 'fake_instance'
+    instance = 'fake_instance'
     service_name = 'fake_service'
     soa_dir = '/fake/soa/dir'
 
     def test_get_team(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_team(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_team(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('team', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_runbook(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_runbook(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_runbook(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('runbook', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_tip(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_tip(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_tip(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('tip', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_notification_email(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_notification_email(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_notification_email(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('notification_email', self.framework,
-                                                                      self.service_name, self.instance_name,
+                                                                      self.service_name, self.instance,
                                                                       self.soa_dir)
 
     def test_get_page(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_page(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_page(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('page', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_alert_after(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_alert_after(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_alert_after(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('alert_after', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_realert_every(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_realert_every(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_realert_every(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('realert_every', self.framework,
-                                                                      self.service_name, self.instance_name,
+                                                                      self.service_name, self.instance,
                                                                       self.soa_dir)
 
     def test_get_check_every(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_check_every(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_check_every(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('check_every', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_irc_channels(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_irc_channels(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_irc_channels(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('irc_channels', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_dependencies(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_dependencies(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_dependencies(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('dependencies', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_ticket(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_ticket(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_ticket(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('ticket', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_project(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_project(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            monitoring_tools.get_project(self.framework, self.service_name, self.instance, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('project', self.framework, self.service_name,
-                                                                      self.instance_name, self.soa_dir)
+                                                                      self.instance, self.soa_dir)
 
     def test_get_monitoring_config_value_with_job_config(self):
         expected = 'job_test_team'
@@ -134,10 +134,10 @@ class TestMonitoring_Tools:
             read_monitoring_patch,
             get_cluster_patch,
         ):
-            actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance, self.soa_dir)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, 'clustername',
+            read_service_patch.assert_called_once_with(self.service_name, self.instance, 'clustername',
                                                        soa_dir=self.soa_dir)
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
 
@@ -156,10 +156,10 @@ class TestMonitoring_Tools:
             read_monitoring_patch,
             get_cluster_patch,
         ):
-            actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance, self.soa_dir)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, 'clustername',
+            read_service_patch.assert_called_once_with(self.service_name, self.instance, 'clustername',
                                                        soa_dir=self.soa_dir)
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
 
@@ -178,10 +178,10 @@ class TestMonitoring_Tools:
             read_monitoring_patch,
             get_cluster_patch,
         ):
-            actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance, self.soa_dir)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, 'clustername',
+            read_service_patch.assert_called_once_with(self.service_name, self.instance, 'clustername',
                                                        soa_dir=self.soa_dir)
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
 
@@ -200,10 +200,10 @@ class TestMonitoring_Tools:
             read_monitoring_patch,
             get_cluster_patch,
         ):
-            actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance_name, self.soa_dir)
+            actual = monitoring_tools.get_team(self.framework, self.service_name, self.instance, self.soa_dir)
             assert expected == actual
             service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_service_patch.assert_called_once_with(self.service_name, self.instance_name, 'clustername',
+            read_service_patch.assert_called_once_with(self.service_name, self.instance, 'clustername',
                                                        soa_dir=self.soa_dir)
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
 
