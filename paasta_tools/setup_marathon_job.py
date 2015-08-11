@@ -306,6 +306,17 @@ def deploy_service(
 
     old_app_live_tasks, old_app_draining_tasks = get_old_live_draining_tasks(other_apps, drain_method)
 
+    # Re-drain any already draining tasks on old apps
+    for tasks in old_app_draining_tasks.values():
+        for task in tasks:
+            drain_method.drain(task)
+
+    # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
+    # `paasta mark-for-deployment`), then we should undrain them.
+    if new_app_running:
+        for task in new_app.tasks:
+            drain_method.stop_draining(task)
+
     # log all uncaught exceptions and raise them again
     try:
         try:
