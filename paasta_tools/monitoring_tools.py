@@ -13,74 +13,74 @@ import service_configuration_lib
 import marathon_tools
 
 
-def get_team(framework, service_name, instance_name=None,
+def get_team(framework, service_name, instance=None,
              soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('team', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('team', framework, service_name, instance, soa_dir)
 
 
-def get_runbook(framework, service_name, instance_name=None,
+def get_runbook(framework, service_name, instance=None,
                 soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('runbook', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('runbook', framework, service_name, instance, soa_dir)
 
 
-def get_tip(framework, service_name, instance_name=None,
+def get_tip(framework, service_name, instance=None,
             soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('tip', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('tip', framework, service_name, instance, soa_dir)
 
 
-def get_notification_email(framework, service_name, instance_name=None,
+def get_notification_email(framework, service_name, instance=None,
                            soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('notification_email', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('notification_email', framework, service_name, instance, soa_dir)
 
 
-def get_page(framework, service_name, instance_name=None,
+def get_page(framework, service_name, instance=None,
              soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('page', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('page', framework, service_name, instance, soa_dir)
 
 
-def get_alert_after(framework, service_name, instance_name=None,
+def get_alert_after(framework, service_name, instance=None,
                     soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('alert_after', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('alert_after', framework, service_name, instance, soa_dir)
 
 
-def get_realert_every(framework, service_name, instance_name=None,
+def get_realert_every(framework, service_name, instance=None,
                       soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('realert_every', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('realert_every', framework, service_name, instance, soa_dir)
 
 
-def get_check_every(framework, service_name, instance_name=None,
+def get_check_every(framework, service_name, instance=None,
                     soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('check_every', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('check_every', framework, service_name, instance, soa_dir)
 
 
-def get_irc_channels(framework, service_name, instance_name=None,
+def get_irc_channels(framework, service_name, instance=None,
                      soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('irc_channels', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('irc_channels', framework, service_name, instance, soa_dir)
 
 
-def get_dependencies(framework, service_name, instance_name=None,
+def get_dependencies(framework, service_name, instance=None,
                      soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('dependencies', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('dependencies', framework, service_name, instance, soa_dir)
 
 
-def get_ticket(framework, service_name, instance_name=None,
+def get_ticket(framework, service_name, instance=None,
                soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('ticket', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('ticket', framework, service_name, instance, soa_dir)
 
 
-def get_project(framework, service_name, instance_name=None,
+def get_project(framework, service_name, instance=None,
                 soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('project', framework, service_name, instance_name, soa_dir)
+    return __get_monitoring_config_value('project', framework, service_name, instance, soa_dir)
 
 
-def __get_monitoring_config_value(key, framework, service_name, instance_name=None,
+def __get_monitoring_config_value(key, framework, service_name, instance=None,
                                   soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
     general_config = service_configuration_lib.read_service_configuration(service_name, soa_dir=soa_dir)
-    if instance_name:
+    if instance:
         cluster = marathon_tools.get_cluster()
-        job_config = marathon_tools.load_marathon_service_config(service_name, instance_name, cluster, soa_dir=soa_dir)
+        job_config = marathon_tools.load_marathon_service_config(service_name, instance, cluster, soa_dir=soa_dir)
     else:
-        job_config = marathon_tools.MarathonServiceConfig(service_name, instance_name, {}, {})
+        job_config = marathon_tools.MarathonServiceConfig(service_name, instance, {}, {})
     monitor_config = marathon_tools.read_monitoring_config(service_name, soa_dir=soa_dir)
     service_default = general_config.get(key, monitoring_defaults(key))
     service_default = general_config.get('monitoring', {key: service_default}).get(key, service_default)
@@ -112,9 +112,9 @@ def get_team_email_address(service, framework=None, instance=None):
     leave `notification_email` absent and just let Sensu do its thing."""
 
     email_address = __get_monitoring_config_value('notification_email', framework=framework,
-                                                  service_name=service, instance_name=instance)
+                                                  service_name=service, instance=instance)
     if not email_address:
-        team = get_team(framework=framework, service_name=service, instance_name=instance)
+        team = get_team(framework=framework, service_name=service, instance=instance)
         email_address = get_sensu_team_data(team).get('notification_email', None)
     return email_address
 

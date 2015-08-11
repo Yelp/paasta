@@ -72,20 +72,20 @@ def test_send_event():
                                                        fake_soa_dir,
                                                        fake_status,
                                                        fake_output)
-        monitoring_tools_get_team_patch.assert_called_once_with('marathon', fake_service_name,
-                                                                soa_dir=fake_soa_dir)
-        monitoring_tools_get_runbook_patch.assert_called_once_with('marathon', fake_service_name,
-                                                                   soa_dir=fake_soa_dir)
-        monitoring_tools_get_tip_patch.assert_called_once_with('marathon', fake_service_name,
-                                                               soa_dir=fake_soa_dir)
-        monitoring_tools_get_notification_email_patch.assert_called_once_with('marathon', fake_service_name,
-                                                                              soa_dir=fake_soa_dir)
-        monitoring_tools_get_page_patch.assert_called_once_with('marathon', fake_service_name,
-                                                                soa_dir=fake_soa_dir)
-        monitoring_tools_get_irc_patch.assert_called_once_with('marathon', fake_service_name,
-                                                               soa_dir=fake_soa_dir)
-        pysensu_yelp_send_event_patch.assert_called_once_with(expected_check_name, fake_runbook, fake_status,
-                                                              fake_output, fake_team, **expected_kwargs)
+        monitoring_tools_get_team_patch.assert_called_once_with(
+            'marathon', fake_service_name, instance=fake_namespace, soa_dir=fake_soa_dir)
+        monitoring_tools_get_runbook_patch.assert_called_once_with(
+            'marathon', fake_service_name, instance=fake_namespace, soa_dir=fake_soa_dir)
+        monitoring_tools_get_tip_patch.assert_called_once_with(
+            'marathon', fake_service_name, instance=fake_namespace, soa_dir=fake_soa_dir)
+        monitoring_tools_get_notification_email_patch.assert_called_once_with(
+            'marathon', fake_service_name, instance=fake_namespace, soa_dir=fake_soa_dir)
+        monitoring_tools_get_page_patch.assert_called_once_with(
+            'marathon', fake_service_name, instance=fake_namespace, soa_dir=fake_soa_dir)
+        monitoring_tools_get_irc_patch.assert_called_once_with(
+            'marathon', fake_service_name, instance=fake_namespace, soa_dir=fake_soa_dir)
+        pysensu_yelp_send_event_patch.assert_called_once_with(
+            expected_check_name, fake_runbook, fake_status, fake_output, fake_team, **expected_kwargs)
         cluster_patch.assert_called_once_with()
 
 
