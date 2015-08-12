@@ -444,6 +444,7 @@ class TestMarathonTools:
             'timeout_connect_ms': 192,
             'timeout_server_ms': 291,
             'timeout_client_ms': 912,
+            'updown_timeout_s': 293,
             'retries': fake_retries,
             'mode': mode,
             'routes': [
@@ -474,6 +475,7 @@ class TestMarathonTools:
             'timeout_connect_ms': 192,
             'timeout_server_ms': 291,
             'timeout_client_ms': 912,
+            'updown_timeout_s': 293,
             'retries': fake_retries,
             'mode': mode,
             'routes': [
