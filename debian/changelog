@@ -1,3 +1,10 @@
+paasta-tools (0.12.47-yelp1) lucid; urgency=low
+
+  * 0.12.47 tagged with 'make release'
+    Commit: Merge branch gstarnbe_updown_s
+
+ -- Guenther Starnberger <gstarnbe@yelp.com>  Wed, 12 Aug 2015 06:55:47 -0700
+
 paasta-tools (0.12.46-yelp1) lucid; urgency=low
 
   * 0.12.46 tagged with 'make release'
