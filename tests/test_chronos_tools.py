@@ -4,6 +4,7 @@ from pytest import raises
 import contextlib
 
 import chronos_tools
+from mock import Mock
 
 
 def test_chronos_config_object_normal():
@@ -94,14 +95,7 @@ def test_wait_for_job():
         {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')
     client = chronos_tools.get_chronos_client(fake_config)
 
-    # this simulates the behaviour of the list
-    # function by only returning the correct data
-    # the third time it's called.
-    def counted(fn):
-        def wrapper(*args, **kwargs):
-            wrapper.called += 1
-            return fn(wrapper.called)
-        wrapper.called = 0
-        return wrapper
-    client.list = counted(lambda x: [] if x < 3 else [{'name': 'foo'}])
+    # only provide the right response on the third attempt
+    client.list = Mock(side_effect=[[], [], [{'name': 'foo'}]])
+
     assert chronos_tools.wait_for_job(client, 'foo')
