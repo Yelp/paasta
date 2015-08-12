@@ -44,7 +44,7 @@ def task_is_ready(context, app_id):
 
 @when(u'a job with the name "{job_name}" is in the job list')
 def job_is_ready(context, job_name):
-    """ wait for a job with a matching job id to be ready. time out in 10 seconds """
+    """ wait for a job with a matching job id to be ready. """
     chronos_tools.wait_for_job(context.chronos_client, job_name)
 
 

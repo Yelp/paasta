@@ -73,7 +73,7 @@ def get_job_id(service, instance):
 @timeout()
 def wait_for_job(client, job_name):
     """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
-      and retry. Times out after 10 seconds.
+      and retry.
 
      :param client: The marathon client
      :param app_id: The app id to which the tasks belong
@@ -81,7 +81,7 @@ def wait_for_job(client, job_name):
     """
     found = False
     while not found:
-        found = job_name in map(lambda job: job['name'], client.list())
+        found = job_name in [job['name'] for job in client.list()]
         if found:
             return True
         else:
