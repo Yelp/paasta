@@ -124,8 +124,8 @@ def test_duplicate_frameworks():
 
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
 def test_missing_master_exception(mock_fetch_from_leader):
-    mock_fetch_from_leader.side_effect = mesos_tools.MissingMasterException('Missing')
-    with raises(mesos_tools.MissingMasterException) as exception_info:
+    mock_fetch_from_leader.side_effect = mesos_tools.MasterNotAvailableException('Missing')
+    with raises(mesos_tools.MasterNotAvailableException) as exception_info:
         paasta_metastatus.get_mesos_status()
     assert 'Missing' in str(exception_info.value)
 

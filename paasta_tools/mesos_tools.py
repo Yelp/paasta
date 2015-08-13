@@ -14,13 +14,13 @@ if 'MESOS_CLI_CONFIG' not in os.environ:
     os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
 
 
-class MissingMasterException(Exception):
+class MasterNotAvailableException(Exception):
     pass
 
 
 def raise_cli_exception(msg):
     if msg.startswith("unable to connect to a master"):
-        raise MissingMasterException(msg)
+        raise MasterNotAvailableException(msg)
     else:
         raise Exception(msg)
 
@@ -87,8 +87,14 @@ def fetch_local_slave_state():
 
 
 def fetch_mesos_state_from_leader():
-    """Fetches mesos state from the leader."""
-    return master.CURRENT.state
+    """Fetches mesos state from the leader.
+    Raises an exception if the state doesn't look like it came from an
+    elected leader, as we never want non-leader state data."""
+    state = master.CURRENT.state
+    if 'elected_time' not in state:
+        raise MasterNotAvailableException("We asked for the current leader state, "
+                                          "but it wasn't the elected leader. Please try again.")
+    return state
 
 
 def get_mesos_quorum(state):

@@ -16,7 +16,7 @@ from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
-from paasta_tools.mesos_tools import MissingMasterException
+from paasta_tools.mesos_tools import MasterNotAvailableException
 
 
 def get_num_masters(state):
@@ -255,7 +255,7 @@ def main():
 
     try:
         mesos_outputs, mesos_oks = get_mesos_status()
-    except MissingMasterException as e:
+    except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
         print(PaastaColors.red("CRITICAL:  %s" % e.message))
