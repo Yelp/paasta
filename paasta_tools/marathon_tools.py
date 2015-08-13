@@ -213,19 +213,26 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The bounce method specified in the config, or 'crossover' if not specified"""
         return self.config_dict.get('bounce_method', 'crossover')
 
-    def get_drain_method(self):
+    def get_drain_method(self, service_namespace_config):
         """Get the drain method specified in the service's marathon configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain method specified in the config, or 'noop' if not specified"""
-        return self.config_dict.get('drain_method', 'noop')
+        default = 'noop'
+        # Default to hacheck draining if the service is in smartstack
+        if service_namespace_config.is_in_smartstack():
+            default = 'hacheck'
+        return self.config_dict.get('drain_method', default)
 
-    def get_drain_method_params(self):
+    def get_drain_method_params(self, service_namespace_config):
         """Get the drain method parameters specified in the service's marathon configuration.
 
         :param service_config: The service instance's configuration dictionary
         :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
-        return self.config_dict.get('drain_method_params', {})
+        default = {}
+        if service_namespace_config.is_in_smartstack():
+            default = {'delay': 30}
+        return self.config_dict.get('drain_method_params', default)
 
     def get_constraints(self, service_namespace_config):
         """Gets the constraints specified in the service's marathon configuration.
@@ -407,8 +414,11 @@ class MarathonServiceConfig(InstanceConfig):
     def get_nerve_namespace(self):
         return self.config_dict.get('nerve_ns', self.instance)
 
-    def get_bounce_health_params(self):
-        return self.config_dict.get('bounce_health_params', {})
+    def get_bounce_health_params(self, service_namespace_config):
+        default = {}
+        if service_namespace_config.is_in_smartstack():
+            default = {'check_haproxy': True}
+        return self.config_dict.get('bounce_health_params', default)
 
 
 def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
@@ -498,7 +508,7 @@ class ServiceNamespaceConfig(dict):
         """
         mode = self.get('mode', None)
         if mode is None:
-            if self.get('proxy_port') is None:
+            if not self.is_in_smartstack():
                 return None
             else:
                 return 'http'
@@ -512,6 +522,12 @@ class ServiceNamespaceConfig(dict):
 
     def get_discover(self):
         return self.get('discover', 'region')
+
+    def is_in_smartstack(self):
+        if self.get('proxy_port') is not None:
+            return True
+        else:
+            return False
 
 
 class InvalidSmartstackMode(Exception):

@@ -26,6 +26,16 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <bounce_lib.html>`_
 
+  * ``bounce_method_params``: A dictionary of parameters for the specified bounce_method.
+
+    * ``check_haproxy``: Boolean indicating if PaaSTA should check the local haproxy to make sure this task has been registered and discovered (Defaults to ``True`` if service is in Smartstack)
+
+    * ``min_task_uptime``: Minimum number of seconds that a task must be running before we consider it healthy (Disabled by default)
+
+  * ``drain_method``: Controls the drain method; see `drain_lib <drain_lib.html>`_. Defaults to ``noop`` for instances that are not in Smartstack, or ``hacheck`` if they are.
+
+  * ``drain_method_params``: A dictionary of parameters for the specified drain_method. Valid parameters are any of the kwargs defined for the specified bounce_method in `bounce_lib <bounce_lib.html>`_.
+
   * ``constraints``: Specifies placement constraints for services. Should be defined as an array within an array (E.g ``[["habitat", "GROUP_BY"]]``). Defaults to ``[["<discover_location_type>, "GROUP_BY"]]`` where ``<discover_location_type>`` is defined by the ``discover`` attribute in ``smartstack.yaml``. For more details and other constraint types, see the official `Marathon constraint documentation <https://mesosphere.github.io/marathon/docs/constraints.html>`_.
 
   * ``cmd``: The command that is executed. Can be used as an alternative to args for containers without an `entrypoint <https://docs.docker.com/reference/builder/#entrypoint>`_. This value is wrapped by Mesos via ``/bin/sh -c ${app.cmd}``. Parsing the Marathon config file will fail if both args and cmd are specified [#note]_.

@@ -37,7 +37,7 @@ class DrainMethod(object):
     When implementing a drain method, be sure to decorate with @register_drain_method(name).
     """
 
-    def __init__(self, service_name, instance_name, nerve_ns):
+    def __init__(self, service_name, instance_name, nerve_ns, **kwargs):
         self.service_name = service_name
         self.instance_name = instance_name
         self.nerve_ns = nerve_ns
@@ -105,7 +105,7 @@ class TestDrainMethod(DrainMethod):
 class HacheckDrainMethod(DrainMethod):
     """This drain policy issues a POST to hacheck's /spool/{service}/{port}/status endpoint to cause healthchecks to
     fail. It considers tasks safe to kill if they've been down in hacheck for more than a specified delay."""
-    def __init__(self, service_name, instance_name, nerve_ns, delay=120, hacheck_port=6666, expiration=0):
+    def __init__(self, service_name, instance_name, nerve_ns, delay=120, hacheck_port=6666, expiration=0, **kwargs):
         super(HacheckDrainMethod, self).__init__(service_name, instance_name, nerve_ns)
         self.delay = float(delay)
         self.hacheck_port = hacheck_port

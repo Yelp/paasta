@@ -917,6 +917,54 @@ class TestMarathonTools:
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
         assert fake_conf.get_bounce_method() == 'crossover'
 
+    def test_get_bounce_health_params_in_config(self):
+        fake_param = 'fake_param'
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'fake_name', 'fake_instance', {'bounce_health_params': fake_param}, {})
+        assert fake_conf.get_bounce_health_params(mock.Mock()) == fake_param
+
+    def test_get_bounce_health_params_default_when_not_in_smartstack(self):
+        fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=False))
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_bounce_health_params(fake_service_namespace_config) == {}
+
+    def test_get_bounce_health_params_default_when_in_smartstack(self):
+        fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=True))
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_bounce_health_params(fake_service_namespace_config) == {'check_haproxy': True}
+
+    def test_get_drain_method_in_config(self):
+        fake_param = 'fake_param'
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'fake_name', 'fake_instance', {'drain_method': fake_param}, {})
+        assert fake_conf.get_drain_method(mock.Mock()) == fake_param
+
+    def test_get_drain_method_default_when_not_in_smartstack(self):
+        fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=False))
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_drain_method(fake_service_namespace_config) == 'noop'
+
+    def test_get_drain_method_default_when_in_smartstack(self):
+        fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=True))
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_drain_method(fake_service_namespace_config) == 'hacheck'
+
+    def test_get_drain_method_params_in_config(self):
+        fake_param = 'fake_param'
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'fake_name', 'fake_instance', {'drain_method_params': fake_param}, {})
+        assert fake_conf.get_drain_method_params(mock.Mock()) == fake_param
+
+    def test_get_drain_method_params_default_when_not_in_smartstack(self):
+        fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=False))
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_drain_method_params(fake_service_namespace_config) == {}
+
+    def test_get_drain_method_params_default_when_in_smartstack(self):
+        fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=True))
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_drain_method_params(fake_service_namespace_config) == {'delay': 30}
+
     def test_get_instances_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
             'fake_name',

@@ -373,6 +373,7 @@ def setup_service(service_name, instance_name, client, marathon_config,
         return (1, error_msg)
 
     full_id = complete_config['id']
+    service_namespace_config = marathon_tools.load_service_namespace_config(service_name, instance_name)
 
     log.info("Desired Marathon instance id: %s", full_id)
     return deploy_service(
@@ -382,10 +383,10 @@ def setup_service(service_name, instance_name, client, marathon_config,
         config=complete_config,
         client=client,
         bounce_method=service_marathon_config.get_bounce_method(),
-        drain_method_name=service_marathon_config.get_drain_method(),
-        drain_method_params=service_marathon_config.get_drain_method_params(),
+        drain_method_name=service_marathon_config.get_drain_method(service_namespace_config),
+        drain_method_params=service_marathon_config.get_drain_method_params(service_namespace_config),
         nerve_ns=service_marathon_config.get_nerve_namespace(),
-        bounce_health_params=service_marathon_config.get_bounce_health_params(),
+        bounce_health_params=service_marathon_config.get_bounce_health_params(service_namespace_config),
     )
 
 

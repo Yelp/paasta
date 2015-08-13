@@ -42,6 +42,9 @@ class TestSetupMarathonJob:
         soa_dir='no_more',
         verbose=False,
     )
+    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
+        'mode': 'http'
+    })
 
     def test_main_success(self):
         fake_client = mock.MagicMock()
@@ -631,6 +634,7 @@ class TestSetupMarathonJob:
         }
         fake_bounce = 'trampoline'
         fake_drain_method = 'noop'
+        fake_drain_method_params = {}
         with contextlib.nested(
             mock.patch(
                 'paasta_tools.marathon_tools.create_complete_config',
@@ -654,9 +658,20 @@ class TestSetupMarathonJob:
                 return_value=fake_drain_method,
                 autospec=True,
             ),
+            mock.patch.object(
+                self.fake_marathon_service_config,
+                'get_drain_method_params',
+                return_value=fake_drain_method_params,
+                autospec=True,
+            ),
             mock.patch(
                 'paasta_tools.marathon_tools.load_marathon_service_config',
                 return_value=self.fake_marathon_service_config,
+                autospec=True,
+            ),
+            mock.patch(
+                'paasta_tools.marathon_tools.load_service_namespace_config',
+                return_value=self.fake_service_namespace_config,
                 autospec=True,
             ),
         ) as (
@@ -664,7 +679,9 @@ class TestSetupMarathonJob:
             deploy_service_patch,
             get_bounce_patch,
             get_drain_method_patch,
+            get_drain_method_params_patch,
             read_service_conf_patch,
+            read_namespace_conf_patch,
         ):
             status, output = setup_marathon_job.setup_service(
                 fake_name,
@@ -682,8 +699,7 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config
             )
             get_bounce_patch.assert_called_once_with()
-            get_drain_method_patch.assert_called_once_with()
-
+            get_drain_method_patch.assert_called_once_with(read_namespace_conf_patch.return_value)
             deploy_service_patch.assert_called_once_with(
                 service_name=fake_name,
                 instance_name=fake_instance,
@@ -692,9 +708,10 @@ class TestSetupMarathonJob:
                 client=fake_client,
                 bounce_method=fake_bounce,
                 drain_method_name=fake_drain_method,
-                drain_method_params={},
+                drain_method_params=fake_drain_method_params,
                 nerve_ns=self.fake_marathon_service_config.get_nerve_namespace(),
-                bounce_health_params=self.fake_marathon_service_config.get_bounce_health_params(),
+                bounce_health_params=self.fake_marathon_service_config.get_bounce_health_params(
+                    read_namespace_conf_patch.return_value),
             )
 
     def test_setup_service_srv_complete_config_raises(self):
