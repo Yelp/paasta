@@ -1,3 +1,10 @@
+paasta-tools (0.12.52-yelp1) lucid; urgency=low
+
+  * 0.12.52 tagged with 'make release'
+    Commit: Fix paasta info
+
+ -- Keshav Varma <keshav@yelp.com>  Fri, 14 Aug 2015 16:27:16 -0700
+
 paasta-tools (0.12.51-yelp1) lucid; urgency=low
 
   * 0.12.51 tagged with 'make release'
