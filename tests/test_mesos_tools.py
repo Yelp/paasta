@@ -1,3 +1,4 @@
+import mesos.cli.master
 import mock
 import requests
 from pytest import raises
@@ -101,3 +102,33 @@ def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
     }
     actual = mesos_tools.get_mesos_slaves_grouped_by_attribute(fake_attribute)
     assert actual == expected
+
+
+def test_fetch_mesos_state_from_leader_works_on_elected_leader():
+    # Elected leaders return 'elected_time' to indicate when
+    # they were elected.
+    good_fake_state = {
+        "activated_slaves": 3,
+        "cluster": "test",
+        "completed_frameworks": [],
+        "deactivated_slaves": 0,
+        "elected_time": 1439503288.00787,
+        "failed_tasks": 1,
+    }
+    mesos.cli.master.CURRENT.state = good_fake_state
+    assert mesos_tools.fetch_mesos_state_from_leader() == good_fake_state
+
+
+def test_fetch_mesos_state_from_leader_raises_on_non_elected_leader():
+    # Non-elected leaders do not return 'elected_time' in their state
+    # because they were not elected.
+    un_elected_fake_state = {
+        "activated_slaves": 3,
+        "cluster": "test",
+        "completed_frameworks": [],
+        "deactivated_slaves": 0,
+        "failed_tasks": 1,
+    }
+    mesos.cli.master.CURRENT.state = un_elected_fake_state
+    with raises(mesos_tools.MasterNotAvailableException):
+        assert mesos_tools.fetch_mesos_state_from_leader() == un_elected_fake_state
