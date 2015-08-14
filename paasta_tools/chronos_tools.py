@@ -137,7 +137,8 @@ class ChronosJobConfig(InstanceConfig):
         return self.job_name
 
     def get_owner(self):
-        return monitoring_tools.get_team_email_address(self.get_service_name(), overrides=self.get_monitoring())
+        overrides = self.get_monitoring()
+        return monitoring_tools.get_team(overrides=overrides, service_name=self.get_service_name())
 
     def get_args(self):
         return self.config_dict.get('args')

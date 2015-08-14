@@ -220,9 +220,9 @@ class TestChronosTools:
         assert actual == expected
 
     def test_get_owner(self):
-        fake_owner = 'fake_owner'
-        with mock.patch('monitoring_tools.get_team_email_address', autospec=True) as email_patch:
-            email_patch.return_value = fake_owner
+        fake_owner = 'fake_team'
+        with mock.patch('monitoring_tools.get_team', autospec=True) as mock_get_team:
+            mock_get_team.return_value = fake_owner
             actual = self.fake_chronos_job_config.get_owner()
             assert actual == fake_owner
 
@@ -465,7 +465,7 @@ class TestChronosTools:
     def test_format_chronos_job_dict(self):
         fake_service_name = 'test_service'
         fake_job_name = 'test_job'
-        fake_owner = 'test@test.com'
+        fake_owner = 'test_team'
         fake_command = 'echo foo >> /tmp/test_service_log'
         fake_schedule = 'R10/2012-10-01T05:52:00Z/PT1M'
         fake_epsilon = 'PT60S'
@@ -505,7 +505,7 @@ class TestChronosTools:
                 'type': 'DOCKER'
             }
         }
-        with mock.patch('monitoring_tools.get_team_email_address', return_value=fake_owner):
+        with mock.patch('monitoring_tools.get_team', return_value=fake_owner):
             actual = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes)
             assert actual == expected
 
@@ -653,20 +653,20 @@ class TestChronosTools:
         assert actual == expected
 
     def test_create_complete_config(self):
-        fake_owner = 'test@test.com'
+        fake_owner = 'test_team'
         with contextlib.nested(
             mock.patch('chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=self.fake_chronos_job_config),
             mock.patch('chronos_tools.get_code_sha_from_dockerurl', autospec=True, return_value="sha"),
             mock.patch('chronos_tools.get_config_hash', autospec=True, return_value="hash"),
-            mock.patch('monitoring_tools.get_team_email_address', return_value=fake_owner)
+            mock.patch('monitoring_tools.get_team', return_value=fake_owner)
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
             code_sha_patch,
             config_hash_patch,
-            get_team_email_address_patch,
+            mock_get_team,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
@@ -696,7 +696,7 @@ class TestChronosTools:
             assert actual == expected
 
     def test_create_complete_config_desired_state_start(self):
-        fake_owner = 'test@test.com'
+        fake_owner = 'test_team'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
             self.fake_service_name,
             self.fake_job_name,
@@ -712,13 +712,13 @@ class TestChronosTools:
                        autospec=True, return_value=fake_chronos_job_config),
             mock.patch('chronos_tools.get_code_sha_from_dockerurl', autospec=True, return_value="sha"),
             mock.patch('chronos_tools.get_config_hash', autospec=True, return_value="hash"),
-            mock.patch('monitoring_tools.get_team_email_address', return_value=fake_owner)
+            mock.patch('monitoring_tools.get_team', return_value=fake_owner)
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
             code_sha_patch,
             config_hash_patch,
-            get_team_email_address_patch,
+            mock_get_team,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
@@ -764,13 +764,13 @@ class TestChronosTools:
                        autospec=True, return_value=fake_chronos_job_config),
             mock.patch('chronos_tools.get_code_sha_from_dockerurl', autospec=True, return_value="sha"),
             mock.patch('chronos_tools.get_config_hash', autospec=True, return_value="hash"),
-            mock.patch('monitoring_tools.get_team_email_address', return_value=fake_owner)
+            mock.patch('monitoring_tools.get_team', return_value=fake_owner)
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
             code_sha_patch,
             config_hash_patch,
-            get_team_email_address_patch,
+            mock_get_team,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')

@@ -80,7 +80,7 @@ Each job configuration MAY specify the following options:
 
   * ``cmd``: The command to execute. Defaults to the command in your Docker image.
 
-  * ``epsilon``: If Chronos misses the scheduled run time for any reason, it will still run the job if the time is within this interval. The value must be formatted like an ISO 8601 Duration. See: https://en.wikipedia.org/wiki/ISO_8601#Durations. Defaults to 'PT60S'.
+  * ``epsilon``: If Chronos misses the scheduled run time for any reason, it will still run the job if the time is within this interval. The value must be formatted like an ISO 8601 Duration. See: https://en.wikipedia.org/wiki/ISO_8601#Durations. Defaults to 'PT60S', indicating that a job may be launched up to a minute late.
 
   * ``retries``: Number of retries to attempt if a command returns a non-zero exit status. Defaults to 2.
 

@@ -43,7 +43,7 @@ fake_service_config = {
     "cpus": 0.1,
     "disabled": False,
     "command": "fake command",
-    "owner": "paasta@yelp.com",
+    "owner": "fake_team",
     "async": True,
     "disk": 256
 }
