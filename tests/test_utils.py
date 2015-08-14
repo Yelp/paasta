@@ -467,3 +467,15 @@ def test_get_docker_url_no_error():
 def test_get_docker_url_with_no_docker_image():
     with raises(utils.NoDockerImageError):
         utils.get_docker_url('fake_registry', None)
+
+
+def test_run_cancels_timer_thread_on_keyboard_interrupt():
+    with contextlib.nested(
+        mock.patch('utils.Popen.wait',  side_effect=KeyboardInterrupt),
+        mock.patch('utils.threading.Timer', autospect=True),
+    ) as (
+        mock_popen,
+        mock_timer
+    ):
+        utils._run('sh echo foo', timeout=10)
+        assert mock_timer.cancel.called

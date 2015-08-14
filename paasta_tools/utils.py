@@ -437,6 +437,11 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
             )
         output.append(e.strerror.rstrip('\n'))
         returncode = e.errno
+    except (KeyboardInterrupt, SystemExit):
+        # need to clean up the timing thread here
+        if timeout:
+            proctimer.cancel()
+        raise
     # Stop the timer
     if timeout:
         proctimer.cancel()
