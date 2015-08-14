@@ -1,4 +1,3 @@
-import copy
 import json
 import logging
 import os
@@ -8,18 +7,24 @@ import urlparse
 import chronos
 import isodate
 
+import monitoring_tools
 import service_configuration_lib
-from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
-from paasta_tools.utils import load_deployments_json
-from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_docker_url
+from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import load_deployments_json
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+
 
 # In Marathon spaces are not allowed, in Chronos periods are not allowed.
 # In the Chronos docs a space is suggested as the natural separator
 SPACER = " "
+# Until Chronos supports dots in the job name, we use this separator internally
+INTERNAL_SPACER = '.'
+
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -110,9 +115,10 @@ def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA
     return ChronosJobConfig(service_name, job_name, service_chronos_jobs[job_name], branch_dict)
 
 
-class ChronosJobConfig(dict):
+class ChronosJobConfig(InstanceConfig):
 
     def __init__(self, service_name, job_name, config_dict, branch_dict):
+        super(ChronosJobConfig, self).__init__(config_dict, branch_dict)
         self.service_name = service_name
         self.job_name = job_name
         self.config_dict = config_dict
@@ -124,27 +130,41 @@ class ChronosJobConfig(dict):
                 and (self.config_dict == other.config_dict)
                 and (self.branch_dict == other.branch_dict))
 
-    def get(self, param):
-        config_dict_params = ['description', 'command', 'args', 'shell', 'epsilon', 'executor',
-                              'executor_flags', 'retries', 'owner', 'owner_name', 'async', 'cpus', 'mem',
-                              'disk', 'disabled', 'uris', 'schedule', 'schedule_time_zone', 'parents',
-                              'user_to_run_as', 'container', 'data_job', 'environment_variables', 'constraints']
-        branch_dict_params = ['docker_image', 'desired_state', 'force_bounce']
+    def get_service_name(self):
+        return self.service_name
 
-        if param in config_dict_params:
-            return self.config_dict.get(param)
-        elif param in branch_dict_params:
-            return self.branch_dict.get(param)
-        elif param == 'service_name':
-            return self.service_name
-        elif param == 'job_name':
-            return self.job_name
-        else:
-            return None
+    def get_job_name(self):
+        return self.job_name
 
-    # TODO maybe these should be private (e.g. _check_mem) since only check_param should call them?
+    def get_owner(self):
+        return monitoring_tools.get_team_email_address(self.get_service_name(), overrides=self.get_monitoring())
+
+    def get_args(self):
+        return self.config_dict.get('args')
+
+    def get_env(self):
+        return self.config_dict.get('env', [])
+
+    def get_constraints(self):
+        return self.config_dict.get('constraints')
+
+    def get_epsilon(self):
+        return self.config_dict.get('epsilon', 'PT60S')
+
+    def get_retries(self):
+        return self.config_dict.get('retries', 2)
+
+    def get_disabled(self):
+        return self.config_dict.get('disabled', False)
+
+    def get_schedule(self):
+        return self.config_dict.get('schedule')
+
+    def get_schedule_time_zone(self):
+        return self.config_dict.get('schedule_time_zone')
+
     def check_epsilon(self):
-        epsilon = self.get('epsilon')
+        epsilon = self.get_epsilon()
         try:
             isodate.parse_duration(epsilon)
         except isodate.ISO8601Error:
@@ -152,38 +172,10 @@ class ChronosJobConfig(dict):
         return True, ''
 
     def check_retries(self):
-        retries = self.get('retries')
+        retries = self.get_retries()
         if retries is not None:
-            if not isinstance(self.get('retries'), int):
+            if not isinstance(retries, int):
                 return False, 'The specified retries value "%s" is not a valid int.' % retries
-        return True, ''
-
-    def check_async(self):
-        async = self.get('async')
-        if async is not None:
-            if async is True:
-                return False, 'The config specifies that the job is async, which we don\'t support.'
-        return True, ''
-
-    def check_cpus(self):
-        cpus = self.get('cpus')
-        if cpus is not None:
-            if not isinstance(cpus, float) and not isinstance(cpus, int):
-                return False, 'The specified cpus value "%s" is not a valid float.' % cpus
-        return True, ''
-
-    def check_mem(self):
-        mem = self.get('mem')
-        if mem is not None:
-            if not isinstance(mem, float) and not isinstance(mem, int):
-                return False, 'The specified mem value "%s" is not a valid float.' % mem
-        return True, ''
-
-    def check_disk(self):
-        disk = self.get('disk')
-        if disk is not None:
-            if not isinstance(disk, float) and not isinstance(disk, int):
-                return False, 'The specified disk value "%s" is not a valid float.' % disk
         return True, ''
 
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
@@ -194,15 +186,23 @@ class ChronosJobConfig(dict):
 
     def check_schedule(self):
         msgs = []
-        schedule = self.get('schedule')
+        schedule = self.get_schedule()
 
         if schedule is not None:
-            repeat, start_time, interval = str.split(schedule, '/')  # the parts have separate validators
-            if start_time != '':  # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
-                # NOTE isodate accepts a time without time zone given (like 19:20:30 vs. 19:20:30-0800) as local time
-                # do we want a time zone to be explicitly specified or is this default okay?
+            try:
+                repeat, start_time, interval = str.split(schedule, '/')  # the parts have separate validators
+            except ValueError:
+                return False, 'The specified schedule "%s" is invalid' % schedule
+
+            # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
+            if start_time == '':
+                msgs.append('The specified schedule "%s" does not contain a start time' % schedule)
+            else:
+                # Check if start time contains time zone information
                 try:
-                    isodate.parse_datetime(start_time)
+                    dt = isodate.parse_datetime(start_time)
+                    if not hasattr(dt, 'tzinfo'):
+                        msgs.append('The specified start time "%s" must contain a time zone' % start_time)
                 except isodate.ISO8601Error as exc:
                     msgs.append('The specified start time "%s" in schedule "%s" '
                                 'does not conform to the ISO 8601 format:\n%s' % (start_time, schedule, str(exc)))
@@ -216,6 +216,8 @@ class ChronosJobConfig(dict):
             if not self._check_schedule_repeat_helper(repeat):
                 msgs.append('The specified repeat "%s" in schedule "%s" '
                             'does not conform to the ISO 8601 format.' % (repeat, schedule))
+        else:
+            msgs.append('You must specify a "schedule" in your configuration')
 
         return len(msgs) == 0, '\n'.join(msgs)
 
@@ -228,7 +230,7 @@ class ChronosJobConfig(dict):
     # TODO maybe we don't even want to support this a a separate parameter? instead require it to be specified
     # as a component of the 'schedule' parameter?
     def check_schedule_time_zone(self):
-        time_zone = self.get('schedule_time_zone')
+        time_zone = self.get_schedule_time_zone()
         if time_zone is not None:
             return True, ''
             # try:
@@ -242,12 +244,10 @@ class ChronosJobConfig(dict):
         check_methods = {
             'epsilon': self.check_epsilon,
             'retries': self.check_retries,
-            'async': self.check_async,
             'cpus': self.check_cpus,
             'mem': self.check_mem,
-            'disk': self.check_disk,
             'schedule': self.check_schedule,
-            'schedule_time_zone': self.check_schedule_time_zone,
+            'scheduleTimeZone': self.check_schedule_time_zone,
         }
         supported_params_without_checks = ['description', 'command', 'owner', 'disabled']
         if param in check_methods:
@@ -257,76 +257,49 @@ class ChronosJobConfig(dict):
         else:
             return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
 
+    def format_chronos_job_dict(self, docker_url, docker_volumes):
 
-# defaults taken from the Chronos API docs https://mesos.github.io/chronos/docs/api.html#job-configuration
-def set_missing_params_to_defaults(chronos_job_config):
-    new_chronos_job_config = copy.deepcopy(chronos_job_config)
-    chronos_config_defaults = {
-        # 'shell': 'true',  # we don't support this param, but it does have a default specified by the Chronos docs
-        'epsilon': 'PT60S',
-        'retries': 2,
-        'async': False,  # we don't support this param, but it does have a default specified by the Chronos docs
-        'cpus': 0.1,
-        'mem': 128,
-        'disk': 256,
-        'disabled': False,
-        # 'data_job': False,  # we don't support this param, but it does have a default specified by the Chronos docs
-    }
+        valid, error_msgs = self.validate()
+        if not valid:
+            raise InvalidChronosConfigError("\n".join(error_msgs))
 
-    for param in chronos_config_defaults.keys():
-        if new_chronos_job_config.get(param) is None:
-            new_chronos_job_config.config_dict[param] = chronos_config_defaults[param]
-            # TODO if we want defaults for values outside of config_dict, we need add'l logic to handle them
-    return new_chronos_job_config
+        complete_config = {
+            'name': self.get_job_name(),
+            'container': {
+                'image': docker_url,
+                'network': 'BRIDGE',
+                'type': 'DOCKER',
+                'volumes': docker_volumes
+            },
+            'environmentVariables': self.get_env(),
+            'mem': self.get_mem(),
+            'cpus': self.get_cpus(),
+            'constraints': self.get_constraints(),
+            'command': self.get_cmd(),
+            'arguments': self.get_args(),
+            'epsilon': self.get_epsilon(),
+            'retries': self.get_retries(),
+            'async': False,  # we don't support async jobs
+            'disabled': self.get_disabled(),
+            'owner': self.get_owner(),
+            'schedule': self.get_schedule(),
+            'scheduleTimeZone': self.get_schedule_time_zone(),
+        }
+        log.info("Complete configuration for instance is: %s", complete_config)
+        return complete_config
 
+    # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
+    def validate(self):
+        error_msgs = []
+        # Use InstanceConfig to validate shared config keys like cpus and mem
+        error_msgs.extend(super(ChronosJobConfig, self).validate())
 
-# 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
-def check_job_reqs(chronos_job_config):
-    missing_param_msg = 'Your Chronos config is missing "%s", which is a required parameter.'
-    msgs = []
+        for param in ['epsilon', 'retries', 'cpus', 'mem', 'schedule', 'scheduleTimeZone']:
+            check_passed, check_msg = self.check(param)
+            if not check_passed:
+                error_msgs.append(check_msg)
 
-    if chronos_job_config.get('schedule') is None and chronos_job_config.get('parents') is None:
-        msgs.append('Your Chronos config contains neither "schedule" nor "parents". One is required.')
-    elif chronos_job_config.get('schedule') is not None and chronos_job_config.get('parents') is not None:
-        msgs.append('Your Chronos config contains both "schedule" and "parents". Only one is allowed.')
-
-    # TODO add schedule_time_zone
-    for param in ['command', 'epsilon', 'owner', 'async']:
-        if chronos_job_config.get(param) is None:
-            msgs.append(missing_param_msg % param)
-
-    return len(msgs) == 0, msgs
-
-
-def format_chronos_job_dict(chronos_job_config, docker_url, docker_volumes):
-    complete_config_dict = dict()
-    complete_chronos_job_config = set_missing_params_to_defaults(chronos_job_config)
-    error_msgs = []
-
-    # TODO once we use multiple config files, this needs to accomodate that
-    for param in complete_chronos_job_config.config_dict.keys():
-        check_passed, check_msg = complete_chronos_job_config.check(param)
-        if check_passed:
-            complete_config_dict[param] = complete_chronos_job_config.get(param)
-        else:
-            error_msgs.append(check_msg)
-
-    # 'name' is the term Chronos uses, we store that value as 'job_name' to differentiate from 'service_name'
-    complete_config_dict['name'] = complete_chronos_job_config.get('job_name')
-    complete_config_dict['container'] = {
-        'image': docker_url,
-        'network': 'BRIDGE',
-        'type': 'DOCKER',
-        'volumes': docker_volumes
-    }
-    reqs_passed, reqs_msgs = check_job_reqs(complete_chronos_job_config)
-    if not reqs_passed:
-        error_msgs.extend(reqs_msgs)
-
-    if len(error_msgs) > 0:
-        raise InvalidChronosConfigError('\n'.join(error_msgs))
-
-    return complete_config_dict
+        return len(error_msgs) == 0, error_msgs
 
 
 def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -370,18 +343,56 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     chronos_job_config = load_chronos_job_config(
         service, job_name, system_paasta_config.get_cluster(), soa_dir=soa_dir)
     docker_url = get_docker_url(
-        system_paasta_config.get_docker_registry(), chronos_job_config.get('docker_image'))
+        system_paasta_config.get_docker_registry(), chronos_job_config.get_docker_image())
 
-    complete_config = format_chronos_job_dict(
-        chronos_job_config,
+    complete_config = chronos_job_config.format_chronos_job_dict(
         docker_url,
         system_paasta_config.get_volumes(),
     )
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(complete_config)
     tag = "%s%s%s" % (code_sha, SPACER, config_hash)
+
     # Chronos clears the history for a job whenever it is updated, so we use a new job name for each revision
     # so that we can keep history of old job revisions rather than just the latest version
     full_id = get_job_id(service, job_name, tag)
     complete_config['name'] = full_id
+    desired_state = chronos_job_config.get_desired_state()
+
+    # If the job was previously stopped, we should stop the new job as well
+    if desired_state == 'start':
+        complete_config['disabled'] = False
+    elif desired_state == 'stop':
+        complete_config['disabled'] = True
+
     return complete_config
+
+
+def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=False):
+    """Retrieves Chronos jobs with names that match a specified pattern.
+
+    :param pattern: a Python style regular expression that the job name will be matched against
+                    (after being passed to re.compile)
+    :param client: Chronos client object
+    :param max_expected: maximum number of results that is expected. If exceeded, raises a ValueError
+    :param include_disabled: boolean indicating if disabled jobs should be included in matches
+    """
+    try:
+        regexp = re.compile(pattern)
+    except re.error:
+        raise ValueError("Invalid regex pattern '%s'" % pattern)
+    jobs = client.list()
+    matching_jobs = []
+    for job in jobs:
+        if regexp.search(job['name']):
+            if job['disabled'] and not include_disabled:
+                continue
+            else:
+                matching_jobs.append(job)
+
+    if max_expected and len(matching_jobs) > max_expected:
+        matching_ids = [job['name'] for job in matching_jobs]
+        raise ValueError("Found %d jobs for pattern '%s', but max_expected is set to %d (ids: %s)" %
+                         (len(matching_jobs), pattern, max_expected, ', '.join(matching_ids)))
+
+    return matching_jobs

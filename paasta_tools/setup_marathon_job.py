@@ -40,6 +40,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import configure_log
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 
@@ -72,26 +73,12 @@ def send_event(name, instance, soa_dir, status, output):
     :param instance: The instance of the service the event is about
     :param soa_dir: The service directory to read monitoring information from
     :param status: The status to emit for this event
-    :param output: The output to emit for this event"""
-    # This function assumes the input is a string like "mumble.main"
-    framework = 'marathon'
-    team = monitoring_tools.get_team(framework, name, instance, soa_dir)
-    if not team:
-        return
+    :param output: The output to emit for this event
+    """
+    cluster = load_system_paasta_config().get_cluster()
+    monitoring_overrides = marathon_tools.load_marathon_service_config(name, instance, cluster).get_monitoring()
     check_name = 'setup_marathon_job.%s%s%s' % (name, ID_SPACER, instance)
-    runbook = 'http://y/paasta-troubleshooting'
-    result_dict = {
-        'tip': monitoring_tools.get_tip(framework, name, instance, soa_dir),
-        'notification_email': monitoring_tools.get_notification_email(framework, name, instance, soa_dir),
-        'irc_channels': monitoring_tools.get_irc_channels(framework, name, instance, soa_dir),
-        'ticket': monitoring_tools.get_ticket(framework, name, instance, soa_dir),
-        'project': monitoring_tools.get_project(framework, name, instance, soa_dir),
-        'alert_after': '5m',
-        'check_every': '1m',
-        'realert_every': -1,
-        'source': 'paasta-%s' % marathon_tools.get_cluster(),
-    }
-    pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
+    monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
 
 def get_main_marathon_config():
@@ -443,28 +430,27 @@ def main():
         send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
-
-    if service_instance_config:
-        try:
-            status, output = setup_service(service_name, instance_name, client, marathon_config,
-                                           service_instance_config)
-            sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
-            send_event(service_name, instance_name, soa_dir, sensu_status, output)
-            # We exit 0 because the script finished ok and the event was sent to the right team.
-            sys.exit(0)
-        except (KeyError, TypeError, AttributeError):
-            import traceback
-            error_str = traceback.format_exc()
-            log.error(error_str)
-            send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
-            # We exit 0 because the script finished ok and the event was sent to the right team.
-            sys.exit(0)
-    else:
+    except marathon_tools.NoMarathonConfigurationForService:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
                     (args.service_instance, marathon_tools.get_cluster())
         log.error(error_msg)
         send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)
+
+    try:
+        status, output = setup_service(service_name, instance_name, client, marathon_config,
+                                       service_instance_config)
+        sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
+        send_event(service_name, instance_name, soa_dir, sensu_status, output)
+        # We exit 0 because the script finished ok and the event was sent to the right team.
+        sys.exit(0)
+    except (KeyError, TypeError, AttributeError):
+        import traceback
+        error_str = traceback.format_exc()
+        log.error(error_str)
+        send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
+        # We exit 0 because the script finished ok and the event was sent to the right team.
+        sys.exit(0)
 
 
 if __name__ == "__main__":

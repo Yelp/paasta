@@ -45,7 +45,7 @@ setup(
     ],
     scripts = [
         'paasta_tools/setup_marathon_job.py',
-        'paasta_tools/setup_chronos_jobs.py',
+        'paasta_tools/setup_chronos_job.py',
         'paasta_tools/am_i_mesos_leader.py',
         'paasta_tools/paasta_execute_docker_command.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',

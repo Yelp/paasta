@@ -42,6 +42,94 @@ DEFAULT_LOGLEVEL = 'event'
 no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
 
+class InstanceConfig(dict):
+
+    def __init__(self, config_dict, branch_dict):
+        self.config_dict = config_dict
+        self.branch_dict = branch_dict
+
+    def get_mem(self):
+        """Gets the memory required from the service's configuration.
+
+        Defaults to 1000 (1G) if no value specified in the config.
+
+        :returns: The amount of memory specified by the config, 1000 if not specified"""
+        mem = self.config_dict.get('mem')
+        return mem if mem else 1000
+
+    def get_cpus(self):
+        """Gets the number of cpus required from the service's configuration.
+
+        Defaults to .25 (1/4 of a cpu) if no value specified in the config.
+
+        :returns: The number of cpus specified in the config, .25 if not specified"""
+        cpus = self.config_dict.get('cpus')
+        return cpus if cpus else .25
+
+    def get_cmd(self):
+        """Get the docker cmd specified in the service's configuration.
+
+        Defaults to null if not specified in the config.
+
+        :returns: A string specified in the config, None if not specified"""
+        return self.config_dict.get('cmd', None)
+
+    def get_monitoring(self):
+        """Get monitoring overrides defined for the given instance"""
+        return self.config_dict.get('monitoring', {})
+
+    def get_docker_image(self):
+        """Get the docker image name (with tag) for a given service branch from
+        a generated deployments.json file."""
+        return self.branch_dict.get('docker_image', '')
+
+    def get_desired_state(self):
+        """Get the desired state (either 'start' or 'stop') for a given service
+        branch from a generated deployments.json file."""
+        return self.branch_dict.get('desired_state', 'start')
+
+    def get_force_bounce(self):
+        """Get the force_bounce token for a given service branch from a generated
+        deployments.json file. This is a token that, when changed, indicates that
+        the instance should be recreated and bounced, even if no other
+        parameters have changed. This may be None or a string, generally a
+        timestamp.
+        """
+        return self.branch_dict.get('force_bounce', None)
+
+    def check_cpus(self):
+        cpus = self.get_cpus()
+        if cpus is not None:
+            if not isinstance(cpus, float) and not isinstance(cpus, int):
+                return False, 'The specified cpus value "%s" is not a valid float.' % cpus
+        return True, ''
+
+    def check_mem(self):
+        mem = self.get_mem()
+        if mem is not None:
+            if not isinstance(mem, float) and not isinstance(mem, int):
+                return False, 'The specified mem value "%s" is not a valid float.' % mem
+        return True, ''
+
+    def check(self, param):
+        check_methods = {
+            'cpus': self.check_cpus,
+            'mem': self.check_mem,
+        }
+        if param in check_methods:
+            return check_methods[param]()
+        else:
+            return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
+
+    def validate(self):
+        error_msgs = []
+        for param in ['cpus', 'mem']:
+            check_passed, check_msg = self.check(param)
+            if not check_passed:
+                error_msgs.append(check_msg)
+        return error_msgs
+
+
 class PaastaColors:
 
     """Collection of static variables and methods to assist in coloring text."""
@@ -633,10 +721,10 @@ class NoDockerImageError(Exception):
 
 def get_docker_url(registry_uri, docker_image):
     """Compose the docker url.
-
     :param registry_uri: The URI of the docker registry
     :param docker_image: The docker image name, with tag if desired
-    :returns: '<registry_uri>/<docker_image>'"""
+    :returns: '<registry_uri>/<docker_image>'
+    """
     if not docker_image:
         raise NoDockerImageError('Docker url not available because there is no docker_image')
     docker_url = '%s/%s' % (registry_uri, docker_image)
@@ -649,6 +737,8 @@ def get_config_hash(config, force_bounce=None):
     the first 8 characters so things are not really long.
 
     :param config: The configuration to hash
+    :param force_bounce: a timestamp (in the form of a string) that is appended before hashing
+                         that can be used to force a hash change
     :returns: A MD5 hash of str(config)"""
     hasher = hashlib.md5()
     hasher.update(str(config) + (force_bounce or ''))

@@ -16,9 +16,9 @@ The yaml where marathon jobs are actually defined.
 
 Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancename MAY have:
 
-  * ``cpus``: Number of CPUs an instance needs
+  * ``cpus``: Number of CPUs an instance needs.
 
-  * ``mem``: Memory (in MB) an instance needs
+  * ``mem``: Memory (in MB) an instance needs.
 
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
@@ -36,6 +36,8 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
     * **WARNING**: A PORT variable is provided to the docker image, but it represents the EXTERNAL port, not the internal one. The internal service MUST listen on 8888, so this PORT variable confuses some service stacks that are listening for this variable. Such services MUST overwrite this environment variable to function. (``PORT=8888 ./uwisgi.py```) We tried to work around this, see `PAASTA-267 <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
 
+  *  ``monitoring``: A dictionary of values that configure overrides for monitoring parameters that will take precedence over what is in `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
+
 In addition, each instancename MAY configure additional Marathon healthcheck options:
 
   *  ``healthcheck_mode``: One of ``cmd``, ``tcp``, or ``http``. If your service uses Smartstack, then this must match the value of the ``mode`` key defined for this instance in ``smartstack.yaml``. If set to ``cmd`` then PaaSTA will execute ``healthcheck_cmd`` and examine the return code.
@@ -50,22 +52,17 @@ In addition, each instancename MAY configure additional Marathon healthcheck opt
 
   *  ``healthcheck_max_consecutive_failures``: Marathon will kill the current task if this many healthchecks fail consecutively. Defaults to 6 attempts.
 
+
 Many of these keys are passed directly to Marathon. Their docs aren't super clear about all these but start there: https://mesosphere.github.io/marathon/docs/rest-api.html
-
-Each instance MAY configure overrides for monitoring parameters that
-will take precidence over what is in ``monitoring.yaml``. These are things like
-``team``, ``page``, etc. See the `monitoring.yaml`_ section for a list of valid
-monitoring keys and values.
-
 
 Notes:
 
 .. [#note] The Marathon docs and the Docker docs are inconsistent in their explanation of args/cmd:
-    
+
     The `Marathon docs <https://mesosphere.github.io/marathon/docs/rest-api.html#post-/v2/apps>`_ state that it is invalid to supply both cmd and args in the same app.
-    
+
     The `Docker docs <https://docs.docker.com/reference/builder/#entrypoint>`_ do not state that it's incorrect to specify both args and cmd. Furthermore, they state that "Command line arguments to docker run <image> will be appended after all elements in an exec form ENTRYPOINT, and will override all elements specified using CMD" which implies that both cmd and args can be provided, but cmd will be silently ignored.
-    
+
     To avoid issues resulting from this discrepancy, we abide by the stricter requirements from Marathon and check that no more than one of cmd and args is specified. If both are specified, an exception is thrown with an explanation of the problem, and the program terminates.
 
 chronos-[clustername].yaml
@@ -73,40 +70,27 @@ chronos-[clustername].yaml
 
 The yaml where Chronos jobs are defined. Top-level keys are the job names.
 
-Each job configuration may specify the following options (see below for the requirements of different job types):
+Most of the descriptions below are taken directly from the Chronos API docs, which can be found here: https://mesos.github.io/chronos/docs/api.html#job-configuration
 
-Most of these descriptions are taken directly from the Chronos API docs, which can be found here: https://mesos.github.io/chronos/docs/api.html#job-configuration
-
-  * ``description``: A description of what the job does
-
-  * ``command``: The command to execute
-
-  * ``epsilon``: If Chronos misses the scheduled run time for any reason, it will still run the job if the time is within this interval. The value must be formatted like an ISO 8601 Duration. See: https://en.wikipedia.org/wiki/ISO_8601#Durations
-
-  * ``retries``: Number of retries to attempt if a command returns a non-zero exit status
-
-  * ``owner``: Email addresses to send job failure notifications. Use comma-separated list for multiple addresses.
-
-  * ``cpus``: Amount of "Mesos CPUs" for this job.
-
-  * ``mem``: Amount of Mesos Memory in MB for this job.
-
-  * ``disk``: Amount of Mesos disk in MB for this job.
-
-  * ``disabled``: If set to ``True``, this job will not be run.
+Each job configuration MUST specify the following options:
 
   * ``schedule``: When the job should run. The value must be specified in the cryptic ISO 8601 format. See: https://en.wikipedia.org/wiki/ISO_8601 and https://mesos.github.io/chronos/docs/api.html#adding-a-scheduled-job
 
-Required parameters for each type of job:
+Each job configuration MAY specify the following options:
 
-  * "scheduled job": ``name``, ``command``, ``schedule``, ``epsilon``, ``owner``
+  * ``cmd``: The command to execute. Defaults to the command in your Docker image.
 
-  * "dependent job": ``name``, ``command``, ``parents``, ``epsilon``, ``owner``
+  * ``epsilon``: If Chronos misses the scheduled run time for any reason, it will still run the job if the time is within this interval. The value must be formatted like an ISO 8601 Duration. See: https://en.wikipedia.org/wiki/ISO_8601#Durations. Defaults to 'PT60S'.
 
-  * "Docker job": ``name``, ``command``, ``schedule`` **OR**  ``parents``, ``epsilon``, ``owner``, ``container``
+  * ``retries``: Number of retries to attempt if a command returns a non-zero exit status. Defaults to 2.
 
+  * ``disabled``: If set to ``True``, this job will not be run. Defaults to ``False``
 
-**NOTE**: Currently, only "scheduled jobs" are supported. Therefore this document does not cover the other job "types" defined by the Chronos API.
+  * ``cpus``: See the `marathon-[clustername].yaml`_ section for details
+
+  * ``mem``: See the `marathon-[clustername].yaml`_ section for details
+
+  *  ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
 
 smartstack.yaml
 ---------------

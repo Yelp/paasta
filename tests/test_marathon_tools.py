@@ -60,27 +60,6 @@ class TestMarathonTools:
     }, '/some/fake/path/fake_file.json')
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
 
-    def test_read_monitoring_config(self):
-        fake_name = 'partial'
-        fake_fname = 'acronyms'
-        fake_path = 'ever_patched'
-        fake_soa_dir = '/nail/cte/oas'
-        fake_dict = {'e': 'quail', 'v': 'snail'}
-        with contextlib.nested(
-            mock.patch('os.path.abspath', autospec=True, return_value=fake_path),
-            mock.patch('os.path.join', autospec=True, return_value=fake_fname),
-            mock.patch('service_configuration_lib.read_monitoring', autospec=True, return_value=fake_dict)
-        ) as (
-            abspath_patch,
-            join_patch,
-            read_monitoring_patch
-        ):
-            actual = marathon_tools.read_monitoring_config(fake_name, fake_soa_dir)
-            assert fake_dict == actual
-            abspath_patch.assert_called_once_with(fake_soa_dir)
-            join_patch.assert_called_once_with(fake_path, fake_name, 'monitoring.yaml')
-            read_monitoring_patch.assert_called_once_with(fake_fname)
-
     def test_load_marathon_service_config_happy_path(self):
         fake_name = 'jazz'
         fake_instance = 'solo'
@@ -987,25 +966,9 @@ class TestMarathonTools:
             assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY", "2"]]
             get_slaves_patch.assert_called_once_with('habitat')
 
-    def test_get_cpus_in_config(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cpus': -5}, {})
-        assert fake_conf.get_cpus() == -5
-
-    def test_get_cpus_in_config_float(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cpus': .66}, {})
-        assert fake_conf.get_cpus() == .66
-
-    def test_get_cpus_default(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_cpus() == .25
-
-    def test_get_mem_in_config(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'mem': -999}, {})
-        assert fake_conf.get_mem() == -999
-
-    def test_get_mem_default(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_mem() == 1000
+    def test_instance_config_getters_in_config(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'monitoring': 'test'}, {})
+        assert fake_conf.get_monitoring() == 'test'
 
     def test_get_env_default(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
@@ -1017,14 +980,6 @@ class TestMarathonTools:
         assert fake_conf.get_env() == {
             'SPECIAL_ENV': 'TRUE',
         }
-
-    def test_get_cmd_default(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_cmd() is None
-
-    def test_get_cmd_in_config(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cmd': 'FAKECMD'}, {})
-        assert fake_conf.get_cmd() == 'FAKECMD'
 
     def test_get_args_default_no_cmd(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
@@ -1043,18 +998,6 @@ class TestMarathonTools:
         fake_conf.get_cmd()
         with raises(marathon_tools.InvalidMarathonConfig):
             fake_conf.get_args()
-
-    def test_get_force_bounce(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {'force_bounce': 'blurp'})
-        assert fake_conf.get_force_bounce() == 'blurp'
-
-    def test_get_desired_state(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {'desired_state': 'stop'})
-        assert fake_conf.get_desired_state() == 'stop'
-
-    def test_get(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'foo': 'bar'}, {})
-        assert fake_conf.get('foo') == 'bar'
 
     def test_get_marathon_client(self):
         fake_url = "nothing_for_me_to_do_but_dance"

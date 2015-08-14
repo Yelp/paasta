@@ -4,7 +4,7 @@ set -e
 SCRIPTS="setup_marathon_job
 am_i_mesos_leader
 synapse_srv_namespaces_fact
-setup_chronos_jobs
+setup_chronos_job
 cleanup_marathon_jobs
 list_marathon_service_instances
 deploy_marathon_services

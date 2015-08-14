@@ -20,6 +20,7 @@ import service_configuration_lib
 
 from paasta_tools.mesos_tools import fetch_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import list_all_clusters
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
@@ -143,9 +144,10 @@ class InvalidMarathonConfig(Exception):
     pass
 
 
-class MarathonServiceConfig(object):
+class MarathonServiceConfig(InstanceConfig):
 
     def __init__(self, service_name, instance, config_dict, branch_dict):
+        super(MarathonServiceConfig, self).__init__(config_dict, branch_dict)
         self.service_name = service_name
         self.instance = instance
         self.config_dict = config_dict
@@ -162,28 +164,6 @@ class MarathonServiceConfig(object):
     def copy(self):
         return self.__class__(self.service_name, self.instance, dict(self.config_dict), dict(self.branch_dict))
 
-    def get(self, key, default=None):
-        return self.config_dict.get(key, default)
-
-    def get_docker_image(self):
-        """Get the docker image name (with tag) for a given service branch from
-        a generated deployments.json file."""
-        return self.branch_dict.get('docker_image', '')
-
-    def get_desired_state(self):
-        """Get the desired state (either 'start' or 'stop') for a given service
-        branch from a generated deployments.json file."""
-        return self.branch_dict.get('desired_state', 'start')
-
-    def get_force_bounce(self):
-        """Get the force_bounce token for a given service branch from a generated
-        deployments.json file. This is a token that, when changed, indicates that
-        the marathon job should be recreated and bounced, even if no other
-        parameters have changed. This may be None or a string, generally a
-        timestamp.
-        """
-        return self.branch_dict.get('force_bounce', None)
-
     def get_instances(self):
         """Get the number of instances specified in the service's marathon configuration.
 
@@ -197,43 +177,6 @@ class MarathonServiceConfig(object):
             return int(instances)
         else:
             return 0
-
-    def get_mem(self):
-        """Gets the memory required from the service's marathon configuration.
-
-        Defaults to 1000 (1G) if no value specified in the config.
-
-        :param service_config: The service instance's configuration dictionary
-        :returns: The amount of memory specified by the config, 1000 if not specified"""
-        mem = self.config_dict.get('mem')
-        return int(mem) if mem else 1000
-
-    def get_env(self):
-        """Gets the environment required from the service's marathon configuration.
-
-        :param service_config: The service instance's configuration dictionary
-        :returns: A dictionary with the requested env."""
-        env = self.config_dict.get('env', {})
-        return env
-
-    def get_cpus(self):
-        """Gets the number of cpus required from the service's marathon configuration.
-
-        Defaults to .25 (1/4 of a cpu) if no value specified in the config.
-
-        :param service_config: The service instance's configuration dictionary
-        :returns: The number of cpus specified in the config, .25 if not specified"""
-        cpus = self.config_dict.get('cpus')
-        return float(cpus) if cpus else .25
-
-    def get_cmd(self):
-        """Get the docker cmd specified in the service's marathon configuration.
-
-        Defaults to null if not specified in the config.
-
-        :param service_config: The service instance's configuration dictionary
-        :returns: A string specified in the config, None if not specified"""
-        return self.config_dict.get('cmd', None)
 
     def get_args(self):
         """Get the docker args specified in the service's marathon configuration.
@@ -254,6 +197,14 @@ class MarathonServiceConfig(object):
                 return args
             else:
                 raise InvalidMarathonConfig('Marathon config files can specify cmd or args, but not both.')
+
+    def get_env(self):
+        """Gets the environment required from the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: A dictionary with the requested env."""
+        env = self.config_dict.get('env', {})
+        return env
 
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.
@@ -341,14 +292,14 @@ class MarathonServiceConfig(object):
             'backoff_seconds': 1,
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),
+            'env': self.get_env(),
+            'mem': int(self.get_mem()),
+            'cpus': float(self.get_cpus()),
+            'constraints': self.get_constraints(service_namespace_config),
+            'instances': self.get_instances(),
+            'cmd': self.get_cmd(),
+            'args': self.get_args(),
         }
-        complete_config['env'] = self.get_env()
-        complete_config['mem'] = self.get_mem()
-        complete_config['cpus'] = self.get_cpus()
-        complete_config['constraints'] = self.get_constraints(service_namespace_config)
-        complete_config['instances'] = self.get_instances()
-        complete_config['cmd'] = self.get_cmd()
-        complete_config['args'] = self.get_args()
         log.info("Complete configuration for instance is: %s", complete_config)
         return complete_config
 
@@ -612,18 +563,6 @@ def remove_tag_from_job_id(job_id):
     :param job_id: The job_id.
     :returns: The job_id with the tag removed, if there was one."""
     return '%s%s%s' % (job_id.split(ID_SPACER)[0], ID_SPACER, job_id.split(ID_SPACER)[1])
-
-
-def read_monitoring_config(name, soa_dir=DEFAULT_SOA_DIR):
-    """Read a service's monitoring.yaml file.
-
-    :param name: The service name
-    :param soa_dir: THe SOA configuration directory to read from
-    :returns: A dictionary of whatever was in soa_dir/name/monitoring.yaml"""
-    rootdir = os.path.abspath(soa_dir)
-    monitoring_file = os.path.join(rootdir, name, "monitoring.yaml")
-    monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
-    return monitor_conf
 
 
 def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):

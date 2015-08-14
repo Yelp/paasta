@@ -480,3 +480,54 @@ def test_run_cancels_timer_thread_on_keyboard_interrupt():
         with raises(KeyboardInterrupt):
             utils._run('sh echo foo', timeout=10)
             assert mock_timer.cancel.called
+
+
+class TestInstanceConfig:
+
+    def test_get_cpus(self):
+        fake_info = 'fake_info'
+        assert utils.InstanceConfig({'cpus': fake_info}, {}).get_cpus() == fake_info
+
+    def test_get_mem(self):
+        fake_info = 'fake_info'
+        assert utils.InstanceConfig({'mem': fake_info}, {}).get_mem() == fake_info
+
+    def test_get_monitoring(self):
+        fake_info = 'fake_info'
+        assert utils.InstanceConfig({'monitoring': fake_info}, {}).get_monitoring() == fake_info
+
+    def test_get_cpus_in_config(self):
+        fake_conf = utils.InstanceConfig({'cpus': -5}, {})
+        assert fake_conf.get_cpus() == -5
+
+    def test_get_cpus_in_config_float(self):
+        fake_conf = utils.InstanceConfig({'cpus': .66}, {})
+        assert fake_conf.get_cpus() == .66
+
+    def test_get_cpus_default(self):
+        fake_conf = utils.InstanceConfig({}, {})
+        assert fake_conf.get_cpus() == .25
+
+    def test_get_mem_in_config(self):
+        fake_conf = utils.InstanceConfig({'mem': -999}, {})
+        assert fake_conf.get_mem() == -999
+
+    def test_get_mem_default(self):
+        fake_conf = utils.InstanceConfig({}, {})
+        assert fake_conf.get_mem() == 1000
+
+    def test_get_cmd_default(self):
+        fake_conf = utils.InstanceConfig({}, {})
+        assert fake_conf.get_cmd() is None
+
+    def test_get_cmd_in_config(self):
+        fake_conf = utils.InstanceConfig({'cmd': 'FAKECMD'}, {})
+        assert fake_conf.get_cmd() == 'FAKECMD'
+
+    def test_get_force_bounce(self):
+        fake_conf = utils.InstanceConfig({}, {'force_bounce': 'blurp'})
+        assert fake_conf.get_force_bounce() == 'blurp'
+
+    def test_get_desired_state(self):
+        fake_conf = utils.InstanceConfig({}, {'desired_state': 'stop'})
+        assert fake_conf.get_desired_state() == 'stop'

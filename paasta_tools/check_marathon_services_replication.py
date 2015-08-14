@@ -29,6 +29,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.paasta_serviceinit import get_running_tasks_from_active_frameworks
 
@@ -47,32 +48,15 @@ def send_event(service_name, namespace, soa_dir, status, output):
     :param status: The status to emit for this event
     :param output: The output to emit for this event"""
     # This function assumes the input is a string like "mumble.main"
-    framework = 'marathon'
+    cluster = load_system_paasta_config().get_cluster()
+    monitoring_overrides = marathon_tools.load_marathon_service_config(
+        service_name, namespace, cluster).get_monitoring()
+    monitoring_overrides['alert_after'] = '2m'
+    monitoring_overrides['check_every'] = '1m'
+    monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service_name, soa_dir=soa_dir)
+
     check_name = 'check_marathon_services_replication.%s%s%s' % (service_name, ID_SPACER, namespace)
-    team = monitoring_tools.get_team(framework, service_name, instance=namespace, soa_dir=soa_dir)
-    if not team:
-        return
-    runbook = monitoring_tools.get_runbook(framework, service_name, instance=namespace, soa_dir=soa_dir)
-    cluster = marathon_tools.get_cluster()
-    result_dict = {
-        'tip': monitoring_tools.get_tip(
-            framework, service_name, instance=namespace, soa_dir=soa_dir),
-        'notification_email': monitoring_tools.get_notification_email(
-            framework, service_name, instance=namespace, soa_dir=soa_dir),
-        'page': monitoring_tools.get_page(
-            framework, service_name, instance=namespace, soa_dir=soa_dir),
-        'irc_channels': monitoring_tools.get_irc_channels(
-            framework, service_name, instance=namespace, soa_dir=soa_dir),
-        'ticket': monitoring_tools.get_ticket(
-            framework, service_name, instance=namespace, soa_dir=soa_dir),
-        'project': monitoring_tools.get_project(
-            framework, service_name, instance=namespace, soa_dir=soa_dir),
-        'alert_after': '2m',
-        'check_every': '1m',
-        'realert_every': -1,
-        'source': 'paasta-%s' % cluster
-    }
-    pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
+    monitoring_tools.send_event(service_name, check_name, monitoring_overrides, status, output, soa_dir)
     _log(
         service_name=service_name,
         line='Replication: %s' % output,

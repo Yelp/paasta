@@ -1,13 +1,11 @@
 import os
 import sys
 from behave import when, then
-from time import sleep
 
 sys.path.append('../')
 from paasta_tools.utils import _run
 from paasta_tools import marathon_tools
 from marathon import MarathonApp
-from marathon import NotFoundError
 
 
 @when(u'all zookeepers are unavailable')
@@ -22,18 +20,18 @@ def all_mesos_masters_unavailable(context):
 
 @when(u'an app with id "{app_id}" using high memory is launched')
 def run_paasta_metastatus_high_mem(context, app_id):
-    context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
 
 
 @when(u'an app with id "{app_id}" using high cpu is launched')
 def run_paasta_metastatus_high_cpu(context, app_id):
-    context.client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1))
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1))
 
 
 @when(u'a task belonging to the app with id "{app_id}" is in the task list')
 def task_is_ready(context, app_id):
     """ wait for a task with a matching task name to be ready. time out in 60 seconds """
-    marathon_tools.wait_for_app_to_launch_tasks(context.client, app_id, 1)
+    marathon_tools.wait_for_app_to_launch_tasks(context.marathon_client, app_id, 1)
 
 
 @then(u'paasta_metastatus exits with return code "{expected_return_code}" and output "{expected_output}"')

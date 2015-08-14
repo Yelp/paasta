@@ -248,111 +248,37 @@ class TestSetupMarathonJob:
         fake_instance_name = 'fake_instance'
         fake_status = '42'
         fake_output = 'The http port is not open'
-        fake_team = 'fake_team'
-        fake_tip = 'fake_tip'
-        fake_notification_email = 'fake@notify'
-        fake_irc = '#fake'
-        fake_soa_dir = '/fake/soa/dir'
-        self.fake_cluster = 'fake_cluster'
-        expected_runbook = 'http://y/paasta-troubleshooting'
-        expected_check_name = 'setup_marathon_job.%s.%s' % (
-            fake_service_name, fake_instance_name)
-        expected_kwargs = {
-            'tip': fake_tip,
-            'notification_email': fake_notification_email,
-            'irc_channels': fake_irc,
-            'project': None,
-            'ticket': False,
-            'alert_after': '5m',
-            'check_every': '1m',
-            'realert_every': -1,
-            'source': 'paasta-fake_cluster',
-        }
+        fake_soa_dir = ''
+        expected_check_name = 'setup_marathon_job.%s%s%s' % (
+            fake_service_name, marathon_tools.ID_SPACER, fake_instance_name)
         with contextlib.nested(
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_team",
-                return_value=fake_team,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_tip",
-                return_value=fake_tip,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_notification_email",
-                return_value=fake_notification_email,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_irc_channels",
-                return_value=fake_irc,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_ticket",
-                return_value=False,
-                autospec=True,
-            ),
-            mock.patch(
-                "paasta_tools.monitoring_tools.get_project",
-                return_value=None,
-                autospec=True,
-            ),
-            mock.patch("pysensu_yelp.send_event", autospec=True),
-            mock.patch(
-                'paasta_tools.marathon_tools.get_cluster',
-                return_value=self.fake_cluster,
-                autospec=True,
-            )
+            mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
+            mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),
+            mock.patch("setup_marathon_job.load_system_paasta_config", autospec=True),
         ) as (
-            get_team_patch,
-            get_tip_patch,
-            get_notification_email_patch,
-            get_irc_patch,
-            get_ticket_patch,
-            get_project_patch,
-            pysensu_yelp_send_event_patch,
-            cluster_patch,
+            send_event_patch,
+            load_marathon_service_config_patch,
+            load_system_paasta_config_patch,
         ):
-            setup_marathon_job.send_event(fake_service_name,
-                                          fake_instance_name,
-                                          fake_soa_dir,
-                                          fake_status,
-                                          fake_output)
-            get_team_patch.assert_called_once_with(
-                'marathon',
+            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
+            load_marathon_service_config_patch.return_value.get_monitoring.return_value = {}
+
+            setup_marathon_job.send_event(
                 fake_service_name,
                 fake_instance_name,
                 fake_soa_dir,
+                fake_status,
+                fake_output
             )
-            get_tip_patch.assert_called_once_with(
-                'marathon',
+
+            send_event_patch.assert_called_once_with(
                 fake_service_name,
-                fake_instance_name,
-                fake_soa_dir
-            )
-            get_notification_email_patch.assert_called_once_with(
-                'marathon',
-                fake_service_name,
-                fake_instance_name,
-                fake_soa_dir
-            )
-            get_irc_patch.assert_called_once_with(
-                'marathon',
-                fake_service_name,
-                fake_instance_name,
-                fake_soa_dir
-            )
-            pysensu_yelp_send_event_patch.assert_called_once_with(
                 expected_check_name,
-                expected_runbook,
+                {},
                 fake_status,
                 fake_output,
-                fake_team,
-                **expected_kwargs
+                fake_soa_dir
             )
-            cluster_patch.assert_called_once_with()
 
     def test_do_bounce_when_create_app_and_new_app_not_running(self):
         fake_bounce_func_return = {
