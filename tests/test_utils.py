@@ -477,5 +477,6 @@ def test_run_cancels_timer_thread_on_keyboard_interrupt():
         mock_popen,
         mock_timer
     ):
-        utils._run('sh echo foo', timeout=10)
-        assert mock_timer.cancel.called
+        with raises(KeyboardInterrupt):
+            utils._run('sh echo foo', timeout=10)
+            assert mock_timer.cancel.called
