@@ -1,3 +1,10 @@
+paasta-tools (0.12.48-yelp1) lucid; urgency=low
+
+  * 0.12.48 tagged with 'make release'
+    Commit: Merge branch fix_hanging_on_signal
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 14 Aug 2015 04:47:20 -0700
+
 paasta-tools (0.12.47-yelp1) lucid; urgency=low
 
   * 0.12.47 tagged with 'make release'

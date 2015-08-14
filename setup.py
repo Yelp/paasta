@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 setup(
     name           = 'paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version        = '0.12.47',
+    version        = '0.12.48',
     provides       = ["paasta_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
