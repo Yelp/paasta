@@ -1,11 +1,4 @@
 #!/usr/bin/env python
-"""Usage: ./marathon_servceinit.py [-v] <servicename> <stop|start|restart|status>
-
-Interacts with the Marathon API to start/stop/restart/status a service.
-Assumes that the credentials are available, so must run as root.
-
-"""
-import argparse
 import datetime
 import logging
 import sys
@@ -13,7 +6,6 @@ import sys
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
 import requests_cache
-import service_configuration_lib
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_current_tasks
@@ -36,22 +28,6 @@ SYNAPSE_HOST_PORT = "localhost:3212"
 
 RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
 NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'
-
-
-def parse_args():
-    parser = argparse.ArgumentParser(description='Runs start/stop/restart/status an existing Marathon service.')
-    parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
-                        help="Print out more output regarding the state of the service")
-    parser.add_argument('-D', '--debug', action='store_true', dest="debug", default=False,
-                        help="Output debug logs regarding files, connections, etc")
-    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
-                        help="define a different soa config directory")
-    parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
-    command_choices = ['start', 'stop', 'restart', 'status']
-    parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
-    args = parser.parse_args()
-    return args
 
 
 def validate_service_instance(service, instance, cluster):
@@ -464,20 +440,8 @@ def status_mesos_tasks_verbose(service, instance):
     return "\n".join(output)
 
 
-def main():
-    args = parse_args()
-    if args.debug:
-        log.setLevel(logging.INFO)
-    else:
-        log.setLevel(logging.WARNING)
-
-    command = args.command
-    service_instance = args.service_instance
-    service = service_instance.split(marathon_tools.ID_SPACER)[0]
-    instance = service_instance.split(marathon_tools.ID_SPACER)[1]
-
+def perform_command(command, service, instance, cluster, verbose, soa_dir):
     marathon_config = marathon_tools.load_marathon_config()
-    cluster = marathon_tools.get_cluster()
     validate_service_instance(service, instance, cluster)
 
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
@@ -501,23 +465,19 @@ def main():
         print status_desired_state(service, instance, client, complete_job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         tasks, out = status_marathon_job_verbose(service, instance, client)
-        if args.verbose:
+        if verbose:
             print out
         print status_mesos_tasks(service, instance, normal_instance_count)
-        if args.verbose:
+        if verbose:
             print status_mesos_tasks_verbose(service, instance)
         if proxy_port is not None:
             print status_smartstack_backends(service, instance, cluster, tasks, normal_smartstack_count,
-                                             args.soa_dir, args.verbose)
+                                             soa_dir, verbose)
 
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
     sys.exit(0)
-
-
-if __name__ == "__main__":
-    main()
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

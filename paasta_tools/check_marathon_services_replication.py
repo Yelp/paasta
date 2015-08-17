@@ -31,7 +31,7 @@ from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.paasta_serviceinit import get_running_tasks_from_active_frameworks
+from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
 
 
 ID_SPACER = marathon_tools.ID_SPACER

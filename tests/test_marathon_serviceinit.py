@@ -8,7 +8,7 @@ import marathon
 import mesos
 import mock
 
-from paasta_tools import marathon_tools, paasta_serviceinit
+from paasta_tools import marathon_tools, marathon_serviceinit
 from paasta_tools.utils import PaastaColors
 
 
@@ -24,7 +24,7 @@ class TestPaastaServiceinit:
         ) as (
             get_marathon_services_patch,
         ):
-            assert paasta_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
+            assert marathon_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
             get_marathon_services_patch.assert_called_once_with(fake_cluster)
 
     def test_validate_service_instance_invalid(self):
@@ -39,7 +39,7 @@ class TestPaastaServiceinit:
             get_marathon_services_patch,
             sys_exit_patch,
         ):
-            assert paasta_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
+            assert marathon_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
             sys_exit_patch.assert_called_once_with(3)
             get_marathon_services_patch.assert_called_once_with(fake_cluster)
 
@@ -50,7 +50,7 @@ class TestPaastaServiceinit:
         instance = 'my_instance'
         app_id = 'mock_app_id'
         normal_instance_count = 5
-        paasta_serviceinit.start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
+        marathon_serviceinit.start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
         client.scale_app.assert_called_once_with(app_id, instances=normal_instance_count, force=True)
 
     def test_stop_marathon_job(self):
@@ -59,7 +59,7 @@ class TestPaastaServiceinit:
         service = 'my_service'
         instance = 'my_instance'
         app_id = 'mock_app_id'
-        paasta_serviceinit.stop_marathon_job(service, instance, app_id, client, cluster)
+        marathon_serviceinit.stop_marathon_job(service, instance, app_id, client, cluster)
         client.scale_app.assert_called_once_with(app_id, instances=0, force=True)
 
 
@@ -67,7 +67,7 @@ class TestPaastaServiceStatus:
 
     def test_get_bouncing_status(self):
         with contextlib.nested(
-            mock.patch('paasta_tools.paasta_serviceinit.marathon_tools.get_matching_appids', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids', autospec=True),
         ) as (
             mock_get_matching_appids,
         ):
@@ -78,21 +78,21 @@ class TestPaastaServiceStatus:
                 {'bounce_method': 'fake_bounce'},
                 {},
             )
-            actual = paasta_serviceinit.get_bouncing_status('fake_service', 'fake_instance', 'unused', mock_config)
+            actual = marathon_serviceinit.get_bouncing_status('fake_service', 'fake_instance', 'unused', mock_config)
             assert 'fake_bounce' in actual
             assert 'Bouncing' in actual
 
     def test_status_desired_state(self):
         with contextlib.nested(
-            mock.patch('paasta_tools.paasta_serviceinit.get_bouncing_status', autospec=True),
-            mock.patch('paasta_tools.paasta_serviceinit.get_desired_state_human', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.get_bouncing_status', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.get_desired_state_human', autospec=True),
         ) as (
             mock_get_bouncing_status,
             mock_get_desired_state_human,
         ):
             mock_get_bouncing_status.return_value = 'Bouncing (fake_bounce)'
             mock_get_desired_state_human.return_value = 'Started'
-            actual = paasta_serviceinit.status_desired_state('fake_service', 'fake_instance', 'unused', 'unused')
+            actual = marathon_serviceinit.status_desired_state('fake_service', 'fake_instance', 'unused', 'unused')
             assert 'Started' in actual
             assert 'Bouncing' in actual
 
@@ -104,7 +104,7 @@ class TestPaastaServiceStatus:
             {},
         )
 
-        actual = paasta_serviceinit.get_desired_state_human(fake_config)
+        actual = marathon_serviceinit.get_desired_state_human(fake_config)
         assert 'Started' in actual
 
     def test_status_marathon_job_verbose(self):
@@ -115,15 +115,15 @@ class TestPaastaServiceStatus:
         instance = 'my_instance'
         task = mock.Mock()
         with contextlib.nested(
-            mock.patch('paasta_tools.paasta_serviceinit.marathon_tools.get_matching_appids'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_verbose_status_of_marathon_app'),
+            mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app'),
         ) as (
             mock_get_matching_appids,
             mock_get_verbose_app,
         ):
             mock_get_matching_appids.return_value = ['/app1']
             mock_get_verbose_app.return_value = ([task], 'fake_return')
-            tasks, out = paasta_serviceinit.status_marathon_job_verbose(service, instance, client)
+            tasks, out = marathon_serviceinit.status_marathon_job_verbose(service, instance, client)
             mock_get_matching_appids.assert_called_once_with(service, instance, client)
             mock_get_verbose_app.assert_called_once_with(app)
             assert tasks == [task]
@@ -139,7 +139,7 @@ class TestPaastaServiceStatus:
         fake_task.ports = [6666]
         fake_task.staged_at = datetime.datetime.fromtimestamp(0)
         fake_app.tasks = [fake_task]
-        tasks, out = paasta_serviceinit.get_verbose_status_of_marathon_app(fake_app)
+        tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app)
         assert 'fake_task_id' in out
         assert '/fake--service' in out
         assert 'App created: 2015-01-14 21:30:49' in out
@@ -162,7 +162,7 @@ class TestPaastaServiceStatus:
         ) as (
             is_app_id_running_patch,
         ):
-            paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
+            marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
             is_app_id_running_patch.assert_called_once_with(app_id, client)
 
     def tests_status_marathon_job_when_running_running_no_tasks(self):
@@ -181,7 +181,7 @@ class TestPaastaServiceStatus:
         ) as (
             is_app_id_running_patch,
         ):
-            paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
+            marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
             is_app_id_running_patch.assert_called_once_with(app_id, client)
 
     def tests_status_marathon_job_when_running_not_running(self):
@@ -195,7 +195,7 @@ class TestPaastaServiceStatus:
         ) as (
             is_app_id_running_patch,
         ):
-            paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
+            marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
             is_app_id_running_patch.assert_called_once_with(app_id, client)
 
     def tests_status_marathon_job_when_running_running_tasks_with_deployments(self):
@@ -214,7 +214,7 @@ class TestPaastaServiceStatus:
         ) as (
             is_app_id_running_patch,
         ):
-            output = paasta_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
+            output = marathon_serviceinit.status_marathon_job(service, instance, app_id, normal_instance_count, client)
             is_app_id_running_patch.assert_called_once_with(app_id, client)
             assert 'Deploying' in output
 
@@ -242,9 +242,9 @@ class TestPaastaServiceStatus:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_mesos_slaves_grouped_by_attribute'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True),
-            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
         ) as (
             mock_load_service_namespace_config,
             mock_read_ns,
@@ -262,7 +262,7 @@ class TestPaastaServiceStatus:
             ]
             tasks = [good_task, other_task]
             mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
-            actual = paasta_serviceinit.status_smartstack_backends(
+            actual = marathon_serviceinit.status_smartstack_backends(
                 service,
                 instance,
                 cluster,
@@ -284,7 +284,7 @@ class TestPaastaServiceStatus:
         tasks = mock.Mock()
         with mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance') as read_ns_mock:
             read_ns_mock.return_value = different_ns
-            actual = paasta_serviceinit.status_smartstack_backends(
+            actual = marathon_serviceinit.status_smartstack_backends(
                 service,
                 instance,
                 cluster,
@@ -306,7 +306,7 @@ class TestPaastaServiceStatus:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
         ) as (
             mock_load_service_namespace_config,
             mock_read_ns,
@@ -315,7 +315,7 @@ class TestPaastaServiceStatus:
             mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_discover'
             mock_read_ns.return_value = instance
             mock_get_mesos_slaves_grouped_by_attribute.return_value = {}
-            actual = paasta_serviceinit.status_smartstack_backends(
+            actual = marathon_serviceinit.status_smartstack_backends(
                 service,
                 instance,
                 cluster,
@@ -339,9 +339,9 @@ class TestPaastaServiceStatus:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_mesos_slaves_grouped_by_attribute'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True),
-            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
         ) as (
             mock_load_service_namespace_config,
             mock_read_ns,
@@ -360,7 +360,7 @@ class TestPaastaServiceStatus:
                 'fake_location1': ['fakehost1'],
                 'fake_location2': ['fakehost2'],
             }
-            actual = paasta_serviceinit.status_smartstack_backends(
+            actual = marathon_serviceinit.status_smartstack_backends(
                 service,
                 instance,
                 cluster,
@@ -389,10 +389,10 @@ class TestPaastaServiceStatus:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_mesos_slaves_grouped_by_attribute'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True),
-            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks', autospec=True),
-            mock.patch('paasta_tools.paasta_serviceinit.haproxy_backend_report', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.haproxy_backend_report', autospec=True),
         ) as (
             mock_load_service_namespace_config,
             mock_read_ns,
@@ -412,7 +412,7 @@ class TestPaastaServiceStatus:
                 'fake_location1': ['fakehost1'],
                 'fake_location2': ['fakehost2'],
             }
-            paasta_serviceinit.status_smartstack_backends(
+            marathon_serviceinit.status_smartstack_backends(
                 service,
                 instance,
                 cluster,
@@ -448,9 +448,9 @@ class TestPaastaServiceStatus:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_mesos_slaves_grouped_by_attribute'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True),
-            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
         ) as (
             mock_load_service_namespace_config,
             mock_read_ns,
@@ -468,7 +468,7 @@ class TestPaastaServiceStatus:
             ]
             tasks = [good_task, other_task]
             mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
-            actual = paasta_serviceinit.status_smartstack_backends(
+            actual = marathon_serviceinit.status_smartstack_backends(
                 service,
                 instance,
                 cluster,
@@ -498,10 +498,10 @@ class TestPaastaServiceStatus:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_mesos_slaves_grouped_by_attribute'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True,
+            mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True,
                        side_effect=[[fake_backend], [fake_other_backend]]),
-            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks',
+            mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks',
                        autospec=True, side_effect=[[(fake_backend, good_task)], [(fake_other_backend, good_task)]]),
         ) as (
             mock_load_service_namespace_config,
@@ -517,7 +517,7 @@ class TestPaastaServiceStatus:
                 'fake_location1': ['fakehost1'],
                 'fake_location2': ['fakehost2'],
             }
-            actual = paasta_serviceinit.status_smartstack_backends(
+            actual = marathon_serviceinit.status_smartstack_backends(
                 service,
                 instance,
                 cluster,
@@ -546,9 +546,9 @@ class TestPaastaServiceStatus:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_mesos_slaves_grouped_by_attribute'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True),
-            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
         ) as (
             mock_load_service_namespace_config,
             mock_read_ns,
@@ -564,7 +564,7 @@ class TestPaastaServiceStatus:
             ]
             tasks = [good_task, other_task]
             mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
-            actual = paasta_serviceinit.status_smartstack_backends(
+            actual = marathon_serviceinit.status_smartstack_backends(
                 service,
                 instance,
                 cluster,
@@ -588,9 +588,9 @@ class TestPaastaServiceStatus:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_mesos_slaves_grouped_by_attribute'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_backends', autospec=True),
-            mock.patch('paasta_tools.paasta_serviceinit.match_backends_and_tasks', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.get_mesos_slaves_grouped_by_attribute'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True),
+            mock.patch('paasta_tools.marathon_serviceinit.match_backends_and_tasks', autospec=True),
         ) as (
             mock_load_service_namespace_config,
             mock_read_ns,
@@ -606,7 +606,7 @@ class TestPaastaServiceStatus:
             ]
             tasks = [good_task, other_task]
             mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
-            actual = paasta_serviceinit.status_smartstack_backends(
+            actual = marathon_serviceinit.status_smartstack_backends(
                 service,
                 instance,
                 cluster,
@@ -621,58 +621,58 @@ class TestPaastaServiceStatus:
     def test_haproxy_backend_report_healthy(self):
         normal_count = 10
         actual_count = 11
-        status = paasta_serviceinit.haproxy_backend_report(normal_count, actual_count)
+        status = marathon_serviceinit.haproxy_backend_report(normal_count, actual_count)
         assert "Healthy" in status
 
     def test_haproxy_backend_report_warning(self):
         normal_count = 10
         actual_count = 1
-        status = paasta_serviceinit.haproxy_backend_report(normal_count, actual_count)
+        status = marathon_serviceinit.haproxy_backend_report(normal_count, actual_count)
         assert "Warning" in status
 
     def test_haproxy_backend_report_critical(self):
         normal_count = 10
         actual_count = 0
-        status = paasta_serviceinit.haproxy_backend_report(normal_count, actual_count)
+        status = marathon_serviceinit.haproxy_backend_report(normal_count, actual_count)
         assert "Critical" in status
 
     def test_status_mesos_tasks_verbose(self):
         with contextlib.nested(
-            mock.patch('paasta_tools.paasta_serviceinit.get_running_tasks_from_active_frameworks'),
-            mock.patch('paasta_tools.paasta_serviceinit.get_non_running_tasks_from_active_frameworks'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks'),
+            mock.patch('paasta_tools.marathon_serviceinit.get_non_running_tasks_from_active_frameworks'),
         ) as (
             get_running_mesos_tasks_for_service_patch,
             get_non_running_mesos_tasks_for_service_patch,
         ):
             get_running_mesos_tasks_for_service_patch.return_value = []
             get_non_running_mesos_tasks_for_service_patch.return_value = []
-            actual = paasta_serviceinit.status_mesos_tasks_verbose('fake_service', 'fake_instance')
+            actual = marathon_serviceinit.status_mesos_tasks_verbose('fake_service', 'fake_instance')
             assert 'Running Tasks' in actual
             assert 'Non-Running Tasks' in actual
 
     def test_status_mesos_tasks_working(self):
-        with mock.patch('paasta_tools.paasta_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
+        with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
             mock_tasks.return_value = [
                 {'id': 1}, {'id': 2}
             ]
             normal_count = 2
-            actual = paasta_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
+            actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
             assert 'Healthy' in actual
 
     def test_status_mesos_tasks_warning(self):
-        with mock.patch('paasta_tools.paasta_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
+        with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
             mock_tasks.return_value = [
                 {'id': 1}, {'id': 2}
             ]
             normal_count = 4
-            actual = paasta_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
+            actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
             assert 'Warning' in actual
 
     def test_status_mesos_tasks_critical(self):
-        with mock.patch('paasta_tools.paasta_serviceinit.get_tasks_from_active_frameworks') as mock_tasks:
+        with mock.patch('paasta_tools.marathon_serviceinit.get_tasks_from_active_frameworks') as mock_tasks:
             mock_tasks.return_value = []
             normal_count = 10
-            actual = paasta_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
+            actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
             assert 'Critical' in actual
 
     def test_get_cpu_usage_good(self):
@@ -687,7 +687,7 @@ class TestPaastaServiceStatus:
             'state': 'TASK_RUNNING',
             'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
         }]
-        actual = paasta_serviceinit.get_cpu_usage(fake_task)
+        actual = marathon_serviceinit.get_cpu_usage(fake_task)
         assert '10.0%' == actual
 
     def test_get_cpu_usage_bad(self):
@@ -702,7 +702,7 @@ class TestPaastaServiceStatus:
             'state': 'TASK_RUNNING',
             'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
         }]
-        actual = paasta_serviceinit.get_cpu_usage(fake_task)
+        actual = marathon_serviceinit.get_cpu_usage(fake_task)
         assert PaastaColors.red('100.0%') in actual
 
     def test_get_cpu_usage_handles_missing_stats(self):
@@ -714,28 +714,28 @@ class TestPaastaServiceStatus:
             'state': 'TASK_RUNNING',
             'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
         }]
-        actual = paasta_serviceinit.get_cpu_usage(fake_task)
+        actual = marathon_serviceinit.get_cpu_usage(fake_task)
         assert "0.0%" in actual
 
     def test_get_mem_usage_good(self):
         fake_task = mock.create_autospec(mesos.cli.task.Task)
         fake_task.rss = 1024 * 1024 * 10
         fake_task.mem_limit = fake_task.rss * 10
-        actual = paasta_serviceinit.get_mem_usage(fake_task)
+        actual = marathon_serviceinit.get_mem_usage(fake_task)
         assert actual == '10/100MB'
 
     def test_get_mem_usage_bad(self):
         fake_task = mock.create_autospec(mesos.cli.task.Task)
         fake_task.rss = 1024 * 1024 * 100
         fake_task.mem_limit = fake_task.rss
-        actual = paasta_serviceinit.get_mem_usage(fake_task)
+        actual = marathon_serviceinit.get_mem_usage(fake_task)
         assert actual == PaastaColors.red('100/100MB')
 
     def test_get_mem_usage_divide_by_zero(self):
         fake_task = mock.create_autospec(mesos.cli.task.Task)
         fake_task.rss = 1024 * 1024 * 10
         fake_task.mem_limit = 0
-        actual = paasta_serviceinit.get_mem_usage(fake_task)
+        actual = marathon_serviceinit.get_mem_usage(fake_task)
         assert actual == "Undef"
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
