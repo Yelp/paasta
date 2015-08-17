@@ -4,6 +4,7 @@ from pytest import raises
 import contextlib
 
 import chronos_tools
+from mock import Mock
 
 
 class TestChronosTools:
@@ -798,3 +799,14 @@ class TestChronosTools:
                 'owner': fake_owner,
             }
             assert actual == expected
+
+
+    def test_wait_for_job(self):
+        fake_config = chronos_tools.ChronosConfig(
+            {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')
+        client = chronos_tools.get_chronos_client(fake_config)
+
+        # only provide the right response on the third attempt
+        client.list = Mock(side_effect=[[], [], [{'name': 'foo'}]])
+
+        assert chronos_tools.wait_for_job(client, 'foo')

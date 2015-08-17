@@ -3,6 +3,7 @@ import logging
 import os
 import re
 import urlparse
+from time import sleep
 
 import chronos
 import isodate
@@ -17,6 +18,7 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+from paasta_tools.utils import timeout
 
 
 # In Marathon spaces are not allowed, in Chronos periods are not allowed.
@@ -396,3 +398,22 @@ def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=Fal
                          (len(matching_jobs), pattern, max_expected, ', '.join(matching_ids)))
 
     return matching_jobs
+
+
+@timeout()
+def wait_for_job(client, job_name):
+    """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
+      and retry.
+
+     :param client: The marathon client
+     :param app_id: The app id to which the tasks belong
+     :param num_tasks: The number of tasks to wait for
+    """
+    found = False
+    while not found:
+        found = job_name in [job['name'] for job in client.list()]
+        if found:
+            return True
+        else:
+            print "waiting for job %s to launch. retrying" % (job_name)
+            sleep(0.5)
