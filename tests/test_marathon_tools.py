@@ -658,9 +658,44 @@ class TestMarathonTools:
         fake_marathon_services = [('no_test', 'left_behind', 1111),
                                   ('no_docstrings', 'forever_abandoned', 2222)]
         namespaces = ['dos', 'uno']
-        nerve_dicts = [{'binary': 1}, {'clock': 0}]
-        expected = [('no_test.uno', {'clock': 0, 'port': 1111}),
-                    ('no_docstrings.dos', {'binary': 1, 'port': 2222})]
+        nerve_dicts = [marathon_tools.ServiceNamespaceConfig({'binary': 1, 'proxy_port': 6666}),
+                       marathon_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
+        expected = [('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666}),
+                    ('no_docstrings.dos', {'binary': 1, 'port': 2222, 'proxy_port': 6666})]
+        with contextlib.nested(
+            mock.patch('marathon_tools.marathon_services_running_here',
+                       autospec=True,
+                       return_value=fake_marathon_services),
+            mock.patch('marathon_tools.read_namespace_for_service_instance',
+                       autospec=True,
+                       side_effect=lambda a, b, c, d: namespaces.pop()),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       side_effect=lambda a, b, c: nerve_dicts.pop()),
+        ) as (
+            mara_srvs_here_patch,
+            get_namespace_patch,
+            read_ns_config_patch,
+        ):
+            actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
+            assert expected == actual
+            mara_srvs_here_patch.assert_called_once_with()
+            get_namespace_patch.assert_any_call('no_test', 'left_behind', cluster, soa_dir)
+            get_namespace_patch.assert_any_call('no_docstrings', 'forever_abandoned', cluster, soa_dir)
+            assert get_namespace_patch.call_count == 2
+            read_ns_config_patch.assert_any_call('no_test', 'uno', soa_dir)
+            read_ns_config_patch.assert_any_call('no_docstrings', 'dos', soa_dir)
+            assert read_ns_config_patch.call_count == 2
+
+    def test_get_marathon_services_running_here_for_nerve_when_not_in_smartstack(self):
+        cluster = 'edelweiss'
+        soa_dir = 'the_sound_of_music'
+        fake_marathon_services = [('no_test', 'left_behind', 1111),
+                                  ('no_docstrings', 'forever_abandoned', 2222)]
+        namespaces = ['dos', 'uno']
+        nerve_dicts = [marathon_tools.ServiceNamespaceConfig({'binary': 1}),
+                       marathon_tools.ServiceNamespaceConfig({'clock': 0, 'proxy_port': 6666})]
+        expected = [('no_test.uno', {'clock': 0, 'port': 1111, 'proxy_port': 6666})]
         with contextlib.nested(
             mock.patch('marathon_tools.marathon_services_running_here',
                        autospec=True,
