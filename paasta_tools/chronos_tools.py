@@ -117,6 +117,13 @@ def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA
     return ChronosJobConfig(service_name, job_name, service_chronos_jobs[job_name], branch_dict)
 
 
+def format_env_for_chronos(input_env):
+    """The expected input env for PaaSTA is a dictionary of key/value pairs
+    Chronos requires an array of dictionaries in a very specific format:
+    https://mesos.github.io/chronos/docs/api.html#sample-job"""
+    return [{"name": key, "value": value} for key, value in input_env.iteritems()]
+
+
 class ChronosJobConfig(InstanceConfig):
 
     def __init__(self, service_name, job_name, config_dict, branch_dict):
@@ -145,7 +152,7 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('args')
 
     def get_env(self):
-        return self.config_dict.get('env', [])
+        return self.config_dict.get('env', {})
 
     def get_constraints(self):
         return self.config_dict.get('constraints')
@@ -273,7 +280,7 @@ class ChronosJobConfig(InstanceConfig):
                 'type': 'DOCKER',
                 'volumes': docker_volumes
             },
-            'environmentVariables': self.get_env(),
+            'environmentVariables': format_env_for_chronos(self.get_env()),
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
             'constraints': self.get_constraints(),
