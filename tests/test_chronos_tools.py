@@ -800,7 +800,6 @@ class TestChronosTools:
             }
             assert actual == expected
 
-
     def test_wait_for_job(self):
         fake_config = chronos_tools.ChronosConfig(
             {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')

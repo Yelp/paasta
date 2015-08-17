@@ -11,7 +11,7 @@ from paasta_tools import chronos_tools
 
 fake_service_name = 'fake_complete_service'
 fake_instance_name = 'fake_instance'
-fake_appid = 'fake app id'
+fake_appid = 'fake_app_id'
 fake_service_job_config = chronos_tools.ChronosJobConfig(
     fake_service_name,
     fake_instance_name,
