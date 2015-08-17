@@ -1,3 +1,10 @@
+paasta-tools (0.12.53-yelp1) lucid; urgency=low
+
+  * 0.12.53 tagged with 'make release'
+    Commit: remove spaces from app id + fix flake
+
+ -- Robert Johnson <robj@yelp.com>  Mon, 17 Aug 2015 09:03:08 -0700
+
 paasta-tools (0.12.52-yelp1) lucid; urgency=low
 
   * 0.12.52 tagged with 'make release'
