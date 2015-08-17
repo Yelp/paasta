@@ -8,6 +8,8 @@ from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import \
     guess_service_name, NoSuchService, validate_service_name
 from paasta_tools.utils import _run
+from paasta_tools.monitoring_tools import get_team_email_address
+from paasta_tools.monitoring_tools import get_team
 
 
 def add_subparser(subparsers):
@@ -35,14 +37,19 @@ def paasta_generate_pipeline(args):
         print service_not_found
         sys.exit(1)
 
-    # Build pipeline
+    generate_pipeline(service=service_name)
+
+
+def generate_pipeline(service):
+    email_address = get_team_email_address(service=service)
+    if email_address is None:
+        email_address = get_team(overrides={}, service_name=service)
     cmds = [
         'fab_repo setup_jenkins:services/%s,'
-        'profile=paasta,job_disabled=False' % service_name,
+        'profile=paasta,job_disabled=False,owner=%s' % (service, email_address),
         'fab_repo setup_jenkins:services/%s,'
-        'profile=paasta_boilerplate' % service_name,
+        'profile=paasta_boilerplate,owner=%s' % (service, email_address),
     ]
-
     for cmd in cmds:
         print "INFO: Executing %s" % cmd
         returncode, output = _run(cmd, timeout=90)
