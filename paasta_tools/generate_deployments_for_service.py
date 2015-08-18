@@ -87,7 +87,7 @@ def get_branches_from_config_file(file_dir, filename):
 
 
 def get_branches_for_service(soa_dir, service):
-    """Get all branches defined in marathon configuration files for a soa service.
+    """Get all branches defined in marathon/chronos configuration files for a soa service.
 
     :param soa_dir: The SOA configuration directory to read from
     :param service: The service name to get branches for

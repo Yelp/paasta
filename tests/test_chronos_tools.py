@@ -91,11 +91,9 @@ class TestChronosTools:
         expected = {'foo': 'bar'}
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
-            mock.patch('chronos_tools.load_deployments_json', autospec=True),
             mock.patch('chronos_tools.open', create=True, return_value=file_mock),
             mock.patch('json.load', autospec=True, return_value=expected)
         ) as (
-            load_deployments_json_patch,
             open_file_patch,
             json_patch
         ):
@@ -501,7 +499,7 @@ class TestChronosTools:
                 'network': 'BRIDGE',
                 'volumes': fake_docker_volumes,
                 'image': fake_docker_url,
-                'type': 'DOCKER'
+                'type': 'DOCKER',
             }
         }
         with mock.patch('monitoring_tools.get_team', return_value=fake_owner):
