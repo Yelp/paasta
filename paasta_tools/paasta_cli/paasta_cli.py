@@ -3,6 +3,8 @@
 """A command line tool for viewing information from the PaaSTA stack."""
 import argcomplete
 import argparse
+import os
+import signal
 
 from paasta_tools.paasta_cli import cmds
 from paasta_tools.paasta_cli.utils \
@@ -48,9 +50,14 @@ def main():
     """Perform a paasta call. Read args from sys.argv and pass parsed args onto
     appropriate command in paata_cli/cmds directory.
     """
-    configure_log()
-    args = parse_args()
-    args.command(args)
+
+    os.setpgrp()
+    try:
+        configure_log()
+        args = parse_args()
+        args.command(args)
+    finally:
+        os.killpg(0, signal.SIGKILL)
 
 
 if __name__ == '__main__':
