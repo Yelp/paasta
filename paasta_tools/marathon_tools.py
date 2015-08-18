@@ -95,7 +95,7 @@ class MarathonConfig(dict):
             raise MarathonNotConfigured('Could not find marathon password in system marathon config: %s' % self.path)
 
 
-def load_marathon_service_config(service_name, instance, cluster, deployments_json=None, soa_dir=DEFAULT_SOA_DIR):
+def load_marathon_service_config(service_name, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
     If a branch isn't specified for a config, the 'branch' key defaults to
@@ -104,6 +104,8 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
     :param name: The service name
     :param instance: The instance of the service to retrieve
     :param cluster: The cluster to read the configuration for
+    :param load_deployments: A boolean indicating if the corresponding deployments.json for this service
+                             should also be loaded
     :param soa_dir: The SOA configuration directory to read from
     :returns: A dictionary of whatever was in the config for the service instance"""
     log.info("Reading service configuration files from dir %s/ in %s" % (service_name, soa_dir))
@@ -122,21 +124,22 @@ def load_marathon_service_config(service_name, instance, cluster, deployments_js
 
     if instance not in instance_configs:
         raise NoMarathonConfigurationForService(
-            "%s not found in config file %s.yaml." % (instance, marathon_conf_file)
+            "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service_name, marathon_conf_file)
         )
 
     general_config.update(instance_configs[instance])
 
-    if deployments_json is None:
+    branch_dict = {}
+    if load_deployments:
         deployments_json = load_deployments_json(service_name, soa_dir=soa_dir)
-
-    branch = general_config.get('branch', get_default_branch(cluster, instance))
+        branch = general_config.get('branch', get_default_branch(cluster, instance))
+        branch_dict = deployments_json.get_branch_dict(service_name, branch)
 
     return MarathonServiceConfig(
         service_name,
         instance,
         general_config,
-        deployments_json.get_branch_dict(service_name, branch),
+        branch_dict,
     )
 
 

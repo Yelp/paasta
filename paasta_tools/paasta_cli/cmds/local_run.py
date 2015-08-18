@@ -14,6 +14,7 @@ from docker import errors
 import requests
 from urlparse import urlparse
 
+import service_configuration_lib
 from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_default_cluster_for_service
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
@@ -233,6 +234,12 @@ def add_subparser(subparsers):
         '-c', '--cluster',
         help='The name of the cluster you wish to simulate. If omitted, attempts to guess a cluster to simulate',
     ).completer = lazy_choices_completer(list_clusters)
+    list_parser.add_argument(
+        '-y', '--yelpsoa-root',
+        dest='soaconfig_root',
+        help='A directory from which yelpsoa-configs should be read from',
+        default=service_configuration_lib.DEFAULT_SOA_DIR
+    )
     list_parser.add_argument(
         '-C', '--cmd',
         help=(
@@ -476,7 +483,13 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         sys.stdout.write(PaastaColors.yellow(
             'Using cluster configuration for %s. To override, use the --cluster option.\n\n' % cluster))
 
-    service_manifest = load_marathon_service_config(service, args.instance, cluster)
+    service_manifest = load_marathon_service_config(
+        service,
+        args.instance,
+        cluster,
+        load_deployments=False,
+        soa_dir=args.soaconfig_root
+    )
 
     if args.cmd:
         command = shlex.split(args.cmd)

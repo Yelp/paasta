@@ -287,8 +287,15 @@ def test_configure_and_run_explicit_cluster(
     args.instance = 'fake_instance'
     args.interactive = False
     args.cluster = 'fake_cluster'
+    args.soaconfig_root = 'fakesoa-configs/'
     assert configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
-    mock_load_marathon_service_config.assert_called_once_with(fake_service, args.instance, args.cluster)
+    mock_load_marathon_service_config.assert_called_once_with(
+        fake_service,
+        args.instance,
+        args.cluster,
+        load_deployments=False,
+        soa_dir=args.soaconfig_root
+    )
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)

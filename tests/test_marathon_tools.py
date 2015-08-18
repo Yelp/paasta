@@ -1,3 +1,4 @@
+
 import contextlib
 
 from marathon.models import MarathonApp
@@ -113,14 +114,7 @@ class TestMarathonTools:
         fake_instance = 'solo'
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
-        fake_docker = 'no_docker:9.9'
         config_copy = self.fake_marathon_job_config.config_dict.copy()
-
-        fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
-        deployments_json_mock = mock.Mock(
-            spec=utils.DeploymentsJson,
-            get_branch_dict=mock.Mock(return_value=fake_branch_dict),
-        )
 
         expected = marathon_tools.MarathonServiceConfig(
             fake_name,
@@ -129,7 +123,7 @@ class TestMarathonTools:
                 self.fake_srv_config.items() +
                 self.fake_marathon_job_config.config_dict.items()
             ),
-            fake_branch_dict,
+            {},
         )
 
         with contextlib.nested(
@@ -151,7 +145,68 @@ class TestMarathonTools:
                 fake_name,
                 fake_instance,
                 fake_cluster,
-                deployments_json=deployments_json_mock,
+                load_deployments=False,
+                soa_dir=fake_dir,
+            )
+            assert expected.service_name == actual.service_name
+            assert expected.instance == actual.instance
+            assert expected.config_dict == actual.config_dict
+            assert expected.branch_dict == actual.branch_dict
+
+            assert read_service_configuration_patch.call_count == 1
+            read_service_configuration_patch.assert_any_call(fake_name, soa_dir=fake_dir)
+            assert read_extra_info_patch.call_count == 1
+            read_extra_info_patch.assert_any_call(fake_name, "marathon-amnesia", soa_dir=fake_dir)
+
+    def test_read_service_config_and_deployments(self):
+        fake_name = 'jazz'
+        fake_instance = 'solo'
+        fake_cluster = 'amnesia'
+        fake_dir = '/nail/home/sanfran'
+        fake_docker = 'no_docker:9.9'
+        config_copy = self.fake_marathon_job_config.config_dict.copy()
+
+        fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
+        deployments_json_mock = mock.Mock(
+            spec=utils.DeploymentsJson,
+            get_branch_dict=mock.Mock(return_value=fake_branch_dict),
+        )
+
+        with contextlib.nested(
+            mock.patch(
+                'service_configuration_lib.read_service_configuration',
+                autospec=True,
+                return_value=self.fake_srv_config,
+            ),
+            mock.patch(
+                'service_configuration_lib.read_extra_service_information',
+                autospec=True,
+                return_value={fake_instance: config_copy},
+            ),
+            mock.patch(
+                'marathon_tools.load_deployments_json',
+                autospec=True,
+                return_value=deployments_json_mock,
+            ),
+        ) as (
+            read_service_configuration_patch,
+            read_extra_info_patch,
+            load_deployments_json_patch,
+        ):
+            expected = marathon_tools.MarathonServiceConfig(
+                fake_name,
+                fake_instance,
+                dict(
+                    self.fake_srv_config.items() +
+                    self.fake_marathon_job_config.config_dict.items()
+                ),
+                fake_branch_dict,
+            )
+            actual = marathon_tools.load_marathon_service_config(
+                fake_name,
+                fake_instance,
+                fake_cluster,
+                load_deployments=True,
                 soa_dir=fake_dir,
             )
             assert expected.service_name == actual.service_name
