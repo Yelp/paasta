@@ -524,6 +524,14 @@ class TestInstanceConfig:
         fake_conf = utils.InstanceConfig({'cmd': 'FAKECMD'}, {})
         assert fake_conf.get_cmd() == 'FAKECMD'
 
+    def test_get_env_default(self):
+        fake_conf = utils.InstanceConfig({}, {})
+        assert fake_conf.get_env() == {}
+
+    def test_get_env_with_config(self):
+        fake_conf = utils.InstanceConfig({'env': {'SPECIAL_ENV': 'TRUE'}}, {})
+        assert fake_conf.get_env() == {'SPECIAL_ENV': 'TRUE'}
+
     def test_get_force_bounce(self):
         fake_conf = utils.InstanceConfig({}, {'force_bounce': 'blurp'})
         assert fake_conf.get_force_bounce() == 'blurp'
