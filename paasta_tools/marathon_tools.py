@@ -201,14 +201,6 @@ class MarathonServiceConfig(InstanceConfig):
             else:
                 raise InvalidMarathonConfig('Marathon config files can specify cmd or args, but not both.')
 
-    def get_env(self):
-        """Gets the environment required from the service's marathon configuration.
-
-        :param service_config: The service instance's configuration dictionary
-        :returns: A dictionary with the requested env."""
-        env = self.config_dict.get('env', {})
-        return env
-
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.
 

@@ -1073,17 +1073,6 @@ class TestMarathonTools:
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'monitoring': 'test'}, {})
         assert fake_conf.get_monitoring() == 'test'
 
-    def test_get_env_default(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_env() == {}
-
-    def test_get_env_with_config(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'env': {'SPECIAL_ENV': 'TRUE'}},
-                                                         {})
-        assert fake_conf.get_env() == {
-            'SPECIAL_ENV': 'TRUE',
-        }
-
     def test_get_args_default_no_cmd(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
         assert fake_conf.get_args() == []

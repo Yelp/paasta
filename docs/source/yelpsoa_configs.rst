@@ -102,6 +102,8 @@ Each job configuration MAY specify the following options:
 
   *  ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
 
+  *  ``env``: See the `marathon-[clustername].yaml`_ section for details
+
 smartstack.yaml
 ---------------
 

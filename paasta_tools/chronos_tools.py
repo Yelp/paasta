@@ -145,7 +145,11 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('args')
 
     def get_env(self):
-        return self.config_dict.get('env', [])
+        """The expected input env for PaaSTA is a dictionary of key/value pairs
+        Chronos requires an array of dictionaries in a very specific format:
+        https://mesos.github.io/chronos/docs/api.html#sample-job"""
+        original_env = super(ChronosJobConfig, self).get_env()
+        return [{"name": key, "value": value} for key, value in original_env.iteritems()]
 
     def get_constraints(self):
         return self.config_dict.get('constraints')

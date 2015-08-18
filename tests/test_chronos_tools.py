@@ -233,16 +233,14 @@ class TestChronosTools:
         actual = fake_conf.get_args()
         assert actual == fake_args
 
-    def test_get_env_default(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
-        actual = fake_conf.get_env()
-        assert actual == []
-
     def test_get_env(self):
-        fake_env = 'fake_env'
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'env': fake_env}, {})
-        actual = fake_conf.get_env()
-        assert actual == fake_env
+        input_env = {'foo': 'bar', 'biz': 'baz'}
+        expected_env = [
+            {"name": "foo", "value": "bar"},
+            {"name": "biz", "value": "baz"},
+        ]
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'env': input_env}, {})
+        assert sorted(fake_conf.get_env()) == sorted(expected_env)
 
     def test_get_constraints(self):
         fake_constraints = 'fake_constraints'

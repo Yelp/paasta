@@ -74,6 +74,11 @@ class InstanceConfig(dict):
         :returns: A string specified in the config, None if not specified"""
         return self.config_dict.get('cmd', None)
 
+    def get_env(self):
+        """A dictionary of key/value pairs that represent environment variables
+        to be injected to the container environment"""
+        return self.config_dict.get('env', {})
+
     def get_monitoring(self):
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get('monitoring', {})
