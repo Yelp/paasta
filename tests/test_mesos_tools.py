@@ -104,6 +104,15 @@ def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
     assert actual == expected
 
 
+@mock.patch('paasta_tools.mesos_tools.fetch_mesos_state_from_leader', autospec=True)
+def test_get_mesos_slaves_grouped_by_attribute_bombs_out_with_no_slaves(mock_fetch_state):
+    mock_fetch_state.return_value = {
+        'slaves': []
+    }
+    with raises(mesos_tools.NoSlavesAvailable):
+        mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute')
+
+
 def test_fetch_mesos_state_from_leader_works_on_elected_leader():
     # Elected leaders return 'elected_time' to indicate when
     # they were elected.

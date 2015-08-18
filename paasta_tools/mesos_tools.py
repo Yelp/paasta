@@ -18,6 +18,10 @@ class MasterNotAvailableException(Exception):
     pass
 
 
+class NoSlavesAvailable(Exception):
+    pass
+
+
 def raise_cli_exception(msg):
     if msg.startswith("unable to connect to a master"):
         raise MasterNotAvailableException(msg)
@@ -133,9 +137,12 @@ def get_mesos_slaves_grouped_by_attribute(attribute):
     """
     attr_map = {}
     mesos_state = fetch_mesos_state_from_leader()
-    for slave in mesos_state['slaves']:
-        if attribute in slave['attributes']:
-            attr_val = slave['attributes'][attribute]
-            attr_map.setdefault(attr_val, []).append(slave['hostname'])
-
-    return attr_map
+    slaves = mesos_state['slaves']
+    if slaves == []:
+        raise NoSlavesAvailable("No mesos slaves were available to query. Try again later")
+    else:
+        for slave in slaves:
+            if attribute in slave['attributes']:
+                attr_val = slave['attributes'][attribute]
+                attr_map.setdefault(attr_val, []).append(slave['hostname'])
+        return attr_map
