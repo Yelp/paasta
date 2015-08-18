@@ -3,6 +3,7 @@
 """A command line tool for viewing information from the PaaSTA stack."""
 import argcomplete
 import argparse
+import psutil
 import os
 import signal
 
@@ -49,16 +50,19 @@ def parse_args():
 def main():
     """Perform a paasta call. Read args from sys.argv and pass parsed args onto
     appropriate command in paata_cli/cmds directory.
-    """
 
+    Ensure we kill any child pids before we quit
+    """
     os.setpgrp()
     try:
         configure_log()
         args = parse_args()
         args.command(args)
     finally:
-        os.killpg(0, signal.SIGKILL)
-
+        pgrp = os.getpgrp()
+        pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp and proc.pid != os.getpid()]
+        for proc in pids_in_pgrp:
+            os.kill(proc.pid, signal.SIGTERM)
 
 if __name__ == '__main__':
     main()
