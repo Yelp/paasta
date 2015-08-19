@@ -30,8 +30,10 @@ import logging
 import os
 import re
 import service_configuration_lib
-from paasta_tools import marathon_tools, remote_git
-from paasta_tools.utils import atomic_file_write, get_git_url
+from paasta_tools import remote_git
+from paasta_tools.utils import atomic_file_write
+from paasta_tools.utils import get_default_branch
+from paasta_tools.utils import get_git_url
 import sys
 
 
@@ -53,11 +55,11 @@ def parse_args():
     return args
 
 
-def get_branches_from_marathon_file(file_dir, filename):
+def get_branches_from_config_file(file_dir, filename):
     """Get all branches defined in a single service configuration file.
     A branch is defined for an instance if it has a 'branch' key, or
     the branch name is paasta-{cluster}.{instance},
-    where cluster is the cluster the marathon file is defined for
+    where cluster is the cluster the marathon or chronos file is defined for
     (i.e. marathon-hab.yaml is for hab), and instance is the
     instance name.
 
@@ -74,9 +76,9 @@ def get_branches_from_marathon_file(file_dir, filename):
         else:
             try:
                 # cluster may contain dashes (and frequently does) so
-                # reassemble the cluster after pulling out the marathon bit.
+                # reassemble the cluster after stripping the chronos/marathon prefix
                 cluster = '-'.join(filename.split('-')[1:]).split('.')[0]
-                target_branch = marathon_tools.get_default_branch(cluster, instance)
+                target_branch = get_default_branch(cluster, instance)
             except IndexError:
                 pass
         if target_branch:
@@ -85,7 +87,7 @@ def get_branches_from_marathon_file(file_dir, filename):
 
 
 def get_branches_for_service(soa_dir, service):
-    """Get all branches defined in marathon configuration files for a soa service.
+    """Get all branches defined in marathon/chronos configuration files for a soa service.
 
     :param soa_dir: The SOA configuration directory to read from
     :param service: The service name to get branches for
@@ -94,8 +96,8 @@ def get_branches_for_service(soa_dir, service):
     valid_branches = set([])
     working_dir = os.path.join(soa_dir, service)
     for fname in os.listdir(working_dir):
-        if fname.startswith('marathon-'):
-            valid_branches = valid_branches.union(get_branches_from_marathon_file(working_dir, fname))
+        if fname.startswith('marathon-') or fname.startswith('chronos-'):
+            valid_branches = valid_branches.union(get_branches_from_config_file(working_dir, fname))
     return valid_branches
 
 

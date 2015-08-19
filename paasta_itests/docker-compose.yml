@@ -38,6 +38,7 @@ paastatools:
     - mesosslave
     - zookeeper
     - chronos
+    - hacheck
   # environment:
     # -CLUSTER: testcluster ???
   # make --no-capture global ???
@@ -51,3 +52,8 @@ chronos:
     - 8081
   links:
     - zookeeper
+
+hacheck:
+  build: ../yelp_package/dockerfiles/itest/hacheck/
+  ports:
+    - 6666

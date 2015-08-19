@@ -228,6 +228,7 @@ def test_check_sensu_check_pass(mock_stdout, mock_get_team,
     output = mock_stdout.getvalue()
 
     assert output == expected_output
+    mock_get_team.assert_called_once_with(service_name='fake_service', overrides={})
 
 
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')

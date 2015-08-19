@@ -15,6 +15,7 @@ import isodate
 from scribereader import scribereader
 from scribereader.scribereader import StreamTailerSetupError
 
+from paasta_tools import chronos_tools
 from paasta_tools.marathon_tools import compose_job_id
 from paasta_tools.marathon_tools import get_clusters_deployed_to
 from paasta_tools.marathon_tools import list_clusters
@@ -158,27 +159,55 @@ def paasta_log_line_passes_filter(line, levels, service, components, clusters):
     )
 
 
-def parse_marathon_log_line(line, clusters):
+def extract_utc_timestamp_from_log_line(line):
+    """
+    Extracts the timestamp from a log line of the format "<timestamp> <other data>" and returns a UTC datetime object
+    or None if it could not parse the line
+    """
     # Extract ISO 8601 date per http://www.pelagodesign.com/blog/2009/05/20/iso-8601-date-validation-that-doesnt-suck/
     iso_re = r'^([\+-]?\d{4}(?!\d{2}\b))((-?)((0[1-9]|1[0-2])(\3([12]\d|0[1-9]|3[01]))?|W([0-4]\d|5[0-2])(-?[1-7])?|' \
         r'(00[1-9]|0[1-9]\d|[12]\d{2}|3([0-5]\d|6[1-6])))([T\s]((([01]\d|2[0-3])((:?)[0-5]\d)?|24\:?00)([\.,]\d+' \
         r'(?!:))?)?(\17[0-5]\d([\.,]\d+)?)?([zZ]|([\+-])([01]\d|2[0-3]):?([0-5]\d)?)?)?)? '
 
     tokens = re.match(iso_re, line)
+
     if not tokens:
         # Could not parse line
-        return ''
+        return None
     timestamp = tokens.group(0).strip()
     dt = isodate.parse_datetime(timestamp)
     utc_timestamp = datetime_convert_timezone(dt, dt.tzinfo, dateutil.tz.tzutc())
-    return format_log_line(
-        level='event',
-        cluster=clusters[0],
-        instance='ALL',
-        component='marathon',
-        line=line.strip(),
-        timestamp=utc_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f"),
-    )
+    return utc_timestamp
+
+
+def parse_marathon_log_line(line, clusters):
+    utc_timestamp = extract_utc_timestamp_from_log_line(line)
+    if not utc_timestamp:
+        return ''
+    else:
+        return format_log_line(
+            level='event',
+            cluster=clusters[0],
+            instance='ALL',
+            component='marathon',
+            line=line.strip(),
+            timestamp=utc_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f"),
+        )
+
+
+def parse_chronos_log_line(line, clusters):
+    utc_timestamp = extract_utc_timestamp_from_log_line(line)
+    if not utc_timestamp:
+        return ''
+    else:
+        return format_log_line(
+            level='event',
+            cluster=clusters[0],
+            instance='ALL',
+            component='chronos',
+            line=line.strip(),
+            timestamp=utc_timestamp.strftime("%Y-%m-%dT%H:%M:%S.%f"),
+        )
 
 
 def marathon_log_line_passes_filter(line, levels, service, components, clusters):
@@ -191,6 +220,18 @@ def marathon_log_line_passes_filter(line, levels, service, components, clusters)
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
     return compose_job_id(service, '') in parsed_line.get('message', '')
+
+
+def chronos_log_line_passes_filter(line, levels, service, components, clusters):
+    """Given a (JSON-formatted) log line where the message is a Marathon log line,
+    return True if the line should be displayed given the provided service; return False
+    otherwise."""
+    try:
+        parsed_line = json.loads(line)
+    except ValueError:
+        log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
+        return False
+    return chronos_tools.get_job_id(service, '') in parsed_line.get('message', '')
 
 
 def scribe_tail(scribe_env, stream_name, service, levels, components, clusters, queue, filter_fn, parse_fn=None):
@@ -349,7 +390,7 @@ def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
             for cluster in clusters:
                 kw = {
                     'scribe_env': scribe_env,
-                    'stream_name': 'tmp_marathon_%s' % cluster,
+                    'stream_name': 'stream_marathon_%s' % cluster,
                     'service': service,
                     'levels': levels,
                     'components': components,
@@ -357,6 +398,24 @@ def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
                     'queue': queue,
                     'parse_fn': parse_marathon_log_line,
                     'filter_fn': marathon_log_line_passes_filter,
+                }
+                process = Process(target=scribe_tail, kwargs=kw)
+                spawned_processes.append(process)
+                process.start()
+
+        # Tail Chronos logs for the relevant clusters for this service
+        if 'chronos' in components:
+            for cluster in clusters:
+                kw = {
+                    'scribe_env': scribe_env,
+                    'stream_name': 'stream_chronos_%s' % cluster,
+                    'service': service,
+                    'levels': levels,
+                    'components': components,
+                    'clusters': [cluster],
+                    'queue': queue,
+                    'parse_fn': parse_chronos_log_line,
+                    'filter_fn': chronos_log_line_passes_filter,
                 }
                 process = Process(target=scribe_tail, kwargs=kw)
                 spawned_processes.append(process)

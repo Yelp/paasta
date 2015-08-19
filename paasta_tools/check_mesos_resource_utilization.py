@@ -33,7 +33,7 @@ def parse_args():
 def send_event(status, output):
     result_dict = {
         'name': 'cluster_utilization',
-        'team': 'mesos',
+        'team': 'paasta',
         'runbook': 'y/rb-mesos',
         'tip': 'See the mesos web interface?',
         'page': True,

@@ -1,3 +1,5 @@
+import shlex
+
 import docker
 import mock
 from pytest import raises
@@ -21,6 +23,7 @@ from paasta_tools.paasta_cli.cmds.local_run import run_docker_container
 from paasta_tools.paasta_cli.cmds.local_run import validate_environment
 from paasta_tools.marathon_tools import NoMarathonConfigurationForService
 from paasta_tools.utils import SystemPaastaConfig
+from paasta_tools.utils import TimeoutError
 
 
 def test_build_docker_container():
@@ -86,7 +89,7 @@ def test_perform_http_healthcheck_success(mock_http_conn):
 
     mock_http_conn.return_value = mock.Mock(status_code=200, headers={})
     assert perform_http_healthcheck(fake_http_url, fake_timeout)
-    mock_http_conn.assert_called_once_with(fake_http_url, timeout=fake_timeout)
+    mock_http_conn.assert_called_once_with(fake_http_url)
 
 
 @mock.patch('requests.head')
@@ -96,7 +99,16 @@ def test_perform_http_healthcheck_failure(mock_http_conn):
 
     mock_http_conn.return_value = mock.Mock(status_code=400, headers={})
     assert not perform_http_healthcheck(fake_http_url, fake_timeout)
-    mock_http_conn.assert_called_once_with(fake_http_url, timeout=fake_timeout)
+    mock_http_conn.assert_called_once_with(fake_http_url)
+
+
+@mock.patch('requests.head', side_effect=TimeoutError)
+def test_perform_http_healthcheck_timeout(mock_http_conn):
+    fake_http_url = "http://fakehost:1234/fake_status_path"
+    fake_timeout = 10
+
+    assert not perform_http_healthcheck(fake_http_url, fake_timeout)
+    mock_http_conn.assert_called_once_with(fake_http_url)
 
 
 @mock.patch('requests.head')
@@ -107,7 +119,7 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
     mock_http_conn.return_value = mock.Mock(
         status_code=200, headers={'content-type': 'fake_content_type_1, fake_content_type_2'})
     assert not perform_http_healthcheck(fake_http_url, fake_timeout)
-    mock_http_conn.assert_called_once_with(fake_http_url, timeout=fake_timeout)
+    mock_http_conn.assert_called_once_with(fake_http_url)
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.perform_http_healthcheck')
@@ -275,8 +287,15 @@ def test_configure_and_run_explicit_cluster(
     args.instance = 'fake_instance'
     args.interactive = False
     args.cluster = 'fake_cluster'
+    args.soaconfig_root = 'fakesoa-configs/'
     assert configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
-    mock_load_marathon_service_config.assert_called_once_with(fake_service, args.instance, args.cluster)
+    mock_load_marathon_service_config.assert_called_once_with(
+        fake_service,
+        args.instance,
+        args.cluster,
+        load_deployments=False,
+        soa_dir=args.soaconfig_root
+    )
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
@@ -302,6 +321,45 @@ def test_configure_and_run_missing_cluster_exception(
     with raises(SystemExit) as excinfo:
         configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args)
     assert excinfo.value.code == 2
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_docker_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_marathon_service_config', autospec=True)
+def test_configure_and_run_command_uses_cmd_from_config(
+    mock_load_marathon_service_config,
+    mock_load_system_paasta_config,
+    mock_run_docker_container,
+):
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+        {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    fake_service = 'fake_service'
+    docker_hash = '8' * 40
+    args = mock.MagicMock()
+    args.cmd = ''
+    args.service = fake_service
+    args.healthcheck = False
+    args.healthcheck_only = False
+    args.instance = 'fake_instance'
+    args.interactive = False
+    args.cluster = 'fake_cluster'
+
+    mock_load_marathon_service_config.return_value.get_cmd.return_value = 'fake_command'
+
+    configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
+    mock_run_docker_container.assert_called_once_with(
+        mock_docker_client,
+        fake_service,
+        args.instance,
+        docker_hash,
+        [],
+        args.interactive,
+        shlex.split(mock_load_marathon_service_config.return_value.get_cmd.return_value),
+        args.healthcheck,
+        args.healthcheck_only,
+        mock_load_marathon_service_config.return_value
+    )
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.validate_environment', autospec=True)

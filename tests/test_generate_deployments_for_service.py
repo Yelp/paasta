@@ -3,7 +3,7 @@ import mock
 import contextlib
 
 
-def test_get_branches_from_marathon_file():
+def test_get_branches_from_config_file():
     fake_dir = '/nail/etc/soa/dir'
     fake_fname = 'marathon-boston-hab-with-extra-dashes.yaml'
     fake_config = {'test1': {'branch': 'ranch'}, 'test2': {}}
@@ -16,7 +16,7 @@ def test_get_branches_from_marathon_file():
         read_info_patch,
         join_patch
     ):
-        actual = generate_deployments_for_service.get_branches_from_marathon_file(fake_dir, fake_fname)
+        actual = generate_deployments_for_service.get_branches_from_config_file(fake_dir, fake_fname)
         assert expected == actual
         join_patch.assert_called_once_with(fake_dir, fake_fname)
         read_info_patch.assert_called_once_with('internal_operations')
@@ -25,13 +25,13 @@ def test_get_branches_from_marathon_file():
 def test_get_branches_for_service():
     fake_dir = '/mail/var/tea'
     fake_srv = 'boba'
-    fake_fnames = ['marathon-quail', 'marathon-trac']
-    fake_branches = [set(['red', 'green']), set(['blue', 'orange'])]
-    expected = set(['red', 'green', 'blue', 'orange'])
+    fake_fnames = ['marathon-quail', 'marathon-trac', 'chronos-other', 'fake-file']
+    fake_branches = [set(['badboy']), set(['red', 'green']), set(['blue', 'orange']),  set(['white', 'black'])]
+    expected = set(['red', 'green', 'blue', 'orange', 'white', 'black'])
     with contextlib.nested(
         mock.patch('os.path.join', return_value='no_sir'),
         mock.patch('os.listdir', return_value=fake_fnames),
-        mock.patch('generate_deployments_for_service.get_branches_from_marathon_file',
+        mock.patch('generate_deployments_for_service.get_branches_from_config_file',
                    side_effect=lambda a, b: fake_branches.pop())
     ) as (
         join_patch,
@@ -44,7 +44,8 @@ def test_get_branches_for_service():
         listdir_patch.assert_called_once_with('no_sir')
         get_branches_patch.assert_any_call('no_sir', 'marathon-quail')
         get_branches_patch.assert_any_call('no_sir', 'marathon-trac')
-        assert get_branches_patch.call_count == 2
+        get_branches_patch.assert_any_call('no_sir', 'chronos-other')
+        assert get_branches_patch.call_count == 3
 
 
 def test_get_branch_mappings():

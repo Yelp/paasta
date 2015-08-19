@@ -1,10 +1,10 @@
 import contextlib
 import mock
 
-from paasta_tools.marathon_tools import NoDeploymentsAvailable
 from paasta_tools.marathon_tools import ServiceNamespaceConfig
 from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.cmds import info
+from paasta_tools.utils import NoDeploymentsAvailable
 
 
 def test_get_service_info():
@@ -62,6 +62,8 @@ def test_get_service_info():
         assert 'tcp://bar:1234' in actual
         assert 'Dashboard' in actual
         assert '%s (Sensu Alerts)' % PaastaColors.cyan('https://uchiwa.yelpcorp.com/#/events?q=fake_service') in actual
+        mock_get_team.assert_called_with(service_name='fake_service', overrides={})
+        mock_get_runbook.assert_called_with(service_name='fake_service', overrides={})
 
 
 def test_deployments_to_clusters():

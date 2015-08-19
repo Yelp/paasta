@@ -14,13 +14,17 @@ if 'MESOS_CLI_CONFIG' not in os.environ:
     os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
 
 
-class MissingMasterException(Exception):
+class MasterNotAvailableException(Exception):
+    pass
+
+
+class NoSlavesAvailable(Exception):
     pass
 
 
 def raise_cli_exception(msg):
     if msg.startswith("unable to connect to a master"):
-        raise MissingMasterException(msg)
+        raise MasterNotAvailableException(msg)
     else:
         raise Exception(msg)
 
@@ -87,8 +91,14 @@ def fetch_local_slave_state():
 
 
 def fetch_mesos_state_from_leader():
-    """Fetches mesos state from the leader."""
-    return master.CURRENT.state
+    """Fetches mesos state from the leader.
+    Raises an exception if the state doesn't look like it came from an
+    elected leader, as we never want non-leader state data."""
+    state = master.CURRENT.state
+    if 'elected_time' not in state:
+        raise MasterNotAvailableException("We asked for the current leader state, "
+                                          "but it wasn't the elected leader. Please try again.")
+    return state
 
 
 def get_mesos_quorum(state):
@@ -127,9 +137,12 @@ def get_mesos_slaves_grouped_by_attribute(attribute):
     """
     attr_map = {}
     mesos_state = fetch_mesos_state_from_leader()
-    for slave in mesos_state['slaves']:
-        if attribute in slave['attributes']:
-            attr_val = slave['attributes'][attribute]
-            attr_map.setdefault(attr_val, []).append(slave['hostname'])
-
-    return attr_map
+    slaves = mesos_state['slaves']
+    if slaves == []:
+        raise NoSlavesAvailable("No mesos slaves were available to query. Try again later")
+    else:
+        for slave in slaves:
+            if attribute in slave['attributes']:
+                attr_val = slave['attributes'][attribute]
+                attr_map.setdefault(attr_val, []).append(slave['hostname'])
+        return attr_map

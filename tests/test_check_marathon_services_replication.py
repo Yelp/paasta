@@ -12,73 +12,36 @@ def test_send_event():
     fake_namespace = 'jellyfish'
     fake_status = '999999'
     fake_output = 'YOU DID IT'
-    fake_runbook = 'y/notreally'
-    fake_team = 'fake_mean'
-    fake_tip = 'fake_pit'
-    fake_notification_email = 'notify@fake'
-    fake_irc = '#fake'
-    fake_page = True
+    fake_monitoring_overrides = {'fake_key': 'fake_value'}
     fake_soa_dir = '/hi/hello/hey'
     fake_cluster = 'fake_cluster'
-    expected_kwargs = {
-        'tip': fake_tip,
-        'notification_email': fake_notification_email,
-        'page': fake_page,
-        'irc_channels': fake_irc,
-        'alert_after': '2m',
-        'check_every': '1m',
-        'realert_every': -1,
-        'source': 'paasta-fake_cluster',
-    }
     expected_check_name = 'check_marathon_services_replication.%s.%s' % (fake_service_name, fake_namespace)
     with contextlib.nested(
-        mock.patch("paasta_tools.monitoring_tools.get_team",
-                   return_value=fake_team),
-        mock.patch("paasta_tools.monitoring_tools.get_runbook",
-                   return_value=fake_runbook),
-        mock.patch("paasta_tools.monitoring_tools.get_tip",
-                   return_value=fake_tip),
-        mock.patch("paasta_tools.monitoring_tools.get_notification_email",
-                   return_value=fake_notification_email),
-        mock.patch("paasta_tools.monitoring_tools.get_page",
-                   return_value=fake_page),
-        mock.patch("paasta_tools.monitoring_tools.get_irc_channels",
-                   return_value=fake_irc),
-        mock.patch("pysensu_yelp.send_event"),
-        mock.patch('paasta_tools.marathon_tools.get_cluster',
-                   return_value=fake_cluster),
-        mock.patch("paasta_tools.check_marathon_services_replication._log")
+        mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
+        mock.patch('check_marathon_services_replication.load_system_paasta_config', autospec=True),
+        mock.patch("paasta_tools.check_marathon_services_replication._log", autospec=True),
+        mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),
     ) as (
-        monitoring_tools_get_team_patch,
-        monitoring_tools_get_runbook_patch,
-        monitoring_tools_get_tip_patch,
-        monitoring_tools_get_notification_email_patch,
-        monitoring_tools_get_page_patch,
-        monitoring_tools_get_irc_patch,
-        pysensu_yelp_send_event_patch,
-        cluster_patch,
+        send_event_patch,
+        load_system_paasta_config_patch,
         log_patch,
+        load_marathon_service_config_patch,
     ):
+        load_system_paasta_config_patch.return_value.get_cluster.return_value = fake_cluster
+        load_marathon_service_config_patch.return_value.get_monitoring.return_value = fake_monitoring_overrides
         check_marathon_services_replication.send_event(fake_service_name,
                                                        fake_namespace,
                                                        fake_soa_dir,
                                                        fake_status,
                                                        fake_output)
-        monitoring_tools_get_team_patch.assert_called_once_with('marathon', fake_service_name,
-                                                                soa_dir=fake_soa_dir)
-        monitoring_tools_get_runbook_patch.assert_called_once_with('marathon', fake_service_name,
-                                                                   soa_dir=fake_soa_dir)
-        monitoring_tools_get_tip_patch.assert_called_once_with('marathon', fake_service_name,
-                                                               soa_dir=fake_soa_dir)
-        monitoring_tools_get_notification_email_patch.assert_called_once_with('marathon', fake_service_name,
-                                                                              soa_dir=fake_soa_dir)
-        monitoring_tools_get_page_patch.assert_called_once_with('marathon', fake_service_name,
-                                                                soa_dir=fake_soa_dir)
-        monitoring_tools_get_irc_patch.assert_called_once_with('marathon', fake_service_name,
-                                                               soa_dir=fake_soa_dir)
-        pysensu_yelp_send_event_patch.assert_called_once_with(expected_check_name, fake_runbook, fake_status,
-                                                              fake_output, fake_team, **expected_kwargs)
-        cluster_patch.assert_called_once_with()
+        send_event_patch.assert_called_once_with(
+            fake_service_name,
+            expected_check_name,
+            fake_monitoring_overrides,
+            fake_status,
+            fake_output,
+            fake_soa_dir
+        )
 
 
 def test_split_id():
@@ -425,7 +388,7 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock_get_expected_count,
         mock_get_mesos_replication_for_service,
     ):
-        mock_get_expected_count.side_effect = check_marathon_services_replication.marathon_tools.NoDeploymentsAvailable
+        mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(service, instance, None, None, None)
         assert mock_get_proxy_port_for_instance.call_count == 0
 

@@ -13,15 +13,14 @@ import sys
 import humanize
 from mesos.cli.exceptions import SlaveDoesNotExist
 import requests_cache
+import service_configuration_lib
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_current_tasks
+from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import filter_running_tasks
 from paasta_tools.mesos_tools import filter_not_running_tasks
-from paasta_tools.monitoring.replication_utils import (
-    get_replication_for_services,
-    match_backends_and_tasks,
-)
+from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
@@ -43,8 +42,11 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Runs start/stop/restart/status an existing Marathon service.')
     parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
                         help="Print out more output regarding the state of the service")
-    parser.add_argument('-d', '--debug', action='store_true', dest="debug", default=False,
+    parser.add_argument('-D', '--debug', action='store_true', dest="debug", default=False,
                         help="Output debug logs regarding files, connections, etc")
+    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        help="define a different soa config directory")
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
     command_choices = ['start', 'stop', 'restart', 'status']
     parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
@@ -208,22 +210,6 @@ def haproxy_backend_report(normal_instance_count, up_backends):
     return "%s - in haproxy with %s total backends %s in this namespace." % (status, count, up_string)
 
 
-def status_smartstack_backends(service, instance, normal_instance_count, cluster):
-    nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
-    if instance != nerve_ns:
-        ns_string = PaastaColors.bold(nerve_ns)
-        return "Smartstack: N/A - %s is announced in the %s namespace." % (instance, ns_string)
-    else:
-        try:
-            service_instance = "%s.%s" % (service, instance)
-            up_backends = get_replication_for_services(SYNAPSE_HOST_PORT, [service_instance])
-            up_backend_count = up_backends[service_instance]
-            report = haproxy_backend_report(normal_instance_count, up_backend_count)
-            return "Smartstack: %s" % report
-        except KeyError:
-            return "Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance
-
-
 def pretty_print_haproxy_backend(backend, is_correct_instance):
     """Pretty Prints the status of a given haproxy backend
     Takes the fields described in the CSV format of haproxy:
@@ -243,7 +229,7 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
     lastcheck = "%s/%s in %sms" % (backend['check_status'], backend['check_code'], backend['check_duration'])
     lastchange = humanize.naturaltime(datetime.timedelta(seconds=int(backend['lastchg'])))
 
-    status_text = '    {name:<32}{lastcheck:<20}{lastchange:<16}{status:}'.format(
+    status_text = '      {name:<32}{lastcheck:<20}{lastchange:<16}{status:}'.format(
         name=pretty_backend_name,
         lastcheck=lastcheck,
         lastchange=lastchange,
@@ -256,22 +242,65 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
         return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
 
 
-def status_smartstack_backends_verbose(service, instance, cluster, tasks):
+def status_smartstack_backends(service, instance, cluster, tasks, expected_count, soa_dir, verbose):
     """Returns detailed information about smartstack backends for a
     service and instance"""
-    nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
     output = []
-    # Only bother doing things if we are on the same namespace
+    nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
     service_instance = "%s.%s" % (service, nerve_ns)
-    output.append("  Haproxy Service Name: %s" % service_instance)
-    output.append("  Backends: Name                    LastCheck           LastChange      Status")
-    sorted_backends = sorted(get_backends(service_instance),
-                             key=lambda backend: backend['status'],
-                             reverse=True)
-    for backend, task in match_backends_and_tasks(sorted_backends, tasks):
-        if backend is not None:
-            output.append(pretty_print_haproxy_backend(backend, task is not None))
+
+    if instance != nerve_ns:
+        ns_string = PaastaColors.bold(nerve_ns)
+        output.append("Smartstack: N/A - %s is announced in the %s namespace." % (instance, ns_string))
+        # If verbose mode is specified, then continue to show backends anyway, otherwise stop early
+        if not verbose:
+            return "\n".join(output)
+
+    service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
+    discover_location_type = service_namespace_config.get_discover()
+    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type)
+    if len(unique_attributes) == 0:
+        output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance)
+    else:
+        output.append("Smartstack:")
+        if verbose:
+            output.append("  Haproxy Service Name: %s" % service_instance)
+            output.append("  Backends: Name                      LastCheck           LastChange      Status")
+
+        output.extend(pretty_print_smartstack_backends_for_locations(
+            service_instance,
+            tasks,
+            unique_attributes,
+            expected_count,
+            verbose
+        ))
     return "\n".join(output)
+
+
+def pretty_print_smartstack_backends_for_locations(service_instance, tasks, locations, expected_count, verbose):
+    """
+    Pretty prints the status of smartstack backends of a specified service and instance in the specified locations
+    """
+    output = []
+    expected_count_per_location = int(expected_count / len(locations))
+    for location in sorted(locations):
+        hosts = locations[location]
+        # arbitrarily choose the first host with a given attribute to query for replication stats
+        synapse_host = hosts[0]
+        sorted_backends = sorted(get_backends(service_instance, synapse_host_port='%s:3212' % synapse_host),
+                                 key=lambda backend: backend['status'],
+                                 reverse=True)  # Specify reverse so that backends in 'UP' are placed above 'MAINT'
+        matched_tasks = match_backends_and_tasks(sorted_backends, tasks)
+        running_count = sum(1 for backend, task in matched_tasks if backend and backend['status'] == 'UP')
+        output.append("    %s - %s" %
+                      (location, haproxy_backend_report(expected_count_per_location, running_count)))
+
+        # If verbose mode is specified, show status of individual backends
+        if verbose:
+            for backend, task in matched_tasks:
+                if backend is not None:
+                    output.append(pretty_print_haproxy_backend(backend, task is not None))
+    return output
 
 
 @timeout()
@@ -471,16 +500,16 @@ def main():
 
         print status_desired_state(service, instance, client, complete_job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
+        tasks, out = status_marathon_job_verbose(service, instance, client)
         if args.verbose:
-            tasks, out = status_marathon_job_verbose(service, instance, client)
             print out
         print status_mesos_tasks(service, instance, normal_instance_count)
         if args.verbose:
             print status_mesos_tasks_verbose(service, instance)
         if proxy_port is not None:
-            print status_smartstack_backends(service, instance, normal_smartstack_count, cluster)
-            if args.verbose:
-                print status_smartstack_backends_verbose(service, instance, cluster, tasks)
+            print status_smartstack_backends(service, instance, cluster, tasks, normal_smartstack_count,
+                                             args.soa_dir, args.verbose)
+
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

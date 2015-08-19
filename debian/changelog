@@ -1,3 +1,166 @@
+paasta-tools (0.12.55-yelp1) lucid; urgency=low
+
+  * 0.12.55 tagged with 'make release'
+    Commit: Merge branch PAASTA-1105
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 18 Aug 2015 11:22:21 -0700
+
+paasta-tools (0.12.54-yelp1) lucid; urgency=low
+
+  * 0.12.54 tagged with 'make release'
+    Commit: Merge branch PAASTA-329
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 17 Aug 2015 14:39:39 -0700
+
+paasta-tools (0.12.53-yelp1) lucid; urgency=low
+
+  * 0.12.53 tagged with 'make release'
+    Commit: remove spaces from app id + fix flake
+
+ -- Robert Johnson <robj@yelp.com>  Mon, 17 Aug 2015 09:03:08 -0700
+
+paasta-tools (0.12.52-yelp1) lucid; urgency=low
+
+  * 0.12.52 tagged with 'make release'
+    Commit: Fix paasta info
+
+ -- Keshav Varma <keshav@yelp.com>  Fri, 14 Aug 2015 16:27:16 -0700
+
+paasta-tools (0.12.51-yelp1) lucid; urgency=low
+
+  * 0.12.51 tagged with 'make release'
+    Commit: Add setup_chronos_job  Conflicts:  tests/test_utils.py
+
+ -- Keshav Varma <keshav@yelp.com>  Fri, 14 Aug 2015 11:33:24 -0700
+
+paasta-tools (0.12.50-yelp1) lucid; urgency=low
+
+  * 0.12.50 tagged with 'make release'
+    Commit: Merge branch PAASTA-1101
+
+ -- Keshav Varma <keshav@yelp.com>  Fri, 14 Aug 2015 10:47:38 -0700
+
+paasta-tools (0.12.49-yelp1) lucid; urgency=low
+
+  * 0.12.49 tagged with 'make release'
+    Commit: fix exception breaking tests
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 14 Aug 2015 05:40:01 -0700
+
+paasta-tools (0.12.48-yelp1) lucid; urgency=low
+
+  * 0.12.48 tagged with 'make release'
+    Commit: Merge branch fix_hanging_on_signal
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 14 Aug 2015 04:47:20 -0700
+
+paasta-tools (0.12.47-yelp1) lucid; urgency=low
+
+  * 0.12.47 tagged with 'make release'
+    Commit: Merge branch gstarnbe_updown_s
+
+ -- Guenther Starnberger <gstarnbe@yelp.com>  Wed, 12 Aug 2015 06:55:47 -0700
+
+paasta-tools (0.12.46-yelp1) lucid; urgency=low
+
+  * 0.12.46 tagged with 'make release'
+    Commit: Merge branch PAASTA-1083
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 11 Aug 2015 13:03:15 -0700
+
+paasta-tools (0.12.45-yelp1) lucid; urgency=low
+
+  * 0.12.45 tagged with 'make release'
+    Commit: Merge branch PAASTA-1035
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 10 Aug 2015 13:37:21 -0700
+
+paasta-tools (0.12.44-yelp1) lucid; urgency=low
+
+  * 0.12.44 tagged with 'make release'
+    Commit: Include chronos-* branches in deployments.json
+
+ -- Keshav Varma <keshav@yelp.com>  Tue, 04 Aug 2015 14:37:41 -0700
+
+paasta-tools (0.12.43-yelp1) lucid; urgency=low
+
+  * 0.12.43 tagged with 'make release'
+    Commit: Show info per region/habitat in paasta status
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 03 Aug 2015 17:50:47 -0700
+
+paasta-tools (0.12.42-yelp1) lucid; urgency=low
+
+  * 0.12.42 tagged with 'make release'
+    Commit: Merge branch HACK-725
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 31 Jul 2015 12:47:26 -0700
+
+paasta-tools (0.12.41-yelp1) lucid; urgency=low
+
+  * 0.12.41 tagged with 'make release'
+    Commit: Added docs referencing mesos upgrade documentation. PAASTA-
+    149
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 30 Jul 2015 14:02:13 -0700
+
+paasta-tools (0.12.40-yelp1) lucid; urgency=low
+
+  * 0.12.40 tagged with 'make release'
+    Commit: Pin to exact scribereader version
+
+ -- Joseph Lynch <jlynch@yelp.com>  Wed, 29 Jul 2015 16:45:49 -0700
+
+paasta-tools (0.12.39-yelp1) lucid; urgency=low
+
+  * 0.12.39 tagged with 'make release'
+    Commit: Merge branch SI-938_lin_classic_soa_namespaces
+
+ -- Alexander Lin <lin@yelp.com>  Wed, 29 Jul 2015 12:13:31 -0700
+
+paasta-tools (0.12.38-yelp1) lucid; urgency=low
+
+  * 0.12.38 tagged with 'make release'
+    Commit: Fix bug in is_draining / get_spool when you get status 200
+
+ -- Evan Krall <krall@yelp.com>  Wed, 29 Jul 2015 11:43:22 -0700
+
+paasta-tools (0.12.37-yelp1) lucid; urgency=low
+
+  * 0.12.37 tagged with 'make release'
+    Commit: Make local-run use the cmd specified in Marathon configs if
+    defined
+
+ -- Keshav Varma <keshav@yelp.com>  Wed, 29 Jul 2015 11:07:51 -0700
+
+paasta-tools (0.12.36-yelp1) lucid; urgency=low
+
+  * 0.12.36 tagged with 'make release'
+    Commit: Merge branch master of git.yelpcorp.com:paasta_tools
+
+ -- Evan Krall <krall@yelp.com>  Tue, 28 Jul 2015 19:33:02 -0700
+
+paasta-tools (0.12.35-yelp1) lucid; urgency=low
+
+  * 0.12.35 tagged with 'make release'
+    Commit: Merge branch jlynch_be_nice_to_callers
+
+ -- Joseph Lynch <jlynch@yelp.com>  Tue, 28 Jul 2015 10:53:01 -0700
+
+paasta-tools (0.12.34-yelp1) lucid; urgency=low
+
+  * 0.12.34 tagged with 'make release'
+    Commit: Handle timeouts during healthcheck in local-run
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 27 Jul 2015 14:10:37 -0700
+
+paasta-tools (0.12.33-yelp1) lucid; urgency=low
+
+  * 0.12.33 tagged with 'make release'
+    Commit: Handle missing marathon configs in metastatus
+
+ -- Keshav Varma <keshav@yelp.com>  Mon, 27 Jul 2015 10:38:08 -0700
+
 paasta-tools (0.12.32-yelp1) lucid; urgency=low
 
   * 0.12.32 tagged with 'make release'

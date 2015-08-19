@@ -30,5 +30,5 @@ def create_trivial_chronos_job(context):
 @then(u'we should be able to see it when we list jobs')
 def list_chronos_jobs_has_trivial_job(context):
     jobs = context.chronos_client.list()
-    job_names = [ job['name'] for job in jobs ]
+    job_names = [job['name'] for job in jobs]
     assert 'test_chronos_job' in job_names

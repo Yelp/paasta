@@ -1,13 +1,18 @@
 #!/usr/bin/env python
+import contextlib
 
+from mock import Mock
 from mock import patch
+from chronos import ChronosClient
+from httplib2 import ServerNotFoundError
+from pytest import raises
+
+from chronos_tools import ChronosNotConfigured
 from paasta_tools import paasta_metastatus
 from paasta_tools import mesos_tools
 from paasta_tools.utils import PaastaColors
 from paasta_tools.marathon_tools import MarathonConfig
-from chronos import ChronosClient
-from pytest import raises
-from httplib2 import ServerNotFoundError
+from paasta_tools.marathon_tools import MarathonNotConfigured
 
 
 def test_ok_check_threshold():
@@ -119,8 +124,8 @@ def test_duplicate_frameworks():
 
 @patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
 def test_missing_master_exception(mock_fetch_from_leader):
-    mock_fetch_from_leader.side_effect = mesos_tools.MissingMasterException('Missing')
-    with raises(mesos_tools.MissingMasterException) as exception_info:
+    mock_fetch_from_leader.side_effect = mesos_tools.MasterNotAvailableException('Missing')
+    with raises(mesos_tools.MasterNotAvailableException) as exception_info:
         paasta_metastatus.get_mesos_status()
     assert 'Missing' in str(exception_info.value)
 
@@ -324,24 +329,74 @@ def test_assert_chronos_scheduled_jobs():
     assert ok
 
 
-def test_get_chronos_status():
-    assert True
-
-
 def test_get_chronos_status_no_chronos():
     """ Asserts that chronos checks return ok, even when chronos
         is not available. This needs to be removed and fixed when
         we have chronos available everywhere, but worth verifying
         it works as expected for now """
-    def force_error():
-        raise ServerNotFoundError
     mock_client = ChronosClient(hostname="fake_hostname")
 
     # force the raising of the error rather than
     # relying on the hostname of the config being
     # unavailable.
-    mock_client.list = force_error
+    mock_client.list = Mock(side_effect=ServerNotFoundError)
 
     outputs, oks = paasta_metastatus.get_chronos_status(mock_client)
     assert outputs == ['chronos jobs: 0']
     assert all(oks)
+
+
+@patch('paasta_tools.chronos_tools.get_chronos_client', autospec=True)
+def test_get_chronos_status(
+    mock_get_chronos_client,
+):
+    client = mock_get_chronos_client.return_value
+    client.list.return_value = [
+        {'name': 'fake_job1'},
+        {'name': 'fake_job1'},
+    ]
+    expected_jobs_output = "chronos jobs: 2"
+
+    output, oks = paasta_metastatus.get_chronos_status(client)
+
+    assert expected_jobs_output in output
+
+
+def test_main_no_marathon_config():
+    with contextlib.nested(
+        patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
+        patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_mesos_status', autospec=True,
+              return_value=(['fake_output'], [True])),
+        patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
+              return_value=(['fake_output'], [True])),
+    ) as (
+        load_marathon_config_patch,
+        load_chronos_config_patch,
+        load_get_mesos_status_patch,
+        load_get_marathon_status_patch,
+    ):
+        load_marathon_config_patch.side_effect = MarathonNotConfigured
+        with raises(SystemExit) as excinfo:
+            paasta_metastatus.main()
+        assert excinfo.value.code == 0
+
+
+def test_main_no_chronos_config():
+    with contextlib.nested(
+        patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
+        patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_mesos_status', autospec=True,
+              return_value=(['fake_output'], [True])),
+        patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
+              return_value=(['fake_output'], [True])),
+    ) as (
+        load_marathon_config_patch,
+        load_chronos_config_patch,
+        load_get_mesos_status_patch,
+        load_get_marathon_status_patch,
+    ):
+        load_chronos_config_patch.side_effect = ChronosNotConfigured
+        with raises(SystemExit) as excinfo:
+            paasta_metastatus.main()
+        assert excinfo.value.code == 0

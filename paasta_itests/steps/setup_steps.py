@@ -2,6 +2,7 @@ import os
 from tempfile import NamedTemporaryFile
 
 from behave import given
+import chronos
 import json
 
 from itest_utils import get_service_connection_string
@@ -39,6 +40,11 @@ def setup_marathon_client():
         'zookeeper': zk_connection_string
     }, '/some_fake_path_to_config_dir/')
     return (client, marathon_config, system_paasta_config)
+
+
+def setup_chronos_client():
+    connection_string = get_service_connection_string('chronos')
+    return chronos.connect(connection_string)
 
 
 def setup_chronos_config():
@@ -80,13 +86,19 @@ def write_etc_paasta(config, filename):
 
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
-    """Adds a working marathon client as context.client for the purposes of
-    interacting with it in the test."""
-    if not hasattr(context, 'client'):
-        context.client, context.marathon_config, context.system_paasta_config = setup_marathon_client()
-        context.chronos_config = setup_chronos_config()
+    """Adds a working marathon client and chronos client for the purposes of
+    interacting with them in the test."""
+    if not hasattr(context, 'marathon_client'):
+        context.marathon_client, context.marathon_config, context.system_paasta_config = setup_marathon_client()
     else:
         print 'Marathon connection already established'
+
+    if not hasattr(context, 'chronos_client'):
+        context.chronos_config = setup_chronos_config()
+        context.chronos_client = setup_chronos_client()
+    else:
+        print 'Chronos connection already established'
+
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     context.mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
     write_etc_paasta(context.marathon_config, 'marathon.json')

@@ -1,4 +1,4 @@
-Feature: paasta_serviceinit
+Feature: paasta_serviceinit can control marathon tasks
 
   Scenario: paasta_serviceinit can run status
     Given a working paasta cluster

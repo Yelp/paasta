@@ -47,4 +47,5 @@ Upgrading Components
 As things progress, there will come a time that you will have to upgrade
 PaaSTA components to new versions.
 
+* See `Upgrading Mesos <upgrading_mesos.html>`_ for how to upgrade Mesos safely.
 * See `Upgrading Marathon <upgrading_marathon.html>`_ for how to upgrade Marathon safely.

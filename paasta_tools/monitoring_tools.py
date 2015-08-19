@@ -7,74 +7,70 @@ on the framework that is asking, and still allows you to set your team
 
 Everything in here is private, and you shouldn't worry about it.
 """
+import json
+import os
 
 import service_configuration_lib
-import marathon_tools
+import pysensu_yelp
+
+from utils import load_system_paasta_config
 
 
-def get_team(framework, service_name, instance_name=None,
-             soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('team', framework, service_name, instance_name, soa_dir)
+def get_team(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('team', overrides, service_name, soa_dir)
 
 
-def get_runbook(framework, service_name, instance_name=None,
-                soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('runbook', framework, service_name, instance_name, soa_dir)
+def get_runbook(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('runbook', overrides, service_name, soa_dir)
 
 
-def get_tip(framework, service_name, instance_name=None,
-            soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('tip', framework, service_name, instance_name, soa_dir)
+def get_tip(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('tip', overrides, service_name, soa_dir)
 
 
-def get_notification_email(framework, service_name, instance_name=None,
-                           soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('notification_email', framework, service_name, instance_name, soa_dir)
+def get_notification_email(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('notification_email', overrides, service_name, soa_dir)
 
 
-def get_page(framework, service_name, instance_name=None,
-             soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('page', framework, service_name, instance_name, soa_dir)
+def get_page(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('page', overrides, service_name, soa_dir)
 
 
-def get_alert_after(framework, service_name, instance_name=None,
-                    soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('alert_after', framework, service_name, instance_name, soa_dir)
+def get_alert_after(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('alert_after', overrides, service_name, soa_dir)
 
 
-def get_realert_every(framework, service_name, instance_name=None,
-                      soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('realert_every', framework, service_name, instance_name, soa_dir)
+def get_realert_every(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('realert_every', overrides, service_name, soa_dir)
 
 
-def get_check_every(framework, service_name, instance_name=None,
-                    soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('check_every', framework, service_name, instance_name, soa_dir)
+def get_check_every(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('check_every', overrides, service_name, soa_dir)
 
 
-def get_irc_channels(framework, service_name, instance_name=None,
-                     soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('irc_channels', framework, service_name, instance_name, soa_dir)
+def get_irc_channels(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('irc_channels', overrides, service_name, soa_dir)
 
 
-def get_dependencies(framework, service_name, instance_name=None,
-                     soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('dependencies', framework, service_name, instance_name, soa_dir)
+def get_dependencies(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('dependencies', overrides, service_name, soa_dir)
 
 
-def __get_monitoring_config_value(key, framework, service_name, instance_name=None,
-                                  soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+def get_ticket(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('ticket', overrides, service_name, soa_dir)
+
+
+def get_project(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('project', overrides, service_name, soa_dir)
+
+
+def __get_monitoring_config_value(key, overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
     general_config = service_configuration_lib.read_service_configuration(service_name, soa_dir=soa_dir)
-    if instance_name:
-        cluster = marathon_tools.get_cluster()
-        job_config = marathon_tools.load_marathon_service_config(service_name, instance_name, cluster, soa_dir=soa_dir)
-    else:
-        job_config = marathon_tools.MarathonServiceConfig(service_name, instance_name, {}, {})
-    monitor_config = marathon_tools.read_monitoring_config(service_name, soa_dir=soa_dir)
+    monitor_config = read_monitoring_config(service_name, soa_dir=soa_dir)
     service_default = general_config.get(key, monitoring_defaults(key))
     service_default = general_config.get('monitoring', {key: service_default}).get(key, service_default)
     service_default = monitor_config.get(key, service_default)
-    return job_config.get(key, service_default)
+    return overrides.get(key, service_default)
 
 
 def monitoring_defaults(key):
@@ -83,5 +79,88 @@ def monitoring_defaults(key):
                    'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
         'tip': 'Please set a `tip` field in your monitoring.yaml. Docs: '
                'https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml',
+        'ticket': False,
+        'project': None,
     }
     return defaults.get(key, False)
+
+
+def get_team_email_address(service, overrides=None):
+    """Looks up the team email address from specific marathon or chronos config
+    (most specific) to monitoring.yaml, or the global Sensu team_data.json.
+    (least specific). Returns None if nothing is available.
+
+    This function is most useful for when you *really* need an email address to use
+    for non-Sensu applications. (chronos, jenkins, etc)
+
+    This function should *not* be used with Sensu stuff. Instead you should
+    leave `notification_email` absent and just let Sensu do its thing."""
+    if overrides is None:
+        overrides = {}
+    email_address = __get_monitoring_config_value('notification_email', overrides=overrides, service_name=service)
+    if not email_address:
+        team = get_team(overrides=overrides, service_name=service)
+        email_address = get_sensu_team_data(team).get('notification_email', None)
+    return email_address
+
+
+def get_sensu_team_data(team):
+    """Takes a team and returns the dictionary of Sensu configuration
+    settings for that team. The data is in this format:
+    https://github.com/Yelp/sensu_handlers#teams
+    Returns an empty dictionary if there is nothing to return.
+
+    Not all teams specify all the different types of configuration settings.
+    for example, a team may not specify a `nofitication_email`. It is up
+    to the caller of this function to handle that case.
+    """
+    global_team_data = _load_sensu_team_data()['team_data']
+    return global_team_data.get(team, {})
+
+
+def _load_sensu_team_data():
+    with open('/etc/sensu/team_data.json') as f:
+        team_data = json.load(f)
+    return team_data
+
+
+def send_event(name, check_name, overrides, status, output, soa_dir):
+    """Send an event to sensu via pysensu_yelp with the given information.
+
+    :param name: The service name the event is about
+    :param instance: The instance of the service the event is about
+    :param status: The status to emit for this event
+    :param overrides: A dictionary containing overrides for monitoring options
+                      (e.g. notification_email, ticket, page)
+    :param output: The output to emit for this event
+    :param soa_dir: The service directory to read monitoring information from
+    """
+    # This function assumes the input is a string like "mumble.main"
+    team = get_team(overrides, name, soa_dir)
+    if not team:
+        return
+    runbook = overrides.get('runbook', 'http://y/paasta-troubleshooting')
+    result_dict = {
+        'tip': get_tip(overrides, name, soa_dir),
+        'notification_email': get_notification_email(overrides, name, soa_dir),
+        'irc_channels': get_irc_channels(overrides, name, soa_dir),
+        'ticket': get_ticket(overrides, name, soa_dir),
+        'project': get_project(overrides, name, soa_dir),
+        'alert_after': overrides.get('alert_after', '5m'),
+        'check_every': overrides.get('check_every', '1m'),
+        'realert_every': -1,
+        'source': 'paasta-%s' % load_system_paasta_config().get_cluster(),
+    }
+    pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
+
+
+def read_monitoring_config(name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    """Read a service's monitoring.yaml file.
+
+    :param name: The service name
+    :param soa_dir: THe SOA configuration directory to read from
+    :returns: A dictionary of whatever was in soa_dir/name/monitoring.yaml"""
+    rootdir = os.path.abspath(soa_dir)
+    monitoring_file = os.path.join(rootdir, name, "monitoring.yaml")
+    monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
+    return monitor_conf

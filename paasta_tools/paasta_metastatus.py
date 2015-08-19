@@ -1,8 +1,14 @@
 #!/usr/bin/env python
+import sys
 
 from collections import Counter, OrderedDict
+from httplib2 import ServerNotFoundError
+
 from paasta_tools import marathon_tools
-from paasta_tools.chronos_tools import get_chronos_client, load_chronos_config
+from paasta_tools.chronos_tools import ChronosNotConfigured
+from paasta_tools.chronos_tools import get_chronos_client
+from paasta_tools.chronos_tools import load_chronos_config
+from paasta_tools.marathon_tools import MarathonNotConfigured
 from paasta_tools.mesos_tools import fetch_mesos_stats
 from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_quorum
@@ -10,9 +16,7 @@ from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
-from paasta_tools.mesos_tools import MissingMasterException
-from httplib2 import ServerNotFoundError
-import sys
+from paasta_tools.mesos_tools import MasterNotAvailableException
 
 
 def get_num_masters(state):
@@ -59,8 +63,8 @@ def assert_cpu_health(metrics, threshold=10):
 
 
 def assert_memory_health(metrics, threshold=10):
-    total = metrics['master/mem_total']/float(1024)
-    used = metrics['master/mem_used']/float(1024)
+    total = metrics['master/mem_total'] / float(1024)
+    used = metrics['master/mem_used'] / float(1024)
     available = total - used
     perc_available = percent_available(total, available)
 
@@ -201,19 +205,12 @@ def get_marathon_status(client):
 
 def assert_chronos_scheduled_jobs(client):
     """
-      Attempts to assert the number of chronos
-      jobs. It's ok if we can't connect for now,
-      chronos isn't always available.
-
-      FIXME: once chronos is widely available, do
-      the right thing here.
+    :returns: a tuple of a string and a bool containing representing if it is ok or not
     """
     try:
         num_jobs = len(client.list())
     except ServerNotFoundError:
-        print ("There was an error connecting to chronos.")
         num_jobs = 0
-        pass
     return ("chronos jobs: %d" % num_jobs, True)
 
 
@@ -241,15 +238,24 @@ def get_marathon_client(marathon_config):
 
 
 def main():
-    marathon_config = marathon_tools.load_marathon_config()
-    marathon_client = get_marathon_client(marathon_config)
-    chronos_config = load_chronos_config()
-    chronos_client = get_chronos_client(chronos_config)
+    marathon_config = None
+    chronos_config = None
+
+    # Check to see if Marathon should be running here by checking for config
+    try:
+        marathon_config = marathon_tools.load_marathon_config()
+    except MarathonNotConfigured:
+        marathon_outputs, marathon_oks = (['marathon is not configured to run here'], [True])
+
+    # Check to see if Chronos should be running here by checking for config
+    try:
+        chronos_config = load_chronos_config()
+    except ChronosNotConfigured:
+        chronos_outputs, chronos_oks = (['chronos is not configured to run here'], [True])
+
     try:
         mesos_outputs, mesos_oks = get_mesos_status()
-        marathon_outputs, marathon_oks = get_marathon_status(marathon_client)
-        chronos_outputs, chronos_oks = get_chronos_status(chronos_client)
-    except MissingMasterException as e:
+    except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
         print(PaastaColors.red("CRITICAL:  %s" % e.message))
@@ -258,15 +264,25 @@ def main():
     print("Mesos Status:")
     for line in mesos_outputs:
         print_with_indent(line, 2)
-    print("Marathon Status:")
-    for line in marathon_outputs:
-        print_with_indent(line, 2)
-    print("Chronos Status:")
-    for line in chronos_outputs:
-        print_with_indent(line, 2)
+
+    if marathon_config:
+        marathon_client = get_marathon_client(marathon_config)
+        marathon_outputs, marathon_oks = get_marathon_status(marathon_client)
+        print("Marathon Status:")
+        for line in marathon_outputs:
+            print_with_indent(line, 2)
+
+    if chronos_config:
+        chronos_client = get_chronos_client(chronos_config)
+        chronos_outputs, chronos_oks = get_chronos_status(chronos_client)
+        print("Chronos Status:")
+        for line in chronos_outputs:
+            print_with_indent(line, 2)
 
     if False in mesos_oks or False in marathon_oks or False in chronos_oks:
         sys.exit(2)
+    else:
+        sys.exit(0)
 
 
 if __name__ == '__main__':

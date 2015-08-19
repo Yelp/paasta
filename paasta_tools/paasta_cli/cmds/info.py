@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-from paasta_tools.marathon_tools import NoDeploymentsAvailable
 from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_runbook
@@ -10,6 +9,7 @@ from paasta_tools.paasta_cli.utils import get_pipeline_url
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaColors
 from service_configuration_lib import read_service_configuration
 
@@ -90,8 +90,8 @@ def get_service_info(service):
     output.append('Service Name: %s' % service)
     output.append('Description: %s' % description)
     output.append('External Link (CEP/SCF): %s' % PaastaColors.cyan(external_link))
-    output.append('Monitored By: team %s' % get_team(None, service))
-    output.append('Runbook: %s' % PaastaColors.cyan(get_runbook(None, service)))
+    output.append('Monitored By: team %s' % get_team(service_name=service, overrides={}))
+    output.append('Runbook: %s' % PaastaColors.cyan(get_runbook(service_name=service, overrides={})))
     output.append('Git Repo: %s' % git_url)
     output.append('Jenkins Pipeline: %s' % pipeline_url)
     output.append('Deployed to the following clusters:')

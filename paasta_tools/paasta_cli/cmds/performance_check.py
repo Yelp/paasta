@@ -1,5 +1,13 @@
 #!/usr/bin/env python
+import os
+import json
 import sys
+
+import requests
+
+from paasta_tools.utils import get_username
+from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+from paasta_tools.utils import timeout
 
 
 def add_subparser(subparsers):
@@ -11,16 +19,49 @@ def add_subparser(subparsers):
     list_parser.add_argument('-s', '--service',
                              help='Name of service for which you wish to check. Leading "services-", as included in a '
                                   'Jenkins job name, will be stripped.',
-                             required=True,
                              )
     list_parser.add_argument('-c', '--commit',
                              help='Git sha of the image to check',
-                             required=True,
                              )
-
+    list_parser.add_argument('-i', '--image',
+                             help='Optional docker image to performance check. Must be available on a registry for '
+                                  'use, like http://docker-dev.yelpcorp.com/example_service-kwa-test1',
+                             )
     list_parser.set_defaults(command=perform_performance_check)
 
 
+def load_performance_check_config():
+    config_file = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'performance-check.json')
+    try:
+        with open(config_file) as f:
+            return json.load(f)
+    except IOError as e:
+        print "No performance check config to use. Safely bailing."
+        print e.strerror
+        sys.exit(0)
+
+
+def submit_performance_check_job(service, commit, image):
+    performance_check_config = load_performance_check_config()
+    payload = {
+        'service': service,
+        'commit': commit,
+        'submitter': get_username(),
+        'image': image,
+    }
+    r = requests.post(
+        url=performance_check_config['endpoint'],
+        data=payload,
+    )
+    print "Posted a submission to the PaaSTA performance-check service:"
+    print r.text
+
+
+@timeout()
 def perform_performance_check(args):
-    print 'Not implemented yet'
-    sys.exit(0)
+    try:
+        submit_performance_check_job(service=args.service, commit=args.commit, image=args.image)
+    except Exception as e:
+        print "Something went wrong with the performance check. Safely bailing. No need to panic."
+        print "Here was the error:"
+        print str(e)

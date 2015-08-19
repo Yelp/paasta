@@ -37,7 +37,7 @@ Scripts
    generate_services_yaml
    list_marathon_service_instances
    paasta_execute_docker_command
-   setup_chronos_jobs
+   setup_chronos_job
    setup_marathon_job
    synapse_srv_namespaces_fact
 

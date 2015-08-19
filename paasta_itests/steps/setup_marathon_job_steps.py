@@ -24,7 +24,7 @@ fake_service_config = {
             'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
             'image': u'localhost/fake_docker_url',
             'network': 'BRIDGE'
-            },
+        },
         'type': 'DOCKER',
         'volumes': [
             {'hostPath': u'/nail/etc/habitat', 'containerPath': '/nail/etc/habitat', 'mode': 'RO'},
@@ -36,7 +36,7 @@ fake_service_config = {
             {'hostPath': u'/nail/etc/topology_env', 'containerPath': '/nail/etc/topology_env', 'mode': 'RO'},
             {'hostPath': u'/nail/srv', 'containerPath': '/nail/srv', 'mode': 'RO'},
             {'hostPath': u'/etc/boto_cfg', 'containerPath': '/etc/boto_cfg', 'mode': 'RO'}]
-        },
+    },
     'instances': 1,
     'mem': 300,
     'args': [],
@@ -46,6 +46,7 @@ fake_service_config = {
     'backoff_seconds': 1,
     'constraints': None
 }
+
 
 @when(u'we create a complete app')
 def create_complete_app(context):
@@ -65,7 +66,7 @@ def create_complete_app(context):
         return_tuple = setup_marathon_job.setup_service(
             fake_service_name,
             fake_instance_name,
-            context.client,
+            context.marathon_client,
             context.marathon_config,
             fake_service_marathon_config,
         )
@@ -75,10 +76,9 @@ def create_complete_app(context):
 
 @then(u'we should see it in the list of apps')
 def see_it_in_list(context):
-    assert fake_appid in marathon_tools.list_all_marathon_app_ids(context.client)
+    assert fake_appid in marathon_tools.list_all_marathon_app_ids(context.marathon_client)
 
 
 @then(u'we can run get_app on it')
 def can_run_get_app(context):
-    assert context.client.get_app(fake_appid)
-
+    assert context.marathon_client.get_app(fake_appid)

@@ -38,7 +38,6 @@ def add_subparser(subparsers):
         status_parser.add_argument(
             '-s', '--service',
             help='Service that you want to %s. Like example_service.' % lower,
-            required=True,
         ).completer = lazy_choices_completer(list_services)
         status_parser.add_argument(
             '-i', '--instance',

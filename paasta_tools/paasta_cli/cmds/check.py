@@ -246,7 +246,7 @@ def sensu_check(service_name, service_path):
     :param service_path: path to loction of monitoring.yaml file"""
     if is_file_in_dir('monitoring.yaml', service_path):
         print PaastaCheckMessages.SENSU_MONITORING_FOUND
-        team = get_team(None, service_name)
+        team = get_team(service_name=service_name, overrides={})
         if team is None:
             print PaastaCheckMessages.SENSU_TEAM_MISSING
         else:
