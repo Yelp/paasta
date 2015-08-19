@@ -524,6 +524,24 @@ class TestInstanceConfig:
         fake_conf = utils.InstanceConfig({'cmd': 'FAKECMD'}, {})
         assert fake_conf.get_cmd() == 'FAKECMD'
 
+    def test_get_args_default_no_cmd(self):
+        fake_conf = utils.InstanceConfig({}, {})
+        assert fake_conf.get_args() == []
+
+    def test_get_args_default_with_cmd(self):
+        fake_conf = utils.InstanceConfig({'cmd': 'FAKECMD'}, {})
+        assert fake_conf.get_args() is None
+
+    def test_get_args_in_config(self):
+        fake_conf = utils.InstanceConfig({'args': ['arg1', 'arg2']}, {})
+        assert fake_conf.get_args() == ['arg1', 'arg2']
+
+    def test_get_args_in_config_with_cmd(self):
+        fake_conf = utils.InstanceConfig({'args': ['A'], 'cmd': 'C'}, {})
+        fake_conf.get_cmd()
+        with raises(utils.InvalidInstanceConfig):
+            fake_conf.get_args()
+
     def test_get_force_bounce(self):
         fake_conf = utils.InstanceConfig({}, {'force_bounce': 'blurp'})
         assert fake_conf.get_force_bounce() == 'blurp'

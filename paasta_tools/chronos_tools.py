@@ -141,9 +141,6 @@ class ChronosJobConfig(InstanceConfig):
     def get_owner(self):
         return monitoring_tools.get_team_email_address(self.get_service_name(), overrides=self.get_monitoring())
 
-    def get_args(self):
-        return self.config_dict.get('args')
-
     def get_env(self):
         return self.config_dict.get('env', [])
 
@@ -164,6 +161,14 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_schedule_time_zone(self):
         return self.config_dict.get('schedule_time_zone')
+
+    def get_shell(self):
+        """ Per https://mesos.github.io/chronos/docs/api.html, `shell` defaults
+        to true, but if arguments are set, they will be ignored. If arguments are
+        set in our config, then we need to set shell: False so that they will
+        activate."""
+        args = self.get_args()
+        return args == [] or args is None
 
     def check_epsilon(self):
         epsilon = self.get_epsilon()
@@ -286,6 +291,7 @@ class ChronosJobConfig(InstanceConfig):
             'owner': self.get_owner(),
             'schedule': self.get_schedule(),
             'scheduleTimeZone': self.get_schedule_time_zone(),
+            'shell': self.get_shell(),
         }
         log.info("Complete configuration for instance is: %s", complete_config)
         return complete_config

@@ -227,11 +227,14 @@ class TestChronosTools:
             actual = self.fake_chronos_job_config.get_owner()
             assert actual == fake_owner
 
-    def test_get_args(self):
-        fake_args = 'fake_args'
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'args': fake_args}, {})
-        actual = fake_conf.get_args()
-        assert actual == fake_args
+    def test_get_shell_without_args_specified(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'args': ['a', 'b']}, {})
+        actual = fake_conf.get_shell()
+        assert actual is False
+
+    def test_get_shell_when_args_present(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_shell() is True
 
     def test_get_env_default(self):
         fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
@@ -504,7 +507,8 @@ class TestChronosTools:
                 'volumes': fake_docker_volumes,
                 'image': fake_docker_url,
                 'type': 'DOCKER'
-            }
+            },
+            'shell': True,
         }
         with mock.patch('monitoring_tools.get_team_email_address', return_value=fake_owner):
             actual = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes)
@@ -692,7 +696,8 @@ class TestChronosTools:
                     'type': 'DOCKER'
                 },
                 'mem': 1024.4,
-                'owner': fake_owner
+                'owner': fake_owner,
+                'shell': True,
             }
             assert actual == expected
 
@@ -745,6 +750,7 @@ class TestChronosTools:
                 },
                 'mem': 1024.4,
                 'owner': fake_owner,
+                'shell': True,
             }
             assert actual == expected
 
@@ -797,6 +803,7 @@ class TestChronosTools:
                 },
                 'mem': 1024.4,
                 'owner': fake_owner,
+                'shell': True,
             }
             assert actual == expected
 

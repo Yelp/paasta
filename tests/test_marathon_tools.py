@@ -1029,24 +1029,6 @@ class TestMarathonTools:
             'SPECIAL_ENV': 'TRUE',
         }
 
-    def test_get_args_default_no_cmd(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
-        assert fake_conf.get_args() == []
-
-    def test_get_args_default_with_cmd(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'cmd': 'FAKECMD'}, {})
-        assert fake_conf.get_args() is None
-
-    def test_get_args_in_config(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'args': ['arg1', 'arg2']}, {})
-        assert fake_conf.get_args() == ['arg1', 'arg2']
-
-    def test_get_args_in_config_with_cmd(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'args': ['A'], 'cmd': 'C'}, {})
-        fake_conf.get_cmd()
-        with raises(marathon_tools.InvalidMarathonConfig):
-            fake_conf.get_args()
-
     def test_get_marathon_client(self):
         fake_url = "nothing_for_me_to_do_but_dance"
         fake_user = "the_boogie"
