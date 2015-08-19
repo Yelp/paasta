@@ -6,7 +6,7 @@ import mock
 
 sys.path.append('../')
 import paasta_tools
-from paasta_tools import paasta_serviceinit
+from paasta_tools import marathon_serviceinit
 
 
 @when(u'we run the job test-service.main')
@@ -25,14 +25,14 @@ def wait_for_deploy(context):
     time.sleep(10)
 
 
-@then(u'paasta_serviceinit status_marathon_job should return "Healthy"')
+@then(u'marathon_serviceinit status_marathon_job should return "Healthy"')
 def status_marathon_job_returns_healthy(context):
     normal_instance_count = 1
     app_id = 'test-service.main'
     service = 'test-service'
     instance = 'main'
 
-    output = paasta_serviceinit.status_marathon_job(
+    output = marathon_serviceinit.status_marathon_job(
         service,
         instance,
         app_id,
@@ -42,7 +42,7 @@ def status_marathon_job_returns_healthy(context):
     assert "Healthy" in output
 
 
-@then(u'paasta_serviceinit restart should get new task_ids')
+@then(u'marathon_serviceinit restart should get new task_ids')
 def restart_gets_new_task_ids(context):
     normal_instance_count = 1
     cluster = context.system_paasta_config['cluster']
@@ -51,7 +51,7 @@ def restart_gets_new_task_ids(context):
     instance = 'main'
 
     old_tasks = context.marathon_client.get_app(app_id).tasks
-    paasta_serviceinit.restart_marathon_job(
+    marathon_serviceinit.restart_marathon_job(
         service,
         instance,
         app_id,
