@@ -106,6 +106,8 @@ Each job configuration MAY specify the following options:
 
   *  ``env``: See the `marathon-[clustername].yaml`_ section for details
 
+  * ``constraints``: Array of rules to ensure jobs run on slaves with specific Mesos attributes. See the `official documentation <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more information.
+
 smartstack.yaml
 ---------------
 
