@@ -1091,6 +1091,17 @@ class TestMarathonTools:
         with raises(marathon_tools.InvalidMarathonConfig):
             fake_conf.get_args()
 
+    def test_get_env_default(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        assert fake_conf.get_env() == {}
+
+    def test_get_env_with_config(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'env': {'SPECIAL_ENV': 'TRUE'}},
+                                                         {})
+        assert fake_conf.get_env() == {
+            'SPECIAL_ENV': 'TRUE',
+        }
+
     def test_get_marathon_client(self):
         fake_url = "nothing_for_me_to_do_but_dance"
         fake_user = "the_boogie"

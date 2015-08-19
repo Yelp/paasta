@@ -88,7 +88,9 @@ Each job configuration MUST specify the following options:
 
 Each job configuration MAY specify the following options:
 
-  * ``cmd``: The command to execute. Defaults to the command in your Docker image.
+  * ``cmd``: See the `marathon-[clustername].yaml`_ section for details
+    
+  * ``args``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``epsilon``: If Chronos misses the scheduled run time for any reason, it will still run the job if the time is within this interval. The value must be formatted like an ISO 8601 Duration. See: https://en.wikipedia.org/wiki/ISO_8601#Durations. Defaults to 'PT60S', indicating that a job may be launched up to a minute late.
 

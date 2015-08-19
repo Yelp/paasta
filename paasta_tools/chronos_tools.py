@@ -142,9 +142,6 @@ class ChronosJobConfig(InstanceConfig):
         overrides = self.get_monitoring()
         return monitoring_tools.get_team(overrides=overrides, service_name=self.get_service_name())
 
-    def get_args(self):
-        return self.config_dict.get('args')
-
     def get_env(self):
         """The expected input env for PaaSTA is a dictionary of key/value pairs
         Chronos requires an array of dictionaries in a very specific format:
@@ -169,6 +166,14 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_schedule_time_zone(self):
         return self.config_dict.get('schedule_time_zone')
+
+    def get_shell(self):
+        """ Per https://mesos.github.io/chronos/docs/api.html, `shell` defaults
+        to true, but if arguments are set, they will be ignored. If arguments are
+        set in our config, then we need to set shell: False so that they will
+        activate."""
+        args = self.get_args()
+        return args == [] or args is None
 
     def check_epsilon(self):
         epsilon = self.get_epsilon()
@@ -291,6 +296,7 @@ class ChronosJobConfig(InstanceConfig):
             'owner': self.get_owner(),
             'schedule': self.get_schedule(),
             'scheduleTimeZone': self.get_schedule_time_zone(),
+            'shell': self.get_shell(),
         }
         log.info("Complete configuration for instance is: %s", complete_config)
         return complete_config
