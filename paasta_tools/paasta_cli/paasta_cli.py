@@ -62,7 +62,10 @@ def main():
         pgrp = os.getpgrp()
         pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp and proc.pid != os.getpid()]
         for proc in pids_in_pgrp:
-            os.kill(proc.pid, signal.SIGTERM)
+            try:
+                os.kill(proc.pid, signal.SIGTERM)
+            except OSError:
+                pass
 
 if __name__ == '__main__':
     main()
