@@ -6,6 +6,7 @@ import argparse
 import psutil
 import os
 import signal
+import contextlib
 
 from paasta_tools.paasta_cli import cmds
 from paasta_tools.paasta_cli.utils \
@@ -47,17 +48,16 @@ def parse_args():
     return parser.parse_args()
 
 
-def main():
-    """Perform a paasta call. Read args from sys.argv and pass parsed args onto
-    appropriate command in paata_cli/cmds directory.
-
-    Ensure we kill any child pids before we quit
+@contextlib.contextmanager
+def set_pgrp_and_cleanup_procs_on_exit():
+    """
+        Set the pgrp of the process and all children.
+        After the task completes, cleanup any other processes in the
+        same pgrp.
     """
     os.setpgrp()
     try:
-        configure_log()
-        args = parse_args()
-        args.command(args)
+        yield
     finally:
         pgrp = os.getpgrp()
         pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp and proc.pid != os.getpid()]
@@ -66,6 +66,17 @@ def main():
                 os.kill(proc.pid, signal.SIGTERM)
             except OSError:
                 pass
+
+def main():
+    """Perform a paasta call. Read args from sys.argv and pass parsed args onto
+    appropriate command in paata_cli/cmds directory.
+
+    Ensure we kill any child pids before we quit
+    """
+    with set_pgrp_and_cleanup_procs_on_exit():
+        configure_log()
+        args = parse_args()
+        args.command(args)
 
 if __name__ == '__main__':
     main()
