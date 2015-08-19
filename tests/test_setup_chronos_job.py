@@ -319,6 +319,43 @@ class TestSetupChronosJob:
             assert actual == (0, "Deployed job '%s'" % fake_complete_config['name'])
             fake_client.add.assert_called_once_with(fake_complete_config)
 
+    def test_setup_new_job_disable_old_versions(self):
+        fake_client = mock.MagicMock()
+        fake_existing_job = {
+            'name': 'fake_job',
+            'disabled': False,
+            'mem': 1337,
+        }
+        fake_existing_job_disabled = {
+            'name': 'fake_job',
+            'disabled': True,
+            'mem': 1337,
+        }
+        fake_new_job = {
+            'name': 'fake_job',
+            'disabled': False,
+            'mem': 9001,
+        }
+
+        with contextlib.nested(
+            mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
+                       autospec=True,
+                       return_value=[fake_existing_job]),
+        ) as (
+            lookup_chronos_jobs_patch,
+        ):
+            actual = setup_chronos_job._setup_new_job(
+                self.fake_service_name,
+                self.fake_job_name,
+                fake_new_job,
+                self.fake_chronos_job_config,
+                fake_client,
+            )
+            assert fake_existing_job['disabled'] is True
+            fake_client.update.assert_called_once_with(fake_existing_job_disabled)
+            fake_client.add.assert_called_once_with(fake_new_job)
+            assert actual == (0, "Deployed job '%s'" % fake_new_job['name'])
+
     def test_setup_existing_job_start(self):
         fake_client = mock.MagicMock()
         fake_state = 'start'

@@ -107,7 +107,7 @@ def issue_state_change_for_branches(service, instance, cluster, branches, force_
 
 
 def paasta_start_or_stop(args, desired_state):
-    """Issues a start for given branches of a service."""
+    """Requests a change of state to start or stop given branches of a service."""
     service = figure_out_service_name(args)
     instance = args.instance
     cluster = args.cluster

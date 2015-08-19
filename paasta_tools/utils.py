@@ -51,11 +51,11 @@ class InstanceConfig(dict):
     def get_mem(self):
         """Gets the memory required from the service's configuration.
 
-        Defaults to 1000 (1G) if no value specified in the config.
+        Defaults to 1024 (1G) if no value specified in the config.
 
-        :returns: The amount of memory specified by the config, 1000 if not specified"""
+        :returns: The amount of memory specified by the config, 1024 if not specified"""
         mem = self.config_dict.get('mem')
-        return mem if mem else 1000
+        return mem if mem else 1024
 
     def get_cpus(self):
         """Gets the number of cpus required from the service's configuration.

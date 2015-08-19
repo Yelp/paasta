@@ -199,6 +199,7 @@ class MarathonServiceConfig(InstanceConfig):
             if args is None:
                 return args
             else:
+                # TODO validation stuff like this should be moved into a check_* like in chronos tools
                 raise InvalidMarathonConfig('Marathon config files can specify cmd or args, but not both.')
 
     def get_bounce_method(self):
@@ -295,7 +296,7 @@ class MarathonServiceConfig(InstanceConfig):
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),
             'env': self.get_env(),
-            'mem': int(self.get_mem()),
+            'mem': float(self.get_mem()),
             'cpus': float(self.get_cpus()),
             'constraints': self.get_constraints(service_namespace_config),
             'instances': self.get_instances(),
