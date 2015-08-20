@@ -8,6 +8,7 @@ sys.path.append('../')
 import paasta_tools
 from paasta_tools import marathon_serviceinit
 
+
 @when(u'we run the marathon job test-service.main')
 def run_marathon_test_service(context):
     trivial_app_config = {
