@@ -22,6 +22,15 @@ def test_format_chronos_job_status_enabled():
     assert PaastaColors.green("Enabled") in actual
 
 
+def test_format_chronos_job_no_last_run():
+    example_job = {
+        'lastError': '',
+        'lastSuccess': '',
+    }
+    actual = paasta_chronos_serviceinit.format_chronos_job_status(example_job)
+    assert PaastaColors.yellow("New") in actual
+
+
 def test_status_chronos_job_is_deployed():
     all_jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     with mock.patch('paasta_chronos_serviceinit.format_chronos_job_status',
