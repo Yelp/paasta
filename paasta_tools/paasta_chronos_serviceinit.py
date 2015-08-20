@@ -54,8 +54,8 @@ def status_chronos_job(job_id, all_jobs):
     if our_jobs == []:
         return "%s: %s is not setup yet" % (PaastaColors.yellow("Warning"), job_id)
     else:
-        our_job = our_jobs[0]
-        return format_chronos_job_status(our_job)
+        output = [format_chronos_job_status(job) for job in our_jobs]
+        return '\n'.join(output)
 
 
 def main():
