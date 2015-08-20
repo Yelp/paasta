@@ -49,7 +49,7 @@ def test_format_chronos_job_success_no_failure():
     assert PaastaColors.green("OK") in actual
 
 
-def test_format_chronos_job_failure_and_success():
+def test_format_chronos_job_failure_and_then_success():
     example_job = {
         'lastError': '2015-04-20T23:20:00.420Z',
         'lastSuccess': '2015-04-21T23:20:00.420Z',

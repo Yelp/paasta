@@ -3,6 +3,7 @@ import argparse
 import logging
 import sys
 
+import isodate
 import requests_cache
 
 import chronos_tools
@@ -40,15 +41,21 @@ def format_chronos_job_status(job):
     last_result = PaastaColors.red("UNKNOWN")
     last_error = job.get("lastError", "")
     last_success = job.get("lastSuccess", "")
+    fail_result = PaastaColors.red("Fail")
+    ok_result = PaastaColors.green("OK")
     if not last_error and not last_success:
         last_result = PaastaColors.yellow("New")
     elif not last_error:
-        last_result = PaastaColors.green("OK")
+        last_result = ok_result
     elif not last_success:
-        last_result = PaastaColors.red("Fail")
+        last_result = fail_result
     else:
-        # Compare timestamps. But for now, fake it.
-        last_result = PaastaColors.green("OK")
+        fail_dt = isodate.parse_datetime(last_error)
+        ok_dt = isodate.parse_datetime(last_success)
+        if ok_dt > fail_dt:
+            last_result = ok_result
+        else:
+            last_result = fail_result
 
     return "Status: %s Last: %s" % (status, last_result)
 
