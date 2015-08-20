@@ -201,6 +201,14 @@ class MarathonServiceConfig(InstanceConfig):
             else:
                 raise InvalidMarathonConfig('Marathon config files can specify cmd or args, but not both.')
 
+    def get_env(self):
+        """Gets the environment required from the service's marathon configuration.
+
+        :param service_config: The service instance's configuration dictionary
+        :returns: A dictionary with the requested env."""
+        env = self.config_dict.get('env', {})
+        return env
+
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.
 
@@ -767,6 +775,8 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
         try:
             namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
             nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
+            if not nerve_dict.is_in_smartstack():
+                continue
             nerve_dict['port'] = port
             nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
             nerve_list.append((nerve_name, nerve_dict))

@@ -1,13 +1,13 @@
-Feature: paasta_serviceinit can control marathon tasks
+Feature: marathon_serviceinit can control marathon tasks
 
-  Scenario: paasta_serviceinit can run status
+  Scenario: marathon_serviceinit can run status
     Given a working paasta cluster
     When we run the marathon job test-service.main
     And we wait for it to be deployed
-    Then paasta_serviceinit status_marathon_job should return "Healthy"
+    Then marathon_serviceinit status_marathon_job should return "Healthy"
 
-  Scenario: paasta_serviceinit can restart tasks
+  Scenario: marathon_serviceinit can restart tasks
     Given a working paasta cluster
     When we run the marathon job test-service.main
     And we wait for it to be deployed
-    Then paasta_serviceinit restart should get new task_ids
+    Then marathon_serviceinit restart should get new task_ids

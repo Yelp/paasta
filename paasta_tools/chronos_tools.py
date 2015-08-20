@@ -76,7 +76,7 @@ def get_chronos_client(config):
     """Returns a chronos client object for interacting with the API"""
     chronos_url = config.get_url()[0]
     chronos_hostname = urlparse.urlsplit(chronos_url).netloc
-    log.info("Connecting to Chronos server at: %s", chronos_url)
+    log.info("Connecting to Chronos server at: %s" % chronos_url)
     return chronos.connect(hostname=chronos_hostname,
                            username=config.get_username(),
                            password=config.get_password())
@@ -95,7 +95,7 @@ class InvalidChronosConfigError(Exception):
 
 def read_chronos_jobs_for_service(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
-    log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml", (soa_dir, service_name, cluster))
+    log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service_name, cluster))
 
     return service_configuration_lib.read_extra_service_information(
         service_name,
@@ -142,9 +142,6 @@ class ChronosJobConfig(InstanceConfig):
         overrides = self.get_monitoring()
         return monitoring_tools.get_team(overrides=overrides, service_name=self.get_service_name())
 
-    def get_args(self):
-        return self.config_dict.get('args')
-
     def get_env(self):
         """The expected input env for PaaSTA is a dictionary of key/value pairs
         Chronos requires an array of dictionaries in a very specific format:
@@ -169,6 +166,14 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_schedule_time_zone(self):
         return self.config_dict.get('schedule_time_zone')
+
+    def get_shell(self):
+        """ Per https://mesos.github.io/chronos/docs/api.html, `shell` defaults
+        to true, but if arguments are set, they will be ignored. If arguments are
+        set in our config, then we need to set shell: False so that they will
+        activate."""
+        args = self.get_args()
+        return args == [] or args is None
 
     def check_epsilon(self):
         epsilon = self.get_epsilon()
@@ -291,8 +296,9 @@ class ChronosJobConfig(InstanceConfig):
             'owner': self.get_owner(),
             'schedule': self.get_schedule(),
             'scheduleTimeZone': self.get_schedule_time_zone(),
+            'shell': self.get_shell(),
         }
-        log.info("Complete configuration for instance is: %s", complete_config)
+        log.info("Complete configuration for instance is: %s" % complete_config)
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -320,11 +326,11 @@ def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     chronos_conf_file = "chronos-%s" % cluster
-    log.info("Enumerating all jobs from config file: %s/*/%s.yaml", soa_dir, chronos_conf_file)
+    log.info("Enumerating all jobs from config file: %s/*/%s.yaml" % (soa_dir, chronos_conf_file))
 
     for job in read_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir):
         job_list.append((service_name, job))
-    log.debug("Enumerated the following jobs: %s", job_list)
+    log.debug("Enumerated the following jobs: %s" % job_list)
     return job_list
 
 
@@ -337,7 +343,7 @@ def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     rootdir = os.path.abspath(soa_dir)
-    log.info("Retrieving all Chronos job names from %s for cluster %s", rootdir, cluster)
+    log.info("Retrieving all Chronos job names from %s for cluster %s" % (rootdir, cluster))
     job_list = []
     for service in os.listdir(rootdir):
         job_list.extend(list_job_names(service, cluster, soa_dir))
