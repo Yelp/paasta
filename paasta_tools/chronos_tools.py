@@ -85,7 +85,7 @@ def get_chronos_client(config):
 def get_job_id(service, instance, tag=None):
     output = "%s%s%s" % (service, SPACER, instance)
     if tag:
-        output = "%s%s%s%s%s" % (service, SPACER, instance, SPACER, tag)
+        output = "%s%s%s" % (output, SPACER, tag)
     return output
 
 
