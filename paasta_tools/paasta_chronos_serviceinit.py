@@ -53,12 +53,9 @@ def status_chronos_job(job_id, all_jobs):
     our_jobs = [job for job in all_jobs if job['name'].startswith(job_id_pattern)]
     if our_jobs == []:
         return "%s: %s is not setup yet" % (PaastaColors.yellow("Warning"), job_id)
-    elif len(our_jobs) == 1:
+    else:
         our_job = our_jobs[0]
         return format_chronos_job_status(our_job)
-    else:
-        return ("Error: there are multiple jobs. Only expecting 1 job.\n"
-                "This should not happen:\n%s" % str(our_jobs))
 
 
 def main():

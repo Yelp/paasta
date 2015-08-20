@@ -55,4 +55,4 @@ def test_status_chronos_job_is_duplicated():
             'my_service my_instance',
             all_jobs,
         )
-        assert 'should not happen' in actual
+        assert actual == 'job_status_output'
