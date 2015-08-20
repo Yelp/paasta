@@ -39,10 +39,10 @@ def format_chronos_job_status(job):
         status = PaastaColors.green("Enabled")
 
     last_result = PaastaColors.red("UNKNOWN")
-    last_error = job.get("lastError", "")
-    last_success = job.get("lastSuccess", "")
     fail_result = PaastaColors.red("Fail")
     ok_result = PaastaColors.green("OK")
+    last_error = job.get("lastError", "")
+    last_success = job.get("lastSuccess", "")
     if not last_error and not last_success:
         last_result = PaastaColors.yellow("New")
     elif not last_error:
