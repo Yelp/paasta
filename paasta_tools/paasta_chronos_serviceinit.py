@@ -31,6 +31,7 @@ def format_chronos_job_status(job):
 
     :param job: dictionary of the job status
     """
+    status = PaastaColors.red("UNKNOWN")
     if job.get("disabled", False):
         status = PaastaColors.red("Disabled")
     else:
@@ -45,6 +46,9 @@ def format_chronos_job_status(job):
         last_result = PaastaColors.green("OK")
     elif not last_success:
         last_result = PaastaColors.red("Fail")
+    else:
+        # Compare timestamps. But for now, fake it.
+        last_result = PaastaColors.green("OK")
 
     return "Status: %s Last: %s" % (status, last_result)
 
