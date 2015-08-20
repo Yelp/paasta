@@ -5,9 +5,8 @@ import sys
 
 import requests_cache
 
-from paasta_tools.utils import PaastaColors
-import marathon_tools
 import chronos_tools
+from paasta_tools.utils import PaastaColors
 
 
 log = logging.getLogger('__main__')
@@ -47,7 +46,12 @@ def status_chronos_job(service, instance, job_id, all_jobs):
     :param job_id: the idenfier of the job in the chronos api
     :param all_jobs: list of all the jobs from chronos
     """
-    our_jobs = [job for job in all_jobs if job['name'] == job_id]
+    # The actual job name will contain a git<hash> and config<hash>, so we'll
+    # look for things that start with our job_id. We add SPACER to the end as
+    # an anchor to prevent catching "my_service my_job_extra" when looking for
+    # "my_service my_job".
+    job_id_pattern = '%s%s' % (job_id, chronos_tools.SPACER)
+    our_jobs = [job for job in all_jobs if job['name'].startswith(job_id_pattern)]
     if our_jobs == []:
         return "%s: %s is not setup yet" % (PaastaColors.yellow("Warning"), job_id)
     elif len(our_jobs) == 1:
@@ -67,7 +71,7 @@ def main():
 
     command = args.command
     service_instance = args.service_instance
-    (service, instance) = service_instance.split(marathon_tools.ID_SPACER)
+    (service, instance) = service_instance.split(chronos_tools.SPACER)
 
     job_id = chronos_tools.get_job_id(service, instance)
     config = chronos_tools.load_chronos_config()
