@@ -15,10 +15,10 @@ def test_format_chronos_job_status_disabled():
 
 
 def test_format_chronos_job_status_enabled():
-    example_disabled_job = {
+    example_enabled_job = {
         'disabled': False,
     }
-    actual = paasta_chronos_serviceinit.format_chronos_job_status(example_disabled_job)
+    actual = paasta_chronos_serviceinit.format_chronos_job_status(example_enabled_job)
     assert PaastaColors.green("Enabled") in actual
 
 
