@@ -73,9 +73,9 @@ def main():
 
     Ensure we kill any child pids before we quit
     """
+    configure_log()
+    args = parse_args()
     with set_pgrp_and_cleanup_procs_on_exit():
-        configure_log()
-        args = parse_args()
         args.command(args)
 
 if __name__ == '__main__':
