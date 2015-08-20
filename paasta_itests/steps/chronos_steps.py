@@ -15,7 +15,7 @@ def working_chronos(context):
 
 @when(u'we create a trivial chronos job')
 def create_trivial_chronos_job(context):
-    job = {
+    job_config = {
         'async': False,
         'command': 'echo 1',
         'epsilon': 'PT15M',
@@ -24,7 +24,7 @@ def create_trivial_chronos_job(context):
         'disabled': True,
         'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
     }
-    context.chronos_client.add(job)
+    context.chronos_client.add(job_config)
 
 
 @then(u'we should be able to see it when we list jobs')
