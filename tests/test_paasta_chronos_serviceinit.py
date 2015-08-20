@@ -27,8 +27,6 @@ def test_status_chronos_job_is_deployed():
     with mock.patch('paasta_chronos_serviceinit.format_chronos_job_status',
                     autospec=True, return_value='job_status_output'):
         actual = paasta_chronos_serviceinit.status_chronos_job(
-            'service',
-            'instance',
             'my_service my_instance',
             all_jobs,
         )
@@ -40,8 +38,6 @@ def test_status_chronos_job_is_not_deployed():
     with mock.patch('paasta_chronos_serviceinit.format_chronos_job_status',
                     autospec=True, return_value='job_status_output'):
         actual = paasta_chronos_serviceinit.status_chronos_job(
-            'service',
-            'instance',
             'my_service my_instance',
             all_jobs,
         )
@@ -56,8 +52,6 @@ def test_status_chronos_job_is_duplicated():
     with mock.patch('paasta_chronos_serviceinit.format_chronos_job_status',
                     autospec=True, return_value='job_status_output'):
         actual = paasta_chronos_serviceinit.status_chronos_job(
-            'service',
-            'instance',
             'my_service my_instance',
             all_jobs,
         )

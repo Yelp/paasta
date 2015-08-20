@@ -38,12 +38,11 @@ def format_chronos_job_status(job):
     return "Status: %s" % status
 
 
-def status_chronos_job(service, instance, job_id, all_jobs):
+def status_chronos_job(job_id, all_jobs):
     """Returns a formatted string of the status of a chronos job
 
-    :param service: Name of the service, like example_service
-    :param instance: name of the job, like nightly_batch
-    :param job_id: the idenfier of the job in the chronos api
+    :param job_id: the idenfier of the job (beginning of its name) in the
+    chronos api
     :param all_jobs: list of all the jobs from chronos
     """
     # The actual job name will contain a git<hash> and config<hash>, so we'll
@@ -82,7 +81,7 @@ def main():
         requests_cache.install_cache('paasta_serviceinit', backend='memory')
 
         all_jobs = client.list()
-        print status_chronos_job(service, instance, job_id, all_jobs)
+        print status_chronos_job(job_id, all_jobs)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
