@@ -127,6 +127,10 @@ class TestChronosTools:
         actual = chronos_tools.get_job_id('service', 'instance')
         assert actual == "service instance"
 
+    def test_get_job_id_with_tag(self):
+        actual = chronos_tools.get_job_id('service', 'instance', tag='gityourmom')
+        assert actual == "service instance gityourmom"
+
     def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'
         expected_chronos_conf_file = 'chronos-penguin'
