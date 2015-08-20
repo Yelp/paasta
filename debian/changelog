@@ -1,6 +1,13 @@
 paasta-tools (0.12.56-yelp1) lucid; urgency=low
 
   * 0.12.56 tagged with 'make release'
+    Commit: add the psutil dependency
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 20 Aug 2015 09:38:29 -0700
+
+paasta-tools (0.12.56-yelp1) lucid; urgency=low
+
+  * 0.12.56 tagged with 'make release'
     Commit: Merge branch PAASTA-996
 
  -- Kyle Anderson <kwa@yelp.com>  Wed, 19 Aug 2015 09:53:11 -0700
