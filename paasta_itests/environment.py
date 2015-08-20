@@ -40,7 +40,6 @@ def _clean_up_marathon_apps(context):
             time.sleep(0.5)
 
 
-
 def _clean_up_chronos_jobs(context):
     """ If a chronos client object exists, delete any jobs and wait for them to die """
     if hasattr(context, 'chronos_client'):
