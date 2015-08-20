@@ -60,12 +60,14 @@ def set_pgrp_and_cleanup_procs_on_exit():
         yield
     finally:
         pgrp = os.getpgrp()
-        pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp and proc.pid != os.getpid()]
+        pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp
+                        and proc.pid != os.getpid()]
         for proc in pids_in_pgrp:
             try:
                 os.kill(proc.pid, signal.SIGTERM)
             except OSError:
                 pass
+
 
 def main():
     """Perform a paasta call. Read args from sys.argv and pass parsed args onto
