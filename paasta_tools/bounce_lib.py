@@ -129,7 +129,7 @@ def time_limit(minutes):
 
     :param minutes: The number of minutes until an exception is raised"""
     def signal_handler(signum, frame):
-        raise TimeoutException("Time limit exired")
+        raise TimeoutException("Time limit expired")
     signal.signal(signal.SIGALRM, signal_handler)
     signal.alarm(minutes * 60)
     try:
