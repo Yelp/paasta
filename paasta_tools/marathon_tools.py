@@ -275,7 +275,7 @@ class MarathonServiceConfig(InstanceConfig):
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),
             'env': self.get_env(),
-            'mem': int(self.get_mem()),
+            'mem': float(self.get_mem()),
             'cpus': float(self.get_cpus()),
             'constraints': self.get_constraints(service_namespace_config),
             'instances': self.get_instances(),

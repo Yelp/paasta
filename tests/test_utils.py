@@ -484,14 +484,6 @@ def test_run_cancels_timer_thread_on_keyboard_interrupt():
 
 class TestInstanceConfig:
 
-    def test_get_cpus(self):
-        fake_info = 'fake_info'
-        assert utils.InstanceConfig({'cpus': fake_info}, {}).get_cpus() == fake_info
-
-    def test_get_mem(self):
-        fake_info = 'fake_info'
-        assert utils.InstanceConfig({'mem': fake_info}, {}).get_mem() == fake_info
-
     def test_get_monitoring(self):
         fake_info = 'fake_info'
         assert utils.InstanceConfig({'monitoring': fake_info}, {}).get_monitoring() == fake_info
@@ -514,7 +506,7 @@ class TestInstanceConfig:
 
     def test_get_mem_default(self):
         fake_conf = utils.InstanceConfig({}, {})
-        assert fake_conf.get_mem() == 1000
+        assert fake_conf.get_mem() == 1024
 
     def test_get_cmd_default(self):
         fake_conf = utils.InstanceConfig({}, {})

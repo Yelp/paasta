@@ -413,12 +413,12 @@ def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=Fal
 
 @timeout()
 def wait_for_job(client, job_name):
-    """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
-      and retry.
+    """Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
+    and retry.
 
-     :param client: The marathon client
-     :param app_id: The app id to which the tasks belong
-     :param num_tasks: The number of tasks to wait for
+    :param client: The marathon client
+    :param app_id: The app id to which the tasks belong
+    :param num_tasks: The number of tasks to wait for
     """
     found = False
     while not found:

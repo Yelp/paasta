@@ -19,7 +19,7 @@ class TestChronosTools:
         'retries': 5,
         'cpus': 5.5,
         'mem': 1024.4,
-        'disabled': 'true',
+        'disabled': True,
         'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
         'schedule_time_zone': 'Zulu',
         'monitoring': fake_monitoring_info,
@@ -270,10 +270,9 @@ class TestChronosTools:
         assert not actual
 
     def test_get_disabled(self):
-        fake_disabled = 'fake_disabled'
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'disabled': fake_disabled}, {})
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'disabled': True}, {})
         actual = fake_conf.get_disabled()
-        assert actual == fake_disabled
+        assert actual
 
     def test_get_schedule(self):
         fake_schedule = 'fake_schedule'
@@ -501,7 +500,7 @@ class TestChronosTools:
             'async': False,
             'owner': fake_owner,
             'disabled': False,
-            'mem': 1000,
+            'mem': 1024,
             'container': {
                 'network': 'BRIDGE',
                 'volumes': fake_docker_volumes,
