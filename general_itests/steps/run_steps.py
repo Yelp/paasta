@@ -1,4 +1,7 @@
 import signal
+
+from behave import when, then
+
 from paasta_tools.utils import _run
 
 

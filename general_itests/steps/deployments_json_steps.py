@@ -56,7 +56,7 @@ def step_impl_when(context):
     )
     with contextlib.nested(
         mock.patch('paasta_tools.generate_deployments_for_service.get_git_url', autospec=True,
-                    return_value=context.test_git_repo_dir),
+                   return_value=context.test_git_repo_dir),
         mock.patch('paasta_tools.generate_deployments_for_service.parse_args',
                    autospec=True, return_value=fake_args),
     ) as (

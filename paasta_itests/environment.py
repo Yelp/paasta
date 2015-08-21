@@ -39,6 +39,7 @@ def _clean_up_marathon_apps(context):
             print "after_scenario: There are still marathon deployments in progress. sleeping."
             time.sleep(0.5)
 
+
 def _clean_up_chronos_jobs(context):
     """ If a chronos client object exists, delete any jobs and wait for them to die """
     if hasattr(context, 'chronos_client'):
@@ -48,9 +49,6 @@ def _clean_up_chronos_jobs(context):
                 print "after_scenario: chronos job %s is running. Deleting." % job['name']
                 context.chronos_client.delete(job['name'])
             time.sleep(1)
-        print ("after_scenario: len(chronos_jobs < 1)")
-
-
 
 
 def _clean_up_mesos_cli_config(context):

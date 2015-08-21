@@ -3,24 +3,24 @@ import argparse
 import logging
 import sys
 
+import isodate
 import requests_cache
 
-from paasta_tools.utils import PaastaColors
-import marathon_tools
 import chronos_tools
+from paasta_tools.utils import PaastaColors
 
 
-log = logging.getLogger('__main__')
+log = logging.getLogger("__main__")
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Runs status an Chronos job.')
-    parser.add_argument('-d', '--debug', action='store_true', dest="debug", default=False,
+    parser = argparse.ArgumentParser(description="Runs status an Chronos job.")
+    parser.add_argument("-d", "--debug", action="store_true", dest="debug", default=False,
                         help="Output debug logs regarding files, connections, etc")
-    parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.job')
-    command_choices = ['status']
-    parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
+    parser.add_argument("service_instance", help="Instance to operate on. Eg: example_service.job")
+    command_choices = ["status"]
+    parser.add_argument("command", choices=command_choices, help="Command to run. Eg: status")
     args = parser.parse_args()
     return args
 
@@ -32,30 +32,52 @@ def format_chronos_job_status(job):
 
     :param job: dictionary of the job status
     """
-    if job.get('disabled', False):
+    status = PaastaColors.red("UNKNOWN")
+    if job.get("disabled", False):
         status = PaastaColors.red("Disabled")
     else:
         status = PaastaColors.green("Enabled")
-    return "Status: %s" % status
+
+    last_result = PaastaColors.red("UNKNOWN")
+    fail_result = PaastaColors.red("Fail")
+    ok_result = PaastaColors.green("OK")
+    last_error = job.get("lastError", "")
+    last_success = job.get("lastSuccess", "")
+    if not last_error and not last_success:
+        last_result = PaastaColors.yellow("New")
+    elif not last_error:
+        last_result = ok_result
+    elif not last_success:
+        last_result = fail_result
+    else:
+        fail_dt = isodate.parse_datetime(last_error)
+        ok_dt = isodate.parse_datetime(last_success)
+        if ok_dt > fail_dt:
+            last_result = ok_result
+        else:
+            last_result = fail_result
+
+    return "Status: %s Last: %s" % (status, last_result)
 
 
-def status_chronos_job(service, instance, job_id, all_jobs):
+def status_chronos_job(job_id, all_jobs):
     """Returns a formatted string of the status of a chronos job
 
-    :param service: Name of the service, like example_service
-    :param instance: name of the job, like nightly_batch
-    :param job_id: the idenfier of the job in the chronos api
+    :param job_id: the idenfier of the job (beginning of its name) in the
+    chronos api
     :param all_jobs: list of all the jobs from chronos
     """
-    our_jobs = [job for job in all_jobs if job['name'] == job_id]
+    # The actual job name will contain a git<hash> and config<hash>, so we'll
+    # look for things that start with our job_id. We add SPACER to the end as
+    # an anchor to prevent catching "my_service my_job_extra" when looking for
+    # "my_service my_job".
+    job_id_pattern = "%s%s" % (job_id, chronos_tools.SPACER)
+    our_jobs = [job for job in all_jobs if job["name"].startswith(job_id_pattern)]
     if our_jobs == []:
         return "%s: %s is not setup yet" % (PaastaColors.yellow("Warning"), job_id)
-    elif len(our_jobs) == 1:
-        our_job = our_jobs[0]
-        return format_chronos_job_status(our_job)
     else:
-        return ("Error: there are multiple jobs. Only expecting 1 job.\n"
-                "This should not happen:\n%s" % str(our_jobs))
+        output = [format_chronos_job_status(job) for job in our_jobs]
+        return "\n".join(output)
 
 
 def main():
@@ -67,18 +89,18 @@ def main():
 
     command = args.command
     service_instance = args.service_instance
-    (service, instance) = service_instance.split(marathon_tools.ID_SPACER)
+    (service, instance) = service_instance.split(chronos_tools.SPACER)
 
     job_id = chronos_tools.get_job_id(service, instance)
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 
-    if command == 'status':
+    if command == "status":
         # Setting up transparent cache for http API calls
-        requests_cache.install_cache('paasta_serviceinit', backend='memory')
+        requests_cache.install_cache("paasta_serviceinit", backend="memory")
 
         all_jobs = client.list()
-        print status_chronos_job(service, instance, job_id, all_jobs)
+        print status_chronos_job(job_id, all_jobs)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

@@ -9,8 +9,8 @@ import paasta_tools
 from paasta_tools import marathon_serviceinit
 
 
-@when(u'we run the job test-service.main')
-def run_test_service(context):
+@when(u'we run the marathon job test-service.main')
+def run_marathon_test_service(context):
     trivial_app_config = {
         'id': 'test-service.main',
         'cmd': '/bin/sleep 1m',
@@ -21,7 +21,7 @@ def run_test_service(context):
 
 @when(u'we wait for it to be deployed')
 def wait_for_deploy(context):
-    print "Sleeping 10 seconds to wait for test-service to be deployed."
+    print "Sleeping 10 seconds to wait for deployment..."
     time.sleep(10)
 
 
