@@ -24,6 +24,13 @@ def run_paasta_metastatus_high_mem(context, app_id):
     context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
 
 
+@when(u'a chronos job with name "{job_name}" is launched')
+def chronos_job_launched(context, job_name):
+    job = {'async': False, 'command': 'echo 1', 'epsilon': 'PT15M', 'name': job_name,
+           'owner': 'me@foo.com', 'disabled': True, 'schedule': 'R/2014-01-01T00:00:00Z/PT60M'}
+    context.chronos_client.add(job)
+
+
 @when(u'an app with id "{app_id}" using high cpu is launched')
 def run_paasta_metastatus_high_cpu(context, app_id):
     context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', cpus=9, instances=1))

@@ -12,6 +12,7 @@ from paasta_tools.utils import get_docker_host
 def create_docker_container(context, task_id):
     base_docker_url = get_docker_host()
     docker_client = Client(base_url=base_docker_url)
+    context.docker_client = docker_client
     container = docker_client.create_container(
         name='paasta-itest-execute-in-containers',
         image='docker-dev.yelpcorp.com/trusty_yelp:latest',
@@ -34,3 +35,10 @@ def run_command_in_container(context, code, task_id):
 @then(u'the exit code is {code}')
 def paasta_execute_docker_command_result(context, code):
     assert int(code) == int(context.return_code)
+
+
+@then(u'the docker container has {num} exec instances')
+def check_container_exec_instances(context, num):
+    container_info = context.docker_client.inspect_container(context.running_container_id)
+    print 'Container info:\n%s' % container_info
+    assert len(container_info['ExecIDs']) == int(num)

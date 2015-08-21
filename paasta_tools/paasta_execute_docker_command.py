@@ -63,7 +63,15 @@ def time_limit(seconds):  # From http://stackoverflow.com/a/601168/1576438
 
 
 def execute_in_container(docker_client, container_id, cmd, timeout):
-    exec_id = docker_client.exec_create(container_id, ['/bin/sh', '-c', cmd])['Id']
+    container_info = docker_client.inspect_container(container_id)
+    if container_info['ExecIDs'] and len(container_info['ExecIDs']) > 0:
+        for possible_exec_id in container_info['ExecIDs']:
+            exec_info = docker_client.exec_inspect(possible_exec_id)['ProcessConfig']
+            if exec_info['entrypoint'] == '/bin/sh' and exec_info['arguments'] == ['-c', cmd]:
+                exec_id = possible_exec_id
+                break
+    else:
+        exec_id = docker_client.exec_create(container_id, ['/bin/sh', '-c', cmd])['Id']
     output = docker_client.exec_start(exec_id, stream=False)
     return_code = docker_client.exec_inspect(exec_id)['ExitCode']
     return (output, return_code)

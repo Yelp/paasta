@@ -46,9 +46,9 @@ def step_impl_given(context):
 def step_impl_when(context):
     context.deployments_file = os.path.join('fake_soa_configs', 'fake_deployments_json_service', 'deployments.json')
     try:
-            os.remove(context.deployments_file)
+        os.remove(context.deployments_file)
     except OSError:
-            pass
+        pass
     fake_args = mock.MagicMock(
         service='fake_deployments_json_service',
         soa_dir='fake_soa_configs',

@@ -62,6 +62,61 @@ def test_execute_in_container():
     mock_docker_client.exec_create.assert_called_once_with(fake_container_id, expected_cmd)
 
 
+def test_execute_in_container_reuses_exec():
+    fake_container_id = 'fake_container_id'
+    fake_execid = 'fake_execid'
+    fake_return_code = 0
+    fake_output = 'fake_output'
+    fake_command = 'fake_cmd'
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.inspect_container.return_value = {'ExecIDs': [fake_execid]}
+    mock_docker_client.exec_start.return_value = fake_output
+    mock_docker_client.exec_inspect.return_value = {
+        'ExitCode': fake_return_code,
+        'ProcessConfig': {
+            'entrypoint': '/bin/sh',
+            'arguments': ['-c', fake_command],
+        }
+    }
+
+    assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
+        fake_output, fake_return_code)
+    assert mock_docker_client.exec_create.call_count == 0
+    mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
+
+
+def test_execute_in_container_reuses_only_valid_exec():
+    fake_container_id = 'fake_container_id'
+    fake_execid = 'fake_execid'
+    fake_return_code = 0
+    fake_output = 'fake_output'
+    fake_command = 'fake_cmd'
+    bad_exec = {
+        'ExitCode': fake_return_code,
+        'ProcessConfig': {
+            'entrypoint': '/bin/sh',
+            'arguments': ['-c', 'some_other_command'],
+        }
+    }
+    good_exec = {
+        'ExitCode': fake_return_code,
+        'ProcessConfig': {
+            'entrypoint': '/bin/sh',
+            'arguments': ['-c', fake_command],
+        }
+    }
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.inspect_container.return_value = {'ExecIDs': ['fake_other_exec', fake_execid, 'fake_other_exec']}
+    mock_docker_client.exec_start.return_value = fake_output
+    # the last side effect is used to check the exit code of the command
+    mock_docker_client.exec_inspect.side_effect = [bad_exec, good_exec, bad_exec, good_exec]
+
+    assert execute_in_container(mock_docker_client, fake_container_id, fake_command, 1) == (
+        fake_output, fake_return_code)
+    assert mock_docker_client.exec_create.call_count == 0
+    mock_docker_client.exec_start.assert_called_once_with(fake_execid, stream=False)
+
+
 def test_main():
     fake_container_id = 'fake_container_id'
     fake_timeout = 3
