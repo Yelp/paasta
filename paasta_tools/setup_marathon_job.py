@@ -76,7 +76,12 @@ def send_event(name, instance, soa_dir, status, output):
     :param output: The output to emit for this event
     """
     cluster = load_system_paasta_config().get_cluster()
-    monitoring_overrides = marathon_tools.load_marathon_service_config(name, instance, cluster).get_monitoring()
+    monitoring_overrides = marathon_tools.load_marathon_service_config(
+        name,
+        instance,
+        cluster,
+        load_deployments=False,
+    ).get_monitoring()
     check_name = 'setup_marathon_job.%s%s%s' % (name, ID_SPACER, instance)
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 

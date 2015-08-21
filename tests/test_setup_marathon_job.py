@@ -282,6 +282,12 @@ class TestSetupMarathonJob:
                 fake_output,
                 fake_soa_dir
             )
+            load_marathon_service_config_patch.assert_called_once_with(
+                fake_service_name,
+                fake_instance_name,
+                load_system_paasta_config_patch.return_value.get_cluster.return_value,
+                load_deployments=False,
+            )
 
     def test_do_bounce_when_create_app_and_new_app_not_running(self):
         fake_bounce_func_return = {
