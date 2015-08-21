@@ -35,8 +35,8 @@ Feature: paasta_metastatus describes the state of the paasta cluster
   Scenario: With a launched chronos job
     Given a working paasta cluster
     When we create a trivial marathon app
-    And  a chronos job with name "myjob" is launched
-    And a job with the name "myjob" is in the job list
+    And we create a trivial chronos job
+    And the trivial chronos job appears in the job list
     Then paasta_metastatus exits with return code "0" and output "chronos jobs: 1"
 
 

@@ -1,33 +1,9 @@
 import sys
 
-from behave import when, then
+from behave import then
 
 sys.path.append('../')
 from paasta_tools.utils import _run
-
-
-@when(u'we run the chronos job test-service.job')
-def run_chronos_test_job(context):
-    job = {
-        'async': False,
-        'command': 'echo 1',
-        'epsilon': 'PT15M',
-        # If I put an actual space in here, our cleanup delete fails:
-        # after_scenario: chronos job test-service job is running. Deleting.
-        # ERROR:chronos:Response not valid json: Error: 400
-        #
-        # If I put a dot in here, the add() fails:
-        # ERROR:chronos:Response not valid json: requirement failed: the job's
-        # name is invalid. Allowed names: '([\w\s#_-]+)'
-        #
-        # So I'm punting and putting the string SPACER. That's sure to work,
-        # right?
-        'name': 'test-serviceSPACERjob',
-        'owner': '',
-        'disabled': True,
-        'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
-    }
-    context.chronos_client.add(job)
 
 
 @then(u'paasta_chronos_serviceinit status should return "Healthy"')
