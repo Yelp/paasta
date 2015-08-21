@@ -82,10 +82,10 @@ def monitoring_defaults(key):
         'ticket': False,
         'project': None,
     }
-    return defaults.get(key, False)
+    return defaults.get(key, None)
 
 
-def get_team_email_address(service, overrides=None):
+def get_team_email_address(service, overrides=None, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
     """Looks up the team email address from specific marathon or chronos config
     (most specific) to monitoring.yaml, or the global Sensu team_data.json.
     (least specific). Returns None if nothing is available.
@@ -97,7 +97,8 @@ def get_team_email_address(service, overrides=None):
     leave `notification_email` absent and just let Sensu do its thing."""
     if overrides is None:
         overrides = {}
-    email_address = __get_monitoring_config_value('notification_email', overrides=overrides, service_name=service)
+    email_address = __get_monitoring_config_value(
+        'notification_email', overrides=overrides, service_name=service, soa_dir=soa_dir)
     if not email_address:
         team = get_team(overrides=overrides, service_name=service)
         email_address = get_sensu_team_data(team).get('notification_email', None)
@@ -146,6 +147,7 @@ def send_event(name, check_name, overrides, status, output, soa_dir):
         'irc_channels': get_irc_channels(overrides, name, soa_dir),
         'ticket': get_ticket(overrides, name, soa_dir),
         'project': get_project(overrides, name, soa_dir),
+        'page': get_page(overrides, name, soa_dir),
         'alert_after': overrides.get('alert_after', '5m'),
         'check_every': overrides.get('check_every', '1m'),
         'realert_every': -1,

@@ -170,7 +170,7 @@ class TestMonitoring_Tools:
             read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
 
     def test_get_monitoring_config_value_with_defaults(self):
-        expected = False
+        expected = None
         with contextlib.nested(
             mock.patch('service_configuration_lib.read_service_configuration', autospec=True,
                        return_value=self.empty_job_config),
@@ -265,6 +265,7 @@ class TestMonitoring_Tools:
             'irc_channels': fake_irc,
             'project': None,
             'ticket': False,
+            'page': True,
             'alert_after': '5m',
             'check_every': '1m',
             'realert_every': -1,
@@ -301,6 +302,11 @@ class TestMonitoring_Tools:
                 return_value=None,
                 autospec=True,
             ),
+            mock.patch(
+                "monitoring_tools.get_page",
+                return_value=True,
+                autospec=True,
+            ),
             mock.patch("pysensu_yelp.send_event", autospec=True),
             mock.patch('monitoring_tools.load_system_paasta_config', autospec=True),
         ) as (
@@ -310,6 +316,7 @@ class TestMonitoring_Tools:
             get_irc_patch,
             get_ticket_patch,
             get_project_patch,
+            get_page_patch,
             pysensu_yelp_send_event_patch,
             load_system_paasta_config_patch,
         ):
@@ -338,6 +345,11 @@ class TestMonitoring_Tools:
                 fake_soa_dir
             )
             get_irc_patch.assert_called_once_with(
+                fake_monitoring_overrides,
+                fake_service_name,
+                fake_soa_dir
+            )
+            get_page_patch.assert_called_once_with(
                 fake_monitoring_overrides,
                 fake_service_name,
                 fake_soa_dir
