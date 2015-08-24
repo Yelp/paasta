@@ -55,7 +55,11 @@ def set_pgrp_and_cleanup_procs_on_exit():
         After the task completes, cleanup any other processes in the
         same pgrp.
     """
-    os.setpgrp()
+    try:
+        os.setpgrp()
+    except OSError:
+        pass
+
     try:
         yield
     finally:
