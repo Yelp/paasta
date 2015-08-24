@@ -423,7 +423,7 @@ def run_docker_container(
                 % (returncode, output)
             )
             # Container failed to start so no need to cleanup; just bail.
-            return
+            sys.exit(1)
         container_started = True
         container_id = get_container_id(docker_client, container_name)
         sys.stdout.write('Found our container running with CID %s\n' % container_id)
@@ -455,7 +455,9 @@ def run_docker_container(
 
     # Cleanup if the container exits on its own or interrupted.
     if container_started:
+        returncode = docker_client.inspect_container(container_id)['State']['ExitCode']
         _cleanup_container(docker_client, container_id)
+    sys.exit(returncode)
 
 
 def configure_and_run_docker_container(docker_client, docker_hash, service, args):
