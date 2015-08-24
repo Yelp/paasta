@@ -26,7 +26,6 @@ from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import get_username
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import load_system_paasta_config
@@ -562,8 +561,7 @@ def validate_environment():
 def paasta_local_run(args):
     validate_environment()
 
-    service = figure_out_service_name(args)
-    validate_service_name(service)
+    service = figure_out_service_name(args, soa_dir=args.soaconfig_root)
 
     base_docker_url = get_docker_host()
 
