@@ -4,6 +4,7 @@ from tempfile import NamedTemporaryFile
 from behave import given
 import chronos
 import json
+import yaml
 
 from itest_utils import get_service_connection_string
 from paasta_tools import marathon_tools
@@ -83,6 +84,26 @@ def write_etc_paasta(config, filename):
     with open(os.path.join(paasta_dir, filename), 'w') as f:
         f.write(json.dumps(config))
 
+def write_soa_dir():
+    soa_dir = '/nail/etc/services'
+    if not os.path.exists(soa_dir):
+        os.makedirs(soa_dir)
+
+def write_service_dir(service_name):
+    soa_dir = '/nail/etc/services'
+    if not os.path.exists(os.path.join(soa_dir, service_name)):
+        os.makedirs(os.path.join(soa_dir, service_name))
+
+def write_chronos_job_for_service_cluster(service, cluster):
+    soa_dir = '/nail/etc/services/%s' % service
+    with open(os.path.join(soa_dir, 'chronos-%s.yaml' % cluster), 'w+') as f:
+        f.write(yaml.dump({
+            "test_job": {
+                "command": "echo foo",
+            }
+        }))
+
+
 
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
@@ -103,3 +124,10 @@ def working_paasta_cluster(context):
     context.mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
     write_etc_paasta(context.marathon_config, 'marathon.json')
     write_etc_paasta(context.chronos_config, 'chronos.json')
+    write_etc_paasta({
+        "cluster": "testcluster",
+        "zookeeper": "zk://fake",
+        "docker_registry": "fake.com"
+    }, 'cluster.json')
+    write_service_dir('example_service')
+    write_chronos_job_for_service_cluster('example_service', 'testcluster')
