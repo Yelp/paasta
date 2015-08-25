@@ -13,7 +13,7 @@ def cleanup_jobs(client, jobs, kill_existing_tasks=False):
     """
     def catch_exception(client, job):
         try:
-            return client.delete_job(job)
+            return client.delete(job)
         except Exception as e:
             """ We *have* to catch an Exception, because the client catches
                 the more specific exception thrown by the http clients
