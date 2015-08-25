@@ -7,29 +7,28 @@ import sys
     Ensure that the set of deployed chronos jobs
     matches the set expected.
 """
+def execute_chronos_api_call_for_resource(api_call, job):
+    try:
+        return api_call(job)
+    except Exception as e:
+        """ We *have* to catch an Exception, because the client catches
+            the more specific exception thrown by the http clients
+            and rethrows an Exception -_-.
 
-def cleanup_jobs(client, jobs, kill_existing_tasks=False):
-    """ Maps a list of jobs to cleanup to a list of responses from the api (or exception objects)
-    """
-    def catch_exception(client, job):
-        try:
-            return client.delete(job)
-        except Exception as e:
-            """ We *have* to catch an Exception, because the client catches
-                the more specific exception thrown by the http clients
-                and rethrows an Exception -_-.
+            The chronos api returns a 204 No Content when the delete is
+            successful, and chronos-python only returns the body of the
+            response from all http calls. So, if this is successful,
+            then None will be returned.
+            https://github.com/asher/chronos-python/pull/9
 
-                The chronos api returns a 204 No Content when the delete is
-                successful, and chronos-python only returns the body of the
-                response from all http calls. So, if this is successful,
-                then None will be returned.
-                https://github.com/asher/chronos-python/pull/9
+            we catch it here, so that the other deletes are completed.
+        """
+        return e
 
-                we catch it here, so that the other deletes are completed.
-            """
-            return e
+def cleanup_jobs(client, jobs):
+    """ Maps a list of jobs to cleanup to a list of responses from the api (or exception objects) """
+    return [(job, execute_chronos_api_call_for_resource(client.delete, job)) for job in jobs]
 
-    return map(lambda job: (job, catch_exception(client, job)), jobs)
 
 def jobs_to_delete(expected_jobs, actual_jobs):
     return list(set(actual_jobs).difference(set(expected_jobs)))
