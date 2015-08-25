@@ -31,24 +31,46 @@ def cleanup_jobs(client, jobs, kill_existing_tasks=False):
 
     return map(lambda job: (job, catch_exception(client, job)), jobs)
 
+def jobs_to_delete(expected_jobs, actual_jobs):
+    return list(set(actual_jobs).difference(set(expected_jobs)))
+
+def format_list_output(title, job_names):
+    return '%s\n  %s' % (title, '\n  '.join(job_names))
+
+def running_job_names(client):
+    return [job['name'] for job in client.list()]
+
+def expected_job_names(service_job_pairs):
+    """ Expects a list of pairs in the form (service_name, job_name)
+    and returns the list of pairs mapped to the job name of each pair.
+    """
+    return [job[-1] for job in service_job_pairs]
+
 def main():
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 
     # get_chronos_jobs_for_cluster returns (service_name, job)
-    expected_jobs = map(lambda x: x[-1], chronos_tools.get_chronos_jobs_for_cluster())
-    running_jobs = map(lambda x: x['name'], client.list())
-    jobs_to_remove = set(expected_jobs).intersection(set(running_jobs))
+    expected_jobs = expected_job_names(chronos_tools.get_chronos_jobs_for_cluster())
+    running_jobs = running_job_names(client)
 
-    responses = cleanup_jobs(client, jobs_to_remove, False)
-    successes = filter(lambda resp: not isinstance(resp[-1], Exception), responses)
-    failures = filter(lambda resp: isinstance(resp[-1], Exception), responses)
-    print 'Successes\n:%s' % '\n'.join(map(lambda x: x[0], successes))
+    to_delete = jobs_to_delete(expected_jobs, running_jobs)
+    responses = cleanup_jobs(client, to_delete, False)
 
-    # if there are any failures, print and exit appropriately
-    if len(failures > 0):
-        print 'Failures\n:%s' % '\n'.join(map(lambda x: x[0], failures))
-        sys.exit(1)
+    successes = [resp for resp in responses if not isinstance(resp[-1], Exception)]
+    failures = [resp for resp in responses if isinstance(resp[-1], Exception)]
+
+    if len(to_delete) == 0:
+        print 'No Chronos Jobs to remove'
+    else:
+        if len(successes) > 0:
+            print format_list_output("Successfully Removed:", [job[0] for job in successes])
+
+        # if there are any failures, print and exit appropriately
+        if len(failures) > 0:
+            print format_list_output("Failed to Delete:", [job[0] for job in failures])
+            sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
