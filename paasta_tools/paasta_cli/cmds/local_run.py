@@ -16,20 +16,20 @@ from urlparse import urlparse
 
 import service_configuration_lib
 from paasta_tools.marathon_tools import CONTAINER_PORT
-from paasta_tools.marathon_tools import get_default_cluster_for_service
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
-from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.marathon_tools import load_marathon_service_config
-from paasta_tools.marathon_tools import NoMarathonConfigurationForService
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import get_username
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_host
 from paasta_tools.utils import Timeout
@@ -476,7 +476,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
     else:
         try:
             cluster = get_default_cluster_for_service(service)
-        except NoMarathonConfigurationForService:
+        except NoConfigurationForServiceError:
             sys.stdout.write(PaastaColors.red(
                 'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
             sys.exit(2)

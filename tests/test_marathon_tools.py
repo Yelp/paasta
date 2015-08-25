@@ -1,14 +1,13 @@
-
 import contextlib
 
 from marathon.models import MarathonApp
 import mock
 from mock import patch
 from pytest import raises
-import requests
 
 import marathon_tools
-import utils
+from utils import DeploymentsJson
+from utils import SystemPaastaConfig
 
 
 class TestMarathonTools:
@@ -101,7 +100,7 @@ class TestMarathonTools:
             mock_read_extra_service_information,
         ):
             mock_read_extra_service_information.return_value = {}
-            with raises(marathon_tools.NoMarathonConfigurationForService):
+            with raises(marathon_tools.NoConfigurationForServiceError):
                 marathon_tools.load_marathon_service_config(
                     fake_name,
                     fake_instance,
@@ -168,7 +167,7 @@ class TestMarathonTools:
 
         fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
         deployments_json_mock = mock.Mock(
-            spec=utils.DeploymentsJson,
+            spec=DeploymentsJson,
             get_branch_dict=mock.Mock(return_value=fake_branch_dict),
         )
 
@@ -220,21 +219,6 @@ class TestMarathonTools:
             assert read_extra_info_patch.call_count == 1
             read_extra_info_patch.assert_any_call(fake_name, "marathon-amnesia", soa_dir=fake_dir)
 
-    def test_get_service_instance_list(self):
-        fake_name = 'hint'
-        fake_instance_1 = 'unsweet'
-        fake_instance_2 = 'water'
-        fake_cluster = '16floz'
-        fake_dir = '/nail/home/hipster'
-        fake_job_config = {fake_instance_1: self.fake_marathon_job_config,
-                           fake_instance_2: self.fake_marathon_job_config}
-        expected = [(fake_name, fake_instance_2), (fake_name, fake_instance_1)]
-        with mock.patch('service_configuration_lib.read_extra_service_information', autospec=True,
-                        return_value=fake_job_config) as read_extra_info_patch:
-            actual = marathon_tools.get_service_instance_list(fake_name, fake_cluster, fake_dir)
-            read_extra_info_patch.assert_called_once_with(fake_name, "marathon-16floz", soa_dir=fake_dir)
-            assert sorted(expected) == sorted(actual)
-
     def test_load_marathon_config(self):
         expected = {'foo': 'bar'}
         file_mock = mock.MagicMock(spec=file)
@@ -260,95 +244,6 @@ class TestMarathonTools:
                 marathon_tools.load_marathon_config(fake_path)
             assert str(excinfo.value) == "Could not load marathon config file b: a"
 
-    def test_list_clusters_no_service_given_lists_all_of_them(self):
-        with mock.patch('marathon_tools.list_all_clusters', autospec=True) as mock_list_all_clusters:
-            mock_list_all_clusters.return_value = ['cluster1', 'cluster2']
-            actual = marathon_tools.list_clusters()
-            mock_list_all_clusters.assert_called_once_with()
-            expected = ['cluster1', 'cluster2']
-            assert actual == expected
-
-    def test_list_clusters_with_service(self):
-        with contextlib.nested(
-            mock.patch('service_configuration_lib.read_services_configuration', autospec=True),
-            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True),
-        ) as (
-            mock_read_services,
-            mock_get_clusters_deployed_to,
-        ):
-            fake_service = 'fake_service'
-            mock_read_services.return_value = {fake_service: 'config', 'fake_service2': 'config'}
-            mock_get_clusters_deployed_to.return_value = ['cluster1', 'cluster2']
-            actual = marathon_tools.list_clusters(fake_service)
-            expected = ['cluster1', 'cluster2']
-            assert actual == expected
-            mock_get_clusters_deployed_to.assert_called_once_with(fake_service)
-
-    def test_get_clusters_deployed_to_ignores_bogus_clusters(self):
-        service = 'fake_service'
-        fake_marathon_filenames = ['marathon-cluster1.yaml', 'marathon-cluster2.yaml',
-                                   'marathon-SHARED.yaml', 'marathon-cluster3.yaml',
-                                   'marathon-BOGUS.yaml']
-        expected = ['cluster1', 'cluster2', 'cluster3']
-        with contextlib.nested(
-            mock.patch('os.path.isdir', autospec=True),
-            mock.patch('glob.glob', autospec=True),
-        ) as (
-            mock_isdir,
-            mock_glob
-        ):
-            mock_isdir.return_value = True
-            mock_glob.return_value = fake_marathon_filenames
-            actual = marathon_tools.get_clusters_deployed_to(service)
-            assert expected == actual
-
-    def test_get_default_cluster_for_service(self):
-        fake_service_name = 'fake_service'
-        fake_clusters = ['fake_cluster-1', 'fake_cluster-2']
-        with contextlib.nested(
-            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True, return_value=fake_clusters),
-            mock.patch('marathon_tools.load_system_paasta_config', autospec=True),
-        ) as (
-            mock_get_clusters_deployed_to,
-            mock_load_system_paasta_config,
-        ):
-            mock_load_system_paasta_config.side_effect = marathon_tools.NoMarathonClusterFoundException
-            assert marathon_tools.get_default_cluster_for_service(fake_service_name) == 'fake_cluster-1'
-            mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
-
-    def test_get_default_cluster_for_service_empty_deploy_config(self):
-        fake_service_name = 'fake_service'
-        with contextlib.nested(
-            mock.patch('marathon_tools.get_clusters_deployed_to', autospec=True, return_value=[]),
-            mock.patch('marathon_tools.load_system_paasta_config', autospec=True),
-        ) as (
-            mock_get_clusters_deployed_to,
-            mock_load_system_paasta_config,
-        ):
-            mock_load_system_paasta_config.side_effect = marathon_tools.NoMarathonClusterFoundException
-            with raises(marathon_tools.NoMarathonConfigurationForService):
-                marathon_tools.get_default_cluster_for_service(fake_service_name)
-            mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
-
-    def test_list_all_marathon_instance_for_service(self):
-        service = 'fake_service'
-        clusters = ['fake_cluster']
-        mock_instances = [(service, 'instance1'), (service, 'instance2')]
-        expected = set(['instance1', 'instance2'])
-        with contextlib.nested(
-            mock.patch('marathon_tools.list_clusters', autospec=True),
-            mock.patch('marathon_tools.get_service_instance_list', autospec=True),
-        ) as (
-            mock_list_clusters,
-            mock_service_instance_list,
-        ):
-            mock_list_clusters.return_value = clusters
-            mock_service_instance_list.return_value = mock_instances
-            actual = marathon_tools.list_all_marathon_instances_for_service(service)
-            assert actual == expected
-            mock_list_clusters.assert_called_once_with(service)
-            mock_service_instance_list.assert_called_once_with(service, clusters[0])
-
     def test_get_all_namespaces_for_service(self):
         name = 'vvvvvv'
         soa_dir = '^_^'
@@ -368,29 +263,6 @@ class TestMarathonTools:
             actual_short = marathon_tools.get_all_namespaces_for_service(name, soa_dir, False)
             read_service_configuration_patch.assert_any_call(name, soa_dir)
             assert sorted(expected_short) == sorted(actual_short)
-
-    def test_get_marathon_services_for_cluster(self):
-        cluster = 'honey_bunches_of_oats'
-        soa_dir = 'completely_wholesome'
-        instances = [['this_is_testing', 'all_the_things'], ['my_nerf_broke']]
-        expected = ['my_nerf_broke', 'this_is_testing', 'all_the_things']
-        with contextlib.nested(
-            mock.patch('os.path.abspath', autospec=True, return_value='chex_mix'),
-            mock.patch('os.listdir', autospec=True, return_value=['dir1', 'dir2']),
-            mock.patch('marathon_tools.get_service_instance_list',
-                       side_effect=lambda a, b, c: instances.pop())
-        ) as (
-            abspath_patch,
-            listdir_patch,
-            get_instances_patch,
-        ):
-            actual = marathon_tools.get_marathon_services_for_cluster(cluster, soa_dir)
-            assert expected == actual
-            abspath_patch.assert_called_once_with(soa_dir)
-            listdir_patch.assert_called_once_with('chex_mix')
-            get_instances_patch.assert_any_call('dir1', cluster, soa_dir)
-            get_instances_patch.assert_any_call('dir2', cluster, soa_dir)
-            assert get_instances_patch.call_count == 2
 
     def test_get_all_namespaces(self):
         soa_dir = 'carbon'
@@ -641,17 +513,6 @@ class TestMarathonTools:
         mock_fetch_local_slave_state.assert_called_once_with()
         assert expected == actual
 
-    def test_get_cluster(self):
-        with mock.patch(
-            'marathon_tools.load_system_paasta_config',
-            autospec=True,
-        ) as mock_load_system_paasta_config:
-            marathon_tools.get_cluster()
-            assert mock_load_system_paasta_config.call_count == 1
-            # Setting this up to return a fake SystemPaastaConfig with a
-            # patched-out get_cluster() so we can make sure that part was
-            # called is a pain, so I'm just stopping here.
-
     def test_get_marathon_services_running_here_for_nerve(self):
         cluster = 'edelweiss'
         soa_dir = 'the_sound_of_music'
@@ -726,9 +587,8 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         with contextlib.nested(
             mock.patch(
-                'marathon_tools.get_cluster',
+                'marathon_tools.load_system_paasta_config',
                 autospec=True,
-                side_effect=marathon_tools.NoMarathonClusterFoundException,
             ),
             mock.patch(
                 'marathon_tools.marathon_services_running_here',
@@ -736,9 +596,11 @@ class TestMarathonTools:
                 return_value=[],
             ),
         ) as (
-            get_cluster_patch,
+            load_system_paasta_config_patch,
             marathon_services_running_here_patch,
         ):
+            load_system_paasta_config_patch.return_value.get_cluster \
+                = mock.Mock(side_effect=marathon_tools.NoMarathonClusterFoundError)
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert actual == []
 
@@ -747,9 +609,8 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         with contextlib.nested(
             mock.patch(
-                'marathon_tools.get_cluster',
+                'marathon_tools.load_system_paasta_config',
                 autospec=True,
-                side_effect=marathon_tools.PaastaNotConfigured,
             ),
             mock.patch(
                 'marathon_tools.marathon_services_running_here',
@@ -757,9 +618,11 @@ class TestMarathonTools:
                 return_value=[],
             ),
         ) as (
-            get_cluster_patch,
+            load_system_paasta_config_patch,
             marathon_services_running_here_patch,
         ):
+            load_system_paasta_config_patch.return_value.get_cluster \
+                = mock.Mock(side_effect=marathon_tools.PaastaNotConfigured)
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert actual == []
 
@@ -768,9 +631,8 @@ class TestMarathonTools:
         soa_dir = 'the_sound_of_music'
         with contextlib.nested(
             mock.patch(
-                'marathon_tools.get_cluster',
+                'marathon_tools.load_system_paasta_config',
                 autospec=True,
-                side_effect=Exception,
             ),
             mock.patch(
                 'marathon_tools.marathon_services_running_here',
@@ -778,9 +640,10 @@ class TestMarathonTools:
                 return_value=[],
             ),
         ) as (
-            get_cluster_patch,
+            load_system_paasta_config_patch,
             marathon_services_running_here_patch,
         ):
+            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(side_effect=Exception)
             with raises(Exception):
                 marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
 
@@ -869,32 +732,6 @@ class TestMarathonTools:
             assert expected == actual
             marathon_patch.assert_called_once_with(cluster, soa_dir)
             classic_patch.assert_called_once_with(soa_dir)
-
-    def test_get_mesos_leader(self):
-        expected = 'mesos.master.yelpcorp.com'
-        fake_master = 'false.authority.yelpcorp.com'
-        with mock.patch('requests.get', autospec=True) as mock_requests_get:
-            mock_requests_get.return_value = mock_response = mock.Mock()
-            mock_response.return_code = 307
-            mock_response.url = 'http://%s:999' % expected
-            assert marathon_tools.get_mesos_leader(fake_master) == expected
-            mock_requests_get.assert_called_once_with('http://%s:5050/redirect' % fake_master, timeout=10)
-
-    def test_get_mesos_leader_connection_error(self):
-        fake_master = 'false.authority.yelpcorp.com'
-        with mock.patch(
-            'requests.get',
-            autospec=True,
-            side_effect=requests.exceptions.ConnectionError,
-        ):
-            with raises(marathon_tools.MesosMasterConnectionException):
-                marathon_tools.get_mesos_leader(fake_master)
-
-    def test_is_mesos_leader(self):
-        fake_host = 'toast.host.roast'
-        with mock.patch('marathon_tools.get_mesos_leader', autospec=True, return_value=fake_host) as get_leader_patch:
-            assert marathon_tools.is_mesos_leader(fake_host)
-            get_leader_patch.assert_called_once_with(fake_host)
 
     def test_format_marathon_app_dict(self):
         fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
@@ -1181,7 +1018,6 @@ class TestMarathonTools:
 
         with contextlib.nested(
             mock.patch('marathon_tools.load_system_paasta_config', autospec=True),
-            mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
             mock.patch('marathon_tools.load_marathon_service_config', autospec=True,
                        return_value=self.fake_marathon_job_config),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
@@ -1193,7 +1029,6 @@ class TestMarathonTools:
                        return_value=self.fake_service_namespace_config)
         ) as (
             load_system_paasta_config_patch,
-            get_cluster_patch,
             read_service_config_patch,
             docker_url_patch,
             format_marathon_app_dict_patch,
@@ -1201,6 +1036,7 @@ class TestMarathonTools:
             code_sha_patch,
             SNC_load_patch,
         ):
+            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
             assert marathon_tools.get_app_id(
                 fake_name,
                 fake_instance,
@@ -1230,7 +1066,7 @@ class TestMarathonTools:
         fake_instance = 'fakeinstance'
         fake_url = 'dockervania_from_konami'
         fake_cluster = 'fake_cluster'
-        fake_system_paasta_config = utils.SystemPaastaConfig({
+        fake_system_paasta_config = SystemPaastaConfig({
             'cluster': fake_cluster,
             'volumes': [],
             'docker_registry': 'fake_registry'
@@ -1269,7 +1105,6 @@ class TestMarathonTools:
         with contextlib.nested(
             mock.patch('marathon_tools.load_system_paasta_config',
                        autospec=True, return_value=fake_system_paasta_config),
-            mock.patch('marathon_tools.get_cluster', autospec=True, return_value=fake_cluster),
             mock.patch('marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
@@ -1278,12 +1113,12 @@ class TestMarathonTools:
                        autospec=True, return_value={'fake_region': {}})
         ) as (
             load_system_paasta_config_patch,
-            get_cluster_patch,
             read_service_config_patch,
             docker_url_patch,
             _,
             __,
         ):
+            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
             read_service_config_patch.return_value = fake_service_config_1
             first_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
             first_id_2 = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
@@ -1334,7 +1169,10 @@ class TestMarathonTools:
                 soa_dir=soa_dir,
             )
             assert actual == 11
-            inst_list_patch.assert_called_once_with(service_name, cluster='fake_cluster', soa_dir=soa_dir)
+            inst_list_patch.assert_called_once_with(service_name,
+                                                    cluster='fake_cluster',
+                                                    instance_type='marathon',
+                                                    soa_dir=soa_dir)
             read_config_patch.assert_any_call(service_name, 'blue', 'fake_cluster', soa_dir=soa_dir)
             read_config_patch.assert_any_call(service_name, 'green', 'fake_cluster', soa_dir=soa_dir)
 
@@ -1695,7 +1533,7 @@ def test_create_complete_config_no_smartstack():
         {},
         {'docker_image': 'abcdef'},
     )
-    fake_system_paasta_config = utils.SystemPaastaConfig({
+    fake_system_paasta_config = SystemPaastaConfig({
         'volumes': [],
         'docker_registry': 'fake_docker_registry:443'
     }, '/fake/dir/')
@@ -1705,7 +1543,6 @@ def test_create_complete_config_no_smartstack():
     with contextlib.nested(
         mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
-        mock.patch('marathon_tools.get_cluster', return_value=fake_cluster),
         mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
         mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
         mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
@@ -1713,11 +1550,11 @@ def test_create_complete_config_no_smartstack():
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
-        mock_get_cluster,
         mock_compose_job_id,
         mock_system_paasta_config,
         _,
     ):
+        mock_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
         actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
         expected = {
             'container': {
@@ -1759,7 +1596,7 @@ def test_create_complete_config_with_smartstack():
         {},
         {'docker_image': 'abcdef'},
     )
-    fake_system_paasta_config = utils.SystemPaastaConfig({
+    fake_system_paasta_config = SystemPaastaConfig({
         'volumes': [],
         'docker_registry': 'fake_docker_registry:443'
     }, '/fake/dir/')
@@ -1769,7 +1606,6 @@ def test_create_complete_config_with_smartstack():
     with contextlib.nested(
         mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
-        mock.patch('marathon_tools.get_cluster', return_value=fake_cluster),
         mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
         mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
         mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
@@ -1777,11 +1613,11 @@ def test_create_complete_config_with_smartstack():
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
-        mock_get_cluster,
         mock_compose_job_id,
         mock_system_paasta_config,
         _,
     ):
+        mock_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
         actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
         expected = {
             'container': {

@@ -10,6 +10,7 @@ import pwd
 import re
 import shlex
 import signal
+import socket
 import sys
 import tempfile
 import threading
@@ -22,13 +23,16 @@ import clog
 import dateutil.tz
 import docker
 import json
+import requests
 import yaml
 
 import service_configuration_lib
 
-
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
+MY_HOSTNAME = socket.getfqdn()
+MESOS_MASTER_PORT = 5050
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
+DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -413,13 +417,17 @@ class PaastaNotConfigured(Exception):
     pass
 
 
-class NoMarathonClusterFoundException(Exception):
+class NoConfigurationForServiceError(Exception):
+    pass
+
+
+class NoMarathonClusterFoundError(Exception):  # TODO shouldn't this be in marathon_tools?
     pass
 
 
 def get_files_in_dir(directory):
     """
-    Returns lexically-sorted list of files that are readable in a given directory
+    Returns lexicographically-sorted list of files that are readable in a given directory
     """
     files = []
     for f in sorted(os.listdir(directory)):
@@ -431,7 +439,7 @@ def get_files_in_dir(directory):
 
 def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
     """
-    Reads Paasta configs in specified directory in lexographical order and merges duplicated keys (last file wins)
+    Reads Paasta configs in specified directory in lexicographical order and merges duplicated keys (last file wins)
     """
     config = {}
     if not os.path.isdir(path):
@@ -450,8 +458,6 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
 
 
 class SystemPaastaConfig(dict):
-
-    log = logging.getLogger('__main__')
 
     def __init__(self, config, directory):
         self.directory = directory
@@ -498,7 +504,7 @@ class SystemPaastaConfig(dict):
         try:
             return self['cluster']
         except KeyError:
-            raise NoMarathonClusterFoundException(
+            raise NoMarathonClusterFoundError(  # FIXME this is not Marathon-specific
                 'Could not find cluster in configuration directory: %s' % self.directory)
 
 
@@ -655,7 +661,51 @@ def get_username():
     return pwd.getpwuid(os.getuid())[0]
 
 
-def list_all_clusters(soadir=service_configuration_lib.DEFAULT_SOA_DIR):
+def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
+    """Looks at the clusters that a service is probably deployed to
+    by looking at ``marathon-*.yaml``'s and returns a sorted list of clusters.
+    """
+    clusters = set()
+    srv_path = os.path.join(soa_dir, service)
+    if os.path.isdir(srv_path):
+        marathon_files = "%s/marathon-*.yaml" % srv_path  # FIXME this should not be marathon-specific
+        for marathon_file in glob.glob(marathon_files):
+            basename = os.path.basename(marathon_file)
+            cluster_re_match = re.search('marathon-([0-9a-z-]*).yaml', basename)
+            if cluster_re_match is not None:
+                clusters.add(cluster_re_match.group(1))
+    return sorted(clusters)
+
+
+def get_default_cluster_for_service(service_name):
+    cluster = None
+    try:
+        cluster = load_system_paasta_config().get_cluster()
+    except NoMarathonClusterFoundError:  # FIXME this should not be marathon-specific
+        clusters_deployed_to = get_clusters_deployed_to(service_name)
+        if len(clusters_deployed_to) > 0:
+            cluster = clusters_deployed_to[0]
+        else:  # FIXME this should not be marathon-specific
+            raise NoConfigurationForServiceError("No cluster configuration found for service %s" % service_name)
+    return cluster
+
+
+def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
+    """Returns a sorted list of all clusters that appear to be in use. This
+    is useful for cli tools.
+
+    :param service: Optional. If provided will only list clusters that
+                    the particular service is using
+    """
+    clusters = set()
+    if service is None:
+        clusters = list_all_clusters()
+    else:
+        clusters = set(get_clusters_deployed_to(service))
+    return sorted(clusters)
+
+
+def list_all_clusters(soadir=DEFAULT_SOA_DIR):
     """Returns a set of all clusters. Includes every cluster that has
     a marathon or chronos file associated with it.
     """
@@ -667,12 +717,99 @@ def list_all_clusters(soadir=service_configuration_lib.DEFAULT_SOA_DIR):
     return clusters
 
 
+def list_all_instances_for_service(service, instance_type=None):
+    instances = set()
+    for cluster in list_clusters(service):
+        for service_instance in get_service_instance_list(service, cluster, instance_type):
+            instances.add(service_instance[1])
+    return instances
+
+
+def get_service_instance_list(name, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+    """Enumerate the instances defined for a service as a list of tuples.
+
+    :param name: The service name
+    :param cluster: The cluster to read the configuration for
+    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (name, instance) for each instance defined for the service name"""
+    log = logging.getLogger('__main__')
+    if not cluster:
+        cluster = load_system_paasta_config().get_cluster()
+    if instance_type == 'marathon' or instance_type == 'chronos':
+        instance_types = [instance_type]
+    else:
+        instance_types = ['marathon', 'chronos']
+
+    instance_list = []
+    for srv_instance_type in instance_types:
+        conf_file = "%s-%s" % (srv_instance_type, cluster)
+        log.info("Enumerating all instances for config file: %s/*/%s.yaml" % (soa_dir, conf_file))
+        instances = service_configuration_lib.read_extra_service_information(
+            name,
+            conf_file,
+            soa_dir=soa_dir
+        )
+        for instance in instances:
+            instance_list.append((name, instance))
+
+    log.debug("Enumerated the following instances: %s", instance_list)
+    return instance_list
+
+
+def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+    """Retrieve all services and instances defined to run in a cluster.
+
+    :param cluster: The cluster to read the configuration for
+    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (service_name, instance_name)"""
+    log = logging.getLogger('__main__')
+    if not cluster:
+        cluster = load_system_paasta_config().get_cluster()
+    rootdir = os.path.abspath(soa_dir)
+    log.info("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
+    instance_list = []
+    for srv_dir in os.listdir(rootdir):
+        instance_list.extend(get_service_instance_list(srv_dir, cluster, instance_type, soa_dir))
+    return instance_list
+
+
 def parse_yaml_file(yaml_file):
     return yaml.load(open(yaml_file))
 
 
 def get_docker_host():
     return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
+
+
+class MesosMasterConnectionError(Exception):
+    pass
+
+
+def get_mesos_leader(hostname=MY_HOSTNAME):
+    """Get the current mesos-master leader's hostname. Raise
+    MesosMasterConnectionError if we can't connect.
+
+    :param hostname: The hostname to query mesos-master on
+    :returns: The current mesos-master hostname"""
+    redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
+    try:
+        r = requests.get(redirect_url, timeout=10)
+    except requests.exceptions.ConnectionError as e:
+        # Repackage the exception so upstream code can handle this case without
+        # knowing our implementation details.
+        raise MesosMasterConnectionError(repr(e))
+    r.raise_for_status()
+    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
+
+
+def is_mesos_leader(hostname=MY_HOSTNAME):
+    """Check if a hostname is the current mesos leader.
+
+    :param hostname: The hostname to query mesos-master on
+    :returns: True if hostname is the mesos-master leader, False otherwise"""
+    return hostname in get_mesos_leader(hostname)
 
 
 class TimeoutError(Exception):
@@ -725,7 +862,7 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
-def load_deployments_json(service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+def load_deployments_json(service_name, soa_dir=DEFAULT_SOA_DIR):
     deployment_file = os.path.join(soa_dir, service_name, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:

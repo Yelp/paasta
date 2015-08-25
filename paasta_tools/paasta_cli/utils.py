@@ -6,11 +6,11 @@ from socket import gethostbyname_ex
 
 from service_configuration_lib import read_services_configuration
 
-from paasta_tools.marathon_tools import get_cluster
-from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import list_all_instances_for_service
+from paasta_tools.utils import load_system_paasta_config
 
 
 def load_method(module_name, method_name):
@@ -268,37 +268,31 @@ def validate_service_name(service_name):
         raise NoSuchService(service_name)
 
 
-def list_instances_for_service(service):
-    """Returns all instances for a service. Currently enumarates
-    all instances, currently just from marathon."""
-    return list_all_marathon_instances_for_service(service)
-
-
-def list_services():
+def list_services():  # FIXME is this redundant with paasta_tools.utils?
     """Returns a sorted list of all services"""
     return sorted(read_services_configuration().keys())
 
 
-def list_paasta_services():
+def list_paasta_services():  # FIXME is this redundant with paasta_tools.utils?
     """Returns a sorted list of services that happen to have at
-    least one service.instance, which indicates it is on PaaSTA"""
+    least one service.instance (including Marathon and Chronos instances), which indicates it is on PaaSTA"""
     the_list = []
     for service_name in list_services():
-        if list_instances_for_service(service_name):
+        if list_all_instances_for_service(service_name):
             the_list.append(service_name)
     return the_list
 
 
-def list_service_instances():
+def list_service_instances():  # FIXME replace calls of this with get_service_instance_list
     """Returns a sorted list of service.instance names"""
     the_list = []
     for service_name in list_services():
-        for instance in list_instances_for_service(service_name):
+        for instance in list_all_instances_for_service(service_name):
             the_list.append("%s.%s" % (service_name, instance))
     return the_list
 
 
-def list_instances():
+def list_instances():  # FIXME is this redundant with paasta_tools.utils?
     """Returns a sorted list of all possible instance names
     for tab completion. We try to guess what service you might be
     operating on, otherwise we just provide *all* of them"""
@@ -306,10 +300,10 @@ def list_instances():
     service_name = guess_service_name()
     try:
         validate_service_name(service_name)
-        all_instances = set(list_instances_for_service(service_name))
+        all_instances = set(list_all_instances_for_service(service_name))
     except NoSuchService:
         for service_name in list_services():
-            for instance in list_instances_for_service(service_name):
+            for instance in list_all_instances_for_service(service_name):
                 all_instances.add(instance)
     return sorted(all_instances)
 
@@ -475,7 +469,7 @@ def figure_out_service_name(args):
 def figure_out_cluster(args):
     """Figures out and validates the input cluster name"""
     try:
-        cluster = args.cluster or get_cluster()
+        cluster = args.cluster or load_system_paasta_config().get_cluster()
     except IOError:
         # TODO: Read the new global paasta.json
         print "Sorry, could not detect the PaaSTA cluster. Please provide one"

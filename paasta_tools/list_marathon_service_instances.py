@@ -18,6 +18,7 @@ import sys
 
 import service_configuration_lib
 from paasta_tools import marathon_tools
+from paasta_tools.utils import get_services_for_cluster
 
 
 def parse_args():
@@ -34,8 +35,7 @@ def parse_args():
 
 def main():
     args = parse_args()
-    instances = marathon_tools.get_marathon_services_for_cluster(cluster=args.cluster,
-                                                                 soa_dir=args.soa_dir)
+    instances = get_services_for_cluster(cluster=args.cluster, instance_type='marathon', soa_dir=args.soa_dir)
     composed = []
     for name, instance in instances:
         composed.append('%s%s%s' % (name, marathon_tools.ID_SPACER, instance))

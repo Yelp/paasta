@@ -97,12 +97,15 @@ def when_deploy_service_initiated(context, bounce_method, drain_method):
         mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
         mock.patch('paasta_tools.bounce_lib.create_app_lock', autospec=True),
         mock.patch('paasta_tools.bounce_lib.time.sleep', autospec=True),
-        mock.patch(
-            'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
-            autospec=True,
-            return_value=context.cluster,
-        ),
+        mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
+    ) as (
+        _,
+        _,
+        _,
+        _,
+        mock_load_system_paasta_config,
     ):
+        mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         setup_marathon_job.deploy_service(
             service_name=context.service_name,
             instance_name=context.instance_name,

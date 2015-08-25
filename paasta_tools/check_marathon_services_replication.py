@@ -29,6 +29,8 @@ from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
+from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
@@ -301,7 +303,7 @@ def main():
         log.setLevel(logging.INFO)
     else:
         log.setLevel(logging.WARNING)
-    service_instances = marathon_tools.get_marathon_services_for_cluster(soa_dir=args.soa_dir)
+    service_instances = get_services_for_cluster(instance_type='marathon', soa_dir=args.soa_dir)
     all_namespaces = [name for name, config in marathon_tools.get_all_namespaces()]
 
     smartstack_replication_info = load_smartstack_info_for_services(service_instances, all_namespaces, soa_dir)
@@ -320,5 +322,5 @@ def main():
 
 
 if __name__ == "__main__":
-    if marathon_tools.is_mesos_leader():
+    if is_mesos_leader():
         main()

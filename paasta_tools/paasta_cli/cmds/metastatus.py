@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.paasta_cli.utils import lazy_choices_completer

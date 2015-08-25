@@ -5,7 +5,7 @@ Usage: ./cleanup_marathon_jobs.py [options]
 Clean up marathon apps that aren't supposed to run on this cluster by deleting them.
 
 Gets the current app list from marathon, and then a 'valid_app_list'
-via marathon_tools.get_marathon_services_for_cluster
+via utils.get_services_for_cluster
 
 If an app in the marathon app list isn't in the valid_app_list, it's
 deleted.
@@ -24,6 +24,9 @@ import service_configuration_lib
 from paasta_tools import marathon_tools
 from paasta_tools import bounce_lib
 from paasta_tools.utils import _log
+from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import is_mesos_leader
+from paasta_tools.utils import load_system_paasta_config
 
 
 ID_SPACER = marathon_tools.ID_SPACER
@@ -57,7 +60,7 @@ def delete_app(app_id, client):
             _log(service_name=service_name,
                  component='deploy',
                  level='event',
-                 cluster=marathon_tools.get_cluster(),
+                 cluster=load_system_paasta_config().get_cluster(),
                  instance=instance,
                  line=log_line)
     except IOError:
@@ -69,7 +72,7 @@ def delete_app(app_id, client):
             _log(service_name=service_name,
                  component='deploy',
                  level='debug',
-                 cluster=marathon_tools.get_cluster(),
+                 cluster=load_system_paasta_config().get_cluster(),
                  instance=instance,
                  line=logline)
         raise
@@ -87,7 +90,7 @@ def cleanup_apps(soa_dir):
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
 
-    valid_services = marathon_tools.get_marathon_services_for_cluster(soa_dir=soa_dir)
+    valid_services = get_services_for_cluster(instance_type='marathon', soa_dir=soa_dir)
     valid_short_app_ids = [marathon_tools.compose_job_id(name, instance) for (name, instance) in valid_services]
     running_app_ids = marathon_tools.list_all_marathon_app_ids(client)
 
@@ -112,5 +115,5 @@ def main():
     cleanup_apps(soa_dir)
 
 
-if __name__ == "__main__" and marathon_tools.is_mesos_leader():
+if __name__ == "__main__" and is_mesos_leader():
     main()
