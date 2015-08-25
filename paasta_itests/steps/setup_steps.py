@@ -89,22 +89,6 @@ def write_soa_dir():
     if not os.path.exists(soa_dir):
         os.makedirs(soa_dir)
 
-def write_service_dir(service_name):
-    soa_dir = '/nail/etc/services'
-    if not os.path.exists(os.path.join(soa_dir, service_name)):
-        os.makedirs(os.path.join(soa_dir, service_name))
-
-def write_chronos_job_for_service_cluster(service, cluster):
-    soa_dir = '/nail/etc/services/%s' % service
-    with open(os.path.join(soa_dir, 'chronos-%s.yaml' % cluster), 'w+') as f:
-        f.write(yaml.dump({
-            "test_job": {
-                "command": "echo foo",
-            }
-        }))
-
-
-
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
     """Adds a working marathon client and chronos client for the purposes of
@@ -129,5 +113,3 @@ def working_paasta_cluster(context):
         "zookeeper": "zk://fake",
         "docker_registry": "fake.com"
     }, 'cluster.json')
-    write_service_dir('example_service')
-    write_chronos_job_for_service_cluster('example_service', 'testcluster')

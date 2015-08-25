@@ -1,4 +1,6 @@
 import sys
+import os
+import yaml
 from behave import when, then
 from chronos import ChronosJob
 
@@ -6,9 +8,17 @@ sys.path.append('../')
 from paasta_tools.utils import _run
 from paasta_tools import chronos_tools
 
-@when('I have no jobs listed in config')
-def write_empty_config(context):
-    pass
+@when('I have config for the service "{service_name}"')
+def write_empty_config(context, service_name):
+    soa_dir = '/nail/etc/services'
+    if not os.path.exists(os.path.join(soa_dir, service_name)):
+        os.makedirs(os.path.join(soa_dir, service_name))
+    with open(os.path.join(soa_dir, service_name, 'chronos-testcluster.yaml'), 'w+') as f:
+        f.write(yaml.dump({
+            "test_job": {
+                "command": "echo foo",
+            }
+        }))
 
 @when('I launch "{num_jobs}" chronos jobs')
 def launch_jobs(context, num_jobs):
@@ -42,7 +52,7 @@ def check_cleanup_chronos_jobs_output(context, expected_return_code):
     for job in context.job_names:
         assert '  %s' % job in output
 
-@then('the jobs are no longer listed in chronos')
+@then('the launched jobs are no longer listed in chronos')
 def check_jobs_missing(context):
     jobs = context.chronos_client.list()
     running_job_names = [job['name'] for job in jobs]
