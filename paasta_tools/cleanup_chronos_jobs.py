@@ -29,6 +29,9 @@ def cleanup_jobs(client, jobs):
     """ Maps a list of jobs to cleanup to a list of responses from the api (or exception objects) """
     return [(job, execute_chronos_api_call_for_resource(client.delete, job)) for job in jobs]
 
+def cleanup_tasks(client, jobs):
+    """ Maps a list of tasks to cleanup to a list of responses from the api (or exception objects) """
+    return [(job, execute_chronos_api_call_for_resource(client.delete_tasks, job)) for job in jobs]
 
 def jobs_to_delete(expected_jobs, actual_jobs):
     return list(set(actual_jobs).difference(set(expected_jobs)))
@@ -54,22 +57,34 @@ def main():
     running_jobs = running_job_names(client)
 
     to_delete = jobs_to_delete(expected_jobs, running_jobs)
-    responses = cleanup_jobs(client, to_delete, False)
 
-    successes = [resp for resp in responses if not isinstance(resp[-1], Exception)]
-    failures = [resp for resp in responses if isinstance(resp[-1], Exception)]
+    task_responses = cleanup_tasks(client, to_delete)
+    task_successes = [resp for resp in task_responses if not isinstance(resp[-1], Exception)]
+    task_failures = [resp for resp in task_responses if isinstance(resp[-1], Exception)]
+
+    job_responses = cleanup_jobs(client, to_delete)
+    job_successes = [resp for resp in job_responses if not isinstance(resp[-1], Exception)]
+    job_failures = [resp for resp in job_responses if isinstance(resp[-1], Exception)]
 
     if len(to_delete) == 0:
         print 'No Chronos Jobs to remove'
     else:
-        if len(successes) > 0:
-            print format_list_output("Successfully Removed:", [job[0] for job in successes])
+        if len(task_successes) > 0:
+            print format_list_output("Successfully Removed Tasks (if any were running) for:", [job[0] for job in task_successes])
 
         # if there are any failures, print and exit appropriately
-        if len(failures) > 0:
-            print format_list_output("Failed to Delete:", [job[0] for job in failures])
-            sys.exit(1)
+        if len(task_failures) > 0:
+            print format_list_output("Failed to Delete Tasks for:", [job[0] for job in task_failures])
 
+        if len(job_successes) > 0:
+            print format_list_output("Successfully Removed Jobs:", [job[0] for job in job_successes])
+
+        # if there are any failures, print and exit appropriately
+        if len(job_failures) > 0:
+            print format_list_output("Failed to Delete Jobs:", [job[0] for job in job_failures])
+
+        if len(job_failures) > 0 or len(task_failures) > 0:
+            sys.exit(1)
 
 if __name__ == "__main__":
     main()
