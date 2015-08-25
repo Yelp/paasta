@@ -48,7 +48,8 @@ def check_cleanup_chronos_jobs_output(context, expected_return_code):
     print context.job_names
 
     assert exit_code == int(expected_return_code)
-    assert "Successfully Removed:" in output
+    assert "Successfully Removed Tasks (if any were running) for:" in output
+    assert "Successfully Removed Jobs:" in output
     for job in context.job_names:
         assert '  %s' % job in output
 
