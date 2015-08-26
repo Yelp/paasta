@@ -10,7 +10,6 @@ import pwd
 import re
 import shlex
 import signal
-import socket
 import sys
 import tempfile
 import threading
@@ -23,14 +22,11 @@ import clog
 import dateutil.tz
 import docker
 import json
-import requests
 import yaml
 
 import service_configuration_lib
 
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
-MY_HOSTNAME = socket.getfqdn()
-MESOS_MASTER_PORT = 5050
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
@@ -781,35 +777,6 @@ def parse_yaml_file(yaml_file):
 
 def get_docker_host():
     return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
-
-
-class MesosMasterConnectionError(Exception):
-    pass
-
-
-def get_mesos_leader(hostname=MY_HOSTNAME):
-    """Get the current mesos-master leader's hostname. Raise
-    MesosMasterConnectionError if we can't connect.
-
-    :param hostname: The hostname to query mesos-master on
-    :returns: The current mesos-master hostname"""
-    redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
-    try:
-        r = requests.get(redirect_url, timeout=10)
-    except requests.exceptions.ConnectionError as e:
-        # Repackage the exception so upstream code can handle this case without
-        # knowing our implementation details.
-        raise MesosMasterConnectionError(repr(e))
-    r.raise_for_status()
-    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
-
-
-def is_mesos_leader(hostname=MY_HOSTNAME):
-    """Check if a hostname is the current mesos leader.
-
-    :param hostname: The hostname to query mesos-master on
-    :returns: True if hostname is the mesos-master leader, False otherwise"""
-    return hostname in get_mesos_leader(hostname)
 
 
 class TimeoutError(Exception):

@@ -23,9 +23,9 @@ import traceback
 import service_configuration_lib
 from paasta_tools import marathon_tools
 from paasta_tools import bounce_lib
+from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config
 
 

@@ -13,7 +13,7 @@ import sys
 
 import pysensu_yelp
 from paasta_tools.mesos_tools import fetch_mesos_stats
-from paasta_tools.utils import is_mesos_leader
+from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config
 
 

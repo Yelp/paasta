@@ -30,7 +30,6 @@ from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
@@ -281,7 +280,7 @@ def get_smartstack_replication_for_attribute(attribute, namespaces):
     :param namespaces: list of Smartstack namespaces
     :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
               (the dictionary will contain keys for unique all attribute values)
-  """
+    """
     replication_info = {}
     unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute)
 
@@ -322,5 +321,5 @@ def main():
 
 
 if __name__ == "__main__":
-    if is_mesos_leader():
+    if mesos_tools.is_mesos_leader():
         main()

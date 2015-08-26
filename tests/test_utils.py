@@ -6,7 +6,6 @@ import tempfile
 
 import json
 import mock
-import requests
 
 import utils
 from pytest import raises
@@ -552,35 +551,6 @@ def test_get_services_for_cluster():  # FIXME this should have test cases for Ch
         get_instances_patch.assert_any_call('dir1', cluster, 'marathon', soa_dir)
         get_instances_patch.assert_any_call('dir2', cluster, 'marathon', soa_dir)
         assert get_instances_patch.call_count == 2
-
-
-def test_get_mesos_leader():
-    expected = 'mesos.master.yelpcorp.com'
-    fake_master = 'false.authority.yelpcorp.com'
-    with mock.patch('requests.get', autospec=True) as mock_requests_get:
-        mock_requests_get.return_value = mock_response = mock.Mock()
-        mock_response.return_code = 307
-        mock_response.url = 'http://%s:999' % expected
-        assert utils.get_mesos_leader(fake_master) == expected
-        mock_requests_get.assert_called_once_with('http://%s:5050/redirect' % fake_master, timeout=10)
-
-
-def test_get_mesos_leader_connection_error():
-    fake_master = 'false.authority.yelpcorp.com'
-    with mock.patch(
-        'requests.get',
-        autospec=True,
-        side_effect=requests.exceptions.ConnectionError,
-    ):
-        with raises(utils.MesosMasterConnectionError):
-            utils.get_mesos_leader(fake_master)
-
-
-def test_is_mesos_leader():
-    fake_host = 'toast.host.roast'
-    with mock.patch('utils.get_mesos_leader', autospec=True, return_value=fake_host) as get_leader_patch:
-        assert utils.is_mesos_leader(fake_host)
-        get_leader_patch.assert_called_once_with(fake_host)
 
 
 def test_color_text():

@@ -33,13 +33,43 @@ import mesos.cli.log
 mesos.cli.log.fatal = lambda msg, code = 1: raise_cli_exception(msg)
 
 
+MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = '5051'
 from mesos.cli import master
 
 
+class MesosMasterConnectionError(Exception):
+    pass
+
+
 class MesosSlaveConnectionError(Exception):
     pass
+
+
+def get_mesos_leader(hostname=MY_HOSTNAME):
+    """Get the current mesos-master leader's hostname. Raise
+    MesosMasterConnectionError if we can't connect.
+
+    :param hostname: The hostname to query mesos-master on
+    :returns: The current mesos-master hostname"""
+    redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
+    try:
+        r = requests.get(redirect_url, timeout=10)
+    except requests.exceptions.ConnectionError as e:
+        # Repackage the exception so upstream code can handle this case without
+        # knowing our implementation details.
+        raise MesosMasterConnectionError(repr(e))
+    r.raise_for_status()
+    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
+
+
+def is_mesos_leader(hostname=MY_HOSTNAME):
+    """Check if a hostname is the current mesos leader.
+
+    :param hostname: The hostname to query mesos-master on
+    :returns: True if hostname is the mesos-master leader, False otherwise"""
+    return hostname in get_mesos_leader(hostname)
 
 
 def get_current_tasks(job_id):

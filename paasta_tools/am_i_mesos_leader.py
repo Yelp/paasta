@@ -3,15 +3,13 @@
 Usage: ./am_i_mesos_leader.py
 
 Check if this host is the curret mesos-master leader.
-This is done by simply calling utils.is_mesos_leader.
+This is done by simply calling mesos_tools.is_mesos_leader.
 Exits 0 if this is the leader, and 1 if it isn't.
 """
 
 from sys import exit
-# Why so specific? We don't want any unneeded kwargs getting parsed
-# and loaded from a normal 'import marathon_tools'; we need this to
-# be fast and return almost immediately.
-from paasta_tools.utils import is_mesos_leader
+
+from paasta_tools.mesos_tools import is_mesos_leader
 
 
 def main():
