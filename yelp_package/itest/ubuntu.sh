@@ -1,19 +1,19 @@
 #!/bin/bash
 set -e
 
-SCRIPTS="setup_marathon_job
-am_i_mesos_leader
-synapse_srv_namespaces_fact
-setup_chronos_job
+SCRIPTS="am_i_mesos_leader
+check_marathon_services_replication
 cleanup_marathon_jobs
-list_marathon_service_instances
 deploy_marathon_services
 generate_deployments_for_service
-check_marathon_services_replication
 generate_services_yaml
+list_marathon_service_instances
 paasta_execute_docker_command
+paasta_metastatus
 paasta_serviceinit
-paasta_metastatus"
+setup_chronos_job
+setup_marathon_job
+synapse_srv_namespaces_fact"
 
 MARATHON_SERVICES="fake_service_uno.main
 fake_service_dos.niam"
