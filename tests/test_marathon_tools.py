@@ -240,7 +240,7 @@ class TestMarathonTools:
         ) as (
             open_patch,
         ):
-            with raises(marathon_tools.PaastaNotConfigured) as excinfo:
+            with raises(marathon_tools.PaastaNotConfiguredError) as excinfo:
                 marathon_tools.load_marathon_config(fake_path)
             assert str(excinfo.value) == "Could not load marathon config file b: a"
 
@@ -600,7 +600,7 @@ class TestMarathonTools:
             marathon_services_running_here_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster \
-                = mock.Mock(side_effect=marathon_tools.NoMarathonClusterFoundError)
+                = mock.Mock(side_effect=marathon_tools.PaastaNotConfiguredError)
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert actual == []
 
@@ -622,7 +622,7 @@ class TestMarathonTools:
             marathon_services_running_here_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster \
-                = mock.Mock(side_effect=marathon_tools.PaastaNotConfigured)
+                = mock.Mock(side_effect=marathon_tools.PaastaNotConfiguredError)
             actual = marathon_tools.get_marathon_services_running_here_for_nerve(cluster, soa_dir)
             assert actual == []
 

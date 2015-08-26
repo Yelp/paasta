@@ -158,7 +158,7 @@ def test_load_system_paasta_config_file_non_existent_dir():
     ) as (
         isdir_patch,
     ):
-        with raises(utils.PaastaNotConfigured) as excinfo:
+        with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
         expected = "Could not find system paasta configuration directory: %s" % fake_path
         assert str(excinfo.value) == expected
@@ -173,7 +173,7 @@ def test_load_system_paasta_config_file_non_readable_dir():
         isdir_patch,
         access_patch,
     ):
-        with raises(utils.PaastaNotConfigured) as excinfo:
+        with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
         expected = "Could not read from system paasta configuration directory: %s" % fake_path
         assert str(excinfo.value) == expected
@@ -192,7 +192,7 @@ def test_load_system_paasta_config_file_dne():
         open_patch,
         get_files_in_dir_patch,
     ):
-        with raises(utils.PaastaNotConfigured) as excinfo:
+        with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
         assert str(excinfo.value) == "Could not load system paasta config file b: a"
 
@@ -231,7 +231,7 @@ def test_SystemPaastaConfig_get_cluster():
 
 def test_SystemPaastaConfig_get_cluster_dne():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.NoMarathonClusterFoundError):
+    with raises(utils.PaastaNotConfiguredError):
         fake_config.get_cluster()
 
 
@@ -246,7 +246,7 @@ def test_SystemPaastaConfig_get_volumes():
 
 def test_SystemPaastaConfig_get_volumes_dne():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.PaastaNotConfigured):
+    with raises(utils.PaastaNotConfiguredError):
         fake_config.get_volumes()
 
 
@@ -261,7 +261,7 @@ def test_SystemPaastaConfig_get_zk():
 
 def test_SystemPaastaConfig_get_zk_dne():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.PaastaNotConfigured):
+    with raises(utils.PaastaNotConfiguredError):
         fake_config.get_zk_hosts()
 
 
@@ -276,7 +276,7 @@ def test_SystemPaastaConfig_get_registry():
 
 def test_SystemPaastaConfig_get_registry_dne():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.PaastaNotConfigured):
+    with raises(utils.PaastaNotConfiguredError):
         fake_config.get_docker_registry()
 
 
@@ -417,7 +417,7 @@ def test_get_default_cluster_for_service():
         mock_get_clusters_deployed_to,
         mock_load_system_paasta_config,
     ):
-        mock_load_system_paasta_config.side_effect = utils.NoMarathonClusterFoundError
+        mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
         assert utils.get_default_cluster_for_service(fake_service_name) == 'fake_cluster-1'
         mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
 
@@ -431,7 +431,7 @@ def test_get_default_cluster_for_service_empty_deploy_config():
         mock_get_clusters_deployed_to,
         mock_load_system_paasta_config,
     ):
-        mock_load_system_paasta_config.side_effect = utils.NoMarathonClusterFoundError
+        mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
         with raises(utils.NoConfigurationForServiceError):
             utils.get_default_cluster_for_service(fake_service_name)
         mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
@@ -506,7 +506,7 @@ def test_list_all_instances_for_service():
         mock_service_instance_list.assert_called_once_with(service, clusters[0], None)
 
 
-def test_get_service_instance_list():  # FIXME this should have test cases for Chronos and both too
+def test_get_service_instance_list():
     fake_name = 'hint'
     fake_instance_1 = 'unsweet'
     fake_instance_2 = 'water'
@@ -529,7 +529,7 @@ def test_get_service_instance_list():  # FIXME this should have test cases for C
         assert sorted(expected) == sorted(actual)
 
 
-def test_get_services_for_cluster():  # FIXME this should have test cases for Chronos and both too
+def test_get_services_for_cluster():
     cluster = 'honey_bunches_of_oats'
     soa_dir = 'completely_wholesome'
     instances = [['this_is_testing', 'all_the_things'], ['my_nerf_broke']]
@@ -544,12 +544,12 @@ def test_get_services_for_cluster():  # FIXME this should have test cases for Ch
         listdir_patch,
         get_instances_patch,
     ):
-        actual = utils.get_services_for_cluster(cluster, 'marathon', soa_dir)
+        actual = utils.get_services_for_cluster(cluster, soa_dir=soa_dir)
         assert expected == actual
         abspath_patch.assert_called_once_with(soa_dir)
         listdir_patch.assert_called_once_with('chex_mix')
-        get_instances_patch.assert_any_call('dir1', cluster, 'marathon', soa_dir)
-        get_instances_patch.assert_any_call('dir2', cluster, 'marathon', soa_dir)
+        get_instances_patch.assert_any_call('dir1', cluster, None, soa_dir)
+        get_instances_patch.assert_any_call('dir2', cluster, None, soa_dir)
         assert get_instances_patch.call_count == 2
 
 

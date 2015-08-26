@@ -27,8 +27,7 @@ from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import NoMarathonClusterFoundError
-from paasta_tools.utils import PaastaNotConfigured
+from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
 
@@ -51,7 +50,7 @@ def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
         with open(path) as f:
             return MarathonConfig(json.load(f), path)
     except IOError as e:
-        raise PaastaNotConfigured("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
+        raise PaastaNotConfiguredError("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
 
 
 class MarathonNotConfigured(Exception):
@@ -636,7 +635,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
         # where there isn't a Paasta configuration file at *all*, then
         # there must be no marathon services running here, so we catch
         # these custom exceptions and return [].
-        except (NoMarathonClusterFoundError, PaastaNotConfigured):
+        except (PaastaNotConfiguredError):
             return []
     # When a cluster is defined in mesos, let's iterate through marathon services
     marathon_services = marathon_services_running_here()

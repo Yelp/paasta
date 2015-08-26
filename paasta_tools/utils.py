@@ -409,15 +409,11 @@ def _timeout(process):
                 raise
 
 
-class PaastaNotConfigured(Exception):
+class PaastaNotConfiguredError(Exception):
     pass
 
 
 class NoConfigurationForServiceError(Exception):
-    pass
-
-
-class NoMarathonClusterFoundError(Exception):  # TODO shouldn't this be in marathon_tools?
     pass
 
 
@@ -439,17 +435,17 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
     """
     config = {}
     if not os.path.isdir(path):
-        raise PaastaNotConfigured("Could not find system paasta configuration directory: %s" % path)
+        raise PaastaNotConfiguredError("Could not find system paasta configuration directory: %s" % path)
 
     if not os.access(path, os.R_OK):
-        raise PaastaNotConfigured("Could not read from system paasta configuration directory: %s" % path)
+        raise PaastaNotConfiguredError("Could not read from system paasta configuration directory: %s" % path)
 
     try:
         for config_file in get_files_in_dir(path):
             with open(os.path.join(path, config_file)) as f:
                 config.update(json.load(f))
     except IOError as e:
-        raise PaastaNotConfigured("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
+        raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
     return SystemPaastaConfig(config, path)
 
 
@@ -467,7 +463,7 @@ class SystemPaastaConfig(dict):
         try:
             hosts = self['zookeeper']
         except KeyError:
-            raise PaastaNotConfigured(
+            raise PaastaNotConfiguredError(
                 'Could not find zookeeper connection string in configuration directory: %s' % self.directory)
 
         # how do python strings not have a method for doing this
@@ -482,7 +478,8 @@ class SystemPaastaConfig(dict):
         try:
             return self['docker_registry']
         except KeyError:
-            raise PaastaNotConfigured('Could not find docker registry in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError('Could not find docker registry in configuration directory: %s'
+                                           % self.directory)
 
     def get_volumes(self):
         """Get the volumes defined in this host's volumes config file.
@@ -491,7 +488,7 @@ class SystemPaastaConfig(dict):
         try:
             return self['volumes']
         except KeyError:
-            raise PaastaNotConfigured('Could not find volumes in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError('Could not find volumes in configuration directory: %s' % self.directory)
 
     def get_cluster(self):
         """Get the cluster defined in this host's paasta config file.
@@ -500,8 +497,7 @@ class SystemPaastaConfig(dict):
         try:
             return self['cluster']
         except KeyError:
-            raise NoMarathonClusterFoundError(  # FIXME this is not Marathon-specific
-                'Could not find cluster in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError('Could not find cluster in configuration directory: %s' % self.directory)
 
 
 def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
@@ -664,7 +660,7 @@ def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
     clusters = set()
     srv_path = os.path.join(soa_dir, service)
     if os.path.isdir(srv_path):
-        marathon_files = "%s/marathon-*.yaml" % srv_path  # FIXME this should not be marathon-specific
+        marathon_files = "%s/marathon-*.yaml" % srv_path
         for marathon_file in glob.glob(marathon_files):
             basename = os.path.basename(marathon_file)
             cluster_re_match = re.search('marathon-([0-9a-z-]*).yaml', basename)
@@ -677,11 +673,11 @@ def get_default_cluster_for_service(service_name):
     cluster = None
     try:
         cluster = load_system_paasta_config().get_cluster()
-    except NoMarathonClusterFoundError:  # FIXME this should not be marathon-specific
+    except PaastaNotConfiguredError:
         clusters_deployed_to = get_clusters_deployed_to(service_name)
         if len(clusters_deployed_to) > 0:
             cluster = clusters_deployed_to[0]
-        else:  # FIXME this should not be marathon-specific
+        else:
             raise NoConfigurationForServiceError("No cluster configuration found for service %s" % service_name)
     return cluster
 
