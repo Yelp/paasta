@@ -1,3 +1,10 @@
+paasta-tools (0.12.58-yelp1) lucid; urgency=low
+
+  * 0.12.58 tagged with 'make release'
+    Commit: Reuse exec instances in marathon healthchecks
+
+ -- Keshav Varma <keshav@yelp.com>  Tue, 25 Aug 2015 17:07:50 -0700
+
 paasta-tools (0.12.57-yelp1) lucid; urgency=low
 
   * 0.12.57 tagged with 'make release'
