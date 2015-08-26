@@ -4,9 +4,11 @@ set -e
 SCRIPTS="am_i_mesos_leader
 check_marathon_services_replication
 cleanup_marathon_jobs
+deploy_chronos_jobs
 deploy_marathon_services
 generate_deployments_for_service
 generate_services_yaml
+list_chronos_jobs
 list_marathon_service_instances
 paasta_execute_docker_command
 paasta_metastatus
