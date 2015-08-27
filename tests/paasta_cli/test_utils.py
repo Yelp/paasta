@@ -266,16 +266,6 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     assert "fake_err_msg" in actual
 
 
-@mock.patch('os.path.abspath', return_value='nodir')
-@mock.patch('os.listdir', return_value=['hi', 'how', 'are', 'you'])
-def test_list_services(mock_listdir, mock_abspath):
-    expected = ['are', 'hi', 'how', 'you']
-    actual = utils.list_services()
-    mock_abspath.assert_called_once_with(utils.DEFAULT_SOA_DIR)
-    mock_listdir.assert_called_once_with('nodir')
-    assert actual == expected
-
-
 @patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service')
 @patch('paasta_tools.paasta_cli.utils.list_services')
 def test_list_service_instances(

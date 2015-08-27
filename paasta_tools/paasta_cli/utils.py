@@ -4,7 +4,7 @@ import os
 from socket import gaierror
 from socket import gethostbyname_ex
 
-from service_configuration_lib import DEFAULT_SOA_DIR
+from service_configuration_lib import read_services_configuration
 
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
@@ -279,11 +279,7 @@ def validate_service_name(service_name):
 
 def list_services():
     """Returns a sorted list of all services"""
-    all_services = []
-    rootdir = os.path.abspath(DEFAULT_SOA_DIR)
-    for service_name in os.listdir(rootdir):
-        all_services.append(service_name)
-    return sorted(all_services)
+    return sorted(read_services_configuration().keys())
 
 
 def list_paasta_services():
