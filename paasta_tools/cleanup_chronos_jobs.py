@@ -7,31 +7,33 @@ import sys
 
 
 def execute_chronos_api_call_for_job(api_call, job):
+    """Attempt a call to the Chronos api, catching any exception.
+
+    We *have* to catch Exception, because the client catches
+    the more specific exception thrown by the http clients
+    and rethrows an Exception -_-.
+
+    The chronos api returns a 204 No Content when the delete is
+    successful, and chronos-python only returns the body of the
+    response from all http calls. So, if this is successful,
+    then None will be returned.
+    https://github.com/asher/chronos-python/pull/7
+
+    We catch it here, so that the other deletes are completed.
+    """
     try:
         return api_call(job)
     except Exception as e:
-        """ We *have* to catch Exception, because the client catches
-            the more specific exception thrown by the http clients
-            and rethrows an Exception -_-.
-
-            The chronos api returns a 204 No Content when the delete is
-            successful, and chronos-python only returns the body of the
-            response from all http calls. So, if this is successful,
-            then None will be returned.
-            https://github.com/asher/chronos-python/pull/7
-
-            we catch it here, so that the other deletes are completed.
-        """
         return e
 
 
 def cleanup_jobs(client, jobs):
-    """ Maps a list of jobs to cleanup to a list of response objects (or exception objects) from the api"""
+    """Maps a list of jobs to cleanup to a list of response objects (or exception objects) from the api"""
     return [(job, execute_chronos_api_call_for_job(client.delete, job)) for job in jobs]
 
 
 def cleanup_tasks(client, jobs):
-    """ Maps a list of tasks to cleanup to a list of response objects (or exception objects) from the api"""
+    """Maps a list of tasks to cleanup to a list of response objects (or exception objects) from the api"""
     return [(job, execute_chronos_api_call_for_job(client.delete_tasks, job)) for job in jobs]
 
 
@@ -48,7 +50,8 @@ def running_job_names(client):
 
 
 def expected_job_names(service_job_pairs):
-    """ Expects a list of pairs in the form (service_name, job_name)
+    """
+    Expects a list of pairs in the form (service_name, job_name)
     and returns the list of pairs mapped to the job name of each pair.
     """
     return [job[-1] for job in service_job_pairs]
