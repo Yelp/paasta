@@ -3,7 +3,17 @@
 import chronos_tools
 import sys
 
-"""Ensure that the set of deployed chronos jobs matches the set expected."""
+"""
+Usage: ./cleanup_chronos_jobs.py [options]
+
+Clean up chronos jobs that aren't supposed to run on this cluster by deleting them.
+
+Gets the current job list from chronos, and then a 'valid_job_list'
+via chronos_tools.get_chronos_jobs_for_cluster
+
+If a job is deployed by chronos but not in the expected list, it is deleted.
+Any tasks associated with that job are also deleted.
+"""
 
 
 def execute_chronos_api_call_for_job(api_call, job):
