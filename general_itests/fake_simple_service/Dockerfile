@@ -1,1 +1,1 @@
-FROM docker-dev.yelpcorp.com/lucid_yelp
+FROM docker-dev.yelpcorp.com/trusty_yelp

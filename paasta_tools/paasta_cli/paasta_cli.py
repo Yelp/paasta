@@ -57,20 +57,28 @@ def set_pgrp_and_cleanup_procs_on_exit():
     """
     try:
         os.setpgrp()
+        kill_pgrp_when_finished = True
     except OSError:
+        # Per http://linux.die.net/man/2/setpgid
+        # if we could not set our process group, that means we are not
+        # in charge of this session and we should not kill everything
+        # in our process group. This might happen if our parent process
+        # already ran setpgrp, setpgid, or execve.
+        kill_pgrp_when_finished = False
         pass
 
     try:
         yield
     finally:
-        pgrp = os.getpgrp()
-        pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp
-                        and proc.pid != os.getpid()]
-        for proc in pids_in_pgrp:
-            try:
-                os.kill(proc.pid, signal.SIGTERM)
-            except OSError:
-                pass
+        if kill_pgrp_when_finished:
+            pgrp = os.getpgrp()
+            pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp
+                            and proc.pid != os.getpid()]
+            for proc in pids_in_pgrp:
+                try:
+                    os.kill(proc.pid, signal.SIGTERM)
+                except OSError:
+                    pass
 
 
 def main():
