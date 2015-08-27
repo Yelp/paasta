@@ -1,8 +1,5 @@
 #!/usr/bin/env python
 
-import chronos_tools
-import sys
-
 """
 Usage: ./cleanup_chronos_jobs.py [options]
 
@@ -13,7 +10,24 @@ via chronos_tools.get_chronos_jobs_for_cluster
 
 If a job is deployed by chronos but not in the expected list, it is deleted.
 Any tasks associated with that job are also deleted.
+
+- -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
+
+import argparse
+import sys
+
+from paasta_tools import chronos_tools
+import service_configuration_lib
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Cleans up stale chronos jobs.')
+    parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
+                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        help="define a different soa config directory")
+    args = parser.parse_args()
+    return args
 
 
 def execute_chronos_api_call_for_job(api_call, job):
@@ -68,11 +82,14 @@ def expected_job_names(service_job_pairs):
 
 
 def main():
+    args = parse_args()
+    soa_dir = args.soa_dir
+
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 
     # get_chronos_jobs_for_cluster returns (service_name, job)
-    expected_jobs = expected_job_names(chronos_tools.get_chronos_jobs_for_cluster())
+    expected_jobs = expected_job_names(chronos_tools.get_chronos_jobs_for_cluster(soa_dir=soa_dir))
     running_jobs = running_job_names(client)
 
     to_delete = jobs_to_delete(expected_jobs, running_jobs)
