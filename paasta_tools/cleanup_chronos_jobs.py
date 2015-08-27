@@ -3,10 +3,7 @@
 import chronos_tools
 import sys
 
-"""
-    Ensure that the set of deployed chronos jobs
-    matches the set expected.
-"""
+"""Ensure that the set of deployed chronos jobs matches the set expected."""
 
 
 def execute_chronos_api_call_for_job(api_call, job):
