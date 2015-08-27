@@ -2,6 +2,7 @@ import mock
 from StringIO import StringIO
 
 from paasta_tools.paasta_cli.cmds import metastatus
+from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 
 
 @mock.patch('sys.stdout', new_callable=StringIO)
@@ -31,7 +32,7 @@ def test_get_cluster_dashboards():
     assert 'http://paasta-fake-cluster.yelp:5050' in output_text
     assert 'http://paasta-fake-cluster.yelp:5052' in output_text
     assert 'http://paasta-fake-cluster.yelp:5053' in output_text
-    assert 'http://paasta-fake-cluster.yelp:3212' in output_text
+    assert 'http://paasta-fake-cluster.yelp:%s' % DEFAULT_SYNAPSE_PORT in output_text
     assert 'http://chronos.paasta-fake-cluster.yelp/' in output_text
     assert 'http://mesos.paasta-fake-cluster.yelp/' in output_text
     assert 'http://marathon.paasta-fake-cluster.yelp/' in output_text

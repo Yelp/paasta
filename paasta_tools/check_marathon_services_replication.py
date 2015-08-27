@@ -28,6 +28,7 @@ from paasta_tools.monitoring.context import get_context
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
+from paasta_tools import smartstack_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -287,7 +288,11 @@ def get_smartstack_replication_for_attribute(attribute, namespaces):
     for value, hosts in unique_values.iteritems():
         # arbitrarily choose the first host with a given attribute to query for replication stats
         synapse_host = hosts[0]
-        repl_info = replication_utils.get_replication_for_services('%s:3212' % synapse_host, namespaces)
+        repl_info = replication_utils.get_replication_for_services(
+            synapse_host=synapse_host,
+            synapse_port=smartstack_tools.DEFAULT_SYNAPSE_PORT,
+            service_names=namespaces,
+        )
         replication_info[value] = repl_info
 
     return replication_info

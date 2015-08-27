@@ -14,6 +14,7 @@ from paasta_tools.mesos_tools import filter_running_tasks
 from paasta_tools.mesos_tools import filter_not_running_tasks
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
 from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import _log
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
@@ -25,8 +26,6 @@ from paasta_tools.utils import TimeoutError
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
-
-SYNAPSE_HOST_PORT = "localhost:3212"
 
 RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
 NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'
@@ -265,7 +264,9 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
         hosts = locations[location]
         # arbitrarily choose the first host with a given attribute to query for replication stats
         synapse_host = hosts[0]
-        sorted_backends = sorted(get_backends(service_instance, synapse_host_port='%s:3212' % synapse_host),
+        sorted_backends = sorted(get_backends(service_instance,
+                                              synapse_host=synapse_host,
+                                              synapse_port=DEFAULT_SYNAPSE_PORT),
                                  key=lambda backend: backend['status'],
                                  reverse=True)  # Specify reverse so that backends in 'UP' are placed above 'MAINT'
         matched_tasks = match_backends_and_tasks(sorted_backends, tasks)

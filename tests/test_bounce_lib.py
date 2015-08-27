@@ -4,6 +4,8 @@ import datetime
 import mock
 import marathon
 
+from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+
 
 class TestBounceLib:
 
@@ -285,8 +287,18 @@ class TestBounceLib:
                 'fake_other_region': ['fake_host2'],
             }
             assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', check_haproxy=True) == tasks[2:]
-            get_registered_marathon_tasks_patch.assert_any_call('fake_host1:3212', 'service.namespace', tasks)
-            get_registered_marathon_tasks_patch.assert_any_call('fake_host2:3212', 'service.namespace', tasks)
+            get_registered_marathon_tasks_patch.assert_any_call(
+                'fake_host1',
+                DEFAULT_SYNAPSE_PORT,
+                'service.namespace',
+                tasks,
+            )
+            get_registered_marathon_tasks_patch.assert_any_call(
+                'fake_host2',
+                DEFAULT_SYNAPSE_PORT,
+                'service.namespace',
+                tasks,
+            )
 
 
 class TestBrutalBounce:

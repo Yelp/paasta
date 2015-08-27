@@ -1,16 +1,19 @@
 import csv
 import requests
 
+DEFAULT_SYNAPSE_HOST = 'localhost'
+DEFAULT_SYNAPSE_PORT = 3212
 SYNAPSE_HAPROXY_PATH = "http://{0}/;csv;norefresh"
 
 
-def retrieve_haproxy_csv(synapse_host_port='localhost:3212'):
+def retrieve_haproxy_csv(synapse_host=DEFAULT_SYNAPSE_HOST, synapse_port=DEFAULT_SYNAPSE_PORT):
     """Retrieves the haproxy csv from the haproxy web interface
 
     :param synapse_host_port: A string in host:port format that this check
                               should contact for replication information.
     :returns reader: a csv.DictReader object
     """
+    synapse_host_port = "%s:%s" % (synapse_host, synapse_port)
     synapse_uri = SYNAPSE_HAPROXY_PATH.format(synapse_host_port)
 
     # timeout after 1 second and retry 3 times
@@ -27,7 +30,7 @@ def retrieve_haproxy_csv(synapse_host_port='localhost:3212'):
     return reader
 
 
-def get_backends(service=None, synapse_host_port='localhost:3212'):
+def get_backends(service=None, synapse_host=DEFAULT_SYNAPSE_HOST, synapse_port=DEFAULT_SYNAPSE_PORT):
     """Fetches the CSV from haproxy and returns a list of backends,
     regardless of their state.
 
@@ -42,10 +45,10 @@ def get_backends(service=None, synapse_host_port='localhost:3212'):
         services = [service]
     else:
         services = None
-    return get_multiple_backends(services, synapse_host_port=synapse_host_port)
+    return get_multiple_backends(services, synapse_host=synapse_host, synapse_port=synapse_port)
 
 
-def get_multiple_backends(services=None, synapse_host_port='localhost:3212'):
+def get_multiple_backends(services=None, synapse_host=DEFAULT_SYNAPSE_HOST, synapse_port=DEFAULT_SYNAPSE_PORT):
     """Fetches the CSV from haproxy and returns a list of backends,
     regardless of their state.
 
@@ -57,7 +60,7 @@ def get_multiple_backends(services=None, synapse_host_port='localhost:3212'):
                        services or the requested service
     """
 
-    reader = retrieve_haproxy_csv(synapse_host_port)
+    reader = retrieve_haproxy_csv(synapse_host, synapse_port)
     backends = []
 
     for line in reader:
