@@ -1,12 +1,12 @@
 import sys
 import os
 import yaml
+import json
 from behave import when, then
-from chronos import ChronosJob
 
 sys.path.append('../')
 from paasta_tools.utils import _run
-from paasta_tools import chronos_tools
+
 
 @when('I have config for the service "{service_name}"')
 def write_empty_config(context, service_name):
@@ -20,6 +20,7 @@ def write_empty_config(context, service_name):
             }
         }))
 
+
 @when('I launch "{num_jobs}" chronos jobs')
 def launch_jobs(context, num_jobs):
     client = context.chronos_client
@@ -31,27 +32,28 @@ def launch_jobs(context, num_jobs):
         'owner': '',
         'disabled': True,
         'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
-    } for job in range(0,int(num_jobs))]
+    } for job in range(0, int(num_jobs))]
     context.job_names = [job['name'] for job in jobs]
     for job in jobs:
         try:
             client.add(job)
         except Exception:
-            print 'Error creating test job'
+            print 'Error creating test job: %s' % json.dumps(job)
             raise
+
 
 @then('cleanup_chronos_jobs exits with return code "{expected_return_code}" and the correct output')
 def check_cleanup_chronos_jobs_output(context, expected_return_code):
     cmd = '../paasta_tools/cleanup_chronos_jobs.py'
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
-    print context.job_names
 
     assert exit_code == int(expected_return_code)
     assert "Successfully Removed Tasks (if any were running) for:" in output
     assert "Successfully Removed Jobs:" in output
     for job in context.job_names:
         assert '  %s' % job in output
+
 
 @then('the launched jobs are no longer listed in chronos')
 def check_jobs_missing(context):

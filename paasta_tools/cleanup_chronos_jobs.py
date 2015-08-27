@@ -7,7 +7,9 @@ import sys
     Ensure that the set of deployed chronos jobs
     matches the set expected.
 """
-def execute_chronos_api_call_for_resource(api_call, job):
+
+
+def execute_chronos_api_call_for_job(api_call, job):
     try:
         return api_call(job)
     except Exception as e:
@@ -25,28 +27,35 @@ def execute_chronos_api_call_for_resource(api_call, job):
         """
         return e
 
+
 def cleanup_jobs(client, jobs):
-    """ Maps a list of jobs to cleanup to a list of responses from the api (or exception objects) """
-    return [(job, execute_chronos_api_call_for_resource(client.delete, job)) for job in jobs]
+    """ Maps a list of jobs to cleanup to a list of response objects (or exception objects) from the api"""
+    return [(job, execute_chronos_api_call_for_job(client.delete, job)) for job in jobs]
+
 
 def cleanup_tasks(client, jobs):
-    """ Maps a list of tasks to cleanup to a list of responses from the api (or exception objects) """
-    return [(job, execute_chronos_api_call_for_resource(client.delete_tasks, job)) for job in jobs]
+    """ Maps a list of tasks to cleanup to a list of response objects (or exception objects) from the api"""
+    return [(job, execute_chronos_api_call_for_job(client.delete_tasks, job)) for job in jobs]
+
 
 def jobs_to_delete(expected_jobs, actual_jobs):
     return list(set(actual_jobs).difference(set(expected_jobs)))
 
+
 def format_list_output(title, job_names):
     return '%s\n  %s' % (title, '\n  '.join(job_names))
 
+
 def running_job_names(client):
     return [job['name'] for job in client.list()]
+
 
 def expected_job_names(service_job_pairs):
     """ Expects a list of pairs in the form (service_name, job_name)
     and returns the list of pairs mapped to the job name of each pair.
     """
     return [job[-1] for job in service_job_pairs]
+
 
 def main():
     config = chronos_tools.load_chronos_config()
@@ -59,18 +68,29 @@ def main():
     to_delete = jobs_to_delete(expected_jobs, running_jobs)
 
     task_responses = cleanup_tasks(client, to_delete)
-    task_successes = [resp for resp in task_responses if not isinstance(resp[-1], Exception)]
-    task_failures = [resp for resp in task_responses if isinstance(resp[-1], Exception)]
+    task_successes = []
+    task_failures = []
+    for response in task_responses:
+        if isinstance(response[1], Exception):
+            task_successes.append(response)
+        else:
+            task_failures.append(response)
 
     job_responses = cleanup_jobs(client, to_delete)
-    job_successes = [resp for resp in job_responses if not isinstance(resp[-1], Exception)]
-    job_failures = [resp for resp in job_responses if isinstance(resp[-1], Exception)]
+    job_successes = []
+    job_failures = []
+    for response in job_responses:
+        if isinstance(response[1], Exception):
+            job_successes.append(response)
+        else:
+            job_failures.append(response)
 
     if len(to_delete) == 0:
         print 'No Chronos Jobs to remove'
     else:
         if len(task_successes) > 0:
-            print format_list_output("Successfully Removed Tasks (if any were running) for:", [job[0] for job in task_successes])
+            print format_list_output("Successfully Removed Tasks (if any were running) for:",
+                                     [job[0] for job in task_successes])
 
         # if there are any failures, print and exit appropriately
         if len(task_failures) > 0:

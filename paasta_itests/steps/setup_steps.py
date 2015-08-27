@@ -4,7 +4,6 @@ from tempfile import NamedTemporaryFile
 from behave import given
 import chronos
 import json
-import yaml
 
 from itest_utils import get_service_connection_string
 from paasta_tools import marathon_tools
@@ -84,10 +83,12 @@ def write_etc_paasta(config, filename):
     with open(os.path.join(paasta_dir, filename), 'w') as f:
         f.write(json.dumps(config))
 
+
 def write_soa_dir():
     soa_dir = '/nail/etc/services'
     if not os.path.exists(soa_dir):
         os.makedirs(soa_dir)
+
 
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
