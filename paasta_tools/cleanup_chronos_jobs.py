@@ -10,7 +10,7 @@ def execute_chronos_api_call_for_job(api_call, job):
     try:
         return api_call(job)
     except Exception as e:
-        """ We *have* to catch an Exception, because the client catches
+        """ We *have* to catch Exception, because the client catches
             the more specific exception thrown by the http clients
             and rethrows an Exception -_-.
 
@@ -18,7 +18,7 @@ def execute_chronos_api_call_for_job(api_call, job):
             successful, and chronos-python only returns the body of the
             response from all http calls. So, if this is successful,
             then None will be returned.
-            https://github.com/asher/chronos-python/pull/9
+            https://github.com/asher/chronos-python/pull/7
 
             we catch it here, so that the other deletes are completed.
         """
