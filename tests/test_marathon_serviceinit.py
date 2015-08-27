@@ -9,6 +9,7 @@ import mesos
 import mock
 
 from paasta_tools import marathon_tools, marathon_serviceinit
+from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 
 
@@ -767,5 +768,28 @@ def test_get_mem_usage_divide_by_zero():
     fake_task.mem_limit = 0
     actual = marathon_serviceinit.get_mem_usage(fake_task)
     assert actual == "Undef"
+
+
+def test_perform_command_handles_no_docker_and_doesnt_raise():
+    fake_service = 'fake_service'
+    fake_instance = 'fake_instance'
+    fake_cluster = 'fake_cluster'
+    soa_dir = 'fake_soa_dir'
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_config', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.validate_service_instance', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_service_config', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_app_id', autospec=True),
+    ) as (
+        mock_load_marathon_config,
+        mock_validate_service_instance,
+        mock_load_marathon_service_config,
+        mock_get_app_id,
+    ):
+        mock_get_app_id.side_effect = NoDockerImageError()
+        actual = marathon_serviceinit.perform_command(
+            'start', fake_service, fake_instance, fake_cluster, False, soa_dir)
+        assert actual == 1
+
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

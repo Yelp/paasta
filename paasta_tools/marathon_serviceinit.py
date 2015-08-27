@@ -15,6 +15,7 @@ from paasta_tools.mesos_tools import filter_not_running_tasks
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
+from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import remove_ansi_escape_sequences
@@ -441,11 +442,23 @@ def status_mesos_tasks_verbose(service, instance):
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
+    """Performs a start/stop/restart/status on an instance
+    :param command: String of start, stop, restart, or status
+    :param service: service name
+    :param instance: instance name, like "main" or "canary"
+    :param cluster: cluster name
+    :param verbose: bool if the output should be verbose or not
+    :returns: A unix-style return code"""
     marathon_config = marathon_tools.load_marathon_config()
     validate_service_instance(service, instance, cluster)
 
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
-    app_id = marathon_tools.get_app_id(service, instance, marathon_config)
+    try:
+        app_id = marathon_tools.get_app_id(service, instance, marathon_config)
+    except NoDockerImageError:
+        print "Docker image for %s.%s not in deployments.json. Exiting. Has Jenkins deployed it?" % (service, instance)
+        return 1
+
     normal_instance_count = complete_job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance)
@@ -477,7 +490,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
-    sys.exit(0)
-
+    return 0
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
