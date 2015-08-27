@@ -17,8 +17,6 @@ from scribereader.scribereader import StreamTailerSetupError
 
 from paasta_tools import chronos_tools
 from paasta_tools.marathon_tools import compose_job_id
-from paasta_tools.marathon_tools import get_clusters_deployed_to
-from paasta_tools.marathon_tools import list_clusters
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
@@ -28,6 +26,7 @@ from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import format_log_line
+from paasta_tools.utils import list_clusters
 from paasta_tools.utils import LOG_COMPONENTS
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import get_log_name_for_service
@@ -84,7 +83,7 @@ def add_subparser(subparsers):
 def completer_clusters(prefix, parsed_args, **kwargs):
     service = parsed_args.service or guess_service_name()
     if service in list_services():
-        return get_clusters_deployed_to(service)
+        return list_clusters(service)
     else:
         return list_clusters()
 
@@ -495,7 +494,7 @@ def paasta_logs(args):
     service_name = figure_out_service_name(args)
 
     if args.clusters is None:
-        clusters = get_clusters_deployed_to(service_name)
+        clusters = list_clusters(service_name)
     else:
         clusters = args.clusters.split(",")
 

@@ -4,7 +4,7 @@ from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import list_instances
-from paasta_tools.marathon_tools import list_clusters
+from paasta_tools.utils import list_clusters
 
 
 def add_subparser(subparsers):

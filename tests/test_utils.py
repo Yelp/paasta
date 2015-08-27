@@ -7,7 +7,7 @@ import tempfile
 import json
 import mock
 
-from paasta_tools import utils
+import utils
 from pytest import raises
 
 
@@ -32,7 +32,7 @@ def test_format_log_line():
         'component': fake_component,
         'message': input_line,
     }, sort_keys=True)
-    with mock.patch('paasta_tools.utils._now', autospec=True) as mock_now:
+    with mock.patch('utils._now', autospec=True) as mock_now:
         mock_now.return_value = fake_now
         actual = utils.format_log_line(fake_level, fake_cluster, fake_instance, fake_component, input_line)
         assert actual == expected
@@ -89,8 +89,8 @@ def test_get_files_in_dir_ignores_unreadable():
         mock.patch('os.listdir', autospec=True, return_value=['b.json', 'a.json', 'c.json']),
         mock.patch('os.path.isfile', autospec=True, return_value=True),
         mock.patch('os.access', autospec=True, side_effect=[True, False, True]),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=fake_file_contents)
+        mock.patch('utils.open', create=True, return_value=file_mock),
+        mock.patch('utils.json.load', autospec=True, return_value=fake_file_contents)
     ) as (
         listdir_patch,
         isfile_patch,
@@ -101,7 +101,7 @@ def test_get_files_in_dir_ignores_unreadable():
         assert utils.get_files_in_dir(fake_dir) == expected
 
 
-def test_get_files_in_dir_is_lexographic():
+def test_get_files_in_dir_is_lexicographic():
     fake_dir = '/fake/dir/'
     fake_file_contents = {'foo': 'bar'}
     expected = [os.path.join(fake_dir, 'a.json'), os.path.join(fake_dir, 'b.json')]
@@ -110,8 +110,8 @@ def test_get_files_in_dir_is_lexographic():
         mock.patch('os.listdir', autospec=True, return_value=['b.json', 'a.json']),
         mock.patch('os.path.isfile', autospec=True, return_value=True),
         mock.patch('os.access', autospec=True, return_value=True),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=fake_file_contents)
+        mock.patch('utils.open', create=True, return_value=file_mock),
+        mock.patch('utils.json.load', autospec=True, return_value=fake_file_contents)
     ) as (
         listdir_patch,
         isfile_patch,
@@ -129,10 +129,10 @@ def test_load_system_paasta_config():
     with contextlib.nested(
         mock.patch('os.path.isdir', return_value=True),
         mock.patch('os.access', return_value=True),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.get_files_in_dir', autospec=True,
+        mock.patch('utils.open', create=True, return_value=file_mock),
+        mock.patch('utils.get_files_in_dir', autospec=True,
                    return_value=['/some/fake/dir/some_file.json']),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=json_load_return_value)
+        mock.patch('utils.json.load', autospec=True, return_value=json_load_return_value)
     ) as (
         os_is_dir_patch,
         os_access_patch,
@@ -158,7 +158,7 @@ def test_load_system_paasta_config_file_non_existent_dir():
     ) as (
         isdir_patch,
     ):
-        with raises(utils.PaastaNotConfigured) as excinfo:
+        with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
         expected = "Could not find system paasta configuration directory: %s" % fake_path
         assert str(excinfo.value) == expected
@@ -173,7 +173,7 @@ def test_load_system_paasta_config_file_non_readable_dir():
         isdir_patch,
         access_patch,
     ):
-        with raises(utils.PaastaNotConfigured) as excinfo:
+        with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
         expected = "Could not read from system paasta configuration directory: %s" % fake_path
         assert str(excinfo.value) == expected
@@ -184,15 +184,15 @@ def test_load_system_paasta_config_file_dne():
     with contextlib.nested(
         mock.patch('os.path.isdir', return_value=True),
         mock.patch('os.access', return_value=True),
-        mock.patch('paasta_tools.utils.open', create=True, side_effect=IOError(2, 'a', 'b')),
-        mock.patch('paasta_tools.utils.get_files_in_dir', autospec=True, return_value=[fake_path]),
+        mock.patch('utils.open', create=True, side_effect=IOError(2, 'a', 'b')),
+        mock.patch('utils.get_files_in_dir', autospec=True, return_value=[fake_path]),
     ) as (
         isdir_patch,
         access_patch,
         open_patch,
         get_files_in_dir_patch,
     ):
-        with raises(utils.PaastaNotConfigured) as excinfo:
+        with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
         assert str(excinfo.value) == "Could not load system paasta config file b: a"
 
@@ -205,10 +205,10 @@ def test_load_system_paasta_config_merge_lexographically():
     with contextlib.nested(
         mock.patch('os.path.isdir', return_value=True),
         mock.patch('os.access', return_value=True),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.get_files_in_dir', autospec=True,
+        mock.patch('utils.open', create=True, return_value=file_mock),
+        mock.patch('utils.get_files_in_dir', autospec=True,
                    return_value=['a', 'b']),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b])
+        mock.patch('utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b])
     ) as (
         os_is_dir_patch,
         os_access_patch,
@@ -231,7 +231,7 @@ def test_SystemPaastaConfig_get_cluster():
 
 def test_SystemPaastaConfig_get_cluster_dne():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.NoMarathonClusterFoundException):
+    with raises(utils.PaastaNotConfiguredError):
         fake_config.get_cluster()
 
 
@@ -246,7 +246,7 @@ def test_SystemPaastaConfig_get_volumes():
 
 def test_SystemPaastaConfig_get_volumes_dne():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.PaastaNotConfigured):
+    with raises(utils.PaastaNotConfiguredError):
         fake_config.get_volumes()
 
 
@@ -261,7 +261,7 @@ def test_SystemPaastaConfig_get_zk():
 
 def test_SystemPaastaConfig_get_zk_dne():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.PaastaNotConfigured):
+    with raises(utils.PaastaNotConfiguredError):
         fake_config.get_zk_hosts()
 
 
@@ -276,7 +276,7 @@ def test_SystemPaastaConfig_get_registry():
 
 def test_SystemPaastaConfig_get_registry_dne():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
-    with raises(utils.PaastaNotConfigured):
+    with raises(utils.PaastaNotConfiguredError):
         fake_config.get_docker_registry()
 
 
@@ -388,23 +388,157 @@ def test_remove_ansi_escape_sequences():
     assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
 
 
-@mock.patch('glob.glob', autospec=True)
-def test_list_all_clusters(mock_glob):
-    mock_glob.return_value = ['/nail/etc/services/service1/marathon-cluster1.yaml',
-                              '/nail/etc/services/service2/chronos-cluster2.yaml']
-    expected = set(['cluster1', 'cluster2'])
-    actual = utils.list_all_clusters()
-    assert actual == expected
+def test_get_default_cluster_for_service():
+    fake_service_name = 'fake_service'
+    fake_clusters = ['fake_cluster-1', 'fake_cluster-2']
+    with contextlib.nested(
+        mock.patch('utils.list_clusters', autospec=True, return_value=fake_clusters),
+        mock.patch('utils.load_system_paasta_config', autospec=True),
+    ) as (
+        mock_list_clusters,
+        mock_load_system_paasta_config,
+    ):
+        mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
+        assert utils.get_default_cluster_for_service(fake_service_name) == 'fake_cluster-1'
+        mock_list_clusters.assert_called_once_with(fake_service_name)
 
 
-@mock.patch('glob.glob', autospec=True)
-def test_list_all_clusters_ignores_bogus_files(mock_glob):
-    mock_glob.return_value = ['/nail/etc/services/service1/marathon-clustera.yaml',
-                              '/nail/etc/services/service2/chronos-SHARED.yaml',
-                              '/nail/etc/services/service2/marathon-DEVSTAGE.yaml']
-    expected = set(['clustera'])
-    actual = utils.list_all_clusters()
-    assert actual == expected
+def test_get_default_cluster_for_service_empty_deploy_config():
+    fake_service_name = 'fake_service'
+    with contextlib.nested(
+        mock.patch('utils.list_clusters', autospec=True, return_value=[]),
+        mock.patch('utils.load_system_paasta_config', autospec=True),
+    ) as (
+        mock_list_clusters,
+        mock_load_system_paasta_config,
+    ):
+        mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
+        with raises(utils.NoConfigurationForServiceError):
+            utils.get_default_cluster_for_service(fake_service_name)
+        mock_list_clusters.assert_called_once_with(fake_service_name)
+
+
+def test_list_clusters_no_service_given_lists_all_of_them():
+    fake_soa_dir = '/nail/etc/services'
+    fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
+                            '/nail/etc/services/service2/chronos-cluster2.yaml']
+    expected = ['cluster1', 'cluster2']
+    with contextlib.nested(
+        mock.patch('os.path.join', autospec=True, return_value='%s/*' % fake_soa_dir),
+        mock.patch('glob.glob', autospec=True, return_value=fake_cluster_configs),
+    ) as (
+        mock_join_path,
+        mock_glob,
+    ):
+        actual = utils.list_clusters(soa_dir=fake_soa_dir)
+        assert actual == expected
+        mock_join_path.assert_called_once_with(fake_soa_dir, '*')
+        mock_glob.assert_called_once_with('%s/*/*.yaml' % fake_soa_dir)
+
+
+def test_list_clusters_with_service():
+    fake_soa_dir = '/nail/etc/services'
+    fake_service = 'fake_service'
+    fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
+                            '/nail/etc/services/service1/chronos-cluster2.yaml']
+    expected = ['cluster1', 'cluster2']
+    with contextlib.nested(
+        mock.patch('os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service)),
+        mock.patch('glob.glob', autospec=True, return_value=fake_cluster_configs),
+    ) as (
+        mock_join_path,
+        mock_glob,
+    ):
+        actual = utils.list_clusters(fake_service, fake_soa_dir)
+        assert actual == expected
+        mock_join_path.assert_called_once_with(fake_soa_dir, fake_service)
+        mock_glob.assert_called_once_with('%s/%s/*.yaml' % (fake_soa_dir, fake_service))
+
+
+def test_list_clusters_ignores_bogus_clusters():
+    fake_soa_dir = '/nail/etc/services'
+    fake_service = 'fake_service'
+    fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
+                            '/nail/etc/services/service1/marathon-PROD.yaml',
+                            '/nail/etc/services/service1/chronos-cluster2.yaml',
+                            '/nail/etc/services/service1/chronos-SHARED.yaml']
+    expected = ['cluster1', 'cluster2']
+    with contextlib.nested(
+        mock.patch('os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service)),
+        mock.patch('glob.glob', autospec=True, return_value=fake_cluster_configs),
+    ) as (
+        mock_join_path,
+        mock_glob,
+    ):
+        actual = utils.list_clusters(service=fake_service)
+        assert actual == expected
+
+
+def test_list_all_instances_for_service():
+    service = 'fake_service'
+    clusters = ['fake_cluster']
+    mock_instances = [(service, 'instance1'), (service, 'instance2')]
+    expected = set(['instance1', 'instance2'])
+    with contextlib.nested(
+        mock.patch('utils.list_clusters', autospec=True),
+        mock.patch('utils.get_service_instance_list', autospec=True),
+    ) as (
+        mock_list_clusters,
+        mock_service_instance_list,
+    ):
+        mock_list_clusters.return_value = clusters
+        mock_service_instance_list.return_value = mock_instances
+        actual = utils.list_all_instances_for_service(service)
+        assert actual == expected
+        mock_list_clusters.assert_called_once_with(service)
+        mock_service_instance_list.assert_called_once_with(service, clusters[0], None)
+
+
+def test_get_service_instance_list():
+    fake_name = 'hint'
+    fake_instance_1 = 'unsweet'
+    fake_instance_2 = 'water'
+    fake_cluster = '16floz'
+    fake_dir = '/nail/home/hipster'
+    fake_job_config = {fake_instance_1: {},
+                       fake_instance_2: {}}
+    expected = [(fake_name, fake_instance_1), (fake_name, fake_instance_1),
+                (fake_name, fake_instance_2), (fake_name, fake_instance_2)]
+    with contextlib.nested(
+        mock.patch('utils.service_configuration_lib.read_extra_service_information', autospec=True,
+                   return_value=fake_job_config),
+    ) as (
+        read_extra_info_patch,
+    ):
+        actual = utils.get_service_instance_list(fake_name, fake_cluster, soa_dir=fake_dir)
+        read_extra_info_patch.assert_any_call(fake_name, 'marathon-16floz', soa_dir=fake_dir)
+        read_extra_info_patch.assert_any_call(fake_name, 'chronos-16floz', soa_dir=fake_dir)
+        assert read_extra_info_patch.call_count == 2
+        assert sorted(expected) == sorted(actual)
+
+
+def test_get_services_for_cluster():
+    cluster = 'honey_bunches_of_oats'
+    soa_dir = 'completely_wholesome'
+    instances = [['this_is_testing', 'all_the_things'], ['my_nerf_broke']]
+    expected = ['my_nerf_broke', 'this_is_testing', 'all_the_things']
+    with contextlib.nested(
+        mock.patch('os.path.abspath', autospec=True, return_value='chex_mix'),
+        mock.patch('os.listdir', autospec=True, return_value=['dir1', 'dir2']),
+        mock.patch('utils.get_service_instance_list',
+                   side_effect=lambda a, b, c, d: instances.pop()),
+    ) as (
+        abspath_patch,
+        listdir_patch,
+        get_instances_patch,
+    ):
+        actual = utils.get_services_for_cluster(cluster, soa_dir=soa_dir)
+        assert expected == actual
+        abspath_patch.assert_called_once_with(soa_dir)
+        listdir_patch.assert_called_once_with('chex_mix')
+        get_instances_patch.assert_any_call('dir1', cluster, None, soa_dir)
+        get_instances_patch.assert_any_call('dir2', cluster, None, soa_dir)
+        assert get_instances_patch.call_count == 2
 
 
 def test_color_text():
@@ -443,9 +577,9 @@ def test_DeploymentsJson_read():
         },
     }
     with contextlib.nested(
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+        mock.patch('utils.open', create=True, return_value=file_mock),
         mock.patch('json.load', autospec=True, return_value=fake_json),
-        mock.patch('paasta_tools.utils.os.path.isfile', autospec=True, return_value=True),
+        mock.patch('utils.os.path.isfile', autospec=True, return_value=True),
     ) as (
         open_patch,
         json_patch,

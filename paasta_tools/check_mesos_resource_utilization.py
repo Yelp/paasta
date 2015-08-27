@@ -12,8 +12,9 @@ import logging
 import sys
 
 import pysensu_yelp
-import paasta_tools.marathon_tools
 from paasta_tools.mesos_tools import fetch_mesos_stats
+from paasta_tools.mesos_tools import is_mesos_leader
+from paasta_tools.utils import load_system_paasta_config
 
 
 log = logging.getLogger(__name__)
@@ -42,7 +43,7 @@ def send_event(status, output):
         'realert_every': -1,
         'status': status,
         'output': output,
-        'source': 'paasta-%s' % paasta_tools.marathon_tools.get_cluster()
+        'source': 'paasta-%s' % load_system_paasta_config().get_cluster()
     }
     pysensu_yelp.send_event(**result_dict)
 
@@ -87,7 +88,7 @@ def main():
 
 
 if __name__ == "__main__":
-    if paasta_tools.marathon_tools.is_mesos_leader():
+    if is_mesos_leader():
         main()
     else:
         print "No the leader. Exiting 0."

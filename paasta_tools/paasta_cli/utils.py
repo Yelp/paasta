@@ -6,11 +6,11 @@ from socket import gethostbyname_ex
 
 from service_configuration_lib import read_services_configuration
 
-from paasta_tools.marathon_tools import get_cluster
-from paasta_tools.marathon_tools import list_all_marathon_instances_for_service
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import list_all_instances_for_service
+from paasta_tools.utils import load_system_paasta_config
 
 
 def load_method(module_name, method_name):
@@ -48,7 +48,8 @@ def is_file_in_dir(file_name, path):
     :param file_name: a string of a file name to find
     :param path: a string path
     :param file_ext: a string of a file extension
-    :return: a boolean"""
+    :return: a boolean
+    """
     for root, dirnames, filenames in os.walk(path):
         for filename in filenames:
             if fnmatch.fnmatch(filename, file_name):
@@ -58,13 +59,15 @@ def is_file_in_dir(file_name, path):
 
 def check_mark():
     """
-    :return: string that can print a checkmark"""
+    :return: string that can print a checkmark
+    """
     return PaastaColors.green(u'\u2713'.encode('utf-8'))
 
 
 def x_mark():
     """
-    :return: string that can print an x-mark"""
+    :return: string that can print an x-mark
+    """
     return PaastaColors.red(u'\u2717'.encode('utf-8'))
 
 
@@ -72,7 +75,8 @@ def success(msg):
     """Format a paasta check success message.
 
     :param msg: a string
-    :return: a beautiful string"""
+    :return: a beautiful string
+    """
     return "%s %s" % (check_mark(), msg)
 
 
@@ -80,14 +84,16 @@ def failure(msg, link):
     """Format a paasta check failure message.
 
     :param msg: a string
-    :return: a beautiful string"""
+    :return: a beautiful string
+    """
     return "%s %s %s" % (x_mark(), msg, PaastaColors.blue(link))
 
 
 class PaastaCheckMessages:
 
     """Collection of message printed out by 'paasta check'.
-    Helpful as it avoids cumbersome maintenance of the unit tests."""
+    Helpful as it avoids cumbersome maintenance of the unit tests.
+    """
 
     DEPLOY_YAML_FOUND = success("deploy.yaml exists for a Jenkins pipeline")
 
@@ -228,7 +234,8 @@ class PaastaCheckMessages:
 class NoSuchService(Exception):
 
     """Exception to be raised in the event that the service
-    name can not be guessed."""
+    name can not be guessed.
+    """
     GUESS_ERROR_MSG = "Could not determine service name.\n" \
                       "Please run this from the root of a copy " \
                       "(git clone) of your service.\n" \
@@ -254,7 +261,7 @@ class NoSuchService(Exception):
 def guess_service_name():
     """Deduce the service name from the pwd
     :return : A string representing the service name
-    :raises: NoSuchService exception"""
+    """
     return os.path.basename(os.getcwd())
 
 
@@ -263,15 +270,11 @@ def validate_service_name(service_name):
     /nail/etc/services
     :param service_name: a string of the name of the service you wish to check exists
     :return : boolean True
-    :raises: NoSuchService exception"""
+    :raises: NoSuchService exception
+    """
     if not service_name or not os.path.isdir(os.path.join('/nail/etc/services', service_name)):
         raise NoSuchService(service_name)
-
-
-def list_instances_for_service(service):
-    """Returns all instances for a service. Currently enumarates
-    all instances, currently just from marathon."""
-    return list_all_marathon_instances_for_service(service)
+    return True
 
 
 def list_services():
@@ -281,10 +284,11 @@ def list_services():
 
 def list_paasta_services():
     """Returns a sorted list of services that happen to have at
-    least one service.instance, which indicates it is on PaaSTA"""
+    least one service.instance (including Marathon and Chronos instances), which indicates it is on PaaSTA
+    """
     the_list = []
     for service_name in list_services():
-        if list_instances_for_service(service_name):
+        if list_all_instances_for_service(service_name):
             the_list.append(service_name)
     return the_list
 
@@ -293,7 +297,7 @@ def list_service_instances():
     """Returns a sorted list of service.instance names"""
     the_list = []
     for service_name in list_services():
-        for instance in list_instances_for_service(service_name):
+        for instance in list_all_instances_for_service(service_name):
             the_list.append("%s.%s" % (service_name, instance))
     return the_list
 
@@ -301,15 +305,16 @@ def list_service_instances():
 def list_instances():
     """Returns a sorted list of all possible instance names
     for tab completion. We try to guess what service you might be
-    operating on, otherwise we just provide *all* of them"""
+    operating on, otherwise we just provide *all* of them
+    """
     all_instances = set()
     service_name = guess_service_name()
     try:
         validate_service_name(service_name)
-        all_instances = set(list_instances_for_service(service_name))
+        all_instances = set(list_all_instances_for_service(service_name))
     except NoSuchService:
         for service_name in list_services():
-            for instance in list_instances_for_service(service_name):
+            for instance in list_all_instances_for_service(service_name):
                 all_instances.add(instance)
     return sorted(all_instances)
 
@@ -475,7 +480,7 @@ def figure_out_service_name(args):
 def figure_out_cluster(args):
     """Figures out and validates the input cluster name"""
     try:
-        cluster = args.cluster or get_cluster()
+        cluster = args.cluster or load_system_paasta_config().get_cluster()
     except IOError:
         # TODO: Read the new global paasta.json
         print "Sorry, could not detect the PaaSTA cluster. Please provide one"

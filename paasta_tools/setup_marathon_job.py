@@ -41,6 +41,7 @@ from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import configure_log
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 
@@ -265,7 +266,7 @@ def deploy_service(
 
     short_id = marathon_tools.remove_tag_from_job_id(marathon_jobid)
 
-    cluster = marathon_tools.get_cluster()
+    cluster = load_system_paasta_config().get_cluster()
     app_list = client.list_apps(embed_failures=True)
     existing_apps = [app for app in app_list if short_id in app.id]
     new_app_list = [a for a in existing_apps if a.id == '/%s' % config['id']]
@@ -427,18 +428,19 @@ def main():
         service_instance_config = marathon_tools.load_marathon_service_config(
             service_name,
             instance_name,
-            marathon_tools.get_cluster(),
+            load_system_paasta_config().get_cluster(),
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
-        error_msg = "No deployments found for %s in cluster %s" % (args.service_instance, marathon_tools.get_cluster())
+        error_msg = "No deployments found for %s in cluster %s" % (args.service_instance,
+                                                                   load_system_paasta_config().get_cluster())
         log.error(error_msg)
         send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
-    except marathon_tools.NoMarathonConfigurationForService:
+    except NoConfigurationForServiceError:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
-                    (args.service_instance, marathon_tools.get_cluster())
+                    (args.service_instance, load_system_paasta_config().get_cluster())
         log.error(error_msg)
         send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)

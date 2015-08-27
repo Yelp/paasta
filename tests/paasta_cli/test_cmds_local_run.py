@@ -21,7 +21,7 @@ from paasta_tools.paasta_cli.cmds.local_run import simulate_healthcheck_on_servi
 from paasta_tools.paasta_cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.paasta_cli.cmds.local_run import run_docker_container
 from paasta_tools.paasta_cli.cmds.local_run import validate_environment
-from paasta_tools.marathon_tools import NoMarathonConfigurationForService
+from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
@@ -306,7 +306,7 @@ def test_configure_and_run_missing_cluster_exception(
     mock_load_marathon_service_config,
     mock_load_system_paasta_config,
 ):
-    mock_get_default_cluster_for_service.side_effect = NoMarathonConfigurationForService()
+    mock_get_default_cluster_for_service.side_effect = NoConfigurationForServiceError()
     mock_load_system_paasta_config.return_value = SystemPaastaConfig({'volumes': []}, '/fake_dir/')
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_service = 'fake_service'

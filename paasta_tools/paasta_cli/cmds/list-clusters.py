@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-from paasta_tools.utils import list_all_clusters
+from paasta_tools.utils import list_clusters
 
 
 def add_subparser(subparsers):
@@ -11,5 +11,5 @@ def add_subparser(subparsers):
 
 
 def paasta_list_clusters(args):
-    for cluster in sorted(list_all_clusters()):
+    for cluster in list_clusters():
         print cluster

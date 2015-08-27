@@ -26,9 +26,9 @@ import yaml
 
 import service_configuration_lib
 
-
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
+DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -409,17 +409,17 @@ def _timeout(process):
                 raise
 
 
-class PaastaNotConfigured(Exception):
+class PaastaNotConfiguredError(Exception):
     pass
 
 
-class NoMarathonClusterFoundException(Exception):
+class NoConfigurationForServiceError(Exception):
     pass
 
 
 def get_files_in_dir(directory):
     """
-    Returns lexically-sorted list of files that are readable in a given directory
+    Returns lexicographically-sorted list of files that are readable in a given directory
     """
     files = []
     for f in sorted(os.listdir(directory)):
@@ -431,42 +431,41 @@ def get_files_in_dir(directory):
 
 def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
     """
-    Reads Paasta configs in specified directory in lexographical order and merges duplicated keys (last file wins)
+    Reads Paasta configs in specified directory in lexicographical order and merges duplicated keys (last file wins)
     """
     config = {}
     if not os.path.isdir(path):
-        raise PaastaNotConfigured("Could not find system paasta configuration directory: %s" % path)
+        raise PaastaNotConfiguredError("Could not find system paasta configuration directory: %s" % path)
 
     if not os.access(path, os.R_OK):
-        raise PaastaNotConfigured("Could not read from system paasta configuration directory: %s" % path)
+        raise PaastaNotConfiguredError("Could not read from system paasta configuration directory: %s" % path)
 
     try:
         for config_file in get_files_in_dir(path):
             with open(os.path.join(path, config_file)) as f:
                 config.update(json.load(f))
     except IOError as e:
-        raise PaastaNotConfigured("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
+        raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
     return SystemPaastaConfig(config, path)
 
 
 class SystemPaastaConfig(dict):
-
-    log = logging.getLogger('__main__')
 
     def __init__(self, config, directory):
         self.directory = directory
         super(SystemPaastaConfig, self).__init__(config)
 
     def get_zk_hosts(self):
-        """Get the zk_hosts defined in this hosts's marathon config file.
+        """Get the zk_hosts defined in this hosts's cluster config file.
         Strips off the zk:// prefix, if it exists, for use with Kazoo.
 
-        :returns: The zk_hosts specified in the marathon configuration"""
+        :returns: The zk_hosts specified in the paasta configuration
+        """
         try:
             hosts = self['zookeeper']
         except KeyError:
-            raise PaastaNotConfigured(
-                'Could not find zookeeper connection string in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError('Could not find zookeeper connection string in configuration directory: %s'
+                                           % self.directory)
 
         # how do python strings not have a method for doing this
         if hosts.startswith('zk://'):
@@ -474,32 +473,35 @@ class SystemPaastaConfig(dict):
         return hosts
 
     def get_docker_registry(self):
-        """Get the docker_registry defined in this host's paasta config file.
+        """Get the docker_registry defined in this host's cluster config file.
 
-        :returns: The docker_registry specified in the marathon configuration"""
+        :returns: The docker_registry specified in the paasta configuration
+        """
         try:
             return self['docker_registry']
         except KeyError:
-            raise PaastaNotConfigured('Could not find docker registry in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError('Could not find docker registry in configuration directory: %s'
+                                           % self.directory)
 
     def get_volumes(self):
         """Get the volumes defined in this host's volumes config file.
 
-        :returns: list of volumes"""
+        :returns: The list of volumes specified in the paasta configuration
+        """
         try:
             return self['volumes']
         except KeyError:
-            raise PaastaNotConfigured('Could not find volumes in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError('Could not find volumes in configuration directory: %s' % self.directory)
 
     def get_cluster(self):
-        """Get the cluster defined in this host's paasta config file.
+        """Get the cluster defined in this host's cluster config file.
 
-        :returns: The name of the cluster defined in the marathon configuration"""
+        :returns: The name of the cluster defined in the paasta configuration
+        """
         try:
             return self['cluster']
         except KeyError:
-            raise NoMarathonClusterFoundException(
-                'Could not find cluster in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError('Could not find cluster in configuration directory: %s' % self.directory)
 
 
 def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
@@ -624,8 +626,9 @@ def build_docker_tag(upstream_job_name, upstream_git_commit):
 
 def check_docker_image(service_name, tag):
     """Checks whether the given image for :service_name: with :tag: exists.
-    Returns True if there is exactly one matching image found.
-    Raises ValueError if more than one docker image with :tag: found.
+
+    :raises: ValueError if more than one docker image with :tag: found.
+    :returns: True if there is exactly one matching image found.
     """
     docker_client = docker.Client(timeout=60)
     image_name = build_docker_image_name(service_name)
@@ -655,16 +658,98 @@ def get_username():
     return pwd.getpwuid(os.getuid())[0]
 
 
-def list_all_clusters(soadir=service_configuration_lib.DEFAULT_SOA_DIR):
-    """Returns a set of all clusters. Includes every cluster that has
-    a marathon or chronos file associated with it.
+def get_default_cluster_for_service(service_name):
+    cluster = None
+    try:
+        cluster = load_system_paasta_config().get_cluster()
+    except PaastaNotConfiguredError:
+        clusters_deployed_to = list_clusters(service_name)
+        if len(clusters_deployed_to) > 0:
+            cluster = clusters_deployed_to[0]
+        else:
+            raise NoConfigurationForServiceError("No cluster configuration found for service %s" % service_name)
+    return cluster
+
+
+def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
+    """Returns a sorted list of clusters a service is configured to deploy to,
+    or all clusters if ``service`` is not specified.
+
+    Includes every cluster that has a ``marathon-*.yaml`` or ``chronos-*.yaml`` file associated with it.
+
+    :param service: The service name. If unspecified, clusters running any service will be included.
+    :returns: A sorted list of cluster names
     """
     clusters = set()
-    for yaml_file in glob.glob('%s/*/*.yaml' % soadir):
+    if service is None:
+        service = '*'
+    srv_path = os.path.join(soa_dir, service)
+
+    for yaml_file in glob.glob('%s/*.yaml' % srv_path):
         cluster_re_match = re.search('/.*/(marathon|chronos)-([0-9a-z-]*).yaml$', yaml_file)
         if cluster_re_match is not None:
             clusters.add(cluster_re_match.group(2))
-    return clusters
+    return sorted(clusters)
+
+
+def list_all_instances_for_service(service, instance_type=None):
+    instances = set()
+    for cluster in list_clusters(service):
+        for service_instance in get_service_instance_list(service, cluster, instance_type):
+            instances.add(service_instance[1])
+    return instances
+
+
+def get_service_instance_list(name, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+    """Enumerate the instances defined for a service as a list of tuples.
+
+    :param name: The service name
+    :param cluster: The cluster to read the configuration for
+    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (name, instance) for each instance defined for the service name
+    """
+    log = logging.getLogger('__main__')
+    if not cluster:
+        cluster = load_system_paasta_config().get_cluster()
+    if instance_type == 'marathon' or instance_type == 'chronos':
+        instance_types = [instance_type]
+    else:
+        instance_types = ['marathon', 'chronos']
+
+    instance_list = []
+    for srv_instance_type in instance_types:
+        conf_file = "%s-%s" % (srv_instance_type, cluster)
+        log.info("Enumerating all instances for config file: %s/*/%s.yaml" % (soa_dir, conf_file))
+        instances = service_configuration_lib.read_extra_service_information(
+            name,
+            conf_file,
+            soa_dir=soa_dir
+        )
+        for instance in instances:
+            instance_list.append((name, instance))
+
+    log.debug("Enumerated the following instances: %s", instance_list)
+    return instance_list
+
+
+def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+    """Retrieve all services and instances defined to run in a cluster.
+
+    :param cluster: The cluster to read the configuration for
+    :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
+    :param soa_dir: The SOA config directory to read from
+    :returns: A list of tuples of (service_name, instance_name)
+    """
+    log = logging.getLogger('__main__')
+    if not cluster:
+        cluster = load_system_paasta_config().get_cluster()
+    rootdir = os.path.abspath(soa_dir)
+    log.info("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
+    instance_list = []
+    for srv_dir in os.listdir(rootdir):
+        instance_list.extend(get_service_instance_list(srv_dir, cluster, instance_type, soa_dir))
+    return instance_list
 
 
 def parse_yaml_file(yaml_file):
@@ -717,7 +802,7 @@ class Timeout:
 
 
 def print_with_indent(line, indent=2):
-    """ Print a line with a given indent level """
+    """Print a line with a given indent level"""
     print(" " * indent + line)
 
 
@@ -725,7 +810,7 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
-def load_deployments_json(service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+def load_deployments_json(service_name, soa_dir=DEFAULT_SOA_DIR):
     deployment_file = os.path.join(soa_dir, service_name, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
@@ -769,7 +854,8 @@ def get_config_hash(config, force_bounce=None):
     :param config: The configuration to hash
     :param force_bounce: a timestamp (in the form of a string) that is appended before hashing
                          that can be used to force a hash change
-    :returns: A MD5 hash of str(config)"""
+    :returns: A MD5 hash of str(config)
+    """
     hasher = hashlib.md5()
     hasher.update(str(config) + (force_bounce or ''))
     return "config%s" % hasher.hexdigest()[:8]
@@ -777,6 +863,7 @@ def get_config_hash(config, force_bounce=None):
 
 def get_code_sha_from_dockerurl(docker_url):
     """We encode the sha of the code that built a docker image *in* the docker
-    url. This function takes that url as input and outputs the partial sha"""
+    url. This function takes that url as input and outputs the partial sha
+    """
     parts = docker_url.split('-')
     return "git%s" % parts[-1][:8]

@@ -17,6 +17,7 @@ from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
@@ -32,7 +33,7 @@ NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'
 
 def validate_service_instance(service, instance, cluster):
     log.info("Operating on cluster: %s" % cluster)
-    all_services = marathon_tools.get_marathon_services_for_cluster(cluster)
+    all_services = get_services_for_cluster(cluster=cluster, instance_type='marathon')
     if (service, instance) not in all_services:
         print "Error: %s.%s doesn't look like it has been deployed to this cluster! (%s)" % (service, instance, cluster)
         log.info(all_services)
