@@ -456,15 +456,16 @@ class SystemPaastaConfig(dict):
         super(SystemPaastaConfig, self).__init__(config)
 
     def get_zk_hosts(self):
-        """Get the zk_hosts defined in this hosts's marathon config file.
+        """Get the zk_hosts defined in this hosts's cluster config file.
         Strips off the zk:// prefix, if it exists, for use with Kazoo.
 
-        :returns: The zk_hosts specified in the marathon configuration"""
+        :returns: The zk_hosts specified in the paasta configuration
+        """
         try:
             hosts = self['zookeeper']
         except KeyError:
-            raise PaastaNotConfiguredError(
-                'Could not find zookeeper connection string in configuration directory: %s' % self.directory)
+            raise PaastaNotConfiguredError('Could not find zookeeper connection string in configuration directory: %s'
+                                           % self.directory)
 
         # how do python strings not have a method for doing this
         if hosts.startswith('zk://'):
@@ -472,9 +473,10 @@ class SystemPaastaConfig(dict):
         return hosts
 
     def get_docker_registry(self):
-        """Get the docker_registry defined in this host's paasta config file.
+        """Get the docker_registry defined in this host's cluster config file.
 
-        :returns: The docker_registry specified in the marathon configuration"""
+        :returns: The docker_registry specified in the paasta configuration
+        """
         try:
             return self['docker_registry']
         except KeyError:
@@ -484,16 +486,18 @@ class SystemPaastaConfig(dict):
     def get_volumes(self):
         """Get the volumes defined in this host's volumes config file.
 
-        :returns: list of volumes"""
+        :returns: The list of volumes specified in the paasta configuration
+        """
         try:
             return self['volumes']
         except KeyError:
             raise PaastaNotConfiguredError('Could not find volumes in configuration directory: %s' % self.directory)
 
     def get_cluster(self):
-        """Get the cluster defined in this host's paasta config file.
+        """Get the cluster defined in this host's cluster config file.
 
-        :returns: The name of the cluster defined in the marathon configuration"""
+        :returns: The name of the cluster defined in the paasta configuration
+        """
         try:
             return self['cluster']
         except KeyError:
@@ -622,8 +626,9 @@ def build_docker_tag(upstream_job_name, upstream_git_commit):
 
 def check_docker_image(service_name, tag):
     """Checks whether the given image for :service_name: with :tag: exists.
-    Returns True if there is exactly one matching image found.
-    Raises ValueError if more than one docker image with :tag: found.
+
+    :raises: ValueError if more than one docker image with :tag: found.
+    :returns: True if there is exactly one matching image found.
     """
     docker_client = docker.Client(timeout=60)
     image_name = build_docker_image_name(service_name)
@@ -653,28 +658,12 @@ def get_username():
     return pwd.getpwuid(os.getuid())[0]
 
 
-def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
-    """Looks at the clusters that a service is probably deployed to
-    by looking at ``marathon-*.yaml``'s and returns a sorted list of clusters.
-    """
-    clusters = set()
-    srv_path = os.path.join(soa_dir, service)
-    if os.path.isdir(srv_path):
-        marathon_files = "%s/marathon-*.yaml" % srv_path
-        for marathon_file in glob.glob(marathon_files):
-            basename = os.path.basename(marathon_file)
-            cluster_re_match = re.search('marathon-([0-9a-z-]*).yaml', basename)
-            if cluster_re_match is not None:
-                clusters.add(cluster_re_match.group(1))
-    return sorted(clusters)
-
-
 def get_default_cluster_for_service(service_name):
     cluster = None
     try:
         cluster = load_system_paasta_config().get_cluster()
     except PaastaNotConfiguredError:
-        clusters_deployed_to = get_clusters_deployed_to(service_name)
+        clusters_deployed_to = list_clusters(service_name)
         if len(clusters_deployed_to) > 0:
             cluster = clusters_deployed_to[0]
         else:
@@ -683,30 +672,24 @@ def get_default_cluster_for_service(service_name):
 
 
 def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
-    """Returns a sorted list of all clusters that appear to be in use. This
-    is useful for cli tools.
+    """Returns a sorted list of clusters a service is configured to deploy to,
+    or all clusters if ``service`` is not specified.
 
-    :param service: Optional. If provided will only list clusters that
-                    the particular service is using
+    Includes every cluster that has a ``marathon-*.yaml`` or ``chronos-*.yaml`` file associated with it.
+
+    :param service: The service name. If unspecified, clusters running any service will be included.
+    :returns: A sorted list of cluster names
     """
     clusters = set()
     if service is None:
-        clusters = list_all_clusters()
-    else:
-        clusters = set(get_clusters_deployed_to(service))
-    return sorted(clusters)
+        service = '*'
+    srv_path = os.path.join(soa_dir, service)
 
-
-def list_all_clusters(soadir=DEFAULT_SOA_DIR):
-    """Returns a set of all clusters. Includes every cluster that has
-    a marathon or chronos file associated with it.
-    """
-    clusters = set()
-    for yaml_file in glob.glob('%s/*/*.yaml' % soadir):
+    for yaml_file in glob.glob('%s/*.yaml' % srv_path):
         cluster_re_match = re.search('/.*/(marathon|chronos)-([0-9a-z-]*).yaml$', yaml_file)
         if cluster_re_match is not None:
             clusters.add(cluster_re_match.group(2))
-    return clusters
+    return sorted(clusters)
 
 
 def list_all_instances_for_service(service, instance_type=None):
@@ -724,7 +707,8 @@ def get_service_instance_list(name, cluster=None, instance_type=None, soa_dir=DE
     :param cluster: The cluster to read the configuration for
     :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
     :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of (name, instance) for each instance defined for the service name"""
+    :returns: A list of tuples of (name, instance) for each instance defined for the service name
+    """
     log = logging.getLogger('__main__')
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
@@ -755,7 +739,8 @@ def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_S
     :param cluster: The cluster to read the configuration for
     :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
     :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of (service_name, instance_name)"""
+    :returns: A list of tuples of (service_name, instance_name)
+    """
     log = logging.getLogger('__main__')
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
@@ -817,7 +802,7 @@ class Timeout:
 
 
 def print_with_indent(line, indent=2):
-    """ Print a line with a given indent level """
+    """Print a line with a given indent level"""
     print(" " * indent + line)
 
 
@@ -869,7 +854,8 @@ def get_config_hash(config, force_bounce=None):
     :param config: The configuration to hash
     :param force_bounce: a timestamp (in the form of a string) that is appended before hashing
                          that can be used to force a hash change
-    :returns: A MD5 hash of str(config)"""
+    :returns: A MD5 hash of str(config)
+    """
     hasher = hashlib.md5()
     hasher.update(str(config) + (force_bounce or ''))
     return "config%s" % hasher.hexdigest()[:8]
@@ -877,6 +863,7 @@ def get_config_hash(config, force_bounce=None):
 
 def get_code_sha_from_dockerurl(docker_url):
     """We encode the sha of the code that built a docker image *in* the docker
-    url. This function takes that url as input and outputs the partial sha"""
+    url. This function takes that url as input and outputs the partial sha
+    """
     parts = docker_url.split('-')
     return "git%s" % parts[-1][:8]

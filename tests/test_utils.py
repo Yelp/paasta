@@ -388,102 +388,90 @@ def test_remove_ansi_escape_sequences():
     assert utils.remove_ansi_escape_sequences(colored_string) == plain_string
 
 
-def test_get_clusters_deployed_to_ignores_bogus_clusters():
-    service = 'fake_service'
-    fake_marathon_filenames = ['marathon-cluster1.yaml', 'marathon-cluster2.yaml',
-                               'marathon-SHARED.yaml', 'marathon-cluster3.yaml',
-                               'marathon-BOGUS.yaml']
-    expected = ['cluster1', 'cluster2', 'cluster3']
-    with contextlib.nested(
-        mock.patch('os.path.isdir', autospec=True),
-        mock.patch('glob.glob', autospec=True),
-    ) as (
-        mock_isdir,
-        mock_glob
-    ):
-        mock_isdir.return_value = True
-        mock_glob.return_value = fake_marathon_filenames
-        actual = utils.get_clusters_deployed_to(service)
-        assert expected == actual
-
-
 def test_get_default_cluster_for_service():
     fake_service_name = 'fake_service'
     fake_clusters = ['fake_cluster-1', 'fake_cluster-2']
     with contextlib.nested(
-        mock.patch('utils.get_clusters_deployed_to', autospec=True, return_value=fake_clusters),
+        mock.patch('utils.list_clusters', autospec=True, return_value=fake_clusters),
         mock.patch('utils.load_system_paasta_config', autospec=True),
     ) as (
-        mock_get_clusters_deployed_to,
+        mock_list_clusters,
         mock_load_system_paasta_config,
     ):
         mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
         assert utils.get_default_cluster_for_service(fake_service_name) == 'fake_cluster-1'
-        mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
+        mock_list_clusters.assert_called_once_with(fake_service_name)
 
 
 def test_get_default_cluster_for_service_empty_deploy_config():
     fake_service_name = 'fake_service'
     with contextlib.nested(
-        mock.patch('utils.get_clusters_deployed_to', autospec=True, return_value=[]),
+        mock.patch('utils.list_clusters', autospec=True, return_value=[]),
         mock.patch('utils.load_system_paasta_config', autospec=True),
     ) as (
-        mock_get_clusters_deployed_to,
+        mock_list_clusters,
         mock_load_system_paasta_config,
     ):
         mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
         with raises(utils.NoConfigurationForServiceError):
             utils.get_default_cluster_for_service(fake_service_name)
-        mock_get_clusters_deployed_to.assert_called_once_with(fake_service_name)
+        mock_list_clusters.assert_called_once_with(fake_service_name)
 
 
 def test_list_clusters_no_service_given_lists_all_of_them():
+    fake_soa_dir = '/nail/etc/services'
+    fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
+                            '/nail/etc/services/service2/chronos-cluster2.yaml']
+    expected = ['cluster1', 'cluster2']
     with contextlib.nested(
-        mock.patch('utils.list_all_clusters', autospec=True),
+        mock.patch('os.path.join', autospec=True, return_value='%s/*' % fake_soa_dir),
+        mock.patch('glob.glob', autospec=True, return_value=fake_cluster_configs),
     ) as (
-        mock_list_all_clusters,
+        mock_join_path,
+        mock_glob,
     ):
-        mock_list_all_clusters.return_value = ['cluster1', 'cluster2']
-        actual = utils.list_clusters()
-        mock_list_all_clusters.assert_called_once_with()
-        expected = ['cluster1', 'cluster2']
+        actual = utils.list_clusters(soa_dir=fake_soa_dir)
         assert actual == expected
+        mock_join_path.assert_called_once_with(fake_soa_dir, '*')
+        mock_glob.assert_called_once_with('%s/*/*.yaml' % fake_soa_dir)
 
 
 def test_list_clusters_with_service():
+    fake_soa_dir = '/nail/etc/services'
+    fake_service = 'fake_service'
+    fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
+                            '/nail/etc/services/service1/chronos-cluster2.yaml']
+    expected = ['cluster1', 'cluster2']
     with contextlib.nested(
-        mock.patch('service_configuration_lib.read_services_configuration', autospec=True),
-        mock.patch('utils.get_clusters_deployed_to', autospec=True),
+        mock.patch('os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service)),
+        mock.patch('glob.glob', autospec=True, return_value=fake_cluster_configs),
     ) as (
-        mock_read_services,
-        mock_get_clusters_deployed_to,
+        mock_join_path,
+        mock_glob,
     ):
-        fake_service = 'fake_service'
-        mock_read_services.return_value = {fake_service: 'config', 'fake_service2': 'config'}
-        mock_get_clusters_deployed_to.return_value = ['cluster1', 'cluster2']
-        actual = utils.list_clusters(fake_service)
-        expected = ['cluster1', 'cluster2']
+        actual = utils.list_clusters(fake_service, fake_soa_dir)
         assert actual == expected
-        mock_get_clusters_deployed_to.assert_called_once_with(fake_service)
+        mock_join_path.assert_called_once_with(fake_soa_dir, fake_service)
+        mock_glob.assert_called_once_with('%s/%s/*.yaml' % (fake_soa_dir, fake_service))
 
 
-@mock.patch('glob.glob', autospec=True)
-def test_list_all_clusters(mock_glob):
-    mock_glob.return_value = ['/nail/etc/services/service1/marathon-cluster1.yaml',
-                              '/nail/etc/services/service2/chronos-cluster2.yaml']
-    expected = set(['cluster1', 'cluster2'])
-    actual = utils.list_all_clusters()
-    assert actual == expected
-
-
-@mock.patch('glob.glob', autospec=True)
-def test_list_all_clusters_ignores_bogus_files(mock_glob):
-    mock_glob.return_value = ['/nail/etc/services/service1/marathon-clustera.yaml',
-                              '/nail/etc/services/service2/chronos-SHARED.yaml',
-                              '/nail/etc/services/service2/marathon-DEVSTAGE.yaml']
-    expected = set(['clustera'])
-    actual = utils.list_all_clusters()
-    assert actual == expected
+def test_list_clusters_ignores_bogus_clusters():
+    fake_soa_dir = '/nail/etc/services'
+    fake_service = 'fake_service'
+    fake_cluster_configs = ['/nail/etc/services/service1/marathon-cluster1.yaml',
+                            '/nail/etc/services/service1/marathon-PROD.yaml',
+                            '/nail/etc/services/service1/chronos-cluster2.yaml',
+                            '/nail/etc/services/service1/chronos-SHARED.yaml']
+    expected = ['cluster1', 'cluster2']
+    with contextlib.nested(
+        mock.patch('os.path.join', autospec=True, return_value='%s/%s' % (fake_soa_dir, fake_service)),
+        mock.patch('glob.glob', autospec=True, return_value=fake_cluster_configs),
+    ) as (
+        mock_join_path,
+        mock_glob,
+    ):
+        actual = utils.list_clusters(service=fake_service)
+        assert actual == expected
 
 
 def test_list_all_instances_for_service():
