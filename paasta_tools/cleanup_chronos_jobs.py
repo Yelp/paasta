@@ -71,19 +71,19 @@ def main():
     task_successes = []
     task_failures = []
     for response in task_responses:
-        if isinstance(response[1], Exception):
-            task_successes.append(response)
-        else:
+        if isinstance(response[-1], Exception):
             task_failures.append(response)
+        else:
+            task_successes.append(response)
 
     job_responses = cleanup_jobs(client, to_delete)
     job_successes = []
     job_failures = []
     for response in job_responses:
-        if isinstance(response[1], Exception):
-            job_successes.append(response)
-        else:
+        if isinstance(response[-1], Exception):
             job_failures.append(response)
+        else:
+            job_successes.append(response)
 
     if len(to_delete) == 0:
         print 'No Chronos Jobs to remove'
