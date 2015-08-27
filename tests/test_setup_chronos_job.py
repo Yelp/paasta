@@ -155,7 +155,7 @@ class TestSetupChronosJob:
                 setup_chronos_job.main()
             assert excinfo.value.code == 0
 
-    def test_main_no_config(self):
+    def test_main_bad_chronos_job_config_notifies_user(self):
         fake_client = mock.MagicMock()
         with contextlib.nested(
             mock.patch(
@@ -173,7 +173,7 @@ class TestSetupChronosJob:
                 'paasta_tools.chronos_tools.load_chronos_job_config',
                 return_value=self.fake_chronos_job_config,
                 autospec=True,
-                side_effect=chronos_tools.InvalidChronosConfigError,
+                side_effect=chronos_tools.InvalidChronosConfigError('test bad configuration'),
             ),
             mock.patch(
                 'setup_chronos_job.setup_job',
@@ -194,9 +194,10 @@ class TestSetupChronosJob:
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
             with raises(SystemExit) as excinfo:
                 setup_chronos_job.main()
-            assert excinfo.value.code == 1
-            expected_error_msg = "Could not read chronos configuration file for %s.%s in cluster %s" % (
-                self.fake_service_name, self.fake_job_name, self.fake_cluster)
+            assert excinfo.value.code == 0
+            expected_error_msg = ("Could not read chronos configuration file for %s.%s in cluster %s\n" % (
+                self.fake_service_name, self.fake_job_name, self.fake_cluster) +
+                "Error was: test bad configuration")
             send_event_patch.assert_called_once_with(
                 self.fake_service_name,
                 self.fake_job_name,
