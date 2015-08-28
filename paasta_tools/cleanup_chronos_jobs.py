@@ -17,8 +17,9 @@ Any tasks associated with that job are also deleted.
 import argparse
 import sys
 
-from paasta_tools import chronos_tools
 import service_configuration_lib
+
+from paasta_tools import chronos_tools
 
 
 def parse_args():
