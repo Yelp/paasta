@@ -4,7 +4,7 @@ import contextlib
 
 import mock
 
-from paasta_tools import marathon_serviceinit
+from paasta_tools import paasta_serviceinit
 
 
 def test_validate_service_instance_valid():
@@ -13,13 +13,13 @@ def test_validate_service_instance_valid():
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_serviceinit.get_services_for_cluster',
+        mock.patch('paasta_tools.paasta_serviceinit.get_services_for_cluster',
                    autospec=True,
                    return_value=mock_services),
     ) as (
         get_services_for_cluster_patch,
     ):
-        assert marathon_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
+        assert paasta_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
         get_services_for_cluster_patch.assert_called_once_with(cluster=fake_cluster, instance_type='marathon')
 
 
@@ -29,7 +29,7 @@ def test_validate_service_instance_invalid():
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_serviceinit.get_services_for_cluster',
+        mock.patch('paasta_tools.paasta_serviceinit.get_services_for_cluster',
                    autospec=True,
                    return_value=mock_services),
         mock.patch('sys.exit'),
@@ -37,6 +37,6 @@ def test_validate_service_instance_invalid():
         get_services_for_cluster_patch,
         sys_exit_patch,
     ):
-        assert marathon_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
+        assert paasta_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
         sys_exit_patch.assert_called_once_with(3)
         get_services_for_cluster_patch.assert_called_once_with(cluster=fake_cluster, instance_type='marathon')

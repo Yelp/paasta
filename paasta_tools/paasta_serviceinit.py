@@ -11,6 +11,7 @@ import sys
 import service_configuration_lib
 
 from paasta_tools import marathon_tools
+from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools import marathon_serviceinit
 
@@ -32,6 +33,16 @@ def parse_args():
     parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
     args = parser.parse_args()
     return args
+
+
+def validate_service_instance(service, instance, cluster):
+    log.info("Operating on cluster: %s" % cluster)
+    all_services = get_services_for_cluster(cluster=cluster, instance_type='marathon')
+    if (service, instance) not in all_services:
+        print "Error: %s.%s doesn't look like it has been deployed to this cluster! (%s)" % (service, instance, cluster)
+        log.info(all_services)
+        sys.exit(3)
+    return True
 
 
 def main():
