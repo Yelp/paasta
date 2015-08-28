@@ -84,6 +84,12 @@ def write_etc_paasta(config, filename):
         f.write(json.dumps(config))
 
 
+def write_soa_dir():
+    soa_dir = '/nail/etc/services'
+    if not os.path.exists(soa_dir):
+        os.makedirs(soa_dir)
+
+
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
     """Adds a working marathon client and chronos client for the purposes of
@@ -103,3 +109,8 @@ def working_paasta_cluster(context):
     context.mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
     write_etc_paasta(context.marathon_config, 'marathon.json')
     write_etc_paasta(context.chronos_config, 'chronos.json')
+    write_etc_paasta({
+        "cluster": "testcluster",
+        "zookeeper": "zk://fake",
+        "docker_registry": "fake.com"
+    }, 'cluster.json')
