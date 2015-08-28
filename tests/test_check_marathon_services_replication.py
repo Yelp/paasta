@@ -542,7 +542,7 @@ def test_main():
                    return_value=args, autospec=True),
         mock.patch('paasta_tools.marathon_tools.get_all_namespaces',
                    return_value=namespaces, autospec=True),
-        mock.patch('paasta_tools.marathon_tools.get_marathon_services_for_cluster',
+        mock.patch('check_marathon_services_replication.get_services_for_cluster',
                    return_value=services, autospec=True),
         mock.patch('check_marathon_services_replication.check_service_replication',
                    autospec=True),
@@ -552,7 +552,7 @@ def test_main():
     ) as (
         mock_parse_args,
         mock_get_all_namespaces,
-        mock_get_marathon_services_for_cluster,
+        mock_get_services_for_cluster,
         mock_check_service_replication,
         mock_load_service_namespace_config,
         mock_load_smartstack_info,
@@ -560,5 +560,5 @@ def test_main():
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_attribute'
         check_marathon_services_replication.main()
         mock_parse_args.assert_called_once_with()
-        mock_get_marathon_services_for_cluster.assert_called_once_with(soa_dir=soa_dir)
+        mock_get_services_for_cluster.assert_called_once_with(instance_type='marathon', soa_dir=soa_dir)
         mock_check_service_replication.call_count = len(services)

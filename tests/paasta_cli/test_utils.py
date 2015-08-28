@@ -266,7 +266,7 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     assert "fake_err_msg" in actual
 
 
-@patch('paasta_tools.paasta_cli.utils.list_instances_for_service')
+@patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service')
 @patch('paasta_tools.paasta_cli.utils.list_services')
 def test_list_service_instances(
     mock_list_services,
@@ -279,7 +279,7 @@ def test_list_service_instances(
     assert actual == expected
 
 
-@patch('paasta_tools.paasta_cli.utils.list_instances_for_service')
+@patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service')
 @patch('paasta_tools.paasta_cli.utils.list_services')
 def test_list_paasta_services(
     mock_list_services,
@@ -294,7 +294,7 @@ def test_list_paasta_services(
 
 @patch('paasta_tools.paasta_cli.utils.guess_service_name')
 @patch('paasta_tools.paasta_cli.utils.validate_service_name')
-@patch('paasta_tools.paasta_cli.utils.list_instances_for_service')
+@patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service')
 def test_list_instances_with_autodetect(
     mock_list_instance_for_service,
     mock_validate_service_name,
@@ -312,7 +312,7 @@ def test_list_instances_with_autodetect(
 
 @patch('paasta_tools.paasta_cli.utils.guess_service_name')
 @patch('paasta_tools.paasta_cli.utils.validate_service_name')
-@patch('paasta_tools.paasta_cli.utils.list_instances_for_service')
+@patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service')
 @patch('paasta_tools.paasta_cli.utils.list_services')
 def test_list_instances_no_service(
     mock_list_services,

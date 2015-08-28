@@ -74,12 +74,8 @@ class TestSetupMarathonJob:
                 return_value=(0, 'it_is_finished'),
                 autospec=True,
             ),
-            mock.patch(
-                'setup_marathon_job.marathon_tools.get_cluster',
-                return_value=self.fake_cluster,
-                autospec=True,
-            ),
-            mock.patch('setup_marathon_job.send_event', autospec=True,),
+            mock.patch('setup_marathon_job.load_system_paasta_config', autospec=True),
+            mock.patch('setup_marathon_job.send_event', autospec=True),
             mock.patch('sys.exit', autospec=True),
         ) as (
             parse_args_patch,
@@ -87,10 +83,11 @@ class TestSetupMarathonJob:
             get_client_patch,
             read_service_conf_patch,
             setup_service_patch,
-            get_cluster_patch,
+            load_system_paasta_config_patch,
             sensu_patch,
             sys_exit_patch,
         ):
+            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             setup_marathon_job.main()
             parse_args_patch.assert_called_once_with()
             get_main_conf_patch.assert_called_once_with()
@@ -142,11 +139,7 @@ class TestSetupMarathonJob:
                 return_value=(1, 'NEVER'),
                 autospec=True,
             ),
-            mock.patch(
-                'setup_marathon_job.marathon_tools.get_cluster',
-                return_value=self.fake_cluster,
-                autospec=True,
-            ),
+            mock.patch('setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch('setup_marathon_job.send_event', autospec=True),
             mock.patch('sys.exit', autospec=True),
         ) as (
@@ -155,10 +148,11 @@ class TestSetupMarathonJob:
             get_client_patch,
             read_service_conf_patch,
             setup_service_patch,
-            get_cluster_patch,
+            load_system_paasta_config_patch,
             sensu_patch,
             sys_exit_patch,
         ):
+            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             setup_marathon_job.main()
             parse_args_patch.assert_called_once_with()
             get_main_conf_patch.assert_called_once_with()
@@ -207,11 +201,7 @@ class TestSetupMarathonJob:
                 return_value=(1, 'NEVER'),
                 autospec=True,
             ),
-            mock.patch(
-                'setup_marathon_job.marathon_tools.get_cluster',
-                return_value=self.fake_cluster,
-                autospec=True,
-            ),
+            mock.patch('setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch('setup_marathon_job.send_event', autospec=True),
         ) as (
             parse_args_patch,
@@ -219,9 +209,10 @@ class TestSetupMarathonJob:
             get_client_patch,
             read_service_conf_patch,
             setup_service_patch,
-            get_cluster_patch,
+            load_system_paasta_config_patch,
             sensu_patch,
         ):
+            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             with raises(SystemExit) as exc_info:
                 setup_marathon_job.main()
             parse_args_patch.assert_called_once_with()
@@ -754,16 +745,13 @@ class TestSetupMarathonJob:
 
         with contextlib.nested(
             mock.patch('setup_marathon_job._log', autospec=True),
-            mock.patch(
-                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
-                return_value='fake_cluster',
-                autospec=True
-            ),
+            mock.patch('setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch(
                 'paasta_tools.drain_lib._drain_methods',
                 new={'exists1': mock.Mock(), 'exists2': mock.Mock()},
             )
-        ) as (mock_log, mock_get_cluster, mock_drain_methods):
+        ) as (mock_log, mock_load_system_paasta_config, mock_drain_methods):
+            mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             actual = setup_marathon_job.deploy_service(
                 service_name=fake_name,
                 instance_name=fake_instance,
@@ -796,12 +784,9 @@ class TestSetupMarathonJob:
 
         with contextlib.nested(
             mock.patch('setup_marathon_job._log', autospec=True),
-            mock.patch(
-                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
-                return_value='fake_cluster',
-                autospec=True
-            ),
-        ) as (mock_log, mock_get_cluster):
+            mock.patch('setup_marathon_job.load_system_paasta_config', autospec=True),
+        ) as (mock_log, mock_load_system_paasta_config):
+            mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             actual = setup_marathon_job.deploy_service(
                 service_name=fake_name,
                 instance_name=fake_instance,
@@ -867,13 +852,10 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.bounce_lib.kill_old_ids', autospec=True),
             mock.patch('paasta_tools.bounce_lib.create_marathon_app', autospec=True),
             mock.patch('setup_marathon_job._log', autospec=True),
-            mock.patch(
-                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
-                return_value='fake_cluster',
-                autospec=True
-            ),
+            mock.patch('setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.drain_lib.get_drain_method', return_value=fake_drain_method),
-        ) as (_, _, _, kill_old_ids_patch, create_marathon_app_patch, mock_log, mock_get_cluster, _):
+        ) as (_, _, _, kill_old_ids_patch, create_marathon_app_patch, mock_log, mock_load_system_paasta_config, _):
+            mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             result = setup_marathon_job.deploy_service(
                 service_name=fake_name,
                 instance_name=fake_instance,
@@ -960,12 +942,9 @@ class TestSetupMarathonJob:
                 side_effect=lambda x, _, __, **kwargs: x,
             ),
             mock.patch('setup_marathon_job._log', autospec=True),
-            mock.patch(
-                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
-                return_value='fake_cluster',
-                autospec=True
-            ),
-        ) as (_, _, _, _, _):
+            mock.patch('setup_marathon_job.load_system_paasta_config', autospec=True),
+        ) as (_, _, _, _, mock_load_system_paasta_config):
+            mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             result = setup_marathon_job.deploy_service(
                 service_name=fake_name,
                 instance_name=fake_instance,
@@ -994,12 +973,9 @@ class TestSetupMarathonJob:
         with contextlib.nested(
             mock.patch('setup_marathon_job._log', autospec=True),
             mock.patch('setup_marathon_job.bounce_lib.get_bounce_method_func', side_effect=IOError('foo')),
-            mock.patch(
-                'paasta_tools.setup_marathon_job.marathon_tools.get_cluster',
-                return_value='fake_cluster',
-                autospec=True
-            ),
-        ) as (mock_log, mock_bounce,  mock_get_cluster):
+            mock.patch('setup_marathon_job.load_system_paasta_config', autospec=True),
+        ) as (mock_log, mock_bounce, mock_load_system_paasta_config):
+            mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             with raises(IOError):
                 setup_marathon_job.deploy_service(
                     service_name=fake_name,

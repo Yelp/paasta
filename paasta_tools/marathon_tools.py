@@ -8,9 +8,7 @@ import logging
 import os
 import pipes
 import re
-import requests
 import socket
-import glob
 from time import sleep
 
 from marathon import MarathonClient
@@ -21,15 +19,15 @@ import service_configuration_lib
 from paasta_tools.mesos_tools import fetch_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import list_all_clusters
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_docker_url
-from paasta_tools.utils import NoMarathonClusterFoundException
-from paasta_tools.utils import PaastaNotConfigured
+from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
 
@@ -37,8 +35,6 @@ from paasta_tools.utils import timeout
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
 # It's used to compose a job's full ID from its name and instance
 ID_SPACER = '.'
-MY_HOSTNAME = socket.getfqdn()
-MESOS_MASTER_PORT = 5050
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -54,7 +50,7 @@ def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
         with open(path) as f:
             return MarathonConfig(json.load(f), path)
     except IOError as e:
-        raise PaastaNotConfigured("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
+        raise PaastaNotConfiguredError("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
 
 
 class MarathonNotConfigured(Exception):
@@ -123,7 +119,7 @@ def load_marathon_service_config(service_name, instance, cluster, load_deploymen
     )
 
     if instance not in instance_configs:
-        raise NoMarathonConfigurationForService(
+        raise NoConfigurationForServiceError(
             "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service_name, marathon_conf_file)
         )
 
@@ -513,14 +509,6 @@ class InvalidMarathonHealthcheckMode(Exception):
     pass
 
 
-class NoMarathonConfigurationForService(Exception):
-    pass
-
-
-def get_cluster():
-    return load_system_paasta_config().get_cluster()
-
-
 def get_marathon_client(url, user, passwd):
     """Get a new marathon client connection in the form of a MarathonClient object.
 
@@ -560,7 +548,7 @@ def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DE
     """Retreive a service instance's nerve namespace from its configuration file.
     If one is not defined in the config file, returns instance instead."""
     if not cluster:
-        cluster = get_cluster()
+        cluster = load_system_paasta_config().get_cluster()
     srv_info = service_configuration_lib.read_extra_service_information(
         name,
         "marathon-%s" % cluster,
@@ -582,101 +570,10 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     :param soa_dir: The SOA config directory to read from
     :returns: The proxy_port for the service instance, or None if not defined"""
     if not cluster:
-        cluster = get_cluster()
+        cluster = load_system_paasta_config().get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')
-
-
-def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
-    """Returns a sorted list of all clusters that appear to be in use. This
-    is useful for cli tools.
-
-    :param service: Optional. If provided will only list clusters that
-                    the particular service is using
-    """
-    clusters = set()
-    if service is None:
-        clusters = list_all_clusters()
-    else:
-        clusters = set(get_clusters_deployed_to(service))
-    return sorted(clusters)
-
-
-def get_clusters_deployed_to(service, soa_dir=DEFAULT_SOA_DIR):
-    """Looks at the clusters that a service is probably deployed to
-    by looking at ``marathon-*.yaml``'s and returns a sorted list of clusters.
-    """
-    clusters = set()
-    srv_path = os.path.join(soa_dir, service)
-    if os.path.isdir(srv_path):
-        marathon_files = "%s/marathon-*.yaml" % srv_path
-        for marathon_file in glob.glob(marathon_files):
-            basename = os.path.basename(marathon_file)
-            cluster_re_match = re.search('marathon-([0-9a-z-]*).yaml', basename)
-            if cluster_re_match is not None:
-                clusters.add(cluster_re_match.group(1))
-    return sorted(clusters)
-
-
-def get_default_cluster_for_service(service_name):
-    cluster = None
-    try:
-        cluster = load_system_paasta_config().get_cluster()
-    except NoMarathonClusterFoundException:
-        clusters_deployed_to = get_clusters_deployed_to(service_name)
-        if len(clusters_deployed_to) > 0:
-            cluster = clusters_deployed_to[0]
-        else:
-            raise NoMarathonConfigurationForService("No cluster configuration found for service %s" % service_name)
-    return cluster
-
-
-def list_all_marathon_instances_for_service(service):
-    instances = set()
-    for cluster in list_clusters(service):
-        for service_instance in get_service_instance_list(service, cluster):
-            instances.add(service_instance[1])
-    return instances
-
-
-def get_service_instance_list(name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Enumerate the marathon instances defined for a service as a list of tuples.
-
-    :param name: The service name
-    :param cluster: The cluster to read the configuration for
-    :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of (name, instance) for each instance defined for the service name"""
-    if not cluster:
-        cluster = get_cluster()
-    marathon_conf_file = "marathon-%s" % cluster
-    log.info("Enumerating all instances for config file: %s/*/%s.yaml", soa_dir, marathon_conf_file)
-    instances = service_configuration_lib.read_extra_service_information(
-        name,
-        marathon_conf_file,
-        soa_dir=soa_dir
-    )
-    instance_list = []
-    for instance in instances:
-        instance_list.append((name, instance))
-    log.debug("Enumerated the following instances: %s", instance_list)
-    return instance_list
-
-
-def get_marathon_services_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Retrieve all marathon services and instances defined to run in a cluster.
-
-    :param cluster: The cluster to read the configuration for
-    :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of (service_name, instance_name)"""
-    if not cluster:
-        cluster = get_cluster()
-    rootdir = os.path.abspath(soa_dir)
-    log.info("Retrieving all service instance names from %s for cluster %s", rootdir, cluster)
-    instance_list = []
-    for srv_dir in os.listdir(rootdir):
-        instance_list += get_service_instance_list(srv_dir, cluster, soa_dir)
-    return instance_list
 
 
 def get_all_namespaces_for_service(service_name, soa_dir=DEFAULT_SOA_DIR, full_name=True):
@@ -710,7 +607,7 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     rootdir = os.path.abspath(soa_dir)
     namespace_list = []
     for srv_dir in os.listdir(rootdir):
-        namespace_list += get_all_namespaces_for_service(srv_dir, soa_dir)
+        namespace_list.extend(get_all_namespaces_for_service(srv_dir, soa_dir))
     return namespace_list
 
 
@@ -733,12 +630,12 @@ def marathon_services_running_here():
 def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
     if not cluster:
         try:
-            cluster = get_cluster()
+            cluster = load_system_paasta_config().get_cluster()
         # In the cases where there is *no* cluster or in the case
         # where there isn't a Paasta configuration file at *all*, then
         # there must be no marathon services running here, so we catch
         # these custom exceptions and return [].
-        except (NoMarathonClusterFoundException, PaastaNotConfigured):
+        except (PaastaNotConfiguredError):
             return []
     # When a cluster is defined in mesos, let's iterate through marathon services
     marathon_services = marathon_services_running_here()
@@ -815,35 +712,6 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
         get_classic_services_running_here_for_nerve(soa_dir)
 
 
-class MesosMasterConnectionException(Exception):
-    pass
-
-
-def get_mesos_leader(hostname=MY_HOSTNAME):
-    """Get the current mesos-master leader's hostname. Raise
-    MesosMasterConnectionException if we can't connect.
-
-    :param hostname: The hostname to query mesos-master on
-    :returns: The current mesos-master hostname"""
-    redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
-    try:
-        r = requests.get(redirect_url, timeout=10)
-    except requests.exceptions.ConnectionError as e:
-        # Repackage the exception so upstream code can handle this case without
-        # knowing our implementation details.
-        raise MesosMasterConnectionException(repr(e))
-    r.raise_for_status()
-    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
-
-
-def is_mesos_leader(hostname=MY_HOSTNAME):
-    """Check if a hostname is the current mesos leader.
-
-    :param hostname: The hostname to query mesos-master on
-    :returns: True if hostname is the mesos-master leader, False otherwise"""
-    return hostname in get_mesos_leader(hostname)
-
-
 def list_all_marathon_app_ids(client):
     """List all marathon app_ids, regardless of state
 
@@ -917,7 +785,10 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks):
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     system_paasta_config = load_system_paasta_config()
     partial_id = compose_job_id(name, instance)
-    srv_config = load_marathon_service_config(name, instance, get_cluster(), soa_dir=soa_dir)
+    srv_config = load_marathon_service_config(name,
+                                              instance,
+                                              load_system_paasta_config().get_cluster(),
+                                              soa_dir=soa_dir)
     docker_url = get_docker_url(system_paasta_config.get_docker_registry(), srv_config.get_docker_image())
     service_namespace_config = load_service_namespace_config(name, srv_config.get_nerve_namespace())
 
@@ -957,8 +828,11 @@ def get_expected_instance_count_for_namespace(service_name, namespace, cluster=N
     :returns: An integer value of the # of expected instances for the namespace"""
     total_expected = 0
     if not cluster:
-        cluster = get_cluster()
-    for name, instance in get_service_instance_list(service_name, cluster=cluster, soa_dir=soa_dir):
+        cluster = load_system_paasta_config().get_cluster()
+    for name, instance in get_service_instance_list(service_name,
+                                                    cluster=cluster,
+                                                    instance_type='marathon',
+                                                    soa_dir=soa_dir):
         srv_config = load_marathon_service_config(name, instance, cluster, soa_dir=soa_dir)
         instance_ns = srv_config.get_nerve_namespace()
         if namespace == instance_ns:

@@ -55,13 +55,17 @@ def create_complete_app(context):
         mock.patch('paasta_tools.marathon_tools.load_marathon_config', return_value=context.marathon_config),
         mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=context.system_paasta_config),
         mock.patch('paasta_tools.bounce_lib.load_system_paasta_config', return_value=context.system_paasta_config),
+        mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config',
+                   return_value=context.system_paasta_config),
     ) as (
         mock_create_complete_config,
         _,
         _,
         _,
+        mock_load_system_paasta_config,
     ):
         mock_create_complete_config.return_value = fake_service_config
+        mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         print marathon_tools.load_marathon_config()
         return_tuple = setup_marathon_job.setup_service(
             fake_service_name,

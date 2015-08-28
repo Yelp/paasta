@@ -34,6 +34,36 @@ def test_get_zookeeper_config():
     assert mesos_tools.get_zookeeper_config(fake_state) == expected
 
 
+def test_get_mesos_leader():
+    expected = 'mesos.master.yelpcorp.com'
+    fake_master = 'false.authority.yelpcorp.com'
+    with mock.patch('requests.get', autospec=True) as mock_requests_get:
+        mock_requests_get.return_value = mock_response = mock.Mock()
+        mock_response.return_code = 307
+        mock_response.url = 'http://%s:999' % expected
+        assert mesos_tools.get_mesos_leader(fake_master) == expected
+        mock_requests_get.assert_called_once_with('http://%s:5050/redirect' % fake_master, timeout=10)
+
+
+def test_get_mesos_leader_connection_error():
+    fake_master = 'false.authority.yelpcorp.com'
+    with mock.patch(
+        'requests.get',
+        autospec=True,
+        side_effect=requests.exceptions.ConnectionError,
+    ):
+        with raises(mesos_tools.MesosMasterConnectionError):
+            mesos_tools.get_mesos_leader(fake_master)
+
+
+@mock.patch('paasta_tools.mesos_tools.get_mesos_leader')
+def test_is_mesos_leader(mock_get_mesos_leader):
+    fake_host = 'toast.host.roast'
+    mock_get_mesos_leader.return_value = fake_host
+    assert mesos_tools.is_mesos_leader(fake_host)
+    mock_get_mesos_leader.assert_called_once_with(fake_host)
+
+
 @mock.patch('paasta_tools.mesos_tools.KazooClient')
 def test_get_number_of_mesos_masters(
     mock_kazoo,
