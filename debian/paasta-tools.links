@@ -11,7 +11,7 @@ usr/share/python/paasta-tools/bin/generate_all_deployments usr/bin/generate_all_
 usr/share/python/paasta-tools/bin/generate_deployments_for_service.py usr/bin/generate_deployments_for_service
 usr/share/python/paasta-tools/bin/generate_services_file.py usr/bin/generate_services_file
 usr/share/python/paasta-tools/bin/generate_services_yaml.py usr/bin/generate_services_yaml
-usr/share/python/paasta-tools/bin/list_chronos_jobs usr/bin/list_chronos_jobs
+usr/share/python/paasta-tools/bin/list_chronos_jobs.py usr/bin/list_chronos_jobs
 usr/share/python/paasta-tools/bin/list_marathon_service_instances.py usr/bin/list_marathon_service_instances
 usr/share/python/paasta-tools/bin/paasta_chronos_serviceinit.py usr/bin/paasta_chronos_serviceinit
 usr/share/python/paasta-tools/bin/paasta_cli.py usr/bin/paasta
