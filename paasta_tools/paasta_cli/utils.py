@@ -5,6 +5,7 @@ from socket import gaierror
 from socket import gethostbyname_ex
 
 from service_configuration_lib import read_services_configuration
+from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
@@ -265,14 +266,14 @@ def guess_service_name():
     return os.path.basename(os.getcwd())
 
 
-def validate_service_name(service_name):
-    """Determine whether directory named service_name exists in
-    /nail/etc/services
+def validate_service_name(service_name, soa_dir=DEFAULT_SOA_DIR):
+    """Determine whether directory named service_name exists in the provided soa_dir
     :param service_name: a string of the name of the service you wish to check exists
+    :param soa_dir: directory to look for service names
     :return : boolean True
     :raises: NoSuchService exception
     """
-    if not service_name or not os.path.isdir(os.path.join('/nail/etc/services', service_name)):
+    if not service_name or not os.path.isdir(os.path.join(soa_dir, service_name)):
         raise NoSuchService(service_name)
     return True
 
@@ -466,11 +467,11 @@ def lazy_choices_completer(list_func):
     return inner
 
 
-def figure_out_service_name(args):
+def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
     """Figures out and validates the input service name"""
     service_name = args.service or guess_service_name()
     try:
-        validate_service_name(service_name)
+        validate_service_name(service_name, soa_dir=soa_dir)
     except NoSuchService as service_not_found:
         print service_not_found
         exit(1)

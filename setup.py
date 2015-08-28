@@ -30,6 +30,7 @@ setup(
         'marathon >= 0.7.1-yelp2',
         'mesos.cli >= 0.1.3',
         'ordereddict >= 1.1',
+        'path.py >= 8.1',
         'pysensu-yelp >= 0.1.5',
         'python-dateutil >= 2.4.0',
         'requests >= 2.6.0',

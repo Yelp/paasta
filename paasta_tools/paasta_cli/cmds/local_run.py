@@ -23,12 +23,11 @@ from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.paasta_cli.utils import validate_service_name
-from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import get_username
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_host
@@ -424,7 +423,7 @@ def run_docker_container(
                 % (returncode, output)
             )
             # Container failed to start so no need to cleanup; just bail.
-            return
+            sys.exit(1)
         container_started = True
         container_id = get_container_id(docker_client, container_name)
         sys.stdout.write('Found our container running with CID %s\n' % container_id)
@@ -456,7 +455,9 @@ def run_docker_container(
 
     # Cleanup if the container exits on its own or interrupted.
     if container_started:
+        returncode = docker_client.inspect_container(container_id)['State']['ExitCode']
         _cleanup_container(docker_client, container_id)
+    sys.exit(returncode)
 
 
 def configure_and_run_docker_container(docker_client, docker_hash, service, args):
@@ -562,8 +563,7 @@ def validate_environment():
 def paasta_local_run(args):
     validate_environment()
 
-    service = figure_out_service_name(args)
-    validate_service_name(service)
+    service = figure_out_service_name(args, soa_dir=args.soaconfig_root)
 
     base_docker_url = get_docker_host()
 
