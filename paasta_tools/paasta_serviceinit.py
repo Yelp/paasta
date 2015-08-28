@@ -37,12 +37,17 @@ def parse_args():
 
 def validate_service_instance(service, instance, cluster):
     log.info("Operating on cluster: %s" % cluster)
-    all_services = get_services_for_cluster(cluster=cluster, instance_type='marathon')
-    if (service, instance) not in all_services:
+    marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon')
+    chronos_services = get_services_for_cluster(cluster=cluster, instance_type='chronos')
+    if (service, instance) in marathon_services:
+        return 'marathon'
+    elif (service, instance) in chronos_services:
+        return 'chronos'
+    else:
         print "Error: %s.%s doesn't look like it has been deployed to this cluster! (%s)" % (service, instance, cluster)
-        log.info(all_services)
+        log.debug("Discovered marathon services %s" % marathon_services)
+        log.debug("Discovered chronos services %s" % marathon_services)
         sys.exit(3)
-    return True
 
 
 def main():
