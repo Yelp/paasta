@@ -432,7 +432,6 @@ def status_mesos_tasks_verbose(service, instance):
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
     marathon_config = marathon_tools.load_marathon_config()
-    validate_service_instance(service, instance, cluster)
 
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     app_id = marathon_tools.get_app_id(service, instance, marathon_config)
