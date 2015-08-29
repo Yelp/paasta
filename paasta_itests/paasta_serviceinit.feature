@@ -12,10 +12,10 @@ Feature: paasta_serviceinit
     And we wait for it to be deployed
     Then marathon_serviceinit restart should get new task_ids
 
-  Scenario: paasta_chronos_serviceinit can run status
+  Scenario: paasta_serviceinit can run status on chronos jobs
     Given a working paasta cluster
     When we create a trivial chronos job
     And the trivial chronos job appears in the job list
-    Then paasta_chronos_serviceinit status should return "Healthy"
+    Then paasta_serviceinit status should return "Healthy"
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2

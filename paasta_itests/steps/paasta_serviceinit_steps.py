@@ -68,12 +68,9 @@ def marathon_restart_gets_new_task_ids(context):
     assert old_tasks != new_tasks
 
 
-@then(u'paasta_chronos_serviceinit status should return "Healthy"')
+@then(u'paasta_serviceinit status should return "Healthy"')
 def chronos_status_returns_healthy(context):
-    # Another fun from using space as the separate is parsing the service+job
-    # string on the command line! For now, the simplest thing that can possibly
-    # work.
-    cmd = '../paasta_tools/paasta_chronos_serviceinit.py test-service\ job status'
+    cmd = '../paasta_tools/paasta_serviceinit.py test-service.job status'
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
