@@ -779,12 +779,10 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
     soa_dir = 'fake_soa_dir'
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_config', autospec=True),
-        mock.patch('paasta_tools.marathon_serviceinit.validate_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_service_config', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_app_id', autospec=True),
     ) as (
         mock_load_marathon_config,
-        mock_validate_service_instance,
         mock_load_marathon_service_config,
         mock_get_app_id,
     ):
