@@ -10,10 +10,12 @@ import sys
 
 import service_configuration_lib
 
+from paasta_tools import paasta_chronos_serviceinit
+from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools import marathon_serviceinit
+
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -63,16 +65,33 @@ def main():
     instance = service_instance.split(marathon_tools.ID_SPACER)[1]
 
     cluster = load_system_paasta_config().get_cluster()
-    marathon_serviceinit.validate_service_instance(service, instance, cluster)
-    return_code = marathon_serviceinit.perform_command(
-        command=command,
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        verbose=args.verbose,
-        soa_dir=args.soa_dir)
-    sys.exit(return_code)
-
+    instance_type = validate_service_instance(service, instance, cluster)
+    if instance_type == 'marathon':
+        return_code = marathon_serviceinit.perform_command(
+            command=command,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            verbose=args.verbose,
+            soa_dir=args.soa_dir,
+        )
+        sys.exit(return_code)
+    elif instance_type == 'chronos':
+        return_code = paasta_chronos_serviceinit.perform_command(
+            command=command,
+            service=service,
+            instance=instance,
+        )
+        sys.exit(return_code)
+    else:
+        log.error(
+            "I calculated an instance_type of %s for %s%s%s which I don't know how to handle. Exiting." %
+            instance_type,
+            service,
+            marathon_tools.ID_SPACER,
+            instance,
+        )
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()
