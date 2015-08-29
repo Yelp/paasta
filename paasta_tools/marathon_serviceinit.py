@@ -482,4 +482,5 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         raise NotImplementedError("Command %s is not implemented!" % command)
     return 0
 
+
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
