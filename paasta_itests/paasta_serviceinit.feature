@@ -1,4 +1,4 @@
-Feature: marathon_serviceinit
+Feature: paasta_serviceinit
 
   Scenario: marathon_serviceinit can run status
     Given a working paasta cluster
@@ -11,9 +11,6 @@ Feature: marathon_serviceinit
     When we run the marathon job test-service.main
     And we wait for it to be deployed
     Then marathon_serviceinit restart should get new task_ids
-
-
-Feature: paasta_chronos_serviceinit
 
   Scenario: paasta_chronos_serviceinit can run status
     Given a working paasta cluster
