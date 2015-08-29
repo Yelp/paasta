@@ -23,7 +23,8 @@ def test_get_replication_for_service():
 
     with mock.patch.object(requests.Session, 'get', mock_get):
         replication_result = get_replication_for_services(
-            'foo',
+            'fake_host',
+            6666,
             ['service1', 'service2', 'service3', 'service4']
         )
         expected = {
@@ -72,7 +73,8 @@ def test_get_registered_marathon_tasks():
             side_effect=lambda x: hostnames[x],
         ):
             actual = get_registered_marathon_tasks(
-                'foo',
+                'fake_host',
+                6666,
                 'servicename.main',
                 marathon_tasks,
             )

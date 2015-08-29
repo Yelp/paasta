@@ -4,6 +4,8 @@ import datetime
 import mock
 import marathon
 
+from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+
 
 class TestBounceLib:
 
@@ -243,7 +245,14 @@ class TestBounceLib:
 
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in xrange(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
+        with contextlib.nested(
+            mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
+            mock.patch('mesos_tools.get_mesos_slaves_grouped_by_attribute',
+                       return_value={'fake_region': ['fake_host']}, autospec=True),
+        ) as (
+            _,
+            get_mesos_slaves_grouped_by_attribute_patch,
+        ):
             assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', check_haproxy=True) == tasks[2:]
 
     def test_get_happy_tasks_check_haproxy_when_unhealthy(self):
@@ -251,8 +260,45 @@ class TestBounceLib:
 
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)]) for i in xrange(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        with mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True):
+        with contextlib.nested(
+            mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
+            mock.patch('mesos_tools.get_mesos_slaves_grouped_by_attribute',
+                       return_value={'fake_region': ['fake_host']}, autospec=True),
+        ) as (
+            _,
+            get_mesos_slaves_grouped_by_attribute_patch,
+        ):
             assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', check_haproxy=True) == []
+
+    def test_get_happy_tasks_check_haproxy_multiple_locations(self):
+        """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
+
+        tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in xrange(5)]
+        fake_app = mock.Mock(tasks=tasks, health_checks=[])
+        with contextlib.nested(
+            mock.patch('bounce_lib.get_registered_marathon_tasks', side_effect=[tasks[2:3], tasks[3:]], autospec=True),
+            mock.patch('mesos_tools.get_mesos_slaves_grouped_by_attribute', autospec=True),
+        ) as (
+            get_registered_marathon_tasks_patch,
+            get_mesos_slaves_grouped_by_attribute_patch,
+        ):
+            get_mesos_slaves_grouped_by_attribute_patch.return_value = {
+                'fake_region': ['fake_host1'],
+                'fake_other_region': ['fake_host2'],
+            }
+            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', check_haproxy=True) == tasks[2:]
+            get_registered_marathon_tasks_patch.assert_any_call(
+                'fake_host1',
+                DEFAULT_SYNAPSE_PORT,
+                'service.namespace',
+                tasks,
+            )
+            get_registered_marathon_tasks_patch.assert_any_call(
+                'fake_host2',
+                DEFAULT_SYNAPSE_PORT,
+                'service.namespace',
+                tasks,
+            )
 
 
 class TestBrutalBounce:

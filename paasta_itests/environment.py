@@ -49,7 +49,6 @@ def _clean_up_chronos_jobs(context):
                 print "after_scenario: chronos job %s is running. Deleting." % job['name']
                 context.chronos_client.delete(job['name'])
             time.sleep(1)
-        print("after_scenario: len(chronos_jobs < 1)")
 
 
 def _clean_up_mesos_cli_config(context):

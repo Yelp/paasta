@@ -13,12 +13,12 @@ from paasta_tools.monitoring.check_synapse_replication import (
 from paasta_tools.monitoring.config_providers import (
     extract_monitoring_info
 )
+from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_HOST
+from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+
 
 from sensu_plugin import SensuPluginCheck
 import pysensu_yelp
-
-
-SYNAPSE_HOST_PORT = "localhost:3212"
 
 
 def read_key(key):
@@ -138,31 +138,34 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
 
     def get_service_replication(self, all_services):
         # Get the replication data once for performance
+        synapse_host_port = "%s:%s" % (DEFAULT_SYNAPSE_HOST, DEFAULT_SYNAPSE_PORT)
         self.log.debug(
             "Gathering replication information from {0}".
-            format(SYNAPSE_HOST_PORT))
+            format(synapse_host_port))
         service_replication = {}
         try:
             service_replication = get_replication_for_services(
-                SYNAPSE_HOST_PORT, ['%s.main' % name for name in all_services]
+                DEFAULT_SYNAPSE_HOST,
+                DEFAULT_SYNAPSE_PORT,
+                ['%s.main' % name for name in all_services]
             )
         except requests.exceptions.ConnectionError:
             self.log.error(
                 'Failed to connect synapse haproxy on {0}'.
-                format(SYNAPSE_HOST_PORT))
+                format(synapse_host_port))
             self.critical(
                 'Failed to connect synapse haproxy on {0}'.
-                format(SYNAPSE_HOST_PORT))
+                format(synapse_host_port))
         except Exception as e:
             self.log.error(
                 'Unable to collect replication information on {0}: {1}'.
-                format(SYNAPSE_HOST_PORT, e.message))
+                format(synapse_host_port, e.message))
             self.critical(
                 'Unable to collect replication information: {0}'.
                 format(e.message))
         self.log.debug(
             "Finished gathering replication information from {0}".
-            format(SYNAPSE_HOST_PORT))
+            format(synapse_host_port))
         return service_replication
 
     def run(self):

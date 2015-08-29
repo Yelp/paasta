@@ -2,6 +2,7 @@ import sys
 
 from behave import given, when, then
 from docker import Client
+from docker.errors import APIError
 
 sys.path.append('../')
 from paasta_tools.utils import _run
@@ -13,8 +14,13 @@ def create_docker_container(context, task_id):
     base_docker_url = get_docker_host()
     docker_client = Client(base_url=base_docker_url)
     context.docker_client = docker_client
+    container_name = 'paasta-itest-execute-in-containers'
+    try:
+        docker_client.remove_container(container_name, force=True)
+    except APIError:
+        pass
     container = docker_client.create_container(
-        name='paasta-itest-execute-in-containers',
+        name=container_name,
         image='docker-dev.yelpcorp.com/trusty_yelp:latest',
         command='/bin/sleep infinity',
         environment={'MESOS_TASK_ID': task_id},

@@ -1,3 +1,27 @@
+paasta-tools (0.12.61-yelp1) lucid; urgency=low
+
+  * 0.12.61 tagged with 'make release'
+    Commit: Merge remote-tracking branch origin/master into PAASTA-1144
+
+ -- Keshav Varma <keshav@yelp.com>  Fri, 28 Aug 2015 13:56:17 -0700
+
+paasta-tools (0.12.60-yelp1) lucid; urgency=low
+
+  * 0.12.60 tagged with 'make release'
+    Commit: Merge branch PAASTA-843b  Conflicts:
+    general_itests/steps/paasta_execute_docker_command.py
+    paasta_tools/paasta_cli/cmds/local_run.py
+    paasta_tools/paasta_cli/utils.py
+
+ -- Kyle Anderson <kwa@yelp.com>  Fri, 28 Aug 2015 10:26:58 -0700
+
+paasta-tools (0.12.59-yelp1) lucid; urgency=low
+
+  * 0.12.59 tagged with 'make release'
+    Commit: Merge branch master of git.yelpcorp.com:paasta_tools
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 28 Aug 2015 04:33:18 -0700
+
 paasta-tools (0.12.58-yelp1) lucid; urgency=low
 
   * 0.12.58 tagged with 'make release'

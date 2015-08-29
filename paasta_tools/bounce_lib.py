@@ -10,16 +10,17 @@ import time
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
-from paasta_tools.monitoring.replication_utils import \
-    get_registered_marathon_tasks
 
 import marathon_tools
+import mesos_tools
+from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from paasta_tools.monitoring.replication_utils import \
+    get_registered_marathon_tasks
 from utils import load_system_paasta_config
 
 log = logging.getLogger('__main__')
 logging.getLogger("requests").setLevel(logging.WARNING)
 
-DEFAULT_SYNAPSE_HOST = 'localhost:3212'
 ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper
 ZK_LOCK_PATH = '/bounce'
 WAIT_CREATE_S = 3
@@ -218,17 +219,26 @@ def get_happy_tasks(app, service_name, nerve_ns, min_task_uptime=None, check_hap
     now = datetime.datetime.utcnow()
 
     if check_haproxy:
+        tasks_in_smartstack = []
         service_namespace = '%s%s%s' % (
             service_name,
             marathon_tools.ID_SPACER,
             nerve_ns
         )
 
-        tasks = get_registered_marathon_tasks(
-            DEFAULT_SYNAPSE_HOST,
-            service_namespace,
-            tasks,
-        )
+        service_namespace_config = marathon_tools.load_service_namespace_config(service_name, nerve_ns)
+        discover_location_type = service_namespace_config.get_discover()
+        unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(discover_location_type)
+
+        for value, hosts in unique_values.iteritems():
+            synapse_host = hosts[0]
+            tasks_in_smartstack.extend(get_registered_marathon_tasks(
+                synapse_host,
+                DEFAULT_SYNAPSE_PORT,
+                service_namespace,
+                tasks,
+            ))
+        tasks = tasks_in_smartstack
 
     for task in tasks:
         if min_task_uptime is not None:

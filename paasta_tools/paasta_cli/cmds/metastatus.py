@@ -1,8 +1,9 @@
 #!/usr/bin/env python
-from paasta_tools.utils import list_clusters
-from paasta_tools.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
+from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import list_clusters
 
 
 def add_subparser(subparsers):
@@ -49,7 +50,7 @@ def get_cluster_dashboards(cluster):
     output.append("  Mesos:    %s" % PaastaColors.cyan("http://mesos.paasta-%s.yelp/" % cluster))
     output.append("  Marathon: %s" % PaastaColors.cyan("http://marathon.paasta-%s.yelp/" % cluster))
     output.append("  Chronos:  %s" % PaastaColors.cyan("http://chronos.paasta-%s.yelp/" % cluster))
-    output.append("  Synapse:  %s" % PaastaColors.cyan("http://paasta-%s.yelp:3212/" % cluster))
+    output.append("  Synapse:  %s" % PaastaColors.cyan("http://paasta-%s.yelp:%s/" % (cluster, DEFAULT_SYNAPSE_PORT)))
     output.append("Admin Dashboards (Read/write, requires secrets):")
     output.append("  Mesos:    %s" % PaastaColors.cyan("http://paasta-%s.yelp:5050/" % cluster))
     output.append("  Marathon: %s" % PaastaColors.cyan("http://paasta-%s.yelp:5052/" % cluster))

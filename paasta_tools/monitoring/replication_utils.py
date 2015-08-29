@@ -3,25 +3,26 @@ import socket
 from paasta_tools.smartstack_tools import get_multiple_backends
 
 
-def get_replication_for_services(synapse_host_port, service_names):
+def get_replication_for_services(synapse_host, synapse_port, service_names):
     """Returns the replication level for the provided services
 
     This check is intended to be used with an haproxy load balancer, and
     relies on the implementation details of that choice.
 
-    :param synapse_host_port: A string in host:port format that this check
-                              should contact for replication information.
+    :param synapse_host: The hose that this check should contact for replication information.
+    :param synapse_port: The port number that this check should contact for replication information.
     :param service_names: A list of strings that are the service names
                           that should be checked for replication.
 
     :returns available_instance_counts: A dictionary mapping the service names
                                   to an integer number of available
                                   replicas
-    :returns None: If it cannot connect to the specified synapse_host_port
+    :returns None: If it cannot connect to the specified synapse host and port
     """
     backends = get_multiple_backends(
-        service_names,
-        synapse_host_port=synapse_host_port,
+        services=service_names,
+        synapse_host=synapse_host,
+        synapse_port=synapse_port,
     )
 
     counter = collections.Counter([b['pxname'] for b in backends if str(b['status']).startswith('UP')])
@@ -40,17 +41,19 @@ def ip_port_hostname_from_svname(svname):
 
 
 def get_registered_marathon_tasks(
-    synapse_host_port,
+    synapse_host,
+    synapse_port,
     service_name,
     marathon_tasks,
 ):
     """Returns the marathon tasks that are registered in haproxy under a given service_name (nerve_ns).
 
-    :param synapse_host_port: A string in host:port format that this check should contact for replication information.
+    :param synapse_host: The host that this check should contact for replication information.
+    :param synapse_port: The port that this check should contact for replication information.
     :param service_names: A list of strings that are the service names that should be checked for replication.
     :param marathon_tasks: A list of MarathonTask objects, whose tasks we will check for in the HAProxy status.
     """
-    backends = get_multiple_backends([service_name], synapse_host_port=synapse_host_port)
+    backends = get_multiple_backends([service_name], synapse_host=synapse_host, synapse_port=synapse_port)
     healthy_tasks = []
     for backend, task in match_backends_and_tasks(backends, marathon_tasks):
         if backend is not None and task is not None and backend['status'].startswith('UP'):

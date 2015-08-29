@@ -64,12 +64,14 @@ def main():
 
     cluster = load_system_paasta_config().get_cluster()
     marathon_serviceinit.validate_service_instance(service, instance, cluster)
-    marathon_serviceinit.perform_command(command=command,
-                                         service=service,
-                                         instance=instance,
-                                         cluster=cluster,
-                                         verbose=args.verbose,
-                                         soa_dir=args.soa_dir)
+    return_code = marathon_serviceinit.perform_command(
+        command=command,
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        verbose=args.verbose,
+        soa_dir=args.soa_dir)
+    sys.exit(return_code)
 
 
 if __name__ == "__main__":
