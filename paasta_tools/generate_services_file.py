@@ -7,6 +7,7 @@ import os
 import sys
 import service_configuration_lib
 from marathon_tools import get_all_namespaces_for_service
+from utils import ID_SPACER
 
 
 def get_service_lines_for_service(service):
@@ -19,7 +20,7 @@ def get_service_lines_for_service(service):
     for namespace, config in get_all_namespaces_for_service(service, full_name=False):
         proxy_port = config.get('proxy_port', None)
         if proxy_port is not None:
-            lines.append("%s.%s (%d/tcp)" % (service, namespace, proxy_port))
+            lines.append("%s%s%s (%d/tcp)" % (service, ID_SPACER, namespace, proxy_port))
     return lines
 
 

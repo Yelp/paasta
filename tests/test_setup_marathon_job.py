@@ -9,6 +9,7 @@ from pysensu_yelp import Status
 from pytest import raises
 from paasta_tools import marathon_tools, bounce_lib
 from paasta_tools.bounce_lib import list_bounce_methods
+from paasta_tools.utils import ID_SPACER
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 import setup_marathon_job
@@ -244,7 +245,7 @@ class TestSetupMarathonJob:
         fake_output = 'The http port is not open'
         fake_soa_dir = ''
         expected_check_name = 'setup_marathon_job.%s%s%s' % (
-            fake_service_name, marathon_tools.ID_SPACER, fake_instance_name)
+            fake_service_name, ID_SPACER, fake_instance_name)
         with contextlib.nested(
             mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
             mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),

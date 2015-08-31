@@ -26,15 +26,12 @@ from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import ID_SPACER
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
 
-# DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
-# OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
-# It's used to compose a job's full ID from its name and instance
-ID_SPACER = '.'
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -526,7 +523,8 @@ def compose_job_id(name, instance, tag=None):
     :param name: The name of the service
     :param instance: The instance of the service
     :param tag: A hash or tag to append to the end of the id to make it unique
-    :returns: <name>.<instance> if no tag, or <name>.<instance>.<tag> if tag given"""
+    :returns: <name><ID_SPACER><instance> if no tag, or <name><ID_SPACER><instance><ID_SPACER><tag> if tag given
+    """
     name = str(name).replace('_', '--')
     instance = str(instance).replace('_', '--')
     composed = '%s%s%s' % (name, ID_SPACER, instance)
@@ -583,7 +581,7 @@ def get_all_namespaces_for_service(service_name, soa_dir=DEFAULT_SOA_DIR, full_n
     :param soa_dir: The SOA config directory to read from
     :param full_name: A boolean indicating if the service name should be prepended to the namespace in the
                       returned tuples as described below (Default: True)
-    :returns: A list of tuples of the form (service_name.namespace, namespace_config) if full_name is true,
+    :returns: A list of tuples of the form (service_name<ID_SPACER>namespace, namespace_config) if full_name is true,
               otherwise of the form (namespace, namespace_config)
     """
     service_config = service_configuration_lib.read_service_configuration(service_name, soa_dir)
@@ -591,7 +589,7 @@ def get_all_namespaces_for_service(service_name, soa_dir=DEFAULT_SOA_DIR, full_n
     namespace_list = []
     for namespace in smartstack:
         if full_name:
-            name = '%s%s%s' % (service_name, ID_SPACER, namespace)
+            name = "%s%s%s" % (service_name, ID_SPACER, namespace)  # TODO compose_job_id ?
         else:
             name = namespace
         namespace_list.append((name, smartstack[namespace]))
@@ -647,7 +645,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
             if not nerve_dict.is_in_smartstack():
                 continue
             nerve_dict['port'] = port
-            nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
+            nerve_name = "%s%s%s" % (name, ID_SPACER, namespace)  # TODO compose_job_id ?
             nerve_list.append((nerve_name, nerve_dict))
         except KeyError:
             continue  # SOA configs got deleted for this job, it'll get cleaned up
@@ -679,7 +677,7 @@ def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_d
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
-    nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
+    nerve_name = "%s%s%s" % (name, ID_SPACER, namespace)  # TODO compose_job_id ?
     return (nerve_name, nerve_dict)
 
 
@@ -803,7 +801,7 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
         complete_config,
         force_bounce=srv_config.get_force_bounce(),
     )
-    tag = "%s.%s" % (code_sha, config_hash)
+    tag = "%s%s%s" % (code_sha, ID_SPACER, config_hash)
     full_id = compose_job_id(name, instance, tag)
     complete_config['id'] = full_id
     return complete_config

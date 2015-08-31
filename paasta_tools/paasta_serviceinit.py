@@ -10,7 +10,7 @@ import sys
 
 import service_configuration_lib
 
-from paasta_tools import marathon_tools
+from paasta_tools.utils import ID_SPACER
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools import marathon_serviceinit
 
@@ -43,8 +43,8 @@ def main():
 
     command = args.command
     service_instance = args.service_instance
-    service = service_instance.split(marathon_tools.ID_SPACER)[0]
-    instance = service_instance.split(marathon_tools.ID_SPACER)[1]
+    service = service_instance.split(ID_SPACER)[0]
+    instance = service_instance.split(ID_SPACER)[1]
 
     cluster = load_system_paasta_config().get_cluster()
     marathon_serviceinit.validate_service_instance(service, instance, cluster)

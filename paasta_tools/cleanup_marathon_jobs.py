@@ -26,10 +26,10 @@ from paasta_tools import bounce_lib
 from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import ID_SPACER
 from paasta_tools.utils import load_system_paasta_config
 
 
-ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
 
@@ -51,8 +51,8 @@ def delete_app(app_id, client):
     short_app_id = marathon_tools.remove_tag_from_job_id(app_id)
     log.warn("%s appears to be old; attempting to delete" % app_id)
     srv_instance = short_app_id.replace('--', '_')
-    service_name = srv_instance.split('.')[0]
-    instance = srv_instance.split('.')[1]
+    service_name = srv_instance.split(ID_SPACER)[0]
+    instance = srv_instance.split(ID_SPACER)[1]
     try:
         with bounce_lib.bounce_lock_zookeeper(srv_instance):
             bounce_lib.delete_marathon_app(app_id, client)

@@ -15,6 +15,7 @@ from paasta_tools.mesos_tools import filter_not_running_tasks
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
+from paasta_tools.utils import ID_SPACER
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import datetime_from_utc_to_local
@@ -36,14 +37,15 @@ def validate_service_instance(service, instance, cluster):
     log.info("Operating on cluster: %s" % cluster)
     all_services = get_services_for_cluster(cluster=cluster, instance_type='marathon')
     if (service, instance) not in all_services:
-        print "Error: %s.%s doesn't look like it has been deployed to this cluster! (%s)" % (service, instance, cluster)
+        job_name = "%s%s%s" % (service, ID_SPACER, instance)  # TODO compose_job_id ?
+        print "Error: %s doesn't look like it has been deployed to this cluster! (%s)" % (job_name, cluster)
         log.info(all_services)
         sys.exit(3)
     return True
 
 
 def start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
-    name = PaastaColors.cyan("%s.%s" % (service, instance))
+    name = PaastaColors.cyan("%s%s%s" % (service, ID_SPACER, instance))  # TODO compose_job_id ?
     _log(
         service_name=service,
         line="EmergencyStart: scaling %s up to %d instances" % (name, normal_instance_count),
@@ -56,7 +58,7 @@ def start_marathon_job(service, instance, app_id, normal_instance_count, client,
 
 
 def stop_marathon_job(service, instance, app_id, client, cluster):
-    name = PaastaColors.cyan("%s.%s" % (service, instance))
+    name = PaastaColors.cyan("%s%s%s" % (service, ID_SPACER, instance))  # TODO compose_job_id ?
     _log(
         service_name=service,
         line="EmergencyStop: Scaling %s down to 0 instances" % (name),
@@ -104,7 +106,7 @@ def status_desired_state(service, instance, client, complete_job_config):
 
 
 def status_marathon_job(service, instance, app_id, normal_instance_count, client):
-    name = PaastaColors.cyan("%s.%s" % (service, instance))
+    name = PaastaColors.cyan("%s%s%s" % (service, ID_SPACER, instance))  # TODO compose_job_id ?
     if marathon_tools.is_app_id_running(app_id, client):
         app = client.get_app(app_id)
         running_instances = app.tasks_running
@@ -173,8 +175,8 @@ def status_marathon_job_verbose(service, instance, client):
 
 
 def haproxy_backend_report(normal_instance_count, up_backends):
-    """ Given that a service is in smartstack, this returns a human readable
-    report of the up backends """
+    """Given that a service is in smartstack, this returns a human readable
+    report of the up backends"""
     if up_backends >= normal_instance_count:
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
@@ -225,7 +227,7 @@ def status_smartstack_backends(service, instance, cluster, tasks, expected_count
     service and instance"""
     output = []
     nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
-    service_instance = "%s.%s" % (service, nerve_ns)
+    service_instance = "%s%s%s" % (service, ID_SPACER, nerve_ns)
 
     if instance != nerve_ns:
         ns_string = PaastaColors.bold(nerve_ns)
@@ -457,7 +459,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     try:
         app_id = marathon_tools.get_app_id(service, instance, marathon_config)
     except NoDockerImageError:
-        print "Docker image for %s.%s not in deployments.json. Exiting. Has Jenkins deployed it?" % (service, instance)
+        job_name = "%s%s%s" % (service, ID_SPACER, instance)
+        print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_name
         return 1
 
     normal_instance_count = complete_job_config.get_instances()

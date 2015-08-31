@@ -26,6 +26,10 @@ import yaml
 
 import service_configuration_lib
 
+# DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
+# OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
+# It's used to compose a job's full ID from its name and instance
+ID_SPACER = '.'
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR

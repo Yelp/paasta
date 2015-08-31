@@ -40,6 +40,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import configure_log
+from paasta_tools.utils import ID_SPACER
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -48,7 +49,6 @@ from paasta_tools.utils import NoDockerImageError
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
-ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
 

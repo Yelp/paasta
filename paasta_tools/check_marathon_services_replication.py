@@ -30,12 +30,12 @@ from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import ID_SPACER
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
 
 
-ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger(__name__)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
@@ -230,11 +230,12 @@ def check_service_replication(service, instance, crit_threshold, smartstack_repl
     try:
         expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
     except NoDeploymentsAvailable:
-        log.info('deployments.json missing for %s.%s. Skipping replication monitoring.' % (service, instance))
+        log.info('deployments.json missing for %s. Skipping replication monitoring.'
+                 % marathon_tools.compose_job_id(service, instance))
         return
     if expected_count is None:
         return
-    log.info("Expecting %d total tasks for %s.%s" % (expected_count, service, instance))
+    log.info("Expecting %d total tasks for %s" % (expected_count, marathon_tools.compose_job_id(service, instance)))
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     if proxy_port is not None:
         check_smartstack_replication_for_instance(service, instance, smartstack_replication_info,

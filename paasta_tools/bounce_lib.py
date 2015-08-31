@@ -14,6 +14,7 @@ from paasta_tools.monitoring.replication_utils import \
     get_registered_marathon_tasks
 
 import marathon_tools
+from utils import ID_SPACER
 from utils import load_system_paasta_config
 
 log = logging.getLogger('__main__')
@@ -220,7 +221,7 @@ def get_happy_tasks(app, service_name, nerve_ns, min_task_uptime=None, check_hap
     if check_haproxy:
         service_namespace = '%s%s%s' % (
             service_name,
-            marathon_tools.ID_SPACER,
+            ID_SPACER,
             nerve_ns
         )
 

@@ -1,8 +1,9 @@
 from paasta_tools.paasta_cli.utils import _run
+from paasta_tools.utils import ID_SPACER
 
 
 def get_serviceinit_status(service, namespace):
-    command = "paasta_serviceinit -v %s.%s status" % (service, namespace)
+    command = "paasta_serviceinit -v %s%s%s status" % (service, ID_SPACER, namespace)
     return _run(command, timeout=10)[1]
 
 
