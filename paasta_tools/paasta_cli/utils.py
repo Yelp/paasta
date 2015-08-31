@@ -296,7 +296,7 @@ def list_paasta_services():
 
 
 def list_service_instances():
-    """Returns a sorted list of service[DELIMITER]instance names"""
+    """Returns a sorted list of service<ID_SPACER>instance names"""
     the_list = []
     for service_name in list_services():
         for instance in list_all_instances_for_service(service_name):

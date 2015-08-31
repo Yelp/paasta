@@ -589,7 +589,7 @@ def get_all_namespaces_for_service(service_name, soa_dir=DEFAULT_SOA_DIR, full_n
     namespace_list = []
     for namespace in smartstack:
         if full_name:
-            name = "%s%s%s" % (service_name, ID_SPACER, namespace)  # TODO compose_job_id ?
+            name = '%s%s%s' % (service_name, ID_SPACER, namespace)  # TODO compose_job_id ?
         else:
             name = namespace
         namespace_list.append((name, smartstack[namespace]))
@@ -645,7 +645,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
             if not nerve_dict.is_in_smartstack():
                 continue
             nerve_dict['port'] = port
-            nerve_name = "%s%s%s" % (name, ID_SPACER, namespace)  # TODO compose_job_id ?
+            nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)  # TODO compose_job_id ?
             nerve_list.append((nerve_name, nerve_dict))
         except KeyError:
             continue  # SOA configs got deleted for this job, it'll get cleaned up
@@ -677,7 +677,7 @@ def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_d
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
-    nerve_name = "%s%s%s" % (name, ID_SPACER, namespace)  # TODO compose_job_id ?
+    nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)  # TODO compose_job_id ?
     return (nerve_name, nerve_dict)
 
 
