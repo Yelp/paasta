@@ -410,8 +410,10 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     - routes: a list of tuples of (source, destination)
     - discover: the scope at which to discover services e.g. 'habitat'
     - advertise: a list of scopes to advertise services at e.g. ['habitat', 'region']
-    - advertise_extra: a list of tuples of (source, destination)
+    - extra_advertise: a list of tuples of (source, destination)
       e.g. [('region:dc6-prod', 'region:useast1-prod')]
+    - extra_healthcheck_headers: a dict of HTTP headers that must
+      be supplied when health checking. E.g. { 'Host': 'example.com' }
 
     :param srv_name: The service name
     :param namespace: The namespace to read
@@ -442,6 +444,7 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
         'mode',
         'discover',
         'advertise',
+        'extra_healthcheck_headers'
     ])
 
     for key, value in namespace_config_from_file.items():
