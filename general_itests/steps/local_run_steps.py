@@ -20,7 +20,7 @@ def non_interactive_local_run(context):
                         "-s fake_simple_service "
                         "--cluster test-cluster "
                         "--cmd '/bin/sh -c \"exit 42\"'")
-        context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=10)
+        context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=30)
 
 
 @then(u'we should see the expected return code')
