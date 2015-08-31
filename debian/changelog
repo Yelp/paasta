@@ -1,6 +1,6 @@
 paasta-tools (0.12.62-yelp1) lucid; urgency=low
 
-  * Degine and pass the extra_healthcheck_headers config through
+  * Pass the extra_healthcheck_headers config through from smartstack.yaml
 
  -- Tomas Doran <tdoran@yelp.com>  Mon, 31 Aug 2015 13:07:56 -0700
 
