@@ -368,6 +368,9 @@ class TestMarathonTools:
                 'alpha': ['beta'],
                 'gamma': ['delta', 'epsilon'],
             },
+            'extra_healthcheck_headers': {
+                'Host': 'example.com'
+            },
         }
         fake_config = {
             'smartstack': {
@@ -392,6 +395,9 @@ class TestMarathonTools:
             'extra_advertise': [
                 ('alpha', 'beta'), ('gamma', 'delta'), ('gamma', 'epsilon')
             ],
+            'extra_healthcheck_headers': {
+                'Host': 'example.com'
+            },
         }
         with mock.patch('service_configuration_lib.read_service_configuration',
                         autospec=True,
