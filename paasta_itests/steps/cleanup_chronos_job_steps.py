@@ -2,13 +2,13 @@ import sys
 import os
 import yaml
 import json
-from behave import when, then
+from behave import given, when, then
 
 sys.path.append('../')
 from paasta_tools.utils import _run
 
 
-@when('I have config for the service "{service_name}"')
+@given('I have config for the service "{service_name}"')
 def write_empty_config(context, service_name):
     soa_dir = '/nail/etc/services'
     if not os.path.exists(os.path.join(soa_dir, service_name)):
