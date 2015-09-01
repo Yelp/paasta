@@ -111,14 +111,14 @@ def working_paasta_cluster(context):
     }, 'cluster.json')
 
 
-@given('I have config for the service "{service_name}"')
-def write_empty_config(context, service_name):
+@given('I have yelpsoa-configs for the service "{service_name}" with chronos instance "{instance_name}"')
+def write_yelpsoa_configs_chronos_instance(context, service_name, instance_name):
     soa_dir = '/nail/etc/services'
     if not os.path.exists(os.path.join(soa_dir, service_name)):
         os.makedirs(os.path.join(soa_dir, service_name))
     with open(os.path.join(soa_dir, service_name, 'chronos-testcluster.yaml'), 'w+') as f:
         f.write(yaml.dump({
-            "test_job": {
+            "%s" % instance_name: {
                 "command": "echo foo",
             }
         }))
