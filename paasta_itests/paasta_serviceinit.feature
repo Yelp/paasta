@@ -12,7 +12,6 @@ Feature: paasta_serviceinit
     And we wait for it to be deployed
     Then marathon_serviceinit restart should get new task_ids
 
-  @wip
   Scenario: paasta_serviceinit can run status on chronos jobs
     Given a working paasta cluster
     And I have yelpsoa-configs for the service "test-service" with chronos instance "job"
