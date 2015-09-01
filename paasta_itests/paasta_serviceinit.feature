@@ -17,6 +17,6 @@ Feature: paasta_serviceinit
     And I have yelpsoa-configs for the service "test-service" with chronos instance "job"
     When we create a trivial chronos job
     And the trivial chronos job appears in the job list
-    Then paasta_serviceinit status should return "Healthy"
+    Then paasta_serviceinit status exits with return code 0 and the correct output
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2

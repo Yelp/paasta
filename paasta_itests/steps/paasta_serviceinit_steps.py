@@ -68,22 +68,16 @@ def marathon_restart_gets_new_task_ids(context):
     assert old_tasks != new_tasks
 
 
-@then(u'paasta_serviceinit status should return "Healthy"')
+@then(u"paasta_serviceinit status exits with return code 0 and the correct output")
 def chronos_status_returns_healthy(context):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job status' % context.soa_dir
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
-    # This doesn't work yet for a few reasons:
-    #
-    # * See note above about space vs dot vs SPACER. The resulting job can't
-    # please all of its masters so this test is doomed to fail no matter what.
-    # (As written at least it doesn't hang forever trying to kill the
-    # job-with-a-space that it can't kill.)
-    #
-    # * It's not supposed to as I did BDD to get here and I'm not done yet.
-    # assert "Healthy" in output
+    assert "Disabled" in output
+    assert "New" in output
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
