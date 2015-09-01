@@ -1197,6 +1197,26 @@ class TestMarathonTools:
         actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
         assert actual == expected
 
+    def test_get_healthcheck_cmd_happy(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'fake_name',
+            'fake_instance',
+            {'healthcheck_cmd': 'test_cmd'},
+            {},
+        )
+        actual = fake_conf.get_healthcheck_cmd()
+        assert actual == 'test_cmd'
+
+    def test_get_healthcheck_cmd_raises_when_unset(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'fake_name',
+            'fake_instance',
+            {},
+            {},
+        )
+        with raises(marathon_tools.NoHealthcheckCmdProvided):
+            fake_conf.get_healthcheck_cmd()
+
     def test_get_healthcheck_for_instance_http(self):
         fake_service = 'fake_service'
         fake_namespace = 'fake_namespace'
@@ -1283,32 +1303,6 @@ class TestMarathonTools:
             actual = marathon_tools.get_healthcheck_for_instance(
                 fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
             assert expected == actual
-
-    def test_get_healthcheck_for_instance_cmd_without_a_healthcheck_cmd(self):
-        fake_service = 'fake_service'
-        fake_namespace = 'fake_namespace'
-        fake_hostname = 'fake_hostname'
-        fake_random_port = 666
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
-            'healthcheck_mode': 'cmd',
-        }, {})
-        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
-        with contextlib.nested(
-            mock.patch('marathon_tools.load_marathon_service_config',
-                       autospec=True,
-                       return_value=fake_marathon_service_config),
-            mock.patch('marathon_tools.load_service_namespace_config',
-                       autospec=True,
-                       return_value=fake_service_namespace_config),
-            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
-        ) as (
-            read_config_patch,
-            load_service_namespace_config_patch,
-            hostname_patch
-        ):
-            with raises(marathon_tools.NoHealthcheckCmdProvided):
-                marathon_tools.get_healthcheck_for_instance(
-                    fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
 
     def test_get_healthcheck_for_instance_other(self):
         fake_service = 'fake_service'

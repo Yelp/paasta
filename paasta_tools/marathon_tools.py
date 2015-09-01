@@ -335,10 +335,7 @@ class MarathonServiceConfig(InstanceConfig):
                 },
             ]
         elif mode == 'cmd':
-            raw_cmd = self.get_healthcheck_cmd()
-            if raw_cmd is None:
-                raise InvalidMarathonHealthcheckMode("Healthcheck mode 'cmd' requires an explicit 'healthcheck_cmd'")
-            command = pipes.quote(raw_cmd)
+            command = pipes.quote(self.get_healthcheck_cmd())
             hc_command = "paasta_execute_docker_command " \
                 "--mesos-id \"$MESOS_TASK_ID\" --cmd %s --timeout '%s'" % (command, timeoutseconds)
 
@@ -363,7 +360,11 @@ class MarathonServiceConfig(InstanceConfig):
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
 
     def get_healthcheck_cmd(self):
-        return self.config_dict.get('healthcheck_cmd', None)
+        cmd = self.config_dict.get('healthcheck_cmd', None)
+        if cmd is None:
+            raise NoHealthcheckCmdProvided("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
+        else:
+            return cmd
 
     def get_healthcheck_mode(self, service_namespace_config):
         mode = self.config_dict.get('healthcheck_mode', None)
@@ -873,10 +874,8 @@ def get_healthcheck_for_instance(service_name, instance, service_manifest, rando
         healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
     elif mode == "tcp":
         healthcheck_command = '%s://%s:%d' % (mode, hostname, random_port)
-    elif mode == 'cmd' and service_manifest.get_healthcheck_cmd():
+    elif mode == 'cmd':
         healthcheck_command = service_manifest.get_healthcheck_cmd()
-    elif mode == 'cmd' and service_manifest.get_healthcheck_cmd() is None:
-        raise NoHealthcheckCmdProvided("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
     else:
         mode = None
         healthcheck_command = None
