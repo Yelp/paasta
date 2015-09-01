@@ -37,10 +37,10 @@ def parse_args():
     return args
 
 
-def validate_service_instance(service, instance, cluster):
+def validate_service_instance(service, instance, cluster, soa_dir):
     log.info("Operating on cluster: %s" % cluster)
-    marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon')
-    chronos_services = get_services_for_cluster(cluster=cluster, instance_type='chronos')
+    marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon', soa_dir=soa_dir)
+    chronos_services = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
     if (service, instance) in marathon_services:
         return 'marathon'
     elif (service, instance) in chronos_services:
@@ -65,7 +65,7 @@ def main():
     instance = service_instance.split(marathon_tools.ID_SPACER)[1]
 
     cluster = load_system_paasta_config().get_cluster()
-    instance_type = validate_service_instance(service, instance, cluster)
+    instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
     if instance_type == 'marathon':
         return_code = marathon_serviceinit.perform_command(
             command=command,

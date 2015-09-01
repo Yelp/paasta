@@ -13,6 +13,7 @@ def test_validate_service_instance_valid_marathon():
     my_service = 'service1'
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
+    fake_soa_dir = 'fake_soa_dir'
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_serviceinit.get_services_for_cluster',
                    autospec=True,
@@ -20,10 +21,16 @@ def test_validate_service_instance_valid_marathon():
     ) as (
         get_services_for_cluster_patch,
     ):
-        assert paasta_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) == 'marathon'
+        assert paasta_serviceinit.validate_service_instance(
+            my_service,
+            my_instance,
+            fake_cluster,
+            fake_soa_dir,
+        ) == 'marathon'
         assert mock.call(
             cluster=fake_cluster,
             instance_type='marathon',
+            soa_dir=fake_soa_dir,
         ) in get_services_for_cluster_patch.call_args_list
 
 
@@ -33,6 +40,7 @@ def test_validate_service_instance_valid_chronos():
     my_service = 'service1'
     my_instance = 'worker'
     fake_cluster = 'fake_cluster'
+    fake_soa_dir = 'fake_soa_dir'
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_serviceinit.get_services_for_cluster',
                    autospec=True,
@@ -40,10 +48,16 @@ def test_validate_service_instance_valid_chronos():
     ) as (
         get_services_for_cluster_patch,
     ):
-        assert paasta_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) == 'chronos'
+        assert paasta_serviceinit.validate_service_instance(
+            my_service,
+            my_instance,
+            fake_cluster,
+            fake_soa_dir,
+        ) == 'chronos'
         assert mock.call(
             cluster=fake_cluster,
             instance_type='chronos',
+            soa_dir=fake_soa_dir,
         ) in get_services_for_cluster_patch.call_args_list
 
 
@@ -53,6 +67,7 @@ def test_validate_service_instance_invalid():
     my_service = 'bad_service'
     my_instance = 'main'
     fake_cluster = 'fake_cluster'
+    fake_soa_dir = 'fake_soa_dir'
     with contextlib.nested(
         mock.patch('paasta_tools.paasta_serviceinit.get_services_for_cluster',
                    autospec=True,
@@ -62,5 +77,10 @@ def test_validate_service_instance_invalid():
         get_services_for_cluster_patch,
         sys_exit_patch,
     ):
-        paasta_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster)
+        paasta_serviceinit.validate_service_instance(
+            my_service,
+            my_instance,
+            fake_cluster,
+            fake_soa_dir,
+        )
         sys_exit_patch.assert_called_once_with(3)
