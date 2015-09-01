@@ -91,7 +91,7 @@ def main():
     service_instance = args.service_instance
     (service, instance) = service_instance.split(chronos_tools.SPACER)
 
-    job_id = chronos_tools.get_job_id(service, instance)
+    job_id = chronos_tools.compose_job_id(service, instance)
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 

@@ -43,6 +43,7 @@ class TestSetupChronosJob:
 
     fake_docker_registry = 'remote_registry.com'
     fake_args = mock.MagicMock(
+        # TODO use compose_job_id instead of constructing string once INTERNAL_SPACER deprecated
         service_instance='%s%s%s' % (fake_service_name, chronos_tools.INTERNAL_SPACER, fake_job_name),
         soa_dir='no_more',
         verbose=False,
@@ -195,6 +196,7 @@ class TestSetupChronosJob:
             with raises(SystemExit) as excinfo:
                 setup_chronos_job.main()
             assert excinfo.value.code == 0
+            # TODO use compose_job_id instead of constructing string once INTERNAL_SPACER deprecated
             expected_error_msg = ("Could not read chronos configuration file for %s%s%s in cluster %s\n"
                                   % (self.fake_service_name,
                                      setup_chronos_job.chronos_tools.INTERNAL_SPACER,

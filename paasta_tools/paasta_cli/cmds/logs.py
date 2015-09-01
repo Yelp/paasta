@@ -16,7 +16,7 @@ from scribereader import scribereader
 from scribereader.scribereader import StreamTailerSetupError
 
 from paasta_tools import chronos_tools
-from paasta_tools.marathon_tools import compose_job_id
+from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import guess_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
@@ -218,7 +218,7 @@ def marathon_log_line_passes_filter(line, levels, service, components, clusters)
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
-    return compose_job_id(service, '') in parsed_line.get('message', '')
+    return format_job_id(service, '') in parsed_line.get('message', '')
 
 
 def chronos_log_line_passes_filter(line, levels, service, components, clusters):
@@ -230,7 +230,7 @@ def chronos_log_line_passes_filter(line, levels, service, components, clusters):
     except ValueError:
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
-    return chronos_tools.get_job_id(service, '') in parsed_line.get('message', '')
+    return chronos_tools.compose_job_id(service, '') in parsed_line.get('message', '')
 
 
 def scribe_tail(scribe_env, stream_name, service, levels, components, clusters, queue, filter_fn, parse_fn=None):

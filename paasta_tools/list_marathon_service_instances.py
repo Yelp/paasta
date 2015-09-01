@@ -17,8 +17,8 @@ import argparse
 import sys
 
 import service_configuration_lib
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import ID_SPACER
 
 
 def parse_args():
@@ -38,7 +38,7 @@ def main():
     instances = get_services_for_cluster(cluster=args.cluster, instance_type='marathon', soa_dir=args.soa_dir)
     composed = []
     for name, instance in instances:
-        composed.append('%s%s%s' % (name, ID_SPACER, instance))
+        composed.append(compose_job_id(name, instance))
     print ' '.join(composed)
     sys.exit(0)
 

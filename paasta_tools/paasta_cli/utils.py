@@ -10,7 +10,7 @@ from service_configuration_lib import DEFAULT_SOA_DIR
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import ID_SPACER
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
 
@@ -296,11 +296,11 @@ def list_paasta_services():
 
 
 def list_service_instances():
-    """Returns a sorted list of service<ID_SPACER>instance names"""
+    """Returns a sorted list of service<SPACER>instance names"""
     the_list = []
     for service_name in list_services():
         for instance in list_all_instances_for_service(service_name):
-            the_list.append("%s%s%s" % (service_name, ID_SPACER, instance))
+            the_list.append(compose_job_id(service_name, instance))
     return the_list
 
 
@@ -405,13 +405,10 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
     else:
         verbose_flag = ''
         timeout = 20
-    # TODO use compose_job_id once Chronos spacer == Marathon spacer ?
-    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s%s%s %s' % (
+    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s %s' % (
         master,
         verbose_flag,
-        service_name,
-        ID_SPACER,
-        instancename,
+        compose_job_id(service_name, instancename),
         subcommand
     )
     _, output = _run(command, timeout=timeout)

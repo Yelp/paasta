@@ -4,7 +4,7 @@ import contextlib
 import pysensu_yelp
 
 import check_marathon_services_replication
-from utils import ID_SPACER
+from utils import compose_job_id
 
 check_marathon_services_replication.log = mock.Mock()
 
@@ -17,7 +17,7 @@ def test_send_event():
     fake_monitoring_overrides = {'fake_key': 'fake_value'}
     fake_soa_dir = '/hi/hello/hey'
     fake_cluster = 'fake_cluster'
-    expected_check_name = 'check_marathon_services_replication.%s%s%s' % (fake_service_name, ID_SPACER, fake_namespace)
+    expected_check_name = 'check_marathon_services_replication.%s' % compose_job_id(fake_service_name, fake_namespace)
     with contextlib.nested(
         mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
         mock.patch('check_marathon_services_replication.load_system_paasta_config', autospec=True),
@@ -44,14 +44,6 @@ def test_send_event():
             fake_output,
             fake_soa_dir
         )
-
-
-def test_split_id():
-    fake_name = 'zero'
-    fake_ns = 'hints'
-    fake_id = '%s%s%s' % (fake_name, ID_SPACER, fake_ns)
-    expected = (fake_name, fake_ns)
-    assert check_marathon_services_replication.split_id(fake_id) == expected
 
 
 def test_add_context_to_event():

@@ -9,7 +9,7 @@ import mesos
 import mock
 
 from paasta_tools import marathon_tools, marathon_serviceinit
-from paasta_tools.utils import ID_SPACER
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 
@@ -239,7 +239,7 @@ def test_pretty_print_haproxy_backend():
 def test_status_smartstack_backends_normal():
     service = 'my_service'
     instance = 'my_instance'
-    service_instance = "%s%s%s" % (service, ID_SPACER, instance)
+    service_instance = compose_job_id(service, instance)
 
     cluster = 'fake_cluster'
     good_task = mock.Mock()
@@ -316,7 +316,7 @@ def test_status_smartstack_backends_different_nerve_ns():
 def test_status_smartstack_backends_no_smartstack_replication_info():
     service = 'my_service'
     instance = 'my_instance'
-    service_instance = "%s%s%s" % (service, ID_SPACER, instance)
+    service_instance = compose_job_id(service, instance)
     cluster = 'fake_cluster'
     tasks = mock.Mock()
     normal_count = 10
@@ -347,7 +347,7 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
 def test_status_smartstack_backends_multiple_locations():
     service = 'my_service'
     instance = 'my_instance'
-    service_instance = "%s%s%s" % (service, ID_SPACER, instance)
+    service_instance = compose_job_id(service, instance)
     cluster = 'fake_cluster'
     good_task = mock.Mock()
     other_task = mock.Mock()
@@ -396,7 +396,7 @@ def test_status_smartstack_backends_multiple_locations():
 def test_status_smartstack_backends_multiple_locations_expected_count():
     service = 'my_service'
     instance = 'my_instance'
-    service_instance = "%s%s%s" % (service, ID_SPACER, instance)
+    service_instance = compose_job_id(service, instance)
     cluster = 'fake_cluster'
     normal_count = 10
 
@@ -450,7 +450,7 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
 def test_status_smartstack_backends_verbose_multiple_apps():
     service = 'my_service'
     instance = 'my_instance'
-    service_instance = "%s%s%s" % (service, ID_SPACER, instance)
+    service_instance = compose_job_id(service, instance)
     cluster = 'fake_cluster'
 
     good_task = mock.Mock()
@@ -506,7 +506,7 @@ def test_status_smartstack_backends_verbose_multiple_apps():
 def test_status_smartstack_backends_verbose_multiple_locations():
     service = 'my_service'
     instance = 'my_instance'
-    service_instance = "%s%s%s" % (service, ID_SPACER, instance)
+    service_instance = compose_job_id(service, instance)
     cluster = 'fake_cluster'
     good_task = mock.Mock()
     other_task = mock.Mock()

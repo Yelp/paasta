@@ -14,7 +14,7 @@ from paasta_tools.monitoring.replication_utils import \
     get_registered_marathon_tasks
 
 import marathon_tools
-from utils import ID_SPACER
+from utils import compose_job_id
 from utils import load_system_paasta_config
 
 log = logging.getLogger('__main__')
@@ -219,11 +219,7 @@ def get_happy_tasks(app, service_name, nerve_ns, min_task_uptime=None, check_hap
     now = datetime.datetime.utcnow()
 
     if check_haproxy:
-        service_namespace = '%s%s%s' % (
-            service_name,
-            ID_SPACER,
-            nerve_ns
-        )
+        service_namespace = compose_job_id(service_name, nerve_ns)
 
         tasks = get_registered_marathon_tasks(
             DEFAULT_SYNAPSE_HOST,

@@ -29,8 +29,8 @@ from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
-from paasta_tools.utils import ID_SPACER
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
@@ -56,7 +56,7 @@ def send_event(service_name, namespace, soa_dir, status, output):
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service_name, soa_dir=soa_dir)
 
-    check_name = 'check_marathon_services_replication.%s%s%s' % (service_name, ID_SPACER, namespace)
+    check_name = 'check_marathon_services_replication.%s' % compose_job_id(service_name, namespace)
     monitoring_tools.send_event(service_name, check_name, monitoring_overrides, status, output, soa_dir)
     _log(
         service_name=service_name,
@@ -84,15 +84,6 @@ def parse_args():
     options = parser.parse_args()
 
     return options
-
-
-def split_id(fid):
-    """Split a service_name.namespace id into a tuple of
-    (service_name, namespace).
-
-    :param fid: The full id to split
-    :returns: A tuple of (service_name, namespace)"""
-    return (fid.split(ID_SPACER)[0], fid.split(ID_SPACER)[1])
 
 
 def check_smartstack_replication_for_instance(
@@ -123,7 +114,7 @@ def check_smartstack_replication_for_instance(
         log.debug("Instance %s is announced under namespace: %s. "
                   "Not checking replication for it" % (instance, namespace))
         return
-    full_name = "%s%s%s" % (service, ID_SPACER, instance)
+    full_name = compose_job_id(service, instance)
     log.info('Checking instance %s', full_name)
 
     if len(smartstack_replication_info) == 0:
@@ -199,7 +190,7 @@ def send_event_if_under_replication(
     num_available,
     soa_dir,
 ):
-    full_name = "%s%s%s" % (service, ID_SPACER, instance)
+    full_name = compose_job_id(service, instance)
     output = ('Service %s has %d out of %d expected instances available!\n' +
               '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
     under_replicated, _ = is_under_replicated(num_available, expected_count, crit_threshold)
@@ -227,7 +218,7 @@ def check_service_replication(service, instance, crit_threshold, smartstack_repl
                                       about locations can be found at
                                       https://trac.yelpcorp.com/wiki/Habitat_Datacenter_Ecosystem_Runtimeenv_Region_Superregion
     """
-    job_name = "%s%s%s" % (service, ID_SPACER, instance)  # TODO replace with compose_job_id ?
+    job_name = compose_job_id(service, instance)
     try:
         expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
     except NoDeploymentsAvailable:

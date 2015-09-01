@@ -26,10 +26,10 @@ import yaml
 
 import service_configuration_lib
 
-# DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
+# DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
 # It's used to compose a job's full ID from its name and instance
-ID_SPACER = '.'
+SPACER = '.'
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
@@ -597,6 +597,28 @@ def atomic_file_write(target_path):
     mode = 0666 & (~get_umask())
     os.chmod(temp_target_path, mode)
     os.rename(temp_target_path, target_path)
+
+
+def compose_job_id(name, instance, tag=None):
+    """Compose a job/app id by concatenating its name, instance, and tag.
+
+    :param name: The name of the service
+    :param instance: The instance of the service
+    :param tag: A hash or tag to append to the end of the id to make it unique
+    :returns: <name><SPACER><instance> if no tag, or <name><SPACER><instance><SPACER><tag> if tag given
+    """
+    composed = '%s%s%s' % (name, SPACER, instance)
+    if tag:
+        composed = '%s%s%s' % (composed, SPACER, tag)
+    return composed
+
+
+def remove_tag_from_job_id(job_id):
+    """Remove the tag from a job id, if there is one.
+
+    :param job_id: The job_id.
+    :returns: The job_id with the tag removed, if there was one."""
+    return '%s%s%s' % (job_id.split(SPACER)[0], SPACER, job_id.split(SPACER)[1])
 
 
 def build_docker_image_name(upstream_job_name):

@@ -4,7 +4,7 @@ from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import list_instances
-from paasta_tools.utils import ID_SPACER
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import list_clusters
 
 
@@ -33,10 +33,10 @@ def add_subparser(subparsers):
 def paasta_emergency_start(args):
     """Performs an emergency start on a given service.instance on a given cluster"""
     service = figure_out_service_name(args)
-    print "Performing an emergency start on %s%s%s..." % (service, ID_SPACER, args.instance)
+    print "Performing an emergency start on %s..." % compose_job_id(service, args.instance)
     execute_paasta_serviceinit_on_remote_master('start', args.cluster, service, args.instance)
     print "Warning: this tool just asks Marathon to resume normal operation"
-    print "and run the 'normal' number of instances of this %s%s%s" % (service, ID_SPACER, args.instance)
+    print "and run the 'normal' number of instances of this %s" % compose_job_id(service, args.instance)
     print "It is not magic and cannot actually get a service to start if it"
     print "couldn't run before."
     print ""
