@@ -10,7 +10,7 @@ import sys
 
 import service_configuration_lib
 
-from paasta_tools.utils import SPACER
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools import marathon_serviceinit
 
@@ -43,8 +43,7 @@ def main():
 
     command = args.command
     service_instance = args.service_instance
-    service = service_instance.split(SPACER)[0]
-    instance = service_instance.split(SPACER)[1]
+    service, instance, _ = decompose_job_id(service_instance)
 
     cluster = load_system_paasta_config().get_cluster()
     marathon_serviceinit.validate_service_instance(service, instance, cluster)

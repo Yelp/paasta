@@ -613,12 +613,26 @@ def compose_job_id(name, instance, tag=None):
     return composed
 
 
+def decompose_job_id(job_id):
+    """Break down a composed job/app id into its (service name, instance, and tag) by splitting with <SPACER>.
+
+    :param job_id: The composed id of the job/app
+    :returns: A tuple (name, instance, tag) that comprise the job_id
+    """
+    decomposed = job_id.split(SPACER, 2)
+    if len(decomposed) < 3:
+        tag = None
+    else:
+        tag = decomposed[2]
+    return (decomposed[0], decomposed[1], tag)
+
+
 def remove_tag_from_job_id(job_id):
     """Remove the tag from a job id, if there is one.
 
     :param job_id: The job_id.
     :returns: The job_id with the tag removed, if there was one."""
-    return '%s%s%s' % (job_id.split(SPACER)[0], SPACER, job_id.split(SPACER)[1])
+    return '%s%s%s' % (decompose_job_id(job_id)[0], SPACER, decompose_job_id(job_id)[1])
 
 
 def build_docker_image_name(upstream_job_name):

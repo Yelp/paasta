@@ -89,6 +89,7 @@ def main():
 
     command = args.command
     service_instance = args.service_instance
+    # TODO use decompose_job_id instead of splitting string once INTERNAL_SPACER deprecated
     (service, instance) = service_instance.split(chronos_tools.SPACER)
 
     job_id = chronos_tools.compose_job_id(service, instance)

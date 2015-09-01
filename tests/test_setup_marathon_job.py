@@ -10,6 +10,7 @@ from pytest import raises
 from paasta_tools import marathon_tools, bounce_lib
 from paasta_tools.bounce_lib import list_bounce_methods
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import remove_tag_from_job_id
@@ -99,14 +100,14 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_password(),
             )
             read_service_conf_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir,
             )
             setup_service_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config,
@@ -163,13 +164,13 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_username(),
                 self.fake_marathon_config.get_password())
             read_service_conf_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config)
@@ -224,15 +225,15 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_username(),
                 self.fake_marathon_config.get_password())
             read_service_conf_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
             expected_string = 'No deployments found for %s in cluster %s' % (
                 self.fake_args.service_instance, self.fake_cluster)
             sensu_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 self.fake_args.soa_dir,
                 Status.CRITICAL,
                 expected_string

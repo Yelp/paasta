@@ -21,6 +21,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import remove_ansi_escape_sequences
+from paasta_tools.utils import SPACER
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
@@ -339,7 +340,7 @@ def get_mem_usage(task):
 
 def get_task_uuid(taskid):
     """Return just the UUID part of a mesos task id"""
-    return taskid.split(".")[-1]
+    return taskid.split(SPACER)[-1]
 
 
 def get_short_hostname_from_task(task):

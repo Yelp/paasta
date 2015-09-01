@@ -40,6 +40,7 @@ from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import configure_log
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
@@ -205,7 +206,7 @@ def do_bounce(
             (
                 bounce_method,
                 serviceinstance,
-                marathon_jobid.split('.')[2]
+                decompose_job_id(marathon_jobid)[2]
             ),
             level='event',
         )
@@ -417,7 +418,7 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service_name, instance_name = args.service_instance.split(SPACER)
+        service_name, instance_name, _ = decompose_job_id(args.service_instance)
     except ValueError:
         log.error("Invalid service instance specified. Format is service_name.instance_name.")
         sys.exit(1)

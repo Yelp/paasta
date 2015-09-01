@@ -20,6 +20,7 @@ from paasta_tools.mesos_tools import fetch_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_config_hash
@@ -612,8 +613,8 @@ def marathon_services_running_here():
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
     srv_list = []
     for executor in executors:
-        srv_name = executor['id'].split(SPACER)[0].replace('--', '_')
-        srv_instance = executor['id'].split(SPACER)[1].replace('--', '_')
+        srv_name = decompose_job_id(executor['id'])[0].replace('--', '_')
+        srv_instance = decompose_job_id(executor['id'])[1].replace('--', '_')
         srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list
