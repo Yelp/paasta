@@ -135,12 +135,223 @@ def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
 
 
 @mock.patch('paasta_tools.mesos_tools.fetch_mesos_state_from_leader', autospec=True)
+@mock.patch('paasta_tools.mesos_tools.filter_out_slaves_by_constraints', autospec=True)
+def test_get_mesos_slaves_grouped_by_attribute_uses_constraint_filter(
+    mock_filter_out_slaves_by_constraints,
+    mock_fetch_state,
+):
+    fake_attribute = 'fake_attribute'
+    fake_value_1 = 'fake_value_1'
+    fake_value_2 = 'fake_value_2'
+    constraints = ['fake_constraint']
+    mock_fetch_state.return_value = {
+        'slaves': [
+            {
+                'hostname': 'fake_host_1',
+                'attributes': {
+                    'fake_attribute': fake_value_1,
+                }
+            },
+            {
+                'hostname': 'fake_host_2',
+                'attributes': {
+                    'fake_attribute': fake_value_2,
+                }
+            },
+            {
+                'hostname': 'fake_host_4',
+                'attributes': {
+                    'fake_attribute': 'fake_other_value',
+                }
+            }
+        ]
+    }
+    mock_filter_out_slaves_by_constraints.return_value = [
+        {
+            'hostname': 'fake_host_1',
+            'attributes': {
+                'fake_attribute': fake_value_1,
+            }
+        },
+        {
+            'hostname': 'fake_host_3',
+            'attributes': {
+                'fake_attribute': fake_value_1,
+            }
+        },
+    ]
+    expected = {
+        'fake_value_1': ['fake_host_1', 'fake_host_3'],
+    }
+    actual = mesos_tools.get_mesos_slaves_grouped_by_attribute(fake_attribute, constraints=constraints)
+    mock_filter_out_slaves_by_constraints.assert_called_once_with(slaves=mock.ANY, constraints=constraints)
+    assert actual == expected
+
+
+@mock.patch('paasta_tools.mesos_tools.fetch_mesos_state_from_leader', autospec=True)
 def test_get_mesos_slaves_grouped_by_attribute_bombs_out_with_no_slaves(mock_fetch_state):
     mock_fetch_state.return_value = {
         'slaves': []
     }
     with raises(mesos_tools.NoSlavesAvailable):
         mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute')
+
+
+@mock.patch('paasta_tools.mesos_tools.slave_passes_constraints', autospec=True)
+def test_filter_out_slaves_by_constraints_allows_through(mock_slave_passes_constraints):
+    mock_slave_passes_constraints.return_value = True
+    fake_constraints = []
+    slaves = [
+        {
+            'hostname': 'fake_host_1',
+            'attributes': {
+                'fake_attribute': 'fake_value_1',
+            }
+        },
+        {
+            'hostname': 'fake_host_2',
+            'attributes': {
+                'fake_attribute': 'fake_value_1',
+            }
+        }
+    ]
+    actual = mesos_tools.filter_out_slaves_by_constraints(slaves=slaves, constraints=fake_constraints)
+    assert actual == slaves
+
+
+@mock.patch('paasta_tools.mesos_tools.slave_passes_constraints', autospec=True)
+def test_filter_out_slaves_by_constraints_rejects(mock_slave_passes_constraints):
+    fake_constraints = []
+    mock_slave_passes_constraints.return_value = False
+    slaves = [
+        {
+            'hostname': 'fake_host_1',
+            'attributes': {
+                'fake_attribute': 'fake_value_1',
+            }
+        },
+        {
+            'hostname': 'fake_host_2',
+            'attributes': {
+                'fake_attribute': 'fake_value_1',
+            }
+        }
+    ]
+    actual = mesos_tools.filter_out_slaves_by_constraints(slaves=slaves, constraints=fake_constraints)
+    assert actual == []
+
+
+@mock.patch('paasta_tools.mesos_tools.slave_passes_constraint', autospec=True)
+def test_slave_passes_constraints_calls_correctly(mock_slave_passes_constraint):
+    mock_slave_passes_constraint.return_value = True
+    slave = {
+        'hostname': 'fake_host_3',
+        'attributes': {
+            'fake_attribute': 'fake_value_1',
+        }
+    }
+    constraints = [['fake_constraint1'], ['fake_constraint2']]
+    actual = mesos_tools.slave_passes_constraints(slave, constraints)
+    assert actual is True
+    mock_slave_passes_constraint.assert_any_call(slave=slave, constraint=constraints[0])
+    mock_slave_passes_constraint.assert_any_call(slave=slave, constraint=constraints[1])
+    assert mock_slave_passes_constraint.call_count == 2
+
+
+def test_slave_passes_constraint_ignores_empty_constraints():
+    constraint = []
+    slave = {
+        'hostname': 'fake_host_3',
+        'attributes': {
+            'fake_attribute': 'fake_value_1',
+        }
+    }
+    actual = mesos_tools.slave_passes_constraint(slave, constraint)
+    assert actual is True
+
+
+def test_slave_passes_constraint_ignores_group_by():
+    constraint = ["fake_attribute", "GROUP_BY"]
+    slave = {
+        'hostname': 'fake_host_3',
+        'attributes': {
+            'fake_attribute': 'fake_value_1',
+        }
+    }
+    actual = mesos_tools.slave_passes_constraint(slave, constraint)
+    assert actual is True
+
+
+def test_slave_passes_constraint_respects_like_postive():
+    constraint = ["fake_attribute", "LIKE", "fake_value_1"]
+    slave = {
+        'hostname': 'fake_host_3',
+        'attributes': {
+            'fake_attribute': 'fake_value_1',
+        }
+    }
+    actual = mesos_tools.slave_passes_constraint(slave, constraint)
+    assert actual is True
+
+
+def test_slave_passes_constraint_respects_like_negative():
+    constraint = ["fake_attribute", "LIKE", "does_not_exist"]
+    slave = {
+        'hostname': 'fake_host_3',
+        'attributes': {
+            'fake_attribute': 'fake_value_1',
+        }
+    }
+    actual = mesos_tools.slave_passes_constraint(slave, constraint)
+    assert actual is False
+
+
+def test_slave_passes_constraint_respects_like_when_bogus_attribue():
+    constraint = ["bogus_attribute", "LIKE", "does_not_exist"]
+    slave = {
+        'hostname': 'fake_host_3',
+        'attributes': {
+            'fake_attribute': 'fake_value_1',
+        }
+    }
+    actual = mesos_tools.slave_passes_constraint(slave, constraint)
+    assert actual is False
+
+
+def test_slave_passes_constraint_respects_unlike_postive():
+    constraint = ["fake_attribute", "UNLIKE", "does_not_exist"]
+    slave = {
+        'hostname': 'fake_host_3',
+        'attributes': {
+            'fake_attribute': 'fake_value_1',
+        }
+    }
+    actual = mesos_tools.slave_passes_constraint(slave, constraint)
+    assert actual is True
+
+
+def test_slave_passes_constraint_respects_unlike_negative():
+    constraint = ["fake_attribute", "UNLIKE", "fake_value_1"]
+    slave = {
+        'hostname': 'fake_host_3',
+        'attributes': {
+            'fake_attribute': 'fake_value_1',
+        }
+    }
+    actual = mesos_tools.slave_passes_constraint(slave, constraint)
+    assert actual is False
+
+
+def test_slave_passes_constraint_respects_unlike_bogus_attribute():
+    constraint = ["bogus_attribute", "UNLIKE", "doesnt exist"]
+    slave = {
+        'hostname': 'fake_host_3',
+        'attributes': {
+            'fake_attribute': 'fake_value_1',
+        }
+    }
+    actual = mesos_tools.slave_passes_constraint(slave, constraint)
+    assert actual is True
 
 
 def test_fetch_mesos_state_from_leader_works_on_elected_leader():

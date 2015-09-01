@@ -158,10 +158,69 @@ def get_number_of_mesos_masters(zk_config):
     return len(result)
 
 
-def get_mesos_slaves_grouped_by_attribute(attribute):
+def filter_out_slaves_by_constraints(slaves, constraints):
+    """Takes in a list of slaves and filters them according to the
+    input constraints.
+
+    :param slaves: list of slaves. Each slave object must come from the
+    mesos api so it has all the relevant attributes
+    :param constraints: A marathon-like expression to filter out slaves that will
+    not be used by mesos for deployment anyway.
+    :returns: A list of mesos slaves
+    """
+    filtered_slaves = []
+    for slave in slaves:
+        if slave_passes_constraints(slave, constraints):
+            filtered_slaves.append(slave)
+    return filtered_slaves
+
+
+def slave_passes_constraints(slave, constraints):
+    for constraint in constraints:
+        if not slave_passes_constraint(slave=slave, constraint=constraint):
+            # As soon as we know a single constraint cannot be met, we can
+            # exit early.
+            return False
+    return True
+
+
+def slave_passes_constraint(slave, constraint):
+    """Tests a single constraint, and returns a bool if the input slave
+    passes the constraint
+
+    :param slave: A single slave with attributes
+    :param constraint: A single mesos constraint
+    :returns boolean
+    """
+    attributes = slave['attributes']
+    if constraint == [] or constraint is None:
+        return True
+    elif constraint[1] == "LIKE":
+        test_attribute = constraint[0]
+        test_regex = constraint[2]
+        if test_attribute not in attributes:
+            return False
+        else:
+            test_attribute_value = attributes[test_attribute]
+        return bool(re.search(test_regex, test_attribute_value))
+    elif constraint[1] == "UNLIKE":
+        test_attribute = constraint[0]
+        test_regex = constraint[2]
+        if test_attribute not in attributes:
+            return True
+        else:
+            test_attribute_value = attributes[test_attribute]
+        return not bool(re.search(test_regex, test_attribute_value))
+    else:
+        return True
+
+
+def get_mesos_slaves_grouped_by_attribute(attribute, constraints=[]):
     """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
 
     :param attribute: an attribute to filter
+    :param constraints: A marathon-like expression to filter out slaves that will
+    not be used by mesos for deployment anyway.
     :returns: a dictionary of the form {'<attribute_value>': [<list of hosts with attribute=attribute_value>]}
               (response can contain multiple 'attribute_value)
     """
@@ -171,7 +230,8 @@ def get_mesos_slaves_grouped_by_attribute(attribute):
     if slaves == []:
         raise NoSlavesAvailable("No mesos slaves were available to query. Try again later")
     else:
-        for slave in slaves:
+        constrained_slaves = filter_out_slaves_by_constraints(slaves=slaves, constraints=constraints)
+        for slave in constrained_slaves:
             if attribute in slave['attributes']:
                 attr_val = slave['attributes'][attribute]
                 attr_map.setdefault(attr_val, []).append(slave['hostname'])
