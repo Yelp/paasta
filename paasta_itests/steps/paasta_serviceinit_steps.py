@@ -70,7 +70,7 @@ def marathon_restart_gets_new_task_ids(context):
 
 @then(u'paasta_serviceinit status should return "Healthy"')
 def chronos_status_returns_healthy(context):
-    cmd = '../paasta_tools/paasta_serviceinit.py test-service.job status'
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job status' % context.soa_dir
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
