@@ -1,5 +1,6 @@
 import os
 from tempfile import NamedTemporaryFile
+from tempfile import mkdtemp
 import yaml
 
 from behave import given
@@ -112,8 +113,8 @@ def working_paasta_cluster(context):
 
 
 @given('I have yelpsoa-configs for the service "{service_name}" with chronos instance "{instance_name}"')
-def write_yelpsoa_configs_chronos_instance(context, service_name, instance_name):
-    soa_dir = '/nail/etc/services'
+def write_soa_dir_chronos_instance(context, service_name, instance_name):
+    soa_dir = mkdtemp()
     if not os.path.exists(os.path.join(soa_dir, service_name)):
         os.makedirs(os.path.join(soa_dir, service_name))
     with open(os.path.join(soa_dir, service_name, 'chronos-testcluster.yaml'), 'w+') as f:
@@ -122,3 +123,4 @@ def write_yelpsoa_configs_chronos_instance(context, service_name, instance_name)
                 "command": "echo foo",
             }
         }))
+    context.soa_dir = soa_dir

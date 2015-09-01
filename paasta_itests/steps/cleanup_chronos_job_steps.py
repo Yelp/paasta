@@ -29,7 +29,7 @@ def launch_jobs(context, num_jobs):
 
 @then('cleanup_chronos_jobs exits with return code "{expected_return_code}" and the correct output')
 def check_cleanup_chronos_jobs_output(context, expected_return_code):
-    cmd = '../paasta_tools/cleanup_chronos_jobs.py'
+    cmd = '../paasta_tools/cleanup_chronos_jobs.py --soa-dir=%s' % context.soa_dir
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
 
