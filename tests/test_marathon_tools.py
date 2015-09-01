@@ -1284,6 +1284,32 @@ class TestMarathonTools:
                 fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
             assert expected == actual
 
+    def test_get_healthcheck_for_instance_cmd_without_a_healthcheck_cmd(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
+            'healthcheck_mode': 'cmd',
+        }, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            with raises(marathon_tools.NoHealthcheckCmdProvided):
+                marathon_tools.get_healthcheck_for_instance(
+                    fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
+
     def test_get_healthcheck_for_instance_other(self):
         fake_service = 'fake_service'
         fake_namespace = 'fake_namespace'
@@ -1339,6 +1365,11 @@ class TestMarathonServiceConfig(object):
         marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'udp'}, {})
         with raises(marathon_tools.InvalidMarathonHealthcheckMode):
             marathon_config.get_healthcheck_mode(namespace_config)
+
+    def test_get_healthcheck_mode_explicit_none(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': None}, {})
+        assert marathon_config.get_healthcheck_mode(namespace_config) is None
 
     def test_get_healthchecks_http_overrides(self):
         fake_path = '/mycoolstatus'
@@ -1409,10 +1440,11 @@ class TestMarathonServiceConfig(object):
         assert actual == expected
 
     def test_get_healthchecks_cmd(self):
+        fake_command = '/fake_cmd'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {'healthcheck_mode': 'cmd'}, {})
+            "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd /bin/true --timeout '10'"
+        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd /fake_cmd --timeout '10'"
         expected = [
             {
                 "protocol": "COMMAND",

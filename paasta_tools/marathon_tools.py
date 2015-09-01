@@ -335,7 +335,10 @@ class MarathonServiceConfig(InstanceConfig):
                 },
             ]
         elif mode == 'cmd':
-            command = pipes.quote(self.get_healthcheck_cmd())
+            raw_cmd = self.get_healthcheck_cmd()
+            if raw_cmd is None:
+                raise InvalidMarathonHealthcheckMode("Healthcheck mode 'cmd' requires an explicit 'healthcheck_cmd'")
+            command = pipes.quote(raw_cmd)
             hc_command = "paasta_execute_docker_command " \
                 "--mesos-id \"$MESOS_TASK_ID\" --cmd %s --timeout '%s'" % (command, timeoutseconds)
 
@@ -352,20 +355,21 @@ class MarathonServiceConfig(InstanceConfig):
         elif mode is None:
             healthchecks = []
         else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+            raise InvalidMarathonHealthcheckMode(
+                "Unknown mode: %s. Only acceptable healthcheck modes are http/tcp/cmd" % mode)
         return healthchecks
 
     def get_healthcheck_uri(self, service_namespace_config):
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
 
     def get_healthcheck_cmd(self):
-        return self.config_dict.get('healthcheck_cmd', '/bin/true')
+        return self.config_dict.get('healthcheck_cmd', None)
 
     def get_healthcheck_mode(self, service_namespace_config):
         mode = self.config_dict.get('healthcheck_mode', None)
         if mode is None:
             mode = service_namespace_config.get_mode()
-        elif mode not in ['http', 'tcp', 'cmd']:
+        elif mode not in ['http', 'tcp', 'cmd', None]:
             raise InvalidMarathonHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
@@ -509,6 +513,10 @@ class InvalidSmartstackMode(Exception):
 
 
 class InvalidMarathonHealthcheckMode(Exception):
+    pass
+
+
+class NoHealthcheckCmdProvided(Exception):
     pass
 
 
@@ -865,8 +873,10 @@ def get_healthcheck_for_instance(service_name, instance, service_manifest, rando
         healthcheck_command = '%s://%s:%d%s' % (mode, hostname, random_port, path)
     elif mode == "tcp":
         healthcheck_command = '%s://%s:%d' % (mode, hostname, random_port)
-    elif mode == 'cmd':
+    elif mode == 'cmd' and service_manifest.get_healthcheck_cmd():
         healthcheck_command = service_manifest.get_healthcheck_cmd()
+    elif mode == 'cmd' and service_manifest.get_healthcheck_cmd() is None:
+        raise NoHealthcheckCmdProvided("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
     else:
         mode = None
         healthcheck_command = None
