@@ -439,7 +439,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     :param instance: instance name, like "main" or "canary"
     :param cluster: cluster name
     :param verbose: bool if the output should be verbose or not
-    :returns: A unix-style return code"""
+    :returns: A unix-style return code
+    """
     marathon_config = marathon_tools.load_marathon_config()
 
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
