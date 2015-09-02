@@ -1198,6 +1198,26 @@ class TestMarathonTools:
         actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
         assert actual == expected
 
+    def test_get_healthcheck_cmd_happy(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'fake_name',
+            'fake_instance',
+            {'healthcheck_cmd': 'test_cmd'},
+            {},
+        )
+        actual = fake_conf.get_healthcheck_cmd()
+        assert actual == 'test_cmd'
+
+    def test_get_healthcheck_cmd_raises_when_unset(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'fake_name',
+            'fake_instance',
+            {},
+            {},
+        )
+        with raises(marathon_tools.NoHealthcheckCmdProvided):
+            fake_conf.get_healthcheck_cmd()
+
     def test_get_healthcheck_for_instance_http(self):
         fake_service = 'fake_service'
         fake_namespace = 'fake_namespace'
@@ -1341,6 +1361,11 @@ class TestMarathonServiceConfig(object):
         with raises(marathon_tools.InvalidMarathonHealthcheckMode):
             marathon_config.get_healthcheck_mode(namespace_config)
 
+    def test_get_healthcheck_mode_explicit_none(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': None}, {})
+        assert marathon_config.get_healthcheck_mode(namespace_config) is None
+
     def test_get_healthchecks_http_overrides(self):
         fake_path = '/mycoolstatus'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
@@ -1410,10 +1435,11 @@ class TestMarathonServiceConfig(object):
         assert actual == expected
 
     def test_get_healthchecks_cmd(self):
+        fake_command = '/fake_cmd'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {'healthcheck_mode': 'cmd'}, {})
+            "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd /bin/true --timeout '10'"
+        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd /fake_cmd --timeout '10'"
         expected = [
             {
                 "protocol": "COMMAND",

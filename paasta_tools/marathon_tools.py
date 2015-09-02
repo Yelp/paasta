@@ -351,20 +351,25 @@ class MarathonServiceConfig(InstanceConfig):
         elif mode is None:
             healthchecks = []
         else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+            raise InvalidMarathonHealthcheckMode(
+                "Unknown mode: %s. Only acceptable healthcheck modes are http/tcp/cmd" % mode)
         return healthchecks
 
     def get_healthcheck_uri(self, service_namespace_config):
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
 
     def get_healthcheck_cmd(self):
-        return self.config_dict.get('healthcheck_cmd', '/bin/true')
+        cmd = self.config_dict.get('healthcheck_cmd', None)
+        if cmd is None:
+            raise NoHealthcheckCmdProvided("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
+        else:
+            return cmd
 
     def get_healthcheck_mode(self, service_namespace_config):
         mode = self.config_dict.get('healthcheck_mode', None)
         if mode is None:
             mode = service_namespace_config.get_mode()
-        elif mode not in ['http', 'tcp', 'cmd']:
+        elif mode not in ['http', 'tcp', 'cmd', None]:
             raise InvalidMarathonHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
@@ -508,6 +513,10 @@ class InvalidSmartstackMode(Exception):
 
 
 class InvalidMarathonHealthcheckMode(Exception):
+    pass
+
+
+class NoHealthcheckCmdProvided(Exception):
     pass
 
 
