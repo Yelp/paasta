@@ -19,6 +19,8 @@ import service_configuration_lib
 from paasta_tools.mesos_tools import fetch_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_config_hash
@@ -26,15 +28,12 @@ from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import SPACER
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
 
-# DO NOT CHANGE ID_SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
-# OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
-# It's used to compose a job's full ID from its name and instance
-ID_SPACER = '.'
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -221,7 +220,7 @@ class MarathonServiceConfig(InstanceConfig):
             return self.config_dict.get('constraints')
         else:
             discover_level = service_namespace_config.get_discover()
-            locations = get_mesos_slaves_grouped_by_attribute(discover_level)
+            locations = get_mesos_slaves_grouped_by_attribute(discover_level, constraints=[])
             return [[discover_level, "GROUP_BY", str(len(locations))]]
 
     def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):
@@ -352,20 +351,25 @@ class MarathonServiceConfig(InstanceConfig):
         elif mode is None:
             healthchecks = []
         else:
-            raise InvalidSmartstackMode("Unknown mode: %s" % mode)
+            raise InvalidMarathonHealthcheckMode(
+                "Unknown mode: %s. Only acceptable healthcheck modes are http/tcp/cmd" % mode)
         return healthchecks
 
     def get_healthcheck_uri(self, service_namespace_config):
         return self.config_dict.get('healthcheck_uri', service_namespace_config.get_healthcheck_uri())
 
     def get_healthcheck_cmd(self):
-        return self.config_dict.get('healthcheck_cmd', '/bin/true')
+        cmd = self.config_dict.get('healthcheck_cmd', None)
+        if cmd is None:
+            raise NoHealthcheckCmdProvided("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
+        else:
+            return cmd
 
     def get_healthcheck_mode(self, service_namespace_config):
         mode = self.config_dict.get('healthcheck_mode', None)
         if mode is None:
             mode = service_namespace_config.get_mode()
-        elif mode not in ['http', 'tcp', 'cmd']:
+        elif mode not in ['http', 'tcp', 'cmd', None]:
             raise InvalidMarathonHealthcheckMode("Unknown mode: %s" % mode)
         return mode
 
@@ -512,6 +516,10 @@ class InvalidMarathonHealthcheckMode(Exception):
     pass
 
 
+class NoHealthcheckCmdProvided(Exception):
+    pass
+
+
 def get_marathon_client(url, user, passwd):
     """Get a new marathon client connection in the form of a MarathonClient object.
 
@@ -523,28 +531,22 @@ def get_marathon_client(url, user, passwd):
     return MarathonClient(url, user, passwd, timeout=30)
 
 
-def compose_job_id(name, instance, tag=None):
-    """Compose a marathon job/app id.
+def format_job_id(name, instance, tag=None):
+    """Compose a Marathon job/app id formatted to meet Marathon's job id requirements.
+
+    Marathon's job id requirements: https://mesosphere.github.io/marathon/docs/rest-api.html#id-string
 
     :param name: The name of the service
     :param instance: The instance of the service
     :param tag: A hash or tag to append to the end of the id to make it unique
-    :returns: <name>.<instance> if no tag, or <name>.<instance>.<tag> if tag given"""
+    :returns: a composed job/app id in a format that Marathon accepts
+    """
     name = str(name).replace('_', '--')
     instance = str(instance).replace('_', '--')
-    composed = '%s%s%s' % (name, ID_SPACER, instance)
     if tag:
         tag = str(tag).replace('_', '--')
-        composed = '%s%s%s' % (composed, ID_SPACER, tag)
-    return composed
-
-
-def remove_tag_from_job_id(job_id):
-    """Remove the tag from a job id, if there is one.
-
-    :param job_id: The job_id.
-    :returns: The job_id with the tag removed, if there was one."""
-    return '%s%s%s' % (job_id.split(ID_SPACER)[0], ID_SPACER, job_id.split(ID_SPACER)[1])
+    formatted = compose_job_id(name, instance, tag)
+    return formatted
 
 
 def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
@@ -586,7 +588,7 @@ def get_all_namespaces_for_service(service_name, soa_dir=DEFAULT_SOA_DIR, full_n
     :param soa_dir: The SOA config directory to read from
     :param full_name: A boolean indicating if the service name should be prepended to the namespace in the
                       returned tuples as described below (Default: True)
-    :returns: A list of tuples of the form (service_name.namespace, namespace_config) if full_name is true,
+    :returns: A list of tuples of the form (service_name<SPACER>namespace, namespace_config) if full_name is true,
               otherwise of the form (namespace, namespace_config)
     """
     service_config = service_configuration_lib.read_service_configuration(service_name, soa_dir)
@@ -594,7 +596,7 @@ def get_all_namespaces_for_service(service_name, soa_dir=DEFAULT_SOA_DIR, full_n
     namespace_list = []
     for namespace in smartstack:
         if full_name:
-            name = '%s%s%s' % (service_name, ID_SPACER, namespace)
+            name = compose_job_id(service_name, namespace)
         else:
             name = namespace
         namespace_list.append((name, smartstack[namespace]))
@@ -623,8 +625,8 @@ def marathon_services_running_here():
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
     srv_list = []
     for executor in executors:
-        srv_name = executor['id'].split(ID_SPACER)[0].replace('--', '_')
-        srv_instance = executor['id'].split(ID_SPACER)[1].replace('--', '_')
+        srv_name = decompose_job_id(executor['id'])[0].replace('--', '_')
+        srv_instance = decompose_job_id(executor['id'])[1].replace('--', '_')
         srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list
@@ -650,7 +652,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
             if not nerve_dict.is_in_smartstack():
                 continue
             nerve_dict['port'] = port
-            nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
+            nerve_name = compose_job_id(name, namespace)
             nerve_list.append((nerve_name, nerve_dict))
         except KeyError:
             continue  # SOA configs got deleted for this job, it'll get cleaned up
@@ -682,7 +684,7 @@ def _namespaced_get_classic_service_information_for_nerve(name, namespace, soa_d
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     port_file = os.path.join(soa_dir, name, 'port')
     nerve_dict['port'] = service_configuration_lib.read_port(port_file)
-    nerve_name = '%s%s%s' % (name, ID_SPACER, namespace)
+    nerve_name = compose_job_id(name, namespace)
     return (nerve_name, nerve_dict)
 
 
@@ -787,7 +789,7 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks):
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     system_paasta_config = load_system_paasta_config()
-    partial_id = compose_job_id(name, instance)
+    partial_id = format_job_id(name, instance)
     srv_config = load_marathon_service_config(name,
                                               instance,
                                               load_system_paasta_config().get_cluster(),
@@ -806,8 +808,8 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
         complete_config,
         force_bounce=srv_config.get_force_bounce(),
     )
-    tag = "%s.%s" % (code_sha, config_hash)
-    full_id = compose_job_id(name, instance, tag)
+    tag = "%s%s%s" % (code_sha, SPACER, config_hash)
+    full_id = format_job_id(name, instance, tag)
     complete_config['id'] = full_id
     return complete_config
 
@@ -847,7 +849,7 @@ def get_matching_appids(servicename, instance, client):
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
-    jobid = compose_job_id(servicename, instance)
+    jobid = format_job_id(servicename, instance)
     return [app.id for app in client.list_apps() if app.id.startswith("/%s" % jobid)]
 
 

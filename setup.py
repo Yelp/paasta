@@ -7,7 +7,7 @@ from setuptools import setup, find_packages
 setup(
     name           = 'paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version        = '0.12.62',
+    version        = '0.12.64',
     provides       = ["paasta_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -48,6 +48,7 @@ setup(
         'paasta_tools/am_i_mesos_leader.py',
         'paasta_tools/check_marathon_services_replication.py',
         'paasta_tools/check_mesos_resource_utilization.py',
+        'paasta_tools/cleanup_chronos_jobs.py',
         'paasta_tools/cleanup_marathon_jobs.py',
         'paasta_tools/deploy_chronos_jobs',
         'paasta_tools/deploy_marathon_services',

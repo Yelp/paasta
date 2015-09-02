@@ -12,8 +12,9 @@ import service_configuration_lib
 
 from paasta_tools import paasta_chronos_serviceinit
 from paasta_tools import marathon_serviceinit
-from paasta_tools import marathon_tools
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -46,7 +47,8 @@ def validate_service_instance(service, instance, cluster, soa_dir):
     elif (service, instance) in chronos_services:
         return 'chronos'
     else:
-        print "Error: %s.%s doesn't look like it has been deployed to this cluster! (%s)" % (service, instance, cluster)
+        print ("Error: %s doesn't look like it has been deployed to this cluster! (%s)"
+               % (compose_job_id(service, instance), cluster))
         log.debug("Discovered marathon services %s" % marathon_services)
         log.debug("Discovered chronos services %s" % marathon_services)
         sys.exit(3)
@@ -61,8 +63,7 @@ def main():
 
     command = args.command
     service_instance = args.service_instance
-    service = service_instance.split(marathon_tools.ID_SPACER)[0]
-    instance = service_instance.split(marathon_tools.ID_SPACER)[1]
+    service, instance, _ = decompose_job_id(service_instance)
 
     cluster = load_system_paasta_config().get_cluster()
     instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
@@ -84,13 +85,8 @@ def main():
         )
         sys.exit(return_code)
     else:
-        log.error(
-            "I calculated an instance_type of %s for %s%s%s which I don't know how to handle. Exiting." %
-            instance_type,
-            service,
-            marathon_tools.ID_SPACER,
-            instance,
-        )
+        log.error("I calculated an instance_type of %s for %s which I don't know how to handle. Exiting."
+                  % instance_type, compose_job_id(service, instance))
         sys.exit(1)
 
 

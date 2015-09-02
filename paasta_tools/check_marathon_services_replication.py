@@ -30,13 +30,13 @@ from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import smartstack_tools
 from paasta_tools.utils import _log
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
 
 
-ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger(__name__)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
@@ -57,7 +57,7 @@ def send_event(service_name, namespace, soa_dir, status, output):
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service_name, soa_dir=soa_dir)
 
-    check_name = 'check_marathon_services_replication.%s%s%s' % (service_name, ID_SPACER, namespace)
+    check_name = 'check_marathon_services_replication.%s' % compose_job_id(service_name, namespace)
     monitoring_tools.send_event(service_name, check_name, monitoring_overrides, status, output, soa_dir)
     _log(
         service_name=service_name,
@@ -85,15 +85,6 @@ def parse_args():
     options = parser.parse_args()
 
     return options
-
-
-def split_id(fid):
-    """Split a service_name.namespace id into a tuple of
-    (service_name, namespace).
-
-    :param fid: The full id to split
-    :returns: A tuple of (service_name, namespace)"""
-    return (fid.split(ID_SPACER)[0], fid.split(ID_SPACER)[1])
 
 
 def check_smartstack_replication_for_instance(
@@ -124,7 +115,7 @@ def check_smartstack_replication_for_instance(
         log.debug("Instance %s is announced under namespace: %s. "
                   "Not checking replication for it" % (instance, namespace))
         return
-    full_name = "%s%s%s" % (service, ID_SPACER, instance)
+    full_name = compose_job_id(service, instance)
     log.info('Checking instance %s', full_name)
 
     if len(smartstack_replication_info) == 0:
@@ -200,7 +191,7 @@ def send_event_if_under_replication(
     num_available,
     soa_dir,
 ):
-    full_name = "%s%s%s" % (service, ID_SPACER, instance)
+    full_name = compose_job_id(service, instance)
     output = ('Service %s has %d out of %d expected instances available!\n' +
               '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
     under_replicated, _ = is_under_replicated(num_available, expected_count, crit_threshold)
@@ -228,14 +219,15 @@ def check_service_replication(service, instance, crit_threshold, smartstack_repl
                                       about locations can be found at
                                       https://trac.yelpcorp.com/wiki/Habitat_Datacenter_Ecosystem_Runtimeenv_Region_Superregion
     """
+    job_name = compose_job_id(service, instance)
     try:
         expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
     except NoDeploymentsAvailable:
-        log.info('deployments.json missing for %s.%s. Skipping replication monitoring.' % (service, instance))
+        log.info('deployments.json missing for %s. Skipping replication monitoring.' % job_name)
         return
     if expected_count is None:
         return
-    log.info("Expecting %d total tasks for %s.%s" % (expected_count, service, instance))
+    log.info("Expecting %d total tasks for %s" % (expected_count, job_name))
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     if proxy_port is not None:
         check_smartstack_replication_for_instance(service, instance, smartstack_replication_info,
@@ -283,7 +275,7 @@ def get_smartstack_replication_for_attribute(attribute, namespaces):
               (the dictionary will contain keys for unique all attribute values)
     """
     replication_info = {}
-    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute)
+    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute, constraints=[])
 
     for value, hosts in unique_values.iteritems():
         # arbitrarily choose the first host with a given attribute to query for replication stats

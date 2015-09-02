@@ -1,10 +1,11 @@
-import check_marathon_services_replication
 import mock
 import contextlib
 
 import pysensu_yelp
 
+import check_marathon_services_replication
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from utils import compose_job_id
 
 check_marathon_services_replication.log = mock.Mock()
 
@@ -17,7 +18,7 @@ def test_send_event():
     fake_monitoring_overrides = {'fake_key': 'fake_value'}
     fake_soa_dir = '/hi/hello/hey'
     fake_cluster = 'fake_cluster'
-    expected_check_name = 'check_marathon_services_replication.%s.%s' % (fake_service_name, fake_namespace)
+    expected_check_name = 'check_marathon_services_replication.%s' % compose_job_id(fake_service_name, fake_namespace)
     with contextlib.nested(
         mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
         mock.patch('check_marathon_services_replication.load_system_paasta_config', autospec=True),
@@ -44,14 +45,6 @@ def test_send_event():
             fake_output,
             fake_soa_dir
         )
-
-
-def test_split_id():
-    fake_name = 'zero'
-    fake_ns = 'hints'
-    fake_id = '%s.%s' % (fake_name, fake_ns)
-    expected = (fake_name, fake_ns)
-    assert check_marathon_services_replication.split_id(fake_id) == expected
 
 
 def test_add_context_to_event():
@@ -529,7 +522,7 @@ def test_get_smartstack_replication_for_attribute():
             'fake_attribute', fake_namespaces)
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
-        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with('fake_attribute')
+        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with('fake_attribute', constraints=[])
         mock_get_replication_for_services.assert_any_call(
             synapse_host='fake_host_1',
             synapse_port=DEFAULT_SYNAPSE_PORT,

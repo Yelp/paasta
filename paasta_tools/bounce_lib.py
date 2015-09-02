@@ -16,6 +16,7 @@ import mesos_tools
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.monitoring.replication_utils import \
     get_registered_marathon_tasks
+from utils import compose_job_id
 from utils import load_system_paasta_config
 
 log = logging.getLogger('__main__')
@@ -220,15 +221,11 @@ def get_happy_tasks(app, service_name, nerve_ns, min_task_uptime=None, check_hap
 
     if check_haproxy:
         tasks_in_smartstack = []
-        service_namespace = '%s%s%s' % (
-            service_name,
-            marathon_tools.ID_SPACER,
-            nerve_ns
-        )
+        service_namespace = compose_job_id(service_name, nerve_ns)
 
         service_namespace_config = marathon_tools.load_service_namespace_config(service_name, nerve_ns)
         discover_location_type = service_namespace_config.get_discover()
-        unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(discover_location_type)
+        unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(discover_location_type, constraints=[])
 
         for value, hosts in unique_values.iteritems():
             synapse_host = hosts[0]

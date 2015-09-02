@@ -39,16 +39,19 @@ from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import configure_log
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import remove_tag_from_job_id
+from paasta_tools.utils import SPACER
 
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
-ID_SPACER = marathon_tools.ID_SPACER
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
 
@@ -57,7 +60,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
     parser.add_argument('service_instance',
                         help="The marathon instance of the service to create or update",
-                        metavar="SERVICE.INSTANCE")
+                        metavar="SERVICE%sINSTANCE" % SPACER)
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
@@ -83,7 +86,7 @@ def send_event(name, instance, soa_dir, status, output):
         cluster,
         load_deployments=False,
     ).get_monitoring()
-    check_name = 'setup_marathon_job.%s%s%s' % (name, ID_SPACER, instance)
+    check_name = 'setup_marathon_job.%s' % compose_job_id(name, instance)
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
 
@@ -203,7 +206,7 @@ def do_bounce(
             (
                 bounce_method,
                 serviceinstance,
-                marathon_jobid.split('.')[2]
+                decompose_job_id(marathon_jobid)[2]
             ),
             level='event',
         )
@@ -264,7 +267,7 @@ def deploy_service(
             instance=instance_name
         )
 
-    short_id = marathon_tools.remove_tag_from_job_id(marathon_jobid)
+    short_id = remove_tag_from_job_id(marathon_jobid)
 
     cluster = load_system_paasta_config().get_cluster()
     app_list = client.list_apps(embed_failures=True)
@@ -415,7 +418,7 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service_name, instance_name = args.service_instance.split(ID_SPACER)
+        service_name, instance_name, _ = decompose_job_id(args.service_instance)
     except ValueError:
         log.error("Invalid service instance specified. Format is service_name.instance_name.")
         sys.exit(1)

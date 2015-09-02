@@ -6,6 +6,7 @@ from mock import patch
 from pytest import raises
 
 import marathon_tools
+from utils import compose_job_id
 from utils import DeploymentsJson
 from utils import SystemPaastaConfig
 
@@ -710,7 +711,7 @@ class TestMarathonTools:
             mock.patch(
                 'marathon_tools._namespaced_get_classic_service_information_for_nerve',
                 autospec=True,
-                side_effect=lambda x, y, _: ('%s.%s' % (x, y), {})
+                side_effect=lambda x, y, _: (compose_job_id(x, y), {})
             ),
         ):
             assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
@@ -740,7 +741,7 @@ class TestMarathonTools:
             classic_patch.assert_called_once_with(soa_dir)
 
     def test_format_marathon_app_dict(self):
-        fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
+        fake_id = marathon_tools.format_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
             {
@@ -945,7 +946,7 @@ class TestMarathonTools:
         with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}, 'fake_other_region': {}}
             assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY", "2"]]
-            get_slaves_patch.assert_called_once_with('habitat')
+            get_slaves_patch.assert_called_once_with('habitat', constraints=[])
 
     def test_instance_config_getters_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'monitoring': 'test'}, {})
@@ -1197,6 +1198,26 @@ class TestMarathonTools:
         actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
         assert actual == expected
 
+    def test_get_healthcheck_cmd_happy(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'fake_name',
+            'fake_instance',
+            {'healthcheck_cmd': 'test_cmd'},
+            {},
+        )
+        actual = fake_conf.get_healthcheck_cmd()
+        assert actual == 'test_cmd'
+
+    def test_get_healthcheck_cmd_raises_when_unset(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'fake_name',
+            'fake_instance',
+            {},
+            {},
+        )
+        with raises(marathon_tools.NoHealthcheckCmdProvided):
+            fake_conf.get_healthcheck_cmd()
+
     def test_get_healthcheck_for_instance_http(self):
         fake_service = 'fake_service'
         fake_namespace = 'fake_namespace'
@@ -1340,6 +1361,11 @@ class TestMarathonServiceConfig(object):
         with raises(marathon_tools.InvalidMarathonHealthcheckMode):
             marathon_config.get_healthcheck_mode(namespace_config)
 
+    def test_get_healthcheck_mode_explicit_none(self):
+        namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': None}, {})
+        assert marathon_config.get_healthcheck_mode(namespace_config) is None
+
     def test_get_healthchecks_http_overrides(self):
         fake_path = '/mycoolstatus'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
@@ -1409,10 +1435,11 @@ class TestMarathonServiceConfig(object):
         assert actual == expected
 
     def test_get_healthchecks_cmd(self):
+        fake_command = '/fake_cmd'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {'healthcheck_mode': 'cmd'}, {})
+            "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd /bin/true --timeout '10'"
+        expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd /fake_cmd --timeout '10'"
         expected = [
             {
                 "protocol": "COMMAND",
@@ -1549,14 +1576,14 @@ def test_create_complete_config_no_smartstack():
     with contextlib.nested(
         mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
-        mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
+        mock.patch('marathon_tools.format_job_id', return_value=fake_job_id),
         mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
         mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}})
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
-        mock_compose_job_id,
+        mock_format_job_id,
         mock_system_paasta_config,
         _,
     ):
@@ -1612,14 +1639,14 @@ def test_create_complete_config_with_smartstack():
     with contextlib.nested(
         mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
-        mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
+        mock.patch('marathon_tools.format_job_id', return_value=fake_job_id),
         mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
         mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}})
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
-        mock_compose_job_id,
+        mock_format_job_id,
         mock_system_paasta_config,
         _,
     ):

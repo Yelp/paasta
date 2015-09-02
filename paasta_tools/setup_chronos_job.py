@@ -69,6 +69,7 @@ def send_event(name, instance, soa_dir, status, output):
     """
     cluster = load_system_paasta_config().get_cluster()
     monitoring_overrides = chronos_tools.load_chronos_job_config(name, instance, cluster).get_monitoring()
+    # TODO use compose_job_id instead of constructing string once INTERNAL_SPACER deprecated
     check_name = 'setup_chronos_job.%s%s%s' % (name, chronos_tools.INTERNAL_SPACER, instance)
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
@@ -90,7 +91,7 @@ def _setup_existing_job(existing_job, complete_job_config, service_job_config, c
 
 
 def _setup_new_job(service_name, job_name, complete_job_config, service_job_config, client):
-    prefix = chronos_tools.get_job_id(service_name, job_name)
+    prefix = chronos_tools.compose_job_id(service_name, job_name)
 
     previous_jobs = chronos_tools.lookup_chronos_jobs(
         r'^%s' % re.escape(prefix),
