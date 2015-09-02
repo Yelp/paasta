@@ -275,7 +275,7 @@ def get_smartstack_replication_for_attribute(attribute, namespaces):
               (the dictionary will contain keys for unique all attribute values)
     """
     replication_info = {}
-    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute)
+    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute, constraints=[])
 
     for value, hosts in unique_values.iteritems():
         # arbitrarily choose the first host with a given attribute to query for replication stats

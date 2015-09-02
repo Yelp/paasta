@@ -522,7 +522,7 @@ def test_get_smartstack_replication_for_attribute():
             'fake_attribute', fake_namespaces)
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
-        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with('fake_attribute')
+        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with('fake_attribute', constraints=[])
         mock_get_replication_for_services.assert_any_call(
             synapse_host='fake_host_1',
             synapse_port=DEFAULT_SYNAPSE_PORT,
