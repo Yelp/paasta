@@ -3,7 +3,7 @@
 Usage: ./setup_chronos_job.py <service_name.instance_name> [options]
 
 Deploy a service instance to Chronos from a configuration file.
-Rears from the soa_dir /nail/etc/services by default.
+Reads from the soa_dir /nail/etc/services by default.
 
 This script will attempt to load a service's configuration
 from the soa_dir and generate a chronos job configuration for it,

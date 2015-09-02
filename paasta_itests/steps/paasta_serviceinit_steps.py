@@ -7,6 +7,7 @@ import mock
 sys.path.append('../')
 import paasta_tools
 from paasta_tools import marathon_serviceinit
+from paasta_tools.utils import _run
 
 
 @when(u'we run the marathon job test-service.main')
@@ -43,7 +44,7 @@ def status_marathon_job_returns_healthy(context):
 
 
 @then(u'marathon_serviceinit restart should get new task_ids')
-def restart_gets_new_task_ids(context):
+def marathon_restart_gets_new_task_ids(context):
     normal_instance_count = 1
     cluster = context.system_paasta_config['cluster']
     app_id = 'test-service.main'
@@ -65,5 +66,18 @@ def restart_gets_new_task_ids(context):
     print "Tasks before the restart: %s" % old_tasks
     print "Tasks after  the restart: %s" % new_tasks
     assert old_tasks != new_tasks
+
+
+@then(u"paasta_serviceinit status exits with return code 0 and the correct output")
+def chronos_status_returns_healthy(context):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job status' % context.soa_dir
+    print 'Running cmd %s' % cmd
+    (exit_code, output) = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == 0
+    assert "Disabled" in output
+    assert "New" in output
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

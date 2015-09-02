@@ -14,41 +14,6 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 
 
-def test_validate_service_instance_valid():
-    mock_services = [('service1', 'main'), ('service2', 'main')]
-    my_service = 'service1'
-    my_instance = 'main'
-    fake_cluster = 'fake_cluster'
-    with contextlib.nested(
-        mock.patch('paasta_tools.marathon_serviceinit.get_services_for_cluster',
-                   autospec=True,
-                   return_value=mock_services),
-    ) as (
-        get_services_for_cluster_patch,
-    ):
-        assert marathon_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
-        get_services_for_cluster_patch.assert_called_once_with(cluster=fake_cluster, instance_type='marathon')
-
-
-def test_validate_service_instance_invalid():
-    mock_services = [('service1', 'main'), ('service2', 'main')]
-    my_service = 'bad_service'
-    my_instance = 'main'
-    fake_cluster = 'fake_cluster'
-    with contextlib.nested(
-        mock.patch('paasta_tools.marathon_serviceinit.get_services_for_cluster',
-                   autospec=True,
-                   return_value=mock_services),
-        mock.patch('sys.exit'),
-    ) as (
-        get_services_for_cluster_patch,
-        sys_exit_patch,
-    ):
-        assert marathon_serviceinit.validate_service_instance(my_service, my_instance, fake_cluster) is True
-        sys_exit_patch.assert_called_once_with(3)
-        get_services_for_cluster_patch.assert_called_once_with(cluster=fake_cluster, instance_type='marathon')
-
-
 def test_start_marathon_job():
     client = mock.create_autospec(marathon.MarathonClient)
     cluster = 'my_cluster'
@@ -814,12 +779,10 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
     soa_dir = 'fake_soa_dir'
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_config', autospec=True),
-        mock.patch('paasta_tools.marathon_serviceinit.validate_service_instance', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_service_config', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_app_id', autospec=True),
     ) as (
         mock_load_marathon_config,
-        mock_validate_service_instance,
         mock_load_marathon_service_config,
         mock_get_app_id,
     ):

@@ -10,9 +10,12 @@ import sys
 
 import service_configuration_lib
 
-from paasta_tools import marathon_tools
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools import paasta_chronos_serviceinit
 from paasta_tools import marathon_serviceinit
+from paasta_tools import marathon_tools
+from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import load_system_paasta_config
+
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -34,6 +37,21 @@ def parse_args():
     return args
 
 
+def validate_service_instance(service, instance, cluster, soa_dir):
+    log.info("Operating on cluster: %s" % cluster)
+    marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon', soa_dir=soa_dir)
+    chronos_services = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
+    if (service, instance) in marathon_services:
+        return 'marathon'
+    elif (service, instance) in chronos_services:
+        return 'chronos'
+    else:
+        print "Error: %s.%s doesn't look like it has been deployed to this cluster! (%s)" % (service, instance, cluster)
+        log.debug("Discovered marathon services %s" % marathon_services)
+        log.debug("Discovered chronos services %s" % marathon_services)
+        sys.exit(3)
+
+
 def main():
     args = parse_args()
     if args.debug:
@@ -47,16 +65,33 @@ def main():
     instance = service_instance.split(marathon_tools.ID_SPACER)[1]
 
     cluster = load_system_paasta_config().get_cluster()
-    marathon_serviceinit.validate_service_instance(service, instance, cluster)
-    return_code = marathon_serviceinit.perform_command(
-        command=command,
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        verbose=args.verbose,
-        soa_dir=args.soa_dir)
-    sys.exit(return_code)
-
+    instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
+    if instance_type == 'marathon':
+        return_code = marathon_serviceinit.perform_command(
+            command=command,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            verbose=args.verbose,
+            soa_dir=args.soa_dir,
+        )
+        sys.exit(return_code)
+    elif instance_type == 'chronos':
+        return_code = paasta_chronos_serviceinit.perform_command(
+            command=command,
+            service=service,
+            instance=instance,
+        )
+        sys.exit(return_code)
+    else:
+        log.error(
+            "I calculated an instance_type of %s for %s%s%s which I don't know how to handle. Exiting." %
+            instance_type,
+            service,
+            marathon_tools.ID_SPACER,
+            instance,
+        )
+        sys.exit(1)
 
 if __name__ == "__main__":
     main()

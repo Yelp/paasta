@@ -1,4 +1,5 @@
 import os
+import shutil
 import time
 
 from itest_utils import wait_for_marathon
@@ -59,7 +60,16 @@ def _clean_up_mesos_cli_config(context):
         del context.mesos_cli_config_filename
 
 
+def _clean_up_soa_dir(context):
+    """If a yelpsoa-configs directory was written, clean it up."""
+    if hasattr(context, 'soa_dir'):
+        print 'Cleaning up %s' % context.soa_dir
+        shutil.rmtree(context.soa_dir)
+        del context.soa_dir
+
+
 def after_scenario(context, scenario):
     _clean_up_marathon_apps(context)
     _clean_up_chronos_jobs(context)
     _clean_up_mesos_cli_config(context)
+    _clean_up_soa_dir(context)

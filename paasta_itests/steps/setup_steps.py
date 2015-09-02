@@ -1,5 +1,7 @@
 import os
 from tempfile import NamedTemporaryFile
+from tempfile import mkdtemp
+import yaml
 
 from behave import given
 import chronos
@@ -84,12 +86,6 @@ def write_etc_paasta(config, filename):
         f.write(json.dumps(config))
 
 
-def write_soa_dir():
-    soa_dir = '/nail/etc/services'
-    if not os.path.exists(soa_dir):
-        os.makedirs(soa_dir)
-
-
 @given('a working paasta cluster')
 def working_paasta_cluster(context):
     """Adds a working marathon client and chronos client for the purposes of
@@ -114,3 +110,17 @@ def working_paasta_cluster(context):
         "zookeeper": "zk://fake",
         "docker_registry": "fake.com"
     }, 'cluster.json')
+
+
+@given('I have yelpsoa-configs for the service "{service_name}" with chronos instance "{instance_name}"')
+def write_soa_dir_chronos_instance(context, service_name, instance_name):
+    soa_dir = mkdtemp()
+    if not os.path.exists(os.path.join(soa_dir, service_name)):
+        os.makedirs(os.path.join(soa_dir, service_name))
+    with open(os.path.join(soa_dir, service_name, 'chronos-testcluster.yaml'), 'w+') as f:
+        f.write(yaml.dump({
+            "%s" % instance_name: {
+                "command": "echo foo",
+            }
+        }))
+    context.soa_dir = soa_dir
