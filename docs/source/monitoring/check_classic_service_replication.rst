@@ -76,12 +76,12 @@ A well formed monitoring.yaml::
     
     service_type: 'classic'
     replication:
-        key: 'habitat'
+        key: 'region'
         default: 0
         map:
             region1: 2
             region2: 3
-            sfo1: 2
+            region3: 1
 
 This config would lead to pages if the federator has less than 2 instances in region1, 3 in region2, or 1 in region3. The default of 0 says that we should not page on under-replication in other environments (such as stage or dev). If you reload your service then you may want to consider a default of 1 because reloads should never kill your last instance in the load balancer.
 
