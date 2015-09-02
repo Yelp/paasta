@@ -221,7 +221,7 @@ class MarathonServiceConfig(InstanceConfig):
             return self.config_dict.get('constraints')
         else:
             discover_level = service_namespace_config.get_discover()
-            locations = get_mesos_slaves_grouped_by_attribute(discover_level)
+            locations = get_mesos_slaves_grouped_by_attribute(discover_level, constraints=[])
             return [[discover_level, "GROUP_BY", str(len(locations))]]
 
     def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):

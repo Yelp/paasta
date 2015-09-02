@@ -187,6 +187,9 @@ def slave_passes_constraints(slave, constraints):
 def slave_passes_constraint(slave, constraint):
     """Tests a single constraint, and returns a bool if the input slave
     passes the constraint
+    Assumes the input constraint conforms to the marathon/chronos constraint
+    language defined here:
+    https://github.com/mesosphere/marathon/blob/master/docs/docs/constraints.md
 
     :param slave: A single slave with attributes
     :param constraint: A single mesos constraint
@@ -194,28 +197,30 @@ def slave_passes_constraint(slave, constraint):
     """
     attributes = slave['attributes']
     if constraint == [] or constraint is None:
+        # An empty constraint or None constraint is True for this function
+        # Because is applies to every slave.
         return True
     elif constraint[1] == "LIKE":
         test_attribute = constraint[0]
         test_regex = constraint[2]
         if test_attribute not in attributes:
             return False
-        else:
-            test_attribute_value = attributes[test_attribute]
+        test_attribute_value = attributes[test_attribute]
         return bool(re.search(test_regex, test_attribute_value))
     elif constraint[1] == "UNLIKE":
         test_attribute = constraint[0]
         test_regex = constraint[2]
         if test_attribute not in attributes:
             return True
-        else:
-            test_attribute_value = attributes[test_attribute]
+        test_attribute_value = attributes[test_attribute]
         return not bool(re.search(test_regex, test_attribute_value))
     else:
+        # All other constraints (GROUP_BY, CLUSTER, etc) still apply to every
+        # slave, so this filter function returns true for them.
         return True
 
 
-def get_mesos_slaves_grouped_by_attribute(attribute, constraints=[]):
+def get_mesos_slaves_grouped_by_attribute(attribute, constraints):
     """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
 
     :param attribute: an attribute to filter

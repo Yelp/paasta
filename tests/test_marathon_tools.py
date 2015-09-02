@@ -945,7 +945,7 @@ class TestMarathonTools:
         with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}, 'fake_other_region': {}}
             assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY", "2"]]
-            get_slaves_patch.assert_called_once_with('habitat')
+            get_slaves_patch.assert_called_once_with('habitat', constraints=[])
 
     def test_instance_config_getters_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'monitoring': 'test'}, {})

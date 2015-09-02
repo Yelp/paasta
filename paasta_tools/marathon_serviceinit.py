@@ -235,7 +235,7 @@ def status_smartstack_backends(service, instance, cluster, tasks, expected_count
 
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
-    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type)
+    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type, constraints=[])
     if len(unique_attributes) == 0:
         output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance)
     else:

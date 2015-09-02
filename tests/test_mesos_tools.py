@@ -130,7 +130,7 @@ def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
         'fake_value_2': ['fake_host_2'],
         'fake_other_value': ['fake_host_4'],
     }
-    actual = mesos_tools.get_mesos_slaves_grouped_by_attribute(fake_attribute)
+    actual = mesos_tools.get_mesos_slaves_grouped_by_attribute(fake_attribute, constraints=[])
     assert actual == expected
 
 
@@ -194,7 +194,7 @@ def test_get_mesos_slaves_grouped_by_attribute_bombs_out_with_no_slaves(mock_fet
         'slaves': []
     }
     with raises(mesos_tools.NoSlavesAvailable):
-        mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute')
+        mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute', constraints=[])
 
 
 @mock.patch('paasta_tools.mesos_tools.slave_passes_constraints', autospec=True)
