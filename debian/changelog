@@ -1,5 +1,13 @@
 paasta-tools (0.12.62-yelp1) lucid; urgency=low
 
+  * 0.12.62 tagged with 'make release'
+    Commit: Merge branch troscoe_PAASTA-997_2
+    https://reviewboard.yelpcorp.com/r/113431/
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Tue, 01 Sep 2015 21:54:28 -0700
+
+paasta-tools (0.12.62-yelp1) lucid; urgency=low
+
   * Pass the extra_healthcheck_headers config through from smartstack.yaml
 
  -- Tomas Doran <tdoran@yelp.com>  Mon, 31 Aug 2015 13:07:56 -0700
