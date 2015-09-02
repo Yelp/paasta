@@ -6,6 +6,7 @@ from mock import patch
 from pytest import raises
 
 import marathon_tools
+from utils import compose_job_id
 from utils import DeploymentsJson
 from utils import SystemPaastaConfig
 
@@ -710,7 +711,7 @@ class TestMarathonTools:
             mock.patch(
                 'marathon_tools._namespaced_get_classic_service_information_for_nerve',
                 autospec=True,
-                side_effect=lambda x, y, _: ('%s.%s' % (x, y), {})
+                side_effect=lambda x, y, _: (compose_job_id(x, y), {})
             ),
         ):
             assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
@@ -740,7 +741,7 @@ class TestMarathonTools:
             classic_patch.assert_called_once_with(soa_dir)
 
     def test_format_marathon_app_dict(self):
-        fake_id = marathon_tools.compose_job_id('can_you_dig_it', 'yes_i_can')
+        fake_id = marathon_tools.format_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
             {
@@ -1549,14 +1550,14 @@ def test_create_complete_config_no_smartstack():
     with contextlib.nested(
         mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
-        mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
+        mock.patch('marathon_tools.format_job_id', return_value=fake_job_id),
         mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
         mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}})
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
-        mock_compose_job_id,
+        mock_format_job_id,
         mock_system_paasta_config,
         _,
     ):
@@ -1612,14 +1613,14 @@ def test_create_complete_config_with_smartstack():
     with contextlib.nested(
         mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
         mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
-        mock.patch('marathon_tools.compose_job_id', return_value=fake_job_id),
+        mock.patch('marathon_tools.format_job_id', return_value=fake_job_id),
         mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
         mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}})
     ) as (
         mock_load_marathon_service_config,
         mock_load_service_namespace_config,
-        mock_compose_job_id,
+        mock_format_job_id,
         mock_system_paasta_config,
         _,
     ):

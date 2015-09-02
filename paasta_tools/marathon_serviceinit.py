@@ -18,8 +18,10 @@ from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import _log
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import remove_ansi_escape_sequences
+from paasta_tools.utils import SPACER
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
@@ -31,7 +33,7 @@ NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'
 
 
 def start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
-    name = PaastaColors.cyan("%s.%s" % (service, instance))
+    name = PaastaColors.cyan(compose_job_id(service, instance))
     _log(
         service_name=service,
         line="EmergencyStart: scaling %s up to %d instances" % (name, normal_instance_count),
@@ -44,7 +46,7 @@ def start_marathon_job(service, instance, app_id, normal_instance_count, client,
 
 
 def stop_marathon_job(service, instance, app_id, client, cluster):
-    name = PaastaColors.cyan("%s.%s" % (service, instance))
+    name = PaastaColors.cyan(compose_job_id(service, instance))
     _log(
         service_name=service,
         line="EmergencyStop: Scaling %s down to 0 instances" % (name),
@@ -92,7 +94,7 @@ def status_desired_state(service, instance, client, complete_job_config):
 
 
 def status_marathon_job(service, instance, app_id, normal_instance_count, client):
-    name = PaastaColors.cyan("%s.%s" % (service, instance))
+    name = PaastaColors.cyan(compose_job_id(service, instance))
     if marathon_tools.is_app_id_running(app_id, client):
         app = client.get_app(app_id)
         running_instances = app.tasks_running
@@ -161,8 +163,8 @@ def status_marathon_job_verbose(service, instance, client):
 
 
 def haproxy_backend_report(normal_instance_count, up_backends):
-    """ Given that a service is in smartstack, this returns a human readable
-    report of the up backends """
+    """Given that a service is in smartstack, this returns a human readable
+    report of the up backends"""
     if up_backends >= normal_instance_count:
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
@@ -213,7 +215,7 @@ def status_smartstack_backends(service, instance, cluster, tasks, expected_count
     service and instance"""
     output = []
     nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
-    service_instance = "%s.%s" % (service, nerve_ns)
+    service_instance = compose_job_id(service, nerve_ns)
 
     if instance != nerve_ns:
         ns_string = PaastaColors.bold(nerve_ns)
@@ -327,7 +329,7 @@ def get_mem_usage(task):
 
 def get_task_uuid(taskid):
     """Return just the UUID part of a mesos task id"""
-    return taskid.split(".")[-1]
+    return taskid.split(SPACER)[-1]
 
 
 def get_short_hostname_from_task(task):
@@ -375,7 +377,7 @@ def pretty_format_non_running_mesos_task(task):
 
 
 def get_tasks_from_active_frameworks(service, instance):
-    job_id = marathon_tools.compose_job_id(service, instance)
+    job_id = marathon_tools.format_job_id(service, instance)
     return get_current_tasks(job_id)
 
 
@@ -447,7 +449,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     try:
         app_id = marathon_tools.get_app_id(service, instance, marathon_config)
     except NoDockerImageError:
-        print "Docker image for %s.%s not in deployments.json. Exiting. Has Jenkins deployed it?" % (service, instance)
+        job_name = compose_job_id(service, instance)
+        print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_name
         return 1
 
     normal_instance_count = complete_job_config.get_instances()

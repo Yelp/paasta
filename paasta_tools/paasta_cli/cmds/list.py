@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 """Contains methods used by the paasta client to list Yelp services"""
+from paasta_tools.utils import SPACER
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.paasta_cli.utils import list_paasta_services
 from paasta_tools.paasta_cli.utils import list_service_instances
@@ -17,7 +18,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-i', '--print-instances',
         action='store_true',
-        help='Display all service.instance values, which only PaaSTA services have.')
+        help='Display all service%sinstance values, which only PaaSTA services have.' % SPACER)
     list_parser.set_defaults(command=paasta_list)
 
 

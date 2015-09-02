@@ -106,8 +106,8 @@ def test_marathon_log_line_passes_filter_true_when_service_name_in_string():
         'marathon',
         'fake message with service name %s' % service,
     )
-    with mock.patch('paasta_tools.paasta_cli.cmds.logs.compose_job_id', autospec=True) as compose_job_id_patch:
-        compose_job_id_patch.return_value = service
+    with mock.patch('paasta_tools.paasta_cli.cmds.logs.format_job_id', autospec=True) as format_job_id_patch:
+        format_job_id_patch.return_value = service
         assert logs.marathon_log_line_passes_filter(line, levels, service, components, clusters)
 
 
@@ -124,8 +124,8 @@ def test_marathon_log_line_passes_filter_false_when_service_name_missing():
         'fake message without service name',
     )
 
-    with mock.patch('paasta_tools.paasta_cli.cmds.logs.compose_job_id', autospec=True) as compose_job_id_patch:
-        compose_job_id_patch.return_value = service
+    with mock.patch('paasta_tools.paasta_cli.cmds.logs.format_job_id', autospec=True) as format_job_id_patch:
+        format_job_id_patch.return_value = service
         assert not logs.marathon_log_line_passes_filter(line, levels, service, components, clusters)
 
 
@@ -141,8 +141,8 @@ def test_chronos_log_line_passes_filter_true_when_service_name_in_string():
         'chronos',
         'fake message with service name %s' % service,
     )
-    with mock.patch('paasta_tools.chronos_tools.get_job_id', autospec=True) as compose_job_id_patch:
-        compose_job_id_patch.return_value = service
+    with mock.patch('paasta_tools.chronos_tools.compose_job_id', autospec=True) as format_job_id_patch:
+        format_job_id_patch.return_value = service
         assert logs.chronos_log_line_passes_filter(line, levels, service, components, clusters)
 
 
@@ -159,8 +159,8 @@ def test_chronos_log_line_passes_filter_false_when_service_name_missing():
         'fake message without service name',
     )
 
-    with mock.patch('paasta_tools.chronos_tools.get_job_id', autospec=True) as compose_job_id_patch:
-        compose_job_id_patch.return_value = service
+    with mock.patch('paasta_tools.chronos_tools.compose_job_id', autospec=True) as format_job_id_patch:
+        format_job_id_patch.return_value = service
         assert not logs.chronos_log_line_passes_filter(line, levels, service, components, clusters)
 
 

@@ -9,8 +9,11 @@ from pysensu_yelp import Status
 from pytest import raises
 from paasta_tools import marathon_tools, bounce_lib
 from paasta_tools.bounce_lib import list_bounce_methods
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import remove_tag_from_job_id
 import setup_marathon_job
 
 
@@ -97,14 +100,14 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_password(),
             )
             read_service_conf_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir,
             )
             setup_service_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config,
@@ -161,13 +164,13 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_username(),
                 self.fake_marathon_config.get_password())
             read_service_conf_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config)
@@ -222,15 +225,15 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_username(),
                 self.fake_marathon_config.get_password())
             read_service_conf_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
             expected_string = 'No deployments found for %s in cluster %s' % (
                 self.fake_args.service_instance, self.fake_cluster)
             sensu_patch.assert_called_once_with(
-                self.fake_args.service_instance.split('.')[0],
-                self.fake_args.service_instance.split('.')[1],
+                decompose_job_id(self.fake_args.service_instance)[0],
+                decompose_job_id(self.fake_args.service_instance)[1],
                 self.fake_args.soa_dir,
                 Status.CRITICAL,
                 expected_string
@@ -243,8 +246,7 @@ class TestSetupMarathonJob:
         fake_status = '42'
         fake_output = 'The http port is not open'
         fake_soa_dir = ''
-        expected_check_name = 'setup_marathon_job.%s%s%s' % (
-            fake_service_name, marathon_tools.ID_SPACER, fake_instance_name)
+        expected_check_name = 'setup_marathon_job.%s' % compose_job_id(fake_service_name, fake_instance_name)
         with contextlib.nested(
             mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
             mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),
@@ -576,7 +578,7 @@ class TestSetupMarathonJob:
         fake_name = 'if_trees_could_talk'
         fake_instance = 'would_they_scream'
         fake_client = mock.MagicMock(get_app=mock.Mock(return_value=True))
-        full_id = marathon_tools.compose_job_id(fake_name, fake_instance)
+        full_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_complete = {
             'seven': 'full',
             'eight': 'frightened',
@@ -624,7 +626,7 @@ class TestSetupMarathonJob:
             json=mock.Mock(return_value={'message': 'test'}))
         fake_client = mock.MagicMock(get_app=mock.Mock(
             side_effect=marathon.exceptions.NotFoundError(fake_response)))
-        full_id = marathon_tools.compose_job_id(fake_name, fake_instance, 'oogabooga')
+        full_id = marathon_tools.format_job_id(fake_name, fake_instance, 'oogabooga')
         fake_complete = {
             'do': 'you', 'even': 'dota', 'id': full_id,
             'docker_image': 'fake_docker_registry/fake_docker_image',
@@ -734,7 +736,7 @@ class TestSetupMarathonJob:
         fake_drain_method = 'doesntexist'
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_apps))
@@ -772,7 +774,7 @@ class TestSetupMarathonJob:
         fake_drain_method = 'noop'
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_apps))
@@ -809,7 +811,7 @@ class TestSetupMarathonJob:
         fake_drain_method_name = 'noop'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance, tag='blah')
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance, tag='blah')
         fake_config = {'id': fake_id, 'instances': 2}
 
         old_app_id = ('%s2' % fake_id)
@@ -903,7 +905,7 @@ class TestSetupMarathonJob:
         fake_drain_method = 'noop'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance, tag='blah')
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance, tag='blah')
         fake_config = {'id': fake_id, 'instances': 2}
 
         old_app_id = ('%s2' % fake_id)
@@ -923,7 +925,7 @@ class TestSetupMarathonJob:
             }
         )
 
-        fake_short_id = marathon_tools.remove_tag_from_job_id(fake_id)
+        fake_short_id = remove_tag_from_job_id(fake_id)
 
         with contextlib.nested(
             mock.patch(
@@ -964,7 +966,7 @@ class TestSetupMarathonJob:
         fake_drain_method = 'noop'
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
         fake_apps = [mock.Mock(id=fake_id, tasks=[]), mock.Mock(id=('%s2' % fake_id), tasks=[])]
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=fake_apps))
@@ -1005,7 +1007,7 @@ class TestSetupMarathonJob:
     def test_get_old_live_draining_tasks_empty(self):
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
 
         fake_apps = [
             mock.Mock(id=fake_id, tasks=[]),
@@ -1031,7 +1033,7 @@ class TestSetupMarathonJob:
     def test_get_old_live_draining_tasks_not_empty(self):
         fake_name = 'whoa'
         fake_instance = 'the_earth_is_tiny'
-        fake_id = marathon_tools.compose_job_id(fake_name, fake_instance)
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance)
 
         def fake_task(state):
             return mock.Mock(_drain_state=state)
