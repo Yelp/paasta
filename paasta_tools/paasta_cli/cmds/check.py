@@ -16,6 +16,7 @@ from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.paasta_cli.utils import x_mark
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import get_git_url
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import _run
@@ -165,12 +166,13 @@ def makefile_check():
 
 
 def git_repo_check(service_name):
-    cmd = 'git ls-remote git@git.yelpcorp.com:services/%s' % service_name
+    git_url = get_git_url(service_name)
+    cmd = 'git ls-remote %s' % git_url
     returncode, _ = _run(cmd, timeout=5)
     if returncode == 0:
         print PaastaCheckMessages.GIT_REPO_FOUND
     else:
-        print PaastaCheckMessages.git_repo_missing(service_name)
+        print PaastaCheckMessages.git_repo_missing(git_url)
 
 
 def marathon_check(service_path):

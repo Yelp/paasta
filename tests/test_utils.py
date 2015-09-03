@@ -11,10 +11,26 @@ import utils
 from pytest import raises
 
 
-def test_get_git_url():
+def test_get_git_url_provided_by_serviceyaml():
+    service = 'giiiiiiiiiiit'
+    expected = 'git@some_random_host:foobar'
+    with (
+        mock.patch('service_configuration_lib.read_service_configuration', autospec=True)
+    ) as mock_read_service_configuration:
+        mock_read_service_configuration.return_value = {'git_url': expected}
+        assert utils.get_git_url(service) == expected
+        mock_read_service_configuration.assert_called_once_with(service, soa_dir=utils.DEFAULT_SOA_DIR)
+
+
+def test_get_git_url_default():
     service = 'giiiiiiiiiiit'
     expected = 'git@git.yelpcorp.com:services/%s.git' % service
-    assert utils.get_git_url(service) == expected
+    with (
+        mock.patch('service_configuration_lib.read_service_configuration', autospec=True)
+    ) as mock_read_service_configuration:
+        mock_read_service_configuration.return_value = {}
+        assert utils.get_git_url(service) == expected
+        mock_read_service_configuration.assert_called_once_with(service, soa_dir=utils.DEFAULT_SOA_DIR)
 
 
 def test_format_log_line():

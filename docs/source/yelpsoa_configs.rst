@@ -147,6 +147,16 @@ Here is a list of options that PaaSTA will pass through:
 
  * ``project``: String naming the project where JIRA tickets will be created. Overrides the global default for the team.
 
+service.yaml
+------------
+
+Various PaaSTA utilities look at the following keys from service.yaml
+
+ * ``git_url``
+ * ``description``
+ * ``external_link``
+
+For the canonical description of these values, see the `official documentation <http://y/cep319>`_.
 
 Where does paasta_tools look for yelpsoa-configs?
 -------------------------------------------------------------

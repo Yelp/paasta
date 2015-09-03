@@ -199,9 +199,8 @@ class PaastaCheckMessages:
         "More info:", "http://y/smartstack-cep323")
 
     @staticmethod
-    def git_repo_missing(service_name):
-        git_url = PaastaColors.cyan(
-            "git@git.yelpcorp.com:services/%s" % service_name)
+    def git_repo_missing(git_url):
+        git_url = PaastaColors.cyan(git_url)
         return failure(
             "Could not find Git repo %s. "
             "Your service must be there.\n"
