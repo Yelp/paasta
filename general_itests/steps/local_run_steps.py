@@ -19,12 +19,17 @@ def non_interactive_local_run(context):
                         "--yelpsoa-root ../fake_soa_configs_local_run/ "
                         "-s fake_simple_service "
                         "--cluster test-cluster "
-                        "--cmd '/bin/sh -c \"exit 42\"'")
+                        "--cmd '/bin/sh -c \"echo \"FOO=$FOO\" && exit 42\"'")
         context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=30)
 
 
 @then(u'we should see the expected return code')
 def see_expected_return_code(context):
-    print context.local_run_output
+    print context.local_run.output
     print context.local_run_return_code
     assert context.local_run_return_code == 42
+
+
+@then(u'we should see the correct output')
+def env_var_in_output(context):
+    assert "FOO=BAR" in context.local_run_output

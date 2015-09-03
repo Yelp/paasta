@@ -3,3 +3,5 @@ main:
     cpus: .1
     mem: 100
     instances: 1
+    env:
+      FOO: BAR
