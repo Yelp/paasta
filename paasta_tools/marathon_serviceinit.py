@@ -478,9 +478,15 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         if verbose:
             print status_mesos_tasks_verbose(service, instance)
         if proxy_port is not None:
-            print status_smartstack_backends(service, instance, cluster, tasks, normal_smartstack_count,
-                                             soa_dir, verbose)
-
+            print status_smartstack_backends(
+                service,
+                instance,
+                cluster,
+                tasks,
+                normal_smartstack_count,
+                soa_dir,
+                verbose,
+            )
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

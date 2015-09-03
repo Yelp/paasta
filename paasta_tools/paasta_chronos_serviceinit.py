@@ -79,7 +79,7 @@ def perform_command(command, service, instance):
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
-    sys.exit(0)
+    return 0
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
