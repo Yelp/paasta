@@ -48,23 +48,17 @@ def format_chronos_job_status(job):
     return "Status: %s Last: %s" % (status, last_result)
 
 
-def status_chronos_job(job_id, all_jobs):
+def status_chronos_job(job_id, jobs):
     """Returns a formatted string of the status of a chronos job
 
     :param job_id: the idenfier of the job (beginning of its name) in the
     chronos api
     :param all_jobs: list of all the jobs from chronos
     """
-    # The actual job name will contain a git<hash> and config<hash>, so we'll
-    # look for things that start with our job_id. We add SPACER to the end as
-    # an anchor to prevent catching "my_service my_job_extra" when looking for
-    # "my_service my_job".
-    job_id_pattern = "%s%s" % (job_id, chronos_tools.SPACER)
-    our_jobs = [job for job in all_jobs if job["name"].startswith(job_id_pattern)]
-    if our_jobs == []:
+    if jobs == []:
         return "%s: %s is not setup yet" % (PaastaColors.yellow("Warning"), job_id)
     else:
-        output = [format_chronos_job_status(job) for job in our_jobs]
+        output = [format_chronos_job_status(job) for job in jobs]
         return "\n".join(output)
 
 
@@ -77,8 +71,11 @@ def perform_command(command, service, instance):
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
 
-        all_jobs = client.list()
-        print status_chronos_job(job_id, all_jobs)
+        # We add SPACER to the end as an anchor to prevent catching
+        # "my_service my_job_extra" when looking for "my_service my_job".
+        job_pattern = "%s%s" % (job_id, chronos_tools.SPACER)
+        jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
+        print status_chronos_job(job_id, jobs)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
