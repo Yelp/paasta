@@ -52,7 +52,7 @@ def validate_service_instance(service, instance, cluster, soa_dir):
         print ("Error: %s doesn't look like it has been deployed to this cluster! (%s)"
                % (compose_job_id(service, instance), cluster))
         log.debug("Discovered marathon services %s" % marathon_services)
-        log.debug("Discovered chronos services %s" % marathon_services)
+        log.debug("Discovered chronos services %s" % chronos_services)
         sys.exit(3)
 
 
