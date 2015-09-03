@@ -210,9 +210,12 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
         return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
 
 
-def status_smartstack_backends(service, instance, cluster, tasks, expected_count, soa_dir, verbose):
-    """Returns detailed information about smartstack backends for a
-    service and instance"""
+def status_smartstack_backends(service, instance, cluster, tasks, expected_count, soa_dir, verbose, constraints):
+    """Returns detailed information about smartstack backends for a service
+    and instance.
+    param constraints: A list of Marathon constraints to restrict which synapse servers to query
+    return: A newline separated string of the smarststack backend status
+    """
     output = []
     nerve_ns = marathon_tools.read_namespace_for_service_instance(service, instance, cluster)
     service_instance = compose_job_id(service, nerve_ns)
@@ -226,7 +229,7 @@ def status_smartstack_backends(service, instance, cluster, tasks, expected_count
 
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
-    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type, constraints=[])
+    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type, constraints=constraints)
     if len(unique_attributes) == 0:
         output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance)
     else:
@@ -478,8 +481,15 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         if verbose:
             print status_mesos_tasks_verbose(service, instance)
         if proxy_port is not None:
-            print status_smartstack_backends(service, instance, cluster, tasks, normal_smartstack_count,
-                                             soa_dir, verbose)
+            print status_smartstack_backends(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                tasks=tasks,
+                expected_count=normal_smartstack_count,
+                soa_dir=soa_dir,
+                verbose=verbose,
+                constraints=complete_job_config.get_constraints())
 
     else:
         # The command parser shouldn't have let us get this far...
