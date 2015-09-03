@@ -208,6 +208,7 @@ class ChronosJobConfig(InstanceConfig):
 
             # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
             if start_time == '':
+                # TODO this shouldn't blow things up vs https://reviewboard.yelpcorp.com/r/109507/#comment687412
                 msgs.append('The specified schedule "%s" does not contain a start time' % schedule)
             else:
                 # Check if start time contains time zone information
@@ -315,6 +316,7 @@ class ChronosJobConfig(InstanceConfig):
         return len(error_msgs) == 0, error_msgs
 
 
+# TODO just use utils.get_service_instance_list(cluster, instance_type='chronos', soa_dir)
 def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the Chronos jobs defined for a service as a list of tuples.
 
@@ -334,6 +336,7 @@ def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     return job_list
 
 
+# TODO just use utils.get_services_for_cluster(cluster, instance_type='chronos', soa_dir)
 def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Retrieve all Chronos jobs defined to run on a cluster.
 
@@ -373,6 +376,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     desired_state = chronos_job_config.get_desired_state()
 
     # If the job was previously stopped, we should stop the new job as well
+    # FIXME this clobbers the 'disabled' param specified in the config file!
     if desired_state == 'start':
         complete_config['disabled'] = False
     elif desired_state == 'stop':
@@ -381,13 +385,19 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     return complete_config
 
 
+def get_job_id(service, job_name, soa_dir=DEFAULT_SOA_DIR):
+    """Returns the canonical job ID as it would be provided to Chronos"""
+    return create_complete_config(service, job_name, soa_dir)['name']
+
+
 def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=False):
     """Retrieves Chronos jobs with names that match a specified pattern.
 
     :param pattern: a Python style regular expression that the job name will be matched against
                     (after being passed to re.compile)
     :param client: Chronos client object
-    :param max_expected: maximum number of results that is expected. If exceeded, raises a ValueError
+    :param max_expected: maximum number of results that is expected. If exceeded, raises a ValueError.
+                         If unspecified, defaults to no limit.
     :param include_disabled: boolean indicating if disabled jobs should be included in matches
     """
     try:
@@ -413,12 +423,10 @@ def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=Fal
 
 @timeout()
 def wait_for_job(client, job_name):
-    """Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
-    and retry.
+    """Wait for a job to launch.
 
-    :param client: The marathon client
-    :param app_id: The app id to which the tasks belong
-    :param num_tasks: The number of tasks to wait for
+    :param client: The Chronos client
+    :param job_name: The name of the job to wait for
     """
     found = False
     while not found:

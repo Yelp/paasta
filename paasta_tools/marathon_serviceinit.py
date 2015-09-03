@@ -55,7 +55,7 @@ def stop_marathon_job(service, instance, app_id, client, cluster):
         cluster=cluster,
         instance=instance
     )
-    client.scale_app(app_id, instances=0, force=True)
+    client.scale_app(app_id, instances=0, force=True)  # TODO do we want to capture the return val of any client calls?
 
 
 def restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):

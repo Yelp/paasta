@@ -1,16 +1,65 @@
 #!/usr/bin/env python
 import logging
 import sys
+from datetime import datetime
 
 import isodate
 import requests_cache
 
 import chronos_tools
+from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 
 
 log = logging.getLogger("__main__")
 log.addHandler(logging.StreamHandler(sys.stdout))
+
+
+# 'start' is a misnomer since this really just sends the latest version to Chronos immediately
+# though if 'immediate_start' is set to True, it will 'start' by enabling the job and setting
+# its start time to now
+def start_chronos_job(service, instance, job_id, client, cluster, job_config, immediate_start=False):
+    if immediate_start:
+        # FIXME if we want this to work, we should allow specifying an empty start time for 'now'
+        # this is an ugly workaround in the meantime...
+        iso_utc_now = isodate.datetime_isoformat(datetime.utcnow())
+        repeat, _, interval = str.split(job_config['schedule'], '/')
+        new_schedule = '%s/%s/%s' % (repeat, iso_utc_now, interval)
+        job_config['schedule'] = new_schedule
+        job_config['disabled'] = False
+    # TODO do we want to enable the job if we emergency start it?
+    # no, don't override 'disabled' value by default since this will be used for brutal bounce
+    name = PaastaColors.cyan(job_id)
+    _log(
+        service_name=service,
+        line="EmergencyStart: sending job %s to Chronos" % name,
+        component='deploy',
+        level='event',
+        cluster=cluster,
+        instance=instance
+    )
+    client.update(job_config)
+
+
+def stop_chronos_job(service, instance, client, cluster, existing_jobs):
+    for job in existing_jobs:
+        name = PaastaColors.cyan(job['name'])
+        _log(
+            service_name=service,
+            line="EmergencyStop: killing all tasks for job %s" % name,
+            component='deploy',
+            level='event',
+            cluster=cluster,
+            instance=instance
+        )
+        job['disabled'] = True
+        client.update(job)
+        client.delete_tasks(job['name'])
+
+
+def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, immediate_start):
+    stop_chronos_job(service, instance, client, cluster, matching_jobs)
+    start_chronos_job(service, instance, job_id, client, cluster, job_config, immediate_start)
 
 
 def format_chronos_job_status(job):
@@ -61,12 +110,22 @@ def status_chronos_job(jobs):
         return "\n".join(output)
 
 
-def perform_command(command, service, instance):
-    job_id = chronos_tools.compose_job_id(service, instance)
-    config = chronos_tools.load_chronos_config()
-    client = chronos_tools.get_chronos_client(config)
+def perform_command(command, service, instance, cluster, verbose, soa_dir):
+    job_id = chronos_tools.get_job_id(service, instance, soa_dir)
+    job_prefix = chronos_tools.compose_job_id(service, instance)
+    job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
+    chronos_config = chronos_tools.load_chronos_config()
+    client = chronos_tools.get_chronos_client(chronos_config)
+    matching_jobs = chronos_tools.lookup_chronos_jobs(r'^%s$' % job_prefix, client)
+    immediate_start = False  # FIXME we need some way to provide get this flag from emergency start
 
-    if command == "status":
+    if command == "start":
+        start_chronos_job(service, instance, job_id, client, cluster, job_config, immediate_start)
+    elif command == "stop":
+        stop_chronos_job(service, instance, client, cluster, matching_jobs)
+    elif command == "restart":
+        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, immediate_start)
+    elif command == "status":
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
 

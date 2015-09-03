@@ -30,7 +30,7 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_emergency_stop)
 
 
-def paasta_emergency_stop(args):
+def paasta_emergency_stop(args):  # TODO update for Chronos too
     """Performs an emergency stop on a given service.instance on a given cluster"""
     service = figure_out_service_name(args)
     print "Performing an emergency stop on %s..." % compose_job_id(service, args.instance)

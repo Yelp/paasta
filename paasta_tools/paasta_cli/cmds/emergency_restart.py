@@ -30,7 +30,7 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_emergency_restart)
 
 
-def paasta_emergency_restart(args):
+def paasta_emergency_restart(args):  # TODO update for Chronos too
     """Performs an emergency restart on a given service<SPACER>instance on a given cluster"""
     service = figure_out_service_name(args)
     print "Performing an emergency restart on %s..." % compose_job_id(service, args.instance)
