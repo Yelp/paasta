@@ -61,7 +61,7 @@ def test_assert_memory_health():
     }
     ok_output, ok_health = paasta_metastatus.assert_memory_health(ok_metrics)
     assert ok_health
-    assert "memory: total: 1.00 GB used: 0.50 GB available: 0.50 GB" in ok_output
+    assert "memory: total: 1.00 GB used: 0.50 GB available: 0.50 GB percent_available: 50" in ok_output
 
 
 def test_failing_memory_health():
@@ -252,7 +252,7 @@ def test_get_mesos_status(
     mock_get_configured_quorum_size.return_value = 3
     expected_cpus_output = "cpus: total: 10 used: 8 available: 2 percent_available: 20"
     expected_mem_output = \
-        "memory: total: 10.00 GB used: 2.00 GB available: 8.00 GB"
+        "memory: total: 10.00 GB used: 2.00 GB available: 8.00 GB percent_available: 80"
     expected_tasks_output = \
         "tasks: running: 3 staging: 4 starting: 0"
     expected_duplicate_frameworks_output = \

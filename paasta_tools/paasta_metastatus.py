@@ -69,8 +69,8 @@ def assert_memory_health(metrics, threshold=10):
     perc_available = percent_available(total, available)
 
     if check_threshold(perc_available, threshold):
-        return ("memory: total: %0.2f GB used: %0.2f GB available: %0.2f GB"
-                % (total, used, available),
+        return ("memory: total: %0.2f GB used: %0.2f GB available: %0.2f GB percent_available: %d"
+                % (total, used, available, perc_available),
                 True)
     else:
         return (PaastaColors.red(
