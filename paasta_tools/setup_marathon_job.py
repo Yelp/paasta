@@ -206,7 +206,7 @@ def do_bounce(
             (
                 bounce_method,
                 serviceinstance,
-                decompose_job_id(marathon_jobid)[2]
+                marathon_jobid
             ),
             level='event',
         )
