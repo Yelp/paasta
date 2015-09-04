@@ -1215,8 +1215,9 @@ class TestMarathonTools:
             {},
             {},
         )
-        with raises(marathon_tools.NoHealthcheckCmdProvided):
+        with raises(marathon_tools.InvalidInstanceConfig) as exc:
             fake_conf.get_healthcheck_cmd()
+            assert 'requires healcheck_cmd' in exc.value
 
     def test_get_healthcheck_for_instance_http(self):
         fake_service = 'fake_service'

@@ -18,20 +18,21 @@ import service_configuration_lib
 
 from paasta_tools.mesos_tools import fetch_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.utils import load_deployments_json
-from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_code_sha_from_dockerurl
+from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_service_instance_list
-from paasta_tools.utils import SPACER
+from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import load_deployments_json
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+from paasta_tools.utils import SPACER
 from paasta_tools.utils import timeout
 
 CONTAINER_PORT = 8888
@@ -361,7 +362,7 @@ class MarathonServiceConfig(InstanceConfig):
     def get_healthcheck_cmd(self):
         cmd = self.config_dict.get('healthcheck_cmd', None)
         if cmd is None:
-            raise NoHealthcheckCmdProvided("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
+            raise InvalidInstanceConfig("healthcheck mode 'cmd' requires a healthcheck_cmd to run")
         else:
             return cmd
 
@@ -513,10 +514,6 @@ class InvalidSmartstackMode(Exception):
 
 
 class InvalidMarathonHealthcheckMode(Exception):
-    pass
-
-
-class NoHealthcheckCmdProvided(Exception):
     pass
 
 
