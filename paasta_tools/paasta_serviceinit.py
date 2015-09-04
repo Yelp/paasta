@@ -1,8 +1,8 @@
 #!/usr/bin/env python
 """Usage: ./paasta_servceinit.py [-v] <servicename> <stop|start|restart|status>
 
-Interacts with the framework APIs to start/stop/restart/status a on instance.
-Assumes that the credentials are available, so must run as root.
+Interacts with the framework APIs to start/stop/restart/get status for an
+instance. Assumes that the credentials are available, so must run as root.
 """
 import argparse
 import logging
@@ -23,7 +23,9 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='Runs start/stop/restart/status an existing Marathon service.')
+    parser = argparse.ArgumentParser(
+        description='Runs start/stop/restart/status on a PaaSTA service in a given cluster.',
+    )
     parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
                         help="Print out more output regarding the state of the service")
     parser.add_argument('-D', '--debug', action='store_true', dest="debug", default=False,
@@ -50,7 +52,7 @@ def validate_service_instance(service, instance, cluster, soa_dir):
         print ("Error: %s doesn't look like it has been deployed to this cluster! (%s)"
                % (compose_job_id(service, instance), cluster))
         log.debug("Discovered marathon services %s" % marathon_services)
-        log.debug("Discovered chronos services %s" % marathon_services)
+        log.debug("Discovered chronos services %s" % chronos_services)
         sys.exit(3)
 
 
@@ -86,8 +88,9 @@ def main():
         sys.exit(return_code)
     else:
         log.error("I calculated an instance_type of %s for %s which I don't know how to handle. Exiting."
-                  % instance_type, compose_job_id(service, instance))
+                  % (instance_type, compose_job_id(service, instance)))
         sys.exit(1)
+
 
 if __name__ == "__main__":
     main()
