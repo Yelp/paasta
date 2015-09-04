@@ -75,7 +75,7 @@ def perform_command(command, service, instance):
         job_pattern = "%s%s" % (job_id, chronos_tools.SPACER)
         jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
         print "Job Id: %s" % job_id
-        print status_chronos_job(job_id, jobs)
+        print status_chronos_job(jobs)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
