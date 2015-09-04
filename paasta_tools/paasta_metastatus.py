@@ -40,42 +40,45 @@ def quorum_ok(masters, quorum):
     return masters >= quorum
 
 
-def check_threshold(percent_available, threshold):
-    return percent_available > threshold
+def check_threshold(used, threshold):
+    return (100 - used) > threshold
 
 
 def percent_available(total, available):
     return round(available / float(total) * 100.0, 2)
 
 
+def percent_used(total, used):
+    return round(used / float(total) * 100.0, 2)
+
+
 def assert_cpu_health(metrics, threshold=10):
     total, used, available = get_mesos_cpu_status(metrics)
-    perc_available = percent_available(total, available)
-    if check_threshold(perc_available, threshold):
-        return ("cpus: total: %d used: %d available: %d percent_available: %d"
-                % (total, used, available, perc_available),
+    perc_used = percent_used(total, used)
+    if check_threshold(perc_used, threshold):
+        return ("CPUs: %d / %d in use (%s)"
+                % (used, total, PaastaColors.green("%d%%" % perc_used)),
                 True)
     else:
         return (PaastaColors.red(
-                "CRITICAL: Less than %d%% CPUs available. (Currently at %.2f%%)"
-                % (threshold, perc_available)),
+                "CPUs: CRITICAL: Less than %d%% CPUs available. (Currently at %.2f%%)"
+                % (threshold, perc_used)),
                 False)
 
 
 def assert_memory_health(metrics, threshold=10):
     total = metrics['master/mem_total'] / float(1024)
     used = metrics['master/mem_used'] / float(1024)
-    available = total - used
-    perc_available = percent_available(total, available)
+    perc_used = percent_used(total, used)
 
-    if check_threshold(perc_available, threshold):
-        return ("memory: total: %0.2f GB used: %0.2f GB available: %0.2f GB percent_available: %d"
-                % (total, used, available, perc_available),
+    if check_threshold(perc_used, threshold):
+        return ("Memory: %0.2f / %0.2fGB in use (%s)"
+                % (used, total, PaastaColors.green("%d%%" % perc_used)),
                 True)
     else:
         return (PaastaColors.red(
                 "CRITICAL: Less than %d%% memory available. (Currently at %.2f%%)"
-                % (threshold, perc_available)),
+                % (threshold, perc_used)),
                 False)
 
 
