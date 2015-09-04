@@ -88,7 +88,7 @@ def main():
         sys.exit(return_code)
     else:
         log.error("I calculated an instance_type of %s for %s which I don't know how to handle. Exiting."
-                  % instance_type, compose_job_id(service, instance))
+                  % (instance_type, compose_job_id(service, instance)))
         sys.exit(1)
 
 
