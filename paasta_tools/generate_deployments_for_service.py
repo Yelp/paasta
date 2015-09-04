@@ -122,7 +122,8 @@ def get_branch_mappings(soa_dir, service, old_mappings):
         log.info('Service %s has no valid branches. Skipping.', service)
         return {}
 
-    remote_refs = remote_git.list_remote_refs(get_git_url(service))
+    git_url = get_git_url(service, soa_dir=soa_dir)
+    remote_refs = remote_git.list_remote_refs(git_url)
 
     for branch in valid_branches:
         ref_name = 'refs/heads/%s' % branch
