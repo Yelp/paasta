@@ -18,14 +18,21 @@ def create_trivial_chronos_job(context):
     context.chronos_job_name = job_config['name']
 
 
-@when(u'the trivial chronos job appears in the job list')
+@when(u'we create a chronos job from the configs for instance "{instance_name}" of service "{service_name}"')
+def create_chronos_job_from_configs(context, instance_name, service_name):
+    chronos_job_config = chronos_tools.create_complete_config(service_name, instance_name, context.soa_dir)
+    context.chronos_client.add(chronos_job_config)
+    context.chronos_job_name = chronos_job_config['name']
+
+
+@when(u'the chronos job appears in the job list')
 def chronos_job_is_ready(context):
     """Wait for a job with a matching job id to be ready. """
     chronos_tools.wait_for_job(context.chronos_client, context.chronos_job_name)
 
 
 @then(u'we should be able to see it when we list jobs')
-def list_chronos_jobs_has_trivial_job(context):
+def list_chronos_jobs_has_job(context):
     jobs = context.chronos_client.list()
     job_names = [job['name'] for job in jobs]
     assert context.chronos_job_name in job_names

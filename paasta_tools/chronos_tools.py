@@ -299,7 +299,6 @@ class ChronosJobConfig(InstanceConfig):
             'scheduleTimeZone': self.get_schedule_time_zone(),
             'shell': self.get_shell(),
         }
-        log.info("Complete configuration for instance is: %s" % complete_config)
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -382,6 +381,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     elif desired_state == 'stop':
         complete_config['disabled'] = True
 
+    log.info("Complete configuration for instance is: %s" % complete_config)
     return complete_config
 
 

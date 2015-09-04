@@ -80,4 +80,17 @@ def chronos_status_returns_healthy(context):
     assert "Disabled" in output
     assert "New" in output
 
+
+@when(u"paasta_serviceinit (emergency) starts a chronos job")
+def chronos_emergency_start_job(context):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job start' % context.soa_dir
+    print 'Running cmd %s' % cmd
+    (exit_code, output) = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == 0
+    assert "Disabled" in output
+    assert "New" in output
+
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

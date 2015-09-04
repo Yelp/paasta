@@ -1,7 +1,8 @@
 import os
+import yaml
+from binascii import b2a_hex
 from tempfile import NamedTemporaryFile
 from tempfile import mkdtemp
-import yaml
 
 from behave import given
 import chronos
@@ -110,17 +111,68 @@ def working_paasta_cluster(context):
         "zookeeper": "zk://fake",
         "docker_registry": "fake.com"
     }, 'cluster.json')
+    write_etc_paasta({
+        'volumes': [
+            {'hostPath': u'/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
+        ]
+    }, 'volumes.json')
 
 
-@given('I have yelpsoa-configs for the service "{service_name}" with chronos instance "{instance_name}"')
+@given('I have yelpsoa-configs for the service "{service_name}" with disabled Chronos instance "{instance_name}"')
 def write_soa_dir_chronos_instance(context, service_name, instance_name):
     soa_dir = mkdtemp()
     if not os.path.exists(os.path.join(soa_dir, service_name)):
         os.makedirs(os.path.join(soa_dir, service_name))
-    with open(os.path.join(soa_dir, service_name, 'chronos-testcluster.yaml'), 'w+') as f:
+    with open(os.path.join(soa_dir, service_name, 'chronos-%s.yaml' % context.cluster), 'w') as f:
         f.write(yaml.dump({
             "%s" % instance_name: {
-                "command": "echo foo",
+                'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
+                'command': 'echo foo',
+                'monitoring': {'team': 'fake_team'},
+                'disabled': True,
             }
         }))
     context.soa_dir = soa_dir
+
+
+@given('I update yelpsoa-configs to enable Chronos instance "{instance_name}" for service "{service_name}"')
+def update_soa_dir_chronos_instance(context, instance_name, service_name):
+    with open(os.path.join(context.soa_dir, service_name, 'chronos-%s.yaml' % context.cluster), 'w') as f:
+        f.write(yaml.dump({
+            "%s" % instance_name: {
+                'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
+                'command': 'echo foo',
+                'monitoring': {'team': 'fake_team'},
+                'disabled': False,
+            }
+        }))
+
+
+@given(u'I have a deployments.json for the service "{service_name}" with Chronos instance "{instance_name}"')
+def write_soa_dir_chronos_deployments(context, service_name, instance_name):
+    with open(os.path.join(context.soa_dir, service_name, 'deployments.json'), 'w') as dp:
+        dp.write(json.dumps({
+            'v1': {
+                '%s:%s' % (service_name, utils.get_default_branch(context.cluster, instance_name)): {
+                    'docker_image': 'test-image-foobar42',
+                    'desired_state': 'stop',
+                }
+            }
+        }))
+
+
+@given(u'I update deployments.json for the service "{service_name}" with Chronos instance "{instance_name}"')
+def update_soa_dir_chronos_deployments(context, service_name, instance_name):
+    random_hash = b2a_hex(os.urandom(32))[:8]
+    with open(os.path.join(context.soa_dir, service_name, 'deployments.json'), 'w') as dp:
+        dp.write(json.dumps({
+            'v1': {
+                '%s:%s' % (service_name, utils.get_default_branch(context.cluster, instance_name)): {
+                    'docker_image': 'test-image-%s' % random_hash,
+                    'desired_state': 'start',
+                }
+            }
+        }))
+        print "Updated code sha for '%s': %s" % (utils.compose_job_id(service_name, instance_name), random_hash)

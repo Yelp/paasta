@@ -116,7 +116,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
-    matching_jobs = chronos_tools.lookup_chronos_jobs(r'^%s$' % job_prefix, client)
+    matching_jobs = chronos_tools.lookup_chronos_jobs(r'^%s' % job_prefix, client, include_disabled=True)
     immediate_start = False  # FIXME we need some way to provide get this flag from emergency start
 
     if command == "start":
