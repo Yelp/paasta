@@ -44,10 +44,6 @@ def check_threshold(used, threshold):
     return (100 - used) > threshold
 
 
-def percent_available(total, available):
-    return round(available / float(total) * 100.0, 2)
-
-
 def percent_used(total, used):
     return round(used / float(total) * 100.0, 2)
 
