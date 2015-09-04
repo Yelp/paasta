@@ -61,7 +61,7 @@ def assert_cpu_health(metrics, threshold=10):
                 True)
     else:
         return (PaastaColors.red(
-                "CPUs: CRITICAL: Less than %d%% CPUs available. (Currently at %.2f%%)"
+                "CRITICAL: Less than %d%% CPUs available. (Currently using %.2f%%)"
                 % (threshold, perc_used)),
                 False)
 
@@ -77,7 +77,7 @@ def assert_memory_health(metrics, threshold=10):
                 True)
     else:
         return (PaastaColors.red(
-                "CRITICAL: Less than %d%% memory available. (Currently at %.2f%%)"
+                "CRITICAL: Less than %d%% memory available. (Currently using %.2f%%)"
                 % (threshold, perc_used)),
                 False)
 

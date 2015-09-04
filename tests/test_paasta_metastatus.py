@@ -16,11 +16,11 @@ from paasta_tools.marathon_tools import MarathonNotConfigured
 
 
 def test_ok_check_threshold():
-    assert paasta_metastatus.check_threshold(30, 10)
+    assert paasta_metastatus.check_threshold(10, 30)
 
 
 def test_fail_check_threshold():
-    assert not paasta_metastatus.check_threshold(10, 30)
+    assert not paasta_metastatus.check_threshold(80, 30)
 
 
 def test_get_mesos_cpu_status():
@@ -41,7 +41,7 @@ def test_ok_cpu_health():
     }
     ok_output, ok_health = paasta_metastatus.assert_cpu_health(ok_metrics)
     assert ok_health
-    assert "cpus: total: 10 used: 1 available: 9 percent_available: 90" in ok_output
+    assert "CPUs: 1 / 10 in use (%s)" % PaastaColors.green("10%") in ok_output
 
 
 def test_bad_cpu_health():
@@ -51,7 +51,7 @@ def test_bad_cpu_health():
     }
     failure_output, failure_health = paasta_metastatus.assert_cpu_health(failure_metrics)
     assert not failure_health
-    assert PaastaColors.red("CRITICAL: Less than 10% CPUs available. (Currently at 10.00%)") in failure_output
+    assert PaastaColors.red("CRITICAL: Less than 10% CPUs available. (Currently using 90.00%)") in failure_output
 
 
 def test_assert_memory_health():
@@ -61,7 +61,7 @@ def test_assert_memory_health():
     }
     ok_output, ok_health = paasta_metastatus.assert_memory_health(ok_metrics)
     assert ok_health
-    assert "memory: total: 1.00 GB used: 0.50 GB available: 0.50 GB percent_available: 50" in ok_output
+    assert "Memory: 0.50 / 1.00GB in use (%s)" % PaastaColors.green("50%") in ok_output
 
 
 def test_failing_memory_health():
@@ -71,7 +71,7 @@ def test_failing_memory_health():
     }
     failure_output, failure_health = paasta_metastatus.assert_memory_health(failure_metrics)
     assert not failure_health
-    assert PaastaColors.red("CRITICAL: Less than 10% memory available. (Currently at 2.34%)") in failure_output
+    assert PaastaColors.red("CRITICAL: Less than 10% memory available. (Currently using 97.66%)") in failure_output
 
 
 def test_assert_no_duplicate_frameworks():
@@ -250,9 +250,9 @@ def test_get_mesos_status(
     }
     mock_get_num_masters.return_value = 5
     mock_get_configured_quorum_size.return_value = 3
-    expected_cpus_output = "cpus: total: 10 used: 8 available: 2 percent_available: 20"
+    expected_cpus_output = "CPUs: 8 / 10 in use (%s)" % PaastaColors.green("80%")
     expected_mem_output = \
-        "memory: total: 10.00 GB used: 2.00 GB available: 8.00 GB percent_available: 80"
+        "Memory: 2.00 / 10.00GB in use (%s)" % PaastaColors.green("20%")
     expected_tasks_output = \
         "tasks: running: 3 staging: 4 starting: 0"
     expected_duplicate_frameworks_output = \
