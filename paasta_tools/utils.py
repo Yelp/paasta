@@ -328,7 +328,7 @@ def validate_log_component(component):
         raise NoSuchLogComponent
 
 
-def get_git_url(service):
+def get_git_url(service, soa_dir=DEFAULT_SOA_DIR):
     """Get the git url for a service. Assumes that the service's
     repo matches its name, and that it lives in services- i.e.
     if this is called with the string 'test', the returned
@@ -336,7 +336,12 @@ def get_git_url(service):
 
     :param service: The service name to get a URL for
     :returns: A git url to the service's repository"""
-    return 'git@git.yelpcorp.com:services/%s.git' % service
+    general_config = service_configuration_lib.read_service_configuration(
+        service,
+        soa_dir=soa_dir,
+    )
+    default_location = 'git@git.yelpcorp.com:services/%s.git' % service
+    return general_config.get('git_url', default_location)
 
 
 class NoSuchLogLevel(Exception):
