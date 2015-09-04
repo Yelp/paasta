@@ -63,7 +63,6 @@ def test_status_chronos_job_is_deployed():
     with mock.patch('paasta_chronos_serviceinit.format_chronos_job_status',
                     autospec=True, return_value='job_status_output'):
         actual = paasta_chronos_serviceinit.status_chronos_job(
-            'my_service my_instance',
             jobs,
         )
         assert actual == 'job_status_output'
@@ -74,7 +73,6 @@ def test_status_chronos_job_is_not_deployed():
     with mock.patch('paasta_chronos_serviceinit.format_chronos_job_status',
                     autospec=True, return_value='job_status_output'):
         actual = paasta_chronos_serviceinit.status_chronos_job(
-            'my_service my_instance',
             jobs,
         )
         assert 'not setup' in actual
@@ -88,7 +86,6 @@ def test_status_chronos_job_multiple_jobs():
     with mock.patch('paasta_chronos_serviceinit.format_chronos_job_status',
                     autospec=True, return_value='job_status_output'):
         actual = paasta_chronos_serviceinit.status_chronos_job(
-            'my_service my_instance',
             jobs,
         )
         assert actual == 'job_status_output\njob_status_output'

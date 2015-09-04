@@ -48,15 +48,14 @@ def format_chronos_job_status(job):
     return "Status: %s Last: %s" % (status, last_result)
 
 
-def status_chronos_job(job_id, jobs):
-    """Returns a formatted string of the status of a chronos job
+def status_chronos_job(jobs):
+    """Returns a formatted string of the status of a list of chronos jobs
 
-    :param job_id: the idenfier of the job (beginning of its name) in the
-    chronos api
-    :param all_jobs: list of all the jobs from chronos
+    :param jobs: list of dicts of chronos job info as returned by the chronos
+    client
     """
     if jobs == []:
-        return "%s: %s is not setup yet" % (PaastaColors.yellow("Warning"), job_id)
+        return "%s: chronos job is not setup yet" % PaastaColors.yellow("Warning")
     else:
         output = [format_chronos_job_status(job) for job in jobs]
         return "\n".join(output)
@@ -75,6 +74,7 @@ def perform_command(command, service, instance):
         # "my_service my_job_extra" when looking for "my_service my_job".
         job_pattern = "%s%s" % (job_id, chronos_tools.SPACER)
         jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
+        print "Job Id: %s" % job_id
         print status_chronos_job(job_id, jobs)
     else:
         # The command parser shouldn't have let us get this far...
