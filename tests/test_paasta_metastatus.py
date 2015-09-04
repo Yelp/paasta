@@ -41,7 +41,7 @@ def test_ok_cpu_health():
     }
     ok_output, ok_health = paasta_metastatus.assert_cpu_health(ok_metrics)
     assert ok_health
-    assert "CPUs: 1 / 10 in use (%s)" % PaastaColors.green("10%") in ok_output
+    assert "CPUs: 1.00 / 10 in use (%s)" % PaastaColors.green("10.00%") in ok_output
 
 
 def test_bad_cpu_health():
@@ -61,7 +61,7 @@ def test_assert_memory_health():
     }
     ok_output, ok_health = paasta_metastatus.assert_memory_health(ok_metrics)
     assert ok_health
-    assert "Memory: 0.50 / 1.00GB in use (%s)" % PaastaColors.green("50%") in ok_output
+    assert "Memory: 0.50 / 1.00GB in use (%s)" % PaastaColors.green("50.00%") in ok_output
 
 
 def test_failing_memory_health():
@@ -250,9 +250,9 @@ def test_get_mesos_status(
     }
     mock_get_num_masters.return_value = 5
     mock_get_configured_quorum_size.return_value = 3
-    expected_cpus_output = "CPUs: 8 / 10 in use (%s)" % PaastaColors.green("80%")
+    expected_cpus_output = "CPUs: 8.00 / 10 in use (%s)" % PaastaColors.green("80.00%")
     expected_mem_output = \
-        "Memory: 2.00 / 10.00GB in use (%s)" % PaastaColors.green("20%")
+        "Memory: 2.00 / 10.00GB in use (%s)" % PaastaColors.green("20.00%")
     expected_tasks_output = \
         "tasks: running: 3 staging: 4 starting: 0"
     expected_duplicate_frameworks_output = \

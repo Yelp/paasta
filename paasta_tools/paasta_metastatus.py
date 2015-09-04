@@ -40,8 +40,8 @@ def quorum_ok(masters, quorum):
     return masters >= quorum
 
 
-def check_threshold(used, threshold):
-    return (100 - used) > threshold
+def check_threshold(percent_used, threshold):
+    return (100 - percent_used) > threshold
 
 
 def percent_used(total, used):
@@ -52,8 +52,8 @@ def assert_cpu_health(metrics, threshold=10):
     total, used, available = get_mesos_cpu_status(metrics)
     perc_used = percent_used(total, used)
     if check_threshold(perc_used, threshold):
-        return ("CPUs: %d / %d in use (%s)"
-                % (used, total, PaastaColors.green("%d%%" % perc_used)),
+        return ("CPUs: %.2f / %d in use (%s)"
+                % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
                 True)
     else:
         return (PaastaColors.red(
@@ -69,7 +69,7 @@ def assert_memory_health(metrics, threshold=10):
 
     if check_threshold(perc_used, threshold):
         return ("Memory: %0.2f / %0.2fGB in use (%s)"
-                % (used, total, PaastaColors.green("%d%%" % perc_used)),
+                % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
                 True)
     else:
         return (PaastaColors.red(
