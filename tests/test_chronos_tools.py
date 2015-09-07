@@ -131,6 +131,18 @@ class TestChronosTools:
         actual = chronos_tools.compose_job_id('service', 'instance', tag='gityourmom')
         assert actual == "service instance gityourmom"
 
+    def test_decompose_job_id(self):
+        actual = chronos_tools.decompose_job_id('service instance mytag')
+        assert actual == ('service', 'instance', 'mytag')
+
+    def test_decompose_job_id_no_tag(self):
+        actual = chronos_tools.decompose_job_id('service instance')
+        assert actual == ('service', 'instance', None)
+
+    def test_rogue_job_id(self):
+        with raises(chronos_tools.InvalidJobNameError):
+            chronos_tools.decompose_job_id('dowhatIwant')
+
     def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'
         expected_chronos_conf_file = 'chronos-penguin'

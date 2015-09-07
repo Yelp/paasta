@@ -24,10 +24,15 @@ def test_cleanup_jobs():
     assert isinstance(result[2][1], Exception)
 
 
-def test_jobs_to_delete():
-    expected_jobs = ['job_1', 'job_2']
-    actual_jobs = ['job_1', 'job_2', 'job_3']
-    assert cleanup_chronos_jobs.jobs_to_delete(expected_jobs, actual_jobs) == ['job_3']
+def test_jobs_to_delete_leaves_config():
+    expected_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job1')]
+    actual_jobs =  [('service1', 'job1', 'config'), ('service1', 'job2', 'config')]
+    assert cleanup_chronos_jobs.jobs_to_delete(expected_jobs, actual_jobs) == []
+
+def test_jobs_to_delete_unknown_job():
+    expected_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job3')]
+    actual_jobs =  [('service1', 'job1', 'config'), ('service1', 'job2', 'config'), ('service1', 'job1', 'config'), ('service1', 'job5', 'config')]
+    assert cleanup_chronos_jobs.jobs_to_delete(expected_jobs, actual_jobs) == [('service1', 'job5', 'config')]
 
 
 def test_format_list_output():
@@ -40,7 +45,3 @@ def test_running_job_names():
     mock_client.list.return_value = [{'name': 'foo', 'blah': 'blah'}, {'name': 'bar', 'blah': 'blah'}]
     assert cleanup_chronos_jobs.running_job_names(mock_client) == ['foo', 'bar']
 
-
-def test_expected_job_names():
-    service_job_pairs = [('myservice', 'myjob1'), ('myservice', 'myjob2')]
-    assert cleanup_chronos_jobs.expected_job_names(service_job_pairs) == ['myjob1', 'myjob2']

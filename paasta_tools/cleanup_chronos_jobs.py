@@ -61,9 +61,23 @@ def cleanup_tasks(client, jobs):
     """Maps a list of tasks to cleanup to a list of response objects (or exception objects) from the api"""
     return [(job, execute_chronos_api_call_for_job(client.delete_tasks, job)) for job in jobs]
 
-
 def jobs_to_delete(expected_jobs, actual_jobs):
-    return list(set(actual_jobs).difference(set(expected_jobs)))
+    """
+    Decides on jobs that need to be deleted.
+    Compares lists of (service, instance) expected jobs to a list of (service, instance, tag) actual jobs
+    and decides which should be removed. The tag in the actual jobs is ignored, that is to say only the
+    (service, instance) in the actual job is looked for in the expected jobs. If it is only the tag that has
+    changed, then it shouldn't be removed.
+
+    :param expected_jobs: a list of (service, instance) tuples
+    :param actual_jobs: a list of (service, instance, config) tuples
+    :returns a list of (service, instance, config) tuples to be removed
+    """
+
+    # find all those where the (service, instance) pair of the job
+    # isn't in the list of expected jobs
+    not_expected = [job for job in actual_jobs if (job[0], job[1]) not in expected_jobs]
+    return not_expected
 
 
 def format_list_output(title, job_names):
@@ -74,28 +88,43 @@ def running_job_names(client):
     return [job['name'] for job in client.list()]
 
 
-def expected_job_names(service_job_pairs):
+def filter_paasta_jobs(jobs):
     """
-    Expects a list of pairs in the form (service_name, job_name)
-    and returns the list of pairs mapped to the job name of each pair.
-    """
-    return [job[-1] for job in service_job_pairs]
+    Given a list of job name strings, return only those in the format PaaSTA expects.
 
+    :param jobs: a list of job names.
+    :returns those job names in a format PaaSTA expects:
+    """
+    formatted = []
+    for job in jobs:
+        try:
+            decomposed = chronos_tools.decompose_job_id(job)
+            formatted.append(job)
+        except chronos_tools.InvalidJobNameError:
+            pass
+    return formatted
 
 def main():
+
     args = parse_args()
-    soa_dir = args.soa_dir
 
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 
     # get_chronos_jobs_for_cluster returns (service_name, job)
-    expected_jobs = expected_job_names(chronos_tools.get_chronos_jobs_for_cluster(soa_dir=soa_dir))
-    running_jobs = running_job_names(client)
+    expected_service_jobs = chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)
 
-    to_delete = jobs_to_delete(expected_jobs, running_jobs)
+    # remove those jobs not related to paasta
+    # and decompse into (service, instance, tag) tuples
+    paasta_jobs = filter_paasta_jobs(running_job_names(client))
+    running_service_jobs = [chronos_tools.decompose_job_id(job) for job in paasta_jobs]
 
-    task_responses = cleanup_tasks(client, to_delete)
+    to_delete = jobs_to_delete(expected_service_jobs, running_service_jobs)
+
+    #recompose the job ids again for deletion
+    to_delete_job_ids = [chronos_tools.compose_job_id(*job) for job in to_delete]
+
+    task_responses = cleanup_tasks(client, to_delete_job_ids)
     task_successes = []
     task_failures = []
     for response in task_responses:
@@ -104,7 +133,7 @@ def main():
         else:
             task_successes.append(response)
 
-    job_responses = cleanup_jobs(client, to_delete)
+    job_responses = cleanup_jobs(client, to_delete_job_ids)
     job_successes = []
     job_failures = []
     for response in job_responses:

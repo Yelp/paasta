@@ -82,12 +82,32 @@ def get_chronos_client(config):
                            password=config.get_password())
 
 
+class InvalidJobNameError(Exception):
+    pass
+
+
 def compose_job_id(service, instance, tag=None):
     output = "%s%s%s" % (service, SPACER, instance)
     if tag:
         output = "%s%s%s" % (output, SPACER, tag)
     return output
 
+
+def decompose_job_id(job):
+    """
+    Takes a job id and splits into corresponsing parts.
+    Returns None in place of the tag if it is missing.
+
+    :param job: the job name to be decomposed
+    :returns a tuple of (service, instance, tag):
+    :raises InvalidJobNameError if atleast service,instance don't exist:
+    """
+    parts = job.split(SPACER)
+    if len(parts) < 2:
+        raise InvalidJobNameError
+    elif len(parts) == 2:
+        return (parts[0], parts[1], None)
+    return tuple(parts)
 
 class InvalidChronosConfigError(Exception):
     pass
