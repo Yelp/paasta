@@ -129,7 +129,7 @@ def cluster_to_scribe_env(cluster):
     config deployed to every server.
     """
     system_paasta_config = load_system_paasta_config()
-    scribe_map = system_paasta_config['scribe_map']
+    scribe_map = system_paasta_config.get_scribe_map()
     env = scribe_map.get(cluster, None)
     if env is None:
         print "I don't know where scribe logs for %s live?" % cluster
