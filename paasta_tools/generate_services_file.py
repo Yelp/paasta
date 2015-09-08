@@ -6,8 +6,8 @@ a /etc/services compatible file
 import os
 import sys
 import service_configuration_lib
-from marathon_tools import get_all_namespaces_for_service
-from utils import compose_job_id
+from paasta_tools.marathon_tools import get_all_namespaces_for_service
+from paasta_tools.utils import compose_job_id
 
 
 def get_service_lines_for_service(service):

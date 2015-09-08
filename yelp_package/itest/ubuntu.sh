@@ -8,6 +8,7 @@ cleanup_marathon_jobs
 deploy_chronos_jobs
 deploy_marathon_services
 generate_deployments_for_service
+generate_services_file
 generate_services_yaml
 list_chronos_jobs
 list_marathon_service_instances
