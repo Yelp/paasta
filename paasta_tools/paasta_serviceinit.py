@@ -10,7 +10,7 @@ import sys
 
 import service_configuration_lib
 
-from paasta_tools import paasta_chronos_serviceinit
+from paasta_tools import chronos_serviceinit
 from paasta_tools import marathon_serviceinit
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import compose_job_id
@@ -80,7 +80,7 @@ def main():
         )
         sys.exit(return_code)
     elif instance_type == 'chronos':
-        return_code = paasta_chronos_serviceinit.perform_command(
+        return_code = chronos_serviceinit.perform_command(
             command=command,
             service=service,
             instance=instance,
