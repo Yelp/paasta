@@ -42,6 +42,7 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import configure_log
+from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -455,7 +456,7 @@ def main():
         send_event(service_name, instance_name, soa_dir, sensu_status, output)
         # We exit 0 because the script finished ok and the event was sent to the right team.
         sys.exit(0)
-    except (KeyError, TypeError, AttributeError):
+    except (KeyError, TypeError, AttributeError, InvalidInstanceConfig):
         import traceback
         error_str = traceback.format_exc()
         log.error(error_str)
