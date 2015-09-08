@@ -295,7 +295,7 @@ def get_container_name():
 def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command):
     cmd = ['docker', 'run']
     for k, v in env.iteritems():
-        cmd.append('--env=%s=%s' % (k, v))
+        cmd.append('--env=\"%s=%s\"' % (k, v))
     # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
     # be using this variable in surprising ways. See PAASTA-267 for more context.
@@ -387,14 +387,14 @@ def run_docker_container(
     random_port = pick_random_port()
     container_name = get_container_name()
     docker_run_cmd = get_docker_run_cmd(
-        memory,
-        random_port,
-        container_name,
-        volumes,
-        environment,
-        interactive,
-        docker_hash,
-        command
+        memory=memory,
+        random_port=random_port,
+        container_name=container_name,
+        volumes=volumes,
+        env=environment,
+        interactive=interactive,
+        docker_hash=docker_hash,
+        command=command,
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
