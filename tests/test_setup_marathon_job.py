@@ -522,6 +522,10 @@ class TestSetupMarathonJob:
             assert fake_client.kill_task.call_count == len(fake_bounce_func_return["tasks_to_drain"])
             assert mock_kill_old_ids.call_count == 1
 
+            third_logged_line = mock_log.mock_calls[2][2]["line"]
+            assert '%s bounce on %s finish' % (fake_bounce_method, fake_serviceinstance) in third_logged_line
+            assert 'Now running %s' % fake_marathon_jobid in third_logged_line
+
     def test_do_bounce_when_nothing_to_do(self):
         fake_bounce_func_return = {
             'create_app': False,
