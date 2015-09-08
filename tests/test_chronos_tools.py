@@ -190,11 +190,11 @@ class TestChronosTools:
                                                       fake_job_name,
                                                       self.fake_cluster,
                                                       fake_soa_dir)
-                mock_load_deployments_json.assert_called_once_with(self.fake_service_name, soa_dir=fake_soa_dir)
-                mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
-                                                                           expected_chronos_conf_file,
-                                                                           soa_dir=fake_soa_dir)
-                assert exc.value == 'No job named "polar bear" in config file chronos-penguin.yaml'
+            mock_load_deployments_json.assert_called_once_with(self.fake_service_name, soa_dir=fake_soa_dir)
+            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
+                                                                       expected_chronos_conf_file,
+                                                                       soa_dir=fake_soa_dir)
+            assert exc.value == 'No job named "polar bear" in config file chronos-penguin.yaml'
 
     def test_get_cpus_in_config(self):
         expected = self.fake_monitoring_info
