@@ -208,7 +208,6 @@ class ChronosJobConfig(InstanceConfig):
 
             # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
             if start_time == '':
-                # TODO this shouldn't blow things up vs https://reviewboard.yelpcorp.com/r/109507/#comment687412
                 msgs.append('The specified schedule "%s" does not contain a start time' % schedule)
             else:
                 # Check if start time contains time zone information
@@ -271,13 +270,12 @@ class ChronosJobConfig(InstanceConfig):
             return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
 
     def format_chronos_job_dict(self, docker_url, docker_volumes):
-
         valid, error_msgs = self.validate()
         if not valid:
             raise InvalidChronosConfigError("\n".join(error_msgs))
 
         complete_config = {
-            'name': self.get_job_name(),
+            'name': self.get_job_name().encode('utf_8'),
             'container': {
                 'image': docker_url,
                 'network': 'BRIDGE',
@@ -375,7 +373,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     desired_state = chronos_job_config.get_desired_state()
 
     # If the job was previously stopped, we should stop the new job as well
-    # FIXME this clobbers the 'disabled' param specified in the config file!
+    # NOTE this clobbers the 'disabled' param specified in the config file!
     if desired_state == 'start':
         complete_config['disabled'] = False
     elif desired_state == 'stop':

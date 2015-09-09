@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import logging
 import sys
-from datetime import datetime
 
 import isodate
 import requests_cache
@@ -16,19 +15,8 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 
 # 'start' is a misnomer since this really just sends the latest version to Chronos immediately
-# though if 'immediate_start' is set to True, it will 'start' by enabling the job and setting
-# its start time to now
+# though if 'immediate_start' is set to True, it will 'start' by calling the 'run job manually' endpoint
 def start_chronos_job(service, instance, job_id, client, cluster, job_config, immediate_start=False):
-    if immediate_start:
-        # FIXME if we want this to work, we should allow specifying an empty start time for 'now'
-        # this is an ugly workaround in the meantime...
-        iso_utc_now = isodate.datetime_isoformat(datetime.utcnow())
-        repeat, _, interval = str.split(job_config['schedule'], '/')
-        new_schedule = '%s/%s/%s' % (repeat, iso_utc_now, interval)
-        job_config['schedule'] = new_schedule
-        job_config['disabled'] = False
-    # TODO do we want to enable the job if we emergency start it?
-    # no, don't override 'disabled' value by default since this will be used for brutal bounce
     name = PaastaColors.cyan(job_id)
     _log(
         service_name=service,
@@ -38,7 +26,10 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, im
         cluster=cluster,
         instance=instance
     )
-    client.update(job_config)
+    if immediate_start:
+        client.run(job_id)
+    else:
+        client.update(job_config)
 
 
 def stop_chronos_job(service, instance, client, cluster, existing_jobs):
@@ -117,7 +108,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
     matching_jobs = chronos_tools.lookup_chronos_jobs(r'^%s' % job_prefix, client, include_disabled=True)
-    immediate_start = False  # FIXME we need some way to provide get this flag from emergency start
+    immediate_start = False  # FIXME we need some way to get this flag from call of paasta_serviceinit
 
     if command == "start":
         start_chronos_job(service, instance, job_id, client, cluster, job_config, immediate_start)
@@ -139,6 +130,5 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
     return 0
-
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

@@ -1,5 +1,4 @@
 import os
-import yaml
 from binascii import b2a_hex
 from tempfile import NamedTemporaryFile
 from tempfile import mkdtemp
@@ -7,6 +6,7 @@ from tempfile import mkdtemp
 from behave import given
 import chronos
 import json
+import yaml
 
 from itest_utils import get_service_connection_string
 from paasta_tools import marathon_tools
@@ -120,9 +120,10 @@ def working_paasta_cluster(context):
     }, 'volumes.json')
 
 
-@given('I have yelpsoa-configs for the service "{service_name}" with disabled Chronos instance "{instance_name}"')
-def write_soa_dir_chronos_instance(context, service_name, instance_name):
+@given('I have yelpsoa-configs for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+def write_soa_dir_chronos_instance(context, service_name, disabled, instance_name):
     soa_dir = mkdtemp()
+    desired_disabled = (disabled == 'disabled')
     if not os.path.exists(os.path.join(soa_dir, service_name)):
         os.makedirs(os.path.join(soa_dir, service_name))
     with open(os.path.join(soa_dir, service_name, 'chronos-%s.yaml' % context.cluster), 'w') as f:
@@ -131,48 +132,47 @@ def write_soa_dir_chronos_instance(context, service_name, instance_name):
                 'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
                 'command': 'echo foo',
                 'monitoring': {'team': 'fake_team'},
-                'disabled': True,
+                'disabled': desired_disabled,
             }
         }))
     context.soa_dir = soa_dir
 
 
-@given('I update yelpsoa-configs to enable Chronos instance "{instance_name}" for service "{service_name}"')
-def update_soa_dir_chronos_instance(context, instance_name, service_name):
-    with open(os.path.join(context.soa_dir, service_name, 'chronos-%s.yaml' % context.cluster), 'w') as f:
-        f.write(yaml.dump({
-            "%s" % instance_name: {
-                'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
-                'command': 'echo foo',
-                'monitoring': {'team': 'fake_team'},
-                'disabled': False,
-            }
-        }))
+@given(u'I have a deployments.json for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+def write_soa_dir_chronos_deployments(context, service_name, disabled, instance_name):
+    if disabled == 'disabled':
+        desired_state = 'stop'
+    else:
+        desired_state = 'start'
 
-
-@given(u'I have a deployments.json for the service "{service_name}" with Chronos instance "{instance_name}"')
-def write_soa_dir_chronos_deployments(context, service_name, instance_name):
     with open(os.path.join(context.soa_dir, service_name, 'deployments.json'), 'w') as dp:
         dp.write(json.dumps({
             'v1': {
                 '%s:%s' % (service_name, utils.get_default_branch(context.cluster, instance_name)): {
                     'docker_image': 'test-image-foobar42',
-                    'desired_state': 'stop',
+                    'desired_state': desired_state,
                 }
             }
         }))
 
 
-@given(u'I update deployments.json for the service "{service_name}" with Chronos instance "{instance_name}"')
-def update_soa_dir_chronos_deployments(context, service_name, instance_name):
+# this will be useful when testing the bounce code (PAASTA-971)
+@given(u'I update deployments.json for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+def update_soa_dir_chronos_deployments(context, service_name, disabled, instance_name):
+    if disabled == 'disabled':
+        desired_state = 'stop'
+    else:
+        desired_state = 'start'
     random_hash = b2a_hex(os.urandom(32))[:8]
+
     with open(os.path.join(context.soa_dir, service_name, 'deployments.json'), 'w') as dp:
         dp.write(json.dumps({
             'v1': {
                 '%s:%s' % (service_name, utils.get_default_branch(context.cluster, instance_name)): {
                     'docker_image': 'test-image-%s' % random_hash,
-                    'desired_state': 'start',
+                    'desired_state': desired_state,
                 }
             }
         }))
-        print "Updated code sha for '%s': %s" % (utils.compose_job_id(service_name, instance_name), random_hash)
+        print ("Updated code sha in deployments.json for '%s': %s"
+               % (utils.compose_job_id(service_name, instance_name), random_hash))

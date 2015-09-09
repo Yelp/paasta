@@ -81,16 +81,29 @@ def chronos_status_returns_healthy(context):
     assert "New" in output
 
 
-@when(u"paasta_serviceinit (emergency) starts a chronos job")
-def chronos_emergency_start_job(context):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job start' % context.soa_dir
+@when(u"paasta_serviceinit (emergency) stops a chronos job")
+def chronos_emergency_stop_job(context):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job stop' % context.soa_dir
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
-    assert "Disabled" in output
-    assert "New" in output
+
+
+@when(u"paasta_serviceinit (emergency) starts a chronos job {immediately_or_as_scheduled}")
+def chronos_emergency_start_job(context, immediately_or_as_scheduled):
+    immediate_flag = ''
+    if immediately_or_as_scheduled == 'immediately':
+        immediate_flag = ' --ignore-schedule'
+    cmd = ('../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job start%s'
+           % (context.soa_dir, immediate_flag))
+    print 'Running cmd %s' % cmd
+    (exit_code, output) = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == 0
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

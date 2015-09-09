@@ -36,20 +36,13 @@ def test_start_chronos_job_immediately():
     instance = 'my_instance'
     job_id = 'my_job_id'
     cluster = 'my_cluster'
-    fake_iso_utc = '1969-12-31T23:59:59Z'
-    old_schedule = 'R/2015-03-25T19:36:35Z/PT5M'
-    new_schedule = 'R/%s/PT5M' % fake_iso_utc
-    job_config = {'beep': 'boop', 'disabled': True, 'schedule': old_schedule}
+    schedule = 'R/2015-03-25T19:36:35Z/PT5M'
+    job_config = {'beep': 'boop', 'disabled': True, 'schedule': schedule}
     with contextlib.nested(
         mock.patch('paasta_chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
-        mock.patch('paasta_chronos_serviceinit.datetime', autospec=True),
-        mock.patch('paasta_chronos_serviceinit.isodate.datetime_isoformat', autospec=True, return_value=fake_iso_utc),
     ) as (
         mock_client,
-        mock_datetime,
-        mock_isoformat,
     ):
-        mock_datetime.utcnow = mock.MagicMock()
         paasta_chronos_serviceinit.start_chronos_job(service,
                                                      instance,
                                                      job_id,
@@ -57,9 +50,8 @@ def test_start_chronos_job_immediately():
                                                      cluster,
                                                      job_config,
                                                      immediate_start=True)
-        assert job_config['schedule'] == new_schedule
-        assert job_config['disabled'] is False
-        mock_client.update.assert_called_once_with(job_config)
+        assert job_config['disabled'] is True
+        mock_client.run.assert_called_once_with(job_id)
 
 
 def test_stop_chronos_job():

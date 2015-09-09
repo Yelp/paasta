@@ -19,6 +19,7 @@ fake_service_job_config = chronos_tools.ChronosJobConfig(
     {'docker_image': 'test-image', 'desired_state': 'start'},
 )
 
+# TODO DRY out in PAASTA-1174
 fake_service_config = {
     "retries": 1,
     "container": {
@@ -50,6 +51,7 @@ fake_service_config = {
 }
 
 
+# TODO DRY out in PAASTA-1174 and rename so it doesn't sound like the funcs in chronos_steps
 @when(u'we create a complete chronos job')
 def create_complete_job(context):
     with contextlib.nested(
@@ -70,6 +72,7 @@ def create_complete_job(context):
         assert 'Deployed job' in return_tuple[1]
 
 
+# TODO DRY out in PAASTA-1174
 @then(u'we should see it in the list of jobs')
 def see_it_in_list_of_jobs(context):
     job_names = [job['name'] for job in context.chronos_client.list()]
