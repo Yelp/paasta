@@ -24,17 +24,17 @@ def test_cleanup_jobs():
     assert isinstance(result[2][1], Exception)
 
 
-def test_jobs_to_delete_leaves_config():
-    expected_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job1')]
-    actual_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config')]
-    assert cleanup_chronos_jobs.jobs_to_delete(expected_jobs, actual_jobs) == []
+def test_jobs_to_delete():
+    configured_jobs = [('service1', 'job1'), ('service1', 'job2')]
+    running_jobs = [('service1', 'job1', 'config'),  ('service1', 'job2', 'config')]
+    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, running_jobs) == []
 
 
 def test_jobs_to_delete_unknown_job():
-    expected_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job3')]
-    actual_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config'),
-                   ('service1', 'job1', 'config'), ('service1', 'job5', 'config')]
-    assert cleanup_chronos_jobs.jobs_to_delete(expected_jobs, actual_jobs) == [('service1', 'job5', 'config')]
+    configured_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job3')]
+    running_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config'),
+                   ('service1', 'job3', 'config'), ('service1', 'job5', 'config')]
+    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, running_jobs) == [('service1', 'job5', 'config')]
 
 
 def test_format_list_output():
