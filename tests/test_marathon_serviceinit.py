@@ -244,13 +244,14 @@ def test_status_smartstack_backends_normal():
         tasks = [good_task, other_task]
         mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
         actual = marathon_serviceinit.status_smartstack_backends(
-            service,
-            instance,
-            cluster,
-            tasks,
-            len(haproxy_backends_by_task),
-            None,
-            False,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            tasks=tasks,
+            expected_count=len(haproxy_backends_by_task),
+            soa_dir=None,
+            verbose=False,
+            constraints=[],
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
@@ -271,13 +272,14 @@ def test_status_smartstack_backends_different_nerve_ns():
     with mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance') as read_ns_mock:
         read_ns_mock.return_value = different_ns
         actual = marathon_serviceinit.status_smartstack_backends(
-            service,
-            instance,
-            cluster,
-            tasks,
-            normal_count,
-            None,
-            False,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            tasks=tasks,
+            expected_count=normal_count,
+            soa_dir=None,
+            verbose=False,
+            constraints=[],
         )
         assert "is announced in the" in actual
         assert different_ns in actual
@@ -303,13 +305,14 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
         mock_read_ns.return_value = instance
         mock_get_mesos_slaves_grouped_by_attribute.return_value = {}
         actual = marathon_serviceinit.status_smartstack_backends(
-            service,
-            instance,
-            cluster,
-            tasks,
-            normal_count,
-            None,
-            False,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            tasks=tasks,
+            expected_count=normal_count,
+            soa_dir=None,
+            verbose=False,
+            constraints=[],
         )
         assert "%s is NOT in smartstack" % service_instance in actual
 
@@ -349,13 +352,14 @@ def test_status_smartstack_backends_multiple_locations():
             'fake_location2': ['fakehost2'],
         }
         actual = marathon_serviceinit.status_smartstack_backends(
-            service,
-            instance,
-            cluster,
-            tasks,
-            len(mock_get_backends.return_value),
-            None,
-            False,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            tasks=tasks,
+            expected_count=len(mock_get_backends.return_value),
+            soa_dir=None,
+            verbose=False,
+            constraints=[],
         )
         mock_get_backends.assert_any_call(
             service_instance,
@@ -410,13 +414,14 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             'fake_location2': ['fakehost2'],
         }
         marathon_serviceinit.status_smartstack_backends(
-            service,
-            instance,
-            cluster,
-            tasks,
-            normal_count,
-            None,
-            False,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            tasks=tasks,
+            expected_count=normal_count,
+            soa_dir=None,
+            verbose=False,
+            constraints=[],
         )
         mock_get_backends.assert_any_call(
             service_instance,
@@ -475,13 +480,14 @@ def test_status_smartstack_backends_verbose_multiple_apps():
         tasks = [good_task, other_task]
         mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
         actual = marathon_serviceinit.status_smartstack_backends(
-            service,
-            instance,
-            cluster,
-            tasks,
-            len(haproxy_backends_by_task),
-            None,
-            True,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            tasks=tasks,
+            expected_count=len(haproxy_backends_by_task),
+            soa_dir=None,
+            verbose=True,
+            constraints=[],
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
@@ -500,6 +506,7 @@ def test_status_smartstack_backends_verbose_multiple_locations():
     cluster = 'fake_cluster'
     good_task = mock.Mock()
     other_task = mock.Mock()
+    fake_constraints = ['fake_constraints']
     fake_backend = {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
                     'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
                     'check_status': 'L7OK', 'check_duration': 1}
@@ -529,13 +536,14 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             'fake_location2': ['fakehost2'],
         }
         actual = marathon_serviceinit.status_smartstack_backends(
-            service,
-            instance,
-            cluster,
-            tasks,
-            1,
-            None,
-            True,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            tasks=tasks,
+            expected_count=1,
+            soa_dir=None,
+            verbose=True,
+            constraints=fake_constraints,
         )
         mock_get_backends.assert_any_call(
             service_instance,
@@ -546,6 +554,10 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             service_instance,
             synapse_host='fakehost2',
             synapse_port=3212,
+        )
+        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
+            'fake_discover',
+            constraints=fake_constraints,
         )
         assert "fake_location1 - %s" % PaastaColors.green('Healthy') in actual
         assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.DEFAULT), actual)
@@ -585,13 +597,14 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
         tasks = [good_task, other_task]
         mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
         actual = marathon_serviceinit.status_smartstack_backends(
-            service,
-            instance,
-            cluster,
-            tasks,
-            normal_count,
-            None,
-            True,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            tasks=tasks,
+            expected_count=normal_count,
+            soa_dir=None,
+            verbose=True,
+            constraints=[],
         )
         assert PaastaColors.red('MAINT') in actual
 
@@ -628,13 +641,14 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
         tasks = [good_task, other_task]
         mock_get_mesos_slaves_grouped_by_attribute.return_value = {'fake_location1': ['fakehost1']}
         actual = marathon_serviceinit.status_smartstack_backends(
-            service,
-            instance,
-            cluster,
-            tasks,
-            normal_count,
-            None,
-            True,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            tasks=tasks,
+            expected_count=normal_count,
+            soa_dir=None,
+            verbose=True,
+            constraints=[],
         )
         assert PaastaColors.red('MAINT') not in actual
         assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.GREY), actual)

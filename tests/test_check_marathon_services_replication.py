@@ -472,7 +472,7 @@ def test_send_event_if_under_replication_critical():
         mock_send_event.assert_called_once_with(service, instance, soa_dir, 2, mock.ANY)
 
 
-def test_load_smartstack_info_for_services():
+def test_load_smartstack_info_for_services_uses_correct_attributes_and_constraints():
     fake_namespaces = ['fake_instance1', 'fake_instance2']
     fake_services = [('fake_service1', 'fake_instance1'), ('fake_service2', 'fake_instance2')]
 
@@ -489,13 +489,17 @@ def test_load_smartstack_info_for_services():
         mock_get_smartstack_replication_for_attribute
     ):
         mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_attribute'
+        mock_load_service_namespace_config.return_value.get_constraints.return_value = ['fake_constraints']
         expected = {
             'fake_attribute': fake_values_and_replication_info
         }
         actual = check_marathon_services_replication.load_smartstack_info_for_services(fake_services, fake_namespaces,
                                                                                        'fake_soa_dir')
         assert actual == expected
-        mock_get_smartstack_replication_for_attribute.assert_called_once_with('fake_attribute', fake_namespaces)
+        mock_get_smartstack_replication_for_attribute.assert_called_once_with(
+            attribute='fake_attribute',
+            namespaces=fake_namespaces,
+            constraints=['fake_constraints'])
 
 
 def test_get_smartstack_replication_for_attribute():
@@ -519,7 +523,7 @@ def test_get_smartstack_replication_for_attribute():
             'fake_other_value': {}
         }
         actual = check_marathon_services_replication.get_smartstack_replication_for_attribute(
-            'fake_attribute', fake_namespaces)
+            'fake_attribute', fake_namespaces, constraints=[])
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
         mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with('fake_attribute', constraints=[])
