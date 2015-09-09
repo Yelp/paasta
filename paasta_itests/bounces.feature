@@ -47,7 +47,6 @@ Feature: Bounces work as expected
      When we wait a bit for the old app to disappear
      Then the old app should be gone
 
-
   Scenario: The crossover bounce works
     Given a working paasta cluster
       And a new healthy app to be deployed
