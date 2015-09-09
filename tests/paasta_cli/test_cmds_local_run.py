@@ -405,6 +405,21 @@ def test_get_docker_run_cmd_without_additional_args():
     assert actual[-1] == docker_hash
 
 
+def test_get_docker_run_cmd_with_env_vars():
+    memory = 555
+    random_port = 666
+    container_name = 'Docker' * 6 + 'Doc'
+    volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {'foo': 'bar', 'baz': 'qux', 'x': ' with spaces'}
+    interactive = False
+    docker_hash = '8' * 40
+    command = None
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command)
+    assert '--env="foo=bar"' in actual
+    assert '--env="baz=qux"' in actual
+    assert '--env="x= with spaces"' in actual
+
+
 def test_get_docker_run_cmd_interactive_false():
     memory = 555
     random_port = 666
