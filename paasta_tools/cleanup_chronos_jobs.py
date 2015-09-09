@@ -116,7 +116,7 @@ def main():
     expected_service_jobs = chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)
 
     # filter jobs not related to paasta
-    # and decompse into (service, instance, tag) tuples
+    # and decompose into (service, instance, tag) tuples
     paasta_jobs = filter_paasta_jobs(deployed_job_names(client))
     running_service_jobs = [chronos_tools.decompose_job_id(job) for job in paasta_jobs]
 
