@@ -109,6 +109,7 @@ def decompose_job_id(job):
         return (parts[0], parts[1], None)
     return tuple(parts)
 
+
 class InvalidChronosConfigError(Exception):
     pass
 

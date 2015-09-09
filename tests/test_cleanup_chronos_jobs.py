@@ -26,12 +26,14 @@ def test_cleanup_jobs():
 
 def test_jobs_to_delete_leaves_config():
     expected_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job1')]
-    actual_jobs =  [('service1', 'job1', 'config'), ('service1', 'job2', 'config')]
+    actual_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config')]
     assert cleanup_chronos_jobs.jobs_to_delete(expected_jobs, actual_jobs) == []
+
 
 def test_jobs_to_delete_unknown_job():
     expected_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job3')]
-    actual_jobs =  [('service1', 'job1', 'config'), ('service1', 'job2', 'config'), ('service1', 'job1', 'config'), ('service1', 'job5', 'config')]
+    actual_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config'),
+                   ('service1', 'job1', 'config'), ('service1', 'job5', 'config')]
     assert cleanup_chronos_jobs.jobs_to_delete(expected_jobs, actual_jobs) == [('service1', 'job5', 'config')]
 
 
@@ -44,4 +46,3 @@ def test_deployed_job_names():
     mock_client = mock.Mock()
     mock_client.list.return_value = [{'name': 'foo', 'blah': 'blah'}, {'name': 'bar', 'blah': 'blah'}]
     assert cleanup_chronos_jobs.deployed_job_names(mock_client) == ['foo', 'bar']
-

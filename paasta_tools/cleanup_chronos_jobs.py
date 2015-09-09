@@ -61,6 +61,7 @@ def cleanup_tasks(client, jobs):
     """Maps a list of tasks to cleanup to a list of response objects (or exception objects) from the api"""
     return [(job, execute_chronos_api_call_for_job(client.delete_tasks, job)) for job in jobs]
 
+
 def jobs_to_delete(expected_jobs, actual_jobs):
     """
     Decides on jobs that need to be deleted.
@@ -96,11 +97,13 @@ def filter_paasta_jobs(jobs):
     formatted = []
     for job in jobs:
         try:
-            decomposed = chronos_tools.decompose_job_id(job)
+            # attempt to decompose it
+            chronos_tools.decompose_job_id(job)
             formatted.append(job)
         except chronos_tools.InvalidJobNameError:
             pass
     return formatted
+
 
 def main():
 

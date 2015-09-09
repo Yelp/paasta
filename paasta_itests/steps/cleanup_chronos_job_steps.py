@@ -7,7 +7,8 @@ from paasta_tools.utils import _run
 from paasta_tools.chronos_tools import compose_job_id
 
 
-@when('I launch {num_jobs} "{state}" chronos jobs with service "{service}" with chronos instance "{job}" and differing tags')
+@when('I launch {num_jobs} "{state}" chronos jobs with service "{service}" \
+        with chronos instance "{job}" and differing tags')
 def launch_jobs(context, num_jobs, state, service, job):
     client = context.chronos_client
     jobs = [{
@@ -29,8 +30,9 @@ def launch_jobs(context, num_jobs, state, service, job):
 
     if state == "known":
         context.known_job_names = [job['name'] for job in jobs]
-    elif state== "unknown":
+    elif state == "unknown":
         context.unknown_job_names = [job['name'] for job in jobs]
+
 
 @when('I launch {num_jobs} non-paasta jobs')
 def launch_non_paasta_jobs(context, num_jobs):
@@ -74,6 +76,7 @@ def non_paasta_jobs(context):
     running_job_names = [job['name'] for job in jobs]
     assert all([job_name in running_job_names for job_name in context.non_paasta_jobs])
 
+
 @then('the "{state}" chronos jobs are not in the job list')
 def not_in_job_list(context, state):
     jobs = context.chronos_client.list()
@@ -82,6 +85,7 @@ def not_in_job_list(context, state):
     elif state == "unknown":
         state_list = context.unknown_job_names
     assert_no_job_names_in_list(state_list, jobs)
+
 
 @then('the "{state}" chronos jobs are in the job list')
 def all_in_job_list(context, state):
