@@ -1,3 +1,11 @@
+paasta-tools (0.12.69-yelp1) lucid; urgency=low
+
+  * 0.12.69 tagged with 'make release'
+    Commit: Merge branch PAASTA-1194  Conflicts:
+    paasta_tools/marathon_serviceinit.py
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 08 Sep 2015 17:15:12 -0700
+
 paasta-tools (0.12.68-yelp1) lucid; urgency=low
 
   * 0.12.68 tagged with 'make release'
