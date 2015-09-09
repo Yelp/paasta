@@ -665,16 +665,19 @@ def test_get_docker_url_with_no_docker_image():
 
 
 def test_run_cancels_timer_thread_on_keyboard_interrupt():
+    mock_process = mock.Mock()
+    mock_timer_object = mock.Mock()
     with contextlib.nested(
-        mock.patch('utils.Popen.wait',  side_effect=KeyboardInterrupt),
-        mock.patch('utils.threading.Timer', autospect=True),
+        mock.patch('utils.Popen', autospec=True, return_value=mock_process),
+        mock.patch('utils.threading.Timer', autospec=True, return_value=mock_timer_object),
     ) as (
         mock_popen,
         mock_timer
     ):
+        mock_process.stdout.readline.side_effect = KeyboardInterrupt
         with raises(KeyboardInterrupt):
             utils._run('sh echo foo', timeout=10)
-            assert mock_timer.cancel.called
+        assert mock_timer_object.cancel.call_count == 1
 
 
 class TestInstanceConfig:
