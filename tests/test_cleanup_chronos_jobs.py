@@ -40,8 +40,8 @@ def test_format_list_output():
         == "Successfully Removed:\n  foo\n  bar\n  baz"
 
 
-def test_running_job_names():
+def test_deployed_job_names():
     mock_client = mock.Mock()
     mock_client.list.return_value = [{'name': 'foo', 'blah': 'blah'}, {'name': 'bar', 'blah': 'blah'}]
-    assert cleanup_chronos_jobs.running_job_names(mock_client) == ['foo', 'bar']
+    assert cleanup_chronos_jobs.deployed_job_names(mock_client) == ['foo', 'bar']
 

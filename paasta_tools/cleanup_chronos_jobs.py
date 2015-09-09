@@ -84,7 +84,7 @@ def format_list_output(title, job_names):
     return '%s\n  %s' % (title, '\n  '.join(job_names))
 
 
-def running_job_names(client):
+def deployed_job_names(client):
     return [job['name'] for job in client.list()]
 
 
@@ -114,9 +114,9 @@ def main():
     # get_chronos_jobs_for_cluster returns (service_name, job)
     expected_service_jobs = chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)
 
-    # remove those jobs not related to paasta
+    # filter jobs not related to paasta
     # and decompse into (service, instance, tag) tuples
-    paasta_jobs = filter_paasta_jobs(running_job_names(client))
+    paasta_jobs = filter_paasta_jobs(deployed_job_names(client))
     running_service_jobs = [chronos_tools.decompose_job_id(job) for job in paasta_jobs]
 
     to_delete = jobs_to_delete(expected_service_jobs, running_service_jobs)
