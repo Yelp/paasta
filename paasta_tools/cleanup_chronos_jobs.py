@@ -74,8 +74,6 @@ def jobs_to_delete(expected_jobs, actual_jobs):
     :returns a list of (service, instance, config) tuples to be removed
     """
 
-    # find all those where the (service, instance) pair of the job
-    # isn't in the list of expected jobs
     not_expected = [job for job in actual_jobs if (job[0], job[1]) not in expected_jobs]
     return not_expected
 
@@ -121,7 +119,7 @@ def main():
 
     to_delete = jobs_to_delete(expected_service_jobs, running_service_jobs)
 
-    #recompose the job ids again for deletion
+    # recompose the job ids again for deletion
     to_delete_job_ids = [chronos_tools.compose_job_id(*job) for job in to_delete]
 
     task_responses = cleanup_tasks(client, to_delete_job_ids)
