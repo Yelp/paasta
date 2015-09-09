@@ -107,7 +107,7 @@ def decompose_job_id(job):
         raise InvalidJobNameError('job name %s is invalid' % job)
     elif len(parts) == 2:
         return (parts[0], parts[1], None)
-    return tuple(parts)
+    return (parts[0], parts[1], parts[2])
 
 
 class InvalidChronosConfigError(Exception):
