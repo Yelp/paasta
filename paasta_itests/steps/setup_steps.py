@@ -3,7 +3,7 @@ from tempfile import NamedTemporaryFile
 from tempfile import mkdtemp
 import yaml
 
-from behave import given, when
+from behave import given
 import chronos
 import json
 

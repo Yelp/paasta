@@ -7,7 +7,7 @@ from paasta_tools.utils import _run
 from paasta_tools.chronos_tools import compose_job_id
 
 
-@when('I launch "{num_jobs}" "{state}" chronos jobs with service "{service}" with chronos instance "{job}" and differing tags')
+@when('I launch {num_jobs} "{state}" chronos jobs with service "{service}" with chronos instance "{job}" and differing tags')
 def launch_jobs(context, num_jobs, state, service, job):
     client = context.chronos_client
     jobs = [{
@@ -21,6 +21,7 @@ def launch_jobs(context, num_jobs, state, service, job):
     } for x in range(0, int(num_jobs))]
     for job in jobs:
         try:
+            print 'attempting to create job %s' % job['name']
             client.add(job)
         except Exception:
             print 'Error creating test job: %s' % json.dumps(job)
@@ -31,7 +32,7 @@ def launch_jobs(context, num_jobs, state, service, job):
     elif state== "unknown":
         context.unknown_job_names = [job['name'] for job in jobs]
 
-@when('I launch "{num_jobs}" non paasta jobs')
+@when('I launch {num_jobs} non-paasta jobs')
 def launch_non_paasta_jobs(context, num_jobs):
     client = context.chronos_client
     jobs = [{
@@ -54,9 +55,7 @@ def launch_non_paasta_jobs(context, num_jobs):
 
 @then('cleanup_chronos_jobs exits with return code "{expected_return_code}" and the correct output')
 def check_cleanup_chronos_jobs_output(context, expected_return_code):
-    print context.soa_dir
-    cmd = '../paasta_tools/cleanup_chronos_jobs.py -d %s' % context.soa_dir
-    print 'command >>>'
+    cmd = '../paasta_tools/cleanup_chronos_jobs.py --soa-dir %s' % context.soa_dir
     print cmd
     (exit_code, output) = _run(cmd)
     print context.unknown_job_names
@@ -97,6 +96,7 @@ def all_in_job_list(context, state):
 def assert_no_job_names_in_list(names, jobs):
     running_job_names = [job['name'] for job in jobs]
     assert all([job_name not in running_job_names for job_name in names])
+
 
 def assert_all_job_names_in_list(names, jobs):
     running_job_names = [job['name'] for job in jobs]
