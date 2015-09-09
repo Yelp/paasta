@@ -26,6 +26,7 @@ from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
 from paasta_tools.utils import format_log_line
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import LOG_COMPONENTS
 from paasta_tools.utils import PaastaColors
@@ -124,13 +125,12 @@ def cluster_to_scribe_env(cluster):
     Scribe has its own "environment" key, which doesn't always map 1:1 with our
     cluster names, so we have to maintain a manual mapping.
 
-    To update this list, run `paasta list-clusters` and guess which scribe
-    environment matches them (from scribereader -h).
+    This mapping is deployed as a config file via puppet as part of the public
+    config deployed to every server.
     """
-    lookup_map = {
-        'paasta-cluster': 'scribe-environment',
-    }
-    env = lookup_map.get(cluster, None)
+    system_paasta_config = load_system_paasta_config()
+    scribe_map = system_paasta_config.get_scribe_map()
+    env = scribe_map.get(cluster, None)
     if env is None:
         print "I don't know where scribe logs for %s live?" % cluster
         sys.exit(1)

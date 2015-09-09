@@ -14,14 +14,26 @@ from scribereader.scribereader import StreamTailerSetupError
 
 
 def test_cluster_to_scribe_env_good():
-    actual = logs.cluster_to_scribe_env('mesosstage')
-    assert actual == 'env1'
+    mock_system_paasta_config = mock.Mock(autospec='paasta_tools.utils.SystemPaastaConfig')
+    mock_system_paasta_config.get_scribe_map.return_value = {'mesosstage': 'env1'}
+    with mock.patch('paasta_tools.paasta_cli.cmds.logs.load_system_paasta_config', autospec=True) as (
+        mock_load_system_paasta_config
+    ):
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+        actual = logs.cluster_to_scribe_env('mesosstage')
+        assert actual == 'env1'
 
 
 def test_cluster_to_scribe_env_bad():
-    with raises(SystemExit) as sys_exit:
-        logs.cluster_to_scribe_env('dne')
-        assert sys_exit.value.code == 1
+    mock_system_paasta_config = mock.Mock(autospec='paasta_tools.utils.SystemPaastaConfig')
+    mock_system_paasta_config.get_scribe_map.return_value = {}
+    with mock.patch('paasta_tools.paasta_cli.cmds.logs.load_system_paasta_config', autospec=True) as (
+        mock_load_system_paasta_config
+    ):
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+        with raises(SystemExit) as sys_exit:
+            logs.cluster_to_scribe_env('dne')
+            assert sys_exit.value.code == 1
 
 
 def test_paasta_log_line_passes_filter_true():
