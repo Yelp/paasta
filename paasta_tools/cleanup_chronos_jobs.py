@@ -72,7 +72,7 @@ def jobs_to_delete(expected_jobs, actual_jobs):
 
     :param expected_jobs: a list of (service, instance) tuples
     :param actual_jobs: a list of (service, instance, config) tuples
-    :returns a list of (service, instance, config) tuples to be removed
+    :returns: a list of (service, instance, config) tuples to be removed
     """
 
     not_expected = [job for job in actual_jobs if (job[0], job[1]) not in expected_jobs]
@@ -92,7 +92,7 @@ def filter_paasta_jobs(jobs):
     Given a list of job name strings, return only those in the format PaaSTA expects.
 
     :param jobs: a list of job names.
-    :returns those job names in a format PaaSTA expects:
+    :returns: those job names in a format PaaSTA expects
     """
     formatted = []
     for job in jobs:
