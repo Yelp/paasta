@@ -34,21 +34,12 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can emergency start a chronos job
     Given a working paasta cluster
-    And I have yelpsoa-configs for the service "test-service" with disabled chronos instance "job"
-    And I have a deployments.json for the service "test-service" with disabled chronos instance "job"
+    And I have yelpsoa-configs for the service "test-service" with enabled chronos instance "job"
+    And I have a deployments.json for the service "test-service" with enabled chronos instance "job"
     When we create a chronos job from the configs for instance "job" of service "test-service"
-    And we paasta_serviceinit emergency-start the chronos job as scheduled
+    And we paasta_serviceinit emergency-start the chronos job
     And we wait for the chronos job to appear in the job list
-    Then the job is disabled in chronos
-
-#  Scenario: paasta_serviceinit can emergency start a chronos job and run it immediately
-#    Given a working paasta cluster
-#    And I have yelpsoa-configs for the service "test-service" with disabled chronos instance "job"
-#    And I have a deployments.json for the service "test-service" with disabled chronos instance "job"
-#    When we create a chronos job from the configs for instance "job" of service "test-service"
-#    And we paasta_serviceinit emergency-start the chronos job immediately
-#    And we wait for the chronos job to appear in the job list
-#    Then the job is enabled in chronos
-#    And the job has running tasks
+    Then the job is enabled in chronos
+    And the job has running tasks
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2

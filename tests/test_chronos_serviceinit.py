@@ -13,7 +13,7 @@ def test_start_chronos_job():
     job_id = 'my_job_id'
     cluster = 'my_cluster'
     old_schedule = 'R/2015-03-25T19:36:35Z/PT5M'
-    job_config = {'beep': 'boop', 'disabled': True, 'schedule': old_schedule}
+    job_config = {'beep': 'boop', 'disabled': False, 'schedule': old_schedule}
     with contextlib.nested(
         mock.patch('chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
     ) as (
@@ -24,33 +24,9 @@ def test_start_chronos_job():
                                               job_id,
                                               mock_client,
                                               cluster,
-                                              job_config,
-                                              immediate_start=False)
+                                              job_config)
         assert job_config['schedule'] == old_schedule
-        assert job_config['disabled'] is True
         mock_client.update.assert_called_once_with(job_config)
-
-
-def test_start_chronos_job_immediately():
-    service = 'my_service'
-    instance = 'my_instance'
-    job_id = 'my_job_id'
-    cluster = 'my_cluster'
-    schedule = 'R/2015-03-25T19:36:35Z/PT5M'
-    job_config = {'beep': 'boop', 'disabled': True, 'schedule': schedule}
-    with contextlib.nested(
-        mock.patch('chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
-    ) as (
-        mock_client,
-    ):
-        chronos_serviceinit.start_chronos_job(service,
-                                              instance,
-                                              job_id,
-                                              mock_client,
-                                              cluster,
-                                              job_config,
-                                              immediate_start=True)
-        assert job_config['disabled'] is True
         mock_client.run.assert_called_once_with(job_id)
 
 

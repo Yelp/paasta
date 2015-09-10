@@ -27,15 +27,6 @@ def add_subparser(subparsers):
         help='The PaaSTA cluster that has the service you want to start. Like norcal-prod',
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
-    status_parser.add_argument(
-        '--ignore-schedule',
-        action='store_true',
-        dest='ignore_schedule',
-        default=False,
-        help=("(Chronos only) Forces the new version of the job to start immediately,"
-              " ignoring the start time in the 'schedule' parameter."),
-        required=False,
-    )
     status_parser.set_defaults(command=paasta_emergency_start)
 
 
@@ -43,7 +34,6 @@ def paasta_emergency_start(args):
     """Performs an emergency start on a given service.instance on a given cluster"""
     service = figure_out_service_name(args)
     print "Performing an emergency start on %s..." % compose_job_id(service, args.instance)
-    # if ignore_schedule TODO add some logic to handle this
     # TODO do any calls of the below func pass --verbose ?
     execute_paasta_serviceinit_on_remote_master('start', args.cluster, service, args.instance)
     print "Warning: this tool just asks Marathon to resume normal operation"  # TODO update for Chronos too

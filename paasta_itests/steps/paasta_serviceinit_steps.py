@@ -92,13 +92,9 @@ def chronos_emergency_stop_job(context):
     assert exit_code == 0
 
 
-@when(u"we paasta_serviceinit emergency-start the chronos job {immediately_or_as_scheduled}")
-def chronos_emergency_start_job(context, immediately_or_as_scheduled):
-    immediate_flag = ''
-    if immediately_or_as_scheduled == 'immediately':
-        immediate_flag = ' --ignore-schedule'
-    cmd = ('../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job start%s'
-           % (context.soa_dir, immediate_flag))
+@when(u"we paasta_serviceinit emergency-start the chronos job")
+def chronos_emergency_start_job(context):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job start' % context.soa_dir
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)

@@ -14,9 +14,8 @@ log = logging.getLogger("__main__")
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
-# 'start' is a misnomer since this really just sends the latest version to Chronos immediately
-# though if 'immediate_start' is set to True, it will 'start' by calling the 'run job manually' endpoint
-def start_chronos_job(service, instance, job_id, client, cluster, job_config, immediate_start=False):
+# calls the 'run job manually' endpoint in Chronos, starting the job now regardless of schedule
+def start_chronos_job(service, instance, job_id, client, cluster, job_config):
     name = PaastaColors.cyan(job_id)
     _log(
         service_name=service,
@@ -26,10 +25,8 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, im
         cluster=cluster,
         instance=instance
     )
-    if immediate_start:
-        client.run(job_id)
-    else:
-        client.update(job_config)
+    client.update(job_config)
+    client.run(job_id)
 
 
 def stop_chronos_job(service, instance, client, cluster, existing_jobs):
@@ -50,7 +47,7 @@ def stop_chronos_job(service, instance, client, cluster, existing_jobs):
 
 def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, immediate_start):
     stop_chronos_job(service, instance, client, cluster, matching_jobs)
-    start_chronos_job(service, instance, job_id, client, cluster, job_config, immediate_start)
+    start_chronos_job(service, instance, job_id, client, cluster, job_config)
 
 
 def format_chronos_job_status(job):
@@ -112,14 +109,13 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     matching_jobs = chronos_tools.lookup_chronos_jobs(r'^%s%s' % (job_prefix, chronos_tools.SPACER),
                                                       client,
                                                       include_disabled=True)
-    immediate_start = False  # FIXME we need some way to get this flag from call of paasta_serviceinit
 
     if command == "start":
-        start_chronos_job(service, instance, job_id, client, cluster, job_config, immediate_start)
+        start_chronos_job(service, instance, job_id, client, cluster, job_config)
     elif command == "stop":
         stop_chronos_job(service, instance, client, cluster, matching_jobs)
     elif command == "restart":
-        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, immediate_start)
+        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config)
     elif command == "status":
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
