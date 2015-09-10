@@ -1,3 +1,11 @@
+paasta-tools (0.12.71-yelp1) lucid; urgency=low
+
+  * 0.12.71 tagged with 'make release'
+    Commit: Dont pass through constraints in get_happy_tasks because it
+    doesnt matter in that context. PAASTA-1194
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 10 Sep 2015 16:57:28 -0700
+
 paasta-tools (0.12.70-yelp1) lucid; urgency=low
 
   * 0.12.70 tagged with 'make release'
