@@ -69,7 +69,7 @@ def status_chronos_job(jobs):
         return "\n".join(output)
 
 
-def perform_command(command, service, instance):
+def perform_command(command, service, instance, cluster, verbose, soa_dir):
     job_id = chronos_tools.compose_job_id(service, instance)
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)

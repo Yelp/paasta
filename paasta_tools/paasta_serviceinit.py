@@ -84,6 +84,9 @@ def main():
             command=command,
             service=service,
             instance=instance,
+            cluster=cluster,
+            verbose=args.verbose,
+            soa_dir=args.soa_dir,
         )
         sys.exit(return_code)
     else:
