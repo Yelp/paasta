@@ -48,6 +48,7 @@ def launch_non_paasta_jobs(context, num_jobs):
     context.non_paasta_jobs = [job['name'] for job in jobs]
     for job in jobs:
         try:
+            print 'attempting to create job %s' % job['name']
             client.add(job)
         except Exception:
             print 'Error creating test job: %s' % json.dumps(job)
