@@ -44,7 +44,7 @@ def _get_last_result(job):
     return last_result
 
 
-def format_chronos_job_status(job):
+def format_chronos_job_status(job, complete_job_config):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
     Currently only reports whether the job is disabled or enabled
@@ -56,7 +56,7 @@ def format_chronos_job_status(job):
     return "Status: %s Last: %s" % (is_disabled, last_result)
 
 
-def status_chronos_job(jobs):
+def status_chronos_job(jobs, complete_job_config):
     """Returns a formatted string of the status of a list of chronos jobs
 
     :param jobs: list of dicts of chronos job info as returned by the chronos
@@ -65,13 +65,14 @@ def status_chronos_job(jobs):
     if jobs == []:
         return "%s: chronos job is not setup yet" % PaastaColors.yellow("Warning")
     else:
-        output = [format_chronos_job_status(job) for job in jobs]
+        output = [format_chronos_job_status(job, complete_job_config) for job in jobs]
         return "\n".join(output)
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
     job_id = chronos_tools.compose_job_id(service, instance)
     chronos_config = chronos_tools.load_chronos_config()
+    complete_job_config = chronos_tools.load_chronos_job_config(service, instance, cluster)
     client = chronos_tools.get_chronos_client(chronos_config)
 
     if command == "status":
@@ -83,7 +84,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         job_pattern = "%s%s" % (job_id, chronos_tools.SPACER)
         jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
         print "Job id: %s" % job_id
-        print status_chronos_job(jobs)
+        print status_chronos_job(jobs, complete_job_config)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
