@@ -7,6 +7,7 @@ import requests_cache
 
 import chronos_tools
 from paasta_tools.utils import PaastaColors
+from paasta_tools.marathon_serviceinit import get_desired_state_human
 
 
 log = logging.getLogger("__main__")
@@ -44,16 +45,19 @@ def _get_last_result(job):
     return last_result
 
 
-def format_chronos_job_status(job, complete_job_config):
+def format_chronos_job_status(job, desired_state):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
-    Currently only reports whether the job is disabled or enabled
 
     :param job: dictionary of the job status
+    :param desired_state: a pretty-formatted string representing the
+    job's started/stopped state as set with paast emergency-[stop|start], as
+    returned by get_desired_state_human()
     """
     is_disabled = _get_disabled(job)
+    is_stopped = desired_state
     last_result = _get_last_result(job)
-    return "Status: %s Last: %s" % (is_disabled, last_result)
+    return "Status: %s, %s Last: %s" % (is_disabled, is_stopped, last_result)
 
 
 def status_chronos_job(jobs, complete_job_config):
@@ -65,7 +69,8 @@ def status_chronos_job(jobs, complete_job_config):
     if jobs == []:
         return "%s: chronos job is not setup yet" % PaastaColors.yellow("Warning")
     else:
-        output = [format_chronos_job_status(job, complete_job_config) for job in jobs]
+        desired_state = get_desired_state_human(complete_job_config)
+        output = [format_chronos_job_status(job, desired_state) for job in jobs]
         return "\n".join(output)
 
 
