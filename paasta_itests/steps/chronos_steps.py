@@ -60,7 +60,10 @@ def chronos_check_running_tasks(context, has_or_not):
 @then(u"the job is {disabled} in chronos")
 def chronos_check_job_state(context, disabled):
     desired_disabled = (disabled == 'disabled')
-    jobs = chronos_tools.lookup_chronos_jobs(context.chronos_job_name, context.chronos_client, 1, desired_disabled)
+    jobs = chronos_tools.lookup_chronos_jobs(context.chronos_job_name,
+                                             context.chronos_client,
+                                             max_expected=1,
+                                             include_disabled=desired_disabled)
     assert jobs != []
     for job in jobs:
         assert job['disabled'] == desired_disabled

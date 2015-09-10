@@ -3,7 +3,7 @@ from binascii import b2a_hex
 from tempfile import NamedTemporaryFile
 from tempfile import mkdtemp
 
-from behave import given
+from behave import given, when
 import chronos
 import json
 import yaml
@@ -87,7 +87,7 @@ def write_etc_paasta(config, filename):
         f.write(json.dumps(config))
 
 
-@given('a working paasta cluster')
+@given(u'a working paasta cluster')
 def working_paasta_cluster(context):
     """Adds a working marathon client and chronos client for the purposes of
     interacting with them in the test."""
@@ -120,7 +120,7 @@ def working_paasta_cluster(context):
     }, 'volumes.json')
 
 
-@given('I have yelpsoa-configs for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+@given(u'I have yelpsoa-configs for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
 def write_soa_dir_chronos_instance(context, service_name, disabled, instance_name):
     soa_dir = mkdtemp()
     desired_disabled = (disabled == 'disabled')
@@ -157,7 +157,7 @@ def write_soa_dir_chronos_deployments(context, service_name, disabled, instance_
 
 
 # this will be useful when testing the bounce code (PAASTA-971)
-@given(u'I update deployments.json for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+@when(u'I update deployments.json for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
 def update_soa_dir_chronos_deployments(context, service_name, disabled, instance_name):
     if disabled == 'disabled':
         desired_state = 'stop'

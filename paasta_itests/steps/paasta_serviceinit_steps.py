@@ -81,7 +81,7 @@ def chronos_status_returns_healthy(context):
     assert "New" in output
 
 
-@when(u"paasta_serviceinit (emergency) stops a chronos job")
+@when(u"we paasta_serviceinit emergency-stop the chronos job")
 def chronos_emergency_stop_job(context):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job stop' % context.soa_dir
     print 'Running cmd %s' % cmd
@@ -92,7 +92,7 @@ def chronos_emergency_stop_job(context):
     assert exit_code == 0
 
 
-@when(u"paasta_serviceinit (emergency) starts a chronos job {immediately_or_as_scheduled}")
+@when(u"we paasta_serviceinit emergency-start the chronos job {immediately_or_as_scheduled}")
 def chronos_emergency_start_job(context, immediately_or_as_scheduled):
     immediate_flag = ''
     if immediately_or_as_scheduled == 'immediately':
