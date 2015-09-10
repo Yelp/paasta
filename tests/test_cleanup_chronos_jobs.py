@@ -26,15 +26,15 @@ def test_cleanup_jobs():
 
 def test_jobs_to_delete():
     configured_jobs = [('service1', 'job1'), ('service1', 'job2')]
-    running_jobs = [('service1', 'job1', 'config'),  ('service1', 'job2', 'config')]
-    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, running_jobs) == []
+    deployed_jobs = [('service1', 'job1', 'config'),  ('service1', 'job2', 'config')]
+    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, deployed_jobs) == []
 
 
 def test_jobs_to_delete_unknown_job():
     configured_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job3')]
-    running_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config'),
+    deployed_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config'),
                    ('service1', 'job3', 'config'), ('service1', 'job5', 'config')]
-    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, running_jobs) == [('service1', 'job5', 'config')]
+    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, deployed_jobs) == [('service1', 'job5', 'config')]
 
 
 def test_format_list_output():
