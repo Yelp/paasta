@@ -7,18 +7,18 @@ import chronos_serviceinit
 
 
 def test_format_chronos_job_status_disabled():
-    example_disabled_job = {
+    example_job = {
         'disabled': True,
     }
-    actual = chronos_serviceinit.format_chronos_job_status(example_disabled_job)
+    actual = chronos_serviceinit.format_chronos_job_status(example_job)
     assert PaastaColors.red("Disabled") in actual
 
 
 def test_format_chronos_job_status_enabled():
-    example_enabled_job = {
+    example_job = {
         'disabled': False,
     }
-    actual = chronos_serviceinit.format_chronos_job_status(example_enabled_job)
+    actual = chronos_serviceinit.format_chronos_job_status(example_job)
     assert PaastaColors.green("Enabled") in actual
 
 
