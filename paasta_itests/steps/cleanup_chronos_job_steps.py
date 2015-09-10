@@ -7,7 +7,7 @@ from paasta_tools.utils import _run
 from paasta_tools.chronos_tools import compose_job_id
 
 
-@when('I launch {num_jobs} {state} chronos jobs with service "{service}" with chronos instance "{job}" and differing tags')
+@when('I launch {num_jobs} {state} jobs with service "{service}", chronos instance "{job}" and differing tags')
 def launch_jobs(context, num_jobs, state, service, job):
     client = context.chronos_client
     jobs = [{

@@ -112,7 +112,7 @@ def working_paasta_cluster(context):
     }, 'cluster.json')
 
 
-@given('I have yelpsoa-configs for the service "{service_name}" with chronos instance "{instance_name}" and command "{command}"')
+@given('I have yelpsoa-configs for service "{service_name}", chronos instance "{instance_name}" and cmd "{command}"')
 def write_soa_dir_chronos_instance(context, service_name, instance_name, command):
     soa_dir = mkdtemp()
     if not os.path.exists(os.path.join(soa_dir, service_name)):
