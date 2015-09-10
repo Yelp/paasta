@@ -107,7 +107,11 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
-    matching_jobs = chronos_tools.lookup_chronos_jobs(r'^%s' % job_prefix, client, include_disabled=True)
+    # We add SPACER to the end as an anchor to prevent catching
+    # "my_service my_job_extra" when looking for "my_service my_job".
+    matching_jobs = chronos_tools.lookup_chronos_jobs(r'^%s%s' % (job_prefix, chronos_tools.SPACER),
+                                                      client,
+                                                      include_disabled=True)
     immediate_start = False  # FIXME we need some way to get this flag from call of paasta_serviceinit
 
     if command == "start":
@@ -119,13 +123,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     elif command == "status":
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
-
-        # We add SPACER to the end as an anchor to prevent catching
-        # "my_service my_job_extra" when looking for "my_service my_job".
-        job_pattern = "%s%s" % (job_id, chronos_tools.SPACER)
-        jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
         print "Job Id: %s" % job_id
-        print status_chronos_job(jobs)
+        print status_chronos_job(matching_jobs)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
