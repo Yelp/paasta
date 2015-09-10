@@ -225,8 +225,11 @@ def get_happy_tasks(app, service_name, nerve_ns, min_task_uptime=None, check_hap
 
         service_namespace_config = marathon_tools.load_service_namespace_config(service_name, nerve_ns)
         discover_location_type = service_namespace_config.get_discover()
+        # We need some mesos slaves to query their haproxy, but they can be pretty much
+        # anything as long as we find the happy tasks somehwere. Therefore we don't pass
+        # through constraints.
         unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(
-            discover_location_type, constraints=app.constraints)
+            discover_location_type, constraints=[])
 
         for value, hosts in unique_values.iteritems():
             synapse_host = hosts[0]
