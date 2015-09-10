@@ -33,7 +33,7 @@ def test_jobs_to_delete():
 def test_jobs_to_delete_unknown_job():
     configured_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job3')]
     deployed_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config'),
-                   ('service1', 'job3', 'config'), ('service1', 'job5', 'config')]
+                     ('service1', 'job3', 'config'), ('service1', 'job5', 'config')]
     assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, deployed_jobs) == [('service1', 'job5', 'config')]
 
 
