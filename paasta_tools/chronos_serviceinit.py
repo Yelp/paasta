@@ -13,19 +13,16 @@ log = logging.getLogger("__main__")
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
-def format_chronos_job_status(job):
-    """Given a job, returns a pretty-printed human readable output regarding
-    the status of the job.
-    Currently only reports whether the job is disabled or enabled
-
-    :param job: dictionary of the job status
-    """
+def _get_status(job):
     status = PaastaColors.red("UNKNOWN")
     if job.get("disabled", False):
         status = PaastaColors.red("Disabled")
     else:
         status = PaastaColors.green("Enabled")
+    return status
 
+
+def _get_last_result(job):
     last_result = PaastaColors.red("UNKNOWN")
     fail_result = PaastaColors.red("Fail")
     ok_result = PaastaColors.green("OK")
@@ -44,7 +41,18 @@ def format_chronos_job_status(job):
             last_result = ok_result
         else:
             last_result = fail_result
+    return last_result
 
+
+def format_chronos_job_status(job):
+    """Given a job, returns a pretty-printed human readable output regarding
+    the status of the job.
+    Currently only reports whether the job is disabled or enabled
+
+    :param job: dictionary of the job status
+    """
+    status = _get_status(job)
+    last_result = _get_last_result(job)
     return "Status: %s Last: %s" % (status, last_result)
 
 
