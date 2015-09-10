@@ -394,14 +394,30 @@ def test_get_docker_run_cmd_without_additional_args():
     random_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {}
     interactive = False
     docker_hash = '8' * 40
     command = None
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command)
     # Since we can't assert that the command isn't present in the output, we do
     # the next best thing and check that the docker hash is the last thing in
     # the docker run command (the command would have to be after it if it existed)
     assert actual[-1] == docker_hash
+
+
+def test_get_docker_run_cmd_with_env_vars():
+    memory = 555
+    random_port = 666
+    container_name = 'Docker' * 6 + 'Doc'
+    volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {'foo': 'bar', 'baz': 'qux', 'x': ' with spaces'}
+    interactive = False
+    docker_hash = '8' * 40
+    command = None
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command)
+    assert '--env="foo=bar"' in actual
+    assert '--env="baz=qux"' in actual
+    assert '--env="x= with spaces"' in actual
 
 
 def test_get_docker_run_cmd_interactive_false():
@@ -409,10 +425,11 @@ def test_get_docker_run_cmd_interactive_false():
     random_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {}
     interactive = False
     docker_hash = '8' * 40
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command)
 
     assert any(['--env=PORT=' in arg for arg in actual])
     assert '--memory=%dm' % memory in actual
@@ -431,10 +448,11 @@ def test_get_docker_run_cmd_interactive_true():
     random_port = 666
     container_name = 'Docker' * 6 + 'Doc'
     volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {}
     interactive = True
     docker_hash = '8' * 40
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command)
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command)
 
     assert '--interactive=true' in actual
     assert '--tty=true' in actual

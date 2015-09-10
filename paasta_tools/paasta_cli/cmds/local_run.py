@@ -292,8 +292,10 @@ def get_container_name():
     return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
-def get_docker_run_cmd(memory, random_port, container_name, volumes, interactive, docker_hash, command):
+def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command):
     cmd = ['docker', 'run']
+    for k, v in env.iteritems():
+        cmd.append('--env=\"%s=%s\"' % (k, v))
     # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
     # be using this variable in surprising ways. See PAASTA-267 for more context.
@@ -380,18 +382,19 @@ def run_docker_container(
             "Note that some programs behave differently when running with no\n"
             "tty attached (as your program is about to run).\n\n"
         ))
-
+    environment = service_manifest.get_env()
     memory = service_manifest.get_mem()
     random_port = pick_random_port()
     container_name = get_container_name()
     docker_run_cmd = get_docker_run_cmd(
-        memory,
-        random_port,
-        container_name,
-        volumes,
-        interactive,
-        docker_hash,
-        command
+        memory=memory,
+        random_port=random_port,
+        container_name=container_name,
+        volumes=volumes,
+        env=environment,
+        interactive=interactive,
+        docker_hash=docker_hash,
+        command=command,
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
