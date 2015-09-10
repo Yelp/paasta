@@ -1,9 +1,8 @@
 import os
-from binascii import b2a_hex
 from tempfile import NamedTemporaryFile
 from tempfile import mkdtemp
 
-from behave import given, when
+from behave import given
 import chronos
 import json
 import yaml
@@ -154,25 +153,3 @@ def write_soa_dir_chronos_deployments(context, service_name, disabled, instance_
                 }
             }
         }))
-
-
-# this will be useful when testing the bounce code (PAASTA-971)
-@when(u'I update deployments.json for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
-def update_soa_dir_chronos_deployments(context, service_name, disabled, instance_name):
-    if disabled == 'disabled':
-        desired_state = 'stop'
-    else:
-        desired_state = 'start'
-    random_hash = b2a_hex(os.urandom(32))[:8]
-
-    with open(os.path.join(context.soa_dir, service_name, 'deployments.json'), 'w') as dp:
-        dp.write(json.dumps({
-            'v1': {
-                '%s:%s' % (service_name, utils.get_default_branch(context.cluster, instance_name)): {
-                    'docker_image': 'test-image-%s' % random_hash,
-                    'desired_state': desired_state,
-                }
-            }
-        }))
-        print ("Updated code sha in deployments.json for '%s': %s"
-               % (utils.compose_job_id(service_name, instance_name), random_hash))

@@ -383,11 +383,6 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     return complete_config
 
 
-def get_job_id(service, job_name, soa_dir=DEFAULT_SOA_DIR):
-    """Returns the canonical job ID as it would be provided to Chronos"""
-    return create_complete_config(service, job_name, soa_dir)['name']
-
-
 def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=False):
     """Retrieves Chronos jobs with names that match a specified pattern.
 

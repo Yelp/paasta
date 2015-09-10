@@ -811,14 +811,6 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     return complete_config
 
 
-def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
-    """Composes a predictable marathon app_id from the service's docker image and
-    marathon configuration. Editing this function *will* cause a bounce of all
-    services because they will see an "old" version of the marathon app deployed,
-    and a new one with the new hash will try to be deployed"""
-    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir)['id']
-
-
 def get_expected_instance_count_for_namespace(service_name, namespace, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get the number of expected instances for a namespace, based on the number
     of instances set to run on that namespace as specified in Marathon service

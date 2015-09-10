@@ -804,21 +804,6 @@ class TestChronosTools:
             }
             assert actual == expected
 
-    def test_get_job_id(self):
-        fake_name = chronos_tools.compose_job_id('fake_service', 'fake_job', 'sha%shash' % chronos_tools.SPACER)
-        fake_config = {'name': fake_name}
-        with contextlib.nested(
-            mock.patch('chronos_tools.create_complete_config', autospec=True, return_value=fake_config),
-        ) as (
-            create_complete_config_patch,
-        ):
-            expected = fake_name
-            actual = chronos_tools.get_job_id('fake_service', 'fake_job')
-            create_complete_config_patch.assert_called_once_with('fake_service',
-                                                                 'fake_job',
-                                                                 chronos_tools.DEFAULT_SOA_DIR)
-            assert actual == expected
-
     def test_wait_for_job(self):
         fake_config = chronos_tools.ChronosConfig(
             {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')

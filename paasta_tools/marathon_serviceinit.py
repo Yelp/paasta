@@ -450,7 +450,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
 
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     try:
-        app_id = marathon_tools.get_app_id(service, instance, marathon_config)
+        app_id = marathon_tools.create_complete_config(service, instance, marathon_config)['id']
     except NoDockerImageError:
         job_name = compose_job_id(service, instance)
         print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_name

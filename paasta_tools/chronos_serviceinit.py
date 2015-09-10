@@ -102,9 +102,9 @@ def status_chronos_job(jobs):
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
-    job_id = chronos_tools.get_job_id(service, instance, soa_dir)
     job_prefix = chronos_tools.compose_job_id(service, instance)
     job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
+    job_id = job_config['name']
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
     # We add SPACER to the end as an anchor to prevent catching
