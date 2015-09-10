@@ -139,9 +139,13 @@ class TestChronosTools:
         actual = chronos_tools.decompose_job_id('service instance')
         assert actual == ('service', 'instance', None)
 
-    def test_rogue_job_id(self):
+    def test_job_id_too_short(self):
         with raises(chronos_tools.InvalidJobNameError):
-            chronos_tools.decompose_job_id('dowhatIwant')
+            chronos_tools.decompose_job_id('foo')
+
+    def test_job_id_too_long(self):
+        with raises(chronos_tools.InvalidJobNameError):
+            chronos_tools.decompose_job_id('foo bar baz qux')
 
     def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'

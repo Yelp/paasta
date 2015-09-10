@@ -103,7 +103,7 @@ def decompose_job_id(job):
     :raises InvalidJobNameError if atleast service,instance don't exist:
     """
     parts = job.split(SPACER)
-    if len(parts) < 2:
+    if len(parts) < 2 or len(parts) > 3:
         raise InvalidJobNameError('job name %s is invalid' % job)
     elif len(parts) == 2:
         return (parts[0], parts[1], None)
