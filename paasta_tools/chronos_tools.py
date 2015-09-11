@@ -82,7 +82,6 @@ def get_chronos_client(config):
                            password=config.get_password())
 
 
-
 def compose_job_id(service, instance, tag=None):
     output = "%s%s%s" % (service, SPACER, instance)
     if tag:

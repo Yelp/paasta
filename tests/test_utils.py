@@ -368,6 +368,11 @@ def test_decompose_job_id_without_tag():
     assert actual == expected
 
 
+def test_job_id_too_short():
+    with raises(utils.InvalidJobNameError):
+        utils.decompose_job_id('foo')
+
+
 def test_remove_tag_from_job_id_with_tag():
     fake_job_id = "my_cool_service.main.git123abc.config456def"
     expected = "my_cool_service.main"
