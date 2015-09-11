@@ -20,6 +20,7 @@ import sys
 import service_configuration_lib
 
 from paasta_tools import chronos_tools
+from paasta_tools.utils import decompose_job_id
 
 
 def parse_args():
@@ -98,7 +99,7 @@ def filter_paasta_jobs(jobs):
     for job in jobs:
         try:
             # attempt to decompose it
-            chronos_tools.decompose_job_id(job)
+            decompose_job_id(job)
             formatted.append(job)
         except chronos_tools.InvalidJobNameError:
             pass
