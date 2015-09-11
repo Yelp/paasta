@@ -472,36 +472,6 @@ def test_send_event_if_under_replication_critical():
         mock_send_event.assert_called_once_with(service, instance, soa_dir, 2, mock.ANY)
 
 
-def test_load_smartstack_info_for_services_uses_correct_attributes_and_constraints():
-    fake_namespaces = ['fake_instance1', 'fake_instance2']
-    fake_services = [('fake_service1', 'fake_instance1'), ('fake_service2', 'fake_instance2')]
-
-    fake_values_and_replication_info = {
-        'fake_value_1': {},
-        'fake_other_value': {}
-    }
-    with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('check_marathon_services_replication.get_smartstack_replication_for_attribute',
-                   autospec=True, return_value=fake_values_and_replication_info)
-    ) as (
-        mock_load_service_namespace_config,
-        mock_get_smartstack_replication_for_attribute
-    ):
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_attribute'
-        mock_load_service_namespace_config.return_value.get_constraints.return_value = ['fake_constraints']
-        expected = {
-            'fake_attribute': fake_values_and_replication_info
-        }
-        actual = check_marathon_services_replication.load_smartstack_info_for_services(fake_services, fake_namespaces,
-                                                                                       'fake_soa_dir')
-        assert actual == expected
-        mock_get_smartstack_replication_for_attribute.assert_called_once_with(
-            attribute='fake_attribute',
-            namespaces=fake_namespaces,
-            constraints=['fake_constraints'])
-
-
 def test_get_smartstack_replication_for_attribute():
     fake_namespaces = ['fake_instance1', 'fake_instance2']
 
@@ -523,10 +493,10 @@ def test_get_smartstack_replication_for_attribute():
             'fake_other_value': {}
         }
         actual = check_marathon_services_replication.get_smartstack_replication_for_attribute(
-            'fake_attribute', fake_namespaces, constraints=[])
+            'fake_attribute', fake_namespaces)
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
-        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with('fake_attribute', constraints=[])
+        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with('fake_attribute')
         mock_get_replication_for_services.assert_any_call(
             synapse_host='fake_host_1',
             synapse_port=DEFAULT_SYNAPSE_PORT,

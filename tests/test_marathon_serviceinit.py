@@ -251,7 +251,6 @@ def test_status_smartstack_backends_normal():
             expected_count=len(haproxy_backends_by_task),
             soa_dir=None,
             verbose=False,
-            constraints=[],
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
@@ -279,7 +278,6 @@ def test_status_smartstack_backends_different_nerve_ns():
             expected_count=normal_count,
             soa_dir=None,
             verbose=False,
-            constraints=[],
         )
         assert "is announced in the" in actual
         assert different_ns in actual
@@ -312,7 +310,6 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
             expected_count=normal_count,
             soa_dir=None,
             verbose=False,
-            constraints=[],
         )
         assert "%s is NOT in smartstack" % service_instance in actual
 
@@ -359,7 +356,6 @@ def test_status_smartstack_backends_multiple_locations():
             expected_count=len(mock_get_backends.return_value),
             soa_dir=None,
             verbose=False,
-            constraints=[],
         )
         mock_get_backends.assert_any_call(
             service_instance,
@@ -421,7 +417,6 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             expected_count=normal_count,
             soa_dir=None,
             verbose=False,
-            constraints=[],
         )
         mock_get_backends.assert_any_call(
             service_instance,
@@ -487,7 +482,6 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             expected_count=len(haproxy_backends_by_task),
             soa_dir=None,
             verbose=True,
-            constraints=[],
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
@@ -506,7 +500,6 @@ def test_status_smartstack_backends_verbose_multiple_locations():
     cluster = 'fake_cluster'
     good_task = mock.Mock()
     other_task = mock.Mock()
-    fake_constraints = ['fake_constraints']
     fake_backend = {'status': 'UP', 'lastchg': '1', 'last_chk': 'OK',
                     'check_code': '200', 'svname': 'ipaddress1:1001_hostname1',
                     'check_status': 'L7OK', 'check_duration': 1}
@@ -543,7 +536,6 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             expected_count=1,
             soa_dir=None,
             verbose=True,
-            constraints=fake_constraints,
         )
         mock_get_backends.assert_any_call(
             service_instance,
@@ -557,7 +549,6 @@ def test_status_smartstack_backends_verbose_multiple_locations():
         )
         mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
             'fake_discover',
-            constraints=fake_constraints,
         )
         assert "fake_location1 - %s" % PaastaColors.green('Healthy') in actual
         assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.DEFAULT), actual)
@@ -604,7 +595,6 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
             expected_count=normal_count,
             soa_dir=None,
             verbose=True,
-            constraints=[],
         )
         assert PaastaColors.red('MAINT') in actual
 
@@ -648,7 +638,6 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
             expected_count=normal_count,
             soa_dir=None,
             verbose=True,
-            constraints=[],
         )
         assert PaastaColors.red('MAINT') not in actual
         assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.GREY), actual)
