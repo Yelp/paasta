@@ -369,13 +369,16 @@ def test_configure_and_run_command_uses_cmd_from_config(
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.build_docker_container', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.Client', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True)
 def test_run_success(
+    mock_run,
     mock_Client,
     mock_build_docker_container,
     mock_run_docker_container,
     mock_figure_out_service_name,
     mock_validate_environment,
 ):
+    mock_run.return_value = (0, 'Output')
     mock_Client.return_value = None
     mock_build_docker_container.return_value = None
     mock_run_docker_container.return_value = None

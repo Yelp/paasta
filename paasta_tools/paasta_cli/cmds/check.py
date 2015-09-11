@@ -121,6 +121,14 @@ def makefile_responds_to_test():
     return returncode in [0, 1]
 
 
+def makefile_responds_to_build_image():
+    """Runs `make -q build-image` to detect if a makefile responds to a
+    build-image target."""
+    cmd = 'make -q build-image'
+    returncode, _ = _run(cmd, timeout=5)
+    return returncode in [0, 1]
+
+
 def get_file_contents(path):
     return open(path).read()
 
@@ -151,6 +159,11 @@ def makefile_check():
             print PaastaCheckMessages.MAKEFILE_HAS_DOCKER_TAG
         else:
             print PaastaCheckMessages.MAKEFILE_HAS_NO_DOCKER_TAG
+
+        if makefile_responds_to_build_image():
+            print PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE
+        else:
+            print PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL
 
         if makefile_responds_to_itest():
             print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST

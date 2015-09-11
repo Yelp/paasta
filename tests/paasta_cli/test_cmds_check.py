@@ -12,6 +12,7 @@ from paasta_tools.paasta_cli.cmds.check import get_marathon_steps
 from paasta_tools.paasta_cli.cmds.check import makefile_check
 from paasta_tools.paasta_cli.cmds.check import makefile_has_a_tab
 from paasta_tools.paasta_cli.cmds.check import makefile_has_docker_tag
+from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_build_image
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_test
 from paasta_tools.paasta_cli.cmds.check import marathon_check
@@ -419,6 +420,20 @@ def test_makefile_responds_to_test_run(mock_run):
     assert actual is False
 
 
+@patch('paasta_tools.paasta_cli.cmds.check._run')
+def test_makefile_responds_to_build_image_good(mock_run):
+    mock_run.return_value = (1, 'Output')
+    actual = makefile_responds_to_build_image()
+    assert actual is True
+
+
+@patch('paasta_tools.paasta_cli.cmds.check._run')
+def test_makefile_responds_to_build_image_run(mock_run):
+    mock_run.return_value = (2, 'Output')
+    actual = makefile_responds_to_build_image()
+    assert actual is False
+
+
 def test_makefile_has_a_tab_true():
     fake_makefile_path = 'UNUSED'
     fake_contents = 'target:\n\tcommand'
@@ -660,6 +675,9 @@ def test_makefile_check():
             'paasta_tools.paasta_cli.cmds.check.makefile_responds_to_itest',
         ),
         patch(
+            'paasta_tools.paasta_cli.cmds.check.makefile_responds_to_build_image',
+        ),
+        patch(
             'paasta_tools.paasta_cli.cmds.check.makefile_has_docker_tag',
         ),
         patch(
@@ -672,6 +690,7 @@ def test_makefile_check():
         mock_makefile_has_a_tab,
         mock_makefile_responds_to_test,
         mock_makefile_responds_to_itest,
+        mock_makefile_responds_to_build_image,
         mock_makefile_has_docker_tag,
         mock_is_file_in_dir,
     ):
@@ -679,4 +698,5 @@ def test_makefile_check():
         assert mock_makefile_has_a_tab.call_count == 1
         assert mock_makefile_responds_to_test.call_count == 1
         assert mock_makefile_responds_to_itest.call_count == 1
+        assert mock_makefile_responds_to_build_image.call_count == 1
         assert mock_makefile_has_docker_tag.call_count == 1

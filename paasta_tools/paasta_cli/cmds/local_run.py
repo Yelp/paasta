@@ -29,6 +29,7 @@ from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_host
 from paasta_tools.utils import Timeout
@@ -572,14 +573,34 @@ def paasta_local_run(args):
 
     docker_client = Client(base_url=base_docker_url)
 
-    try:
-        docker_hash = build_docker_container(docker_client, args)
-    except errors.APIError as e:
-        sys.stderr.write('Can\'t build Docker container. Error: %s\n' % str(e))
-        sys.exit(1)
-
-    try:
-        configure_and_run_docker_container(docker_client, docker_hash, service, args)
-    except errors.APIError as e:
-        sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))
-        sys.exit(1)
+    run_env = os.environ.copy()
+    tag = '%s-%s-dev' % (service, get_username())
+    run_env['DOCKER_TAG'] = tag
+    cmd = "make build-image"
+    loglines = []
+    returncode, output = _run(
+        cmd,
+        env=run_env,
+        log=True,
+        component='build',
+        service_name=service,
+        loglevel='debug'
+    )
+    if returncode != 0:
+        loglines.append(
+            'ERROR: make build-image failed for %s.' % service
+        )
+    else:
+        loglines.append('make build-image passed for %s.' % service)
+        try:
+            configure_and_run_docker_container(docker_client, tag, service, args)
+        except errors.APIError as e:
+            sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))
+            sys.exit(1)
+    for logline in loglines:
+        _log(
+            service_name=service,
+            line=logline,
+            component='build',
+            level='event',
+        )
