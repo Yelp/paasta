@@ -14,7 +14,8 @@ log = logging.getLogger("__main__")
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
-# calls the 'run job manually' endpoint in Chronos, starting the job now regardless of schedule
+# Calls the 'manual start' endpoint in Chronos (https://mesos.github.io/chronos/docs/api.html#manually-starting-a-job),
+# running the job now regardless of its 'schedule' and 'disabled' settings. The job's 'schedule' is left unmodified.
 def start_chronos_job(service, instance, job_id, client, cluster, job_config):
     name = PaastaColors.cyan(job_id)
     _log(
