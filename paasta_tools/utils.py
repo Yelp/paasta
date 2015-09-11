@@ -625,7 +625,7 @@ def decompose_job_id(job_id):
     """
     decomposed = job_id.split(SPACER, 2)
     if len(decomposed) < 2:
-        raise InvalidJobNameError('invalid job id %s') % job_id
+        raise InvalidJobNameError('invalid job id %s' % job_id)
     if len(decomposed) < 3:
         tag = None
     else:
@@ -638,7 +638,11 @@ def remove_tag_from_job_id(job_id):
 
     :param job_id: The job_id.
     :returns: The job_id with the tag removed, if there was one."""
-    return '%s%s%s' % (decompose_job_id(job_id)[0], SPACER, decompose_job_id(job_id)[1])
+    try:
+        parts = decompose_job_id(job_id)
+        return '%s%s%s' % (parts[0], SPACER, parts[1])
+    except InvalidJobNameError:
+        raise
 
 
 def build_docker_image_name(upstream_job_name):
