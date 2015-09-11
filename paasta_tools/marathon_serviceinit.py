@@ -77,19 +77,9 @@ def get_bouncing_status(service, instance, client, complete_job_config):
         return PaastaColors.red("Unknown (count: %s)" % app_count)
 
 
-def get_desired_state_human(complete_job_config):
-    desired_state = complete_job_config.get_desired_state()
-    if desired_state == 'start':
-        return PaastaColors.bold('Started')
-    elif desired_state == 'stop':
-        return PaastaColors.red('Stopped')
-    else:
-        return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
-
-
 def status_desired_state(service, instance, client, complete_job_config):
     status = get_bouncing_status(service, instance, client, complete_job_config)
-    desired_state = get_desired_state_human(complete_job_config)
+    desired_state = complete_job_config.get_desired_state_human()
     return "State:      %s - Desired state: %s" % (status, desired_state)
 
 

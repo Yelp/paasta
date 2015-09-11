@@ -747,3 +747,7 @@ class TestInstanceConfig:
     def test_get_desired_state(self):
         fake_conf = utils.InstanceConfig({}, {'desired_state': 'stop'})
         assert fake_conf.get_desired_state() == 'stop'
+
+    def test_get_desired_state_human(self):
+        fake_conf = utils.InstanceConfig({}, {'desired_state': 'stop'})
+        assert 'Stopped' in fake_conf.get_desired_state_human()

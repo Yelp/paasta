@@ -1,7 +1,5 @@
 #!/usr/bin/env python
 
-import contextlib
-
 import mock
 
 from paasta_tools.utils import PaastaColors
@@ -75,17 +73,12 @@ def test_format_chronos_job_status_failure_and_then_success():
 
 def test_status_chronos_job_is_deployed():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
-    complete_job_config = ''
-    with contextlib.nested(
-        mock.patch(
-            'chronos_serviceinit.format_chronos_job_status',
-            autospec=True,
-            return_value='job_status_output',
-        ),
-        mock.patch(
-            'chronos_serviceinit.get_desired_state_human',
-            autospec=True,
-        ),
+    complete_job_config = mock.Mock()
+    complete_job_config.get_desired_state_human = mock.Mock(return_value='Frobbed')
+    with mock.patch(
+        'chronos_serviceinit.format_chronos_job_status',
+        autospec=True,
+        return_value='job_status_output',
     ):
         actual = chronos_serviceinit.status_chronos_job(
             jobs,
@@ -96,38 +89,28 @@ def test_status_chronos_job_is_deployed():
 
 def test_status_chronos_job_get_desired_state_human():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
-    complete_job_config = ''
-    with contextlib.nested(
-        mock.patch(
-            'chronos_serviceinit.format_chronos_job_status',
-            autospec=True,
-            return_value='job_status_output',
-        ),
-        mock.patch(
-            'chronos_serviceinit.get_desired_state_human',
-            autospec=True,
-        ),
-    ) as (_, mock_get_desired_state_human):
+    complete_job_config = mock.Mock()
+    complete_job_config.get_desired_state_human = mock.Mock(return_value='Frobbed')
+    with mock.patch(
+        'chronos_serviceinit.format_chronos_job_status',
+        autospec=True,
+        return_value='job_status_output',
+    ):
         chronos_serviceinit.status_chronos_job(
             jobs,
             complete_job_config,
         )
-        assert mock_get_desired_state_human.call_count == 1
+        assert complete_job_config.get_desired_state_human.call_count == 1
 
 
 def test_status_chronos_job_is_not_deployed():
     jobs = []
-    complete_job_config = ''
-    with contextlib.nested(
-        mock.patch(
-            'chronos_serviceinit.format_chronos_job_status',
-            autospec=True,
-            return_value='job_status_output',
-        ),
-        mock.patch(
-            'chronos_serviceinit.get_desired_state_human',
-            autospec=True,
-        ),
+    complete_job_config = mock.Mock()
+    complete_job_config.get_desired_state_human = mock.Mock(return_value='Frobbed')
+    with mock.patch(
+        'chronos_serviceinit.format_chronos_job_status',
+        autospec=True,
+        return_value='job_status_output',
     ):
         actual = chronos_serviceinit.status_chronos_job(
             jobs,
@@ -141,17 +124,12 @@ def test_status_chronos_job_multiple_jobs():
         {'name': 'my_service my_instance gityourmom configyourdad'},
         {'name': 'my_service my_instance gityourmom configyourbro'},
     ]
-    complete_job_config = ''
-    with contextlib.nested(
-        mock.patch(
-            'chronos_serviceinit.format_chronos_job_status',
-            autospec=True,
-            return_value='job_status_output',
-        ),
-        mock.patch(
-            'chronos_serviceinit.get_desired_state_human',
-            autospec=True,
-        ),
+    complete_job_config = mock.Mock()
+    complete_job_config.get_desired_state_human = mock.Mock(return_value='Frobbed')
+    with mock.patch(
+        'chronos_serviceinit.format_chronos_job_status',
+        autospec=True,
+        return_value='job_status_output',
     ):
         actual = chronos_serviceinit.status_chronos_job(
             jobs,

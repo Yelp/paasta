@@ -7,7 +7,6 @@ import requests_cache
 
 import chronos_tools
 from paasta_tools.utils import PaastaColors
-from paasta_tools.marathon_serviceinit import get_desired_state_human
 
 
 log = logging.getLogger("__main__")
@@ -69,7 +68,7 @@ def status_chronos_job(jobs, complete_job_config):
     if jobs == []:
         return "%s: chronos job is not setup yet" % PaastaColors.yellow("Warning")
     else:
-        desired_state = get_desired_state_human(complete_job_config)
+        desired_state = complete_job_config.get_desired_state_human()
         output = [format_chronos_job_status(job, desired_state) for job in jobs]
         return "\n".join(output)
 
