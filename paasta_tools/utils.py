@@ -613,6 +613,10 @@ def compose_job_id(name, instance, tag=None):
     return composed
 
 
+class InvalidJobNameError(Exception):
+    pass
+
+
 def decompose_job_id(job_id):
     """Break down a composed job/app id into its (service name, instance, and tag) by splitting with <SPACER>.
 
@@ -620,6 +624,8 @@ def decompose_job_id(job_id):
     :returns: A tuple (name, instance, tag) that comprise the job_id
     """
     decomposed = job_id.split(SPACER, 2)
+    if len(decomposed) < 2:
+        raise InvalidJobNameError('invalid job id %s') % job_id
     if len(decomposed) < 3:
         tag = None
     else:
