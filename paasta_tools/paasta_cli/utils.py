@@ -382,7 +382,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
         hint = 'HINT: Is your ssh agent forwarded? (ssh-add -l)'
     if rc == -9:  # timeout error
         reason = 'Return code was %d which probably means ssh took too long and timed out.' % rc
-        hint = 'HINT: Is there network latency? Try running again.'
+        hint = 'HINT: Is there network latency? Try running somewhere closer to the cluster.'
     else:  # unknown error
         reason = 'Return code was %d which is an unknown failure.' % rc
         hint = 'HINT: Talk to #operations and pastebin this output'
