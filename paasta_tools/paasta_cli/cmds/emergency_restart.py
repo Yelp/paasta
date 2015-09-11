@@ -35,10 +35,11 @@ def paasta_emergency_restart(args):
 
     Warning: This command is only intended to be used in an emergency.
     It should not be needed in normal circumstances.
+    See the docs for emergency-stop and emergency-start for details of what exactly this does.
     """
     service = figure_out_service_name(args)
     print "Performing an emergency restart on %s...\n" % compose_job_id(service, args.instance)
     execute_paasta_serviceinit_on_remote_master('restart', args.cluster, service, args.instance)
-    print "%s" % "\n".join(paasta_emergency_restart.__doc__.splitlines()[-3:])
+    print "%s" % "\n".join(paasta_emergency_restart.__doc__.splitlines()[-4:])
     print "Run this to see the status:"
     print "paasta status --service %s --clusters %s" % (service, args.cluster)
