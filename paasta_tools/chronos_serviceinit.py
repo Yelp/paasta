@@ -74,10 +74,10 @@ def status_chronos_job(jobs, complete_job_config):
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
-    job_id = chronos_tools.compose_job_id(service, instance)
     chronos_config = chronos_tools.load_chronos_config()
     complete_job_config = chronos_tools.load_chronos_job_config(service, instance, cluster)
     client = chronos_tools.get_chronos_client(chronos_config)
+    job_id = chronos_tools.compose_job_id(service, instance)
 
     if command == "status":
         # Setting up transparent cache for http API calls

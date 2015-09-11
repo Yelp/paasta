@@ -437,7 +437,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     :returns: A unix-style return code
     """
     marathon_config = marathon_tools.load_marathon_config()
-
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     try:
         app_id = marathon_tools.get_app_id(service, instance, marathon_config)
