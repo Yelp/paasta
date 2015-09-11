@@ -1,9 +1,54 @@
 #!/usr/bin/env python
 
+import contextlib
 import mock
 
 from paasta_tools.utils import PaastaColors
 import chronos_serviceinit
+
+
+def test_start_chronos_job():
+    service = 'my_service'
+    instance = 'my_instance'
+    job_id = 'my_job_id'
+    cluster = 'my_cluster'
+    old_schedule = 'R/2015-03-25T19:36:35Z/PT5M'
+    job_config = {'beep': 'boop', 'disabled': False, 'schedule': old_schedule}
+    with contextlib.nested(
+        mock.patch('chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
+    ) as (
+        mock_client,
+    ):
+        chronos_serviceinit.start_chronos_job(service,
+                                              instance,
+                                              job_id,
+                                              mock_client,
+                                              cluster,
+                                              job_config)
+        assert job_config['schedule'] == old_schedule
+        mock_client.update.assert_called_once_with(job_config)
+        mock_client.run.assert_called_once_with(job_id)
+
+
+def test_stop_chronos_job():
+    service = 'my_service'
+    instance = 'my_instance'
+    cluster = 'my_cluster'
+    existing_jobs = [{'name': 'job_v1', 'disabled': False},
+                     {'name': 'job_v2', 'disabled': False},
+                     {'name': 'job_v3', 'disabled': True}]
+    with contextlib.nested(
+        mock.patch('chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
+    ) as (
+        mock_client,
+    ):
+        chronos_serviceinit.stop_chronos_job(service, instance, mock_client, cluster, existing_jobs)
+        assert mock_client.update.call_count == 3
+        assert mock_client.delete_tasks.call_count == 3
+        for job in existing_jobs:
+            assert job['disabled'] is True
+            mock_client.update.assert_any_call(job)
+            mock_client.delete_tasks.assert_any_call(job['name'])
 
 
 def test_format_chronos_job_status_disabled():

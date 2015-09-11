@@ -55,7 +55,7 @@ def stop_marathon_job(service, instance, app_id, client, cluster):
         cluster=cluster,
         instance=instance
     )
-    client.scale_app(app_id, instances=0, force=True)
+    client.scale_app(app_id, instances=0, force=True)  # TODO do we want to capture the return val of any client calls?
 
 
 def restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
@@ -450,7 +450,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
 
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     try:
-        app_id = marathon_tools.get_app_id(service, instance, marathon_config)
+        app_id = marathon_tools.create_complete_config(service, instance, marathon_config)['id']
     except NoDockerImageError:
         job_name = compose_job_id(service, instance)
         print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_name

@@ -6,11 +6,49 @@ import isodate
 import requests_cache
 
 import chronos_tools
+from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 
 
 log = logging.getLogger("__main__")
 log.addHandler(logging.StreamHandler(sys.stdout))
+
+
+# Calls the 'manual start' endpoint in Chronos (https://mesos.github.io/chronos/docs/api.html#manually-starting-a-job),
+# running the job now regardless of its 'schedule' and 'disabled' settings. The job's 'schedule' is left unmodified.
+def start_chronos_job(service, instance, job_id, client, cluster, job_config):
+    name = PaastaColors.cyan(job_id)
+    _log(
+        service_name=service,
+        line="EmergencyStart: sending job %s to Chronos" % name,
+        component='deploy',
+        level='event',
+        cluster=cluster,
+        instance=instance
+    )
+    client.update(job_config)
+    client.run(job_id)
+
+
+def stop_chronos_job(service, instance, client, cluster, existing_jobs):
+    for job in existing_jobs:
+        name = PaastaColors.cyan(job['name'])
+        _log(
+            service_name=service,
+            line="EmergencyStop: killing all tasks for job %s" % name,
+            component='deploy',
+            level='event',
+            cluster=cluster,
+            instance=instance
+        )
+        job['disabled'] = True
+        client.update(job)
+        client.delete_tasks(job['name'])
+
+
+def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, immediate_start):
+    stop_chronos_job(service, instance, client, cluster, matching_jobs)
+    start_chronos_job(service, instance, job_id, client, cluster, job_config)
 
 
 def format_chronos_job_status(job):
@@ -61,25 +99,32 @@ def status_chronos_job(jobs):
         return "\n".join(output)
 
 
-def perform_command(command, service, instance):
-    job_id = chronos_tools.compose_job_id(service, instance)
-    config = chronos_tools.load_chronos_config()
-    client = chronos_tools.get_chronos_client(config)
+def perform_command(command, service, instance, cluster, verbose, soa_dir):
+    job_prefix = chronos_tools.compose_job_id(service, instance)
+    job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
+    job_id = job_config['name']
+    chronos_config = chronos_tools.load_chronos_config()
+    client = chronos_tools.get_chronos_client(chronos_config)
+    # We add SPACER to the end as an anchor to prevent catching
+    # "my_service my_job_extra" when looking for "my_service my_job".
+    matching_jobs = chronos_tools.lookup_chronos_jobs(r'^%s%s' % (job_prefix, chronos_tools.SPACER),
+                                                      client,
+                                                      include_disabled=True)
 
-    if command == "status":
+    if command == "start":
+        start_chronos_job(service, instance, job_id, client, cluster, job_config)
+    elif command == "stop":
+        stop_chronos_job(service, instance, client, cluster, matching_jobs)
+    elif command == "restart":
+        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config)
+    elif command == "status":
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
-
-        # We add SPACER to the end as an anchor to prevent catching
-        # "my_service my_job_extra" when looking for "my_service my_job".
-        job_pattern = "%s%s" % (job_id, chronos_tools.SPACER)
-        jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
         print "Job Id: %s" % job_id
-        print status_chronos_job(jobs)
+        print status_chronos_job(matching_jobs)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
     return 0
-
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

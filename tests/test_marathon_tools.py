@@ -1014,47 +1014,6 @@ class TestMarathonTools:
         patch_list_tasks.return_value = [{}, {}, {}]
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4) is False
 
-    def test_get_app_id(self):
-        fake_name = 'fakeapp'
-        fake_instance = 'fakeinstance'
-        fake_url = 'fake_url'
-        fake_hash = 'CONFIGHASH'
-        fake_code_sha = 'CODESHA'
-        fake_config = {}
-        fake_cluster = 'fake_cluster'
-
-        with contextlib.nested(
-            mock.patch('marathon_tools.load_system_paasta_config', autospec=True),
-            mock.patch('marathon_tools.load_marathon_service_config', autospec=True,
-                       return_value=self.fake_marathon_job_config),
-            mock.patch('marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
-            mock.patch.object(self.fake_marathon_job_config, 'format_marathon_app_dict',
-                              return_value=fake_config, autospec=True),
-            mock.patch('marathon_tools.get_config_hash', autospec=True, return_value=fake_hash),
-            mock.patch('marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value=fake_code_sha),
-            mock.patch('marathon_tools.load_service_namespace_config', autospec=True,
-                       return_value=self.fake_service_namespace_config)
-        ) as (
-            load_system_paasta_config_patch,
-            read_service_config_patch,
-            docker_url_patch,
-            format_marathon_app_dict_patch,
-            hash_patch,
-            code_sha_patch,
-            SNC_load_patch,
-        ):
-            load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
-            assert marathon_tools.get_app_id(
-                fake_name,
-                fake_instance,
-                self.fake_marathon_config
-            ) == 'fakeapp.fakeinstance.CODESHA.CONFIGHASH'
-            read_service_config_patch.assert_called_once_with(fake_name, fake_instance, fake_cluster,
-                                                              soa_dir='/nail/etc/services')
-            hash_patch.assert_called_once_with(fake_config, force_bounce=None)
-            code_sha_patch.assert_called_once_with(fake_url)
-            SNC_load_patch.assert_called_once_with(fake_name, 'fake_nerve_ns')
-
     def test_get_code_sha_from_dockerurl(self):
         fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'
         actual = marathon_tools.get_code_sha_from_dockerurl(fake_docker_url)
@@ -1127,17 +1086,25 @@ class TestMarathonTools:
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
             read_service_config_patch.return_value = fake_service_config_1
-            first_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
-            first_id_2 = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
-            # just for sanity, make sure that get_app_id is idempotent.
+            first_id = marathon_tools.create_complete_config(fake_name,
+                                                             fake_instance,
+                                                             self.fake_marathon_config)['id']
+            first_id_2 = marathon_tools.create_complete_config(fake_name,
+                                                               fake_instance,
+                                                               self.fake_marathon_config)['id']
+            # just for sanity, make sure that the app_id is idempotent.
             assert first_id == first_id_2
 
             read_service_config_patch.return_value = fake_service_config_2
-            second_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            second_id = marathon_tools.create_complete_config(fake_name,
+                                                              fake_instance,
+                                                              self.fake_marathon_config)['id']
             assert first_id != second_id
 
             read_service_config_patch.return_value = fake_service_config_3
-            third_id = marathon_tools.get_app_id(fake_name, fake_instance, self.fake_marathon_config)
+            third_id = marathon_tools.create_complete_config(fake_name,
+                                                             fake_instance,
+                                                             self.fake_marathon_config)['id']
             assert second_id != third_id
 
     def test_get_expected_instance_count_for_namespace(self):
