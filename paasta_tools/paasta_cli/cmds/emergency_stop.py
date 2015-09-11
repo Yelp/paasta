@@ -35,7 +35,7 @@ def paasta_emergency_stop(args):
     """Performs an emergency stop on a given service instance on a given cluster
 
     Warning: This command does not permanently stop the service. The next time the service is updated
-    (config change, or a deploy, or a bounce, etc.), those settings will override the emergency stop.
+    (config change, deploy, bounce, etc.), those settings will override the emergency stop.
 
     If you want this stop to be permanant, adjust the relevant config file to reflect that.
     For example, this can be done for Marathon apps by setting 'instances: 0', or

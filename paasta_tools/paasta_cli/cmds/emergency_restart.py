@@ -35,7 +35,7 @@ def paasta_emergency_restart(args):
 
     Warning: This command is only intended to be used in an emergency.
     It should not be needed in normal circumstances.
-    See the docs for emergency-stop and emergency-start for details of what exactly this does.
+    See the service-docs for paasta emergency-stop and emergency-start for details of what exactly this does.
     """
     service = figure_out_service_name(args)
     print "Performing an emergency restart on %s...\n" % compose_job_id(service, args.instance)
