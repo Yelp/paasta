@@ -4,6 +4,7 @@ import logging
 import sys
 
 import humanize
+import isodate
 from mesos.cli.exceptions import SlaveDoesNotExist
 import requests_cache
 
@@ -112,7 +113,7 @@ def get_verbose_status_of_marathon_app(app):
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
     output = []
-    create_datetime = datetime_from_utc_to_local(datetime.datetime.strptime(app.version, "%Y-%m-%dT%H:%M:%S.%fZ"))
+    create_datetime = datetime_from_utc_to_local(isodate.parse_datetime(app.version))
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
     output.append("    Tasks:  Mesos Task ID                  Host deployed to         Deployed at what localtime")
