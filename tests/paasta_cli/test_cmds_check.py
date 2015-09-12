@@ -1,7 +1,7 @@
 import contextlib
 from StringIO import StringIO
 
-from mock import patch, MagicMock
+from mock import patch, MagicMock, call
 
 from paasta_tools.paasta_cli.cmds.check import deploy_check
 from paasta_tools.paasta_cli.cmds.check import deploy_has_performance_check
@@ -12,9 +12,7 @@ from paasta_tools.paasta_cli.cmds.check import get_marathon_steps
 from paasta_tools.paasta_cli.cmds.check import makefile_check
 from paasta_tools.paasta_cli.cmds.check import makefile_has_a_tab
 from paasta_tools.paasta_cli.cmds.check import makefile_has_docker_tag
-from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_build_image
-from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_itest
-from paasta_tools.paasta_cli.cmds.check import makefile_responds_to_test
+from paasta_tools.paasta_cli.cmds.check import makefile_responds_to
 from paasta_tools.paasta_cli.cmds.check import marathon_check
 from paasta_tools.paasta_cli.cmds.check import marathon_deployments_check
 from paasta_tools.paasta_cli.cmds.check import NoSuchService
@@ -395,42 +393,42 @@ def test_check_pipeline_check_fail_httperr(mock_stdout, mock_urllib2, mock_error
 @patch('paasta_tools.paasta_cli.cmds.check._run')
 def test_makefile_responds_to_itest_good(mock_run):
     mock_run.return_value = (1, 'Output')
-    actual = makefile_responds_to_itest()
+    actual = makefile_responds_to('itest')
     assert actual is True
 
 
 @patch('paasta_tools.paasta_cli.cmds.check._run')
 def test_makefile_responds_to_itest_run(mock_run):
     mock_run.return_value = (2, 'Output')
-    actual = makefile_responds_to_itest()
+    actual = makefile_responds_to('itest')
     assert actual is False
 
 
 @patch('paasta_tools.paasta_cli.cmds.check._run')
 def test_makefile_responds_to_test_good(mock_run):
     mock_run.return_value = (1, 'Output')
-    actual = makefile_responds_to_test()
+    actual = makefile_responds_to('test')
     assert actual is True
 
 
 @patch('paasta_tools.paasta_cli.cmds.check._run')
 def test_makefile_responds_to_test_run(mock_run):
     mock_run.return_value = (2, 'Output')
-    actual = makefile_responds_to_test()
+    actual = makefile_responds_to('test')
     assert actual is False
 
 
 @patch('paasta_tools.paasta_cli.cmds.check._run')
 def test_makefile_responds_to_build_image_good(mock_run):
     mock_run.return_value = (1, 'Output')
-    actual = makefile_responds_to_build_image()
+    actual = makefile_responds_to('build-image')
     assert actual is True
 
 
 @patch('paasta_tools.paasta_cli.cmds.check._run')
 def test_makefile_responds_to_build_image_run(mock_run):
     mock_run.return_value = (2, 'Output')
-    actual = makefile_responds_to_build_image()
+    actual = makefile_responds_to('build-image')
     assert actual is False
 
 
@@ -669,13 +667,7 @@ def test_makefile_check():
             'paasta_tools.paasta_cli.cmds.check.makefile_has_a_tab',
         ),
         patch(
-            'paasta_tools.paasta_cli.cmds.check.makefile_responds_to_test',
-        ),
-        patch(
-            'paasta_tools.paasta_cli.cmds.check.makefile_responds_to_itest',
-        ),
-        patch(
-            'paasta_tools.paasta_cli.cmds.check.makefile_responds_to_build_image',
+            'paasta_tools.paasta_cli.cmds.check.makefile_responds_to',
         ),
         patch(
             'paasta_tools.paasta_cli.cmds.check.makefile_has_docker_tag',
@@ -688,15 +680,12 @@ def test_makefile_check():
     ) as (
         mock_get_file_contents,
         mock_makefile_has_a_tab,
-        mock_makefile_responds_to_test,
-        mock_makefile_responds_to_itest,
-        mock_makefile_responds_to_build_image,
+        mock_makefile_responds_to,
         mock_makefile_has_docker_tag,
         mock_is_file_in_dir,
     ):
         makefile_check()
         assert mock_makefile_has_a_tab.call_count == 1
-        assert mock_makefile_responds_to_test.call_count == 1
-        assert mock_makefile_responds_to_itest.call_count == 1
-        assert mock_makefile_responds_to_build_image.call_count == 1
+        calls = [call('test'), call('itest'), call('build-image')]
+        mock_makefile_responds_to.assert_has_calls(calls, any_order=True)
         assert mock_makefile_has_docker_tag.call_count == 1
