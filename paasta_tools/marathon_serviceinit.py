@@ -404,8 +404,9 @@ def status_mesos_tasks(service, instance, normal_instance_count):
 
 def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
-    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
     output = []
+
+    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
     output.append(RUNNING_TASK_FORMAT.format((
         "  Running Tasks:  Mesos Task ID",
         "Host deployed to",
@@ -415,6 +416,7 @@ def status_mesos_tasks_verbose(service, instance):
     )))
     for task in running_and_active_tasks:
         output.append(pretty_format_running_mesos_task(task))
+
     non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(service, instance)[-10:]))
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
         "  Non-Running Tasks:  Mesos Task ID",
@@ -424,6 +426,7 @@ def status_mesos_tasks_verbose(service, instance):
     ))))
     for task in non_running_tasks:
         output.append(pretty_format_non_running_mesos_task(task))
+
     return "\n".join(output)
 
 
