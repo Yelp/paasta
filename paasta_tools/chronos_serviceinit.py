@@ -24,24 +24,31 @@ def _get_disabled(job):
 
 def _get_last_result(job):
     last_result = PaastaColors.red("UNKNOWN")
+    last_result_when = PaastaColors.red("UNKNOWN")
     fail_result = PaastaColors.red("Fail")
     ok_result = PaastaColors.green("OK")
     last_error = job.get("lastError", "")
     last_success = job.get("lastSuccess", "")
+
     if not last_error and not last_success:
         last_result = PaastaColors.yellow("New")
+        last_result_when = "never"
     elif not last_error:
         last_result = ok_result
+        last_result_when = last_success
     elif not last_success:
         last_result = fail_result
+        last_result_when = last_error
     else:
         fail_dt = isodate.parse_datetime(last_error)
         ok_dt = isodate.parse_datetime(last_success)
         if ok_dt > fail_dt:
             last_result = ok_result
+            last_result_when = last_success
         else:
             last_result = fail_result
-    return last_result
+            last_result_when = last_error
+    return (last_result, last_result_when)
 
 
 def format_chronos_job_status(job, desired_state):
@@ -55,8 +62,16 @@ def format_chronos_job_status(job, desired_state):
     """
     is_disabled = _get_disabled(job)
     is_stopped = desired_state
-    last_result = _get_last_result(job)
-    return "Status: %s, %s Last: %s" % (is_disabled, is_stopped, last_result)
+    (last_result, last_result_when) = _get_last_result(job)
+    return (
+        "Status: %(is_disabled)s, %(is_stopped)s\n"
+        "Last: %(last_result)s (%(last_result_when)s)" % {
+            "is_disabled": is_disabled,
+            "is_stopped": is_stopped,
+            "last_result": last_result,
+            "last_result_when": last_result_when,
+        }
+    )
 
 
 def status_chronos_job(jobs, complete_job_config):
@@ -89,6 +104,9 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
         print "Job id: %s" % job_id
         print status_chronos_job(jobs, complete_job_config)
+
+        complete_config_job_id = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)['name']
+        print "complete_config_job_id: %s" % complete_config_job_id
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

@@ -39,6 +39,7 @@ def test_format_chronos_job_status_no_last_run():
     desired_state = ''
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
     assert PaastaColors.yellow("New") in actual
+    assert "(never)" in actual
 
 
 def test_format_chronos_job_status_failure_no_success():
@@ -49,6 +50,7 @@ def test_format_chronos_job_status_failure_no_success():
     desired_state = ''
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
     assert PaastaColors.red("Fail") in actual
+    assert '(2015-04-20' in actual
 
 
 def test_format_chronos_job_status_success_no_failure():
@@ -59,6 +61,7 @@ def test_format_chronos_job_status_success_no_failure():
     desired_state = ''
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
     assert PaastaColors.green("OK") in actual
+    assert '(2015-04-20' in actual
 
 
 def test_format_chronos_job_status_failure_and_then_success():
@@ -69,6 +72,18 @@ def test_format_chronos_job_status_failure_and_then_success():
     desired_state = ''
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
     assert PaastaColors.green("OK") in actual
+    assert '(2015-04-21' in actual
+
+
+def test_format_chronos_job_status_success_and_then_failure():
+    example_job = {
+        'lastError': '2015-04-21T23:20:00.420Z',
+        'lastSuccess': '2015-04-20T23:20:00.420Z',
+    }
+    desired_state = ''
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
+    assert PaastaColors.red("Fail") in actual
+    assert '(2015-04-21' in actual
 
 
 def test_status_chronos_job_is_deployed():
