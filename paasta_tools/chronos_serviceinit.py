@@ -116,9 +116,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
         print "Job id: %s" % job_id
         print status_chronos_job(jobs, complete_job_config)
-
-        complete_config_job_id = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)['name']
-        print "complete_config_job_id: %s" % complete_config_job_id
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
