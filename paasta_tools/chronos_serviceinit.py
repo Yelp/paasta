@@ -1,11 +1,14 @@
 #!/usr/bin/env python
+import datetime
 import logging
 import sys
 
+import humanize
 import isodate
 import requests_cache
 
 import chronos_tools
+from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import PaastaColors
 
 
@@ -35,20 +38,29 @@ def _get_last_result(job):
         last_result_when = "never"
     elif not last_error:
         last_result = ok_result
-        last_result_when = last_success
+        last_result_when = isodate.parse_datetime(last_success)
     elif not last_success:
         last_result = fail_result
-        last_result_when = last_error
+        last_result_when = isodate.parse_datetime(last_error)
     else:
         fail_dt = isodate.parse_datetime(last_error)
         ok_dt = isodate.parse_datetime(last_success)
         if ok_dt > fail_dt:
             last_result = ok_result
-            last_result_when = last_success
+            last_result_when = ok_dt
         else:
             last_result = fail_result
-            last_result_when = last_error
-    return (last_result, last_result_when)
+            last_result_when = fail_dt
+
+    # Prettify datetime objects further. Ignore hardcoded values like "never".
+    pretty_last_result_when = last_result_when
+    if isinstance(last_result_when, datetime.datetime):
+        last_result_when_localtime = datetime_from_utc_to_local(last_result_when)
+        pretty_last_result_when = "%s, %s" % (
+            last_result_when_localtime,
+            humanize.naturaltime(last_result_when_localtime),
+        )
+    return (last_result, pretty_last_result_when)
 
 
 def format_chronos_job_status(job, desired_state):
