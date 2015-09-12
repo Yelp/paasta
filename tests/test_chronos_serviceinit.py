@@ -93,7 +93,7 @@ def test_format_chronos_job_status_success_and_then_failure():
 def test_status_chronos_job_is_deployed():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()
-    complete_job_config.get_desired_state_human = mock.Mock(return_value='Frobbed')
+    complete_job_config.get_desired_state_human = mock.Mock()
     with mock.patch(
         'chronos_serviceinit.format_chronos_job_status',
         autospec=True,
@@ -109,7 +109,7 @@ def test_status_chronos_job_is_deployed():
 def test_status_chronos_job_get_desired_state_human():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()
-    complete_job_config.get_desired_state_human = mock.Mock(return_value='Frobbed')
+    complete_job_config.get_desired_state_human = mock.Mock()
     with mock.patch(
         'chronos_serviceinit.format_chronos_job_status',
         autospec=True,
@@ -125,7 +125,7 @@ def test_status_chronos_job_get_desired_state_human():
 def test_status_chronos_job_is_not_deployed():
     jobs = []
     complete_job_config = mock.Mock()
-    complete_job_config.get_desired_state_human = mock.Mock(return_value='Frobbed')
+    complete_job_config.get_desired_state_human = mock.Mock()
     with mock.patch(
         'chronos_serviceinit.format_chronos_job_status',
         autospec=True,
@@ -144,7 +144,7 @@ def test_status_chronos_job_multiple_jobs():
         {'name': 'my_service my_instance gityourmom configyourbro'},
     ]
     complete_job_config = mock.Mock()
-    complete_job_config.get_desired_state_human = mock.Mock(return_value='Frobbed')
+    complete_job_config.get_desired_state_human = mock.Mock()
     with mock.patch(
         'chronos_serviceinit.format_chronos_job_status',
         autospec=True,
