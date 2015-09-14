@@ -548,7 +548,6 @@ def paasta_local_run(args):
     tag = '%s-%s-dev' % (service, get_username())
     run_env['DOCKER_TAG'] = tag
     cmd = "make build-image"
-    loglines = []
     returncode, output = _run(
         cmd,
         env=run_env,
@@ -558,20 +557,15 @@ def paasta_local_run(args):
         loglevel='debug'
     )
     if returncode != 0:
-        loglines.append(
-            'ERROR: make build-image failed for %s.' % service
-        )
-    else:
-        loglines.append('make build-image passed for %s.' % service)
-        try:
-            configure_and_run_docker_container(docker_client, tag, service, args)
-        except errors.APIError as e:
-            sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))
-            sys.exit(1)
-    for logline in loglines:
         _log(
             service_name=service,
-            line=logline,
+            line='ERROR: make build-image failed for %s.' % service,
             component='build',
             level='event',
         )
+        sys.exit(returncode)
+    try:
+        configure_and_run_docker_container(docker_client, tag, service, args)
+    except errors.APIError as e:
+        sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))
+        sys.exit(1)
