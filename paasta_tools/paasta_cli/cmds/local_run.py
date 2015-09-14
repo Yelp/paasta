@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import json
 import os
 from os import execlp
 import pipes
@@ -517,34 +516,6 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         args.healthcheck_only,
         service_manifest
     )
-
-
-def build_docker_container(docker_client, args):
-    """
-    Build Docker container from Dockerfile in the current directory or
-    specified in command line args. Resulting image id.
-    """
-    image_id = None
-    dockerfile_path = os.getcwd()
-    sys.stdout.write('Building container from Dockerfile in %s\n' % dockerfile_path)
-
-    for line in docker_client.build(path=dockerfile_path, tag='latest'):
-        line_dict = json.loads(line)
-
-        stream_line = line_dict.get('stream')
-
-        if args.verbose and stream_line:
-            sys.stdout.write(PaastaColors.grey(stream_line))
-
-        if stream_line and stream_line.startswith('Successfully built '):
-            # Strip the beginning of a string and \n in the end.
-            image_id = stream_line[len('Successfully built '):].strip()
-
-    if image_id:
-        return image_id
-    else:
-        sys.stderr.write("Error: Failed to build docker image")
-        sys.exit(1)
 
 
 def validate_environment():
