@@ -1,3 +1,10 @@
+paasta-tools (0.12.75-yelp1) lucid; urgency=low
+
+  * 0.12.75 tagged with 'make release'
+    Commit: Remove last reference to getting constraints for monitoring
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 14 Sep 2015 14:53:29 -0700
+
 paasta-tools (0.12.73-yelp1) lucid; urgency=low
 
   * 0.12.73 tagged with 'make release'
