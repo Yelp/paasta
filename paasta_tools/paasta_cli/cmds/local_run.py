@@ -545,7 +545,8 @@ def paasta_local_run(args):
     docker_client = Client(base_url=base_docker_url)
 
     run_env = os.environ.copy()
-    tag = '%s-%s-dev' % (service, get_username())
+    default_tag = 'local-run-%s-%s-dev' % (service, get_username())
+    tag = run_env.get('DOCKER_TAG', default_tag)
     run_env['DOCKER_TAG'] = tag
     cmd = "make build-image"
     returncode, output = _run(
