@@ -262,8 +262,7 @@ def load_smartstack_info_for_services(service_instances, namespaces, soa_dir):
     for location_type in location_types:
         smartstack_replication_info[location_type] = get_smartstack_replication_for_attribute(
             attribute=location_type,
-            namespaces=namespaces,
-            constraints=service_namespace_config.get_constraints())
+            namespaces=namespaces)
 
     return smartstack_replication_info
 
