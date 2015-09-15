@@ -25,9 +25,16 @@ def test_cleanup_jobs():
 
 
 def test_jobs_to_delete():
-    expected_jobs = ['job_1', 'job_2']
-    actual_jobs = ['job_1', 'job_2', 'job_3']
-    assert cleanup_chronos_jobs.jobs_to_delete(expected_jobs, actual_jobs) == ['job_3']
+    configured_jobs = [('service1', 'job1'), ('service1', 'job2')]
+    deployed_jobs = [('service1', 'job1', 'config'),  ('service1', 'job2', 'config')]
+    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, deployed_jobs) == []
+
+
+def test_jobs_to_delete_unknown_job():
+    configured_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job3')]
+    deployed_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config'),
+                     ('service1', 'job3', 'config'), ('service1', 'job5', 'config')]
+    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, deployed_jobs) == [('service1', 'job5', 'config')]
 
 
 def test_format_list_output():
@@ -35,12 +42,7 @@ def test_format_list_output():
         == "Successfully Removed:\n  foo\n  bar\n  baz"
 
 
-def test_running_job_names():
+def test_deployed_job_names():
     mock_client = mock.Mock()
     mock_client.list.return_value = [{'name': 'foo', 'blah': 'blah'}, {'name': 'bar', 'blah': 'blah'}]
-    assert cleanup_chronos_jobs.running_job_names(mock_client) == ['foo', 'bar']
-
-
-def test_expected_job_names():
-    service_job_pairs = [('myservice', 'myjob1'), ('myservice', 'myjob2')]
-    assert cleanup_chronos_jobs.expected_job_names(service_job_pairs) == ['myjob1', 'myjob2']
+    assert cleanup_chronos_jobs.deployed_job_names(mock_client) == ['foo', 'bar']

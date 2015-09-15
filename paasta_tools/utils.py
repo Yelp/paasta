@@ -623,7 +623,7 @@ def atomic_file_write(target_path):
     os.rename(temp_target_path, target_path)
 
 
-def compose_job_id(name, instance, tag=None):
+def compose_job_id(name, instance, tag=None, spacer=SPACER):
     """Compose a job/app id by concatenating its name, instance, and tag.
 
     :param name: The name of the service
@@ -631,19 +631,25 @@ def compose_job_id(name, instance, tag=None):
     :param tag: A hash or tag to append to the end of the id to make it unique
     :returns: <name><SPACER><instance> if no tag, or <name><SPACER><instance><SPACER><tag> if tag given
     """
-    composed = '%s%s%s' % (name, SPACER, instance)
+    composed = '%s%s%s' % (name, spacer, instance)
     if tag:
-        composed = '%s%s%s' % (composed, SPACER, tag)
+        composed = '%s%s%s' % (composed, spacer, tag)
     return composed
 
 
-def decompose_job_id(job_id):
+class InvalidJobNameError(Exception):
+    pass
+
+
+def decompose_job_id(job_id, spacer=SPACER):
     """Break down a composed job/app id into its (service name, instance, and tag) by splitting with <SPACER>.
 
     :param job_id: The composed id of the job/app
     :returns: A tuple (name, instance, tag) that comprise the job_id
     """
-    decomposed = job_id.split(SPACER, 2)
+    decomposed = job_id.split(spacer, 2)
+    if len(decomposed) < 2:
+        raise InvalidJobNameError('invalid job id %s' % job_id)
     if len(decomposed) < 3:
         tag = None
     else:
@@ -651,12 +657,16 @@ def decompose_job_id(job_id):
     return (decomposed[0], decomposed[1], tag)
 
 
-def remove_tag_from_job_id(job_id):
+def remove_tag_from_job_id(job_id, spacer=SPACER):
     """Remove the tag from a job id, if there is one.
 
     :param job_id: The job_id.
     :returns: The job_id with the tag removed, if there was one."""
-    return '%s%s%s' % (decompose_job_id(job_id)[0], SPACER, decompose_job_id(job_id)[1])
+    try:
+        parts = decompose_job_id(job_id)
+        return '%s%s%s' % (parts[0], spacer, parts[1])
+    except InvalidJobNameError:
+        raise
 
 
 def build_docker_image_name(upstream_job_name):
