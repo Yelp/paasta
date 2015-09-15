@@ -56,7 +56,7 @@ def stop_marathon_job(service, instance, app_id, client, cluster):
         cluster=cluster,
         instance=instance
     )
-    client.scale_app(app_id, instances=0, force=True)
+    client.scale_app(app_id, instances=0, force=True)  # TODO do we want to capture the return val of any client calls?
 
 
 def restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
@@ -201,10 +201,9 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
         return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
 
 
-def status_smartstack_backends(service, instance, cluster, tasks, expected_count, soa_dir, verbose, constraints):
+def status_smartstack_backends(service, instance, cluster, tasks, expected_count, soa_dir, verbose):
     """Returns detailed information about smartstack backends for a service
     and instance.
-    param constraints: A list of Marathon constraints to restrict which synapse servers to query
     return: A newline separated string of the smarststack backend status
     """
     output = []
@@ -220,7 +219,7 @@ def status_smartstack_backends(service, instance, cluster, tasks, expected_count
 
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
-    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type, constraints=constraints)
+    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type)
     if len(unique_attributes) == 0:
         output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance)
     else:
@@ -443,7 +442,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     marathon_config = marathon_tools.load_marathon_config()
     complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     try:
-        app_id = marathon_tools.get_app_id(service, instance, marathon_config, soa_dir=soa_dir)
+        app_id = marathon_tools.create_complete_config(service, instance, marathon_config)['id']
     except NoDockerImageError:
         job_name = compose_job_id(service, instance)
         print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_name
@@ -482,7 +481,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
                 expected_count=normal_smartstack_count,
                 soa_dir=soa_dir,
                 verbose=verbose,
-                constraints=complete_job_config.get_constraints(),
             )
     else:
         # The command parser shouldn't have let us get this far...

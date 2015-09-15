@@ -270,13 +270,12 @@ class ChronosJobConfig(InstanceConfig):
             return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
 
     def format_chronos_job_dict(self, docker_url, docker_volumes):
-
         valid, error_msgs = self.validate()
         if not valid:
             raise InvalidChronosConfigError("\n".join(error_msgs))
 
         complete_config = {
-            'name': self.get_job_name(),
+            'name': self.get_job_name().encode('utf_8'),
             'container': {
                 'image': docker_url,
                 'network': 'BRIDGE',
@@ -298,7 +297,6 @@ class ChronosJobConfig(InstanceConfig):
             'scheduleTimeZone': self.get_schedule_time_zone(),
             'shell': self.get_shell(),
         }
-        log.info("Complete configuration for instance is: %s" % complete_config)
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -315,6 +313,7 @@ class ChronosJobConfig(InstanceConfig):
         return len(error_msgs) == 0, error_msgs
 
 
+# TODO just use utils.get_service_instance_list(cluster, instance_type='chronos', soa_dir)
 def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the Chronos jobs defined for a service as a list of tuples.
 
@@ -334,6 +333,7 @@ def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     return job_list
 
 
+# TODO just use utils.get_services_for_cluster(cluster, instance_type='chronos', soa_dir)
 def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Retrieve all Chronos jobs defined to run on a cluster.
 
@@ -373,11 +373,13 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     desired_state = chronos_job_config.get_desired_state()
 
     # If the job was previously stopped, we should stop the new job as well
+    # NOTE this clobbers the 'disabled' param specified in the config file!
     if desired_state == 'start':
         complete_config['disabled'] = False
     elif desired_state == 'stop':
         complete_config['disabled'] = True
 
+    log.info("Complete configuration for instance is: %s" % complete_config)
     return complete_config
 
 
@@ -387,7 +389,8 @@ def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=Fal
     :param pattern: a Python style regular expression that the job name will be matched against
                     (after being passed to re.compile)
     :param client: Chronos client object
-    :param max_expected: maximum number of results that is expected. If exceeded, raises a ValueError
+    :param max_expected: maximum number of results that is expected. If exceeded, raises a ValueError.
+                         If unspecified, defaults to no limit.
     :param include_disabled: boolean indicating if disabled jobs should be included in matches
     """
     try:
@@ -413,12 +416,10 @@ def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=Fal
 
 @timeout()
 def wait_for_job(client, job_name):
-    """Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
-    and retry.
+    """Wait for a job to launch.
 
-    :param client: The marathon client
-    :param app_id: The app id to which the tasks belong
-    :param num_tasks: The number of tasks to wait for
+    :param client: The Chronos client
+    :param job_name: The name of the job to wait for
     """
     found = False
     while not found:

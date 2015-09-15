@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""Contains methods used by the paasta client to check the status of the service
+"""Contains methods used by the PaaSTA client to check the status of a service
 on the PaaSTA stack"""
 from ordereddict import OrderedDict
 from os.path import join
@@ -23,23 +23,23 @@ from service_configuration_lib import read_deploy
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'status',
-        description="PaaSTA client will attempt to deduce the SERVICE option if"
-                    " none is provided.",
-        help="Display the status of a Yelp service running on PaaSTA.")
-    status_parser.add_argument('-v', '--verbose', action='store_true',
-                               dest="verbose", default=False,
-                               help="Print out more output regarding the state of the service")
+        description=("PaaSTA client will attempt to deduce the SERVICE option if"
+                     " none is provided."),
+        help="Display the status of a PaaSTA service.")
+    status_parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        dest="verbose",
+        default=False,
+        help="Print out more output regarding the state of the service")
     status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect'
     ).completer = lazy_choices_completer(list_services)
-    clusters_help = (
-        'A comma separated list of clusters to view. Defaults to view all clusters. '
-        'Try: --clusters norcal-prod,nova-prod'
-    )
     status_parser.add_argument(
         '-c', '--clusters',
-        help=clusters_help,
+        help="A comma-separated list of clusters to view. Defaults to view all clusters.\n"
+             "For example: --clusters norcal-prod,nova-prod"
     ).completer = lazy_choices_completer(list_clusters)
     status_parser.set_defaults(command=paasta_status)
 
@@ -134,7 +134,6 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             # TODO: Perform sanity checks once per cluster instead of for each namespace
             status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, unformatted_instance,
                                                                  verbose)
-
         # Case: service NOT deployed to cluster.instance
         else:
             instance = PaastaColors.red(instance)

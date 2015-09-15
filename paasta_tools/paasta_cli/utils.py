@@ -353,7 +353,7 @@ def find_connectable_master(masters):
     None. If no masters pass all checks, return a tuple of None and the output
     from the DNS lookup.
     """
-    timeout = 3.0  # seconds
+    timeout = 6.0  # seconds
 
     connectable_master = None
     for master in masters:
@@ -380,6 +380,9 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     if rc == 1:  # sudo error
         reason = 'Return code was %d which probably means a sudo failure.' % rc
         hint = 'HINT: Is your ssh agent forwarded? (ssh-add -l)'
+    if rc == -9:  # timeout error
+        reason = 'Return code was %d which probably means ssh took too long and timed out.' % rc
+        hint = 'HINT: Is there network latency? Try running somewhere closer to the cluster.'
     else:  # unknown error
         reason = 'Return code was %d which is an unknown failure.' % rc
         hint = 'HINT: Talk to #operations and pastebin this output'

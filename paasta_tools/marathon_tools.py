@@ -221,7 +221,7 @@ class MarathonServiceConfig(InstanceConfig):
             return self.config_dict.get('constraints')
         else:
             discover_level = service_namespace_config.get_discover()
-            locations = get_mesos_slaves_grouped_by_attribute(discover_level, constraints=[])
+            locations = get_mesos_slaves_grouped_by_attribute(discover_level)
             return [[discover_level, "GROUP_BY", str(len(locations))]]
 
     def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):
@@ -809,14 +809,6 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     full_id = format_job_id(name, instance, tag)
     complete_config['id'] = full_id
     return complete_config
-
-
-def get_app_id(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
-    """Composes a predictable marathon app_id from the service's docker image and
-    marathon configuration. Editing this function *will* cause a bounce of all
-    services because they will see an "old" version of the marathon app deployed,
-    and a new one with the new hash will try to be deployed"""
-    return create_complete_config(name, instance, marathon_config, soa_dir=soa_dir)['id']
 
 
 def get_expected_instance_count_for_namespace(service_name, namespace, cluster=None, soa_dir=DEFAULT_SOA_DIR):

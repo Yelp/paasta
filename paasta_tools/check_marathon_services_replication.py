@@ -262,13 +262,12 @@ def load_smartstack_info_for_services(service_instances, namespaces, soa_dir):
     for location_type in location_types:
         smartstack_replication_info[location_type] = get_smartstack_replication_for_attribute(
             attribute=location_type,
-            namespaces=namespaces,
-            constraints=service_namespace_config.get_constraints())
+            namespaces=namespaces)
 
     return smartstack_replication_info
 
 
-def get_smartstack_replication_for_attribute(attribute, namespaces, constraints):
+def get_smartstack_replication_for_attribute(attribute, namespaces):
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
@@ -278,7 +277,7 @@ def get_smartstack_replication_for_attribute(attribute, namespaces, constraints)
               (the dictionary will contain keys for unique all attribute values)
     """
     replication_info = {}
-    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute, constraints=constraints)
+    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute)
 
     for value, hosts in unique_values.iteritems():
         # arbitrarily choose the first host with a given attribute to query for replication stats

@@ -6,7 +6,8 @@ sys.path.append('../')
 from paasta_tools.utils import _run
 
 
-@when('I launch "{num_jobs}" chronos jobs')
+# TODO DRY this out in PAASTA-1174, re-use the new job step from chronos_steps
+@when(u'I launch "{num_jobs}" chronos jobs')
 def launch_jobs(context, num_jobs):
     client = context.chronos_client
     jobs = [{
@@ -27,7 +28,7 @@ def launch_jobs(context, num_jobs):
             raise
 
 
-@then('cleanup_chronos_jobs exits with return code "{expected_return_code}" and the correct output')
+@then(u'cleanup_chronos_jobs exits with return code "{expected_return_code}" and the correct output')
 def check_cleanup_chronos_jobs_output(context, expected_return_code):
     cmd = '../paasta_tools/cleanup_chronos_jobs.py --soa-dir=%s' % context.soa_dir
     (exit_code, output) = _run(cmd)
@@ -40,7 +41,8 @@ def check_cleanup_chronos_jobs_output(context, expected_return_code):
         assert '  %s' % job in output
 
 
-@then('the launched jobs are no longer listed in chronos')
+# TODO DRY out in PAASTA-1174
+@then(u'the launched jobs are no longer listed in chronos')
 def check_jobs_missing(context):
     jobs = context.chronos_client.list()
     running_job_names = [job['name'] for job in jobs]

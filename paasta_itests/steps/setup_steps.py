@@ -1,11 +1,11 @@
 import os
 from tempfile import NamedTemporaryFile
 from tempfile import mkdtemp
-import yaml
 
 from behave import given
 import chronos
 import json
+import yaml
 
 from itest_utils import get_service_connection_string
 from paasta_tools import marathon_tools
@@ -86,7 +86,7 @@ def write_etc_paasta(config, filename):
         f.write(json.dumps(config))
 
 
-@given('a working paasta cluster')
+@given(u'a working paasta cluster')
 def working_paasta_cluster(context):
     """Adds a working marathon client and chronos client for the purposes of
     interacting with them in the test."""
@@ -110,17 +110,46 @@ def working_paasta_cluster(context):
         "zookeeper": "zk://fake",
         "docker_registry": "fake.com"
     }, 'cluster.json')
+    write_etc_paasta({
+        'volumes': [
+            {'hostPath': u'/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},
+            {'hostPath': u'/nail/etc/boop', 'containerPath': '/nail/etc/boop', 'mode': 'RO'},
+        ]
+    }, 'volumes.json')
 
 
-@given('I have yelpsoa-configs for the service "{service_name}" with chronos instance "{instance_name}"')
-def write_soa_dir_chronos_instance(context, service_name, instance_name):
+@given(u'I have yelpsoa-configs for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+def write_soa_dir_chronos_instance(context, service_name, disabled, instance_name):
     soa_dir = mkdtemp()
+    desired_disabled = (disabled == 'disabled')
     if not os.path.exists(os.path.join(soa_dir, service_name)):
         os.makedirs(os.path.join(soa_dir, service_name))
-    with open(os.path.join(soa_dir, service_name, 'chronos-testcluster.yaml'), 'w+') as f:
+    with open(os.path.join(soa_dir, service_name, 'chronos-%s.yaml' % context.cluster), 'w') as f:
         f.write(yaml.dump({
             "%s" % instance_name: {
-                "command": "echo foo",
+                'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
+                'command': 'echo foo',
+                'monitoring': {'team': 'fake_team'},
+                'disabled': desired_disabled,
             }
         }))
     context.soa_dir = soa_dir
+
+
+@given(u'I have a deployments.json for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+def write_soa_dir_chronos_deployments(context, service_name, disabled, instance_name):
+    if disabled == 'disabled':
+        desired_state = 'stop'
+    else:
+        desired_state = 'start'
+
+    with open(os.path.join(context.soa_dir, service_name, 'deployments.json'), 'w') as dp:
+        dp.write(json.dumps({
+            'v1': {
+                '%s:%s' % (service_name, utils.get_default_branch(context.cluster, instance_name)): {
+                    'docker_image': 'test-image-foobar42',
+                    'desired_state': desired_state,
+                }
+            }
+        }))
