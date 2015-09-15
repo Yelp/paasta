@@ -393,19 +393,15 @@ def test_check_pipeline_check_fail_httperr(mock_stdout, mock_urllib2, mock_error
 @patch('paasta_tools.paasta_cli.cmds.check._run')
 def test_makefile_responds_to_good(mock_run):
     mock_run.return_value = (1, 'Output')
-    targets = ['test', 'itest', 'build-image']
-    for target in targets:
-        actual = makefile_responds_to(target)
-        assert actual is True
+    actual = makefile_responds_to('present-target')
+    assert actual is True
 
 
 @patch('paasta_tools.paasta_cli.cmds.check._run')
 def test_makefile_responds_to_run(mock_run):
     mock_run.return_value = (2, 'Output')
-    targets = ['test', 'itest', 'build-image']
-    for target in targets:
-        actual = makefile_responds_to(target)
-        assert actual is False
+    actual = makefile_responds_to('non-present-target')
+    assert actual is False
 
 
 def test_makefile_has_a_tab_true():
