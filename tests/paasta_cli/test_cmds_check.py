@@ -391,45 +391,21 @@ def test_check_pipeline_check_fail_httperr(mock_stdout, mock_urllib2, mock_error
 
 
 @patch('paasta_tools.paasta_cli.cmds.check._run')
-def test_makefile_responds_to_itest_good(mock_run):
+def test_makefile_responds_to_good(mock_run):
     mock_run.return_value = (1, 'Output')
-    actual = makefile_responds_to('itest')
-    assert actual is True
+    targets = ['test', 'itest', 'build-image']
+    for target in targets:
+        actual = makefile_responds_to(target)
+        assert actual is True
 
 
 @patch('paasta_tools.paasta_cli.cmds.check._run')
-def test_makefile_responds_to_itest_run(mock_run):
+def test_makefile_responds_to_run(mock_run):
     mock_run.return_value = (2, 'Output')
-    actual = makefile_responds_to('itest')
-    assert actual is False
-
-
-@patch('paasta_tools.paasta_cli.cmds.check._run')
-def test_makefile_responds_to_test_good(mock_run):
-    mock_run.return_value = (1, 'Output')
-    actual = makefile_responds_to('test')
-    assert actual is True
-
-
-@patch('paasta_tools.paasta_cli.cmds.check._run')
-def test_makefile_responds_to_test_run(mock_run):
-    mock_run.return_value = (2, 'Output')
-    actual = makefile_responds_to('test')
-    assert actual is False
-
-
-@patch('paasta_tools.paasta_cli.cmds.check._run')
-def test_makefile_responds_to_build_image_good(mock_run):
-    mock_run.return_value = (1, 'Output')
-    actual = makefile_responds_to('build-image')
-    assert actual is True
-
-
-@patch('paasta_tools.paasta_cli.cmds.check._run')
-def test_makefile_responds_to_build_image_run(mock_run):
-    mock_run.return_value = (2, 'Output')
-    actual = makefile_responds_to('build-image')
-    assert actual is False
+    targets = ['test', 'itest', 'build-image']
+    for target in targets:
+        actual = makefile_responds_to(target)
+        assert actual is False
 
 
 def test_makefile_has_a_tab_true():
