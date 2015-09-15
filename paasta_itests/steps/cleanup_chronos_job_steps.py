@@ -7,7 +7,7 @@ from paasta_tools.utils import _run
 from paasta_tools.chronos_tools import compose_job_id
 
 
-@when('I launch {num_jobs} {state} jobs with service "{service}" with chronos instance "{job}" and differing tags')
+@when('I launch {num_jobs} {state} jobs for the service "{service}" with chronos instance "{job}" and differing tags')
 def launch_jobs(context, num_jobs, state, service, job):
     client = context.chronos_client
     jobs = [{
@@ -27,6 +27,12 @@ def launch_jobs(context, num_jobs, state, service, job):
             print 'Error creating test job: %s' % json.dumps(job)
             raise
 
+    # a 'configured' job is one which has had the appropriate
+    # yelp-soa configs into place.
+    # an 'unconfigured' job represents a job which may at one stage
+    # been a configured chronos job, but no longer has the
+    # corresponding configuration in place the target for.
+    # 'unconfigured' jobs are the target for cleanup_chronos_jobs
     if state == "configured":
         context.configured_job_names = [job['name'] for job in jobs]
     elif state == "unconfigured":
