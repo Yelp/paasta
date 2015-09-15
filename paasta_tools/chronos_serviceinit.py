@@ -27,7 +27,9 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config):
         instance=instance
     )
     client.update(job_config)
-    client.run(job_id)
+    # TODO fail or give some output/feedback that the job won't be run immediately if disabled (PAASTA-1244)
+    if not job_config['disabled']:
+        client.run(job_id)
 
 
 def stop_chronos_job(service, instance, client, cluster, existing_jobs):
@@ -46,7 +48,7 @@ def stop_chronos_job(service, instance, client, cluster, existing_jobs):
         client.delete_tasks(job['name'])
 
 
-def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, immediate_start):
+def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config):
     stop_chronos_job(service, instance, client, cluster, matching_jobs)
     start_chronos_job(service, instance, job_id, client, cluster, job_config)
 
