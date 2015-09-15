@@ -1,3 +1,14 @@
+paasta-tools (0.12.76-yelp1) lucid; urgency=low
+
+  * 0.12.76 tagged with 'make release'
+    Commit: Merge branch improve-cleanup-chronos-jobs  Conflicts:
+    paasta_itests/cleanup_chronos_jobs.feature
+    paasta_itests/paasta_serviceinit.feature
+    paasta_itests/steps/cleanup_chronos_job_steps.py
+    paasta_itests/steps/setup_steps.py
+
+ -- Robert Johnson <robj@yelp.com>  Tue, 15 Sep 2015 03:47:26 -0700
+
 paasta-tools (0.12.75-yelp1) lucid; urgency=low
 
   * 0.12.75 tagged with 'make release'
