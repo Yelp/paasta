@@ -24,6 +24,7 @@ import service_configuration_lib
 from paasta_tools import marathon_tools
 from paasta_tools import bounce_lib
 from paasta_tools.mesos_tools import is_mesos_leader
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import _log
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import get_services_for_cluster
@@ -98,7 +99,7 @@ def cleanup_apps(soa_dir):
         log.debug("Checking app id %s", app_id)
         try:
             short_app_id = remove_tag_from_job_id(app_id)
-        except IndexError:
+        except InvalidJobNameError:
             log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app_id)
             continue
         if short_app_id not in valid_short_app_ids:
