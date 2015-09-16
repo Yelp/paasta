@@ -69,7 +69,7 @@ def _prettify_datetime(dt):
     if isinstance(pretty_dt, datetime.datetime):
         dt_localtime = datetime_from_utc_to_local(dt)
         pretty_dt = "%s, %s" % (
-            dt_localtime.strftime("%Y-%m-%dT%H:%M%Z"),
+            dt_localtime.strftime("%Y-%m-%dT%H:%M"),
             humanize.naturaltime(dt_localtime),
         )
     return pretty_dt
