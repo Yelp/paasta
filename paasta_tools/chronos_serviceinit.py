@@ -95,7 +95,7 @@ def _get_last_result(job):
     if isinstance(last_result_when, datetime.datetime):
         last_result_when_localtime = datetime_from_utc_to_local(last_result_when)
         pretty_last_result_when = "%s, %s" % (
-            last_result_when_localtime.strftime("%Y-%m-%dT%H:%M"),
+            last_result_when_localtime.strftime("%Y-%m-%dT%H:%M%Z"),
             humanize.naturaltime(last_result_when_localtime),
         )
     return (last_result, pretty_last_result_when)
