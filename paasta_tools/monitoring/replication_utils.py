@@ -25,8 +25,18 @@ def get_replication_for_services(synapse_host, synapse_port, service_names):
         synapse_port=synapse_port,
     )
 
-    counter = collections.Counter([b['pxname'] for b in backends if str(b['status']).startswith('UP')])
+    counter = collections.Counter([b['pxname'] for b in backends if backend_is_up(b)])
     return dict((sn, counter[sn]) for sn in service_names)
+
+
+def backend_is_up(backend):
+    """Returns whether a server is receiving traffic in HAProxy.
+
+    :param backend: backend dict, like one of those returned by smartstack_tools.get_multiple_backends.
+
+    :returns is_up: Whether the backend is in a state that receives traffic.
+    """
+    return str(backend['status']).startswith('UP')
 
 
 def ip_port_hostname_from_svname(svname):

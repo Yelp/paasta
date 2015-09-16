@@ -12,7 +12,7 @@ from paasta_tools.mesos_tools import get_current_tasks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.mesos_tools import filter_running_tasks
 from paasta_tools.mesos_tools import filter_not_running_tasks
-from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
+from paasta_tools.monitoring.replication_utils import match_backends_and_tasks, backend_is_up
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import _log
@@ -263,7 +263,7 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
                                  key=lambda backend: backend['status'],
                                  reverse=True)  # Specify reverse so that backends in 'UP' are placed above 'MAINT'
         matched_tasks = match_backends_and_tasks(sorted_backends, tasks)
-        running_count = sum(1 for backend, task in matched_tasks if backend and backend['status'] == 'UP')
+        running_count = sum(1 for backend, task in matched_tasks if backend and backend_is_up(backend))
         output.append("    %s - %s" %
                       (location, haproxy_backend_report(expected_count_per_location, running_count)))
 
