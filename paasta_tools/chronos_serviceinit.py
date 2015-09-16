@@ -63,6 +63,18 @@ def _get_disabled_status(job):
     return status
 
 
+def _prettify_datetime(dt):
+    """Prettify datetime objects further. Ignore hardcoded values like 'never'."""
+    pretty_dt = dt
+    if isinstance(pretty_dt, datetime.datetime):
+        dt_localtime = datetime_from_utc_to_local(dt)
+        pretty_dt = "%s, %s" % (
+            dt_localtime.strftime("%Y-%m-%dT%H:%M%Z"),
+            humanize.naturaltime(dt_localtime),
+        )
+    return pretty_dt
+
+
 def _get_last_result(job):
     last_result = PaastaColors.red("UNKNOWN")
     last_result_when = PaastaColors.red("UNKNOWN")
@@ -90,14 +102,7 @@ def _get_last_result(job):
             last_result = fail_result
             last_result_when = fail_dt
 
-    # Prettify datetime objects further. Ignore hardcoded values like "never".
-    pretty_last_result_when = last_result_when
-    if isinstance(last_result_when, datetime.datetime):
-        last_result_when_localtime = datetime_from_utc_to_local(last_result_when)
-        pretty_last_result_when = "%s, %s" % (
-            last_result_when_localtime.strftime("%Y-%m-%dT%H:%M%Z"),
-            humanize.naturaltime(last_result_when_localtime),
-        )
+    pretty_last_result_when = _prettify_datetime(last_result_when)
     return (last_result, pretty_last_result_when)
 
 
