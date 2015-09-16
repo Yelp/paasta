@@ -69,7 +69,7 @@ def test_format_chronos_job_status_enabled():
     assert PaastaColors.green("Enabled") in actual
 
 
-def test_format_chronos_job_status_desired_state():
+def test_format_chronos_job_status_desired_state_passed_through():
     example_job = {}
     desired_state = 'stopped (or started)'
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
