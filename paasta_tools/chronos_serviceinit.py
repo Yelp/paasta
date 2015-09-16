@@ -80,8 +80,8 @@ def _get_last_result(job):
     last_result_when = PaastaColors.red("UNKNOWN")
     fail_result = PaastaColors.red("Fail")
     ok_result = PaastaColors.green("OK")
-    last_error = job.get("lastError", "")
-    last_success = job.get("lastSuccess", "")
+    last_error = job.get("lastError")
+    last_success = job.get("lastSuccess")
 
     if not last_error and not last_success:
         last_result = PaastaColors.yellow("New")
