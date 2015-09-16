@@ -107,7 +107,7 @@ def format_chronos_job_status(job, desired_state):
 
     :param job: dictionary of the job status
     :param desired_state: a pretty-formatted string representing the
-    job's started/stopped state as set with paast emergency-[stop|start], e.g.
+    job's started/stopped state as set with paasta emergency-[stop|start], e.g.
     the result of get_desired_state_human()
     """
     disabled_state = _get_disabled_status(job)
