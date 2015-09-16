@@ -52,7 +52,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Creates chronos jobs.')
     parser.add_argument('service_instance',
                         help="The chronos instance of the service to create or update",
-                        metavar="SERVICE.INSTANCE")
+                        metavar="SERVICE%sINSTANCE" % SPACER)
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
@@ -123,7 +123,8 @@ def setup_job(service_name, instance_name, chronos_job_config, complete_job_conf
         restart_chronos_job(service_name, instance_name, job_id, client, cluster, matching_jobs, complete_job_config)
         return (0, "Job '%s' bounced using the 'brutal' method" % job_id)
     else:
-        return (1, "ERROR: bounce_method '%s' not recognized. Must be either 'graceful' or 'brutal'." % bounce_method)
+        return (1, ("ERROR: bounce_method '%s' not recognized. Must be one of (%s)."
+                    % (bounce_method, ', '.join(chronos_tools.VALID_BOUNCE_METHODS))))
 
 
 def main():

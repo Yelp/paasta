@@ -6,10 +6,10 @@ import mock
 from pysensu_yelp import Status
 from pytest import raises
 
+import setup_chronos_job
 from paasta_tools import chronos_tools
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import compose_job_id
-import setup_chronos_job
 
 
 class TestSetupChronosJob:
@@ -86,7 +86,7 @@ class TestSetupChronosJob:
             load_system_paasta_config_patch,
             sys_exit_patch,
         ):
-            load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
+            load_system_paasta_config_patch.return_value.get_cluster = mock.MagicMock(return_value=self.fake_cluster)
             setup_chronos_job.main()
 
             parse_args_patch.assert_called_once_with()

@@ -305,7 +305,9 @@ class TestChronosTools:
     def test_check_bounce_method_invalid(self):
         okay, msg = self.fake_invalid_chronos_job_config.check_bounce_method()
         assert okay is False
-        assert msg == 'The specified bounce method "crossover" is invalid. It must be either "graceful" or "brutal".'
+        assert msg.startswith('The specified bounce method "crossover" is invalid. It must be one of (')
+        for bounce_method in chronos_tools.VALID_BOUNCE_METHODS:
+            assert bounce_method in msg
 
     def test_check_epsilon_valid(self):
         okay, msg = self.fake_chronos_job_config.check_epsilon()

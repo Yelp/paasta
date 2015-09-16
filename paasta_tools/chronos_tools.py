@@ -27,6 +27,7 @@ SPACER = " "
 # Until Chronos supports dots in the job name, we use this separator internally
 INTERNAL_SPACER = '.'
 
+VALID_BOUNCE_METHODS = ['graceful', 'brutal']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -180,9 +181,9 @@ class ChronosJobConfig(InstanceConfig):
 
     def check_bounce_method(self):
         bounce_method = self.get_bounce_method()
-        if bounce_method not in ['graceful', 'brutal']:
-            return False, ('The specified bounce method "%s" is invalid. It must be either "graceful" or "brutal".'
-                           % bounce_method)
+        if bounce_method not in VALID_BOUNCE_METHODS:
+            return False, ('The specified bounce method "%s" is invalid. It must be one of (%s).'
+                           % (bounce_method, ', '.join(VALID_BOUNCE_METHODS)))
         return True, ''
 
     def check_epsilon(self):

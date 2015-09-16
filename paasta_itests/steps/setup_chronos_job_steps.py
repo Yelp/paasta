@@ -1,9 +1,6 @@
-
-import contextlib
 import sys
 
 from behave import when, then
-import mock
 
 sys.path.append('../')
 from paasta_tools import setup_chronos_job
@@ -54,22 +51,17 @@ fake_service_config = {
 # TODO DRY out in PAASTA-1174 and rename so it doesn't sound like the funcs in chronos_steps
 @when(u'we create a complete chronos job')
 def create_complete_job(context):
-    with contextlib.nested(
-        mock.patch('paasta_tools.chronos_tools.create_complete_config'),
-    ) as (
-        mock_create_complete_config,
-    ):
-        mock_create_complete_config.return_value = fake_service_config
-        return_tuple = setup_chronos_job.setup_job(
-            fake_service_name,
-            fake_instance_name,
-            fake_service_job_config,
-            context.chronos_client,
-            None,
-        )
-        print return_tuple
-        assert return_tuple[0] == 0
-        assert 'Deployed job' in return_tuple[1]
+    return_tuple = setup_chronos_job.setup_job(
+        fake_service_name,
+        fake_instance_name,
+        fake_service_job_config,
+        fake_service_config,
+        context.chronos_client,
+        "fake_cluster",
+    )
+    print return_tuple
+    assert return_tuple[0] == 0
+    assert 'Deployed job' in return_tuple[1]
 
 
 # TODO DRY out in PAASTA-1174
