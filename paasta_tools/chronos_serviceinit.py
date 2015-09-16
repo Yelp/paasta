@@ -54,7 +54,7 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
     start_chronos_job(service, instance, job_id, client, cluster, job_config)
 
 
-def _get_disabled(job):
+def _get_disabled_status(job):
     status = PaastaColors.red("UNKNOWN")
     if job.get("disabled", False):
         status = PaastaColors.red("Disabled")
@@ -110,14 +110,13 @@ def format_chronos_job_status(job, desired_state):
     job's started/stopped state as set with paast emergency-[stop|start], e.g.
     the result of get_desired_state_human()
     """
-    is_disabled = _get_disabled(job)
-    is_stopped = desired_state
+    disabled_state = _get_disabled_status(job)
     (last_result, last_result_when) = _get_last_result(job)
     return (
-        "Status: %(is_disabled)s, %(is_stopped)s\n"
+        "Status: %(disabled_state)s, %(desired_state)s\n"
         "Last: %(last_result)s (%(last_result_when)s)" % {
-            "is_disabled": is_disabled,
-            "is_stopped": is_stopped,
+            "disabled_state": disabled_state,
+            "desired_state": desired_state,
             "last_result": last_result,
             "last_result_when": last_result_when,
         }
