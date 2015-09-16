@@ -135,7 +135,7 @@ def test_format_chronos_job_status_success_and_then_failure():
     assert 'ago)' in actual
 
 
-def test_status_chronos_job_is_deployed():
+def test_status_chronos_jobs_is_deployed():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
@@ -144,14 +144,14 @@ def test_status_chronos_job_is_deployed():
         autospec=True,
         return_value='job_status_output',
     ):
-        actual = chronos_serviceinit.status_chronos_job(
+        actual = chronos_serviceinit.status_chronos_jobs(
             jobs,
             complete_job_config,
         )
         assert actual == 'job_status_output'
 
 
-def test_status_chronos_job_get_desired_state_human():
+def test_status_chronos_jobs_get_desired_state_human():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
@@ -160,14 +160,14 @@ def test_status_chronos_job_get_desired_state_human():
         autospec=True,
         return_value='job_status_output',
     ):
-        chronos_serviceinit.status_chronos_job(
+        chronos_serviceinit.status_chronos_jobs(
             jobs,
             complete_job_config,
         )
         assert complete_job_config.get_desired_state_human.call_count == 1
 
 
-def test_status_chronos_job_is_not_deployed():
+def test_status_chronos_jobs_is_not_deployed():
     jobs = []
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
@@ -176,14 +176,14 @@ def test_status_chronos_job_is_not_deployed():
         autospec=True,
         return_value='job_status_output',
     ):
-        actual = chronos_serviceinit.status_chronos_job(
+        actual = chronos_serviceinit.status_chronos_jobs(
             jobs,
             complete_job_config,
         )
         assert 'not setup' in actual
 
 
-def test_status_chronos_job_multiple_jobs():
+def test_status_chronos_jobs_multiple_jobs():
     jobs = [
         {'name': 'my_service my_instance gityourmom configyourdad'},
         {'name': 'my_service my_instance gityourmom configyourbro'},
@@ -195,7 +195,7 @@ def test_status_chronos_job_multiple_jobs():
         autospec=True,
         return_value='job_status_output',
     ):
-        actual = chronos_serviceinit.status_chronos_job(
+        actual = chronos_serviceinit.status_chronos_jobs(
             jobs,
             complete_job_config,
         )

@@ -123,7 +123,7 @@ def format_chronos_job_status(job, desired_state):
     )
 
 
-def status_chronos_job(jobs, job_config):
+def status_chronos_jobs(jobs, job_config):
     """Returns a formatted string of the status of a list of chronos jobs
 
     :param jobs: list of dicts of chronos job info as returned by the chronos
@@ -158,7 +158,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
         job_config = chronos_tools.load_chronos_job_config(service, instance, cluster, soa_dir=soa_dir)
         print "Job id: %s" % job_id
-        print status_chronos_job(matching_jobs, job_config)
+        print status_chronos_jobs(matching_jobs, job_config)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
