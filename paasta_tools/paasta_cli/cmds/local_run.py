@@ -539,11 +539,6 @@ def validate_environment():
 def paasta_local_run(args):
     validate_environment()
 
-    if not makefile_responds_to('build-image'):
-        sys.stderr.write('ERROR: local-run now requires a build-image target to be present in the Makefile. See '
-                         'http://y/pasta-contract and PAASTA-601 for more details.\n')
-        sys.exit(1)
-
     service = figure_out_service_name(args, soa_dir=args.soaconfig_root)
 
     base_docker_url = get_docker_host()
@@ -554,6 +549,12 @@ def paasta_local_run(args):
     default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
     tag = run_env.get('DOCKER_TAG', default_tag)
     run_env['DOCKER_TAG'] = tag
+
+    if not makefile_responds_to('build-image'):
+        sys.stderr.write('ERROR: local-run now requires a build-image target to be present in the Makefile. See '
+                         'http://y/pasta-contract and PAASTA-601 for more details.\n')
+        sys.exit(1)
+
     cmd = "make build-image"
     returncode, output = _run(
         cmd,
