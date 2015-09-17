@@ -101,12 +101,16 @@ def check_smartstack_replication_for_instance(
     :param service: A string like example_service
     :param namespace: A nerve namespace, like "main"
     :param smartstack_replication_info: a dictionary of the form:
-                                        {
-                                            'unique_location_name': {
-                                                'service_name.instance_name': <# ofavailable backends>
-                                            },
-                                            'other_unique_location_name': ...
-                                        }
+
+    ::
+
+        {
+            'unique_location_name': {
+                'service_name.instance_name': <# ofavailable backends>
+            },
+            'other_unique_location_name': ...
+        }
+
     :param soa_dir: The SOA configuration directory to read from
     :param crit_threshold: The fraction of instances that need to be up to avoid a CRITICAL event
     """
@@ -242,14 +246,18 @@ def load_smartstack_info_for_services(service_instances, namespaces, soa_dir):
     :param service_instances: A list of tuples of (service_name, instance_name)
     :param namespaces: list of Smartstack namespaces
     :returns: a dictionary of the form:
-              {
-                'location_type': {
-                    'unique_location_name': {
-                        'service_name.instance_name': <# ofavailable backends>
-                    },
-                    'other_unique_location_name': ...
-                }
-              }
+
+    ::
+
+        {
+          'location_type': {
+              'unique_location_name': {
+                  'service_name.instance_name': <# ofavailable backends>
+              },
+              'other_unique_location_name': ...
+          }
+        }
+
     """
     smartstack_replication_info = {}
     location_types = set()

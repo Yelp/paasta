@@ -110,11 +110,12 @@ def get_branch_mappings(soa_dir, service, old_mappings):
     :param old_mappings: A dictionary like the return dictionary. Used for fallback if there is a problem with a new
                          mapping.
     :returns: A dictionary mapping service_name:branch_name to a dictionary containing:
-        - 'docker_image': something like "services-service_name:paasta-hash". This is relative to the paasta docker
-          registry.
-        - 'desired_state': either 'start' or 'stop'. Says whether this branch should be running.
-        - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if
-          the other properties of this app have not changed.
+
+    - 'docker_image': something like "services-service_name:paasta-hash". This is relative to the paasta docker
+      registry.
+    - 'desired_state': either 'start' or 'stop'. Says whether this branch should be running.
+    - 'force_bounce': An arbitrary value, which may be None. A change in this value should trigger a bounce, even if
+      the other properties of this app have not changed.
     """
     mappings = {}
     valid_branches = get_branches_for_service(soa_dir, service)
@@ -153,7 +154,6 @@ def get_service_from_docker_image(image_name):
     An image name has the full path, including the registry. Like:
     docker-paasta.yelpcorp.com:443/services-example_service:paasta-591ae8a7b3224e3b3322370b858377dd6ef335b6
     """
-
     matches = re.search('.*/services-(.*?):paasta-.*?', image_name)
     return matches.group(1)
 
@@ -163,7 +163,6 @@ def get_desired_state(service, branch, remote_refs):
     an arbitrary value (which may be None) that will change when a restart is
     desired.
     """
-
     tag_pattern = r'^refs/tags/paasta-%s-(?P<force_bounce>[^-]+)-(?P<state>.*)$' % branch
 
     states = []

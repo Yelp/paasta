@@ -750,8 +750,8 @@ def app_has_tasks(client, app_id, expected_tasks):
     :param client: the marathon client
     :param app_id: the app_id to which the tasks should belong
     :param minimum_tasks: the minimum number of tasks to check for
-    :returns a boolean indicating whether there are atleast expected_tasks tasks with
-    an app id matching app_id:
+    :returns: a boolean indicating whether there are atleast expected_tasks tasks with
+        an app id matching app_id
     """
     try:
         tasks = client.list_tasks(app_id=app_id)
@@ -765,11 +765,11 @@ def app_has_tasks(client, app_id, expected_tasks):
 @timeout()
 def wait_for_app_to_launch_tasks(client, app_id, expected_tasks):
     """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
-        and retry. Times out after 30 seconds.
+    and retry. Times out after 30 seconds.
 
-       :param client: The marathon client
-       :param app_id: The app id to which the tasks belong
-       :param num_tasks: The number of tasks to wait for
+    :param client: The marathon client
+    :param app_id: The app id to which the tasks belong
+    :param num_tasks: The number of tasks to wait for
     """
     found = False
     while not found:
