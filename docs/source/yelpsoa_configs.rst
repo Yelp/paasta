@@ -52,7 +52,7 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
   * ``monitoring_blacklist``: A list of tuples indicating a set of locations to
     *not* monitor for Smartstack replication. For example:
 
-      ``monitoring_blacklist: [("region", "dc6"]``
+      ``monitoring_blacklist: [("region", "dc6")]``
 
    would indicate that the PaaSTA should ignore the ``dc6`` region. PaaSTA currently
    assumes that the instance count in *other* regions include instance that would
