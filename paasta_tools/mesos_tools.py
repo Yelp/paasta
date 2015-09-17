@@ -176,3 +176,33 @@ def get_mesos_slaves_grouped_by_attribute(attribute):
                 attr_val = slave['attributes'][attribute]
                 attr_map.setdefault(attr_val, []).append(slave['hostname'])
         return attr_map
+
+
+def filter_mesos_slaves_by_blacklist(slaves, blacklist):
+    """Takes an input list of slaves and filters them based on the given blacklist.
+    The blacklist is in the form of:
+
+        [("location_type", "location)]
+
+    Where the tuples inside is something like ("habiat", "iad1")
+
+    :returns: The list of mesos slaves after the filter
+    """
+    filtered_slaves = []
+    for slave in slaves:
+        if slave_passes_blacklist(slave, blacklist):
+            filtered_slaves.append(slave)
+    return filtered_slaves
+
+
+def slave_passes_blacklist(slave, blacklist):
+    """
+    :param slave: A single mesos slave with attributes
+    :param blacklist: A list of tuples like [("location_type", "location)]
+    :returns: boolean, True if the slave gets passed the blacklist
+    """
+    attributes = slave['attributes']
+    for location_type, location in blacklist:
+        if attributes.get(location_type) == location:
+            return False
+    return True
