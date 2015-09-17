@@ -48,6 +48,17 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   *  ``monitoring``: A dictionary of values that configure overrides for monitoring parameters that will take precedence over what is in `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
 
+
+  * ``monitoring_blacklist``: A list of tuples indicating a set of locations to
+    *not* monitor for Smartstack replication. For example:
+
+      ``monitoring_blacklist: [("region", "dc6"]``
+
+   would indicate that the PaaSTA should ignore the ``dc6`` region. PaaSTA currently
+   assumes that the instance count in *other* regions include instance that would
+   have otherwise gotten deployed to ``dc6``. (in other words, the ``monitoring_blacklist``
+   assumes that instances are not deployed there as well)
+
 In addition, each instancename MAY configure additional Marathon healthcheck options:
 
   *  ``healthcheck_mode``: One of ``cmd``, ``tcp``, or ``http``. If your service uses Smartstack, then this must match the value of the ``mode`` key defined for this instance in ``smartstack.yaml``. If set to ``cmd`` then PaaSTA will execute ``healthcheck_cmd`` and examine the return code.

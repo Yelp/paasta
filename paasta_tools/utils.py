@@ -112,6 +112,11 @@ class InstanceConfig(dict):
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get('monitoring', {})
 
+    def get_monitoring_blacklist(self):
+        """The monitoring_blacklist is a list of tuples, where the tuples indicate
+        which locations the user doesn't care to be monitored"""
+        return self.config_dict.get('monitoring_blacklist', [])
+
     def get_docker_image(self):
         """Get the docker image name (with tag) for a given service branch from
         a generated deployments.json file."""
