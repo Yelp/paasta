@@ -18,18 +18,17 @@ from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.paasta_execute_docker_command import execute_in_container
-from paasta_tools.paasta_cli.cmds.check import makefile_responds_to
+from paasta_tools.paasta_cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.utils import get_username
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import NoConfigurationForServiceError
-from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_host
 from paasta_tools.utils import Timeout
@@ -548,30 +547,9 @@ def paasta_local_run(args):
     run_env = os.environ.copy()
     default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
     tag = run_env.get('DOCKER_TAG', default_tag)
-    run_env['DOCKER_TAG'] = tag
 
-    if not makefile_responds_to('build-image'):
-        sys.stderr.write('ERROR: local-run now requires a build-image target to be present in the Makefile. See '
-                         'http://y/pasta-contract and PAASTA-601 for more details.\n')
-        sys.exit(1)
+    paasta_cook_image(None, service=service)
 
-    cmd = "make build-image"
-    returncode, output = _run(
-        cmd,
-        env=run_env,
-        log=True,
-        component='build',
-        service_name=service,
-        loglevel='debug'
-    )
-    if returncode != 0:
-        _log(
-            service_name=service,
-            line='ERROR: make build-image failed for %s.' % service,
-            component='build',
-            level='event',
-        )
-        sys.exit(returncode)
     try:
         configure_and_run_docker_container(docker_client, tag, service, args)
     except errors.APIError as e:
