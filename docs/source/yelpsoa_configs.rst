@@ -89,7 +89,7 @@ Each job configuration MUST specify the following options:
 Each job configuration MAY specify the following options:
 
   * ``cmd``: See the `marathon-[clustername].yaml`_ section for details
-    
+
   * ``args``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``epsilon``: If Chronos misses the scheduled run time for any reason, it will still run the job if the time is within this interval. The value must be formatted like an ISO 8601 Duration. See: https://en.wikipedia.org/wiki/ISO_8601#Durations. Defaults to 'PT60S', indicating that a job may be launched up to a minute late.
@@ -102,9 +102,11 @@ Each job configuration MAY specify the following options:
 
   * ``mem``: See the `marathon-[clustername].yaml`_ section for details
 
-  *  ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
+  * ``bounce_method``: Controls what happens to the old version(s) of a job when a new version is deployed. Options are ``graceful`` to disable the old version but allow it to finish its current run, or ``brutal`` to disable the old version and immediately kill any running tasks it has. If unspecified, defaults to ``graceful``.
 
-  *  ``env``: See the `marathon-[clustername].yaml`_ section for details
+  * ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
+
+  * ``env``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``constraints``: Array of rules to ensure jobs run on slaves with specific Mesos attributes. See the `official documentation <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more information.
 

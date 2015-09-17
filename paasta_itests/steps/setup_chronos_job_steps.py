@@ -5,6 +5,7 @@ from behave import when, then
 sys.path.append('../')
 from paasta_tools import setup_chronos_job
 from paasta_tools import chronos_tools
+from paasta_tools.utils import decompose_job_id
 
 fake_service_name = 'fake_complete_service'
 fake_instance_name = 'fake_instance'
@@ -61,6 +62,20 @@ def create_complete_job(context):
     )
     assert return_tuple[0] == 0
     assert 'Deployed job' in return_tuple[1]
+
+
+@when(u'we run setup_chronos_job')
+def setup_the_chronos_job(context):
+    service, instance, tag = decompose_job_id(context.chronos_job_config['name'], spacer=chronos_tools.SPACER)
+    exit_code, output = setup_chronos_job.setup_job(
+        service,
+        instance,
+        context.chronos_job_config_obj,
+        context.chronos_job_config,
+        context.chronos_client,
+        context.cluster
+    )
+    print 'setup_chronos_job returned exitcode %s with output:\n%s\n' % (exit_code, output)
 
 
 # TODO DRY out in PAASTA-1174

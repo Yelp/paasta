@@ -144,6 +144,13 @@ class ChronosJobConfig(InstanceConfig):
         return monitoring_tools.get_team(overrides=overrides, service_name=self.get_service_name())
 
     def get_bounce_method(self):
+        """Returns the bounce method specified for the Chronos job.
+
+        Options are:
+        * ``graceful``: disables the old version but allows it to finish its current run
+        * ``brutal``: disables the old version and immediately kills any running tasks it has
+        If unspecified, defaults to ``graceful``.
+        """
         return self.config_dict.get('bounce_method', 'graceful')
 
     def get_env(self):

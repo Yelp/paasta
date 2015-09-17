@@ -1,7 +1,6 @@
 from behave import when, then
 
 from paasta_tools import chronos_tools
-from setup_steps import write_soa_dir_chronos_deployments
 
 
 # TODO this should be replaced by create_chronos_job_from_configs
@@ -20,18 +19,34 @@ def create_trivial_chronos_job(context):
     context.chronos_job_name = job_config['name']
 
 
-@when(u'we create a chronos job from the configs for instance "{instance_name}" of service "{service_name}"')
+@when(u'we load the configs for instance "{instance_name}" of service "{service_name}" into a ChronosJobConfig')
+def create_chronos_job_config_object_from_configs(context, instance_name, service_name):
+    context.chronos_job_config_obj = chronos_tools.load_chronos_job_config(
+        service_name,
+        instance_name,
+        context.cluster,
+        context.soa_dir
+    )
+
+
+@when(u'we create a chronos job dict from the configs for instance "{instance_name}" of service "{service_name}"')
 def create_chronos_job_from_configs(context, instance_name, service_name):
     chronos_job_config = chronos_tools.create_complete_config(service_name, instance_name, context.soa_dir)
     context.chronos_job_config = chronos_job_config
     context.chronos_job_name = chronos_job_config['name']
 
 
+@when(u'we set the bounce_method of the ChronosJobConfig to "{bounce_method}"')
+def set_bounce_method_chronos_job_config(context, bounce_method):
+    context.chronos_job_config_obj.config_dict['bounce_method'] = bounce_method
+
+
 @when(u'we update the tag for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
 def update_job_tag(context, service_name, disabled, instance_name):
     context.old_chronos_job_name = context.chronos_job_name
     context.tag_version = context.tag_version + 1
-    write_soa_dir_chronos_deployments(context, service_name, disabled, instance_name)
+    context.execute_steps('given I have a deployments.json for the service "%s" with %s chronos instance "%s"'
+                          % (service_name, disabled, instance_name))
 
 
 @when(u'we send the job to chronos')
@@ -70,10 +85,12 @@ def chronos_check_running_tasks(context, old_or_new_job, has_or_not):
 def chronos_check_job_state(context, old_or_new_job, disabled):
     desired_disabled = (disabled == 'disabled')
     job_id = context.old_chronos_job_name if old_or_new_job == 'old job' else context.chronos_job_name
-    jobs = chronos_tools.lookup_chronos_jobs(job_id,
-                                             context.chronos_client,
-                                             max_expected=1,
-                                             include_disabled=desired_disabled)
+    jobs = chronos_tools.lookup_chronos_jobs(
+        job_id,
+        context.chronos_client,
+        max_expected=1,
+        include_disabled=desired_disabled
+    )
     assert jobs != []
     for job in jobs:
         assert job['disabled'] == desired_disabled
