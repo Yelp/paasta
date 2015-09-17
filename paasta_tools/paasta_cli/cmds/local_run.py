@@ -18,6 +18,7 @@ from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.paasta_execute_docker_command import execute_in_container
+from paasta_tools.paasta_cli.cmds.check import makefile_responds_to
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
@@ -537,6 +538,11 @@ def validate_environment():
 
 def paasta_local_run(args):
     validate_environment()
+
+    if not makefile_responds_to('build-image'):
+        sys.stderr.write('ERROR: local-run now requires a build-image target to be present in the Makefile. See '
+                         'http://y/pasta-contract and PAASTA-601 for more details.\n')
+        sys.exit(1)
 
     service = figure_out_service_name(args, soa_dir=args.soaconfig_root)
 
