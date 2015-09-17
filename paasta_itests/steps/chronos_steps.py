@@ -1,6 +1,7 @@
 from behave import when, then
 
 from paasta_tools import chronos_tools
+from setup_steps import write_soa_dir_chronos_deployments
 
 
 # TODO this should be replaced by create_chronos_job_from_configs
@@ -26,6 +27,13 @@ def create_chronos_job_from_configs(context, instance_name, service_name):
     context.chronos_job_name = chronos_job_config['name']
 
 
+@when(u'we update the tag for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+def update_job_tag(context, service_name, disabled, instance_name):
+    context.old_chronos_job_name = context.chronos_job_name
+    context.tag_version = context.tag_version + 1
+    write_soa_dir_chronos_deployments(context, service_name, disabled, instance_name)
+
+
 @when(u'we send the job to chronos')
 def send_job_to_chronos(context):
     context.chronos_client.add(context.chronos_job_config)
@@ -33,7 +41,7 @@ def send_job_to_chronos(context):
 
 @when(u'we wait for the chronos job to appear in the job list')
 def chronos_job_is_ready(context):
-    """Wait for a job with a matching job id to be ready. """
+    """Wait for a job with a matching job id to be ready."""
     chronos_tools.wait_for_job(context.chronos_client, context.chronos_job_name)
 
 
@@ -48,19 +56,21 @@ def list_chronos_jobs_has_job(context, should_or_not):
 
 
 # NOTE this is a placeholder until we are able to get per-job task information from Chronos
-@then(u"the job {has_or_not} running tasks")
-def chronos_check_running_tasks(context, has_or_not):
+@then(u"the {old_or_new_job} {has_or_not} running tasks")
+def chronos_check_running_tasks(context, old_or_new_job, has_or_not):
+    # job_id = context.old_chronos_job_name if old_or_new_job == 'old job' else context.chronos_job_name
     # if has_or_not == "has no":
-    #     assert job has no running tasks
+    #     assert job_id has no running tasks
     # else:  # has_or_not should be "has"
-    #     assert job has running tasks
+    #     assert job_id has running tasks
     assert True
 
 
-@then(u"the job is {disabled} in chronos")
-def chronos_check_job_state(context, disabled):
+@then(u"the {old_or_new_job} is {disabled} in chronos")
+def chronos_check_job_state(context, old_or_new_job, disabled):
     desired_disabled = (disabled == 'disabled')
-    jobs = chronos_tools.lookup_chronos_jobs(context.chronos_job_name,
+    job_id = context.old_chronos_job_name if old_or_new_job == 'old job' else context.chronos_job_name
+    jobs = chronos_tools.lookup_chronos_jobs(job_id,
                                              context.chronos_client,
                                              max_expected=1,
                                              include_disabled=desired_disabled)

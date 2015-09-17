@@ -1,4 +1,4 @@
-Feature: setup_chronos_job can create a "complete" job
+Feature: setup_chronos_job can create and bounce "complete" jobs
 
   Scenario: complete jobs can be deployed
     Given a working paasta cluster

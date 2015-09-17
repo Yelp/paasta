@@ -59,7 +59,6 @@ def create_complete_job(context):
         context.chronos_client,
         "fake_cluster",
     )
-    print return_tuple
     assert return_tuple[0] == 0
     assert 'Deployed job' in return_tuple[1]
 

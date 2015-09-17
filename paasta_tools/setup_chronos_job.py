@@ -52,7 +52,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Creates chronos jobs.')
     parser.add_argument('service_instance',
                         help="The chronos instance of the service to create or update",
-                        metavar="SERVICE%sINSTANCE" % SPACER)
+                        metavar=compose_job_id("SERVICE", "INSTANCE"))
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")

@@ -16,9 +16,9 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 
 # Calls the 'manual start' endpoint in Chronos (https://mesos.github.io/chronos/docs/api.html#manually-starting-a-job),
 # running the job now regardless of its 'schedule' and 'disabled' settings. The job's 'schedule' is left unmodified.
-def start_chronos_job(service, instance, job_id, client, cluster, job_config, log_emergency=False):
+def start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency=False):
     name = PaastaColors.cyan(job_id)
-    log_reason = PaastaColors.red("EmergencyStart") if log_emergency else "Brutal bounce"
+    log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
     log_immediate_run = " and running it immediately" if not job_config['disabled'] else ""
     _log(
         service_name=service,
@@ -34,13 +34,13 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, lo
         client.run(job_id)
 
 
-def stop_chronos_job(service, instance, client, cluster, existing_jobs, log_emergency=False):
-    log_reason = PaastaColors.red("EmergencyStop") if log_emergency else "Brutal bounce"
+def stop_chronos_job(service, instance, client, cluster, existing_jobs, emergency=False):
+    log_reason = PaastaColors.red("EmergencyStop") if emergency else "Brutal bounce"
     for job in existing_jobs:
         name = PaastaColors.cyan(job['name'])
         _log(
             service_name=service,
-            line="%s: killing all tasks for job %s" % (log_reason, name),
+            line="%s: Killing all tasks for job %s" % (log_reason, name),
             component='deploy',
             level='event',
             cluster=cluster,
@@ -51,9 +51,9 @@ def stop_chronos_job(service, instance, client, cluster, existing_jobs, log_emer
         client.delete_tasks(job['name'])
 
 
-def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, log_emergency=False):
-    stop_chronos_job(service, instance, client, cluster, matching_jobs, log_emergency)
-    start_chronos_job(service, instance, job_id, client, cluster, job_config, log_emergency)
+def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, emergency=False):
+    stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency)
+    start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
 
 
 def format_chronos_job_status(job):
@@ -117,11 +117,11 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
                                                       include_disabled=True)
 
     if command == "start":
-        start_chronos_job(service, instance, job_id, client, cluster, job_config, log_emergency=True)
+        start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency=True)
     elif command == "stop":
-        stop_chronos_job(service, instance, client, cluster, matching_jobs, log_emergency=True)
+        stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency=True)
     elif command == "restart":
-        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, log_emergency=True)
+        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, emergency=True)
     elif command == "status":
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
