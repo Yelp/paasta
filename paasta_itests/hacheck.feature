@@ -1,4 +1,5 @@
 Feature: HacheckDrainManager can talk to hacheck correctly
+
   Scenario: HacheckDrainManager can drain a task
     Given a working hacheck container
       And a fake task to drain
