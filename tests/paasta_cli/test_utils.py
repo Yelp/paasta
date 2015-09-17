@@ -196,6 +196,7 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
         instancename,
         cluster_name,
         False,
+        None,
     )
     assert actual == mock_run_paasta_serviceinit.return_value
 

@@ -418,7 +418,7 @@ def status_mesos_tasks_verbose(service, instance):
     return "\n".join(output)
 
 
-def perform_command(command, service, instance, cluster, verbose, soa_dir):
+def perform_command(command, service, instance, cluster, verbose, soa_dir, app_id=None):
     """Performs a start/stop/restart/status on an instance
     :param command: String of start, stop, restart, or status
     :param service: service name
@@ -429,12 +429,13 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     """
     marathon_config = marathon_tools.load_marathon_config()
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster, soa_dir=soa_dir)
-    try:
-        app_id = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir=soa_dir)['id']
-    except NoDockerImageError:
-        job_id = compose_job_id(service, instance)
-        print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_id
-        return 1
+    if not app_id:
+        try:
+            app_id = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir=soa_dir)['id']
+        except NoDockerImageError:
+            job_id = compose_job_id(service, instance)
+            print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_id
+            return 1
 
     normal_instance_count = job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)

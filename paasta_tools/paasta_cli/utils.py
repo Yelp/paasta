@@ -405,7 +405,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     return (False, output)
 
 
-def run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster, verbose=False):
+def run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster, verbose=False, app_id=None):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if verbose:
         verbose_flag = "-v "
@@ -413,9 +413,14 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
     else:
         verbose_flag = ''
         timeout = 20
-    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s %s' % (
+    if app_id:
+        app_id_flag = "--appid %s " % app_id
+    else:
+        app_id_flag = ''
+    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s%s %s' % (
         master,
         verbose_flag,
+        app_id_flag,
         compose_job_id(service_name, instancename),
         subcommand
     )
@@ -423,7 +428,8 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
     return output
 
 
-def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, service_name, instancename, verbose=False):
+def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, service_name, instancename, verbose=False,
+                                                app_id=None):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
@@ -435,7 +441,7 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, servic
         return (
             'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
         )
-    return run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster_name, verbose)
+    return run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster_name, verbose, app_id)
 
 
 def run_paasta_metastatus(master, verbose=False):
