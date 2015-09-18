@@ -18,7 +18,7 @@ def add_subparser(subparsers):
         help='Builds a docker image')
 
     list_parser.add_argument('-s', '--service',
-                             help='Test and build docker image for this service. Leading '
+                             help='Build docker image for this service. Leading '
                                   '"services-", as included in a Jenkins job name, '
                                   'will be stripped.',
                              required=True,
@@ -37,16 +37,16 @@ def paasta_cook_image(args, service=None):
     validate_service_name(service_name)
 
     run_env = os.environ.copy()
-    default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
+    default_tag = 'paasta-cook-image-%s-%s' % (service_name, get_username())
     tag = run_env.get('DOCKER_TAG', default_tag)
     run_env['DOCKER_TAG'] = tag
 
-    if not makefile_responds_to('build-image'):
-        sys.stderr.write('ERROR: local-run now requires a build-image target to be present in the Makefile. See '
+    if not makefile_responds_to('cook-image'):
+        sys.stderr.write('ERROR: local-run now requires a cook-image target to be present in the Makefile. See '
                          'http://y/pasta-contract and PAASTA-601 for more details.\n')
         sys.exit(1)
 
-    cmd = "make build-image"
+    cmd = 'make cook-image'
     returncode, output = _run(
         cmd,
         env=run_env,
@@ -57,8 +57,8 @@ def paasta_cook_image(args, service=None):
     )
     if returncode != 0:
         _log(
-            service_name=service,
-            line='ERROR: make build-image failed for %s.' % service_name,
+            service_name=service_name,
+            line='ERROR: make cook-image failed for %s.' % service_name,
             component='build',
             level='event',
         )
