@@ -84,7 +84,7 @@ Most of the descriptions below are taken directly from the Chronos API docs, whi
 
 Each job configuration MUST specify the following options:
 
-  * ``schedule``: When the job should run. The value must be specified in the cryptic ISO 8601 format. See: https://en.wikipedia.org/wiki/ISO_8601 and https://mesos.github.io/chronos/docs/api.html#adding-a-scheduled-job
+  * ``schedule``: When the job should run. The value must be specified in the cryptic ISO 8601 format. **NOTE:** Although Chronos supports an empty start time to indicate that the job should start immediately, we do not allow this. In a situation such as restarting Chronos, all jobs with empty start times would start simultaneously, causing serious performance degradation and ignoring the fact that the job may have just run. For more details about the schedule format, see: https://en.wikipedia.org/wiki/ISO_8601 and https://mesos.github.io/chronos/docs/api.html#adding-a-scheduled-job
 
 Each job configuration MAY specify the following options:
 
