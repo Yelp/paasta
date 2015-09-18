@@ -147,9 +147,9 @@ class PaastaCheckMessages:
         "No Makefile available. Please make a Makefile that responds\n"
         "to the proper targets. More info:", "http://y/paasta-contract"
     )
-    MAKEFILE_RESPONDS_BUILD_IMAGE = success("The Makefile responds to `make build-image`")
+    MAKEFILE_RESPONDS_BUILD_IMAGE = success("The Makefile responds to `make cook-image`")
     MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL = failure(
-        "The Makefile does not have a `make build-image` target. local-run needs\n"
+        "The Makefile does not have a `make cook-image` target. local-run needs\n"
         "this and expects it to build your docker image. More info:",
         "http://y/paasta-contract"
     )

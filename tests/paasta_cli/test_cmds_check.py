@@ -658,6 +658,6 @@ def test_makefile_check():
     ):
         makefile_check()
         assert mock_makefile_has_a_tab.call_count == 1
-        calls = [call('test'), call('itest'), call('build-image')]
+        calls = [call('test'), call('itest'), call('cook-image')]
         mock_makefile_responds_to.assert_has_calls(calls, any_order=True)
         assert mock_makefile_has_docker_tag.call_count == 1

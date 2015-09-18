@@ -144,7 +144,7 @@ def makefile_check():
         else:
             print PaastaCheckMessages.MAKEFILE_HAS_NO_DOCKER_TAG
 
-        if makefile_responds_to('build-image'):
+        if makefile_responds_to('cook-image'):
             print PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE
         else:
             print PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL
