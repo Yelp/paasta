@@ -32,6 +32,12 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
     * ``min_task_uptime``: Minimum number of seconds that a task must be running before we consider it healthy (Disabled by default)
 
+  * ``deploy_blacklist``: A list of tuples indicating a set of locations to *not* deploy to. For example:
+
+      ``deploy_blacklist: [("region", "dc6")]``
+
+    would indicate that PaaSTA should not deploy the service to the ``dc6`` region.
+
   * ``drain_method``: Controls the drain method; see `drain_lib <drain_lib.html>`_. Defaults to ``noop`` for instances that are not in Smartstack, or ``hacheck`` if they are.
 
   * ``drain_method_params``: A dictionary of parameters for the specified drain_method. Valid parameters are any of the kwargs defined for the specified bounce_method in `bounce_lib <bounce_lib.html>`_.
