@@ -1,3 +1,10 @@
+paasta-tools (0.12.77-yelp1) lucid; urgency=low
+
+  * 0.12.77 tagged with 'make release'
+    Commit: Added support for Chronos bounce strategies (PAASTA-971)
+
+ -- Christopher Carroux <carroux@yelp.com>  Fri, 18 Sep 2015 10:42:33 -0700
+
 paasta-tools (0.12.76-yelp1) lucid; urgency=low
 
   * 0.12.76 tagged with 'make release'
