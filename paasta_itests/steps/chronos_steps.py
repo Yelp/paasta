@@ -45,7 +45,7 @@ def set_bounce_method_chronos_job_config(context, bounce_method):
 def update_job_tag(context, service_name, disabled, instance_name):
     context.old_chronos_job_name = context.chronos_job_name
     context.tag_version = context.tag_version + 1
-    context.execute_steps('given I have a deployments.json for the service "%s" with %s chronos instance "%s"'
+    context.execute_steps('Given I have a deployments.json for the service "%s" with %s chronos instance "%s"'
                           % (service_name, disabled, instance_name))
 
 
@@ -58,6 +58,11 @@ def send_job_to_chronos(context):
 def chronos_job_is_ready(context):
     """Wait for a job with a matching job id to be ready."""
     chronos_tools.wait_for_job(context.chronos_client, context.chronos_job_name)
+
+
+@when(u'we manually start the job')
+def chronos_manually_run_job(context):
+    context.chronos_client.run(context.chronos_job_name)
 
 
 @then(u"we {should_or_not} be able to see it when we list jobs")

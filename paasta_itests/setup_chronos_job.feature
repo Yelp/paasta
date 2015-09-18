@@ -13,7 +13,9 @@ Feature: setup_chronos_job can create and bounce jobs
       And we set the bounce_method of the ChronosJobConfig to "graceful"
       And we create a chronos job dict from the configs for instance "job" of service "test-service"
       And we run setup_chronos_job
+      And we manually start the job
      Then the job is enabled in chronos
+      And the job has running tasks
 
      When we update the tag for the service "test-service" with enabled chronos instance "job"
       And we create a chronos job dict from the configs for instance "job" of service "test-service"

@@ -130,7 +130,7 @@ def write_soa_dir_chronos_instance(context, service_name, disabled, instance_nam
         f.write(yaml.dump({
             "%s" % instance_name: {
                 'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
-                'command': 'echo foo',
+                'command': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
                 'disabled': desired_disabled,
             }
