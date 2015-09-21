@@ -61,7 +61,7 @@ def test_generate_pipeline_calls_the_right_commands_and_owner(
         mock_run,
 ):
     mock_run.return_value = (0, 'Everything OK')
-    mock_get_team_email_address.return_value = 'fake_email'
+    mock_get_team_email_address.return_value = 'fake_email@yelp.com'
     mock_get_git_repo_for_fab_repo.return_value = 'fake_repo'
     generate_pipeline('fake_service')
     assert mock_run.call_count == 2

@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 """Contains methods used by the paasta client to generate a Jenkins build
 pipeline."""
+import re
 import sys
 
 from paasta_tools.monitoring_tools import get_team
@@ -67,12 +68,16 @@ def generate_pipeline(service):
     email_address = get_team_email_address(service=service)
     repo = get_git_repo_for_fab_repo(service)
     if email_address is None:
-        email_address = get_team(overrides={}, service_name=service)
+        owner = get_team(overrides={}, service_name=service)
+    else:
+        # fab_repo tacks on the domain, so we only want the first
+        # part of the email.
+        owner = re.sub('@.*', '', email_address)
     cmds = [
         'fab_repo setup_jenkins:services/%s,'
-        'profile=paasta,job_disabled=False,owner=%s,repo=%s' % (service, email_address, repo),
+        'profile=paasta,job_disabled=False,owner=%s,repo=%s' % (service, owner, repo),
         'fab_repo setup_jenkins:services/%s,'
-        'profile=paasta_boilerplate,owner=%s,repo=%s' % (service, email_address, repo),
+        'profile=paasta_boilerplate,owner=%s,repo=%s' % (service, owner, repo),
     ]
     for cmd in cmds:
         print "INFO: Executing %s" % cmd
