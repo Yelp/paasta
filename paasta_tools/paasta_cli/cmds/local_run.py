@@ -544,9 +544,8 @@ def paasta_local_run(args):
 
     docker_client = Client(base_url=base_docker_url)
 
-    run_env = os.environ.copy()
     default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
-    tag = run_env.get('DOCKER_TAG', default_tag)
+    tag = os.environ.get('DOCKER_TAG', default_tag)
     os.environ['DOCKER_TAG'] = tag
 
     paasta_cook_image(None, service=service)
