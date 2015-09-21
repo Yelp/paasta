@@ -1,3 +1,10 @@
+paasta-tools (0.12.78-yelp1) lucid; urgency=low
+
+  * 0.12.78 tagged with 'make release'
+    Commit: Minor changes per feedback. PAASTA-1264
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 21 Sep 2015 14:48:31 -0700
+
 paasta-tools (0.12.77-yelp1) lucid; urgency=low
 
   * 0.12.77 tagged with 'make release'
