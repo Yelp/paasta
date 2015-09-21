@@ -1,13 +1,11 @@
-
-import contextlib
 import sys
 
 from behave import when, then
-import mock
 
 sys.path.append('../')
 from paasta_tools import setup_chronos_job
 from paasta_tools import chronos_tools
+from paasta_tools.utils import decompose_job_id
 
 fake_service_name = 'fake_complete_service'
 fake_instance_name = 'fake_instance'
@@ -54,22 +52,30 @@ fake_service_config = {
 # TODO DRY out in PAASTA-1174 and rename so it doesn't sound like the funcs in chronos_steps
 @when(u'we create a complete chronos job')
 def create_complete_job(context):
-    with contextlib.nested(
-        mock.patch('paasta_tools.chronos_tools.create_complete_config'),
-    ) as (
-        mock_create_complete_config,
-    ):
-        mock_create_complete_config.return_value = fake_service_config
-        return_tuple = setup_chronos_job.setup_job(
-            fake_service_name,
-            fake_instance_name,
-            fake_service_job_config,
-            context.chronos_client,
-            None,
-        )
-        print return_tuple
-        assert return_tuple[0] == 0
-        assert 'Deployed job' in return_tuple[1]
+    return_tuple = setup_chronos_job.setup_job(
+        fake_service_name,
+        fake_instance_name,
+        fake_service_job_config,
+        fake_service_config,
+        context.chronos_client,
+        "fake_cluster",
+    )
+    assert return_tuple[0] == 0
+    assert 'Deployed job' in return_tuple[1]
+
+
+@when(u'we run setup_chronos_job')
+def setup_the_chronos_job(context):
+    service, instance, tag = decompose_job_id(context.chronos_job_config['name'], spacer=chronos_tools.SPACER)
+    exit_code, output = setup_chronos_job.setup_job(
+        service,
+        instance,
+        context.chronos_job_config_obj,
+        context.chronos_job_config,
+        context.chronos_client,
+        context.cluster
+    )
+    print 'setup_chronos_job returned exitcode %s with output:\n%s\n' % (exit_code, output)
 
 
 # TODO DRY out in PAASTA-1174

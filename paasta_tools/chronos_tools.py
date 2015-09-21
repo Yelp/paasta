@@ -27,6 +27,7 @@ SPACER = " "
 # Until Chronos supports dots in the job name, we use this separator internally
 INTERNAL_SPACER = '.'
 
+VALID_BOUNCE_METHODS = ['graceful', 'brutal']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -142,6 +143,16 @@ class ChronosJobConfig(InstanceConfig):
         overrides = self.get_monitoring()
         return monitoring_tools.get_team(overrides=overrides, service_name=self.get_service_name())
 
+    def get_bounce_method(self):
+        """Returns the bounce method specified for the Chronos job.
+
+        Options are:
+        * ``graceful``: disables the old version but allows it to finish its current run
+        * ``brutal``: disables the old version and immediately kills any running tasks it has
+        If unspecified, defaults to ``graceful``.
+        """
+        return self.config_dict.get('bounce_method', 'graceful')
+
     def get_env(self):
         """The expected input env for PaaSTA is a dictionary of key/value pairs
         Chronos requires an array of dictionaries in a very specific format:
@@ -168,12 +179,19 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('schedule_time_zone')
 
     def get_shell(self):
-        """ Per https://mesos.github.io/chronos/docs/api.html, `shell` defaults
+        """Per https://mesos.github.io/chronos/docs/api.html, `shell` defaults
         to true, but if arguments are set, they will be ignored. If arguments are
         set in our config, then we need to set shell: False so that they will
         activate."""
         args = self.get_args()
         return args == [] or args is None
+
+    def check_bounce_method(self):
+        bounce_method = self.get_bounce_method()
+        if bounce_method not in VALID_BOUNCE_METHODS:
+            return False, ('The specified bounce method "%s" is invalid. It must be one of (%s).'
+                           % (bounce_method, ', '.join(VALID_BOUNCE_METHODS)))
+        return True, ''
 
     def check_epsilon(self):
         epsilon = self.get_epsilon()
@@ -254,6 +272,7 @@ class ChronosJobConfig(InstanceConfig):
 
     def check(self, param):
         check_methods = {
+            'bounce_method': self.check_bounce_method,
             'epsilon': self.check_epsilon,
             'retries': self.check_retries,
             'cpus': self.check_cpus,

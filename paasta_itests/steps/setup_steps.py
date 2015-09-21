@@ -103,6 +103,7 @@ def working_paasta_cluster(context):
 
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     context.mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
+    context.tag_version = 0
     write_etc_paasta(context.marathon_config, 'marathon.json')
     write_etc_paasta(context.chronos_config, 'chronos.json')
     write_etc_paasta({
@@ -129,7 +130,7 @@ def write_soa_dir_chronos_instance(context, service_name, disabled, instance_nam
         f.write(yaml.dump({
             "%s" % instance_name: {
                 'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
-                'command': 'echo foo',
+                'command': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
                 'disabled': desired_disabled,
             }
@@ -148,7 +149,7 @@ def write_soa_dir_chronos_deployments(context, service_name, disabled, instance_
         dp.write(json.dumps({
             'v1': {
                 '%s:%s' % (service_name, utils.get_default_branch(context.cluster, instance_name)): {
-                    'docker_image': 'test-image-foobar42',
+                    'docker_image': 'test-image-foobar%d' % context.tag_version,
                     'desired_state': desired_state,
                 }
             }

@@ -115,7 +115,12 @@ class InstanceConfig(dict):
     def get_deploy_blacklist(self):
         """The deploy blacklist is a list of tuples, where the tuples indicate
         which locations the service should not be deployed"""
-        return self.config_dict.get('deploy_blacklist', {})
+        return self.config_dict.get('deploy_blacklist', [])
+
+    def get_monitoring_blacklist(self):
+        """The monitoring_blacklist is a list of tuples, where the tuples indicate
+        which locations the user doesn't care to be monitored"""
+        return self.config_dict.get('monitoring_blacklist', [])
 
     def get_docker_image(self):
         """Get the docker image name (with tag) for a given service branch from

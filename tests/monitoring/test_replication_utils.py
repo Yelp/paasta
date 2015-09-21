@@ -8,6 +8,7 @@ from paasta_tools.monitoring.replication_utils import (
     get_replication_for_services,
     ip_port_hostname_from_svname,
     match_backends_and_tasks,
+    backend_is_up,
 )
 
 
@@ -81,6 +82,14 @@ def test_get_registered_marathon_tasks():
 
             expected = [good_task1, good_task2]
             assert actual == expected
+
+
+def test_backend_is_up():
+    assert True == backend_is_up({"status": "UP"})
+    assert True == backend_is_up({"status": "UP 1/2"})
+    assert False == backend_is_up({"status": "DOWN"})
+    assert False == backend_is_up({"status": "DOWN 1/2"})
+    assert False == backend_is_up({"status": "MAINT"})
 
 
 def test_ip_port_hostname_from_svname():

@@ -28,16 +28,20 @@ Command line options:
 import argparse
 import logging
 import pysensu_yelp
-import re
 import sys
 
 import service_configuration_lib
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.chronos_serviceinit import restart_chronos_job
+from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import configure_log
+from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import SPACER
 
 
 log = logging.getLogger('__main__')
@@ -48,7 +52,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description='Creates chronos jobs.')
     parser.add_argument('service_instance',
                         help="The chronos instance of the service to create or update",
-                        metavar="SERVICE.INSTANCE")
+                        metavar=compose_job_id("SERVICE", "INSTANCE"))
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
@@ -69,55 +73,58 @@ def send_event(name, instance, soa_dir, status, output):
     """
     cluster = load_system_paasta_config().get_cluster()
     monitoring_overrides = chronos_tools.load_chronos_job_config(name, instance, cluster).get_monitoring()
-    # TODO use compose_job_id instead of constructing string once INTERNAL_SPACER deprecated
-    check_name = 'setup_chronos_job.%s%s%s' % (name, chronos_tools.INTERNAL_SPACER, instance)
+    check_name = 'setup_chronos_job.%s' % compose_job_id(name, instance, spacer=chronos_tools.INTERNAL_SPACER)
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
 
-def _setup_existing_job(existing_job, complete_job_config, service_job_config, client):
-    # Update job state if required otherwise do nothing
-    if not complete_job_config['disabled'] and existing_job['disabled']:
-        existing_job['disabled'] = False
-        client.update(existing_job)
-        output = "Re-enabled job '%s'" % complete_job_config['name']
-    elif complete_job_config['disabled'] and not existing_job['disabled']:
-        existing_job['disabled'] = True
-        client.update(existing_job)
-        output = "Disabled job '%s'" % complete_job_config['name']
+def _setup_existing_job(job_id, existing_job, complete_job_config, client):
+    desired_state = 'stop' if complete_job_config['disabled'] else 'start'
+    # Do nothing if job state doesn't need to change, otherwise update job with new state
+    if complete_job_config['disabled'] == existing_job['disabled']:
+        output = "Job '%s' state is already set to '%s'" % (job_id, desired_state)
     else:
-        state = 'stop' if existing_job['disabled'] else 'start'
-        output = "Job '%s' state is already set to '%s'" % (complete_job_config['name'], state)
+        state_change = 'Disabled' if complete_job_config['disabled'] else 'Enabled'
+        client.update(complete_job_config)
+        output = "%s job '%s'" % (state_change, job_id)
     return (0, output)
 
 
-def _setup_new_job(service_name, job_name, complete_job_config, service_job_config, client):
-    prefix = chronos_tools.compose_job_id(service_name, job_name)
-
-    previous_jobs = chronos_tools.lookup_chronos_jobs(
-        r'^%s' % re.escape(prefix),
-        client,
-    )
-
+def _setup_new_job(job_id, previous_jobs, complete_job_config, client):
     # The job hash has changed so we disable the old jobs and start a new one
     for previous_job in previous_jobs:
         previous_job['disabled'] = True
         client.update(previous_job)
 
     client.add(complete_job_config)
-    return (0, "Deployed job '%s'" % complete_job_config['name'])
+    return (0, "Deployed job '%s'" % job_id)
 
 
-def setup_job(service_name, job_name, service_job_config, client, soa_dir):
-    complete_job_config = chronos_tools.create_complete_config(service_name, job_name, soa_dir=soa_dir)
+def setup_job(service_name, instance_name, chronos_job_config, complete_job_config, client, cluster):
+    job_prefix = compose_job_id(service_name, instance_name, spacer=chronos_tools.SPACER)
+    job_id = complete_job_config['name']
     existing_jobs = chronos_tools.lookup_chronos_jobs(
-        r'^%s$' % complete_job_config['name'],
+        r'^%s$' % job_id,
         client,
         max_expected=1,
     )
-    if len(existing_jobs) > 0:
-        return _setup_existing_job(existing_jobs[0], complete_job_config, service_job_config, client)
+    matching_jobs = chronos_tools.lookup_chronos_jobs(
+        r'^%s%s' % (job_prefix, chronos_tools.SPACER),
+        client,
+        include_disabled=True,
+    )
+
+    bounce_method = chronos_job_config.get_bounce_method()
+    if bounce_method == 'graceful':
+        if len(existing_jobs) > 0:
+            return _setup_existing_job(job_id, existing_jobs[0], complete_job_config, client)
+        else:
+            return _setup_new_job(job_id, matching_jobs, complete_job_config, client)
+    elif bounce_method == 'brutal':
+        restart_chronos_job(service_name, instance_name, job_id, client, cluster, matching_jobs, complete_job_config)
+        return (0, "Job '%s' bounced using the 'brutal' method" % job_id)
     else:
-        return _setup_new_job(service_name, job_name, complete_job_config, service_job_config, client)
+        return (1, ("ERROR: bounce_method '%s' not recognized. Must be one of (%s)."
+                    % (bounce_method, ', '.join(chronos_tools.VALID_BOUNCE_METHODS))))
 
 
 def main():
@@ -129,17 +136,17 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service_name, instance_name = args.service_instance.split(chronos_tools.INTERNAL_SPACER)
-    except ValueError:
-        log.error("Invalid service instance specified. Format is service_name%sinstance_name." %
-                  chronos_tools.INTERNAL_SPACER)
+        service_name, instance_name, _ = decompose_job_id(args.service_instance)
+    except InvalidJobNameError:
+        log.error("Invalid service instance '%s' specified. Format is service_name%sinstance_name."
+                  % (args.service_instance, SPACER))
         sys.exit(1)
 
     client = chronos_tools.get_chronos_client(chronos_tools.load_chronos_config())
     cluster = load_system_paasta_config().get_cluster()
 
     try:
-        service_instance_config = chronos_tools.load_chronos_job_config(
+        chronos_job_config = chronos_tools.load_chronos_job_config(
             service_name,
             instance_name,
             cluster,
@@ -160,7 +167,8 @@ def main():
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
 
-    status, output = setup_job(service_name, instance_name, service_instance_config, client, soa_dir)
+    complete_job_config = chronos_tools.create_complete_config(service_name, instance_name, soa_dir=soa_dir)
+    status, output = setup_job(service_name, instance_name, chronos_job_config, complete_job_config, client, cluster)
     sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
     send_event(service_name, instance_name, soa_dir, sensu_status, output)
     print status, output

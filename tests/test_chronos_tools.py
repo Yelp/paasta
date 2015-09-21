@@ -14,6 +14,7 @@ class TestChronosTools:
     fake_cluster = 'penguin'
     fake_monitoring_info = {'fake_monitoring_info': 'fake_monitoring_value'}
     fake_config_dict = {
+        'bounce_method': 'graceful',
         'cmd': '/bin/sleep 40',
         'epsilon': 'PT30M',
         'retries': 5,
@@ -34,6 +35,7 @@ class TestChronosTools:
                                                              fake_branch_dict)
 
     fake_invalid_config_dict = {
+        'bounce_method': 'crossover',
         'epsilon': 'nolispe',
         'retries': 5.7,
         'async': True,
@@ -194,6 +196,16 @@ class TestChronosTools:
                                                                        soa_dir=fake_soa_dir)
             assert str(exc.value) == 'No job named "polar bear" in config file chronos-penguin.yaml'
 
+    def test_get_bounce_method_in_config(self):
+        expected = self.fake_config_dict['bounce_method']
+        actual = self.fake_chronos_job_config.get_bounce_method()
+        assert actual == expected
+
+    def test_get_bounce_method_default(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
+        actual = fake_conf.get_bounce_method()
+        assert actual == 'graceful'
+
     def test_get_cpus_in_config(self):
         expected = self.fake_monitoring_info
         actual = self.fake_chronos_job_config.get_monitoring()
@@ -284,6 +296,18 @@ class TestChronosTools:
             'fake_name', 'fake_instance', {'schedule_time_zone': fake_schedule_time_zone}, {})
         actual = fake_conf.get_schedule_time_zone()
         assert actual == fake_schedule_time_zone
+
+    def test_check_bounce_method_valid(self):
+        okay, msg = self.fake_chronos_job_config.check_bounce_method()
+        assert okay is True
+        assert msg == ''
+
+    def test_check_bounce_method_invalid(self):
+        okay, msg = self.fake_invalid_chronos_job_config.check_bounce_method()
+        assert okay is False
+        assert msg.startswith('The specified bounce method "crossover" is invalid. It must be one of (')
+        for bounce_method in chronos_tools.VALID_BOUNCE_METHODS:
+            assert bounce_method in msg
 
     def test_check_epsilon_valid(self):
         okay, msg = self.fake_chronos_job_config.check_epsilon()
