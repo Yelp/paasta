@@ -752,3 +752,7 @@ class TestInstanceConfig:
     def test_get_desired_state(self):
         fake_conf = utils.InstanceConfig({}, {'desired_state': 'stop'})
         assert fake_conf.get_desired_state() == 'stop'
+
+    def test_monitoring_blacklist_default(self):
+        fake_conf = utils.InstanceConfig({}, {})
+        assert fake_conf.get_monitoring_blacklist() == []

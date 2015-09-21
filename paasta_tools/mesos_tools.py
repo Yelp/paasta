@@ -184,7 +184,7 @@ def filter_mesos_slaves_by_blacklist(slaves, blacklist):
 
         [("location_type", "location)]
 
-    Where the tuples inside is something like ("habiat", "iad1")
+    Where the tuples inside is something like ("region", "uswest1-prod")
 
     :returns: The list of mesos slaves after the filter
     """
