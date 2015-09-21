@@ -96,13 +96,16 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
         mock.patch('check_marathon_services_replication.get_context', autospec=True),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
         mock_get_context,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.OK, mock.ANY)
 
@@ -119,13 +122,16 @@ def test_check_smartstack_replication_for_instance_crit_when_absent():
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
         mock.patch('check_marathon_services_replication.get_context', autospec=True),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
         mock_get_context,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
 
@@ -142,13 +148,16 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
         mock.patch('check_marathon_services_replication.get_context', autospec=True),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
         mock_get_context,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
 
@@ -165,13 +174,16 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication():
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
         mock.patch('check_marathon_services_replication.get_context', autospec=True),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
         mock_get_context,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
 
@@ -187,12 +199,15 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
         mock.patch('check_marathon_services_replication.send_event', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.OK, mock.ANY)
 
@@ -209,12 +224,15 @@ def test_check_smartstack_replication_for_instance_ignores_things_under_a_differ
         mock.patch('check_marathon_services_replication.send_event_if_under_replication', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=namespace),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event_if_under_replication,
         mock_read_namespace_for_service_instance,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event_if_under_replication.call_count == 0
 
@@ -230,12 +248,15 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
         mock.patch('check_marathon_services_replication.send_event', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.OK, mock.ANY)
 
@@ -252,13 +273,16 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
         mock.patch('check_marathon_services_replication.get_context', autospec=True),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
         mock_get_context,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
 
@@ -275,13 +299,16 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
         mock.patch('check_marathon_services_replication.get_context', autospec=True),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
         mock_get_context,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
 
@@ -298,13 +325,16 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
         mock.patch('check_marathon_services_replication.get_context', autospec=True),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
         mock_get_context,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
 
@@ -321,13 +351,16 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
         mock.patch('check_marathon_services_replication.get_context', autospec=True),
+        mock.patch('check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
         mock_get_context,
+        mock_load_smartstack_info_for_service,
     ):
+        mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, available, soa_dir, crit, expected_replication_count,
+            service, instance, soa_dir, crit, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, mock.ANY)
 
@@ -348,9 +381,9 @@ def test_check_service_replication_for_normal_smartstack():
         mock_check_smartstack_replication_for_service
     ):
         check_marathon_services_replication.check_service_replication(
-            service, instance, None, {'fake_location': {}}, None)
+            service=service, instance=instance, crit_threshold=None, soa_dir=None)
         mock_check_smartstack_replication_for_service.assert_called_once_with(
-            service, instance, mock.ANY, mock.ANY, mock.ANY, mock.ANY)
+            service, instance, mock.ANY, mock.ANY, mock.ANY)
 
 
 def test_check_service_replication_for_non_smartstack():
@@ -366,7 +399,8 @@ def test_check_service_replication_for_non_smartstack():
         mock_get_expected_count,
         mock_get_mesos_replication_for_service,
     ):
-        check_marathon_services_replication.check_service_replication(service, instance, None, None, None)
+        check_marathon_services_replication.check_service_replication(
+            service=service, instance=instance, crit_threshold=None, soa_dir=None)
         mock_get_mesos_replication_for_service.assert_called_once_with(service, instance, None, None, 100)
 
 
@@ -384,7 +418,8 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock_get_mesos_replication_for_service,
     ):
         mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
-        check_marathon_services_replication.check_service_replication(service, instance, None, None, None)
+        check_marathon_services_replication.check_service_replication(
+            service=service, instance=instance, crit_threshold=None, soa_dir=None)
         assert mock_get_proxy_port_for_instance.call_count == 0
 
 
@@ -473,8 +508,8 @@ def test_send_event_if_under_replication_critical():
 
 
 def test_get_smartstack_replication_for_attribute():
-    fake_namespaces = ['fake_instance1', 'fake_instance2']
-
+    fake_namespace = 'fake_main'
+    fake_service = 'fake_service'
     fake_values_and_hosts = {
         'fake_value_1': ['fake_host_1', 'fake_host_3'],
         'fake_other_value': ['fake_host_4'],
@@ -493,14 +528,14 @@ def test_get_smartstack_replication_for_attribute():
             'fake_other_value': {}
         }
         actual = check_marathon_services_replication.get_smartstack_replication_for_attribute(
-            'fake_attribute', fake_namespaces)
+            attribute='fake_attribute', service=fake_service, namespace=fake_namespace)
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
         mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with('fake_attribute')
         mock_get_replication_for_services.assert_any_call(
             synapse_host='fake_host_1',
             synapse_port=DEFAULT_SYNAPSE_PORT,
-            service_names=fake_namespaces,
+            service_names=['fake_service.fake_main'],
         )
 
 
@@ -508,30 +543,19 @@ def test_main():
     soa_dir = 'anw'
     crit = 1
     services = [('a', 'main'), ('b', 'main'), ('c', 'main')]
-    namespaces = [('a.main', 1), ('b.main', 2), ('c.main', 3)]
     args = mock.Mock(soa_dir=soa_dir, crit=crit, verbose=False)
     with contextlib.nested(
         mock.patch('check_marathon_services_replication.parse_args',
                    return_value=args, autospec=True),
-        mock.patch('paasta_tools.marathon_tools.get_all_namespaces',
-                   return_value=namespaces, autospec=True),
         mock.patch('check_marathon_services_replication.get_services_for_cluster',
                    return_value=services, autospec=True),
         mock.patch('check_marathon_services_replication.check_service_replication',
                    autospec=True),
-        mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True),
-        mock.patch('check_marathon_services_replication.load_smartstack_info_for_services', autospec=True,
-                   return_value={'fake_attribute': {}})
     ) as (
         mock_parse_args,
-        mock_get_all_namespaces,
         mock_get_services_for_cluster,
         mock_check_service_replication,
-        mock_load_service_namespace_config,
-        mock_load_smartstack_info,
     ):
-        mock_load_service_namespace_config.return_value.get_discover.return_value = 'fake_attribute'
         check_marathon_services_replication.main()
         mock_parse_args.assert_called_once_with()
         mock_get_services_for_cluster.assert_called_once_with(instance_type='marathon', soa_dir=soa_dir)
-        mock_check_service_replication.call_count = len(services)
