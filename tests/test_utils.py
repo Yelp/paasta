@@ -756,3 +756,7 @@ class TestInstanceConfig:
     def test_monitoring_blacklist_default(self):
         fake_conf = utils.InstanceConfig({}, {})
         assert fake_conf.get_monitoring_blacklist() == []
+
+    def test_deploy_blacklist_default(self):
+        fake_conf = utils.InstanceConfig({}, {})
+        assert fake_conf.get_deploy_blacklist() == []
