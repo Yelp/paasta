@@ -10,6 +10,7 @@ from paasta_tools.utils import _run
 def given_simple_service(context):
     context.fake_service_name = "fake_simple_service"
     assert os.path.isfile(os.path.join(context.fake_service_name, "Dockerfile"))
+    assert os.path.isfile(os.path.join(context.fake_service_name, "Makefile"))
 
 
 @when(u'we run paasta local-run in non-interactive mode with environment variable "{var}" set to "{val}"')

@@ -97,10 +97,10 @@ def docker_check():
         print PaastaCheckMessages.DOCKERFILE_MISSING
 
 
-def makefile_responds_to_itest():
-    """Runs `make -q itest` to detect if a makefile responds to an itest
-    target."""
-    cmd = 'make -q itest'
+def makefile_responds_to(target):
+    """Runs `make -q <target>` to detect if a makefile responds to the
+    specified target."""
+    cmd = 'make -q %s' % target
     # Per the docs
     # http://www.gnu.org/software/make/manual/make.html#index-exit-status-of-make
     # 0 and 1 are ok. 2 Means Error
@@ -109,14 +109,6 @@ def makefile_responds_to_itest():
     # 0 - Nothing to do
     # 1 - Things to do
     # 2 - Don't know what you are talking about
-    returncode, _ = _run(cmd, timeout=5)
-    return returncode in [0, 1]
-
-
-def makefile_responds_to_test():
-    """Runs `make -q test` to detect if a makefile responds to an test
-    target."""
-    cmd = 'make -q test'
     returncode, _ = _run(cmd, timeout=5)
     return returncode in [0, 1]
 
@@ -152,12 +144,17 @@ def makefile_check():
         else:
             print PaastaCheckMessages.MAKEFILE_HAS_NO_DOCKER_TAG
 
-        if makefile_responds_to_itest():
+        if makefile_responds_to('cook-image'):
+            print PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE
+        else:
+            print PaastaCheckMessages.MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL
+
+        if makefile_responds_to('itest'):
             print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST
         else:
             print PaastaCheckMessages.MAKEFILE_RESPONDS_ITEST_FAIL
 
-        if makefile_responds_to_test():
+        if makefile_responds_to('test'):
             print PaastaCheckMessages.MAKEFILE_RESPONDS_TEST
         else:
             print PaastaCheckMessages.MAKEFILE_RESPONDS_TEST_FAIL
