@@ -162,7 +162,16 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     elif command == "stop":
         stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency=True)
     elif command == "restart":
-        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, complete_job_config, emergency=True)
+        restart_chronos_job(
+            service,
+            instance,
+            job_id,
+            client,
+            cluster,
+            matching_jobs,
+            complete_job_config,
+            emergency=True,
+        )
     elif command == "status":
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
