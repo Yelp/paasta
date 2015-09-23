@@ -548,7 +548,7 @@ def paasta_local_run(args):
     tag = os.environ.get('DOCKER_TAG', default_tag)
     os.environ['DOCKER_TAG'] = tag
 
-    paasta_cook_image(None, service=service)
+    paasta_cook_image(None, service=service, soa_dir=args.soaconfig_root)
 
     try:
         configure_and_run_docker_container(docker_client, tag, service, args)

@@ -26,7 +26,7 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_cook_image)
 
 
-def paasta_cook_image(args, service=None):
+def paasta_cook_image(args, service=None, soa_dir=None):
     """Build a docker image"""
     if service:
         service_name = service
@@ -34,7 +34,7 @@ def paasta_cook_image(args, service=None):
         service_name = args.service
     if service_name and service_name.startswith('services-'):
         service_name = service_name.split('services-', 1)[1]
-    validate_service_name(service_name)
+    validate_service_name(service_name, soa_dir)
 
     run_env = os.environ.copy()
     default_tag = 'paasta-cook-image-%s-%s' % (service_name, get_username())
