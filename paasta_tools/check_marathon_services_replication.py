@@ -232,11 +232,14 @@ def load_smartstack_info_for_service(service, namespace, soa_dir):
     :returns: a dictionary of the form::
 
         {
-            'unique_location_name': {
-                'service_name.instance_name': <# ofavailable backends>
-            },
-            'other_unique_location_name': ...
+          'location_type': {
+              'unique_location_name': {
+                  'service_name.instance_name': <# ofavailable backends>
+              },
+              'other_unique_location_name': ...
+          }
         }
+
     """
     service_namespace_config = marathon_tools.load_service_namespace_config(service, namespace,
                                                                             soa_dir=soa_dir)

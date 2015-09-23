@@ -96,8 +96,8 @@ class InstanceConfig(dict):
 
         :param service_config: The service instance's configuration dictionary
         :returns: An array of args specified in the config,
-        [] if not specified and if cmd is not specified,
-        otherwise None if not specified but cmd is specified"""
+            ``[]`` if not specified and if cmd is not specified,
+            otherwise None if not specified but cmd is specified"""
         if self.get_cmd() is None:
             return self.config_dict.get('args', [])
         else:

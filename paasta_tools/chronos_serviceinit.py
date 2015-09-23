@@ -95,7 +95,7 @@ def status_chronos_job(jobs):
     """Returns a formatted string of the status of a list of chronos jobs
 
     :param jobs: list of dicts of chronos job info as returned by the chronos
-    client
+        client
     """
     if jobs == []:
         return "%s: chronos job is not setup yet" % PaastaColors.yellow("Warning")

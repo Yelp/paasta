@@ -147,7 +147,7 @@ def get_zookeeper_config(state):
 def get_number_of_mesos_masters(zk_config):
     """Returns an array, containing mesos masters
     :param zk_config: dict containing information about zookeeper config.
-    Masters register themself in zookeeper by creating info_ entries.
+    Masters register themselves in zookeeper by creating ``info_`` entries.
     We count these entries to get the number of masters.
     """
     zk = KazooClient(hosts=zk_config['hosts'], read_only=True)
