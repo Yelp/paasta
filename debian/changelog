@@ -1,3 +1,10 @@
+paasta-tools (0.12.81-yelp1) lucid; urgency=low
+
+  * 0.12.81 tagged with 'make release'
+    Commit: Merge branch u/nhandler/local-run-itest
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 23 Sep 2015 11:11:21 -0700
+
 paasta-tools (0.12.80-yelp1) lucid; urgency=low
 
   * 0.12.80 tagged with 'make release'
