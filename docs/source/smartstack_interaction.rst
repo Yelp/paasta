@@ -104,32 +104,31 @@ How SmartStack Settings Influence Monitoring
 --------------------------------------------
 
 If a service is in SmartStack, PaaSTA uses the same ``discover`` setting
-referenced above inform how the service should be monitored. When a service
+referenced above to decide how the service should be monitored. When a service
 author sets a particular setting, say ``discover: region``, it implies that the
 system should enforce availability of that service in every region. If there
 are regions that lack tasks to serve that service, then PaaSTA should alert.
 
-Example: Checking Each Habitat When 'discover: habitat'
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Example: Checking Each Habitat When ``discover: habitat``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If SmartStack were configured to ``discover: habitat``, PaaSTA would configure
-Marathon to balance tasks to each habitat. But what if it was unable to do that?
-
-Let's look at a particular example:
+If SmartStack is configured to ``discover: habitat``, PaaSTA configures
+Marathon to balance tasks to each habitat. But what if it is unable to do that?
 
 .. image:: replication_alert_habitat.svg
    :width: 700px
 
-In this case, there are no tasks in habitat F. This is a problem because the
-``discover: habiat`` implies that any clients in that habitat (F) will not
-be able to find this service. It is *down* in habitat F.
+In this case, there are no tasks in habitat F. This is a problem because
+``discover: habiat`` implies that any clients in habitat F will not
+be able to find the service. It is *down* in habitat F.
 
-To detect and alert on this, PaaSTA iterates through each unique location of
-the type set by the ``discover`` setting. In this case, ``habitat``. The PaaSTA
-replication check iterated through habitats A-F, found at least one habitat
-that did not have enough replication (0 out of 1), and would have alerted.
+To detect and alert on this, PaaSTA uses the ``discover`` setting to decide
+which unique locaitons to look at (e.g. ``habitat``). Paasta iterates over
+each unique location (e.g. habitats A-F) and inspects the replication levels
+in each location. It finds that there is at least one habitat with too few
+instances (habitat F, which has 0 out of 1) and alerts.
 
-The output of the alert or ``paasta status`` would look something like this::
+The output of the alert or ``paasta status`` looks something like this::
 
     Smartstack:
         habitatA - Healthy - in haproxy with (1/1) total backends UP in this namespace.
@@ -139,34 +138,36 @@ The output of the alert or ``paasta status`` would look something like this::
         habitatE - Healthy - in haproxy with (1/1) total backends UP in this namespace.
         habitatF - Critical - in haproxy with (0/1) total backends UP in this namespace.
 
-In this case the service author may have a few actions they can take:
+In this case the service authors have a few actions they can take:
 
-# Increase the total instance count to have more tasks per habitat. (one task in each habitat is a single point of failure in this example)
-# Change the ``discovery`` setting to ``region`` to increase availability at the cost of latency.
-# Investigate *why* tasks can't run in habitat F. (Lack of resources? Improper configs? Missing service dependencies?)
+- Increase the total instance count to have more tasks per habitat.
+  (In this example, each habitat contains a single point of failure!)
+- Change the ``discovery`` setting to ``region`` to increase availability
+  at the cost of latency.
+- Investigate *why* tasks can't run in habitat F.
+  (Lack of resources? Improper configs? Missing service dependencies?)
 
 Example: Checking Each Region When ``discover: region``
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-If SmartStack were configured to ``discover: region``, PaaSTA would configure
-Marathon to balance tasks to each region. But what if it was unable to launch
-all the tasks, but there were still tasks running in that region?
-
-Let's look at a particular example:
+If SmartStack is configured to ``discover: region``, PaaSTA configures
+Marathon to balance tasks to each region. But what if it is unable to launch
+all the tasks, but there were tasks running in that region?
 
 .. image:: replication_noalert_region.svg
    :width: 700px
 
-The output of the alert or ``paasta status`` would look something like this::
+The output of the alert or ``paasta status`` looks something like this::
 
     Smartstack:
         region1 - Healthy - in haproxy with (3/3) total backends UP in this namespace.
         region2 - Warning - in haproxy with (2/3) total backends UP in this namespace.
 
-Assuming a threshold of 50%, and alert would not be sent to the team in this case.
-Even though there are habitats that do not have tasks for this service, the
-``discover: region`` setting ensures that any client can be satisfied as long as there
-are tasks in the same region, even if they are in different habitats.
+Assuming a threshold of 50%, an alert would not be sent to the team in this case.
+
+Even if some habitats do not have tasks for this service, ``discover: region``
+ensures that clients can be satisfied by tasks in the same region if not by
+tasks in the same habitat.
 
 
 Addendum: Non-Smartstack Monitoring
@@ -174,7 +175,7 @@ Addendum: Non-Smartstack Monitoring
 
 If a service is not in SmartStack, then our monitoring requirements are greatly
 simplified. PaaSTA simply looks at the number of tasks that are running and
-compares it against the requested requested task count. If the running task
-count is under the configured percentage threshold (defaults to 50%) then an
-alert will be sent. No consideration for the distribution of the tasks among
-latency zones (habitats, regions, etc) is taken into account.
+compares it to the requested task count. If the running task count is under the
+configured percentage threshold (defaults to 50%) then an alert will be sent.
+No consideration for the distribution of the tasks among latency zones
+(habitats, regions, etc) is taken into account.
