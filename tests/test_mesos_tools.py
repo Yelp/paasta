@@ -143,6 +143,33 @@ def test_get_mesos_slaves_grouped_by_attribute_bombs_out_with_no_slaves(mock_fet
         mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute')
 
 
+@mock.patch('paasta_tools.mesos_tools.fetch_mesos_state_from_leader', autospec=True)
+@mock.patch('paasta_tools.mesos_tools.filter_mesos_slaves_by_blacklist', autospec=True)
+def test_get_mesos_slaves_grouped_by_attribute_uses_blacklist(
+    mock_filter_mesos_slaves_by_blacklist,
+    mock_fetch_state
+):
+    fake_blacklist = ['fake_blacklist']
+    fake_slaves = [
+        {
+            'hostname': 'fake_host_1',
+            'attributes': {
+                'fake_attribute': 'fake_value_1',
+            }
+        },
+        {
+            'hostname': 'fake_host_2',
+            'attributes': {
+                'fake_attribute': 'fake_value_1',
+            }
+        }
+    ]
+    mock_fetch_state.return_value = {'slaves': fake_slaves}
+    mock_filter_mesos_slaves_by_blacklist.return_value = fake_slaves
+    mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute', blacklist=fake_blacklist)
+    mock_filter_mesos_slaves_by_blacklist.assert_called_once_with(slaves=fake_slaves, blacklist=fake_blacklist)
+
+
 @mock.patch('paasta_tools.mesos_tools.slave_passes_blacklist', autospec=True)
 def test_filter_mesos_slaves_by_blacklist_when_unfiltered(mock_slave_passes_blacklist):
     mock_slave_passes_blacklist.return_value = True

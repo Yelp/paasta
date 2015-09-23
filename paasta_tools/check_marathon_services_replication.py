@@ -113,7 +113,7 @@ def check_smartstack_replication_for_instance(
     monitoring_blacklist = complete_job_config.get_monitoring_blacklist()
     log.info('Checking instance %s', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
-        service=service, namespace=namespace, soa_dir=soa_dir)
+        service=service, namespace=namespace, soa_dir=soa_dir, blacklist=monitoring_blacklist)
     log.debug('Got smartstack replication info for %s: %s' % (full_name, smartstack_replication_info))
 
     if len(smartstack_replication_info) == 0:
@@ -146,7 +146,7 @@ def check_smartstack_replication_for_instance(
         else:
             status = pysensu_yelp.Status.OK
             log.info(output)
-    send_event(service, instance, soa_dir, status, output)
+    send_event(service=service, namespace=instance, cluster=cluster, soa_dir=soa_dir, status=status, output=output)
 
 
 def add_context_to_event(service, instance, output):
@@ -269,21 +269,23 @@ def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
     return get_smartstack_replication_for_attribute(
         attribute=discover_location_type,
         service=service,
-        namespace=namespace)
+        namespace=namespace,
+        blacklist=blacklist)
 
 
-def get_smartstack_replication_for_attribute(attribute, service, namespace):
+def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist):
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
     :param service: A service name, like 'example_service'
     :param namespace: A particular smartstack namespace to inspect, like 'main'
     :param constraints: A list of Marathon constraints to restrict which synapse hosts to query
+    :param blacklist: A list of blacklisted location tuples in the form of (location, value)
     :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
               (the dictionary will contain keys for unique all attribute values)
     """
     replication_info = {}
-    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute)
+    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute=attribute, blacklist=blacklist)
     full_name = compose_job_id(service, namespace)
 
     for value, hosts in unique_values.iteritems():

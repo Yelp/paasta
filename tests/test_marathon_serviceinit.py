@@ -572,7 +572,8 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             synapse_port=3212,
         )
         mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
-            'fake_discover',
+            attribute='fake_discover',
+            blacklist=[],
         )
         assert "fake_location1 - %s" % PaastaColors.green('Healthy') in actual
         assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.DEFAULT), actual)

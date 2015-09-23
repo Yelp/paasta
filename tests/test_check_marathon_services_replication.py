@@ -686,10 +686,13 @@ def test_get_smartstack_replication_for_attribute():
             'fake_other_value': {}
         }
         actual = check_marathon_services_replication.get_smartstack_replication_for_attribute(
-            attribute='fake_attribute', service=fake_service, namespace=fake_namespace)
+            attribute='fake_attribute', service=fake_service, namespace=fake_namespace, blacklist=[])
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
-        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with('fake_attribute')
+        mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
+            attribute='fake_attribute',
+            blacklist=[],
+        )
         mock_get_replication_for_services.assert_any_call(
             synapse_host='fake_host_1',
             synapse_port=DEFAULT_SYNAPSE_PORT,
