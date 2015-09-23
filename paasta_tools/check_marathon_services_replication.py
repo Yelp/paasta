@@ -90,7 +90,6 @@ def parse_args():
 def check_smartstack_replication_for_instance(
     service,
     instance,
-    smartstack_replication_info,
     soa_dir,
     crit_threshold,
     expected_count,
@@ -100,13 +99,6 @@ def check_smartstack_replication_for_instance(
 
     :param service: A string like example_service
     :param namespace: A nerve namespace, like "main"
-    :param smartstack_replication_info: a dictionary of the form:
-                                        {
-                                            'unique_location_name': {
-                                                'service_name.instance_name': <# ofavailable backends>
-                                            },
-                                            'other_unique_location_name': ...
-                                        }
     :param soa_dir: The SOA configuration directory to read from
     :param crit_threshold: The fraction of instances that need to be up to avoid a CRITICAL event
     """
@@ -117,6 +109,9 @@ def check_smartstack_replication_for_instance(
         return
     full_name = compose_job_id(service, instance)
     log.info('Checking instance %s', full_name)
+    smartstack_replication_info = load_smartstack_info_for_service(
+        service=service, namespace=namespace, soa_dir=soa_dir)
+    log.debug('Got smartstack replication info for %s: %s' % (full_name, smartstack_replication_info))
 
     if len(smartstack_replication_info) == 0:
         status = pysensu_yelp.Status.CRITICAL
@@ -204,7 +199,7 @@ def send_event_if_under_replication(
     send_event(service, instance, soa_dir, status, output)
 
 
-def check_service_replication(service, instance, crit_threshold, smartstack_replication_info, soa_dir):
+def check_service_replication(service, instance, crit_threshold, soa_dir):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
@@ -212,12 +207,6 @@ def check_service_replication(service, instance, crit_threshold, smartstack_repl
     :param instance: Instance name, like "main" or "canary"
     :param crit_threshold: an int from 0-100 representing the percentage threshold for triggering an alert
     :param soa_dir: The SOA configuration directory to read from
-    :smartstack_replication_info: a dictionary of locations where the key is the name of the location
-                                      (e.g. 'ca-datacenter1') and the value is a dictionary that contains
-                                      the current replication levels from smartstack of the form
-                                      {'service_name.instance_name': <available backend count>}. More info
-                                      about locations can be found at
-                                      https://trac.yelpcorp.com/wiki/Habitat_Datacenter_Ecosystem_Runtimeenv_Region_Superregion
     """
     job_name = compose_job_id(service, instance)
     try:
@@ -230,54 +219,50 @@ def check_service_replication(service, instance, crit_threshold, smartstack_repl
     log.info("Expecting %d total tasks for %s" % (expected_count, job_name))
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     if proxy_port is not None:
-        check_smartstack_replication_for_instance(service, instance, smartstack_replication_info,
-                                                  soa_dir, crit_threshold, expected_count)
+        check_smartstack_replication_for_instance(service, instance, soa_dir, crit_threshold, expected_count)
     else:
         check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold, expected_count)
 
 
-def load_smartstack_info_for_services(service_instances, namespaces, soa_dir):
+def load_smartstack_info_for_service(service, namespace, soa_dir):
     """Retrives number of available backends for given services
 
     :param service_instances: A list of tuples of (service_name, instance_name)
     :param namespaces: list of Smartstack namespaces
-    :returns: a dictionary of the form:
-              {
-                'location_type': {
-                    'unique_location_name': {
-                        'service_name.instance_name': <# ofavailable backends>
-                    },
-                    'other_unique_location_name': ...
-                }
-              }
+    :returns: a dictionary of the form::
+
+        {
+          'location_type': {
+              'unique_location_name': {
+                  'service_name.instance_name': <# ofavailable backends>
+              },
+              'other_unique_location_name': ...
+          }
+        }
+
     """
-    smartstack_replication_info = {}
-    location_types = set()
-    for service_name, instance_name in service_instances:
-        service_namespace_config = marathon_tools.load_service_namespace_config(service_name, instance_name,
-                                                                                soa_dir=soa_dir)
-        discover_location_type = service_namespace_config.get_discover()
-        location_types.add(discover_location_type)
-
-    for location_type in location_types:
-        smartstack_replication_info[location_type] = get_smartstack_replication_for_attribute(
-            attribute=location_type,
-            namespaces=namespaces)
-
-    return smartstack_replication_info
+    service_namespace_config = marathon_tools.load_service_namespace_config(service, namespace,
+                                                                            soa_dir=soa_dir)
+    discover_location_type = service_namespace_config.get_discover()
+    return get_smartstack_replication_for_attribute(
+        attribute=discover_location_type,
+        service=service,
+        namespace=namespace)
 
 
-def get_smartstack_replication_for_attribute(attribute, namespaces):
+def get_smartstack_replication_for_attribute(attribute, service, namespace):
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
-    :param namespaces: list of Smartstack namespaces
+    :param service: A service name, like 'example_service'
+    :param namespace: A particular smartstack namespace to inspect, like 'main'
     :param constraints: A list of Marathon constraints to restrict which synapse hosts to query
     :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
               (the dictionary will contain keys for unique all attribute values)
     """
     replication_info = {}
     unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute)
+    full_name = compose_job_id(service, namespace)
 
     for value, hosts in unique_values.iteritems():
         # arbitrarily choose the first host with a given attribute to query for replication stats
@@ -285,7 +270,7 @@ def get_smartstack_replication_for_attribute(attribute, namespaces):
         repl_info = replication_utils.get_replication_for_services(
             synapse_host=synapse_host,
             synapse_port=smartstack_tools.DEFAULT_SYNAPSE_PORT,
-            service_names=namespaces,
+            service_names=[full_name],
         )
         replication_info[value] = repl_info
 
@@ -298,23 +283,16 @@ def main():
     crit_threshold = args.crit
     logging.basicConfig()
     if args.verbose:
-        log.setLevel(logging.INFO)
+        log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
     service_instances = get_services_for_cluster(instance_type='marathon', soa_dir=args.soa_dir)
-    all_namespaces = [name for name, config in marathon_tools.get_all_namespaces()]
-
-    smartstack_replication_info = load_smartstack_info_for_services(service_instances, all_namespaces, soa_dir)
 
     for service, instance in service_instances:
-        service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
-        discover_location_type = service_namespace_config.get_discover()
-
         check_service_replication(
             service,
             instance,
             crit_threshold,
-            smartstack_replication_info[discover_location_type],
             soa_dir
         )
 

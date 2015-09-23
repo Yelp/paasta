@@ -48,6 +48,20 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   *  ``monitoring``: A dictionary of values that configure overrides for monitoring parameters that will take precedence over what is in `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
 
+
+  * ``monitoring_blacklist``: A list of tuples indicating a set of locations to
+    *not* monitor for Smartstack replication. For example:
+
+      ``monitoring_blacklist: [("region", "uswest1-prod")]``
+
+   would indicate that PaaSTA should ignore the ``uswest1-prod`` region. PaaSTA currently
+   assumes that the instance count in *other* regions include instances that would
+   have otherwise gotten deployed to ``uswest1-prod``. In other words, the ``monitoring_blacklist``
+   assumes that instances are not deployed there as well. For example, suppose the total
+   instance count was 10, and there are two regions, one of which is blacklisted.
+   The monitoring logic will assume that there are no instances in the blacklisted region,
+   implying that we should expect all 10 in the non-blacklisted region.
+
 In addition, each instancename MAY configure additional Marathon healthcheck options:
 
   *  ``healthcheck_mode``: One of ``cmd``, ``tcp``, or ``http``. If your service uses Smartstack, then this must match the value of the ``mode`` key defined for this instance in ``smartstack.yaml``. If set to ``cmd`` then PaaSTA will execute ``healthcheck_cmd`` and examine the return code.
@@ -84,12 +98,14 @@ Most of the descriptions below are taken directly from the Chronos API docs, whi
 
 Each job configuration MUST specify the following options:
 
-  * ``schedule``: When the job should run. The value must be specified in the cryptic ISO 8601 format. See: https://en.wikipedia.org/wiki/ISO_8601 and https://mesos.github.io/chronos/docs/api.html#adding-a-scheduled-job
+  * ``schedule``: When the job should run. The value must be specified in the cryptic ISO 8601 format. For more details about the schedule format, see: https://en.wikipedia.org/wiki/ISO_8601 and https://mesos.github.io/chronos/docs/api.html#adding-a-scheduled-job
+
+    * **Note:** Although Chronos supports an empty start time to indicate that the job should start immediately, we do not allow this. In a situation such as restarting Chronos, all jobs with empty start times would start simultaneously, causing serious performance degradation and ignoring the fact that the job may have just run.
 
 Each job configuration MAY specify the following options:
 
   * ``cmd``: See the `marathon-[clustername].yaml`_ section for details
-    
+
   * ``args``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``epsilon``: If Chronos misses the scheduled run time for any reason, it will still run the job if the time is within this interval. The value must be formatted like an ISO 8601 Duration. See: https://en.wikipedia.org/wiki/ISO_8601#Durations. Defaults to 'PT60S', indicating that a job may be launched up to a minute late.
@@ -102,9 +118,11 @@ Each job configuration MAY specify the following options:
 
   * ``mem``: See the `marathon-[clustername].yaml`_ section for details
 
-  *  ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
+  * ``bounce_method``: Controls what happens to the old version(s) of a job when a new version is deployed. Options are ``graceful`` to disable the old version but allow it to finish its current run, or ``brutal`` to disable the old version and immediately kill any running tasks it has. If unspecified, defaults to ``graceful``.
 
-  *  ``env``: See the `marathon-[clustername].yaml`_ section for details
+  * ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
+
+  * ``env``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``constraints``: Array of rules to ensure jobs run on slaves with specific Mesos attributes. See the `official documentation <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more information.
 

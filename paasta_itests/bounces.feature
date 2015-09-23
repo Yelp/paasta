@@ -123,4 +123,3 @@ Feature: Bounces work as expected
      When a task has drained
       And deploy_service with bounce strategy "crossover" and drain method "test" is initiated
      Then the old app should be configured to have 1 instances
-

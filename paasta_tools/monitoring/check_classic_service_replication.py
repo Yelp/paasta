@@ -41,26 +41,24 @@ def do_replication_check(service_name, monitoring_config, service_replication):
         monitoring keys (as defined by extract_replication_info) and
         optionally providing additional keys:
 
-        runbook ("no runbook"): The runbook to refer oncall members to
-        tip ("no tip"): A tip for oncall members
-        page (false): Whether to page the provided team on failure
-        alert_after ("0s"): How many minutes before going critical
-        realert_every (-1): How many events before you trigger a realert
-                            -1 indicates an exponential backoff
+    - runbook ("no runbook"): The runbook to refer oncall members to
+    - tip ("no tip"): A tip for oncall members
+    - page (false): Whether to page the provided team on failure
+    - alert_after ("0s"): How many minutes before going critical
+    - realert_every (-1): How many events before you trigger a realert
+      -1 indicates an exponential backoff
+    - extra.replication.key ("habitat"): The file in /nail/etc to inspect
+      to figure out which value to lookup in map
+    - extra.replication.default (1): The default number of instances to
+      check for
+    - extra.replication.map ({}): A lookup that maps the replication keys to
+      the appropriate minimum replication value
 
-        extra.replication.key ("habitat"): The file in /nail/etc to inspect
-            to figure out which value to lookup in map
-        extra.replication.default (1): The default number of instances to
-            check for
-        extra.replication.map ({}): A lookup that maps the replication keys to
-            the appropriate minimum replication value
-    :param service_replication: An int that represents the present replication
-
-    The default behaviour is to send emails to a team if their service
-    reaches 0 replicas, although teams can fine tune this to their needs
-
-    :returns A dictionary that conforms to the expected sensu event API
-             Note that this function does NOT send it to sensu
+    :param service_replication: An int that represents the present replication. The default
+        behavior is to send emails to a team if their service reaches 0 replicas, although teams
+        can fine tune this to their needs
+    :returns: A dictionary that conforms to the expected sensu event API. Note that this function
+        does NOT send it to Sensu
     """
     replication_config = monitoring_config.get('extra', {}).get(
         'replication', {})

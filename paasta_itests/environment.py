@@ -47,7 +47,7 @@ def _clean_up_chronos_jobs(context):
         while len(context.chronos_client.list()) > 0:
             jobs = context.chronos_client.list()
             for job in jobs:
-                print "after_scenario: chronos job %s is running. Deleting." % job['name']
+                print "after_scenario: Job %s is present in chronos. Deleting." % job['name']
                 context.chronos_client.delete(job['name'])
             time.sleep(1)
 

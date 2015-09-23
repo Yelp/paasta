@@ -144,13 +144,14 @@ def get_clusternames_from_deploy_stanza(deploy_stanza):
 
 
 def get_marathon_stanza():
-    """Produce a marathon-*.yaml a la
+    """Produce a ``marathon-*.yaml`` a la
     http://servicedocs.yelpcorp.com/docs/paasta_tools/yelpsoa_configs.html#marathon-clustername-yaml
 
     We want to default to The Simplest Thing That Can Possibly Work. This
     allows new services to hit the ground running, but forces developers to
     think about their resource needs and tune as they move toward production.
     So:
+
     - .1 cpus
         - This is a good starting place. Most services use a very small
           percentage of a core.

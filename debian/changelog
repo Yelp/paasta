@@ -1,3 +1,38 @@
+paasta-tools (0.12.81-yelp1) lucid; urgency=low
+
+  * 0.12.81 tagged with 'make release'
+    Commit: Merge branch u/nhandler/local-run-itest
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 23 Sep 2015 11:11:21 -0700
+
+paasta-tools (0.12.80-yelp1) lucid; urgency=low
+
+  * 0.12.80 tagged with 'make release'
+    Commit: Merge branch PAASTA-1213
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 23 Sep 2015 10:27:03 -0700
+
+paasta-tools (0.12.79-yelp1) lucid; urgency=low
+
+  * 0.12.79 tagged with 'make release'
+    Commit: Merge branch PAASTA-1255b
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 21 Sep 2015 15:23:33 -0700
+
+paasta-tools (0.12.78-yelp1) lucid; urgency=low
+
+  * 0.12.78 tagged with 'make release'
+    Commit: Minor changes per feedback. PAASTA-1264
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 21 Sep 2015 14:48:31 -0700
+
+paasta-tools (0.12.77-yelp1) lucid; urgency=low
+
+  * 0.12.77 tagged with 'make release'
+    Commit: Added support for Chronos bounce strategies (PAASTA-971)
+
+ -- Christopher Carroux <carroux@yelp.com>  Fri, 18 Sep 2015 10:42:33 -0700
+
 paasta-tools (0.12.76-yelp1) lucid; urgency=low
 
   * 0.12.76 tagged with 'make release'
