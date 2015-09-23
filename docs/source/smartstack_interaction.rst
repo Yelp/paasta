@@ -6,7 +6,7 @@ PaaSTA uses SmartStack configuration to influence the **deployment** and
 about SmartStack; see http://y/smartstack.
 
 How SmartStack Settings Influence Deployment
-********************************************
+--------------------------------------------
 
 In SmartStack, a service can be configured to be *discovered* at a particular
 latency zone.
@@ -33,7 +33,7 @@ topographically "nearby" -- but reduces availability since only three habitats
 can be reached.
 
 What Would Happen if PaaSTA Were Not Aware of SmartStack
--------------------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 PaaSTA uses `Marathon <https://mesosphere.github.io/marathon/>`_ to deploy
 long-running services. At Yelp, PaaSTA clusters are deployed at the
@@ -54,7 +54,7 @@ In a world with configurable SmartStack discovery settings, the deployment
 system (Marathon) must be aware of these and deploy accordingly.
 
 What A SmartStack-Aware Deployment Looks Like
-----------------------------------------------
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 By taking advantage of
 `Marathon Constraint Language <https://mesosphere.github.io/marathon/docs/constraints.html>`_
@@ -64,7 +64,7 @@ operator, Marathon can deploy tasks in such a way as to ensure a balanced number
 of tasks in each latency zone.
 
 Example: Balanced deployment to every habitat
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*********************************************
 
 For example, if the SmartStack setting
 were ``discover: habitat`` [1]_, we Marathon could enforce the constraint
@@ -75,7 +75,7 @@ evenly between the habitats[2]_:
    :width: 700px
 
 Example: Deployment balanced to each region
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+*******************************************
 
 Similarly, if the ``discover`` setting were set to ``region``, the equivalent
 Marathon constraint would ensure an equal number of tasks distributed to each region.
@@ -101,6 +101,81 @@ in each.
 
 
 How SmartStack Settings Influence Monitoring
-********************************************
+--------------------------------------------
 
-TBD
+If a service is in SmartStack, PaaSTA uses the same ``discover`` setting
+referenced above to decide how the service should be monitored. When a service
+author sets a particular setting, say ``discover: region``, it implies that the
+system should enforce availability of that service in every region. If there
+are regions that lack tasks to serve that service, then PaaSTA should alert.
+
+Example: Checking Each Habitat When ``discover: habitat``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If SmartStack is configured to ``discover: habitat``, PaaSTA configures
+Marathon to balance tasks to each habitat. But what if it is unable to do that?
+
+.. image:: replication_alert_habitat.svg
+   :width: 700px
+
+In this case, there are no tasks in habitat F. This is a problem because
+``discover: habiat`` implies that any clients in habitat F will not
+be able to find the service. It is *down* in habitat F.
+
+To detect and alert on this, PaaSTA uses the ``discover`` setting to decide
+which unique locaitons to look at (e.g. ``habitat``). Paasta iterates over
+each unique location (e.g. habitats A-F) and inspects the replication levels
+in each location. It finds that there is at least one habitat with too few
+instances (habitat F, which has 0 out of 1) and alerts.
+
+The output of the alert or ``paasta status`` looks something like this::
+
+    Smartstack:
+        habitatA - Healthy - in haproxy with (1/1) total backends UP in this namespace.
+        habitatB - Healthy - in haproxy with (1/1) total backends UP in this namespace.
+        habitatC - Healthy - in haproxy with (1/1) total backends UP in this namespace.
+        habitatD - Healthy - in haproxy with (1/1) total backends UP in this namespace.
+        habitatE - Healthy - in haproxy with (1/1) total backends UP in this namespace.
+        habitatF - Critical - in haproxy with (0/1) total backends UP in this namespace.
+
+In this case the service authors have a few actions they can take:
+
+- Increase the total instance count to have more tasks per habitat.
+  (In this example, each habitat contains a single point of failure!)
+- Change the ``discovery`` setting to ``region`` to increase availability
+  at the cost of latency.
+- Investigate *why* tasks can't run in habitat F.
+  (Lack of resources? Improper configs? Missing service dependencies?)
+
+Example: Checking Each Region When ``discover: region``
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+If SmartStack is configured to ``discover: region``, PaaSTA configures
+Marathon to balance tasks to each region. But what if it is unable to launch
+all the tasks, but there were tasks running in that region?
+
+.. image:: replication_noalert_region.svg
+   :width: 700px
+
+The output of the alert or ``paasta status`` looks something like this::
+
+    Smartstack:
+        region1 - Healthy - in haproxy with (3/3) total backends UP in this namespace.
+        region2 - Warning - in haproxy with (2/3) total backends UP in this namespace.
+
+Assuming a threshold of 50%, an alert would not be sent to the team in this case.
+
+Even if some habitats do not have tasks for this service, ``discover: region``
+ensures that clients can be satisfied by tasks in the same region if not by
+tasks in the same habitat.
+
+
+Addendum: Non-Smartstack Monitoring
+***********************************
+
+If a service is not in SmartStack, then our monitoring requirements are greatly
+simplified. PaaSTA simply looks at the number of tasks that are running and
+compares it to the requested task count. If the running task count is under the
+configured percentage threshold (defaults to 50%) then an alert will be sent.
+No consideration for the distribution of the tasks among latency zones
+(habitats, regions, etc) is taken into account.
