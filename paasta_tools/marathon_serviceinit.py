@@ -484,6 +484,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
                 service=service,
                 instance=instance,
                 cluster=cluster,
+                job_config=complete_job_config,
                 tasks=tasks,
                 expected_count=normal_smartstack_count,
                 soa_dir=soa_dir,
