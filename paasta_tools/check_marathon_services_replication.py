@@ -41,26 +41,25 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
-def send_event(service_name, namespace, soa_dir, status, output):
+def send_event(service, namespace, cluster, soa_dir, status, output):
     """Send an event to sensu via pysensu_yelp with the given information.
 
-    :param service_name: The service name the event is about
+    :param service: The service name the event is about
     :param namespace: The namespace of the service the event is about
     :param soa_dir: The service directory to read monitoring information from
     :param status: The status to emit for this event
     :param output: The output to emit for this event"""
     # This function assumes the input is a string like "mumble.main"
-    cluster = load_system_paasta_config().get_cluster()
     monitoring_overrides = marathon_tools.load_marathon_service_config(
-        service_name, namespace, cluster).get_monitoring()
+        service, namespace, cluster).get_monitoring()
     monitoring_overrides['alert_after'] = '2m'
     monitoring_overrides['check_every'] = '1m'
-    monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service_name, soa_dir=soa_dir)
+    monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service, soa_dir=soa_dir)
 
-    check_name = 'check_marathon_services_replication.%s' % compose_job_id(service_name, namespace)
-    monitoring_tools.send_event(service_name, check_name, monitoring_overrides, status, output, soa_dir)
+    check_name = 'check_marathon_services_replication.%s' % compose_job_id(service, namespace)
+    monitoring_tools.send_event(service, check_name, monitoring_overrides, status, output, soa_dir)
     _log(
-        service_name=service_name,
+        service_name=service,
         line='Replication: %s' % output,
         component='monitoring',
         level='debug',
