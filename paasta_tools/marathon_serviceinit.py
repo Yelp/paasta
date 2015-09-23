@@ -210,7 +210,7 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
         return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
 
 
-def status_smartstack_backends(service, instance, cluster, tasks, expected_count, soa_dir, verbose):
+def status_smartstack_backends(service, instance, job_config, cluster, tasks, expected_count, soa_dir, verbose):
     """Returns detailed information about smartstack backends for a service
     and instance.
     return: A newline separated string of the smarststack backend status
