@@ -201,7 +201,7 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
         return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
 
 
-def status_smartstack_backends(service, instance, cluster, tasks, expected_count, soa_dir, verbose):
+def status_smartstack_backends(service, instance, job_config, cluster, tasks, expected_count, soa_dir, verbose):
     """Returns detailed information about smartstack backends for a service
     and instance.
     return: A newline separated string of the smarststack backend status
@@ -219,7 +219,9 @@ def status_smartstack_backends(service, instance, cluster, tasks, expected_count
 
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
-    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type)
+    monitoring_blacklist = job_config.get_monitoring_blacklist()
+    unique_attributes = get_mesos_slaves_grouped_by_attribute(
+        attribute=discover_location_type, blacklist=monitoring_blacklist)
     if len(unique_attributes) == 0:
         output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance)
     else:
@@ -477,6 +479,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
                 service=service,
                 instance=instance,
                 cluster=cluster,
+                job_config=complete_job_config,
                 tasks=tasks,
                 expected_count=normal_smartstack_count,
                 soa_dir=soa_dir,
