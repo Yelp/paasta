@@ -156,7 +156,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     job_id = complete_job_config['name']
     # We add SPACER to the end as an anchor to prevent catching
     # "my_service my_job_extra" when looking for "my_service my_job".
-    job_pattern = "^%s%s" % (chronos_tools.compose_job_id(service, instance), chronos_tools.SPACER)
+    job_pattern = r"^%s%s" % (chronos_tools.compose_job_id(service, instance), chronos_tools.SPACER)
     matching_jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
 
     if command == "start":
