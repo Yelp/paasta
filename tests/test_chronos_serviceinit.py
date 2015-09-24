@@ -203,7 +203,7 @@ def test_status_chronos_jobs_is_not_deployed():
             jobs,
             complete_job_config,
         )
-        assert 'not setup' in actual
+        assert 'not set up' in actual
 
 
 def test_status_chronos_jobs_multiple_jobs():
