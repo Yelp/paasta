@@ -64,9 +64,9 @@ def restart_marathon_job(service, instance, app_id, normal_instance_count, clien
     start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
 
 
-def get_bouncing_status(service, instance, client, complete_job_config):
+def get_bouncing_status(service, instance, client, job_config):
     apps = marathon_tools.get_matching_appids(service, instance, client)
-    bounce_method = complete_job_config.get_bounce_method()
+    bounce_method = job_config.get_bounce_method()
     app_count = len(apps)
     if app_count == 0:
         return PaastaColors.red("Stopped")
@@ -78,9 +78,9 @@ def get_bouncing_status(service, instance, client, complete_job_config):
         return PaastaColors.red("Unknown (count: %s)" % app_count)
 
 
-def status_desired_state(service, instance, client, complete_job_config):
-    status = get_bouncing_status(service, instance, client, complete_job_config)
-    desired_state = complete_job_config.get_desired_state_human()
+def status_desired_state(service, instance, client, job_config):
+    status = get_bouncing_status(service, instance, client, job_config)
+    desired_state = job_config.get_desired_state_human()
     return "State:      %s - Desired state: %s" % (status, desired_state)
 
 
@@ -440,7 +440,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     :returns: A unix-style return code
     """
     marathon_config = marathon_tools.load_marathon_config()
-    complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
+    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     try:
         app_id = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir=soa_dir)['id']
     except NoDockerImageError:
@@ -448,7 +448,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_name
         return 1
 
-    normal_instance_count = complete_job_config.get_instances()
+    normal_instance_count = job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance)
 
@@ -464,7 +464,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         # Setting up transparent cache for http API calls
         requests_cache.install_cache('paasta_serviceinit', backend='memory')
 
-        print status_desired_state(service, instance, client, complete_job_config)
+        print status_desired_state(service, instance, client, job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         tasks, out = status_marathon_job_verbose(service, instance, client)
         if verbose:
