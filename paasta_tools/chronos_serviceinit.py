@@ -142,7 +142,7 @@ def status_chronos_jobs(jobs, job_config):
         provided by chronos_tools.load_chronos_job_config().
     """
     if jobs == []:
-        return "%s: chronos job is not setup yet" % PaastaColors.yellow("Warning")
+        return "%s: chronos job is not set up yet" % PaastaColors.yellow("Warning")
     else:
         desired_state = job_config.get_desired_state_human()
         output = [format_chronos_job_status(job, desired_state) for job in jobs]
