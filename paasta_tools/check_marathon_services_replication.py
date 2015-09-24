@@ -32,6 +32,7 @@ from paasta_tools import smartstack_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
@@ -150,18 +151,6 @@ def add_context_to_event(service, instance, output):
     context = get_context(service, instance)
     output = '%s\n%s' % (output, context)
     return output
-
-
-def is_under_replicated(num_available, expected_count, crit_threshold):
-    if expected_count == 0:
-        ratio = 100
-    else:
-        ratio = (num_available / float(expected_count)) * 100
-
-    if ratio < crit_threshold:
-        return (True, ratio)
-    else:
-        return (False, ratio)
 
 
 def check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold, expected_count):

@@ -60,30 +60,6 @@ def test_add_context_to_event():
         assert fake_context in actual
 
 
-def test_is_under_replicated_ok():
-    num_available = 1
-    expected_count = 1
-    crit_threshold = 50
-    actual = check_marathon_services_replication.is_under_replicated(num_available, expected_count, crit_threshold)
-    assert actual == (False, float(100))
-
-
-def test_is_under_replicated_zero():
-    num_available = 1
-    expected_count = 0
-    crit_threshold = 50
-    actual = check_marathon_services_replication.is_under_replicated(num_available, expected_count, crit_threshold)
-    assert actual == (False, float(100))
-
-
-def test_is_under_replicated_critical():
-    num_available = 0
-    expected_count = 1
-    crit_threshold = 50
-    actual = check_marathon_services_replication.is_under_replicated(num_available, expected_count, crit_threshold)
-    assert actual == (True, float(0))
-
-
 def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
     service = 'test'
     instance = 'main'

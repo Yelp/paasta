@@ -946,3 +946,22 @@ def get_code_sha_from_dockerurl(docker_url):
     """
     parts = docker_url.split('-')
     return "git%s" % parts[-1][:8]
+
+
+def is_under_replicated(num_available, expected_count, crit_threshold):
+    """Calculates if something is under replicated
+
+    :param num_available: How many things are up
+    :param expected_count: How many things you think should be up
+    :param crit_threshold: Int from 0-100
+    :returns: Tuple of (bool, ratio)
+    """
+    if expected_count == 0:
+        ratio = 100
+    else:
+        ratio = (num_available / float(expected_count)) * 100
+
+    if ratio < crit_threshold:
+        return (True, ratio)
+    else:
+        return (False, ratio)
