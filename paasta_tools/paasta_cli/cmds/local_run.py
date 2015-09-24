@@ -325,7 +325,7 @@ def get_container_id(docker_client, container_name):
     its 'container_name'. If we can't find the id, raise
     LostContainerException.
     """
-    containers = docker_client.containers()
+    containers = docker_client.containers(all=True)
     for container in containers:
         if '/%s' % container_name in container.get('Names', []):
             return container.get('Id')
@@ -338,13 +338,13 @@ def get_container_id(docker_client, container_name):
 
 
 def _cleanup_container(docker_client, container_id):
-    sys.stdout.write("\nTerminating container...\n")
+    sys.stdout.write("\nStopping and removing the old container %s...\n" % container_id)
     sys.stdout.write("(Please wait or you may leave an orphaned container.)\n")
     sys.stdout.flush()
     try:
         docker_client.stop(container_id)
         docker_client.remove_container(container_id)
-        sys.stdout.write("...terminated\n")
+        sys.stdout.write("...done\n")
     except errors.APIError:
         sys.stdout.write(PaastaColors.yellow(
             "Could not clean up container! You should stop and remove container '%s' manually.\n" % container_id))
