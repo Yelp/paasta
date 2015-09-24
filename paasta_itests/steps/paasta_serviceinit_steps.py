@@ -10,14 +10,25 @@ from paasta_tools import marathon_serviceinit
 from paasta_tools.utils import _run
 
 
-@when(u'we run the marathon job test-service.main')
-def run_marathon_test_service(context):
+@when(u'we run the marathon job "{service}.{instance}"')
+def run_marathon_test_service(context, service, instance):
+    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     trivial_app_config = {
-        'id': 'test-service.main',
+        'id': '%s' % app_id,
         'cmd': '/bin/sleep 1m',
     }
     with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
-        paasta_tools.bounce_lib.create_marathon_app('test-service.main', trivial_app_config, context.marathon_client)
+        paasta_tools.bounce_lib.create_marathon_app('%s' % app_id, trivial_app_config, context.marathon_client)
+
+
+@when(u'we run the trivial marathon job "{service}.{instance}"')
+def run_marathon_test_service(context, service, instance):
+    trivial_app_config = {
+        'id': '%s.%s' % (service, instance),
+        'cmd': '/bin/sleep 1m',
+    }
+    with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
+        paasta_tools.bounce_lib.create_marathon_app('%s.%s' % (service, instance), trivial_app_config, context.marathon_client)
 
 
 @when(u'we wait for it to be deployed')
