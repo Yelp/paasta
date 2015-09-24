@@ -13,7 +13,7 @@ from utils import SystemPaastaConfig
 
 class TestMarathonTools:
 
-    fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
+    fake_marathon_app_config = marathon_tools.MarathonServiceConfig(
         'servicename',
         'instancename',
         {
@@ -114,14 +114,14 @@ class TestMarathonTools:
         fake_instance = 'solo'
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
-        config_copy = self.fake_marathon_job_config.config_dict.copy()
+        config_copy = self.fake_marathon_app_config.config_dict.copy()
 
         expected = marathon_tools.MarathonServiceConfig(
             fake_name,
             fake_instance,
             dict(
                 self.fake_srv_config.items() +
-                self.fake_marathon_job_config.config_dict.items()
+                self.fake_marathon_app_config.config_dict.items()
             ),
             {},
         )
@@ -164,7 +164,7 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         fake_docker = 'no_docker:9.9'
-        config_copy = self.fake_marathon_job_config.config_dict.copy()
+        config_copy = self.fake_marathon_app_config.config_dict.copy()
 
         fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
         deployments_json_mock = mock.Mock(
@@ -198,7 +198,7 @@ class TestMarathonTools:
                 fake_instance,
                 dict(
                     self.fake_srv_config.items() +
-                    self.fake_marathon_job_config.config_dict.items()
+                    self.fake_marathon_app_config.config_dict.items()
                 ),
                 fake_branch_dict,
             )
@@ -1041,7 +1041,7 @@ class TestMarathonTools:
         fake_service_config_1 = marathon_tools.MarathonServiceConfig(
             fake_name,
             fake_instance,
-            self.fake_marathon_job_config.config_dict,
+            self.fake_marathon_app_config.config_dict,
             {
                 'desired_state': 'start',
                 'force_bounce': '88888',
@@ -1051,7 +1051,7 @@ class TestMarathonTools:
         fake_service_config_2 = marathon_tools.MarathonServiceConfig(
             fake_name,
             fake_instance,
-            self.fake_marathon_job_config.config_dict,
+            self.fake_marathon_app_config.config_dict,
             {
                 'desired_state': 'start',
                 'force_bounce': '99999',
@@ -1061,7 +1061,7 @@ class TestMarathonTools:
         fake_service_config_3 = marathon_tools.MarathonServiceConfig(
             fake_name,
             fake_instance,
-            self.fake_marathon_job_config.config_dict,
+            self.fake_marathon_app_config.config_dict,
             {
                 'desired_state': 'stop',
                 'force_bounce': '99999',

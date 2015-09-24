@@ -208,7 +208,7 @@ class MarathonServiceConfig(InstanceConfig):
     def get_constraints(self, service_namespace_config):
         """Gets the constraints specified in the service's marathon configuration.
 
-        These are Marathon job constraints. See
+        These are Marathon app constraints. See
         https://mesosphere.github.io/marathon/docs/constraints.html
 
         Defaults to `GROUP_BY region`. If the service's smartstack configuration
@@ -224,7 +224,7 @@ class MarathonServiceConfig(InstanceConfig):
             locations = get_mesos_slaves_grouped_by_attribute(discover_level)
             return [[discover_level, "GROUP_BY", str(len(locations))]]
 
-    def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):
+    def format_marathon_app_dict(self, app_id, docker_url, docker_volumes, service_namespace_config):
         """Create the configuration that will be passed to the Marathon REST API.
 
         Currently compiles the following keys into one nice dict:
@@ -236,21 +236,21 @@ class MarathonServiceConfig(InstanceConfig):
         - env: environment variables for the container.
         - mem: the amount of memory required.
         - cpus: the number of cpus required.
-        - constraints: the constraints on the Marathon job.
+        - constraints: the constraints on the Marathon app.
         - instances: the number of instances required.
         - cmd: the command to be executed.
         - args: an alternative to cmd that requires the docker container to have an entrypoint.
 
         The last 7 keys are retrieved using the get_<key> functions defined above.
 
-        :param job_id: The job/app id name
-        :param docker_url: The url to the docker image the job will actually execute
+        :param app_id: The app id
+        :param docker_url: The url to the docker image the app will actually execute
         :param docker_volumes: The docker volumes to run the image with, via the
                                marathon configuration file
         :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
         complete_config = {
-            'id': job_id,
+            'id': app_id,
             'container': {
                 'docker': {
                     'image': docker_url,
@@ -529,14 +529,14 @@ def get_marathon_client(url, user, passwd):
 
 
 def format_job_id(name, instance, tag=None):
-    """Compose a Marathon job/app id formatted to meet Marathon's job id requirements.
+    """Compose a Marathon app id formatted to meet Marathon's app id requirements.
 
-    Marathon's job id requirements: https://mesosphere.github.io/marathon/docs/rest-api.html#id-string
+    Marathon's app id requirements: https://mesosphere.github.io/marathon/docs/rest-api.html#id-string
 
     :param name: The name of the service
     :param instance: The instance of the service
     :param tag: A hash or tag to append to the end of the id to make it unique
-    :returns: a composed job/app id in a format that Marathon accepts
+    :returns: a composed app id in a format that Marathon accepts
     """
     name = str(name).replace('_', '--')
     instance = str(instance).replace('_', '--')
@@ -652,7 +652,7 @@ def get_marathon_services_running_here_for_nerve(cluster, soa_dir):
             nerve_name = compose_job_id(name, namespace)
             nerve_list.append((nerve_name, nerve_dict))
         except KeyError:
-            continue  # SOA configs got deleted for this job, it'll get cleaned up
+            continue  # SOA configs got deleted for this app, it'll get cleaned up
     return nerve_list
 
 
@@ -785,7 +785,7 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks):
 
 
 def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
-    """Generates a complete dictionary to be POST'ed to create a job on Marathon"""
+    """Generates a complete dictionary to be POST'ed to create an app on Marathon"""
     system_paasta_config = load_system_paasta_config()
     partial_id = format_job_id(name, instance)
     srv_config = load_marathon_service_config(name,
