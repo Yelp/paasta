@@ -109,8 +109,8 @@ def check_smartstack_replication_for_instance(
                   "Not checking replication for it" % (instance, namespace))
         return
     full_name = compose_job_id(service, instance)
-    complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
-    monitoring_blacklist = complete_job_config.get_monitoring_blacklist()
+    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
+    monitoring_blacklist = job_config.get_monitoring_blacklist()
     log.info('Checking instance %s', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
         service=service, namespace=namespace, soa_dir=soa_dir, blacklist=monitoring_blacklist)
@@ -253,7 +253,7 @@ def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
 
     :param service_instances: A list of tuples of (service_name, instance_name)
     :param namespaces: list of Smartstack namespaces
-    :param blacklist: A list of blacklisted location tuples in the form of (location, value)
+    :param blacklist: A list of blacklisted location tuples in the form (location, value)
     :returns: a dictionary of the form::
 
         {

@@ -158,7 +158,7 @@ def get_number_of_mesos_masters(zk_config):
     return len(result)
 
 
-def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=[]):
+def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None):
     """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
 
     :param attribute: an attribute to filter
@@ -166,6 +166,8 @@ def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=[]):
     :returns: a dictionary of the form {'<attribute_value>': [<list of hosts with attribute=attribute_value>]}
               (response can contain multiple 'attribute_value)
     """
+    if blacklist is None:
+        blacklist = []
     attr_map = {}
     mesos_state = fetch_mesos_state_from_leader()
     slaves = mesos_state['slaves']
