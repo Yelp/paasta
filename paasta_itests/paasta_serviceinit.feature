@@ -4,7 +4,7 @@ Feature: paasta_serviceinit
     Given a working paasta cluster
      When we run the trivial marathon job "test-service.main"
       And we wait for it to be deployed
-     Then marathon_serviceinit status_marathon_job should return "Healthy"
+     Then marathon_serviceinit status_marathon_job should return "Healthy" for "test-service.main"
 
   Scenario: marathon_serviceinit can restart tasks
     Given a working paasta cluster

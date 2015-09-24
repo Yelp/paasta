@@ -37,12 +37,10 @@ def wait_for_deploy(context):
     time.sleep(10)
 
 
-@then(u'marathon_serviceinit status_marathon_job should return "Healthy"')
-def status_marathon_job_returns_healthy(context):
+@then(u'marathon_serviceinit status_marathon_job should return "{status}" for "{service}.{instance}"')
+def status_marathon_job_returns_healthy(context, status, service, instance):
     normal_instance_count = 1
-    app_id = 'test-service.main'
-    service = 'test-service'
-    instance = 'main'
+    app_id = '%s.%s' % (service, instance)
 
     output = marathon_serviceinit.status_marathon_job(
         service,
@@ -51,7 +49,7 @@ def status_marathon_job_returns_healthy(context):
         normal_instance_count,
         context.marathon_client
     )
-    assert "Healthy" in output
+    assert status in output
 
 
 @then(u'marathon_serviceinit restart should get new task_ids')
