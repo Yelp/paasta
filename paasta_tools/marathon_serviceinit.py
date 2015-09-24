@@ -9,18 +9,19 @@ from mesos.cli.exceptions import SlaveDoesNotExist
 import requests_cache
 
 from paasta_tools import marathon_tools
+from paasta_tools.mesos_tools import filter_not_running_tasks
+from paasta_tools.mesos_tools import filter_running_tasks
 from paasta_tools.mesos_tools import get_current_tasks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.mesos_tools import filter_running_tasks
-from paasta_tools.mesos_tools import filter_not_running_tasks
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks, backend_is_up
-from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import _log
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SPACER
 from paasta_tools.utils import timeout
@@ -156,15 +157,17 @@ def status_marathon_job_verbose(service, instance, client):
 def haproxy_backend_report(normal_instance_count, up_backends):
     """Given that a service is in smartstack, this returns a human readable
     report of the up backends"""
-    if up_backends >= normal_instance_count:
+    # TODO: Take into account a configurable threshold, PAASTA-1102
+    crit_threshold = 50
+    under_replicated, ratio = is_under_replicated(num_available=up_backends,
+                                                  expected_count=normal_instance_count,
+                                                  crit_threshold=crit_threshold)
+    if under_replicated:
+        status = PaastaColors.red("Critical")
+        count = PaastaColors.red("(%d/%d, %d%%)" % (up_backends, normal_instance_count, ratio))
+    else:
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
-    elif up_backends == 0:
-        status = PaastaColors.red("Critical")
-        count = PaastaColors.red("(%d/%d)" % (up_backends, normal_instance_count))
-    else:
-        status = PaastaColors.yellow("Warning")
-        count = PaastaColors.yellow("(%d/%d)" % (up_backends, normal_instance_count))
     up_string = PaastaColors.bold('UP')
     return "%s - in haproxy with %s total backends %s in this namespace." % (status, count, up_string)
 
