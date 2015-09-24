@@ -7,6 +7,7 @@ import mock
 sys.path.append('../')
 import paasta_tools
 from paasta_tools import marathon_serviceinit
+from paasta_tools import marathon_tools
 from paasta_tools.utils import _run
 
 
@@ -121,6 +122,27 @@ def chronos_emergency_restart_job(context):
     print  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
+
+
+@when(u'we run paasta serviceinit "{command}" on "{service}.{instance}"')
+def paasta_serviceinit_command(context, command, service, instance):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s.%s %s' % (context.soa_dir, service, instance, command)
+    print 'Running cmd %s' % cmd
+    (exit_code, output) = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == 0
+
+
+@then(u'"{service}.{instance}" has exactly "{task_count}" requested tasks in marathon')
+def marathon_app_task_count(context, service, instance, task_count):
+    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    client = context.marathon_client
+    marathon_tools.wait_for_app_to_launch_exact_tasks(client, app_id, int(task_count))
+
+    tasks = client.list_tasks(app_id=app_id)
+    assert len(tasks) == int(task_count)
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

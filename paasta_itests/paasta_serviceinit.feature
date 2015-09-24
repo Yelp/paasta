@@ -67,4 +67,13 @@ Feature: paasta_serviceinit
       And the new job is enabled in chronos
       And the new job has running tasks
 
+  Scenario: paasta_serviceinit can run emergency-stop on a marathon app
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the service "test-service" with marathon instance "main"
+      And I have a deployments.json for the service "test-service" with marathon instance "main"
+     When we run the marathon job "test-service.main"
+       And we wait for it to be deployed
+      And we run paasta serviceinit "stop" on "test-service.main"
+     Then "test-service.main" has exactly "0" requested tasks in marathon
+
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2
