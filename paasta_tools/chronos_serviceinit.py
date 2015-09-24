@@ -138,6 +138,8 @@ def status_chronos_jobs(jobs, job_config):
 
     :param jobs: list of dicts of chronos job info as returned by the chronos
         client
+    :param job_config: dict containing configuration about these jobs as
+        provided by chronos_tools.load_chronos_job_config().
     """
     if jobs == []:
         return "%s: chronos job is not setup yet" % PaastaColors.yellow("Warning")
