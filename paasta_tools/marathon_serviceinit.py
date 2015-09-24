@@ -4,6 +4,7 @@ import logging
 import sys
 
 import humanize
+import isodate
 from mesos.cli.exceptions import SlaveDoesNotExist
 import requests_cache
 
@@ -63,9 +64,9 @@ def restart_marathon_job(service, instance, app_id, normal_instance_count, clien
     start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
 
 
-def get_bouncing_status(service, instance, client, complete_job_config):
+def get_bouncing_status(service, instance, client, job_config):
     apps = marathon_tools.get_matching_appids(service, instance, client)
-    bounce_method = complete_job_config.get_bounce_method()
+    bounce_method = job_config.get_bounce_method()
     app_count = len(apps)
     if app_count == 0:
         return PaastaColors.red("Stopped")
@@ -77,19 +78,9 @@ def get_bouncing_status(service, instance, client, complete_job_config):
         return PaastaColors.red("Unknown (count: %s)" % app_count)
 
 
-def get_desired_state_human(complete_job_config):
-    desired_state = complete_job_config.get_desired_state()
-    if desired_state == 'start':
-        return PaastaColors.bold('Started')
-    elif desired_state == 'stop':
-        return PaastaColors.red('Stopped')
-    else:
-        return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
-
-
-def status_desired_state(service, instance, client, complete_job_config):
-    status = get_bouncing_status(service, instance, client, complete_job_config)
-    desired_state = get_desired_state_human(complete_job_config)
+def status_desired_state(service, instance, client, job_config):
+    status = get_bouncing_status(service, instance, client, job_config)
+    desired_state = job_config.get_desired_state_human()
     return "State:      %s - Desired state: %s" % (status, desired_state)
 
 
@@ -122,7 +113,7 @@ def get_verbose_status_of_marathon_app(app):
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
     output = []
-    create_datetime = datetime_from_utc_to_local(datetime.datetime.strptime(app.version, "%Y-%m-%dT%H:%M:%S.%fZ"))
+    create_datetime = datetime_from_utc_to_local(isodate.parse_datetime(app.version))
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
     output.append("    Tasks:  Mesos Task ID                  Host deployed to         Deployed at what localtime")
@@ -413,8 +404,9 @@ def status_mesos_tasks(service, instance, normal_instance_count):
 
 def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
-    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
     output = []
+
+    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
     output.append(RUNNING_TASK_FORMAT.format((
         "  Running Tasks:  Mesos Task ID",
         "Host deployed to",
@@ -424,6 +416,7 @@ def status_mesos_tasks_verbose(service, instance):
     )))
     for task in running_and_active_tasks:
         output.append(pretty_format_running_mesos_task(task))
+
     non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(service, instance)[-10:]))
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
         "  Non-Running Tasks:  Mesos Task ID",
@@ -433,6 +426,7 @@ def status_mesos_tasks_verbose(service, instance):
     ))))
     for task in non_running_tasks:
         output.append(pretty_format_non_running_mesos_task(task))
+
     return "\n".join(output)
 
 
@@ -446,16 +440,15 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     :returns: A unix-style return code
     """
     marathon_config = marathon_tools.load_marathon_config()
-
-    complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
+    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     try:
-        app_id = marathon_tools.create_complete_config(service, instance, marathon_config)['id']
+        app_id = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir=soa_dir)['id']
     except NoDockerImageError:
         job_name = compose_job_id(service, instance)
         print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_name
         return 1
 
-    normal_instance_count = complete_job_config.get_instances()
+    normal_instance_count = job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance)
 
@@ -471,7 +464,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         # Setting up transparent cache for http API calls
         requests_cache.install_cache('paasta_serviceinit', backend='memory')
 
-        print status_desired_state(service, instance, client, complete_job_config)
+        print status_desired_state(service, instance, client, job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         tasks, out = status_marathon_job_verbose(service, instance, client)
         if verbose:

@@ -55,30 +55,21 @@ def test_get_bouncing_status():
 
 
 def test_status_desired_state():
-    with contextlib.nested(
-        mock.patch('paasta_tools.marathon_serviceinit.get_bouncing_status', autospec=True),
-        mock.patch('paasta_tools.marathon_serviceinit.get_desired_state_human', autospec=True),
-    ) as (
-        mock_get_bouncing_status,
-        mock_get_desired_state_human,
-    ):
+    with mock.patch(
+        'paasta_tools.marathon_serviceinit.get_bouncing_status',
+        autospec=True,
+    ) as mock_get_bouncing_status:
         mock_get_bouncing_status.return_value = 'Bouncing (fake_bounce)'
-        mock_get_desired_state_human.return_value = 'Started'
-        actual = marathon_serviceinit.status_desired_state('fake_service', 'fake_instance', 'unused', 'unused')
+        fake_complete_config = mock.Mock()
+        fake_complete_config.get_desired_state_human = mock.Mock(return_value='Started')
+        actual = marathon_serviceinit.status_desired_state(
+            'fake_service',
+            'fake_instance',
+            'unused',
+            fake_complete_config,
+        )
         assert 'Started' in actual
         assert 'Bouncing' in actual
-
-
-def test_get_desired_state():
-    fake_config = marathon_tools.MarathonServiceConfig(
-        'fake_service',
-        'fake_instance',
-        {},
-        {},
-    )
-
-    actual = marathon_serviceinit.get_desired_state_human(fake_config)
-    assert 'Started' in actual
 
 
 def test_status_marathon_job_verbose():
