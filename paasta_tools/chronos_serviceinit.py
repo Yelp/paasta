@@ -123,8 +123,8 @@ def format_chronos_job_status(job, desired_state):
     disabled_state = _get_disabled_status(job)
     (last_result, last_result_when) = _get_last_result(job)
     return (
-        "Status: %(disabled_state)s, %(desired_state)s\n"
-        "Last: %(last_result)s (%(last_result_when)s)" % {
+        "Status:     %(disabled_state)s, %(desired_state)s\n"
+        "Last:       %(last_result)s (%(last_result_when)s)" % {
             "disabled_state": disabled_state,
             "desired_state": desired_state,
             "last_result": last_result,
