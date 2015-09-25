@@ -9,7 +9,6 @@ import paasta_tools
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools.utils import _run
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 
 

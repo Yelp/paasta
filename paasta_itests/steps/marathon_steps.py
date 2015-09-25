@@ -1,11 +1,7 @@
-import os
 import sys
-from tempfile import mkdtemp
 
-from behave import given, when, then
-import json
+from behave import when, then
 import mock
-import yaml
 
 sys.path.append('../')
 import paasta_tools
