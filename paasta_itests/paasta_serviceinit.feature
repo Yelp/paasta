@@ -2,15 +2,19 @@ Feature: paasta_serviceinit
 
   Scenario: marathon_serviceinit can run status
     Given a working paasta cluster
-     When we run the trivial marathon job "test-service.main"
+      And I have yelpsoa-configs for the service "test-service" with marathon instance "main"
+      And I have a deployments.json for the service "test-service" with marathon instance "main"
+     When we run the marathon job "test-service.main"
       And we wait for it to be deployed
      Then marathon_serviceinit status_marathon_job should return "Healthy" for "test-service.main"
 
   Scenario: marathon_serviceinit can restart tasks
     Given a working paasta cluster
-     When we run the trivial marathon job "test-service.main"
+      And I have yelpsoa-configs for the service "test-service" with marathon instance "main"
+      And I have a deployments.json for the service "test-service" with marathon instance "main"
+     When we run the marathon job "test-service.main"
       And we wait for it to be deployed
-     Then marathon_serviceinit restart should get new task_ids
+     Then marathon_serviceinit restart should get new task_ids for "test-service.main"
 
   Scenario: paasta_serviceinit can run status on chronos jobs
     Given a working paasta cluster

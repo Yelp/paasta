@@ -9,28 +9,20 @@ import paasta_tools
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools.utils import _run
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import decompose_job_id
 
 
-@when(u'we run the marathon job "{service}.{instance}"')
-def run_marathon_test_service(context, service, instance):
+@when(u'we run the marathon job "{job_id}"')
+def run_marathon_job(context, job_id):
+    (service, instance, tag) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     trivial_app_config = {
-        'id': '%s' % app_id,
+        'id': app_id,
         'cmd': '/bin/sleep 1m',
     }
     with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
-        paasta_tools.bounce_lib.create_marathon_app('%s' % app_id, trivial_app_config, context.marathon_client)
-
-
-@when(u'we run the trivial marathon job "{service}.{instance}"')
-def run_marathon_trivial_test_service(context, service, instance):
-    trivial_app_config = {
-        'id': '%s.%s' % (service, instance),
-        'cmd': '/bin/sleep 1m',
-    }
-    with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
-        paasta_tools.bounce_lib.create_marathon_app(
-            '%s.%s' % (service, instance), trivial_app_config, context.marathon_client)
+        paasta_tools.bounce_lib.create_marathon_app(app_id, trivial_app_config, context.marathon_client)
 
 
 @when(u'we wait for it to be deployed')
@@ -39,10 +31,11 @@ def wait_for_deploy(context):
     time.sleep(10)
 
 
-@then(u'marathon_serviceinit status_marathon_job should return "{status}" for "{service}.{instance}"')
-def status_marathon_job(context, status, service, instance):
+@then(u'marathon_serviceinit status_marathon_job should return "{status}" for "{job_id}"')
+def status_marathon_job(context, status, job_id):
     normal_instance_count = 1
-    app_id = '%s.%s' % (service, instance)
+    (service, instance, tag) = decompose_job_id(job_id)
+    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
 
     output = marathon_serviceinit.status_marathon_job(
         service,
@@ -54,13 +47,12 @@ def status_marathon_job(context, status, service, instance):
     assert status in output
 
 
-@then(u'marathon_serviceinit restart should get new task_ids')
-def marathon_restart_gets_new_task_ids(context):
+@then(u'marathon_serviceinit restart should get new task_ids for "{job_id}"')
+def marathon_restart_gets_new_task_ids(context, job_id):
+    (service, instance, tag) = decompose_job_id(job_id)
+    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     normal_instance_count = 1
     cluster = context.system_paasta_config['cluster']
-    app_id = 'test-service.main'
-    service = 'test-service'
-    instance = 'main'
 
     old_tasks = context.marathon_client.get_app(app_id).tasks
     marathon_serviceinit.restart_marathon_job(
@@ -71,7 +63,7 @@ def marathon_restart_gets_new_task_ids(context):
         context.marathon_client,
         cluster
     )
-    print "Sleeping 5 seconds to wait for test-service to be restarted."
+    print "Sleeping 5 seconds to wait for %s to be restarted." % service
     time.sleep(5)
     new_tasks = context.marathon_client.get_app(app_id).tasks
     print "Tasks before the restart: %s" % old_tasks
@@ -125,9 +117,9 @@ def chronos_emergency_restart_job(context):
     assert exit_code == 0
 
 
-@when(u'we run paasta serviceinit "{command}" on "{service}.{instance}"')
-def paasta_serviceinit_command(context, command, service, instance):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s.%s %s' % (context.soa_dir, service, instance, command)
+@when(u'we run paasta serviceinit "{command}" on "{job_id}"')
+def paasta_serviceinit_command(context, command, job_id):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s %s' % (context.soa_dir, job_id, command)
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
@@ -136,16 +128,18 @@ def paasta_serviceinit_command(context, command, service, instance):
     assert exit_code == 0
 
 
-@when(u'we wait for "{service}.{instance}" to launch {exactly} {task_count:d+} tasks')
-def wait_launch_tasks(context, service, instance, exactly, task_count):
+@when(u'we wait for "{job_id}" to launch {exactly} {task_count:d} tasks')
+def wait_launch_tasks(context, job_id, exactly, task_count):
+    (service, instance, tag) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
     exact_matches_only = (exactly == 'exactly')
     marathon_tools.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only)
 
 
-@then(u'"{service}.{instance}" has exactly {task_count:d+} requested tasks in marathon')
-def marathon_app_task_count(context, service, instance, task_count):
+@then(u'"{job_id}" has exactly {task_count:d} requested tasks in marathon')
+def marathon_app_task_count(context, job_id, task_count):
+    (service, instance, tag) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
 

@@ -759,11 +759,11 @@ def app_has_tasks(client, app_id, expected_tasks, exact_matches_only=False):
     except NotFoundError:
         print "no app with id %s found" % app_id
         raise
-    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), minimum_tasks)
+    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks)
     if exact_matches_only:
         return len(tasks) == expected_tasks
     else:
-        return len(tasks) >= minimum_tasks
+        return len(tasks) >= expected_tasks
 
 
 @timeout()
