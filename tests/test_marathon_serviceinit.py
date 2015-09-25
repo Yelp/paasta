@@ -668,16 +668,9 @@ def test_haproxy_backend_report_healthy():
     assert "Healthy" in status
 
 
-def test_haproxy_backend_report_warning():
-    normal_count = 10
-    actual_count = 1
-    status = marathon_serviceinit.haproxy_backend_report(normal_count, actual_count)
-    assert "Warning" in status
-
-
 def test_haproxy_backend_report_critical():
     normal_count = 10
-    actual_count = 0
+    actual_count = 1
     status = marathon_serviceinit.haproxy_backend_report(normal_count, actual_count)
     assert "Critical" in status
 
