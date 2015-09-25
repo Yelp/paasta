@@ -39,7 +39,7 @@ def wait_for_deploy(context):
 
 
 @then(u'marathon_serviceinit status_marathon_job should return "{status}" for "{service}.{instance}"')
-def status_marathon_job_returns_healthy(context, status, service, instance):
+def status_marathon_job(context, status, service, instance):
     normal_instance_count = 1
     app_id = '%s.%s' % (service, instance)
 
