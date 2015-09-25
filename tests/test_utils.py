@@ -760,3 +760,27 @@ class TestInstanceConfig:
     def test_monitoring_blacklist_default(self):
         fake_conf = utils.InstanceConfig({}, {})
         assert fake_conf.get_monitoring_blacklist() == []
+
+
+def test_is_under_replicated_ok():
+    num_available = 1
+    expected_count = 1
+    crit_threshold = 50
+    actual = utils.is_under_replicated(num_available, expected_count, crit_threshold)
+    assert actual == (False, float(100))
+
+
+def test_is_under_replicated_zero():
+    num_available = 1
+    expected_count = 0
+    crit_threshold = 50
+    actual = utils.is_under_replicated(num_available, expected_count, crit_threshold)
+    assert actual == (False, float(100))
+
+
+def test_is_under_replicated_critical():
+    num_available = 0
+    expected_count = 1
+    crit_threshold = 50
+    actual = utils.is_under_replicated(num_available, expected_count, crit_threshold)
+    assert actual == (True, float(0))

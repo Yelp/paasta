@@ -15,6 +15,23 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 
 
+fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
+    'servicename',
+    'instancename',
+    {
+        'instances': 3,
+        'cpus': 1,
+        'mem': 100,
+        'nerve_ns': 'fake_nerve_ns',
+    },
+    {
+        'docker_image': 'test_docker:1.0',
+        'desired_state': 'start',
+        'force_bounce': None,
+    }
+)
+
+
 def test_start_marathon_job():
     client = mock.create_autospec(marathon.MarathonClient)
     cluster = 'my_cluster'
@@ -238,6 +255,7 @@ def test_status_smartstack_backends_normal():
             service=service,
             instance=instance,
             cluster=cluster,
+            job_config=fake_marathon_job_config,
             tasks=tasks,
             expected_count=len(haproxy_backends_by_task),
             soa_dir=None,
@@ -265,6 +283,7 @@ def test_status_smartstack_backends_different_nerve_ns():
             service=service,
             instance=instance,
             cluster=cluster,
+            job_config=fake_marathon_job_config,
             tasks=tasks,
             expected_count=normal_count,
             soa_dir=None,
@@ -297,6 +316,7 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
             service=service,
             instance=instance,
             cluster=cluster,
+            job_config=fake_marathon_job_config,
             tasks=tasks,
             expected_count=normal_count,
             soa_dir=None,
@@ -343,6 +363,7 @@ def test_status_smartstack_backends_multiple_locations():
             service=service,
             instance=instance,
             cluster=cluster,
+            job_config=fake_marathon_job_config,
             tasks=tasks,
             expected_count=len(mock_get_backends.return_value),
             soa_dir=None,
@@ -404,6 +425,7 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             service=service,
             instance=instance,
             cluster=cluster,
+            job_config=fake_marathon_job_config,
             tasks=tasks,
             expected_count=normal_count,
             soa_dir=None,
@@ -469,6 +491,7 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             service=service,
             instance=instance,
             cluster=cluster,
+            job_config=fake_marathon_job_config,
             tasks=tasks,
             expected_count=len(haproxy_backends_by_task),
             soa_dir=None,
@@ -523,6 +546,7 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             service=service,
             instance=instance,
             cluster=cluster,
+            job_config=fake_marathon_job_config,
             tasks=tasks,
             expected_count=1,
             soa_dir=None,
@@ -539,7 +563,8 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             synapse_port=3212,
         )
         mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
-            'fake_discover',
+            attribute='fake_discover',
+            blacklist=[],
         )
         assert "fake_location1 - %s" % PaastaColors.green('Healthy') in actual
         assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.DEFAULT), actual)
@@ -582,6 +607,7 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
             service=service,
             instance=instance,
             cluster=cluster,
+            job_config=fake_marathon_job_config,
             tasks=tasks,
             expected_count=normal_count,
             soa_dir=None,
@@ -625,6 +651,7 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
             service=service,
             instance=instance,
             cluster=cluster,
+            job_config=fake_marathon_job_config,
             tasks=tasks,
             expected_count=normal_count,
             soa_dir=None,
@@ -641,16 +668,9 @@ def test_haproxy_backend_report_healthy():
     assert "Healthy" in status
 
 
-def test_haproxy_backend_report_warning():
-    normal_count = 10
-    actual_count = 1
-    status = marathon_serviceinit.haproxy_backend_report(normal_count, actual_count)
-    assert "Warning" in status
-
-
 def test_haproxy_backend_report_critical():
     normal_count = 10
-    actual_count = 0
+    actual_count = 1
     status = marathon_serviceinit.haproxy_backend_report(normal_count, actual_count)
     assert "Critical" in status
 

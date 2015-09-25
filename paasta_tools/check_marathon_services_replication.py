@@ -32,6 +32,7 @@ from paasta_tools import smartstack_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
@@ -41,26 +42,25 @@ log = logging.getLogger(__name__)
 log.addHandler(logging.StreamHandler(sys.stdout))
 
 
-def send_event(service_name, namespace, soa_dir, status, output):
+def send_event(service, namespace, cluster, soa_dir, status, output):
     """Send an event to sensu via pysensu_yelp with the given information.
 
-    :param service_name: The service name the event is about
+    :param service: The service name the event is about
     :param namespace: The namespace of the service the event is about
     :param soa_dir: The service directory to read monitoring information from
     :param status: The status to emit for this event
     :param output: The output to emit for this event"""
     # This function assumes the input is a string like "mumble.main"
-    cluster = load_system_paasta_config().get_cluster()
     monitoring_overrides = marathon_tools.load_marathon_service_config(
-        service_name, namespace, cluster).get_monitoring()
+        service, namespace, cluster).get_monitoring()
     monitoring_overrides['alert_after'] = '2m'
     monitoring_overrides['check_every'] = '1m'
-    monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service_name, soa_dir=soa_dir)
+    monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service, soa_dir=soa_dir)
 
-    check_name = 'check_marathon_services_replication.%s' % compose_job_id(service_name, namespace)
-    monitoring_tools.send_event(service_name, check_name, monitoring_overrides, status, output, soa_dir)
+    check_name = 'check_marathon_services_replication.%s' % compose_job_id(service, namespace)
+    monitoring_tools.send_event(service, check_name, monitoring_overrides, status, output, soa_dir)
     _log(
-        service_name=service_name,
+        service_name=service,
         line='Replication: %s' % output,
         component='monitoring',
         level='debug',
@@ -90,6 +90,7 @@ def parse_args():
 def check_smartstack_replication_for_instance(
     service,
     instance,
+    cluster,
     soa_dir,
     crit_threshold,
     expected_count,
@@ -99,6 +100,7 @@ def check_smartstack_replication_for_instance(
 
     :param service: A string like example_service
     :param namespace: A nerve namespace, like "main"
+    :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
     :param crit_threshold: The fraction of instances that need to be up to avoid a CRITICAL event
     """
@@ -108,9 +110,11 @@ def check_smartstack_replication_for_instance(
                   "Not checking replication for it" % (instance, namespace))
         return
     full_name = compose_job_id(service, instance)
+    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
+    monitoring_blacklist = job_config.get_monitoring_blacklist()
     log.info('Checking instance %s', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
-        service=service, namespace=namespace, soa_dir=soa_dir)
+        service=service, namespace=namespace, soa_dir=soa_dir, blacklist=monitoring_blacklist)
     log.debug('Got smartstack replication info for %s: %s' % (full_name, smartstack_replication_info))
 
     if len(smartstack_replication_info) == 0:
@@ -143,7 +147,7 @@ def check_smartstack_replication_for_instance(
         else:
             status = pysensu_yelp.Status.OK
             log.info(output)
-    send_event(service, instance, soa_dir, status, output)
+    send_event(service=service, namespace=instance, cluster=cluster, soa_dir=soa_dir, status=status, output=output)
 
 
 def add_context_to_event(service, instance, output):
@@ -152,25 +156,14 @@ def add_context_to_event(service, instance, output):
     return output
 
 
-def is_under_replicated(num_available, expected_count, crit_threshold):
-    if expected_count == 0:
-        ratio = 100
-    else:
-        ratio = (num_available / float(expected_count)) * 100
-
-    if ratio < crit_threshold:
-        return (True, ratio)
-    else:
-        return (False, ratio)
-
-
-def check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold, expected_count):
+def check_mesos_replication_for_service(service, instance, cluster, soa_dir, crit_threshold, expected_count):
     num_available = len(get_running_tasks_from_active_frameworks(service, instance))
     # Non-Smartstack services aren't aware of replication within specific
     # locations (since they don't define an advertise/discover level)
     send_event_if_under_replication(
         service=service,
         instance=instance,
+        cluster=cluster,
         crit_threshold=crit_threshold,
         expected_count=expected_count,
         num_available=num_available,
@@ -181,6 +174,7 @@ def check_mesos_replication_for_service(service, instance, soa_dir, crit_thresho
 def send_event_if_under_replication(
     service,
     instance,
+    cluster,
     crit_threshold,
     expected_count,
     num_available,
@@ -196,15 +190,22 @@ def send_event_if_under_replication(
     else:
         log.info(output)
         status = pysensu_yelp.Status.OK
-    send_event(service, instance, soa_dir, status, output)
+    send_event(
+        service=service,
+        namespace=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+        status=status,
+        output=output)
 
 
-def check_service_replication(service, instance, crit_threshold, soa_dir):
+def check_service_replication(service, instance, cluster, crit_threshold, soa_dir):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
     :param service: Service name, like "example_service"
     :param instance: Instance name, like "main" or "canary"
+    :param cluster: name of the cluster
     :param crit_threshold: an int from 0-100 representing the percentage threshold for triggering an alert
     :param soa_dir: The SOA configuration directory to read from
     """
@@ -219,16 +220,29 @@ def check_service_replication(service, instance, crit_threshold, soa_dir):
     log.info("Expecting %d total tasks for %s" % (expected_count, job_name))
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     if proxy_port is not None:
-        check_smartstack_replication_for_instance(service, instance, soa_dir, crit_threshold, expected_count)
+        check_smartstack_replication_for_instance(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            crit_threshold=crit_threshold,
+            expected_count=expected_count)
     else:
-        check_mesos_replication_for_service(service, instance, soa_dir, crit_threshold, expected_count)
+        check_mesos_replication_for_service(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            crit_threshold=crit_threshold,
+            expected_count=expected_count)
 
 
-def load_smartstack_info_for_service(service, namespace, soa_dir):
+def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
     """Retrives number of available backends for given services
 
     :param service_instances: A list of tuples of (service_name, instance_name)
     :param namespaces: list of Smartstack namespaces
+    :param blacklist: A list of blacklisted location tuples in the form (location, value)
     :returns: a dictionary of the form::
 
         {
@@ -247,21 +261,23 @@ def load_smartstack_info_for_service(service, namespace, soa_dir):
     return get_smartstack_replication_for_attribute(
         attribute=discover_location_type,
         service=service,
-        namespace=namespace)
+        namespace=namespace,
+        blacklist=blacklist)
 
 
-def get_smartstack_replication_for_attribute(attribute, service, namespace):
+def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist):
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
     :param service: A service name, like 'example_service'
     :param namespace: A particular smartstack namespace to inspect, like 'main'
     :param constraints: A list of Marathon constraints to restrict which synapse hosts to query
+    :param blacklist: A list of blacklisted location tuples in the form of (location, value)
     :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
               (the dictionary will contain keys for unique all attribute values)
     """
     replication_info = {}
-    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute)
+    unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(attribute=attribute, blacklist=blacklist)
     full_name = compose_job_id(service, namespace)
 
     for value, hosts in unique_values.iteritems():
@@ -286,14 +302,17 @@ def main():
         log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
-    service_instances = get_services_for_cluster(instance_type='marathon', soa_dir=args.soa_dir)
+    cluster = load_system_paasta_config().get_cluster()
+    service_instances = get_services_for_cluster(
+        cluster=cluster, instance_type='marathon', soa_dir=args.soa_dir)
 
     for service, instance in service_instances:
         check_service_replication(
-            service,
-            instance,
-            crit_threshold,
-            soa_dir
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            crit_threshold=crit_threshold,
+            soa_dir=soa_dir,
         )
 
 

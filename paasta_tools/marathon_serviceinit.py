@@ -9,18 +9,19 @@ from mesos.cli.exceptions import SlaveDoesNotExist
 import requests_cache
 
 from paasta_tools import marathon_tools
+from paasta_tools.mesos_tools import filter_not_running_tasks
+from paasta_tools.mesos_tools import filter_running_tasks
 from paasta_tools.mesos_tools import get_current_tasks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.mesos_tools import filter_running_tasks
-from paasta_tools.mesos_tools import filter_not_running_tasks
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks, backend_is_up
-from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import _log
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SPACER
 from paasta_tools.utils import timeout
@@ -156,15 +157,17 @@ def status_marathon_job_verbose(service, instance, client):
 def haproxy_backend_report(normal_instance_count, up_backends):
     """Given that a service is in smartstack, this returns a human readable
     report of the up backends"""
-    if up_backends >= normal_instance_count:
+    # TODO: Take into account a configurable threshold, PAASTA-1102
+    crit_threshold = 50
+    under_replicated, ratio = is_under_replicated(num_available=up_backends,
+                                                  expected_count=normal_instance_count,
+                                                  crit_threshold=crit_threshold)
+    if under_replicated:
+        status = PaastaColors.red("Critical")
+        count = PaastaColors.red("(%d/%d, %d%%)" % (up_backends, normal_instance_count, ratio))
+    else:
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
-    elif up_backends == 0:
-        status = PaastaColors.red("Critical")
-        count = PaastaColors.red("(%d/%d)" % (up_backends, normal_instance_count))
-    else:
-        status = PaastaColors.yellow("Warning")
-        count = PaastaColors.yellow("(%d/%d)" % (up_backends, normal_instance_count))
     up_string = PaastaColors.bold('UP')
     return "%s - in haproxy with %s total backends %s in this namespace." % (status, count, up_string)
 
@@ -201,7 +204,7 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
         return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
 
 
-def status_smartstack_backends(service, instance, cluster, tasks, expected_count, soa_dir, verbose):
+def status_smartstack_backends(service, instance, job_config, cluster, tasks, expected_count, soa_dir, verbose):
     """Returns detailed information about smartstack backends for a service
     and instance.
     return: A newline separated string of the smarststack backend status
@@ -219,7 +222,9 @@ def status_smartstack_backends(service, instance, cluster, tasks, expected_count
 
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
-    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type)
+    monitoring_blacklist = job_config.get_monitoring_blacklist()
+    unique_attributes = get_mesos_slaves_grouped_by_attribute(
+        attribute=discover_location_type, blacklist=monitoring_blacklist)
     if len(unique_attributes) == 0:
         output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance)
     else:
@@ -477,6 +482,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
                 service=service,
                 instance=instance,
                 cluster=cluster,
+                job_config=job_config,
                 tasks=tasks,
                 expected_count=normal_smartstack_count,
                 soa_dir=soa_dir,
