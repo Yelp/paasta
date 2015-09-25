@@ -120,13 +120,13 @@ def working_paasta_cluster(context):
     }, 'volumes.json')
 
 
-@given(u'I have yelpsoa-configs for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
-def write_soa_dir_chronos_instance(context, service_name, disabled, instance_name):
+@given(u'I have yelpsoa-configs for the service "{service_name}" with {disabled} {app} instance "{instance_name}"')
+def write_soa_dir_chronos_instance(context, service_name, disabled, app, instance_name):
     soa_dir = mkdtemp()
     desired_disabled = (disabled == 'disabled')
     if not os.path.exists(os.path.join(soa_dir, service_name)):
         os.makedirs(os.path.join(soa_dir, service_name))
-    with open(os.path.join(soa_dir, service_name, 'chronos-%s.yaml' % context.cluster), 'w') as f:
+    with open(os.path.join(soa_dir, service_name, '%s-%s.yaml' % (app, context.cluster)), 'w') as f:
         f.write(yaml.dump({
             "%s" % instance_name: {
                 'schedule': 'R/2000-01-01T16:20:00Z/PT60S',

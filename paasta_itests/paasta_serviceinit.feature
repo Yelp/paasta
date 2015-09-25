@@ -2,7 +2,7 @@ Feature: paasta_serviceinit
 
   Scenario: marathon_serviceinit can run status
     Given a working paasta cluster
-      And I have yelpsoa-configs for the service "test-service" with marathon instance "main"
+      And I have yelpsoa-configs for the service "test-service" with enabled marathon instance "main"
       And I have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon job "test-service.main"
       And we wait for it to be deployed
@@ -10,7 +10,7 @@ Feature: paasta_serviceinit
 
   Scenario: marathon_serviceinit can restart tasks
     Given a working paasta cluster
-      And I have yelpsoa-configs for the service "test-service" with marathon instance "main"
+      And I have yelpsoa-configs for the service "test-service" with enabled marathon instance "main"
       And I have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon job "test-service.main"
       And we wait for it to be deployed
@@ -73,7 +73,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-stop on a marathon app
     Given a working paasta cluster
-      And I have yelpsoa-configs for the service "test-service" with marathon instance "main"
+      And I have yelpsoa-configs for the service "test-service" with enabled marathon instance "main"
       And I have a deployments.json for the service "test-service" with enabled instance "main"
      When we run the marathon job "test-service.main"
       And we wait for it to be deployed

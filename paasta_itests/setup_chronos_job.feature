@@ -27,7 +27,7 @@ Feature: setup_chronos_job can create and bounce jobs
   Scenario: jobs can be bounced using the "brutal" method
     Given a working paasta cluster
       And I have yelpsoa-configs for the service "test-service" with enabled chronos instance "job"
-      And I have a deployments.json for the service "test-service" with enabled chronos instance "job"
+      And I have a deployments.json for the service "test-service" with enabled instance "job"
      When we load the configs for instance "job" of service "test-service" into a ChronosJobConfig
       And we set the bounce_method of the ChronosJobConfig to "brutal"
       And we create a chronos job dict from the configs for instance "job" of service "test-service"
