@@ -2,7 +2,7 @@ import os
 import sys
 from tempfile import mkdtemp
 
-from behave import when, then
+from behave import when, then, given
 import json
 import mock
 import yaml
