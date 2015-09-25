@@ -140,7 +140,7 @@ def paasta_serviceinit_command(context, command, service, instance):
 def marathon_app_task_count(context, service, instance, task_count):
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
-    marathon_tools.wait_for_app_to_launch_exact_tasks(client, app_id, int(task_count))
+    marathon_tools.wait_for_app_to_launch_tasks(client, app_id, int(task_count), True)
 
     tasks = client.list_tasks(app_id=app_id)
     assert len(tasks) == int(task_count)
