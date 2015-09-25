@@ -136,14 +136,21 @@ def paasta_serviceinit_command(context, command, service, instance):
     assert exit_code == 0
 
 
-@then(u'"{service}.{instance}" has exactly {task_count} requested tasks in marathon')
+@when(u'we wait for "{service}.{instance}" to launch {exactly} {task_count:d+} tasks')
+def wait_launch_tasks(context, service, instance, exactly, task_count):
+    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    client = context.marathon_client
+    exact_matches_only = (exactly == 'exactly')
+    marathon_tools.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only)
+
+
+@then(u'"{service}.{instance}" has exactly {task_count:d+} requested tasks in marathon')
 def marathon_app_task_count(context, service, instance, task_count):
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
-    marathon_tools.wait_for_app_to_launch_tasks(client, app_id, int(task_count), True)
 
     tasks = client.list_tasks(app_id=app_id)
-    assert len(tasks) == int(task_count)
+    assert len(tasks) == task_count
 
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
