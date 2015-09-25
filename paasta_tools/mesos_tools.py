@@ -162,7 +162,7 @@ def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None):
     """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
 
     :param attribute: an attribute to filter
-    :param blacklist: a list of (attribute, value) tuples to exclude from the output list
+    :param blacklist: a list of [attribute, value] lists to exclude from the output list
     :returns: a dictionary of the form {'<attribute_value>': [<list of hosts with attribute=attribute_value>]}
               (response can contain multiple 'attribute_value)
     """
@@ -186,9 +186,9 @@ def filter_mesos_slaves_by_blacklist(slaves, blacklist):
     """Takes an input list of slaves and filters them based on the given blacklist.
     The blacklist is in the form of:
 
-        [("location_type", "location)]
+        [["location_type", "location]]
 
-    Where the tuples inside is something like ("region", "uswest1-prod")
+    Where the list inside is something like ["region", "uswest1-prod"]
 
     :returns: The list of mesos slaves after the filter
     """
@@ -202,7 +202,7 @@ def filter_mesos_slaves_by_blacklist(slaves, blacklist):
 def slave_passes_blacklist(slave, blacklist):
     """
     :param slave: A single mesos slave with attributes
-    :param blacklist: A list of tuples like [("location_type", "location)]
+    :param blacklist: A list of lists like [["location_type", "location"], ["foo", "bar"]]
     :returns: boolean, True if the slave gets passed the blacklist
     """
     attributes = slave['attributes']

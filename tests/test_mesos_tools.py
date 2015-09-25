@@ -216,26 +216,26 @@ def test_filter_mesos_slaves_by_blacklist_when_filtered(mock_slave_passes_blackl
     assert actual == []
 
 
-def slave_passes_blacklist_passes():
+def test_slave_passes_blacklist_passes():
     slave = {
         'hostname': 'fake_host_3',
         'attributes': {
             'fake_attribute': 'fake_value_1',
         }
     }
-    blacklist = [("fake_attribute", "No what we have here")]
+    blacklist = [["fake_attribute", "No what we have here"], ['foo', 'bar']]
     actual = mesos_tools.slave_passes_blacklist(slave=slave, blacklist=blacklist)
     assert actual is True
 
 
-def slave_passes_blacklist_blocks_blacklisted_locations():
+def test_slave_passes_blacklist_blocks_blacklisted_locations():
     slave = {
         'hostname': 'fake_host_3',
         'attributes': {
             'fake_attribute': 'fake_value_1',
         }
     }
-    blacklist = [("fake_attribute", "fake_value_1")]
+    blacklist = [["fake_attribute", "fake_value_1"]]
     actual = mesos_tools.slave_passes_blacklist(slave=slave, blacklist=blacklist)
     assert actual is False
 

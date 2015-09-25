@@ -49,10 +49,10 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
   *  ``monitoring``: A dictionary of values that configure overrides for monitoring parameters that will take precedence over what is in `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
 
 
-  * ``monitoring_blacklist``: A list of tuples indicating a set of locations to
+  * ``monitoring_blacklist``: A list of lists indicating a set of locations to
     *not* monitor for Smartstack replication. For example:
 
-      ``monitoring_blacklist: [("region", "uswest1-prod")]``
+      ``monitoring_blacklist: [["region", "uswest1-prod"]]``
 
    would indicate that PaaSTA should ignore the ``uswest1-prod`` region. PaaSTA currently
    assumes that the instance count in *other* regions include instances that would
