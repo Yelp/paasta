@@ -136,7 +136,7 @@ def paasta_serviceinit_command(context, command, service, instance):
     assert exit_code == 0
 
 
-@then(u'"{service}.{instance}" has exactly "{task_count}" requested tasks in marathon')
+@then(u'"{service}.{instance}" has exactly {task_count} requested tasks in marathon')
 def marathon_app_task_count(context, service, instance, task_count):
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     client = context.marathon_client

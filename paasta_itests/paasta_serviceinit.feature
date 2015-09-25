@@ -74,6 +74,6 @@ Feature: paasta_serviceinit
      When we run the marathon job "test-service.main"
        And we wait for it to be deployed
       And we run paasta serviceinit "stop" on "test-service.main"
-     Then "test-service.main" has exactly "0" requested tasks in marathon
+     Then "test-service.main" has exactly 0 requested tasks in marathon
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2
