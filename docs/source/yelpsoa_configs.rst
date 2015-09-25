@@ -252,6 +252,10 @@ Here is a list of options that PaaSTA will pass through:
  * ``project``: String naming the project where JIRA tickets will be created.
    Overrides the global default for the team.
 
+ * ``alert_after``: Time string that represents how long a a check should be
+   failing before an actual alert should be fired. Currently defaults to ``2m``
+   for the replication alert.
+
 
 service.yaml
 ------------

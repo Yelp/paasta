@@ -53,7 +53,8 @@ def send_event(service, namespace, cluster, soa_dir, status, output):
     # This function assumes the input is a string like "mumble.main"
     monitoring_overrides = marathon_tools.load_marathon_service_config(
         service, namespace, cluster).get_monitoring()
-    monitoring_overrides['alert_after'] = '2m'
+    if 'alert_after' not in monitoring_overrides:
+        monitoring_overrides['alert_after'] = '2m'
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service, soa_dir=soa_dir)
 
