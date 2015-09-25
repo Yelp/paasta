@@ -138,7 +138,7 @@ def write_soa_dir_chronos_instance(context, service_name, disabled, instance_nam
     context.soa_dir = soa_dir
 
 
-@given(u'I have a deployments.json for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+@given(u'I have a deployments.json for the service "{service_name}" with {disabled} instance "{instance_name}"')
 def write_soa_dir_chronos_deployments(context, service_name, disabled, instance_name):
     if disabled == 'disabled':
         desired_state = 'stop'

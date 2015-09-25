@@ -125,8 +125,6 @@ def paasta_serviceinit_command(context, command, job_id):
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
-    assert exit_code == 0
-
 
 @when(u'we wait for "{job_id}" to launch {exactly} {task_count:d} tasks')
 def wait_launch_tasks(context, job_id, exactly, task_count):

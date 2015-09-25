@@ -27,19 +27,6 @@ def list_marathon_apps_has_trivial_app(context):
     assert context.marathon_client.get_app('/test--marathon--app')
 
 
-@given(u'I have a deployments.json for the service "{service}" with marathon instance "{instance}"')
-def marathon_app_deployments_json(context, service, instance):
-    with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as dp:
-        dp.write(json.dumps({
-            'v1': {
-                '%s:%s' % (service, paasta_tools.utils.get_default_branch(context.cluster, instance)): {
-                    'docker_image': 'test-image-foobar%d' % context.tag_version,
-                    'desired_state': 'start',
-                }
-            }
-        }))
-
-
 @given(u'I have yelpsoa-configs for the service "{service}" with marathon instance "{instance}"')
 def marathon_app_yelpsoa_configs(context, service, instance):
     soa_dir = mkdtemp()
