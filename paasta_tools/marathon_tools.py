@@ -741,7 +741,7 @@ def is_app_id_running(app_id, client):
     return app_id in all_app_ids
 
 
-def app_has_tasks(client, app_id, expected_tasks):
+def app_has_tasks(client, app_id, minimum_tasks):
     """ A predicate function indicating whether an app has launched *at least* expected_tasks
     tasks.
 
@@ -758,8 +758,8 @@ def app_has_tasks(client, app_id, expected_tasks):
     except NotFoundError:
         print "no app with id %s found" % app_id
         raise
-    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), int(expected_tasks))
-    return len(tasks) >= int(expected_tasks)
+    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), minimum_tasks)
+    return len(tasks) >= minimum_tasks
 
 
 def app_has_exact_tasks(client, app_id, expected_tasks):
@@ -770,7 +770,7 @@ def app_has_exact_tasks(client, app_id, expected_tasks):
 
     :param client: the marathon client
     :param app_id: the app_id to which the tasks should belong
-    :param minimum_tasks: the minimum number of tasks to check for
+    :param expected_tasks: the minimum number of tasks to check for
     :returns a boolean indicating whether there are atleast expected_tasks tasks with
     an app id matching app_id:
     """
@@ -779,8 +779,8 @@ def app_has_exact_tasks(client, app_id, expected_tasks):
     except NotFoundError:
         print "no app with id %s found" % app_id
         raise
-    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), int(expected_tasks))
-    return len(tasks) == int(expected_tasks)
+    print "app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks)
+    return len(tasks) == expected_tasks
 
 
 @timeout()
