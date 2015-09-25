@@ -39,14 +39,23 @@ def test_send_event_users_monitoring_tools_send_event_properly():
                                                        fake_soa_dir,
                                                        fake_status,
                                                        fake_output)
+        send_event_patch.call_count == 1
         send_event_patch.assert_called_once_with(
             fake_service_name,
             expected_check_name,
-            fake_monitoring_overrides,
+            mock.ANY,
             fake_status,
             fake_output,
             fake_soa_dir
         )
+        # This overrides dictionary is mutated in the function, so
+        # we expect the send_event_patch to be called with something that is a
+        # superset of what we originally put in (fake_monitoring_overrides)
+        actual_overrides_used = send_event_patch.call_args[0][2]
+        assert set({'alert_after': '2m'}.items()).issubset(set(actual_overrides_used.items()))
+        assert 'runbook' in actual_overrides_used
+
+
 
 
 def test_add_context_to_event():
