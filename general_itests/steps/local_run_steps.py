@@ -16,11 +16,17 @@ def given_simple_service(context):
 @when(u'we run paasta local-run in non-interactive mode with environment variable "{var}" set to "{val}"')
 def non_interactive_local_run(context, var, val):
     with Path("fake_simple_service"):
+        # The local-run invocation here is designed to run and return a sentinel
+        # exit code that we can look out for. It also sleeps a few seconds
+        # because the local-run code currently crashes when the docker
+        # container dies before it gets a chance to lookup the continerid
+        # (which causes jenkins flakes) The sleep can be removed once local-run
+        # understands that containers can die quickly.
         localrun_cmd = ("paasta_cli.py local-run "
                         "--yelpsoa-root ../fake_soa_configs_local_run/ "
                         "-s fake_simple_service "
                         "--cluster test-cluster "
-                        "--cmd '/bin/sh -c \"echo \"%s=$%s\" && exit 42\"'" % (var, val))
+                        "--cmd '/bin/sh -c \"echo \"%s=$%s\" && sleep 2s && exit 42\"'" % (var, val))
         context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=30)
 
 

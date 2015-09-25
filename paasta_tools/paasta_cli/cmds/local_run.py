@@ -325,7 +325,7 @@ def get_container_id(docker_client, container_name):
     its 'container_name'. If we can't find the id, raise
     LostContainerException.
     """
-    containers = docker_client.containers(all=True)
+    containers = docker_client.containers(all=False)
     for container in containers:
         if '/%s' % container_name in container.get('Names', []):
             return container.get('Id')
