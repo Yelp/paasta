@@ -209,15 +209,15 @@ def check_service_replication(service, instance, cluster, crit_threshold, soa_di
     :param crit_threshold: an int from 0-100 representing the percentage threshold for triggering an alert
     :param soa_dir: The SOA configuration directory to read from
     """
-    job_name = compose_job_id(service, instance)
+    job_id = compose_job_id(service, instance)
     try:
         expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
     except NoDeploymentsAvailable:
-        log.info('deployments.json missing for %s. Skipping replication monitoring.' % job_name)
+        log.info('deployments.json missing for %s. Skipping replication monitoring.' % job_id)
         return
     if expected_count is None:
         return
-    log.info("Expecting %d total tasks for %s" % (expected_count, job_name))
+    log.info("Expecting %d total tasks for %s" % (expected_count, job_id))
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     if proxy_port is not None:
         check_smartstack_replication_for_instance(
