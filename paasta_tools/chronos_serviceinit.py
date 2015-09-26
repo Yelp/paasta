@@ -8,6 +8,7 @@ import isodate
 import requests_cache
 
 import chronos_tools
+from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import _log
@@ -173,9 +174,11 @@ def status_chronos_jobs(jobs, job_config):
     if jobs == []:
         return "%s: chronos job is not set up yet" % PaastaColors.yellow("Warning")
     else:
+        output = []
         desired_state = job_config.get_desired_state_human()
-        running_tasks = ["i'm not ready to do this yet"]
-        output = [format_chronos_job_status(job, desired_state, running_tasks) for job in jobs]
+        for job in jobs:
+            running_tasks = get_running_tasks_from_active_frameworks(job["name"])
+            output.append(format_chronos_job_status(job, desired_state, running_tasks))
         return "\n".join(output)
 
 

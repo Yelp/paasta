@@ -227,10 +227,17 @@ def test_status_chronos_jobs_is_deployed():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
-    with mock.patch(
-        'chronos_serviceinit.format_chronos_job_status',
-        autospec=True,
-        return_value='job_status_output',
+    with contextlib.nested(
+        mock.patch(
+            'chronos_serviceinit.format_chronos_job_status',
+            autospec=True,
+            return_value='job_status_output',
+        ),
+        mock.patch(
+            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            autospec=True,
+            return_value=[],
+        ),
     ):
         actual = chronos_serviceinit.status_chronos_jobs(
             jobs,
@@ -243,10 +250,17 @@ def test_status_chronos_jobs_is_not_deployed():
     jobs = []
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
-    with mock.patch(
-        'chronos_serviceinit.format_chronos_job_status',
-        autospec=True,
-        return_value='job_status_output',
+    with contextlib.nested(
+        mock.patch(
+            'chronos_serviceinit.format_chronos_job_status',
+            autospec=True,
+            return_value='job_status_output',
+        ),
+        mock.patch(
+            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            autospec=True,
+            return_value=[],
+        ),
     ):
         actual = chronos_serviceinit.status_chronos_jobs(
             jobs,
@@ -259,10 +273,17 @@ def test_status_chronos_jobs_get_desired_state_human():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
-    with mock.patch(
-        'chronos_serviceinit.format_chronos_job_status',
-        autospec=True,
-        return_value='job_status_output',
+    with contextlib.nested(
+        mock.patch(
+            'chronos_serviceinit.format_chronos_job_status',
+            autospec=True,
+            return_value='job_status_output',
+        ),
+        mock.patch(
+            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            autospec=True,
+            return_value=[],
+        ),
     ):
         chronos_serviceinit.status_chronos_jobs(
             jobs,
@@ -278,10 +299,17 @@ def test_status_chronos_jobs_multiple_jobs():
     ]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
-    with mock.patch(
-        'chronos_serviceinit.format_chronos_job_status',
-        autospec=True,
-        return_value='job_status_output',
+    with contextlib.nested(
+        mock.patch(
+            'chronos_serviceinit.format_chronos_job_status',
+            autospec=True,
+            return_value='job_status_output',
+        ),
+        mock.patch(
+            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            autospec=True,
+            return_value=[],
+        ),
     ):
         actual = chronos_serviceinit.status_chronos_jobs(
             jobs,
@@ -290,3 +318,24 @@ def test_status_chronos_jobs_multiple_jobs():
         assert actual == 'job_status_output\njob_status_output'
 
 
+def test_status_chronos_jobs_get_running_tasks():
+    jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
+    complete_job_config = mock.Mock()
+    complete_job_config.get_desired_state_human = mock.Mock()
+    with contextlib.nested(
+        mock.patch(
+            'chronos_serviceinit.format_chronos_job_status',
+            autospec=True,
+            return_value='job_status_output',
+        ),
+        mock.patch(
+            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            autospec=True,
+            return_value=[],
+        ),
+    ) as (_, mock_get_running_tasks):
+        chronos_serviceinit.status_chronos_jobs(
+            jobs,
+            complete_job_config,
+        )
+        assert mock_get_running_tasks.call_count == 1
