@@ -74,6 +74,15 @@ def test_stop_chronos_job():
             mock_client.delete_tasks.assert_any_call(job['name'])
 
 
+def test_format_chronos_job_name():
+    example_job = {
+        'name': 'my_service my_instance gityourmom configyourdad',
+    }
+    desired_state = ''
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
+    assert example_job['name'] in actual
+
+
 def test_format_chronos_job_status_disabled():
     example_job = {
         'disabled': True,
