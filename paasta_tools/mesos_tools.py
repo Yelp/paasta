@@ -109,14 +109,14 @@ def get_non_running_tasks_from_active_frameworks(job_id):
     return not_running_tasks
 
 
-def fetch_mesos_stats():
+def get_mesos_stats():
     """Queries the mesos stats api and returns a dictionary of the results"""
     response = master.CURRENT.fetch('metrics/snapshot')
     response.raise_for_status()
     return response.json()
 
 
-def fetch_local_slave_state():
+def get_local_slave_state():
     """Fetches mesos slave state.json and returns it as a dict."""
     hostname = socket.getfqdn()
     stats_uri = 'http://%s:%s/state.json' % (hostname, MESOS_SLAVE_PORT)
@@ -132,7 +132,7 @@ def fetch_local_slave_state():
     return json.loads(response.text)
 
 
-def fetch_mesos_state_from_leader():
+def get_mesos_state_from_leader():
     """Fetches mesos state from the leader.
     Raises an exception if the state doesn't look like it came from an
     elected leader, as we never want non-leader state data."""
@@ -181,7 +181,7 @@ def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None):
     if blacklist is None:
         blacklist = []
     attr_map = {}
-    mesos_state = fetch_mesos_state_from_leader()
+    mesos_state = get_mesos_state_from_leader()
     slaves = mesos_state['slaves']
     filtered_slaves = filter_mesos_slaves_by_blacklist(slaves=slaves, blacklist=blacklist)
     if filtered_slaves == []:

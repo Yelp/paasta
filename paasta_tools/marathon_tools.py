@@ -16,7 +16,7 @@ from marathon import NotFoundError
 import json
 import service_configuration_lib
 
-from paasta_tools.mesos_tools import fetch_local_slave_state
+from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -616,7 +616,7 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
 def marathon_services_running_here():
     """See what marathon services are being run by a mesos-slave on this host.
     :returns: A list of triples of (service_name, instance_name, port)"""
-    slave_state = fetch_local_slave_state()
+    slave_state = get_local_slave_state()
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]

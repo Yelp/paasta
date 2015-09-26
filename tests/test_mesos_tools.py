@@ -77,7 +77,7 @@ def test_get_number_of_mesos_masters(
 
 @mock.patch('requests.get')
 @mock.patch('socket.getfqdn')
-def test_fetch_local_slave_state_connection_error(
+def test_get_local_slave_state_connection_error(
     mock_getfqdn,
     mock_requests_get,
 ):
@@ -89,10 +89,10 @@ def test_fetch_local_slave_state_connection_error(
     )
 
     with raises(mesos_tools.MesosSlaveConnectionError):
-        mesos_tools.fetch_local_slave_state()
+        mesos_tools.get_local_slave_state()
 
 
-@mock.patch('paasta_tools.mesos_tools.fetch_mesos_state_from_leader', autospec=True)
+@mock.patch('paasta_tools.mesos_tools.get_mesos_state_from_leader', autospec=True)
 def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
     fake_attribute = 'fake_attribute'
     fake_value_1 = 'fake_value_1'
@@ -134,7 +134,7 @@ def test_get_mesos_slaves_grouped_by_attribute(mock_fetch_state):
     assert actual == expected
 
 
-@mock.patch('paasta_tools.mesos_tools.fetch_mesos_state_from_leader', autospec=True)
+@mock.patch('paasta_tools.mesos_tools.get_mesos_state_from_leader', autospec=True)
 def test_get_mesos_slaves_grouped_by_attribute_bombs_out_with_no_slaves(mock_fetch_state):
     mock_fetch_state.return_value = {
         'slaves': []
@@ -143,7 +143,7 @@ def test_get_mesos_slaves_grouped_by_attribute_bombs_out_with_no_slaves(mock_fet
         mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute')
 
 
-@mock.patch('paasta_tools.mesos_tools.fetch_mesos_state_from_leader', autospec=True)
+@mock.patch('paasta_tools.mesos_tools.get_mesos_state_from_leader', autospec=True)
 @mock.patch('paasta_tools.mesos_tools.filter_mesos_slaves_by_blacklist', autospec=True)
 def test_get_mesos_slaves_grouped_by_attribute_uses_blacklist(
     mock_filter_mesos_slaves_by_blacklist,
@@ -240,7 +240,7 @@ def test_slave_passes_blacklist_blocks_blacklisted_locations():
     assert actual is False
 
 
-def test_fetch_mesos_state_from_leader_works_on_elected_leader():
+def test_get_mesos_state_from_leader_works_on_elected_leader():
     # Elected leaders return 'elected_time' to indicate when
     # they were elected.
     good_fake_state = {
@@ -252,10 +252,10 @@ def test_fetch_mesos_state_from_leader_works_on_elected_leader():
         "failed_tasks": 1,
     }
     mesos.cli.master.CURRENT.state = good_fake_state
-    assert mesos_tools.fetch_mesos_state_from_leader() == good_fake_state
+    assert mesos_tools.get_mesos_state_from_leader() == good_fake_state
 
 
-def test_fetch_mesos_state_from_leader_raises_on_non_elected_leader():
+def test_get_mesos_state_from_leader_raises_on_non_elected_leader():
     # Non-elected leaders do not return 'elected_time' in their state
     # because they were not elected.
     un_elected_fake_state = {
@@ -267,4 +267,4 @@ def test_fetch_mesos_state_from_leader_raises_on_non_elected_leader():
     }
     mesos.cli.master.CURRENT.state = un_elected_fake_state
     with raises(mesos_tools.MasterNotAvailableException):
-        assert mesos_tools.fetch_mesos_state_from_leader() == un_elected_fake_state
+        assert mesos_tools.get_mesos_state_from_leader() == un_elected_fake_state

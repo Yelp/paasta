@@ -12,7 +12,7 @@ import logging
 import sys
 
 import pysensu_yelp
-from paasta_tools.mesos_tools import fetch_mesos_stats
+from paasta_tools.mesos_tools import get_mesos_stats
 from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config
 
@@ -52,7 +52,7 @@ def check_thresholds(percent):
     """Gets the current state of the mesos cluster and compares it
     to a given percentage. If either the ram or CPU utilization is over that
     percentage, the sensu event will be sent with a status code of 2."""
-    stats = fetch_mesos_stats()
+    stats = get_mesos_stats()
     over_threshold = False
     output = ""
     current_mem = stats['master/mem_percent']

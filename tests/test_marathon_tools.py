@@ -469,8 +469,8 @@ class TestMarathonTools:
         assert actual == instance
         read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
 
-    @mock.patch('marathon_tools.fetch_local_slave_state', autospec=True)
-    def test_marathon_services_running_here(self, mock_fetch_local_slave_state):
+    @mock.patch('marathon_tools.get_local_slave_state', autospec=True)
+    def test_marathon_services_running_here(self, mock_get_local_slave_state):
         id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr'
         id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94'
         id_3 = 'dota.axe.cleave.482u9jyoi4wed'
@@ -481,7 +481,7 @@ class TestMarathonTools:
         ports_3 = '[333-333]'
         ports_4 = '[444-444]'
         ports_5 = '[555-555]'
-        mock_fetch_local_slave_state.return_value = {
+        mock_get_local_slave_state.return_value = {
             'frameworks': [
                 {
                     'executors': [
@@ -517,7 +517,7 @@ class TestMarathonTools:
                     ('dota', 'axe', 333),
                     ('mesos', 'deployment', 444)]
         actual = marathon_tools.marathon_services_running_here()
-        mock_fetch_local_slave_state.assert_called_once_with()
+        mock_get_local_slave_state.assert_called_once_with()
         assert expected == actual
 
     def test_get_marathon_services_running_here_for_nerve(self):
