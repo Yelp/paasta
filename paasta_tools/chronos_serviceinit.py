@@ -144,9 +144,9 @@ def format_chronos_job_status(job, desired_state, running_tasks):
     mesos_status = _get_mesos_status(job, running_tasks)
     return (
         "Tag:        %(job_tag)s\n"
-        "Status:     %(disabled_state)s, %(desired_state)s\n"
-        "Last:       %(last_result)s (%(last_result_when)s)\n"
-        "Mesos:      %(mesos_status)s" % {
+        "  Status:   %(disabled_state)s, %(desired_state)s\n"
+        "  Last:     %(last_result)s (%(last_result_when)s)\n"
+        "  Mesos:    %(mesos_status)s" % {
             "job_tag": job_tag,
             "disabled_state": disabled_state,
             "desired_state": desired_state,
