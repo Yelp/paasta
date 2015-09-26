@@ -74,13 +74,26 @@ def test_stop_chronos_job():
             mock_client.delete_tasks.assert_any_call(job['name'])
 
 
-def test_format_chronos_job_name():
+def test_format_chronos_job_name_exists():
     example_job = {
         'name': 'my_service my_instance gityourmom configyourdad',
     }
     desired_state = ''
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
-    assert example_job['name'] in actual
+    # Includes only the 'tag' portion of the name, not the service and instance
+    # (as these are unnecessary and would just add clutter).
+    assert 'my_service' not in actual
+    assert 'my_instance' not in actual
+    assert 'gityourmom' in actual
+    assert 'configyourdad' in actual
+
+
+def test_format_chronos_job_name_does_not_exist():
+    example_job = {
+    }
+    desired_state = ''
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
+    assert PaastaColors.red("UNKNOWN") in actual
 
 
 def test_format_chronos_job_status_disabled():

@@ -9,6 +9,7 @@ import requests_cache
 
 import chronos_tools
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 
@@ -60,7 +61,12 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
 
 
 def _get_job_id(job):
-    return job.get("name", PaastaColors.red("UNKNOWN"))
+    job_id = job.get("name", None)
+    if job_id:
+        (_, _, return_me) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
+    else:
+        return_me = PaastaColors.red("UNKNOWN")
+    return return_me
 
 
 def _get_disabled_status(job):
