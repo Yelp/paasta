@@ -157,7 +157,8 @@ def add_context_to_event(service, instance, output):
 
 
 def check_mesos_replication_for_service(service, instance, cluster, soa_dir, crit_threshold, expected_count):
-    num_available = len(get_running_tasks_from_active_frameworks(service, instance))
+    job_id = compose_job_id(service, instance)
+    num_available = len(get_running_tasks_from_active_frameworks(job_id))
     # Non-Smartstack services aren't aware of replication within specific
     # locations (since they don't define an advertise/discover level)
     send_event_if_under_replication(

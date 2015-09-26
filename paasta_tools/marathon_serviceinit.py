@@ -374,22 +374,21 @@ def pretty_format_non_running_mesos_task(task):
     return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
 
 
-def get_running_tasks_from_active_frameworks(service, instance):
-    job_id = marathon_tools.format_job_id(service, instance)
+def get_running_tasks_from_active_frameworks(job_id):
     active_framework_tasks = get_current_tasks(job_id)
     running_tasks = filter_running_tasks(active_framework_tasks)
     return running_tasks
 
 
-def get_non_running_tasks_from_active_frameworks(service, instance):
-    job_id = marathon_tools.format_job_id(service, instance)
+def get_non_running_tasks_from_active_frameworks(job_id):
     active_framework_tasks = get_current_tasks(job_id)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
     return not_running_tasks
 
 
 def status_mesos_tasks(service, instance, normal_instance_count):
-    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
+    job_id = marathon_tools.format_job_id(service, instance)
+    running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
     count = len(running_and_active_tasks)
     if count >= normal_instance_count:
         status = PaastaColors.green("Healthy")
@@ -408,7 +407,8 @@ def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
     output = []
 
-    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
+    job_id = marathon_tools.format_job_id(service, instance)
+    running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
     output.append(RUNNING_TASK_FORMAT.format((
         "  Running Tasks:  Mesos Task ID",
         "Host deployed to",
@@ -419,7 +419,8 @@ def status_mesos_tasks_verbose(service, instance):
     for task in running_and_active_tasks:
         output.append(pretty_format_running_mesos_task(task))
 
-    non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(service, instance)[-10:]))
+    job_id = marathon_tools.format_job_id(service, instance)
+    non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:]))
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
         "  Non-Running Tasks:  Mesos Task ID",
         "Host deployed to",
