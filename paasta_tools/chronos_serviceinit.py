@@ -61,11 +61,10 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
 
 
 def _get_job_id(job):
+    return_me = PaastaColors.red("UNKNOWN")
     job_id = job.get("name", None)
     if job_id:
         (_, _, return_me) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
-    else:
-        return_me = PaastaColors.red("UNKNOWN")
     return return_me
 
 
