@@ -60,12 +60,12 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
     start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
 
 
-def _get_job_id(job):
-    return_me = PaastaColors.red("UNKNOWN")
+def _get_job_tag(job):
+    job_tag = PaastaColors.red("UNKNOWN")
     job_id = job.get("name", None)
     if job_id:
-        (_, _, return_me) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
-    return return_me
+        (_, _, job_tag) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
+    return job_tag
 
 
 def _get_disabled_status(job):
@@ -133,16 +133,16 @@ def format_chronos_job_status(job, desired_state):
     job's started/stopped state as set with paasta emergency-[stop|start], e.g.
     the result of get_desired_state_human()
     """
-    job_id = _get_job_id(job)
+    job_tag = _get_job_tag(job)
     disabled_state = _get_disabled_status(job)
     (last_result, last_result_when) = _get_last_result(job)
     mesos_status = _get_mesos_status(job)
     return (
-        "Id:         %(job_id)s\n"
+        "Tag:        %(job_tag)s\n"
         "Status:     %(disabled_state)s, %(desired_state)s\n"
         "Last:       %(last_result)s (%(last_result_when)s)\n"
         "Mesos:      %(mesos_status)s" % {
-            "job_id": job_id,
+            "job_tag": job_tag,
             "disabled_state": disabled_state,
             "desired_state": desired_state,
             "last_result": last_result,
