@@ -711,7 +711,7 @@ def test_status_mesos_tasks_warning():
 
 
 def test_status_mesos_tasks_critical():
-    with mock.patch('paasta_tools.marathon_serviceinit.get_tasks_from_active_frameworks') as mock_tasks:
+    with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
         mock_tasks.return_value = []
         normal_count = 10
         actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)

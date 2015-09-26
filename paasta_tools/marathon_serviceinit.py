@@ -374,19 +374,16 @@ def pretty_format_non_running_mesos_task(task):
     return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
 
 
-def get_tasks_from_active_frameworks(service, instance):
-    job_id = marathon_tools.format_job_id(service, instance)
-    return get_current_tasks(job_id)
-
-
 def get_running_tasks_from_active_frameworks(service, instance):
-    active_framework_tasks = get_tasks_from_active_frameworks(service, instance)
+    job_id = marathon_tools.format_job_id(service, instance)
+    active_framework_tasks = get_current_tasks(job_id)
     running_tasks = filter_running_tasks(active_framework_tasks)
     return running_tasks
 
 
 def get_non_running_tasks_from_active_frameworks(service, instance):
-    active_framework_tasks = get_tasks_from_active_frameworks(service, instance)
+    job_id = marathon_tools.format_job_id(service, instance)
+    active_framework_tasks = get_current_tasks(job_id)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
     return not_running_tasks
 
