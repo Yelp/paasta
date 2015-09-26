@@ -406,7 +406,6 @@ def status_mesos_tasks_verbose(service, instance):
     for task in running_and_active_tasks:
         output.append(pretty_format_running_mesos_task(task))
 
-    job_id = marathon_tools.format_job_id(service, instance)
     non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:]))
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
         "  Non-Running Tasks:  Mesos Task ID",
@@ -434,8 +433,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     try:
         app_id = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir=soa_dir)['id']
     except NoDockerImageError:
-        job_name = compose_job_id(service, instance)
-        print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_name
+        job_id = compose_job_id(service, instance)
+        print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_id
         return 1
 
     normal_instance_count = job_config.get_instances()
