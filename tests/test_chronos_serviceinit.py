@@ -158,6 +158,17 @@ def test_format_chronos_job_status_success_and_then_failure():
     assert 'ago)' in actual
 
 
+def test_format_chronos_job_mesos_happy():
+    example_job = {
+    }
+    desired_state = ''
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state)
+    print "##############################################################"
+    print actual
+    print "##############################################################"
+    assert "Mesos" in actual
+
+
 def test_status_chronos_jobs_is_deployed():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()

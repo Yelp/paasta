@@ -111,6 +111,10 @@ def _get_last_result(job):
     return (last_result, pretty_last_result_when)
 
 
+def _get_mesos_status(job):
+    return "HERP DERP I AM Mesos"
+
+
 def format_chronos_job_status(job, desired_state):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
@@ -122,13 +126,16 @@ def format_chronos_job_status(job, desired_state):
     """
     disabled_state = _get_disabled_status(job)
     (last_result, last_result_when) = _get_last_result(job)
+    mesos_status = _get_mesos_status(job)
     return (
         "Status:     %(disabled_state)s, %(desired_state)s\n"
-        "Last:       %(last_result)s (%(last_result_when)s)" % {
+        "Last:       %(last_result)s (%(last_result_when)s)\n"
+        "Mesos:      %(mesos_status)s" % {
             "disabled_state": disabled_state,
             "desired_state": desired_state,
             "last_result": last_result,
             "last_result_when": last_result_when,
+            "mesos_status": mesos_status,
         }
     )
 
