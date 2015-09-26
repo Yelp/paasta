@@ -61,7 +61,7 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
     start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
 
 
-def _get_job_tag(job):
+def _format_job_tag(job):
     job_tag = PaastaColors.red("UNKNOWN")
     job_id = job.get("name", None)
     if job_id:
@@ -69,7 +69,7 @@ def _get_job_tag(job):
     return job_tag
 
 
-def _get_disabled_status(job):
+def _format_disabled_status(job):
     status = PaastaColors.red("UNKNOWN")
     if job.get("disabled", False):
         status = PaastaColors.red("Disabled")
@@ -90,7 +90,7 @@ def _prettify_datetime(dt):
     return pretty_dt
 
 
-def _get_last_result(job):
+def _format_last_result(job):
     last_result = PaastaColors.red("UNKNOWN")
     last_result_when = PaastaColors.red("UNKNOWN")
     fail_result = PaastaColors.red("Fail")
@@ -121,7 +121,7 @@ def _get_last_result(job):
     return (last_result, pretty_last_result_when)
 
 
-def _get_mesos_status(job, running_tasks):
+def _format_mesos_status(job, running_tasks):
     mesos_status = PaastaColors.red("UNKNOWN")
     num_tasks = len(running_tasks)
     if num_tasks == 0:
@@ -144,10 +144,10 @@ def format_chronos_job_status(job, desired_state, running_tasks):
     :param running_tasks: a list of Mesos tasks associated with `job`, e.g. the
     result of mesos_tools.get_running_tasks_from_active_frameworks().
     """
-    job_tag = _get_job_tag(job)
-    disabled_state = _get_disabled_status(job)
-    (last_result, last_result_when) = _get_last_result(job)
-    mesos_status = _get_mesos_status(job, running_tasks)
+    job_tag = _format_job_tag(job)
+    disabled_state = _format_disabled_status(job)
+    (last_result, last_result_when) = _format_last_result(job)
+    mesos_status = _format_mesos_status(job, running_tasks)
     return (
         "Tag:        %(job_tag)s\n"
         "  Status:   %(disabled_state)s, %(desired_state)s\n"
