@@ -23,19 +23,19 @@ import pysensu_yelp
 import service_configuration_lib
 import sys
 
-from paasta_tools.monitoring import replication_utils
-from paasta_tools.monitoring.context import get_context
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import smartstack_tools
+from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.monitoring import replication_utils
+from paasta_tools.monitoring.context import get_context
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
 
 
 log = logging.getLogger(__name__)

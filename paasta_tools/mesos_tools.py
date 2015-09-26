@@ -97,6 +97,18 @@ def filter_not_running_tasks(tasks):
     return [task for task in tasks if task['state'] != 'TASK_RUNNING']
 
 
+def get_running_tasks_from_active_frameworks(job_id):
+    active_framework_tasks = get_current_tasks(job_id)
+    running_tasks = filter_running_tasks(active_framework_tasks)
+    return running_tasks
+
+
+def get_non_running_tasks_from_active_frameworks(job_id):
+    active_framework_tasks = get_current_tasks(job_id)
+    not_running_tasks = filter_not_running_tasks(active_framework_tasks)
+    return not_running_tasks
+
+
 def fetch_mesos_stats():
     """Queries the mesos stats api and returns a dictionary of the results"""
     response = master.CURRENT.fetch('metrics/snapshot')

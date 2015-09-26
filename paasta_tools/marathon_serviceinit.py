@@ -9,9 +9,8 @@ from mesos.cli.exceptions import SlaveDoesNotExist
 import requests_cache
 
 from paasta_tools import marathon_tools
-from paasta_tools.mesos_tools import filter_not_running_tasks
-from paasta_tools.mesos_tools import filter_running_tasks
-from paasta_tools.mesos_tools import get_current_tasks
+from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.mesos_tools import get_non_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks, backend_is_up
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
@@ -372,18 +371,6 @@ def pretty_format_non_running_mesos_task(task):
         task['state'],
     )
     return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
-
-
-def get_running_tasks_from_active_frameworks(job_id):
-    active_framework_tasks = get_current_tasks(job_id)
-    running_tasks = filter_running_tasks(active_framework_tasks)
-    return running_tasks
-
-
-def get_non_running_tasks_from_active_frameworks(job_id):
-    active_framework_tasks = get_current_tasks(job_id)
-    not_running_tasks = filter_not_running_tasks(active_framework_tasks)
-    return not_running_tasks
 
 
 def status_mesos_tasks(service, instance, normal_instance_count):
