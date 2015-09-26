@@ -190,7 +190,18 @@ def test_format_chronos_job_status_success_and_then_failure():
     assert 'ago)' in actual
 
 
-def test_format_chronos_job_mesos_happy():
+def test_format_chronos_job_zero_mesos_tasks():
+    example_job = {}
+    desired_state = ''
+    running_tasks = []
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    print "##############################################################"
+    print actual
+    print "##############################################################"
+    assert PaastaColors.grey("Not running") in actual
+
+
+def test_format_chronos_job_one_mesos_task():
     example_job = {}
     desired_state = ''
     running_tasks = ['slay the nemean lion']
@@ -198,7 +209,18 @@ def test_format_chronos_job_mesos_happy():
     print "##############################################################"
     print actual
     print "##############################################################"
-    assert PaastaColors.green("Healthy") in actual
+    assert PaastaColors.yellow("Running") in actual
+
+
+def test_format_chronos_job_two_mesos_tasks():
+    example_job = {}
+    desired_state = ''
+    running_tasks = ['slay the nemean lion', 'slay the lernaean hydra']
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    print "##############################################################"
+    print actual
+    print "##############################################################"
+    assert "Critical" in actual
 
 
 def test_status_chronos_jobs_is_deployed():

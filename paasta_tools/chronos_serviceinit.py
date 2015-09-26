@@ -122,8 +122,13 @@ def _get_last_result(job):
 
 def _get_mesos_status(job, running_tasks):
     mesos_status = PaastaColors.red("UNKNOWN")
-    if len(running_tasks) == 1:
-        mesos_status = PaastaColors.green("Healthy")
+    num_tasks = len(running_tasks)
+    if num_tasks == 0:
+        mesos_status = PaastaColors.grey("Not running")
+    elif num_tasks == 1:
+        mesos_status = PaastaColors.yellow("Running")
+    else:
+        mesos_status = PaastaColors.red("Critical - %d tasks running (expected 1)" % num_tasks)
     return mesos_status
 
 
