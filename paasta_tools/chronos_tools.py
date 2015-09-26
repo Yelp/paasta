@@ -10,6 +10,7 @@ import isodate
 
 import monitoring_tools
 import service_configuration_lib
+from paasta_tools.utils import compose_job_id as utils_compose_job_id
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_default_branch
@@ -84,10 +85,8 @@ def get_chronos_client(config):
 
 
 def compose_job_id(service, instance, tag=None):
-    output = "%s%s%s" % (service, SPACER, instance)
-    if tag:
-        output = "%s%s%s" % (output, SPACER, tag)
-    return output
+    """Thin wrapper around generic compose_job_id to use our local SPACER."""
+    return utils_compose_job_id(service, instance, tag, spacer=SPACER)
 
 
 class InvalidChronosConfigError(Exception):
