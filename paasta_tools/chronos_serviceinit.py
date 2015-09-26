@@ -120,11 +120,14 @@ def _get_last_result(job):
     return (last_result, pretty_last_result_when)
 
 
-def _get_mesos_status(job):
-    return "HERP DERP I AM Mesos"
+def _get_mesos_status(job, running_tasks):
+    mesos_status = PaastaColors.red("UNKNOWN")
+    if len(running_tasks) == 1:
+        mesos_status = PaastaColors.green("Healthy")
+    return mesos_status
 
 
-def format_chronos_job_status(job, desired_state):
+def format_chronos_job_status(job, desired_state, running_tasks):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
 
@@ -132,11 +135,13 @@ def format_chronos_job_status(job, desired_state):
     :param desired_state: a pretty-formatted string representing the
     job's started/stopped state as set with paasta emergency-[stop|start], e.g.
     the result of get_desired_state_human()
+    :param running_tasks: a list of Mesos tasks associated with `job`, e.g. the
+    result of mesos_tools.get_running_tasks_from_active_frameworks().
     """
     job_tag = _get_job_tag(job)
     disabled_state = _get_disabled_status(job)
     (last_result, last_result_when) = _get_last_result(job)
-    mesos_status = _get_mesos_status(job)
+    mesos_status = _get_mesos_status(job, running_tasks)
     return (
         "Tag:        %(job_tag)s\n"
         "Status:     %(disabled_state)s, %(desired_state)s\n"
@@ -164,7 +169,8 @@ def status_chronos_jobs(jobs, job_config):
         return "%s: chronos job is not set up yet" % PaastaColors.yellow("Warning")
     else:
         desired_state = job_config.get_desired_state_human()
-        output = [format_chronos_job_status(job, desired_state) for job in jobs]
+        running_tasks = ["i'm not ready to do this yet"]
+        output = [format_chronos_job_status(job, desired_state, running_tasks) for job in jobs]
         return "\n".join(output)
 
 
