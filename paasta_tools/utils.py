@@ -96,8 +96,8 @@ class InstanceConfig(dict):
 
         :param service_config: The service instance's configuration dictionary
         :returns: An array of args specified in the config,
-        [] if not specified and if cmd is not specified,
-        otherwise None if not specified but cmd is specified"""
+            ``[]`` if not specified and if cmd is not specified,
+            otherwise None if not specified but cmd is specified"""
         if self.get_cmd() is None:
             return self.config_dict.get('args', [])
         else:
@@ -131,6 +131,15 @@ class InstanceConfig(dict):
         """Get the desired state (either 'start' or 'stop') for a given service
         branch from a generated deployments.json file."""
         return self.branch_dict.get('desired_state', 'start')
+
+    def get_desired_state_human(self):
+        desired_state = self.get_desired_state()
+        if desired_state == 'start':
+            return PaastaColors.bold('Started')
+        elif desired_state == 'stop':
+            return PaastaColors.red('Stopped')
+        else:
+            return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
 
     def get_force_bounce(self):
         """Get the force_bounce token for a given service branch from a generated
@@ -942,3 +951,22 @@ def get_code_sha_from_dockerurl(docker_url):
     """
     parts = docker_url.split('-')
     return "git%s" % parts[-1][:8]
+
+
+def is_under_replicated(num_available, expected_count, crit_threshold):
+    """Calculates if something is under replicated
+
+    :param num_available: How many things are up
+    :param expected_count: How many things you think should be up
+    :param crit_threshold: Int from 0-100
+    :returns: Tuple of (bool, ratio)
+    """
+    if expected_count == 0:
+        ratio = 100
+    else:
+        ratio = (num_available / float(expected_count)) * 100
+
+    if ratio < crit_threshold:
+        return (True, ratio)
+    else:
+        return (False, ratio)

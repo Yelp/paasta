@@ -93,12 +93,13 @@ def assert_no_duplicate_frameworks(state):
 
     Note the extra spaces in the output strings: this is to account for the extra indentation
     we add, so we can have:
+
         frameworks:
           framework: marathon count: 1
 
     :param state: the state info from the Mesos master
-    :return a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
-    indicating if there are any duplicate frameworks.
+    :returns: a tuple containing (output, ok): output is a log of the state of frameworks, ok a boolean
+        indicating if there are any duplicate frameworks.
     """
     frameworks = state['frameworks']
     framework_counts = OrderedDict(sorted(Counter([fw['name'] for fw in frameworks]).items()))

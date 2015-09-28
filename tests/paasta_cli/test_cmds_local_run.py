@@ -6,7 +6,6 @@ from pytest import raises
 
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_cli.cmds.local_run import LostContainerException
-from paasta_tools.paasta_cli.cmds.local_run import build_docker_container
 from paasta_tools.paasta_cli.cmds.local_run import configure_and_run_docker_container
 from paasta_tools.paasta_cli.cmds.local_run import get_cmd
 from paasta_tools.paasta_cli.cmds.local_run import get_cmd_string
@@ -24,34 +23,6 @@ from paasta_tools.paasta_cli.cmds.local_run import validate_environment
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
-
-
-def test_build_docker_container():
-    docker_client = mock.MagicMock()
-    args = mock.MagicMock()
-
-    docker_client.build.return_value = [
-        '{"stream":null}',
-        '{"stream":"foo\\n"}',
-        '{"stream":"foo\\n"}',
-        '{"stream":"Successfully built 1234\\n"}'
-    ]
-    assert build_docker_container(docker_client, args) == '1234'
-
-
-def test_build_docker_container_fails():
-    docker_client = mock.MagicMock()
-    args = mock.MagicMock()
-
-    docker_client.build.return_value = [
-        '{"stream":null}',
-        '{"stream":"foo\\n"}',
-        '{"stream":"foo\\n"}',
-        '{"stream":"failed\\n"}'
-    ]
-    with raises(SystemExit) as sys_exit:
-        build_docker_container(docker_client, args)
-    assert sys_exit.value.code == 1
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.execute_in_container')
@@ -367,17 +338,23 @@ def test_configure_and_run_command_uses_cmd_from_config(
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.validate_environment', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.build_docker_container', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.Client', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.cook_image.validate_service_name', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.cook_image.makefile_responds_to', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.cook_image._run', autospec=True)
 def test_run_success(
+    mock_run,
+    mock_makefile_responds_to,
+    mock_validate_service_name,
     mock_Client,
-    mock_build_docker_container,
     mock_run_docker_container,
     mock_figure_out_service_name,
     mock_validate_environment,
 ):
+    mock_run.return_value = (0, 'Output')
+    mock_makefile_responds_to.return_value = True
+    mock_validate_service_name.return_value = True
     mock_Client.return_value = None
-    mock_build_docker_container.return_value = None
     mock_run_docker_container.return_value = None
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_validate_environment.return_value = None

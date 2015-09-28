@@ -4,22 +4,24 @@ import logging
 import sys
 
 import humanize
+import isodate
 from mesos.cli.exceptions import SlaveDoesNotExist
 import requests_cache
 
 from paasta_tools import marathon_tools
+from paasta_tools.mesos_tools import filter_not_running_tasks
+from paasta_tools.mesos_tools import filter_running_tasks
 from paasta_tools.mesos_tools import get_current_tasks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.mesos_tools import filter_running_tasks
-from paasta_tools.mesos_tools import filter_not_running_tasks
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks, backend_is_up
-from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import _log
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SPACER
 from paasta_tools.utils import timeout
@@ -63,9 +65,9 @@ def restart_marathon_job(service, instance, app_id, normal_instance_count, clien
     start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
 
 
-def get_bouncing_status(service, instance, client, complete_job_config):
+def get_bouncing_status(service, instance, client, job_config):
     apps = marathon_tools.get_matching_appids(service, instance, client)
-    bounce_method = complete_job_config.get_bounce_method()
+    bounce_method = job_config.get_bounce_method()
     app_count = len(apps)
     if app_count == 0:
         return PaastaColors.red("Stopped")
@@ -77,19 +79,9 @@ def get_bouncing_status(service, instance, client, complete_job_config):
         return PaastaColors.red("Unknown (count: %s)" % app_count)
 
 
-def get_desired_state_human(complete_job_config):
-    desired_state = complete_job_config.get_desired_state()
-    if desired_state == 'start':
-        return PaastaColors.bold('Started')
-    elif desired_state == 'stop':
-        return PaastaColors.red('Stopped')
-    else:
-        return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
-
-
-def status_desired_state(service, instance, client, complete_job_config):
-    status = get_bouncing_status(service, instance, client, complete_job_config)
-    desired_state = get_desired_state_human(complete_job_config)
+def status_desired_state(service, instance, client, job_config):
+    status = get_bouncing_status(service, instance, client, job_config)
+    desired_state = job_config.get_desired_state_human()
     return "State:      %s - Desired state: %s" % (status, desired_state)
 
 
@@ -122,7 +114,7 @@ def get_verbose_status_of_marathon_app(app):
     """Takes a given marathon app object and returns the verbose details
     about the tasks, times, hosts, etc"""
     output = []
-    create_datetime = datetime_from_utc_to_local(datetime.datetime.strptime(app.version, "%Y-%m-%dT%H:%M:%S.%fZ"))
+    create_datetime = datetime_from_utc_to_local(isodate.parse_datetime(app.version))
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
     output.append("    Tasks:  Mesos Task ID                  Host deployed to         Deployed at what localtime")
@@ -165,15 +157,17 @@ def status_marathon_job_verbose(service, instance, client):
 def haproxy_backend_report(normal_instance_count, up_backends):
     """Given that a service is in smartstack, this returns a human readable
     report of the up backends"""
-    if up_backends >= normal_instance_count:
+    # TODO: Take into account a configurable threshold, PAASTA-1102
+    crit_threshold = 50
+    under_replicated, ratio = is_under_replicated(num_available=up_backends,
+                                                  expected_count=normal_instance_count,
+                                                  crit_threshold=crit_threshold)
+    if under_replicated:
+        status = PaastaColors.red("Critical")
+        count = PaastaColors.red("(%d/%d, %d%%)" % (up_backends, normal_instance_count, ratio))
+    else:
         status = PaastaColors.green("Healthy")
         count = PaastaColors.green("(%d/%d)" % (up_backends, normal_instance_count))
-    elif up_backends == 0:
-        status = PaastaColors.red("Critical")
-        count = PaastaColors.red("(%d/%d)" % (up_backends, normal_instance_count))
-    else:
-        status = PaastaColors.yellow("Warning")
-        count = PaastaColors.yellow("(%d/%d)" % (up_backends, normal_instance_count))
     up_string = PaastaColors.bold('UP')
     return "%s - in haproxy with %s total backends %s in this namespace." % (status, count, up_string)
 
@@ -210,7 +204,7 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
         return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
 
 
-def status_smartstack_backends(service, instance, cluster, tasks, expected_count, soa_dir, verbose):
+def status_smartstack_backends(service, instance, job_config, cluster, tasks, expected_count, soa_dir, verbose):
     """Returns detailed information about smartstack backends for a service
     and instance.
     return: A newline separated string of the smarststack backend status
@@ -228,7 +222,9 @@ def status_smartstack_backends(service, instance, cluster, tasks, expected_count
 
     service_namespace_config = marathon_tools.load_service_namespace_config(service, instance, soa_dir=soa_dir)
     discover_location_type = service_namespace_config.get_discover()
-    unique_attributes = get_mesos_slaves_grouped_by_attribute(discover_location_type)
+    monitoring_blacklist = job_config.get_monitoring_blacklist()
+    unique_attributes = get_mesos_slaves_grouped_by_attribute(
+        attribute=discover_location_type, blacklist=monitoring_blacklist)
     if len(unique_attributes) == 0:
         output.append("Smartstack: ERROR - %s is NOT in smartstack at all!" % service_instance)
     else:
@@ -413,8 +409,9 @@ def status_mesos_tasks(service, instance, normal_instance_count):
 
 def status_mesos_tasks_verbose(service, instance):
     """Returns detailed information about the mesos tasks for a service"""
-    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
     output = []
+
+    running_and_active_tasks = get_running_tasks_from_active_frameworks(service, instance)
     output.append(RUNNING_TASK_FORMAT.format((
         "  Running Tasks:  Mesos Task ID",
         "Host deployed to",
@@ -424,6 +421,7 @@ def status_mesos_tasks_verbose(service, instance):
     )))
     for task in running_and_active_tasks:
         output.append(pretty_format_running_mesos_task(task))
+
     non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(service, instance)[-10:]))
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
         "  Non-Running Tasks:  Mesos Task ID",
@@ -433,6 +431,7 @@ def status_mesos_tasks_verbose(service, instance):
     ))))
     for task in non_running_tasks:
         output.append(pretty_format_non_running_mesos_task(task))
+
     return "\n".join(output)
 
 
@@ -446,16 +445,15 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     :returns: A unix-style return code
     """
     marathon_config = marathon_tools.load_marathon_config()
-
-    complete_job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
+    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     try:
-        app_id = marathon_tools.create_complete_config(service, instance, marathon_config)['id']
+        app_id = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir=soa_dir)['id']
     except NoDockerImageError:
         job_name = compose_job_id(service, instance)
         print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_name
         return 1
 
-    normal_instance_count = complete_job_config.get_instances()
+    normal_instance_count = job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance)
 
@@ -471,7 +469,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         # Setting up transparent cache for http API calls
         requests_cache.install_cache('paasta_serviceinit', backend='memory')
 
-        print status_desired_state(service, instance, client, complete_job_config)
+        print status_desired_state(service, instance, client, job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         tasks, out = status_marathon_job_verbose(service, instance, client)
         if verbose:
@@ -484,6 +482,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
                 service=service,
                 instance=instance,
                 cluster=cluster,
+                job_config=job_config,
                 tasks=tasks,
                 expected_count=normal_smartstack_count,
                 soa_dir=soa_dir,

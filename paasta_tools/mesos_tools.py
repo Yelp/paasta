@@ -147,7 +147,7 @@ def get_zookeeper_config(state):
 def get_number_of_mesos_masters(zk_config):
     """Returns an array, containing mesos masters
     :param zk_config: dict containing information about zookeeper config.
-    Masters register themself in zookeeper by creating info_ entries.
+    Masters register themselves in zookeeper by creating ``info_`` entries.
     We count these entries to get the number of masters.
     """
     zk = KazooClient(hosts=zk_config['hosts'], read_only=True)
@@ -158,20 +158,24 @@ def get_number_of_mesos_masters(zk_config):
     return len(result)
 
 
-def get_mesos_slaves_grouped_by_attribute(attribute):
+def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None):
     """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
 
     :param attribute: an attribute to filter
+    :param blacklist: a list of [attribute, value] lists to exclude from the output list
     :returns: a dictionary of the form {'<attribute_value>': [<list of hosts with attribute=attribute_value>]}
               (response can contain multiple 'attribute_value)
     """
+    if blacklist is None:
+        blacklist = []
     attr_map = {}
     mesos_state = fetch_mesos_state_from_leader()
     slaves = mesos_state['slaves']
-    if slaves == []:
+    filtered_slaves = filter_mesos_slaves_by_blacklist(slaves=slaves, blacklist=blacklist)
+    if filtered_slaves == []:
         raise NoSlavesAvailable("No mesos slaves were available to query. Try again later")
     else:
-        for slave in slaves:
+        for slave in filtered_slaves:
             if attribute in slave['attributes']:
                 attr_val = slave['attributes'][attribute]
                 attr_map.setdefault(attr_val, []).append(slave['hostname'])
@@ -182,9 +186,9 @@ def filter_mesos_slaves_by_blacklist(slaves, blacklist):
     """Takes an input list of slaves and filters them based on the given blacklist.
     The blacklist is in the form of:
 
-        [("location_type", "location)]
+        [["location_type", "location]]
 
-    Where the tuples inside is something like ("region", "uswest1-prod")
+    Where the list inside is something like ["region", "uswest1-prod"]
 
     :returns: The list of mesos slaves after the filter
     """
@@ -198,7 +202,7 @@ def filter_mesos_slaves_by_blacklist(slaves, blacklist):
 def slave_passes_blacklist(slave, blacklist):
     """
     :param slave: A single mesos slave with attributes
-    :param blacklist: A list of tuples like [("location_type", "location)]
+    :param blacklist: A list of lists like [["location_type", "location"], ["foo", "bar"]]
     :returns: boolean, True if the slave gets passed the blacklist
     """
     attributes = slave['attributes']

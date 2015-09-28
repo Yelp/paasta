@@ -1,3 +1,39 @@
+paasta-tools (0.12.84-yelp1) lucid; urgency=low
+
+  * 0.12.84 tagged with 'make release'
+    Commit: change complete_job_config to job_config per review feedback
+
+ -- Kyle Anderson <kwa@yelp.com>  Thu, 24 Sep 2015 16:23:20 -0700
+
+paasta-tools (0.12.82-yelp1) lucid; urgency=low
+
+  * 0.12.82 tagged with 'make release'
+    Commit: Merge branch troscoe_PAASTA-973
+    https://reviewboard.yelpcorp.com/r/115197/
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Wed, 23 Sep 2015 17:24:13 -0700
+
+paasta-tools (0.12.81-yelp1) lucid; urgency=low
+
+  * 0.12.81 tagged with 'make release'
+    Commit: Merge branch u/nhandler/local-run-itest
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 23 Sep 2015 11:11:21 -0700
+
+paasta-tools (0.12.80-yelp1) lucid; urgency=low
+
+  * 0.12.80 tagged with 'make release'
+    Commit: Merge branch PAASTA-1213
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 23 Sep 2015 10:27:03 -0700
+
+paasta-tools (0.12.79-yelp1) lucid; urgency=low
+
+  * 0.12.79 tagged with 'make release'
+    Commit: Merge branch PAASTA-1255b
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 21 Sep 2015 15:23:33 -0700
+
 paasta-tools (0.12.78-yelp1) lucid; urgency=low
 
   * 0.12.78 tagged with 'make release'

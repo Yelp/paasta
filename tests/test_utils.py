@@ -753,6 +753,10 @@ class TestInstanceConfig:
         fake_conf = utils.InstanceConfig({}, {'desired_state': 'stop'})
         assert fake_conf.get_desired_state() == 'stop'
 
+    def test_get_desired_state_human(self):
+        fake_conf = utils.InstanceConfig({}, {'desired_state': 'stop'})
+        assert 'Stopped' in fake_conf.get_desired_state_human()
+
     def test_monitoring_blacklist_default(self):
         fake_conf = utils.InstanceConfig({}, {})
         assert fake_conf.get_monitoring_blacklist() == []
@@ -760,3 +764,27 @@ class TestInstanceConfig:
     def test_deploy_blacklist_default(self):
         fake_conf = utils.InstanceConfig({}, {})
         assert fake_conf.get_deploy_blacklist() == []
+
+
+def test_is_under_replicated_ok():
+    num_available = 1
+    expected_count = 1
+    crit_threshold = 50
+    actual = utils.is_under_replicated(num_available, expected_count, crit_threshold)
+    assert actual == (False, float(100))
+
+
+def test_is_under_replicated_zero():
+    num_available = 1
+    expected_count = 0
+    crit_threshold = 50
+    actual = utils.is_under_replicated(num_available, expected_count, crit_threshold)
+    assert actual == (False, float(100))
+
+
+def test_is_under_replicated_critical():
+    num_available = 0
+    expected_count = 1
+    crit_threshold = 50
+    actual = utils.is_under_replicated(num_available, expected_count, crit_threshold)
+    assert actual == (True, float(0))

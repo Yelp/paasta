@@ -1,6 +1,6 @@
 """
 Tools for interacting with the data model represented by
-service_configuration_lib and /nail/etc/services/*/service.yaml.
+service_configuration_lib and ``/nail/etc/services/*/service.yaml``.
 """
 
 import os.path
@@ -91,21 +91,21 @@ def collate_service_yamls(all_service_yamls):
     service.yaml files, return a dict-of-dicts. The outer dict has habitats for
     keys and dictionaries for values. The inner dict has hostnames for keys and
     the number of time this hostname has been seen (i.e. the number of services
-    running on this host) for values. Example:
+    running on this host) for values. Example::
 
-    {
-        'sfo1': {
-            'app1.365.yelpcorp.com': 2,
-            'app2.365.yelpcorp.com': 2,
-        },
-        'stageb': {
-            'stagebmon1.sjc.yelpcorp.com': 7,
-            'stagebmon2.sjc.yelpcorp.com': 3,
-            'stagebservices1.sjc.yelpcorp.com': 24,
-            'stagebservices2.sjc.yelpcorp.com': 21,
-            'stagebservices3.sjc.yelpcorp.com': 7,
-        },
-    }
+        {
+            'sfo1': {
+                'app1.365.yelpcorp.com': 2,
+                'app2.365.yelpcorp.com': 2,
+            },
+            'stageb': {
+                'stagebmon1.sjc.yelpcorp.com': 7,
+                'stagebmon2.sjc.yelpcorp.com': 3,
+                'stagebservices1.sjc.yelpcorp.com': 24,
+                'stagebservices2.sjc.yelpcorp.com': 21,
+                'stagebservices3.sjc.yelpcorp.com': 7,
+            },
+        }
     """
     all_hosts_by_habitat = {}
     for service_yaml in all_service_yamls:
