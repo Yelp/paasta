@@ -1,3 +1,10 @@
+paasta-tools (0.12.87-yelp1) lucid; urgency=low
+
+  * 0.12.87 tagged with 'make release'
+    Commit: Merge branch fix_marathon_replication
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 29 Sep 2015 13:13:17 -0700
+
 paasta-tools (0.12.86-yelp1) lucid; urgency=low
 
   * 0.12.86 tagged with 'make release'
