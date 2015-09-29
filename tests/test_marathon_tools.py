@@ -13,7 +13,7 @@ from utils import SystemPaastaConfig
 
 class TestMarathonTools:
 
-    fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
+    fake_marathon_app_config = marathon_tools.MarathonServiceConfig(
         'servicename',
         'instancename',
         {
@@ -114,14 +114,14 @@ class TestMarathonTools:
         fake_instance = 'solo'
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
-        config_copy = self.fake_marathon_job_config.config_dict.copy()
+        config_copy = self.fake_marathon_app_config.config_dict.copy()
 
         expected = marathon_tools.MarathonServiceConfig(
             fake_name,
             fake_instance,
             dict(
                 self.fake_srv_config.items() +
-                self.fake_marathon_job_config.config_dict.items()
+                self.fake_marathon_app_config.config_dict.items()
             ),
             {},
         )
@@ -164,7 +164,7 @@ class TestMarathonTools:
         fake_cluster = 'amnesia'
         fake_dir = '/nail/home/sanfran'
         fake_docker = 'no_docker:9.9'
-        config_copy = self.fake_marathon_job_config.config_dict.copy()
+        config_copy = self.fake_marathon_app_config.config_dict.copy()
 
         fake_branch_dict = {'desired_state': 'stop', 'force_bounce': '12345', 'docker_image': fake_docker},
         deployments_json_mock = mock.Mock(
@@ -198,7 +198,7 @@ class TestMarathonTools:
                 fake_instance,
                 dict(
                     self.fake_srv_config.items() +
-                    self.fake_marathon_job_config.config_dict.items()
+                    self.fake_marathon_app_config.config_dict.items()
                 ),
                 fake_branch_dict,
             )
@@ -469,8 +469,8 @@ class TestMarathonTools:
         assert actual == instance
         read_info_patch.assert_called_once_with(name, 'marathon-%s' % cluster, soa_dir)
 
-    @mock.patch('marathon_tools.fetch_local_slave_state', autospec=True)
-    def test_marathon_services_running_here(self, mock_fetch_local_slave_state):
+    @mock.patch('marathon_tools.get_local_slave_state', autospec=True)
+    def test_marathon_services_running_here(self, mock_get_local_slave_state):
         id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr'
         id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94'
         id_3 = 'dota.axe.cleave.482u9jyoi4wed'
@@ -481,7 +481,7 @@ class TestMarathonTools:
         ports_3 = '[333-333]'
         ports_4 = '[444-444]'
         ports_5 = '[555-555]'
-        mock_fetch_local_slave_state.return_value = {
+        mock_get_local_slave_state.return_value = {
             'frameworks': [
                 {
                     'executors': [
@@ -517,7 +517,7 @@ class TestMarathonTools:
                     ('dota', 'axe', 333),
                     ('mesos', 'deployment', 444)]
         actual = marathon_tools.marathon_services_running_here()
-        mock_fetch_local_slave_state.assert_called_once_with()
+        mock_get_local_slave_state.assert_called_once_with()
         assert expected == actual
 
     def test_get_marathon_services_running_here_for_nerve(self):
@@ -1041,7 +1041,7 @@ class TestMarathonTools:
         fake_service_config_1 = marathon_tools.MarathonServiceConfig(
             fake_name,
             fake_instance,
-            self.fake_marathon_job_config.config_dict,
+            self.fake_marathon_app_config.config_dict,
             {
                 'desired_state': 'start',
                 'force_bounce': '88888',
@@ -1051,7 +1051,7 @@ class TestMarathonTools:
         fake_service_config_2 = marathon_tools.MarathonServiceConfig(
             fake_name,
             fake_instance,
-            self.fake_marathon_job_config.config_dict,
+            self.fake_marathon_app_config.config_dict,
             {
                 'desired_state': 'start',
                 'force_bounce': '99999',
@@ -1061,7 +1061,7 @@ class TestMarathonTools:
         fake_service_config_3 = marathon_tools.MarathonServiceConfig(
             fake_name,
             fake_instance,
-            self.fake_marathon_job_config.config_dict,
+            self.fake_marathon_app_config.config_dict,
             {
                 'desired_state': 'stop',
                 'force_bounce': '99999',

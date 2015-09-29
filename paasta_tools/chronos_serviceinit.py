@@ -8,7 +8,9 @@ import isodate
 import requests_cache
 
 import chronos_tools
+from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 
@@ -59,7 +61,15 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
     start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
 
 
-def _get_disabled_status(job):
+def _format_job_tag(job):
+    job_tag = PaastaColors.red("UNKNOWN")
+    job_id = job.get("name", None)
+    if job_id:
+        (_, _, job_tag) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
+    return job_tag
+
+
+def _format_disabled_status(job):
     status = PaastaColors.red("UNKNOWN")
     if job.get("disabled", False):
         status = PaastaColors.red("Disabled")
@@ -80,7 +90,7 @@ def _prettify_datetime(dt):
     return pretty_dt
 
 
-def _get_last_result(job):
+def _format_last_result(job):
     last_result = PaastaColors.red("UNKNOWN")
     last_result_when = PaastaColors.red("UNKNOWN")
     fail_result = PaastaColors.red("Fail")
@@ -111,7 +121,19 @@ def _get_last_result(job):
     return (last_result, pretty_last_result_when)
 
 
-def format_chronos_job_status(job, desired_state):
+def _format_mesos_status(job, running_tasks):
+    mesos_status = PaastaColors.red("UNKNOWN")
+    num_tasks = len(running_tasks)
+    if num_tasks == 0:
+        mesos_status = PaastaColors.grey("Not running")
+    elif num_tasks == 1:
+        mesos_status = PaastaColors.yellow("Running")
+    else:
+        mesos_status = PaastaColors.red("Critical - %d tasks running (expected 1)" % num_tasks)
+    return mesos_status
+
+
+def format_chronos_job_status(job, desired_state, running_tasks):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
 
@@ -119,16 +141,24 @@ def format_chronos_job_status(job, desired_state):
     :param desired_state: a pretty-formatted string representing the
     job's started/stopped state as set with paasta emergency-[stop|start], e.g.
     the result of get_desired_state_human()
+    :param running_tasks: a list of Mesos tasks associated with `job`, e.g. the
+    result of mesos_tools.get_running_tasks_from_active_frameworks().
     """
-    disabled_state = _get_disabled_status(job)
-    (last_result, last_result_when) = _get_last_result(job)
+    job_tag = _format_job_tag(job)
+    disabled_state = _format_disabled_status(job)
+    (last_result, last_result_when) = _format_last_result(job)
+    mesos_status = _format_mesos_status(job, running_tasks)
     return (
-        "Status: %(disabled_state)s, %(desired_state)s\n"
-        "Last: %(last_result)s (%(last_result_when)s)" % {
+        "Tag:        %(job_tag)s\n"
+        "  Status:   %(disabled_state)s, %(desired_state)s\n"
+        "  Last:     %(last_result)s (%(last_result_when)s)\n"
+        "  Mesos:    %(mesos_status)s" % {
+            "job_tag": job_tag,
             "disabled_state": disabled_state,
             "desired_state": desired_state,
             "last_result": last_result,
             "last_result_when": last_result_when,
+            "mesos_status": mesos_status,
         }
     )
 
@@ -142,10 +172,13 @@ def status_chronos_jobs(jobs, job_config):
         provided by chronos_tools.load_chronos_job_config().
     """
     if jobs == []:
-        return "%s: chronos job is not setup yet" % PaastaColors.yellow("Warning")
+        return "%s: chronos job is not set up yet" % PaastaColors.yellow("Warning")
     else:
+        output = []
         desired_state = job_config.get_desired_state_human()
-        output = [format_chronos_job_status(job, desired_state) for job in jobs]
+        for job in jobs:
+            running_tasks = get_running_tasks_from_active_frameworks(job["name"])
+            output.append(format_chronos_job_status(job, desired_state, running_tasks))
         return "\n".join(output)
 
 
@@ -178,7 +211,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
         job_config = chronos_tools.load_chronos_job_config(service, instance, cluster, soa_dir=soa_dir)
-        print "Job id: %s" % job_id
         print status_chronos_jobs(matching_jobs, job_config)
     else:
         # The command parser shouldn't have let us get this far...

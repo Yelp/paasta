@@ -23,19 +23,19 @@ import pysensu_yelp
 import service_configuration_lib
 import sys
 
-from paasta_tools.monitoring import replication_utils
-from paasta_tools.monitoring.context import get_context
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import smartstack_tools
+from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.monitoring import replication_utils
+from paasta_tools.monitoring.context import get_context
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
-from paasta_tools.marathon_serviceinit import get_running_tasks_from_active_frameworks
 
 
 log = logging.getLogger(__name__)
@@ -157,7 +157,8 @@ def add_context_to_event(service, instance, output):
 
 
 def check_mesos_replication_for_service(service, instance, cluster, soa_dir, crit_threshold, expected_count):
-    num_available = len(get_running_tasks_from_active_frameworks(service, instance))
+    job_id = compose_job_id(service, instance)
+    num_available = len(get_running_tasks_from_active_frameworks(job_id))
     # Non-Smartstack services aren't aware of replication within specific
     # locations (since they don't define an advertise/discover level)
     send_event_if_under_replication(
@@ -209,15 +210,15 @@ def check_service_replication(service, instance, cluster, crit_threshold, soa_di
     :param crit_threshold: an int from 0-100 representing the percentage threshold for triggering an alert
     :param soa_dir: The SOA configuration directory to read from
     """
-    job_name = compose_job_id(service, instance)
+    job_id = compose_job_id(service, instance)
     try:
         expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
     except NoDeploymentsAvailable:
-        log.info('deployments.json missing for %s. Skipping replication monitoring.' % job_name)
+        log.info('deployments.json missing for %s. Skipping replication monitoring.' % job_id)
         return
     if expected_count is None:
         return
-    log.info("Expecting %d total tasks for %s" % (expected_count, job_name))
+    log.info("Expecting %d total tasks for %s" % (expected_count, job_id))
     proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
     if proxy_port is not None:
         check_smartstack_replication_for_instance(

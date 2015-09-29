@@ -545,7 +545,7 @@ def test_check_mesos_replication_for_service_good():
         mock_get_running_tasks_from_active_frameworks.return_value = running_tasks
         check_marathon_services_replication.check_mesos_replication_for_service(
             service, instance, cluster, None, crit, expected_tasks)
-        mock_get_running_tasks_from_active_frameworks.assert_called_once_with(service, instance)
+        mock_get_running_tasks_from_active_frameworks.assert_called_once_with(compose_job_id(service, instance))
         mock_send_event_if_under_replication.assert_called_once_with(
             service=service,
             instance=instance,

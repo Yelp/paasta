@@ -122,7 +122,7 @@ def test_duplicate_frameworks():
     assert not ok
 
 
-@patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
+@patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader')
 def test_missing_master_exception(mock_fetch_from_leader):
     mock_fetch_from_leader.side_effect = mesos_tools.MasterNotAvailableException('Missing')
     with raises(mesos_tools.MasterNotAvailableException) as exception_info:
@@ -213,17 +213,17 @@ def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
 @patch('socket.getfqdn', autospec=True)
 @patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
 @patch('paasta_tools.paasta_metastatus.get_num_masters')
-@patch('paasta_tools.paasta_metastatus.fetch_mesos_stats')
-@patch('paasta_tools.paasta_metastatus.fetch_mesos_state_from_leader')
+@patch('paasta_tools.paasta_metastatus.get_mesos_stats')
+@patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader')
 def test_get_mesos_status(
-    mock_fetch_mesos_state_from_leader,
-    mock_fetch_mesos_stats,
+    mock_get_mesos_state_from_leader,
+    mock_get_mesos_stats,
     mock_get_num_masters,
     mock_get_configured_quorum_size,
     mock_getfqdn,
 ):
     mock_getfqdn.return_value = 'fakename'
-    mock_fetch_mesos_stats.return_value = {
+    mock_get_mesos_stats.return_value = {
         'master/cpus_total': 10,
         'master/cpus_used': 8,
         'master/mem_total': 10240,
@@ -234,7 +234,7 @@ def test_get_mesos_status(
         'master/slaves_active': 4,
         'master/slaves_inactive': 0,
     }
-    mock_fetch_mesos_state_from_leader.return_value = {
+    mock_get_mesos_state_from_leader.return_value = {
         'flags': {
             'zk': 'zk://1.1.1.1:2222/fake_cluster',
             'quorum': 2,
@@ -265,8 +265,8 @@ def test_get_mesos_status(
 
     outputs, oks = paasta_metastatus.get_mesos_status()
 
-    assert mock_fetch_mesos_stats.called_once()
-    assert mock_fetch_mesos_state_from_leader.called_once()
+    assert mock_get_mesos_stats.called_once()
+    assert mock_get_mesos_state_from_leader.called_once()
     assert expected_masters_quorum_output in outputs
     assert expected_cpus_output in outputs
     assert expected_mem_output in outputs

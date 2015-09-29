@@ -9,8 +9,8 @@ from paasta_tools.chronos_tools import ChronosNotConfigured
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.marathon_tools import MarathonNotConfigured
-from paasta_tools.mesos_tools import fetch_mesos_stats
-from paasta_tools.mesos_tools import fetch_mesos_state_from_leader
+from paasta_tools.mesos_tools import get_mesos_stats
+from paasta_tools.mesos_tools import get_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
@@ -142,11 +142,11 @@ def get_mesos_status():
        :return: tuple of a string containing the status and a bool representing if it is ok or not
     """
 
-    state = fetch_mesos_state_from_leader()
+    state = get_mesos_state_from_leader()
     cluster_outputs, cluster_ok = run_healthchecks_with_param(state, [assert_quorum_size,
                                                                       assert_no_duplicate_frameworks])
 
-    metrics = fetch_mesos_stats()
+    metrics = get_mesos_stats()
     metrics_outputs, metrics_ok = run_healthchecks_with_param(metrics, [
         assert_cpu_health,
         assert_memory_health,
