@@ -42,11 +42,62 @@ def test_send_event_users_monitoring_tools_send_event_properly():
         send_event_patch.assert_called_once_with(
             fake_service_name,
             expected_check_name,
-            fake_monitoring_overrides,
+            mock.ANY,
             fake_status,
             fake_output,
             fake_soa_dir
         )
+        # The overrides dictionary is mutated in the function under test, so
+        # we expect the send_event_patch to be called with something that is a
+        # superset of what we originally put in (fake_monitoring_overrides)
+        actual_overrides_used = send_event_patch.call_args[0][2]
+        assert set({'alert_after': '2m'}.items()).issubset(set(actual_overrides_used.items()))
+        assert 'runbook' in actual_overrides_used
+
+
+def test_send_event_users_monitoring_tools_send_event_respects_alert_after():
+    fake_service_name = 'superfast'
+    fake_namespace = 'jellyfish'
+    fake_status = '999999'
+    fake_output = 'YOU DID IT'
+    fake_cluster = 'fake_cluster'
+    fake_monitoring_overrides = {'alert_after': '666m'}
+    fake_soa_dir = '/hi/hello/hey'
+    fake_cluster = 'fake_cluster'
+    expected_check_name = 'check_marathon_services_replication.%s' % compose_job_id(fake_service_name, fake_namespace)
+    with contextlib.nested(
+        mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
+        mock.patch('check_marathon_services_replication.load_system_paasta_config', autospec=True),
+        mock.patch("paasta_tools.check_marathon_services_replication._log", autospec=True),
+        mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),
+    ) as (
+        send_event_patch,
+        load_system_paasta_config_patch,
+        log_patch,
+        load_marathon_service_config_patch,
+    ):
+        load_marathon_service_config_patch.return_value.get_monitoring.return_value = fake_monitoring_overrides
+        check_marathon_services_replication.send_event(fake_service_name,
+                                                       fake_namespace,
+                                                       fake_cluster,
+                                                       fake_soa_dir,
+                                                       fake_status,
+                                                       fake_output)
+        send_event_patch.call_count == 1
+        send_event_patch.assert_called_once_with(
+            fake_service_name,
+            expected_check_name,
+            mock.ANY,
+            fake_status,
+            fake_output,
+            fake_soa_dir
+        )
+        # The overrides dictionary is mutated in the function under test, so
+        # we expect the send_event_patch to be called with something that is a
+        # superset of what we originally put in (fake_monitoring_overrides)
+        actual_overrides_used = send_event_patch.call_args[0][2]
+        assert set({'alert_after': '666m'}.items()).issubset(set(actual_overrides_used.items()))
+        assert not set({'alert_after': '2m'}.items()).issubset(set(actual_overrides_used.items()))
 
 
 def test_add_context_to_event():
