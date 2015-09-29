@@ -28,6 +28,7 @@ from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import smartstack_tools
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.monitoring import replication_utils
 from paasta_tools.monitoring.context import get_context
 from paasta_tools.utils import _log
@@ -113,7 +114,7 @@ def check_smartstack_replication_for_instance(
     full_name = compose_job_id(service, instance)
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
     monitoring_blacklist = job_config.get_monitoring_blacklist()
-    log.info('Checking instance %s', full_name)
+    log.info('Checking instance %s in smartstack', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
         service=service, namespace=namespace, soa_dir=soa_dir, blacklist=monitoring_blacklist)
     log.debug('Got smartstack replication info for %s: %s' % (full_name, smartstack_replication_info))
@@ -158,8 +159,12 @@ def add_context_to_event(service, instance, output):
 
 
 def check_mesos_replication_for_service(service, instance, cluster, soa_dir, crit_threshold, expected_count):
-    job_id = compose_job_id(service, instance)
-    num_available = len(get_running_tasks_from_active_frameworks(job_id))
+    # To inspect marathon tasks, we need to use the marathon version of the
+    # job_id, which has characters escaped and stuff.
+    job_id = format_job_id(service, instance)
+    log.info("Checking %s in marathon as it is not in smartstack" % job_id)
+    running_tasks = get_running_tasks_from_active_frameworks(job_id)
+    num_available = len(running_tasks)
     # Non-Smartstack services aren't aware of replication within specific
     # locations (since they don't define an advertise/discover level)
     send_event_if_under_replication(
