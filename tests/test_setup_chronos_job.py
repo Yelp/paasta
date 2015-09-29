@@ -514,3 +514,43 @@ class TestSetupChronosJob:
             )
             assert actual == (0, "Job '%s' state is already set to '%s'" % (fake_complete_config['name'], fake_state))
             assert fake_client.update.call_count == 0
+
+    def test_send_event(self):
+        fake_service_name = 'fake_service'
+        fake_instance_name = 'fake_instance'
+        fake_status = '42'
+        fake_output = 'something went wrong'
+        fake_soa_dir = ''
+        expected_check_name = 'setup_chronos_job.%s' % compose_job_id(fake_service_name, fake_instance_name)
+        with contextlib.nested(
+            mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
+            mock.patch("paasta_tools.chronos_tools.load_chronos_job_config", autospec=True),
+            mock.patch("setup_chronos_job.load_system_paasta_config", autospec=True),
+        ) as (
+            mock_send_event,
+            mock_load_chronos_job_config,
+            mock_load_system_paasta_config,
+        ):
+            mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
+            mock_load_chronos_job_config.return_value.get_monitoring.return_value = {}
+
+            setup_chronos_job.send_event(
+                fake_service_name,
+                fake_instance_name,
+                fake_soa_dir,
+                fake_status,
+                fake_output
+            )
+            mock_send_event.assert_called_once_with(
+                fake_service_name,
+                expected_check_name,
+                {'alert_after': '10m', 'check_every': '10s'},
+                fake_status,
+                fake_output,
+                fake_soa_dir
+            )
+            mock_load_chronos_job_config.assert_called_once_with(
+                fake_service_name,
+                fake_instance_name,
+                mock_load_system_paasta_config.return_value.get_cluster.return_value,
+            )

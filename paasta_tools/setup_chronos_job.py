@@ -73,6 +73,14 @@ def send_event(name, instance, soa_dir, status, output):
     """
     cluster = load_system_paasta_config().get_cluster()
     monitoring_overrides = chronos_tools.load_chronos_job_config(name, instance, cluster).get_monitoring()
+    # In order to let sensu know how often to expect this check to fire,
+    # we need to set the ``check_every`` to the frequency of our cron job, which
+    # is 10s.
+    monitoring_overrides['check_every'] = '10s'
+    # Most deploy_chrono_jobs failures are transient and represent issues
+    # that will probably be fixed eventually, so we set an alert_after
+    # to suppress extra noise
+    monitoring_overrides['alert_after'] = '10m'
     check_name = 'setup_chronos_job.%s' % compose_job_id(name, instance, spacer=chronos_tools.INTERNAL_SPACER)
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
