@@ -17,7 +17,6 @@ Command line options:
 """
 import argparse
 import logging
-import sys
 import traceback
 
 import service_configuration_lib
@@ -32,8 +31,8 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import remove_tag_from_job_id
 
 
-log = logging.getLogger('__main__')
-log.addHandler(logging.StreamHandler(sys.stdout))
+log = logging.getLogger(__name__)
+logging.basicConfig()
 
 
 def parse_args():

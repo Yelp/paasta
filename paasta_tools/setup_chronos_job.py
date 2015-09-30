@@ -44,8 +44,8 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import SPACER
 
 
-log = logging.getLogger('__main__')
-log.addHandler(logging.StreamHandler(sys.stdout))
+log = logging.getLogger(__name__)
+logging.basicConfig()
 
 
 def parse_args():

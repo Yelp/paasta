@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import datetime
 import logging
-import sys
 
 import humanize
 import isodate
@@ -26,8 +25,8 @@ from paasta_tools.utils import SPACER
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
 
-log = logging.getLogger('__main__')
-log.addHandler(logging.StreamHandler(sys.stdout))
+log = logging.getLogger(__name__)
+logging.basicConfig()
 
 RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
 NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'

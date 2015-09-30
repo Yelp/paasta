@@ -37,7 +37,7 @@ from paasta_tools.utils import timeout
 
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
-log = logging.getLogger('__main__')
+log = logging.getLogger(__name__)
 
 logging.getLogger('marathon').setLevel(logging.WARNING)
 

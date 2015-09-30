@@ -29,16 +29,17 @@ import json
 import logging
 import os
 import re
+
 import service_configuration_lib
+
 from paasta_tools import remote_git
 from paasta_tools.utils import atomic_file_write
 from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_git_url
-import sys
 
 
 log = logging.getLogger(__name__)
-log.addHandler(logging.StreamHandler(sys.stdout))
+logging.basicConfig()
 TARGET_FILE = 'deployments.json'
 
 

@@ -18,8 +18,8 @@ from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
 
-log = logging.getLogger('__main__')
-log.addHandler(logging.StreamHandler(sys.stdout))
+log = logging.getLogger(__name__)
+logging.basicConfig()
 
 
 def parse_args():
