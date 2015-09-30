@@ -213,13 +213,14 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     client = chronos_tools.get_chronos_client(chronos_config)
     complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
     job_id = complete_job_config['name']
-    matching_jobs = get_matching_jobs(service, instance, client)
 
     if command == "start":
         start_chronos_job(service, instance, job_id, client, cluster, complete_job_config, emergency=True)
     elif command == "stop":
+        matching_jobs = get_matching_jobs(client, job_id, all_tags=True)
         stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency=True)
     elif command == "restart":
+        matching_jobs = get_matching_jobs(client, job_id, all_tags=True)
         restart_chronos_job(
             service,
             instance,
@@ -233,6 +234,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     elif command == "status":
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
+        matching_jobs = get_matching_jobs(client, job_id, all_tags=True)
         job_config = chronos_tools.load_chronos_job_config(service, instance, cluster, soa_dir=soa_dir)
         print status_chronos_jobs(matching_jobs, job_config)
     else:
