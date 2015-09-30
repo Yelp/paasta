@@ -120,7 +120,7 @@ class InstanceConfig(dict):
     def get_monitoring_blacklist(self):
         """The monitoring_blacklist is a list of tuples, where the tuples indicate
         which locations the user doesn't care to be monitored"""
-        return self.config_dict.get('monitoring_blacklist', [])
+        return self.config_dict.get('monitoring_blacklist', self.get_deploy_blacklist())
 
     def get_docker_image(self):
         """Get the docker image name (with tag) for a given service branch from
@@ -970,3 +970,15 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
         return (True, ratio)
     else:
         return (False, ratio)
+
+
+def blacklist_to_constraints(blacklist):
+    """Converts a blacklist to the appropriate constraints
+    :param blacklist: List of blah
+    :returns: List of constraints
+    """
+    constraints = []
+    for i in blacklist:
+        constraints.append([i[0], "UNLIKE", i[1]])
+
+    return constraints
