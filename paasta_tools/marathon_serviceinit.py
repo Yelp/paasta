@@ -340,7 +340,7 @@ def get_short_hostname_from_task(task):
 def get_first_status_timestamp(task):
     """Gets the first status timestamp from a task id and returns a human
     readable string with the local time and a humanized duration:
-    ``2015-01-30 08:45:19.108820 (an hour ago)``
+    ``2015-01-30T08:45 (an hour ago)``
     """
     try:
         start_time_string = task['statuses'][0]['timestamp']
