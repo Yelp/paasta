@@ -16,12 +16,12 @@ from paasta_tools.utils import decompose_job_id
 def run_marathon_job(context, job_id):
     (service, instance, tag) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
-    trivial_app_config = {
+    app_config = {
         'id': app_id,
         'cmd': '/bin/sleep 1m',
     }
     with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
-        paasta_tools.bounce_lib.create_marathon_app(app_id, trivial_app_config, context.marathon_client)
+        paasta_tools.bounce_lib.create_marathon_app(app_id, app_config, context.marathon_client)
 
 
 @when(u'we wait for it to be deployed')
