@@ -61,7 +61,7 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
     start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
 
 
-def get_matching_jobs(service, instance, client):
+def get_matching_jobs(service, instance, client, all_tags):
     # We add SPACER to the end as an anchor to prevent catching
     # "my_service my_job_extra" when looking for "my_service my_job".
     matching_jobs_pattern = r"^%s%s" % (chronos_tools.compose_job_id(service, instance), chronos_tools.SPACER)
