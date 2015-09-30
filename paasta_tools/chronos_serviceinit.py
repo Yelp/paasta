@@ -61,7 +61,7 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
     start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
 
 
-def get_matching_jobs(job_id, client, all_tags):
+def get_matching_jobs(client, job_id, all_tags):
     (service, instance, tag) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
     matching_jobs_pattern = r"^UNINITIALIZED PATTERN$"
     if all_tags:

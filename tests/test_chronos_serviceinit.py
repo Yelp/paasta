@@ -79,7 +79,7 @@ def test_get_matching_jobs_all_tags_true():
     client = 'unused'
     expected_pattern = r'^my_service my_instance '  # Trailing space is important!
     with mock.patch('chronos_serviceinit.chronos_tools.lookup_chronos_jobs') as mock_lookup_chronos_jobs:
-        chronos_serviceinit.get_matching_jobs(job_id, client, all_tags=True)
+        chronos_serviceinit.get_matching_jobs(client, job_id, all_tags=True)
     mock_lookup_chronos_jobs.assert_called_once_with(expected_pattern, client, include_disabled=True)
 
 
@@ -88,7 +88,7 @@ def test_get_matching_jobs_all_tags_false():
     client = 'unused'
     expected_pattern = r'^my_service my_instance gityourmom configyourdad'
     with mock.patch('chronos_serviceinit.chronos_tools.lookup_chronos_jobs') as mock_lookup_chronos_jobs:
-        chronos_serviceinit.get_matching_jobs(job_id, client, all_tags=False)
+        chronos_serviceinit.get_matching_jobs(client, job_id, all_tags=False)
     mock_lookup_chronos_jobs.assert_called_once_with(expected_pattern, client, include_disabled=True)
 
 
