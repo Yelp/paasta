@@ -4,7 +4,6 @@ import contextlib
 import mock
 
 import chronos_serviceinit
-from chronos_tools import SPACER
 from paasta_tools.utils import PaastaColors
 
 
@@ -76,12 +75,20 @@ def test_stop_chronos_job():
 
 
 def test_get_matching_jobs_all_tags_true():
-    service = 'my_service'
-    instance = 'my_instance'
+    job_id = 'my_service my_instance gityourmom configyourdad'
     client = 'unused'
-    expected_pattern = r'^my_service%smy_instance%s' % (SPACER, SPACER)
+    expected_pattern = r'^my_service my_instance '  # Trailing space is important!
     with mock.patch('chronos_serviceinit.chronos_tools.lookup_chronos_jobs') as mock_lookup_chronos_jobs:
-        chronos_serviceinit.get_matching_jobs(service, instance, client, all_tags=True)
+        chronos_serviceinit.get_matching_jobs(job_id, client, all_tags=True)
+    mock_lookup_chronos_jobs.assert_called_once_with(expected_pattern, client, include_disabled=True)
+
+
+def test_get_matching_jobs_all_tags_false():
+    job_id = 'my_service my_instance gityourmom configyourdad'
+    client = 'unused'
+    expected_pattern = r'^my_service my_instance gityourmom configyourdad'
+    with mock.patch('chronos_serviceinit.chronos_tools.lookup_chronos_jobs') as mock_lookup_chronos_jobs:
+        chronos_serviceinit.get_matching_jobs(job_id, client, all_tags=False)
     mock_lookup_chronos_jobs.assert_called_once_with(expected_pattern, client, include_disabled=True)
 
 
