@@ -81,7 +81,7 @@ def test_get_matching_jobs_pattern():
     client = 'unused'
     expected = r'^my_service%smy_instance%s' % (SPACER, SPACER)
     actual = chronos_serviceinit.get_matching_jobs_pattern(service, instance, client)
-    assert expected == actual
+    assert actual == expected
 
 
 def test_format_chronos_job_name_exists():
