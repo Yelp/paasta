@@ -44,7 +44,7 @@ from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import SPACER
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 logging.basicConfig()
 
 

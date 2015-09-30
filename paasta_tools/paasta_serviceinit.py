@@ -18,7 +18,7 @@ from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 logging.basicConfig()
 
 

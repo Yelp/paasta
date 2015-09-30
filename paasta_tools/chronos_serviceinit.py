@@ -14,7 +14,7 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 logging.basicConfig()
 
 

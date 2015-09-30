@@ -38,7 +38,7 @@ from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_git_url
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 logging.basicConfig()
 TARGET_FILE = 'deployments.json'
 

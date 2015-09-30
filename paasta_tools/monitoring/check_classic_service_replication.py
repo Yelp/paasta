@@ -120,7 +120,7 @@ def extract_replication_info(service_config):
 
 
 class ClassicServiceReplicationCheck(SensuPluginCheck):
-    log = logging.getLogger(__name__)
+    log = logging.getLogger('__main__')
     log.addHandler(logging.StreamHandler(sys.stdout))
 
     def setup_logging(self):

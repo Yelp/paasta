@@ -31,7 +31,7 @@ INTERNAL_SPACER = '.'
 VALID_BOUNCE_METHODS = ['graceful', 'brutal']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 
 
 class ChronosNotConfigured(Exception):

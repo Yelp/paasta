@@ -53,7 +53,7 @@ from paasta_tools.utils import SPACER
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 logging.basicConfig()
 
 

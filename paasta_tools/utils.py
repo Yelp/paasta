@@ -45,7 +45,7 @@ ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
 no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 
 
 class InvalidInstanceConfig(Exception):

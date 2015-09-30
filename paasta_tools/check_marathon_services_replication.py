@@ -38,7 +38,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 logging.basicConfig()
 
 
