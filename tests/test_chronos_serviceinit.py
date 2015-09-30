@@ -75,13 +75,14 @@ def test_stop_chronos_job():
             mock_client.delete_tasks.assert_any_call(job['name'])
 
 
-def test_get_matching_jobs_pattern():
+def test_get_matching_jobs():
     service = 'my_service'
     instance = 'my_instance'
     client = 'unused'
-    expected = r'^my_service%smy_instance%s' % (SPACER, SPACER)
-    actual = chronos_serviceinit.get_matching_jobs_pattern(service, instance, client)
-    assert actual == expected
+    expected_pattern = r'^my_service%smy_instance%s' % (SPACER, SPACER)
+    with mock.patch('chronos_serviceinit.chronos_tools.lookup_chronos_jobs') as mock_lookup_chronos_jobs:
+        chronos_serviceinit.get_matching_jobs(service, instance, client)
+    mock_lookup_chronos_jobs.assert_called_once_with(expected_pattern, client, include_disabled=True)
 
 
 def test_format_chronos_job_name_exists():
