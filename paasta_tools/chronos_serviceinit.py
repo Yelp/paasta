@@ -62,6 +62,19 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
 
 
 def get_matching_jobs(client, job_id, all_tags):
+    """Use Chronos client `client` to get a list of configured Chronos jobs
+    related to `job_id`, the full name of the job as calculated by
+    create_complete_config().
+
+    If all_tags is False, fetch only the exact job specified by job_id.
+
+    If all_tags is True, fetch all jobs including those with different git and
+    config hashes (i.e. older versions of jobs associated with a given service
+    + instance).
+
+    Returns a list of dicts, each representing the configuration of a Chronos
+    job.
+    """
     (service, instance, tag) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
     matching_jobs_pattern = r"^UNINITIALIZED PATTERN$"
     if all_tags:
