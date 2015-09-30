@@ -77,7 +77,7 @@ def get_matching_jobs(client, job_id, all_tags):
     """
     matching_jobs_pattern = r"^UNINITIALIZED PATTERN$"
     if all_tags:
-        (service, instance, tag) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
+        (service, instance, _) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
         # We add SPACER to the end as an anchor to prevent catching
         # "my_service my_job_extra" when looking for "my_service my_job".
         matching_jobs_pattern = r"^%s%s" % (chronos_tools.compose_job_id(service, instance), chronos_tools.SPACER)
