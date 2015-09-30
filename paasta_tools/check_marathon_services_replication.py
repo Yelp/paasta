@@ -21,7 +21,6 @@ import argparse
 import logging
 import pysensu_yelp
 import service_configuration_lib
-import sys
 
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
@@ -39,8 +38,8 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
-log = logging.getLogger(__name__)
-log.addHandler(logging.StreamHandler(sys.stdout))
+log = logging.getLogger('__main__')
+logging.basicConfig()
 
 
 def send_event(service, namespace, cluster, soa_dir, status, output):
