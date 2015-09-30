@@ -972,13 +972,13 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
         return (False, ratio)
 
 
-def blacklist_to_constraints(blacklist):
+def deploy_blacklist_to_constraints(deploy_blacklist):
     """Converts a blacklist to the appropriate constraints
     :param blacklist: List of blah
     :returns: List of constraints
     """
     constraints = []
-    for i in blacklist:
+    for i in deploy_blacklist:
         constraints.append([i[0], "UNLIKE", i[1]])
 
     return constraints

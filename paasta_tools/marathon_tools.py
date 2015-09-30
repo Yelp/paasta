@@ -18,7 +18,7 @@ import service_configuration_lib
 
 from paasta_tools.mesos_tools import fetch_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.utils import blacklist_to_constraints
+from paasta_tools.utils import deploy_blacklist_to_constraints
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import get_code_sha_from_dockerurl
@@ -223,7 +223,7 @@ class MarathonServiceConfig(InstanceConfig):
         else:
             discover_level = service_namespace_config.get_discover()
             locations = get_mesos_slaves_grouped_by_attribute(discover_level)
-            deploy_blacklist = blacklist_to_constraints(self.get_deploy_blacklist())
+            deploy_blacklist = deploy_blacklist_to_constraints(self.get_deploy_blacklist())
             constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
             return constraints + deploy_blacklist
 

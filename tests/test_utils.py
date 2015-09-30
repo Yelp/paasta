@@ -800,8 +800,8 @@ def test_is_under_replicated_critical():
     assert actual == (True, float(0))
 
 
-def test_blacklist_to_constraints():
-    fake_blacklist = [["region", "useast1-prod"], ["habitat", "fake_habitat"]]
+def test_deploy_blacklist_to_constraints():
+    fake_deploy_blacklist = [["region", "useast1-prod"], ["habitat", "fake_habitat"]]
     expected_constraints = [["region", "UNLIKE", "useast1-prod"], ["habitat", "UNLIKE", "fake_habitat"]]
-    actual = utils.blacklist_to_constraints(fake_blacklist)
+    actual = utils.deploy_blacklist_to_constraints(fake_deploy_blacklist)
     assert actual == expected_constraints
