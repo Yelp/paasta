@@ -61,6 +61,13 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
     start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
 
 
+def get_matching_jobs_pattern(service, instance, client):
+    # We add SPACER to the end as an anchor to prevent catching
+    # "my_service my_job_extra" when looking for "my_service my_job".
+    matching_jobs_pattern = r"^%s%s" % (chronos_tools.compose_job_id(service, instance), chronos_tools.SPACER)
+    return matching_jobs_pattern
+
+
 def _format_job_tag(job):
     job_tag = PaastaColors.red("UNKNOWN")
     job_id = job.get("name", None)
@@ -187,10 +194,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     client = chronos_tools.get_chronos_client(chronos_config)
     complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
     job_id = complete_job_config['name']
-    # We add SPACER to the end as an anchor to prevent catching
-    # "my_service my_job_extra" when looking for "my_service my_job".
-    job_pattern = r"^%s%s" % (chronos_tools.compose_job_id(service, instance), chronos_tools.SPACER)
-    matching_jobs = chronos_tools.lookup_chronos_jobs(job_pattern, client, include_disabled=True)
+    matching_jobs_pattern = get_matching_jobs_pattern(service, instance, client)
+    matching_jobs = chronos_tools.lookup_chronos_jobs(matching_jobs_pattern, client, include_disabled=True)
 
     if command == "start":
         start_chronos_job(service, instance, job_id, client, cluster, complete_job_config, emergency=True)

@@ -3,8 +3,9 @@
 import contextlib
 import mock
 
-from paasta_tools.utils import PaastaColors
 import chronos_serviceinit
+from chronos_tools import SPACER
+from paasta_tools.utils import PaastaColors
 
 
 def test_start_chronos_job():
@@ -72,6 +73,15 @@ def test_stop_chronos_job():
             assert job['disabled'] is True
             mock_client.update.assert_any_call(job)
             mock_client.delete_tasks.assert_any_call(job['name'])
+
+
+def test_get_matching_jobs_pattern():
+    service = 'my_service'
+    instance = 'my_instance'
+    client = 'unused'
+    expected = r'^my_service%smy_instance%s' % (SPACER, SPACER)
+    actual = chronos_serviceinit.get_matching_jobs_pattern(service, instance, client)
+    assert expected == actual
 
 
 def test_format_chronos_job_name_exists():
