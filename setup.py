@@ -41,6 +41,7 @@ setup(
         'scribereader == 0.1.16',
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.9.2',
+        'tron == 0.6.1.1',
         # scribereader requires this _exact_ version
         'yelp_clog == 2.1.2',
     ],

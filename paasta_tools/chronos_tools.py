@@ -1,3 +1,4 @@
+import datetime
 import json
 import logging
 import os
@@ -7,6 +8,7 @@ from time import sleep
 
 import chronos
 import isodate
+from tron import command_context
 
 import monitoring_tools
 import service_configuration_lib
@@ -137,6 +139,13 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_job_name(self):
         return self.job_name
+
+    def get_cmd(self):
+        original_cmd = super(ChronosJobConfig, self).get_cmd()
+        if original_cmd:
+            return parse_time_variables(original_cmd)
+        else:
+            return original_cmd
 
     def get_owner(self):
         overrides = self.get_monitoring()
@@ -447,3 +456,23 @@ def wait_for_job(client, job_name):
         else:
             print "waiting for job %s to launch. retrying" % (job_name)
             sleep(0.5)
+
+
+def parse_time_variables(input, parse_time=datetime.datetime.now()):
+    """Parses an input string and uses the Tron-style dateparsing
+    to replace time variables. Currently supports only the date/time
+    variables listed in the tron documentation:
+    https://pythonhosted.org/tron/command_context.html#built-in-command-context-variables
+
+    :param input: input string to be parsed
+    :param parse_time: Reference Datetime object to parse the date and time strings, defaults to now.
+    :returns: A string with the date and time variables replaced
+    """
+    # We build up a tron context object that has the right
+    # methods to parse tron-style time syntax
+    job_context = command_context.JobRunContext(command_context.CommandContext())
+    # The tron context object needs the run_time attibute set so it knows
+    # how to interpret the date strings
+    job_context.job_run.run_time = parse_time
+    # The job_context object works like a normal dictionary for string replacement
+    return input % job_context
