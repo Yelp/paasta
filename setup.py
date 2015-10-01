@@ -35,14 +35,10 @@ setup(
         'python-dateutil >= 2.4.0',
         'requests >= 2.6.0',
         'requests-cache >= 0.4.10, <= 0.5.0',
-        # scibrereader pins exact versions of yelp_clog which makes everything
-        # sad, so we're going to just have an exact version of scribereader
-        # To upgrade this you must also upgrade the yelp_clog pin
-        'scribereader == 0.1.16',
+        'scribereader == 0.1.25',
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.9.2',
-        # scribereader requires this _exact_ version
-        'yelp_clog == 2.1.2',
+        'yelp_clog >= 2.2.0',
     ],
     scripts = [
         'paasta_tools/am_i_mesos_leader.py',
