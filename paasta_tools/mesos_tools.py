@@ -203,7 +203,7 @@ def get_cpu_usage(task):
 def pretty_format_running_mesos_task(task):
     """Returns a pretty formatted string of a running mesos task attributes"""
     format_tuple = (
-        get_task_uuid(task['id']),
+        get_task_uuid(task.id),
         get_short_hostname_from_task(task),
         get_mem_usage(task),
         get_cpu_usage(task),
@@ -215,7 +215,7 @@ def pretty_format_running_mesos_task(task):
 def pretty_format_non_running_mesos_task(task):
     """Returns a pretty formatted string of a running mesos task attributes"""
     format_tuple = (
-        get_task_uuid(task['id']),
+        get_task_uuid(task.id),
         get_short_hostname_from_task(task),
         get_first_status_timestamp(task),
         task['state'],
