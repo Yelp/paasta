@@ -11,6 +11,7 @@ from itest_utils import get_service_connection_string
 from paasta_tools import marathon_tools
 from paasta_tools import utils
 from paasta_tools import chronos_tools
+from paasta_tools.utils import decompose_job_id
 
 
 def _get_marathon_connection_string():
@@ -120,19 +121,35 @@ def working_paasta_cluster(context):
     }, 'volumes.json')
 
 
-@given(u'I have yelpsoa-configs for the service "{service_name}" with {disabled} {app} instance "{instance_name}"')
-def write_soa_dir_chronos_instance(context, service_name, disabled, app, instance_name):
+@given(u'I have yelpsoa-configs for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
+def write_soa_dir_chronos_instance(context, service_name, disabled, instance_name):
     soa_dir = mkdtemp()
     desired_disabled = (disabled == 'disabled')
     if not os.path.exists(os.path.join(soa_dir, service_name)):
         os.makedirs(os.path.join(soa_dir, service_name))
-    with open(os.path.join(soa_dir, service_name, '%s-%s.yaml' % (app, context.cluster)), 'w') as f:
+    with open(os.path.join(soa_dir, service_name, 'chronos-%s.yaml' % context.cluster), 'w') as f:
         f.write(yaml.dump({
             "%s" % instance_name: {
                 'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
                 'command': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
                 'disabled': desired_disabled,
+            }
+        }))
+    context.soa_dir = soa_dir
+
+
+@given(u'I have yelpsoa-configs for the marathon job "{job_id}"')
+def write_soa_dir_marathon_job(context, job_id):
+    (service, instance, _) = decompose_job_id(job_id)
+    soa_dir = mkdtemp()
+    if not os.path.exists(os.path.join(soa_dir, service)):
+        os.makedirs(os.path.join(soa_dir, service))
+    with open(os.path.join(soa_dir, service, 'marathon-%s.yaml' % context.cluster), 'w') as f:
+        f.write(yaml.dump({
+            "%s" % instance: {
+                'cpus': 0.1,
+                'ram': 100,
             }
         }))
     context.soa_dir = soa_dir
@@ -145,6 +162,8 @@ def write_soa_dir_chronos_deployments(context, service_name, disabled, instance_
     else:
         desired_state = 'start'
 
+    if not os.path.exists(os.path.join(context.soa_dir, service_name)):
+        os.makedirs(os.path.join(context.soa_dir, service_name))
     with open(os.path.join(context.soa_dir, service_name, 'deployments.json'), 'w') as dp:
         dp.write(json.dumps({
             'v1': {

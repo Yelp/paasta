@@ -67,6 +67,7 @@ def marathon_restart_gets_new_task_ids(context, job_id):
     new_tasks = context.marathon_client.get_app(app_id).tasks
     print "Tasks before the restart: %s" % old_tasks
     print "Tasks after  the restart: %s" % new_tasks
+    print # sacrificial line for behave to eat instead of our output
     assert old_tasks != new_tasks
 
 
