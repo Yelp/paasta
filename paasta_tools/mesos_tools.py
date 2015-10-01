@@ -1,17 +1,28 @@
-import os
-import socket
-import requests
+import datetime
 import json
+import os
 import re
+import requests
+import socket
 
-
+import humanize
 from kazoo.client import KazooClient
+from mesos.cli.exceptions import SlaveDoesNotExist
+
+from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import timeout
+from paasta_tools.utils import TimeoutError
+
 
 # mesos.cli.master reads its config file at *import* time, so we must have
 # this environment variable set and ready to go at that time so we can
 # read in the config for zookeeper, etc
 if 'MESOS_CLI_CONFIG' not in os.environ:
     os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
+
+
+RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
+NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'
 
 
 class MasterNotAvailableException(Exception):
@@ -107,6 +118,175 @@ def get_non_running_tasks_from_active_frameworks(job_id):
     active_framework_tasks = get_current_tasks(job_id)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
     return not_running_tasks
+
+
+def get_task_uuid(taskid):
+    # TEMP until I figure out how to do this
+    return "RAWR I AM A UUID"
+
+
+def get_short_hostname_from_task(task):
+    try:
+        slave_hostname = task.slave['hostname']
+        return slave_hostname.split(".")[0]
+    except (AttributeError, SlaveDoesNotExist):
+        return 'Unknown'
+
+
+def get_first_status_timestamp(task):
+    """Gets the first status timestamp from a task id and returns a human
+    readable string with the local time and a humanized duration:
+    ``2015-01-30T08:45 (an hour ago)``
+    """
+    try:
+        start_time_string = task['statuses'][0]['timestamp']
+        start_time = datetime.datetime.fromtimestamp(float(start_time_string))
+        return "%s (%s)" % (start_time.strftime("%Y-%m-%dT%H:%M"), humanize.naturaltime(start_time))
+    except (IndexError, SlaveDoesNotExist):
+        return "Unknown"
+
+
+@timeout()
+def get_mem_usage(task):
+    try:
+        task_mem_limit = task.mem_limit
+        task_rss = task.rss
+        if task_mem_limit == 0:
+            return "Undef"
+        mem_percent = task_rss / task_mem_limit * 100
+        mem_string = "%d/%dMB" % ((task_rss / 1024 / 1024), (task_mem_limit / 1024 / 1024))
+        if mem_percent > 90:
+            return PaastaColors.red(mem_string)
+        else:
+            return mem_string
+    except (AttributeError, SlaveDoesNotExist):
+        return "None"
+    except TimeoutError:
+        return "Timed Out"
+
+
+@timeout()
+def get_cpu_usage(task):
+    """Calculates a metric of used_cpu/allocated_cpu
+    To do this, we take the total number of cpu-seconds the task has consumed,
+    (the sum of system and user time), OVER the total cpu time the task
+    has been allocated.
+
+    The total time a task has been allocated is the total time the task has
+    been running (https://github.com/mesosphere/mesos/blob/0b092b1b0/src/webui/master/static/js/controllers.js#L140)
+    multiplied by the "shares" a task has.
+    """
+    try:
+        start_time = round(task['statuses'][0]['timestamp'])
+        current_time = int(datetime.datetime.now().strftime('%s'))
+        duration_seconds = current_time - start_time
+        # The CPU shares has an additional .1 allocated to it for executor overhead.
+        # We subtract this to the true number
+        # (https://github.com/apache/mesos/blob/dc7c4b6d0bcf778cc0cad57bb108564be734143a/src/slave/constants.hpp#L100)
+        cpu_shares = task.cpu_limit - .1
+        allocated_seconds = duration_seconds * cpu_shares
+        used_seconds = task.stats.get('cpus_system_time_secs', 0.0) + task.stats.get('cpus_user_time_secs', 0.0)
+        if allocated_seconds == 0:
+            return "Undef"
+        percent = round(100 * (used_seconds / allocated_seconds), 1)
+        percent_string = "%s%%" % percent
+        if percent > 90:
+            return PaastaColors.red(percent_string)
+        else:
+            return percent_string
+    except (AttributeError, SlaveDoesNotExist):
+        return "None"
+    except TimeoutError:
+        return "Timed Out"
+
+
+def pretty_format_running_mesos_task(task):
+    """Returns a pretty formatted string of a running mesos task attributes"""
+    format_tuple = (
+        get_task_uuid(task['id']),
+        get_short_hostname_from_task(task),
+        get_mem_usage(task),
+        get_cpu_usage(task),
+        get_first_status_timestamp(task),
+    )
+    return RUNNING_TASK_FORMAT.format(format_tuple)
+
+
+def pretty_format_non_running_mesos_task(task):
+    """Returns a pretty formatted string of a running mesos task attributes"""
+    format_tuple = (
+        get_task_uuid(task['id']),
+        get_short_hostname_from_task(task),
+        get_first_status_timestamp(task),
+        task['state'],
+    )
+    return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
+
+
+# TEMP copypasta because of import cycle trying to get this from
+# marathon_tools directly.
+def format_job_id(name, instance, tag=None):
+    """Compose a Marathon app id formatted to meet Marathon's app id requirements.
+
+    Marathon's app id requirements: https://mesosphere.github.io/marathon/docs/rest-api.html#id-string
+
+    :param name: The name of the service
+    :param instance: The instance of the service
+    :param tag: A hash or tag to append to the end of the id to make it unique
+    :returns: a composed app id in a format that Marathon accepts
+    """
+    name = str(name).replace('_', '--')
+    instance = str(instance).replace('_', '--')
+    if tag:
+        tag = str(tag).replace('_', '--')
+    formatted = compose_job_id(name, instance, tag)
+    return formatted
+
+
+# TEMP copypasta because of import cycle trying to get this from
+# marathon_tools directly.
+def compose_job_id(name, instance, tag=None, spacer='.'):
+    """Compose a job/app id by concatenating its name, instance, and tag.
+
+    :param name: The name of the service
+    :param instance: The instance of the service
+    :param tag: A hash or tag to append to the end of the id to make it unique
+    :returns: <name><SPACER><instance> if no tag, or <name><SPACER><instance><SPACER><tag> if tag given
+    """
+    composed = '%s%s%s' % (name, spacer, instance)
+    if tag:
+        composed = '%s%s%s' % (composed, spacer, tag)
+    return composed
+
+
+def status_mesos_tasks_verbose(service, instance):
+    """Returns detailed information about the mesos tasks for a service"""
+    output = []
+
+    # TEMP until callers pass job_id directly
+    job_id = format_job_id(service, instance)
+    running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
+    output.append(RUNNING_TASK_FORMAT.format((
+        "  Running Tasks:  Mesos Task ID",
+        "Host deployed to",
+        "Ram",
+        "CPU",
+        "Deployed at what localtime"
+    )))
+    for task in running_and_active_tasks:
+        output.append(pretty_format_running_mesos_task(task))
+
+    non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:]))
+    output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
+        "  Non-Running Tasks:  Mesos Task ID",
+        "Host deployed to",
+        "Deployed at what localtime",
+        "Status"
+    ))))
+    for task in non_running_tasks:
+        output.append(pretty_format_non_running_mesos_task(task))
+
+    return "\n".join(output)
 
 
 def get_mesos_stats():

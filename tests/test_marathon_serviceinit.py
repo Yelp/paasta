@@ -5,7 +5,6 @@ import datetime
 import re
 
 import marathon
-import mesos
 import mock
 
 from paasta_tools import marathon_tools, marathon_serviceinit
@@ -675,21 +674,6 @@ def test_haproxy_backend_report_critical():
     assert "Critical" in status
 
 
-def test_status_mesos_tasks_verbose():
-    with contextlib.nested(
-        mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks'),
-        mock.patch('paasta_tools.marathon_serviceinit.get_non_running_tasks_from_active_frameworks'),
-    ) as (
-        get_running_mesos_tasks_for_service_patch,
-        get_non_running_mesos_tasks_for_service_patch,
-    ):
-        get_running_mesos_tasks_for_service_patch.return_value = []
-        get_non_running_mesos_tasks_for_service_patch.return_value = []
-        actual = marathon_serviceinit.status_mesos_tasks_verbose('fake_service', 'fake_instance')
-        assert 'Running Tasks' in actual
-        assert 'Non-Running Tasks' in actual
-
-
 def test_status_mesos_tasks_working():
     with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
         mock_tasks.return_value = [
@@ -716,75 +700,6 @@ def test_status_mesos_tasks_critical():
         normal_count = 10
         actual = marathon_serviceinit.status_mesos_tasks('unused', 'unused', normal_count)
         assert 'Critical' in actual
-
-
-def test_get_cpu_usage_good():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
-    fake_task.cpu_limit = .35
-    fake_duration = 100
-    fake_task.stats = {
-        'cpus_system_time_secs': 2.5,
-        'cpus_user_time_secs': 0.0,
-    }
-    fake_task.__getitem__.return_value = [{
-        'state': 'TASK_RUNNING',
-        'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
-    }]
-    actual = marathon_serviceinit.get_cpu_usage(fake_task)
-    assert '10.0%' == actual
-
-
-def test_get_cpu_usage_bad():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
-    fake_task.cpu_limit = 1.1
-    fake_duration = 100
-    fake_task.stats = {
-        'cpus_system_time_secs': 50.0,
-        'cpus_user_time_secs': 50.0,
-    }
-    fake_task.__getitem__.return_value = [{
-        'state': 'TASK_RUNNING',
-        'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
-    }]
-    actual = marathon_serviceinit.get_cpu_usage(fake_task)
-    assert PaastaColors.red('100.0%') in actual
-
-
-def test_get_cpu_usage_handles_missing_stats():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
-    fake_task.cpu_limit = 1.1
-    fake_duration = 100
-    fake_task.stats = {}
-    fake_task.__getitem__.return_value = [{
-        'state': 'TASK_RUNNING',
-        'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
-    }]
-    actual = marathon_serviceinit.get_cpu_usage(fake_task)
-    assert "0.0%" in actual
-
-
-def test_get_mem_usage_good():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
-    fake_task.rss = 1024 * 1024 * 10
-    fake_task.mem_limit = fake_task.rss * 10
-    actual = marathon_serviceinit.get_mem_usage(fake_task)
-    assert actual == '10/100MB'
-
-
-def test_get_mem_usage_bad():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
-    fake_task.rss = 1024 * 1024 * 100
-    fake_task.mem_limit = fake_task.rss
-    actual = marathon_serviceinit.get_mem_usage(fake_task)
-    assert actual == PaastaColors.red('100/100MB')
-
-
-def test_get_mem_usage_divide_by_zero():
-    fake_task = mock.create_autospec(mesos.cli.task.Task)
-    fake_task.rss = 1024 * 1024 * 10
-    fake_task.mem_limit = 0
-    actual = marathon_serviceinit.get_mem_usage(fake_task)
-    assert actual == "Undef"
 
 
 def test_perform_command_handles_no_docker_and_doesnt_raise():

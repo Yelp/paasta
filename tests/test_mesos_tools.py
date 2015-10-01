@@ -1,9 +1,13 @@
-import mesos.cli.master
+import contextlib
+import datetime
+
+import mesos
 import mock
 import requests
 from pytest import raises
 
 import paasta_tools.mesos_tools as mesos_tools
+from paasta_tools.utils import PaastaColors
 
 
 def test_filter_running_tasks():
@@ -24,6 +28,90 @@ def test_filter_not_running_tasks():
     not_running = mesos_tools.filter_not_running_tasks(tasks)
     assert len(not_running) == 1
     assert not_running[0]['id'] == 2
+
+
+def test_status_mesos_tasks_verbose():
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks'),
+        mock.patch('paasta_tools.mesos_tools.get_non_running_tasks_from_active_frameworks'),
+    ) as (
+        get_running_mesos_tasks_for_service_patch,
+        get_non_running_mesos_tasks_for_service_patch,
+    ):
+        get_running_mesos_tasks_for_service_patch.return_value = []
+        get_non_running_mesos_tasks_for_service_patch.return_value = []
+        actual = mesos_tools.status_mesos_tasks_verbose('fake_service', 'fake_instance')
+        assert 'Running Tasks' in actual
+        assert 'Non-Running Tasks' in actual
+
+
+def test_get_cpu_usage_good():
+    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task.cpu_limit = .35
+    fake_duration = 100
+    fake_task.stats = {
+        'cpus_system_time_secs': 2.5,
+        'cpus_user_time_secs': 0.0,
+    }
+    fake_task.__getitem__.return_value = [{
+        'state': 'TASK_RUNNING',
+        'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
+    }]
+    actual = mesos_tools.get_cpu_usage(fake_task)
+    assert '10.0%' == actual
+
+
+def test_get_cpu_usage_bad():
+    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task.cpu_limit = 1.1
+    fake_duration = 100
+    fake_task.stats = {
+        'cpus_system_time_secs': 50.0,
+        'cpus_user_time_secs': 50.0,
+    }
+    fake_task.__getitem__.return_value = [{
+        'state': 'TASK_RUNNING',
+        'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
+    }]
+    actual = mesos_tools.get_cpu_usage(fake_task)
+    assert PaastaColors.red('100.0%') in actual
+
+
+def test_get_cpu_usage_handles_missing_stats():
+    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task.cpu_limit = 1.1
+    fake_duration = 100
+    fake_task.stats = {}
+    fake_task.__getitem__.return_value = [{
+        'state': 'TASK_RUNNING',
+        'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
+    }]
+    actual = mesos_tools.get_cpu_usage(fake_task)
+    assert "0.0%" in actual
+
+
+def test_get_mem_usage_good():
+    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task.rss = 1024 * 1024 * 10
+    fake_task.mem_limit = fake_task.rss * 10
+    actual = mesos_tools.get_mem_usage(fake_task)
+    assert actual == '10/100MB'
+
+
+def test_get_mem_usage_bad():
+    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task.rss = 1024 * 1024 * 100
+    fake_task.mem_limit = fake_task.rss
+    actual = mesos_tools.get_mem_usage(fake_task)
+    assert actual == PaastaColors.red('100/100MB')
+
+
+def test_get_mem_usage_divide_by_zero():
+    fake_task = mock.create_autospec(mesos.cli.task.Task)
+    fake_task.rss = 1024 * 1024 * 10
+    fake_task.mem_limit = 0
+    actual = mesos_tools.get_mem_usage(fake_task)
+    assert actual == "Undef"
 
 
 def test_get_zookeeper_config():
