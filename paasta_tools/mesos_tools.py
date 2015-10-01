@@ -223,48 +223,10 @@ def pretty_format_non_running_mesos_task(task):
     return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
 
 
-# TEMP copypasta because of import cycle trying to get this from
-# marathon_tools directly.
-def format_job_id(name, instance, tag=None):
-    """Compose a Marathon app id formatted to meet Marathon's app id requirements.
-
-    Marathon's app id requirements: https://mesosphere.github.io/marathon/docs/rest-api.html#id-string
-
-    :param name: The name of the service
-    :param instance: The instance of the service
-    :param tag: A hash or tag to append to the end of the id to make it unique
-    :returns: a composed app id in a format that Marathon accepts
-    """
-    name = str(name).replace('_', '--')
-    instance = str(instance).replace('_', '--')
-    if tag:
-        tag = str(tag).replace('_', '--')
-    formatted = compose_job_id(name, instance, tag)
-    return formatted
-
-
-# TEMP copypasta because of import cycle trying to get this from
-# marathon_tools directly.
-def compose_job_id(name, instance, tag=None, spacer='.'):
-    """Compose a job/app id by concatenating its name, instance, and tag.
-
-    :param name: The name of the service
-    :param instance: The instance of the service
-    :param tag: A hash or tag to append to the end of the id to make it unique
-    :returns: <name><SPACER><instance> if no tag, or <name><SPACER><instance><SPACER><tag> if tag given
-    """
-    composed = '%s%s%s' % (name, spacer, instance)
-    if tag:
-        composed = '%s%s%s' % (composed, spacer, tag)
-    return composed
-
-
-def status_mesos_tasks_verbose(service, instance):
+def status_mesos_tasks_verbose(job_id):
     """Returns detailed information about the mesos tasks for a service"""
     output = []
 
-    # TEMP until callers pass job_id directly
-    job_id = format_job_id(service, instance)
     running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
     output.append(RUNNING_TASK_FORMAT.format((
         "  Running Tasks:  Mesos Task ID",

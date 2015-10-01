@@ -6,6 +6,7 @@ import mock
 import requests
 from pytest import raises
 
+from paasta_tools.marathon_tools import format_job_id
 import paasta_tools.mesos_tools as mesos_tools
 from paasta_tools.utils import PaastaColors
 
@@ -40,7 +41,7 @@ def test_status_mesos_tasks_verbose():
     ):
         get_running_mesos_tasks_for_service_patch.return_value = []
         get_non_running_mesos_tasks_for_service_patch.return_value = []
-        actual = mesos_tools.status_mesos_tasks_verbose('fake_service', 'fake_instance')
+        actual = mesos_tools.status_mesos_tasks_verbose(format_job_id('fake_service', 'fake_instance'))
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
 
