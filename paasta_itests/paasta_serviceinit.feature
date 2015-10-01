@@ -4,7 +4,7 @@ Feature: paasta_serviceinit
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And I have a deployments.json for the service "test-service" with enabled instance "main"
-     When we run the marathon job "test-service.main"
+     When we run the marathon app "test-service.main"
       And we wait for it to be deployed
      Then marathon_serviceinit status_marathon_job should return "Healthy" for "test-service.main"
 
@@ -12,7 +12,7 @@ Feature: paasta_serviceinit
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And I have a deployments.json for the service "test-service" with enabled instance "main"
-     When we run the marathon job "test-service.main"
+     When we run the marathon app "test-service.main"
       And we wait for it to be deployed
      Then marathon_serviceinit restart should get new task_ids for "test-service.main"
 
@@ -75,7 +75,7 @@ Feature: paasta_serviceinit
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And I have a deployments.json for the service "test-service" with enabled instance "main"
-     When we run the marathon job "test-service.main"
+     When we run the marathon app "test-service.main"
       And we wait for it to be deployed
       And we run paasta serviceinit "stop" on "test-service.main"
       And we wait for "test-service.main" to launch exactly 0 tasks

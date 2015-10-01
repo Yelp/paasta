@@ -12,8 +12,8 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import decompose_job_id
 
 
-@when(u'we run the marathon job "{job_id}"')
-def run_marathon_job(context, job_id):
+@when(u'we run the marathon app "{job_id}"')
+def run_marathon_app(context, job_id):
     (service, instance, tag) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     app_config = {
@@ -67,7 +67,7 @@ def marathon_restart_gets_new_task_ids(context, job_id):
     new_tasks = context.marathon_client.get_app(app_id).tasks
     print "Tasks before the restart: %s" % old_tasks
     print "Tasks after  the restart: %s" % new_tasks
-    print # sacrificial line for behave to eat instead of our output
+    print  # sacrificial line for behave to eat instead of our output
     assert old_tasks != new_tasks
 
 
