@@ -238,7 +238,7 @@ def status_mesos_tasks_verbose(job_id):
     for task in running_and_active_tasks:
         output.append(pretty_format_running_mesos_task(task))
 
-    non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:]))
+    non_running_tasks = reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:])
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
         "  Non-Running Tasks:  Mesos Task ID",
         "Host deployed to",
