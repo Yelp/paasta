@@ -189,7 +189,7 @@ def format_chronos_job_status(job, desired_state, running_tasks):
     )
 
 
-def status_chronos_jobs(jobs, job_config):
+def status_chronos_jobs(jobs, job_config, verbose):
     """Returns a formatted string of the status of a list of chronos jobs
 
     :param jobs: list of dicts of chronos job info as returned by the chronos

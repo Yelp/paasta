@@ -236,6 +236,7 @@ def test_status_chronos_jobs_is_deployed():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
+    verbose = False
     with contextlib.nested(
         mock.patch(
             'chronos_serviceinit.format_chronos_job_status',
@@ -251,6 +252,7 @@ def test_status_chronos_jobs_is_deployed():
         actual = chronos_serviceinit.status_chronos_jobs(
             jobs,
             complete_job_config,
+            verbose,
         )
         assert actual == 'job_status_output'
 
@@ -259,6 +261,7 @@ def test_status_chronos_jobs_is_not_deployed():
     jobs = []
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
+    verbose = False
     with contextlib.nested(
         mock.patch(
             'chronos_serviceinit.format_chronos_job_status',
@@ -274,6 +277,7 @@ def test_status_chronos_jobs_is_not_deployed():
         actual = chronos_serviceinit.status_chronos_jobs(
             jobs,
             complete_job_config,
+            verbose,
         )
         assert 'not set up' in actual
 
@@ -282,6 +286,7 @@ def test_status_chronos_jobs_get_desired_state_human():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
+    verbose = False
     with contextlib.nested(
         mock.patch(
             'chronos_serviceinit.format_chronos_job_status',
@@ -297,6 +302,7 @@ def test_status_chronos_jobs_get_desired_state_human():
         chronos_serviceinit.status_chronos_jobs(
             jobs,
             complete_job_config,
+            verbose,
         )
         assert complete_job_config.get_desired_state_human.call_count == 1
 
@@ -308,6 +314,7 @@ def test_status_chronos_jobs_multiple_jobs():
     ]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
+    verbose = False
     with contextlib.nested(
         mock.patch(
             'chronos_serviceinit.format_chronos_job_status',
@@ -323,6 +330,7 @@ def test_status_chronos_jobs_multiple_jobs():
         actual = chronos_serviceinit.status_chronos_jobs(
             jobs,
             complete_job_config,
+            verbose,
         )
         assert actual == 'job_status_output\njob_status_output'
 
@@ -331,6 +339,7 @@ def test_status_chronos_jobs_get_running_tasks():
     jobs = [{'name': 'my_service my_instance gityourmom configyourdad'}]
     complete_job_config = mock.Mock()
     complete_job_config.get_desired_state_human = mock.Mock()
+    verbose = False
     with contextlib.nested(
         mock.patch(
             'chronos_serviceinit.format_chronos_job_status',
@@ -346,5 +355,6 @@ def test_status_chronos_jobs_get_running_tasks():
         chronos_serviceinit.status_chronos_jobs(
             jobs,
             complete_job_config,
+            verbose,
         )
         assert mock_get_running_tasks.call_count == 1
