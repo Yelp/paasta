@@ -32,9 +32,9 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
     * ``min_task_uptime``: Minimum number of seconds that a task must be running before we consider it healthy (Disabled by default)
 
-  * ``deploy_blacklist``: A list of tuples indicating a set of locations to *not* deploy to. For example:
+  * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 
-      ``deploy_blacklist: [("region", "dc6")]``
+      ``deploy_blacklist: [["region", "dc6"]]``
 
     would indicate that PaaSTA should not deploy the service to the ``dc6`` region.
 
