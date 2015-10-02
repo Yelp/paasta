@@ -21,7 +21,6 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
-from paasta_tools.utils import SPACER
 
 log = logging.getLogger('__main__')
 log.addHandler(logging.StreamHandler(sys.stdout))
@@ -266,7 +265,7 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
 
 def get_short_task_id(task_id):
     """Return just the Marathon-generated UUID of a Mesos task id."""
-    return task_id.split(SPACER)[-1]
+    return task_id.split(marathon_tools.MESOS_TASK_SPACER)[-1]
 
 
 def status_mesos_tasks(service, instance, normal_instance_count):
