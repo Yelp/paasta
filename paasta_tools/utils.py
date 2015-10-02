@@ -113,7 +113,7 @@ class InstanceConfig(dict):
         return self.config_dict.get('monitoring', {})
 
     def get_deploy_blacklist(self):
-        """The deploy blacklist is a list of tuples, where the tuples indicate
+        """The deploy blacklist is a list of lists, where the lists indicate
         which locations the service should not be deployed"""
         return self.config_dict.get('deploy_blacklist', [])
 
