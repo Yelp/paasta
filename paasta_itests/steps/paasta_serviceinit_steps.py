@@ -126,13 +126,12 @@ def paasta_serviceinit_command(context, command, job_id):
     print  # sacrificial line for behave to eat instead of our output
 
 
-@when(u'we wait for "{job_id}" to launch {exactly} {task_count:d} tasks')
+@when(u'we wait for "{job_id}" to launch exactly {task_count:d} tasks')
 def wait_launch_tasks(context, job_id, exactly, task_count):
     (service, instance, tag) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
-    exact_matches_only = (exactly == 'exactly')
-    marathon_tools.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only)
+    marathon_tools.wait_for_app_to_launch_tasks(client, app_id, task_count, True)
 
 
 @then(u'"{job_id}" has exactly {task_count:d} requested tasks in marathon')

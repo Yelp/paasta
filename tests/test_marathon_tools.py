@@ -999,6 +999,7 @@ class TestMarathonTools:
         fake_client.list_tasks = patch_list_tasks
         patch_list_tasks.return_value = [{}, {}, {}]
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 3) is True
+        assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 3, exact_matches_only=True) is True
 
     @patch('marathon_tools.MarathonClient.list_tasks')
     def test_app_has_tasks_less(self, patch_list_tasks):
@@ -1006,6 +1007,7 @@ class TestMarathonTools:
         fake_client.list_tasks = patch_list_tasks
         patch_list_tasks.return_value = [{}, {}, {}]
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 2) is True
+        assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 2, exact_matches_only=True) is False
 
     @patch('marathon_tools.MarathonClient.list_tasks')
     def test_app_has_tasks_more(self, patch_list_tasks):
@@ -1013,6 +1015,7 @@ class TestMarathonTools:
         fake_client.list_tasks = patch_list_tasks
         patch_list_tasks.return_value = [{}, {}, {}]
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4) is False
+        assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4, exact_matches_only=True) is False
 
     def test_get_code_sha_from_dockerurl(self):
         fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'
