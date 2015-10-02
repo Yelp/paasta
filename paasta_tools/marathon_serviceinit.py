@@ -326,7 +326,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             print out
         print status_mesos_tasks(service, instance, normal_instance_count)
         if verbose:
-            print status_mesos_tasks_verbose(app_id)
+            print status_mesos_tasks_verbose(app_id, get_short_task_id)
         if proxy_port is not None:
             print status_smartstack_backends(
                 service=service,
