@@ -127,7 +127,7 @@ def paasta_serviceinit_command(context, command, job_id):
 
 
 @when(u'we wait for "{job_id}" to launch exactly {task_count:d} tasks')
-def wait_launch_tasks(context, job_id, exactly, task_count):
+def wait_launch_tasks(context, job_id, task_count):
     (service, instance, tag) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
