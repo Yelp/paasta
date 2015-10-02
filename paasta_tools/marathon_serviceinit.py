@@ -118,7 +118,7 @@ def get_verbose_status_of_marathon_app(app):
         else:
             hostname = "Unknown"
         format_tuple = (
-            get_task_uuid(task.id),
+            get_short_task_id(task.id),
             hostname,
             local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
             humanize.naturaltime(local_deployed_datetime),
@@ -264,9 +264,9 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
     return output
 
 
-def get_task_uuid(taskid):
-    """Return just the UUID part of the mesos task id of a marathon app"""
-    return taskid.split(SPACER)[-1]
+def get_short_task_id(task_id):
+    """Return just the Marathon-generated UUID of a Mesos task id."""
+    return task_id.split(SPACER)[-1]
 
 
 def status_mesos_tasks(service, instance, normal_instance_count):

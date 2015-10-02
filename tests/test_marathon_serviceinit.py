@@ -674,6 +674,11 @@ def test_haproxy_backend_report_critical():
     assert "Critical" in status
 
 
+def test_get_short_task_id():
+    task_id = 'service.instance.githash.confighash.uuid'
+    assert marathon_serviceinit.get_short_task_id(task_id) == 'uuid'
+
+
 def test_status_mesos_tasks_working():
     with mock.patch('paasta_tools.marathon_serviceinit.get_running_tasks_from_active_frameworks') as mock_tasks:
         mock_tasks.return_value = [
