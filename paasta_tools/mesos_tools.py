@@ -120,11 +120,6 @@ def get_non_running_tasks_from_active_frameworks(job_id):
     return not_running_tasks
 
 
-def get_task_uuid(taskid):
-    # TEMP until I figure out how to do this
-    return "RAWR I AM A UUID"
-
-
 def get_short_hostname_from_task(task):
     try:
         slave_hostname = task.slave['hostname']
@@ -200,10 +195,10 @@ def get_cpu_usage(task):
         return "Timed Out"
 
 
-def pretty_format_running_mesos_task(task):
+def pretty_format_running_mesos_task(task, get_short_task_id):
     """Returns a pretty formatted string of a running mesos task attributes"""
     format_tuple = (
-        get_task_uuid(task['id']),
+        get_short_task_id(task['id']),
         get_short_hostname_from_task(task),
         get_mem_usage(task),
         get_cpu_usage(task),
@@ -212,10 +207,10 @@ def pretty_format_running_mesos_task(task):
     return RUNNING_TASK_FORMAT.format(format_tuple)
 
 
-def pretty_format_non_running_mesos_task(task):
+def pretty_format_non_running_mesos_task(task, get_short_task_id):
     """Returns a pretty formatted string of a running mesos task attributes"""
     format_tuple = (
-        get_task_uuid(task['id']),
+        get_short_task_id(task['id']),
         get_short_hostname_from_task(task),
         get_first_status_timestamp(task),
         task['state'],
@@ -223,8 +218,14 @@ def pretty_format_non_running_mesos_task(task):
     return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
 
 
-def status_mesos_tasks_verbose(job_id):
-    """Returns detailed information about the mesos tasks for a service"""
+def status_mesos_tasks_verbose(job_id, get_short_task_id):
+    """Returns detailed information about the mesos tasks for a service.
+
+    :param job_id: An id used for looking up Mesos tasks
+    :param get_short_task_id: A function which given a
+    task_id returns a short task_id suitable for
+    printing.
+    """
     output = []
 
     running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
@@ -236,7 +237,7 @@ def status_mesos_tasks_verbose(job_id):
         "Deployed at what localtime"
     )))
     for task in running_and_active_tasks:
-        output.append(pretty_format_running_mesos_task(task))
+        output.append(pretty_format_running_mesos_task(task, get_short_task_id))
 
     non_running_tasks = reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:])
     output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
@@ -246,7 +247,7 @@ def status_mesos_tasks_verbose(job_id):
         "Status"
     ))))
     for task in non_running_tasks:
-        output.append(pretty_format_non_running_mesos_task(task))
+        output.append(pretty_format_non_running_mesos_task(task, get_short_task_id))
 
     return "\n".join(output)
 

@@ -33,17 +33,27 @@ def test_filter_not_running_tasks():
 
 def test_status_mesos_tasks_verbose():
     with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks'),
-        mock.patch('paasta_tools.mesos_tools.get_non_running_tasks_from_active_frameworks'),
+        mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks', autospec=True,),
+        mock.patch('paasta_tools.mesos_tools.get_non_running_tasks_from_active_frameworks', autospec=True,),
+        mock.patch('paasta_tools.mesos_tools.pretty_format_running_mesos_task', autospec=True,),
+        mock.patch('paasta_tools.mesos_tools.pretty_format_non_running_mesos_task', autospec=True,),
     ) as (
-        get_running_mesos_tasks_for_service_patch,
-        get_non_running_mesos_tasks_for_service_patch,
+        get_running_mesos_tasks_patch,
+        get_non_running_mesos_tasks_patch,
+        pretty_format_running_mesos_task_patch,
+        pretty_format_non_running_mesos_task_patch,
     ):
-        get_running_mesos_tasks_for_service_patch.return_value = []
-        get_non_running_mesos_tasks_for_service_patch.return_value = []
-        actual = mesos_tools.status_mesos_tasks_verbose(format_job_id('fake_service', 'fake_instance'))
+        get_running_mesos_tasks_patch.return_value = ['doing a lap']
+        get_non_running_mesos_tasks_patch.return_value = ['eating a burrito']
+        pretty_format_running_mesos_task_patch.return_value = ''
+        pretty_format_non_running_mesos_task_patch.return_value = ''
+        job_id = format_job_id('fake_service', 'fake_instance'),
+        get_short_task_id = lambda task_id: 'short_task_id'
+        actual = mesos_tools.status_mesos_tasks_verbose(job_id,  get_short_task_id)
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
+        pretty_format_running_mesos_task_patch.assert_called_once_with('doing a lap', get_short_task_id)
+        pretty_format_non_running_mesos_task_patch.assert_called_once_with('eating a burrito', get_short_task_id)
 
 
 def test_get_cpu_usage_good():
