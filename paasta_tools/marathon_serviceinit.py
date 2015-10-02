@@ -265,7 +265,7 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
 
 
 def get_task_uuid(taskid):
-    """Return just the UUID part of a mesos task id from a marathon app"""
+    """Return just the UUID part of the mesos task id of a marathon app"""
     return taskid.split(SPACER)[-1]
 
 
