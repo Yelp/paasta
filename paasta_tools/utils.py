@@ -973,12 +973,12 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
 
 
 def deploy_blacklist_to_constraints(deploy_blacklist):
-    """Converts a blacklist to the appropriate constraints
-    :param blacklist: List of blah
-    :returns: List of constraints
+    """Converts a blacklist of locations into marathon appropriate constraints
+    :param blacklist: List of lists of locations to blacklist
+    :returns: List of lists of constraints
     """
     constraints = []
-    for i in deploy_blacklist:
-        constraints.append([i[0], "UNLIKE", i[1]])
+    for blacklisted_location in deploy_blacklist:
+        constraints.append([blacklisted_location[0], "UNLIKE", blacklisted_location[1]])
 
     return constraints
