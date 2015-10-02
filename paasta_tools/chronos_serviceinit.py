@@ -159,7 +159,7 @@ def _format_mesos_status(job, running_tasks):
     return mesos_status
 
 
-def format_chronos_job_status(job, desired_state, running_tasks):
+def format_chronos_job_status(job, desired_state, running_tasks, verbose):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
 
@@ -204,7 +204,7 @@ def status_chronos_jobs(jobs, job_config, verbose):
         desired_state = job_config.get_desired_state_human()
         for job in jobs:
             running_tasks = get_running_tasks_from_active_frameworks(job["name"])
-            output.append(format_chronos_job_status(job, desired_state, running_tasks))
+            output.append(format_chronos_job_status(job, desired_state, running_tasks, verbose))
         return "\n".join(output)
 
 

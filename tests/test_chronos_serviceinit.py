@@ -98,7 +98,8 @@ def test_format_chronos_job_name_exists():
     }
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     # Includes only the 'tag' portion of the name, not the service and instance
     # (as these are unnecessary and would just add clutter).
     assert 'my_service' not in actual
@@ -112,7 +113,8 @@ def test_format_chronos_job_name_does_not_exist():
     }
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.red("UNKNOWN") in actual
 
 
@@ -122,7 +124,8 @@ def test_format_chronos_job_status_disabled():
     }
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.red("Disabled") in actual
 
 
@@ -132,7 +135,8 @@ def test_format_chronos_job_status_enabled():
     }
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.green("Enabled") in actual
 
 
@@ -140,7 +144,8 @@ def test_format_chronos_job_status_desired_state_passed_through():
     example_job = {}
     desired_state = 'stopped (or started)'
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert desired_state in actual
 
 
@@ -151,7 +156,8 @@ def test_format_chronos_job_status_no_last_run():
     }
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.yellow("New") in actual
     assert "(never)" in actual
 
@@ -163,7 +169,8 @@ def test_format_chronos_job_status_failure_no_success():
     }
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.red("Fail") in actual
     assert '(2015-04-20' in actual
     assert 'ago)' in actual
@@ -176,7 +183,8 @@ def test_format_chronos_job_status_success_no_failure():
     }
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.green("OK") in actual
     assert '(2015-04-20' in actual
     assert 'ago)' in actual
@@ -189,7 +197,8 @@ def test_format_chronos_job_status_failure_and_then_success():
     }
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.green("OK") in actual
     assert '(2015-04-21' in actual
     assert 'ago)' in actual
@@ -202,7 +211,8 @@ def test_format_chronos_job_status_success_and_then_failure():
     }
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.red("Fail") in actual
     assert '(2015-04-21' in actual
     assert 'ago)' in actual
@@ -212,7 +222,8 @@ def test_format_chronos_job_zero_mesos_tasks():
     example_job = {}
     desired_state = ''
     running_tasks = []
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.grey("Not running") in actual
 
 
@@ -220,7 +231,8 @@ def test_format_chronos_job_one_mesos_task():
     example_job = {}
     desired_state = ''
     running_tasks = ['slay the nemean lion']
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert PaastaColors.yellow("Running") in actual
 
 
@@ -228,7 +240,8 @@ def test_format_chronos_job_two_mesos_tasks():
     example_job = {}
     desired_state = ''
     running_tasks = ['slay the nemean lion', 'slay the lernaean hydra']
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks)
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert "Critical" in actual
 
 
