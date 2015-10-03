@@ -109,8 +109,7 @@ def test_format_chronos_job_name_exists():
 
 
 def test_format_chronos_job_name_does_not_exist():
-    example_job = {
-    }
+    example_job = {}
     desired_state = ''
     running_tasks = []
     verbose = False
@@ -243,6 +242,22 @@ def test_format_chronos_job_two_mesos_tasks():
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
     assert "Critical" in actual
+
+
+def test_format_chronos_job_mesos_verbose():
+    example_job = {
+        'name': 'my_service my_instance gityourmom configyourdad',
+    }
+    desired_state = ''
+    running_tasks = ['slay the nemean lion']
+    verbose = True
+    with mock.patch(
+        'chronos_serviceinit.status_mesos_tasks_verbose',
+        autospec=True,
+        return_value='status_mesos_tasks_verbose output',
+    ):
+        actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
+    assert 'status_mesos_tasks_verbose output' in actual
 
 
 def test_status_chronos_jobs_is_deployed():

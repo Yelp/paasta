@@ -9,6 +9,7 @@ import requests_cache
 
 import chronos_tools
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import _log
@@ -24,36 +25,36 @@ log.addHandler(logging.StreamHandler(sys.stdout))
 def start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency=False):
     name = PaastaColors.cyan(job_id)
     log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
-    log_immediate_run = " and running it immediately" if not job_config['disabled'] else ""
+    log_immediate_run = " and running it immediately" if not job_config["disabled"] else ""
     _log(
         service_name=service,
         line="%s: Sending job %s to Chronos%s" % (log_reason, name, log_immediate_run),
-        component='deploy',
-        level='event',
+        component="deploy",
+        level="event",
         cluster=cluster,
         instance=instance
     )
     client.update(job_config)
     # TODO fail or give some output/feedback to user that the job won't run immediately if disabled (PAASTA-1244)
-    if not job_config['disabled']:
+    if not job_config["disabled"]:
         client.run(job_id)
 
 
 def stop_chronos_job(service, instance, client, cluster, existing_jobs, emergency=False):
     log_reason = PaastaColors.red("EmergencyStop") if emergency else "Brutal bounce"
     for job in existing_jobs:
-        name = PaastaColors.cyan(job['name'])
+        name = PaastaColors.cyan(job["name"])
         _log(
             service_name=service,
             line="%s: Killing all tasks for job %s" % (log_reason, name),
-            component='deploy',
-            level='event',
+            component="deploy",
+            level="event",
             cluster=cluster,
             instance=instance
         )
-        job['disabled'] = True
+        job["disabled"] = True
         client.update(job)
-        client.delete_tasks(job['name'])
+        client.delete_tasks(job["name"])
 
 
 def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, emergency=False):
@@ -105,7 +106,7 @@ def _format_disabled_status(job):
 
 
 def _prettify_datetime(dt):
-    """Prettify datetime objects further. Ignore hardcoded values like 'never'."""
+    """Prettify datetime objects further. Ignore hardcoded values like "never"."""
     pretty_dt = dt
     if isinstance(pretty_dt, datetime.datetime):
         dt_localtime = datetime_from_utc_to_local(dt)
@@ -174,6 +175,9 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
     disabled_state = _format_disabled_status(job)
     (last_result, last_result_when) = _format_last_result(job)
     mesos_status = _format_mesos_status(job, running_tasks)
+    if verbose:
+        mesos_status_verbose = status_mesos_tasks_verbose(job["name"], None)
+        mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
     return (
         "Tag:        %(job_tag)s\n"
         "  Status:   %(disabled_state)s, %(desired_state)s\n"
@@ -212,7 +216,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
     complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
-    job_id = complete_job_config['name']
+    job_id = complete_job_config["name"]
 
     if command == "start":
         start_chronos_job(service, instance, job_id, client, cluster, complete_job_config, emergency=True)
