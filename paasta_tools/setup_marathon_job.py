@@ -54,7 +54,7 @@ from paasta_tools.utils import SPACER
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
 log = logging.getLogger('__main__')
-log.addHandler(logging.StreamHandler(sys.stdout))
+logging.basicConfig()
 
 
 def parse_args():

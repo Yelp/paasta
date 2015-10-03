@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import datetime
 import logging
-import sys
 
 import humanize
 import isodate
@@ -16,8 +15,8 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 
 
-log = logging.getLogger("__main__")
-log.addHandler(logging.StreamHandler(sys.stdout))
+log = logging.getLogger('__main__')
+logging.basicConfig()
 
 
 # Calls the 'manual start' endpoint in Chronos (https://mesos.github.io/chronos/docs/api.html#manually-starting-a-job),

@@ -19,7 +19,7 @@ from paasta_tools.utils import load_system_paasta_config
 
 
 log = logging.getLogger('__main__')
-log.addHandler(logging.StreamHandler(sys.stdout))
+logging.basicConfig()
 
 
 def parse_args():

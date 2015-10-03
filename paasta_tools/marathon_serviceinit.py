@@ -1,7 +1,6 @@
 #!/usr/bin/env python
 import datetime
 import logging
-import sys
 
 import humanize
 import isodate
@@ -23,7 +22,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 
 log = logging.getLogger('__main__')
-log.addHandler(logging.StreamHandler(sys.stdout))
+logging.basicConfig()
 
 
 def start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
@@ -295,7 +294,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     :returns: A unix-style return code
     """
     marathon_config = marathon_tools.load_marathon_config()
-    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
+    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster, soa_dir=soa_dir)
     try:
         app_id = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir=soa_dir)['id']
     except NoDockerImageError:
@@ -305,7 +304,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
 
     normal_instance_count = job_config.get_instances()
     normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
-    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance)
+    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
 
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())

@@ -36,6 +36,7 @@ from paasta_tools.utils import get_log_name_for_service
 DEFAULT_COMPONENTS = ['build', 'deploy', 'monitoring']
 
 log = logging.getLogger('__main__')
+logging.basicConfig()
 
 
 def add_subparser(subparsers):
