@@ -27,6 +27,12 @@ from paasta_tools.utils import timeout
 SPACER = " "
 # Until Chronos supports dots in the job name, we use this separator internally
 INTERNAL_SPACER = '.'
+# Chronos creates Mesos tasks with an id composed of some arbitrary strings,
+# the app's full name, a spacer, and a timestamp. This variable is that
+# spacer. Note that we don't control this spacer, i.e. you can't change it
+# here and expect the world to change with you. We need to know what it is so
+# we can decompose Mesos task ids.
+MESOS_TASK_SPACER = ':'
 
 VALID_BOUNCE_METHODS = ['graceful', 'brutal']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')

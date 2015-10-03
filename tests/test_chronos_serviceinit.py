@@ -92,6 +92,11 @@ def test_get_matching_jobs_all_tags_false():
     mock_lookup_chronos_jobs.assert_called_once_with(expected_pattern, client, include_disabled=True)
 
 
+def test_get_short_task_id():
+    task_id = 'ct:1111111111111:0:my_service my_instance gityourmom configyourdad:'
+    assert chronos_serviceinit.get_short_task_id(task_id) == '1111111111111'
+
+
 def test_format_chronos_job_name_exists():
     example_job = {
         'name': 'my_service my_instance gityourmom configyourdad',

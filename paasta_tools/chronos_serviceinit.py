@@ -89,7 +89,8 @@ def get_matching_jobs(client, job_id, all_tags):
 
 
 def get_short_task_id(task_id):
-    pass
+    """Return just the Chronos-generated timestamp section of a Mesos task id."""
+    return task_id.split(chronos_tools.MESOS_TASK_SPACER)[1]
 
 
 def _format_job_tag(job):
