@@ -121,7 +121,7 @@ def get_verbose_status_of_marathon_app(app):
             local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
             humanize.naturaltime(local_deployed_datetime),
         )
-        output.append('      {0[0]:<37}{0[1]:<25} {0[2]:<17}({0[3]:})'.format(format_tuple))
+        output.append('      {0[0]:^37}{0[1]:<25} {0[2]:<17}({0[3]:})'.format(format_tuple))
     if len(app.tasks) == 0:
         output.append("      No tasks associated with this marathon app")
     return app.tasks, "\n".join(output)

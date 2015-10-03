@@ -21,8 +21,8 @@ if 'MESOS_CLI_CONFIG' not in os.environ:
     os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
 
 
-RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
-NON_RUNNING_TASK_FORMAT = '    {0[0]:<37}{0[1]:<20}{0[2]:<33}{0[3]:}'
+RUNNING_TASK_FORMAT = '    {0[0]:^37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
+NON_RUNNING_TASK_FORMAT = '    {0[0]:^37}{0[1]:<20}{0[2]:<33}{0[3]:}'
 
 
 class MasterNotAvailableException(Exception):
