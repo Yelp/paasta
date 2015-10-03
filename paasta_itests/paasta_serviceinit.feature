@@ -25,6 +25,15 @@ Feature: paasta_serviceinit
       And we wait for the chronos job to appear in the job list
      Then paasta_serviceinit status exits with return code 0 and the correct output
 
+  Scenario: paasta_serviceinit can run status --verbose on chronos jobs
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the service "test-service" with disabled chronos instance "job"
+      And I have a deployments.json for the service "test-service" with disabled instance "job"
+     When we create a chronos job dict from the configs for instance "job" of service "test-service"
+      And we send the job to chronos
+      And we wait for the chronos job to appear in the job list
+     Then paasta_serviceinit status --verbose exits with return code 0 and the correct output
+
   Scenario: paasta_serviceinit can run emergency-stop on an enabled chronos job
     Given a working paasta cluster
       And I have yelpsoa-configs for the service "test-service" with enabled chronos instance "job"
