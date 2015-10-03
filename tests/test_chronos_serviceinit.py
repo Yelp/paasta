@@ -255,8 +255,9 @@ def test_format_chronos_job_mesos_verbose():
         'chronos_serviceinit.status_mesos_tasks_verbose',
         autospec=True,
         return_value='status_mesos_tasks_verbose output',
-    ):
+    ) as mock_status_mesos_tasks_verbose:
         actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
+    mock_status_mesos_tasks_verbose.assert_called_once_with(example_job['name'], chronos_serviceinit.get_short_task_id)
     assert 'status_mesos_tasks_verbose output' in actual
 
 

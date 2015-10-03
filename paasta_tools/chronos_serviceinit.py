@@ -88,6 +88,10 @@ def get_matching_jobs(client, job_id, all_tags):
     return matching_jobs
 
 
+def get_short_task_id(task_id):
+    pass
+
+
 def _format_job_tag(job):
     job_tag = PaastaColors.red("UNKNOWN")
     job_id = job.get("name", None)
@@ -176,7 +180,7 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
     (last_result, last_result_when) = _format_last_result(job)
     mesos_status = _format_mesos_status(job, running_tasks)
     if verbose:
-        mesos_status_verbose = status_mesos_tasks_verbose(job["name"], None)
+        mesos_status_verbose = status_mesos_tasks_verbose(job["name"], get_short_task_id)
         mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
     return (
         "Tag:        %(job_tag)s\n"
