@@ -81,7 +81,7 @@ def send_event(name, instance, soa_dir, status, output):
     # that will probably be fixed eventually, so we set an alert_after
     # to suppress extra noise
     monitoring_overrides['alert_after'] = '10m'
-    check_name = 'setup_chronos_job.%s' % compose_job_id(name, instance, spacer=chronos_tools.INTERNAL_SPACER)
+    check_name = 'setup_chronos_job.%s' % compose_job_id(name, instance)
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
 
