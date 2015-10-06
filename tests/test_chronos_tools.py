@@ -248,8 +248,9 @@ class TestChronosTools:
             'monitoring': {},
         }
         expected = 'parsed_time'
-        with mock.patch('chronos_tools.parse_time_variables', autospec=True, return_value=expected) \
-                as mock_parse_time_variables:
+        with mock.patch(
+            'chronos_tools.parse_time_variables', autospec=True, return_value=expected
+                ) as mock_parse_time_variables:
             fake_chronos_job_config = chronos_tools.ChronosJobConfig(
                 'fake_service', 'fake_job', fake_config_dict, {})
             actual = fake_chronos_job_config.get_cmd()
@@ -866,5 +867,5 @@ class TestChronosTools:
         input_time = datetime.datetime(2012, 3, 14)
         test_input = 'ls %(shortdate-1)s foo'
         expected = 'ls 2012-03-13 foo'
-        actual = chronos_tools.parse_time_variables(input=test_input, parse_time=input_time)
+        actual = chronos_tools.parse_time_variables(input_string=test_input, parse_time=input_time)
         assert actual == expected

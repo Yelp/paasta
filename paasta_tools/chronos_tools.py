@@ -458,16 +458,18 @@ def wait_for_job(client, job_name):
             sleep(0.5)
 
 
-def parse_time_variables(input, parse_time=datetime.datetime.now()):
+def parse_time_variables(input_string, parse_time=None):
     """Parses an input string and uses the Tron-style dateparsing
     to replace time variables. Currently supports only the date/time
     variables listed in the tron documentation:
     https://pythonhosted.org/tron/command_context.html#built-in-command-context-variables
 
-    :param input: input string to be parsed
+    :param input_string: input string to be parsed
     :param parse_time: Reference Datetime object to parse the date and time strings, defaults to now.
     :returns: A string with the date and time variables replaced
     """
+    if parse_time is None:
+        parse_time = datetime.datetime.now()
     # We build up a tron context object that has the right
     # methods to parse tron-style time syntax
     job_context = command_context.JobRunContext(command_context.CommandContext())
@@ -475,4 +477,4 @@ def parse_time_variables(input, parse_time=datetime.datetime.now()):
     # how to interpret the date strings
     job_context.job_run.run_time = parse_time
     # The job_context object works like a normal dictionary for string replacement
-    return input % job_context
+    return input_string % job_context
