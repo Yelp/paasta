@@ -270,7 +270,7 @@ class TestSetupMarathonJob:
             send_event_patch.assert_called_once_with(
                 fake_service_name,
                 expected_check_name,
-                {},
+                {'alert_after': '10m', 'check_every': '10s'},
                 fake_status,
                 fake_output,
                 fake_soa_dir

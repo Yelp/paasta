@@ -87,6 +87,14 @@ def send_event(name, instance, soa_dir, status, output):
         cluster,
         load_deployments=False,
     ).get_monitoring()
+    # In order to let sensu know how often to expect this check to fire,
+    # we need to set the ``check_every`` to the frequency of our cron job, which
+    # is 10s.
+    monitoring_overrides['check_every'] = '10s'
+    # Most setup_marathon_job failures are transient and represent issues
+    # that will probably be fixed eventually, so we set an alert_after
+    # to suppress extra noise
+    monitoring_overrides['alert_after'] = '10m'
     check_name = 'setup_marathon_job.%s' % compose_job_id(name, instance)
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
