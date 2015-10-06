@@ -170,6 +170,15 @@ Each job configuration MUST specify the following options:
       simultaneously, causing serious performance degradation and ignoring the
       fact that the job may have just run.
 
+    * **Warning**: Chronos does *not* allow overlapping jobs. If a job has a
+      ``schedule`` set to repeat every hour, and the task takes longer than
+      an hour, Chronos will *not* schedule the next task while the previous
+      one is still running. In PaaSTA this can be worked around to some degree
+      by using the ``cmd`` time parsing documented below. For example, if
+      a job is scheduled to run every 24 hours, and a ``%(day)`` variable
+      substitution is used, PaaSTA will create a new job for *each* new day,
+      allowing the previous job to take more than 24 hours.
+
 Each job configuration MAY specify the following options:
 
   * ``cmd``: See the `marathon-[clustername].yaml`_ section for details
