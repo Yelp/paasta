@@ -121,7 +121,7 @@ class TestChronosTools:
             mock_connect,
         ):
             fake_config = chronos_tools.ChronosConfig(
-                {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')
+                {'user': 'test', 'password': 'pass', 'url': ['some_fake_host', 'some_other_host']}, '/fake/path')
             chronos_tools.get_chronos_client(fake_config)
             assert mock_connect.call_count == 1
 
