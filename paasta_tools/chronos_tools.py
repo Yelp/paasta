@@ -79,7 +79,7 @@ def get_chronos_client(config):
     chronos_url = config.get_url()[0]
     chronos_hostname = urlparse.urlsplit(chronos_url).netloc
     log.info("Connecting to Chronos server at: %s" % chronos_url)
-    return chronos.connect(hostname=chronos_hostname,
+    return chronos.connect(servers=chronos_hostname,
                            username=config.get_username(),
                            password=config.get_password())
 
