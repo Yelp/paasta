@@ -173,6 +173,18 @@ Each job configuration MUST specify the following options:
 Each job configuration MAY specify the following options:
 
   * ``cmd``: See the `marathon-[clustername].yaml`_ section for details
+    Additionally ``cmd`` strings with time or date strings that Tron
+    understands will be interpreted and replaced. ``shortdate``, ``year``,
+    ``month``, ``day``, and ``daynumber`` are supported. Read more in the
+    official `tron documentation
+    <https://pythonhosted.org/tron/command_context.html#built-in-command-context-variables>`_
+    for more information on how to use these variables.
+
+    * **WARNING**: Chronos ``cmd`` parsing is done via `python string
+      replacement
+      <https://docs.python.org/2/library/string.html#format-string-syntax>`_,
+      which means that the special character strings like ``%`` must
+      be escaped in order to be used literally.
 
   * ``args``: See the `marathon-[clustername].yaml`_ section for details
 

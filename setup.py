@@ -38,6 +38,7 @@ setup(
         'scribereader == 0.1.25',
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.9.2',
+        'tron == 0.6.1.1',
         'yelp_clog >= 2.2.0',
     ],
     scripts = [

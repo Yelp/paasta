@@ -1,3 +1,4 @@
+import datetime
 import mock
 from pytest import raises
 
@@ -230,6 +231,30 @@ class TestChronosTools:
     def test_get_service_name(self):
         expected = 'test_service'
         actual = self.fake_chronos_job_config.get_service_name()
+        assert actual == expected
+
+    def test_get_cmd_uses_time_parser(self):
+        fake_cmd = 'foo bar baz'
+        fake_config_dict = {
+            'bounce_method': 'graceful',
+            'cmd': fake_cmd,
+            'epsilon': 'PT30M',
+            'retries': 5,
+            'cpus': 5.5,
+            'mem': 1024.4,
+            'disabled': True,
+            'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
+            'schedule_time_zone': 'Zulu',
+            'monitoring': {},
+        }
+        expected = 'parsed_time'
+        with mock.patch(
+            'chronos_tools.parse_time_variables', autospec=True, return_value=expected
+                ) as mock_parse_time_variables:
+            fake_chronos_job_config = chronos_tools.ChronosJobConfig(
+                'fake_service', 'fake_job', fake_config_dict, {})
+            actual = fake_chronos_job_config.get_cmd()
+            mock_parse_time_variables.assert_called_once_with(fake_cmd)
         assert actual == expected
 
     def test_get_owner(self):
@@ -837,3 +862,10 @@ class TestChronosTools:
         client.list = Mock(side_effect=[[], [], [{'name': 'foo'}]])
 
         assert chronos_tools.wait_for_job(client, 'foo')
+
+    def test_parse_time_variables_parses_shortdate(self):
+        input_time = datetime.datetime(2012, 3, 14)
+        test_input = 'ls %(shortdate-1)s foo'
+        expected = 'ls 2012-03-13 foo'
+        actual = chronos_tools.parse_time_variables(input_string=test_input, parse_time=input_time)
+        assert actual == expected
