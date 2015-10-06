@@ -23,7 +23,7 @@ def non_interactive_local_run(context, var, val):
         # (which causes jenkins flakes) The sleep can be removed once local-run
         # understands that containers can die quickly.
         localrun_cmd = ("paasta_cli.py local-run "
-                        "--yelpsoa-root ../fake_soa_configs_local_run/ "
+                        "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
                         "-s fake_simple_service "
                         "--cluster test-cluster "
                         "--cmd '/bin/sh -c \"echo \"%s=$%s\" && sleep 2s && exit 42\"'" % (var, val))
