@@ -209,7 +209,12 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     elif command == "status":
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
-        job_config = chronos_tools.load_chronos_job_config(service, instance, cluster, soa_dir=soa_dir)
+        job_config = chronos_tools.load_chronos_job_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        )
         print status_chronos_jobs(matching_jobs, job_config)
     else:
         # The command parser shouldn't have let us get this far...
