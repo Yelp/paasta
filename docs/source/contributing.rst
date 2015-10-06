@@ -47,7 +47,8 @@ If you wish to upgrade one of these forks:
 
 * Merge the necessary changes (if this is upstream, then merge origin/master with fork/master). Take particular
   care to ensure that setup.py is merged correctly, and contains the yelp specific release tag.
-* Edit ``setup.py`` and update the ``version`` field.
+* Edit ``setup.py`` of the library and update the ``version`` field.
+* Edit ``setup.py`` of paasta-tools to ensure the dependency version is correct.
 * Commit the change with a message noting the new version.
 * Tag the commit with the version. e.g. ``git tag v0.30.1-yelp1``
 * Push the commit upstream ``git push --tags fork master``
