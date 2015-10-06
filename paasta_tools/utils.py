@@ -45,6 +45,8 @@ ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
 no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
+log = logging.getLogger('__main__')
+
 
 class InvalidInstanceConfig(Exception):
     pass
@@ -788,7 +790,6 @@ def get_service_instance_list(name, cluster=None, instance_type=None, soa_dir=DE
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (name, instance) for each instance defined for the service name
     """
-    log = logging.getLogger('__main__')
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     if instance_type == 'marathon' or instance_type == 'chronos':
@@ -820,7 +821,6 @@ def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_S
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service_name, instance_name)
     """
-    log = logging.getLogger('__main__')
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     rootdir = os.path.abspath(soa_dir)

@@ -741,7 +741,7 @@ def is_app_id_running(app_id, client):
     return app_id in all_app_ids
 
 
-def app_has_tasks(client, app_id, expected_tasks):
+def app_has_tasks(client, app_id, expected_tasks, exact_matches_only=False):
     """ A predicate function indicating whether an app has launched *at least* expected_tasks
     tasks.
 
@@ -749,7 +749,8 @@ def app_has_tasks(client, app_id, expected_tasks):
 
     :param client: the marathon client
     :param app_id: the app_id to which the tasks should belong
-    :param minimum_tasks: the minimum number of tasks to check for
+    :param expected_tasks: the number of tasks to check for
+    :param exact_matches_only: a boolean indicating whether we require exactly expected_tasks to be running
     :returns: a boolean indicating whether there are atleast expected_tasks tasks with
         an app id matching app_id
     """
@@ -759,22 +760,26 @@ def app_has_tasks(client, app_id, expected_tasks):
         print "no app with id %s found" % app_id
         raise
     print "app %s has %d of %d expected tasks" % (app_id, len(tasks), expected_tasks)
-    return len(tasks) >= expected_tasks
+    if exact_matches_only:
+        return len(tasks) == expected_tasks
+    else:
+        return len(tasks) >= expected_tasks
 
 
 @timeout()
-def wait_for_app_to_launch_tasks(client, app_id, expected_tasks):
+def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_only=False):
     """ Wait for an app to have num_tasks tasks launched. If the app isn't found, then this will swallow the exception
     and retry. Times out after 30 seconds.
 
     :param client: The marathon client
     :param app_id: The app id to which the tasks belong
-    :param num_tasks: The number of tasks to wait for
+    :param expected_tasks: The number of tasks to wait for
+    :param exact_matches_only: a boolean indicating whether we require exactly expected_tasks to be running
     """
     found = False
     while not found:
         try:
-            found = app_has_tasks(client, app_id, expected_tasks)
+            found = app_has_tasks(client, app_id, expected_tasks, exact_matches_only)
         except NotFoundError:
             pass
         if found:

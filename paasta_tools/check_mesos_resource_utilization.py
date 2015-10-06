@@ -17,7 +17,7 @@ from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config
 
 
-log = logging.getLogger(__name__)
+log = logging.getLogger('__main__')
 
 
 def parse_args():

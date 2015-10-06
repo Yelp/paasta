@@ -45,7 +45,7 @@ from paasta_tools.utils import SPACER
 
 
 log = logging.getLogger('__main__')
-log.addHandler(logging.StreamHandler(sys.stdout))
+logging.basicConfig()
 
 
 def parse_args():
