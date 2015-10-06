@@ -40,6 +40,18 @@ it is a little tricky.
 
 * There is a simple integration test. See the itest/ folder.
 
+Upgrading Forked Libraries
+--------------------------
+We maintain forks of some of the libraries PaaSTA depends on, including marathon-python and chronos-python.
+If you wish to upgrade one of these forks:
+
+* Merge the necessary changes (if this is upstream, then merge origin/master with fork/master). Take particular
+  care to ensure that setup.py is merged correctly, and contains the yelp specific release tag.
+* Edit ``setup.py`` and update the ``version`` field.
+* Commit the change with a message noting the new version.
+* Tag the commit with the version. e.g. ``git tag v0.30.1-yelp1``
+* Push the commit upstream ``git push --tags fork master``
+* Jenkins will notice the new commits and build a new release. If this succeeds, Jenkins will push the new version of the package to pypi.
 
 Upgrading Components
 --------------------
