@@ -223,9 +223,9 @@ class MarathonServiceConfig(InstanceConfig):
         else:
             discover_level = service_namespace_config.get_discover()
             locations = get_mesos_slaves_grouped_by_attribute(discover_level)
-            deploy_blacklist = deploy_blacklist_to_constraints(self.get_deploy_blacklist())
-            constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
-            return constraints + deploy_blacklist
+            deploy_constraints = deploy_blacklist_to_constraints(self.get_deploy_blacklist())
+            routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
+            return routing_constraints + deploy_constraints
 
     def format_marathon_app_dict(self, job_id, docker_url, docker_volumes, service_namespace_config):
         """Create the configuration that will be passed to the Marathon REST API.

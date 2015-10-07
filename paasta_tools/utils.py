@@ -974,6 +974,8 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
 
 def deploy_blacklist_to_constraints(deploy_blacklist):
     """Converts a blacklist of locations into marathon appropriate constraints
+    https://mesosphere.github.io/marathon/docs/constraints.html#unlike-operator
+
     :param blacklist: List of lists of locations to blacklist
     :returns: List of lists of constraints
     """

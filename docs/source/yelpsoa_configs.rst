@@ -34,9 +34,9 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each instancenam
 
   * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 
-      ``deploy_blacklist: [["region", "dc6"]]``
+      ``deploy_blacklist: [["region", "uswest1-prod"]]``
 
-    would indicate that PaaSTA should not deploy the service to the ``dc6`` region.
+    would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
 
   * ``drain_method``: Controls the drain method; see `drain_lib <drain_lib.html>`_. Defaults to ``noop`` for instances that are not in Smartstack, or ``hacheck`` if they are.
 
