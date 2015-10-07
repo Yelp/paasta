@@ -1,5 +1,6 @@
 import fnmatch
 import glob
+import logging
 import os
 from socket import gaierror
 from socket import gethostbyname_ex
@@ -13,6 +14,10 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
+
+
+log = logging.getLogger('__main__')
+logging.basicConfig()
 
 
 def load_method(module_name, method_name):
@@ -424,7 +429,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
         compose_job_id(service_name, instancename),
         subcommand
     )
-    print "Running Command: %s" % command
+    log.debug("Running Command: %s" % command)
     _, output = _run(command, timeout=timeout)
     return output
 
