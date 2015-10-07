@@ -216,7 +216,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
         service_name, 'a_cluster', planned_deployments, actual_deployments)
     assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 1
     mock_execute_paasta_serviceinit_on_remote_master.assert_any_call(
-        'status', 'a_cluster', service_name, 'a_instance', False)
+        'status', 'a_cluster', service_name, 'a_instance', verbose=False)
 
     output = mock_stdout.getvalue()
     assert expected_output in output

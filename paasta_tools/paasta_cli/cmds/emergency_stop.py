@@ -1,4 +1,6 @@
 #!/usr/bin/env python
+from service_configuration_lib import DEFAULT_SOA_DIR
+
 from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
@@ -28,6 +30,17 @@ def add_subparser(subparsers):
         help="The PaaSTA cluster that has the service instance you want to stop. Like 'norcal-prod'.",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
+    status_parser.add_argument(
+        '-a', '--appid',
+        help="The complete marathon appid to stop. Like 'example-service.main.gitf0cfd3a0.config7a2a00b7",
+        required=False,
+    )
+    status_parser.add_argument(
+        '-y', '--yelpsoa-config-root',
+        default=DEFAULT_SOA_DIR,
+        required=False,
+        help="Path to root of yelpsoa-configs checkout",
+    )
     status_parser.set_defaults(command=paasta_emergency_stop)
 
 
@@ -41,9 +54,11 @@ def paasta_emergency_stop(args):
     For example, this can be done for Marathon apps by setting 'instances: 0', or
     for Chronos jobs by setting 'disabled: True'. Alternatively, remove the config yaml entirely.
     """
-    service = figure_out_service_name(args)
+    service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     print "Performing an emergency stop on %s..." % compose_job_id(service, args.instance)
-    execute_paasta_serviceinit_on_remote_master('stop', args.cluster, service, args.instance)
+    output = execute_paasta_serviceinit_on_remote_master('stop', args.cluster, service, args.instance,
+                                                         app_id=args.appid)
+    print "Output: %s" % output
     print "%s" % "\n".join(paasta_emergency_stop.__doc__.splitlines()[-7:])
     print "To start this service again asap, run:"
     print "paasta emergency-start --service %s --instance %s --cluster %s" % (service, args.instance, args.cluster)

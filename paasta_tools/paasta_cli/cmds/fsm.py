@@ -4,6 +4,8 @@ from os.path import exists
 from os.path import join
 import sys
 
+from service_configuration_lib import DEFAULT_SOA_DIR
+
 from paasta_tools.paasta_cli.fsm.questions import _yamlize
 from paasta_tools.paasta_cli.fsm.questions import get_clusternames_from_deploy_stanza
 from paasta_tools.paasta_cli.fsm.questions import get_deploy_stanza
@@ -27,7 +29,7 @@ def add_subparser(subparsers):
     fsm_parser.add_argument(
         "-y", "--yelpsoa-config-root",
         dest="yelpsoa_config_root",
-        default=None,
+        default=DEFAULT_SOA_DIR,
         required=True,
         help="Path to root of yelpsoa-configs checkout (required)")
     fsm_parser.add_argument(

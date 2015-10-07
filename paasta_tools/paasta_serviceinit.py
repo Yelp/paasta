@@ -34,6 +34,8 @@ def parse_args():
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
+    parser.add_argument('-a', '--appid', dest="app_id",
+                        help="app ID as returned by paasta status -v to operate on")
     command_choices = ['start', 'stop', 'restart', 'status']
     parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
     args = parser.parse_args()
@@ -77,6 +79,7 @@ def main():
             cluster=cluster,
             verbose=args.verbose,
             soa_dir=args.soa_dir,
+            app_id=args.app_id,
         )
         sys.exit(return_code)
     elif instance_type == 'chronos':
