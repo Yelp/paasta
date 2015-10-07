@@ -424,6 +424,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
         compose_job_id(service_name, instancename),
         subcommand
     )
+    print "run_paasta_serviceinit command: %s" % command
     _, output = _run(command, timeout=timeout)
     return output
 
