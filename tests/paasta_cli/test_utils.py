@@ -143,7 +143,7 @@ def test_run_paasta_serviceinit_status_verbose(mock_run):
         'fake_service_name',
         'fake_instancename',
         'fake_cluster',
-        True,
+        verbose=True,
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value[1]
@@ -195,8 +195,6 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
         service_name,
         instancename,
         cluster_name,
-        False,
-        None,
     )
     assert actual == mock_run_paasta_serviceinit.return_value
 
