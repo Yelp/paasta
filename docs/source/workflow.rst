@@ -40,8 +40,8 @@ Marathon masters run `deploy_marathon_services
 current cluster state, then issue comands to Marathon to put the cluster into
 the right state -- cluster X should be running version Y of service Z.
 
-How PaaSTA runs Docker images
------------------------------
+How PaaSTA Runs Docker Containers
+---------------------------------
 Marathon launches the Docker containers that comprise a PaaSTA service. The
 default configuration is managed by puppet in the `paasta_tools
 module
@@ -108,6 +108,22 @@ Mesos *will* healthcheck the task based on the same healthcheck that Smartstack
 uses, in order to prune unhealthy tasks. This pruning is less agressive than
 smartstack's checking, so a dead task will go DOWN in smartstack before it is
 reaped by Mesos.
+
+Time Zones In Docker Containers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Docker containers launched by PaaSTA have whatever time zone is set by the
+Dockerfile. If it is not set, the default is the Linux default, **UTC**.
+
+Some code makes assumptions about the underlying time zone a server is in.
+In such a situation the time zone should be explicitly set in the Dockerfile.
+For example, this line can be placed in a Dockerfile to set the container
+to run in US Pacific time::
+
+  RUN ln -fs /usr/share/zoneinfo/US/Pacific /etc/localtime
+
+**Warning**: Forcing a time zone like this is not advised, as Docker containers
+could potentially be launched in many geographic locations. Ideally code
+should *not* make assumptions about the local time zone setting of a server.
 
 Bouncing
 --------
