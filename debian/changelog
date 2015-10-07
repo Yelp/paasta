@@ -1,3 +1,10 @@
+paasta-tools (0.12.88-yelp1) lucid; urgency=low
+
+  * 0.12.88 tagged with 'make release'
+    Commit: Merge branch u/nhandler/emergency-stop-appid-PAASTA-943
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 07 Oct 2015 16:19:27 -0700
+
 paasta-tools (0.12.87-yelp1) lucid; urgency=low
 
   * 0.12.87 tagged with 'make release'
