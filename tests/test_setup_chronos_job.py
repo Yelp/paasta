@@ -92,9 +92,9 @@ class TestSetupChronosJob:
             parse_args_patch.assert_called_once_with()
             get_client_patch.assert_called_once_with(load_chronos_config_patch.return_value)
             load_chronos_job_config_patch.assert_called_once_with(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_cluster,
+                service=self.fake_service_name,
+                instance=self.fake_job_name,
+                cluster=self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir,
             )
             setup_job_patch.assert_called_once_with(
@@ -550,7 +550,8 @@ class TestSetupChronosJob:
                 fake_soa_dir
             )
             mock_load_chronos_job_config.assert_called_once_with(
-                fake_service_name,
-                fake_instance_name,
-                mock_load_system_paasta_config.return_value.get_cluster.return_value,
+                service=fake_service_name,
+                instance=fake_instance_name,
+                cluster=mock_load_system_paasta_config.return_value.get_cluster.return_value,
+                soa_dir=fake_soa_dir
             )

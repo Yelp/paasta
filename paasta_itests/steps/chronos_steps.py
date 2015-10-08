@@ -22,10 +22,10 @@ def create_trivial_chronos_job(context):
 @when(u'we load the configs for instance "{instance_name}" of service "{service_name}" into a ChronosJobConfig')
 def create_chronos_job_config_object_from_configs(context, instance_name, service_name):
     context.chronos_job_config_obj = chronos_tools.load_chronos_job_config(
-        service_name,
-        instance_name,
-        context.cluster,
-        context.soa_dir
+        service=service_name,
+        instance=instance_name,
+        cluster=context.cluster,
+        soa_dir=context.soa_dir,
     )
 
 

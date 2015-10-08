@@ -106,17 +106,16 @@ def read_chronos_jobs_for_service(service_name, cluster, soa_dir=DEFAULT_SOA_DIR
     )
 
 
-def load_chronos_job_config(service_name, job_name, cluster, soa_dir=DEFAULT_SOA_DIR):
-    service_chronos_jobs = read_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir)
-
-    if job_name not in service_chronos_jobs:
-        raise InvalidChronosConfigError('No job named "%s" in config file chronos-%s.yaml' % (job_name, cluster))
-
-    deployments_json = load_deployments_json(service_name, soa_dir=soa_dir)
-    branch = get_default_branch(cluster, job_name)
-    branch_dict = deployments_json.get_branch_dict(service_name, branch)
-
-    return ChronosJobConfig(service_name, job_name, service_chronos_jobs[job_name], branch_dict)
+def load_chronos_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+    service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
+    if instance not in service_chronos_jobs:
+        raise InvalidChronosConfigError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
+    branch_dict = {}
+    if load_deployments:
+        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
+        branch = get_default_branch(cluster, instance)
+        branch_dict = deployments_json.get_branch_dict(service, branch)
+    return ChronosJobConfig(service, instance, service_chronos_jobs[instance], branch_dict)
 
 
 class ChronosJobConfig(InstanceConfig):

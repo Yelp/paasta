@@ -72,7 +72,12 @@ def send_event(name, instance, soa_dir, status, output):
     :param output: The output to emit for this event
     """
     cluster = load_system_paasta_config().get_cluster()
-    monitoring_overrides = chronos_tools.load_chronos_job_config(name, instance, cluster).get_monitoring()
+    monitoring_overrides = chronos_tools.load_chronos_job_config(
+        service=name,
+        instance=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+    ).get_monitoring()
     # In order to let sensu know how often to expect this check to fire,
     # we need to set the ``check_every`` to the frequency of our cron job, which
     # is 10s.
@@ -155,9 +160,9 @@ def main():
 
     try:
         chronos_job_config = chronos_tools.load_chronos_job_config(
-            service_name,
-            instance_name,
-            cluster,
+            service=service_name,
+            instance=instance_name,
+            cluster=cluster,
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:

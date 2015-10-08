@@ -165,15 +165,36 @@ class TestChronosTools:
         ):
             mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
             mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
-            actual = chronos_tools.load_chronos_job_config(self.fake_service_name,
-                                                           self.fake_job_name,
-                                                           self.fake_cluster,
-                                                           fake_soa_dir)
+            actual = chronos_tools.load_chronos_job_config(service=self.fake_service_name,
+                                                           instance=self.fake_job_name,
+                                                           cluster=self.fake_cluster,
+                                                           soa_dir=fake_soa_dir)
             mock_load_deployments_json.assert_called_once_with(self.fake_service_name, soa_dir=fake_soa_dir)
             mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
                                                                        self.fake_cluster,
                                                                        soa_dir=fake_soa_dir)
             assert actual == self.fake_chronos_job_config
+
+    def test_load_chronos_job_config_can_ignore_deployments(self):
+        fake_soa_dir = '/tmp/'
+        with contextlib.nested(
+            mock.patch('chronos_tools.load_deployments_json', autospec=True,),
+            mock.patch('chronos_tools.read_chronos_jobs_for_service', autospec=True),
+        ) as (
+            mock_load_deployments_json,
+            mock_read_chronos_jobs_for_service,
+        ):
+            mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
+            actual = chronos_tools.load_chronos_job_config(service=self.fake_service_name,
+                                                           instance=self.fake_job_name,
+                                                           cluster=self.fake_cluster,
+                                                           load_deployments=False,
+                                                           soa_dir=fake_soa_dir)
+            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
+                                                                       self.fake_cluster,
+                                                                       soa_dir=fake_soa_dir)
+            assert not mock_load_deployments_json.called
+            assert dict(actual) == dict(self.fake_chronos_job_config)
 
     def test_load_chronos_job_config_unknown_job(self):
         fake_soa_dir = '/tmp/'
@@ -188,10 +209,10 @@ class TestChronosTools:
             mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
             mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
             with raises(chronos_tools.InvalidChronosConfigError) as exc:
-                chronos_tools.load_chronos_job_config(self.fake_service_name,
-                                                      fake_job_name,
-                                                      self.fake_cluster,
-                                                      fake_soa_dir)
+                chronos_tools.load_chronos_job_config(service=self.fake_service_name,
+                                                      instance=fake_job_name,
+                                                      cluster=self.fake_cluster,
+                                                      soa_dir=fake_soa_dir)
             mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
                                                                        self.fake_cluster,
                                                                        soa_dir=fake_soa_dir)
