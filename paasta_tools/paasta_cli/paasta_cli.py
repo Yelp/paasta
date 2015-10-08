@@ -71,14 +71,14 @@ def set_pgrp_and_cleanup_procs_on_exit():
         yield
     finally:
         if kill_pgrp_when_finished:
-            pgrp = os.getpgrp()
-            pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp
-                            and proc.pid != os.getpid()]
-            for proc in pids_in_pgrp:
-                try:
+            try:
+                pgrp = os.getpgrp()
+                pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp
+                                and proc.pid != os.getpid()]
+                for proc in pids_in_pgrp:
                     os.kill(proc.pid, signal.SIGTERM)
-                except OSError:
-                    pass
+            except OSError:
+                pass
 
 
 def main():
