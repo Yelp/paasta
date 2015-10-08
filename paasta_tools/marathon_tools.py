@@ -91,7 +91,7 @@ class MarathonConfig(dict):
             raise MarathonNotConfigured('Could not find marathon password in system marathon config: %s' % self.path)
 
 
-def load_marathon_service_config(service_name, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
+def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     """Read a service instance's configuration for marathon.
 
     If a branch isn't specified for a config, the 'branch' key defaults to
@@ -104,35 +104,35 @@ def load_marathon_service_config(service_name, instance, cluster, load_deploymen
                              should also be loaded
     :param soa_dir: The SOA configuration directory to read from
     :returns: A dictionary of whatever was in the config for the service instance"""
-    log.info("Reading service configuration files from dir %s/ in %s" % (service_name, soa_dir))
+    log.info("Reading service configuration files from dir %s/ in %s" % (service, soa_dir))
     log.info("Reading general configuration file: service.yaml")
     general_config = service_configuration_lib.read_service_configuration(
-        service_name,
+        service,
         soa_dir=soa_dir
     )
     marathon_conf_file = "marathon-%s" % cluster
     log.info("Reading marathon configuration file: %s.yaml", marathon_conf_file)
     instance_configs = service_configuration_lib.read_extra_service_information(
-        service_name,
+        service,
         marathon_conf_file,
         soa_dir=soa_dir
     )
 
     if instance not in instance_configs:
         raise NoConfigurationForServiceError(
-            "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service_name, marathon_conf_file)
+            "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file)
         )
 
     general_config.update(instance_configs[instance])
 
     branch_dict = {}
     if load_deployments:
-        deployments_json = load_deployments_json(service_name, soa_dir=soa_dir)
+        deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = general_config.get('branch', get_default_branch(cluster, instance))
-        branch_dict = deployments_json.get_branch_dict(service_name, branch)
+        branch_dict = deployments_json.get_branch_dict(service, branch)
 
     return MarathonServiceConfig(
-        service_name,
+        service,
         instance,
         general_config,
         branch_dict,
