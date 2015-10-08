@@ -294,14 +294,14 @@ class TestChronosTools:
         fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
         assert fake_conf.get_shell() is True
 
-    def test_get_env(self):
+    def test_get_chronos_formatted_env(self):
         input_env = {'foo': 'bar', 'biz': 'baz'}
         expected_env = [
             {"name": "foo", "value": "bar"},
             {"name": "biz", "value": "baz"},
         ]
         fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'env': input_env}, {})
-        assert sorted(fake_conf.get_env()) == sorted(expected_env)
+        assert sorted(fake_conf.get_chronos_formatted_env()) == sorted(expected_env)
 
     def test_get_constraints(self):
         fake_constraints = 'fake_constraints'
