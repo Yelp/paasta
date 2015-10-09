@@ -322,7 +322,7 @@ def test_get_marathon_client():
 
 
 def test_assert_chronos_scheduled_jobs():
-    mock_client = ChronosClient(hostname="fake_hostname")
+    mock_client = ChronosClient(servers="fake_hostname")
     mock_client.list = lambda: []
     output, ok = paasta_metastatus.assert_chronos_scheduled_jobs(mock_client)
     assert output == 'chronos jobs: 0'
@@ -334,7 +334,7 @@ def test_get_chronos_status_no_chronos():
         is not available. This needs to be removed and fixed when
         we have chronos available everywhere, but worth verifying
         it works as expected for now """
-    mock_client = ChronosClient(hostname="fake_hostname")
+    mock_client = ChronosClient(servers="fake_hostname")
 
     # force the raising of the error rather than
     # relying on the hostname of the config being

@@ -19,7 +19,7 @@ setup(
         'argcomplete >= 0.8.1',
         # argparse is pinned to 1.2.1 since it comes in the core python2.7 libs and pip can't seem to override it
         'argparse == 1.2.1',
-        'chronos-python == 0.32.1-yelp3',
+        'chronos-python == 0.33.0-yelp1',
         # Don't update this unless you have confirmed the client works with the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
         'dulwich >= 0.9.8',

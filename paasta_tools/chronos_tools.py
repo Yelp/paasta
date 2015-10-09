@@ -84,10 +84,10 @@ def load_chronos_config(path=PATH_TO_CHRONOS_CONFIG):
 
 def get_chronos_client(config):
     """Returns a chronos client object for interacting with the API"""
-    chronos_url = config.get_url()[0]
-    chronos_hostname = urlparse.urlsplit(chronos_url).netloc
-    log.info("Connecting to Chronos server at: %s" % chronos_url)
-    return chronos.connect(hostname=chronos_hostname,
+    chronos_hosts = config.get_url()
+    chronos_hostnames = [urlparse.urlsplit(hostname).netloc for hostname in chronos_hosts]
+    log.info("Attempting to connect to Chronos servers: %s" % chronos_hosts)
+    return chronos.connect(servers=chronos_hostnames,
                            username=config.get_username(),
                            password=config.get_password())
 

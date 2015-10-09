@@ -7,7 +7,7 @@ argparse==1.2.1
 backports.ssl-match-hostname==3.4.0.2
 blessings==1.5.1
 boto==2.34.0
-chronos-python==0.32.1-yelp3
+chronos-python==0.33.0-yelp1
 dateglob==0.1
 # Don't update this unless you have confirmed the client works with the Docker version deployed on PaaSTA servers
 docker-py==1.2.3
