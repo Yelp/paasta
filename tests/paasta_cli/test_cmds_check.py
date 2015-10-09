@@ -58,8 +58,6 @@ def test_check_paasta_check_calls_everything(
 
     mock_guess_service_name.return_value = 'servicedocs'
     mock_validate_service_name.return_value = None
-    # mock_args = mock.Mock()
-    # mock_args.yelpsoa_config_root
     paasta_check(None)
 
     assert mock_git_repo_check.called
