@@ -114,10 +114,15 @@ class InstanceConfig(dict):
         """Get monitoring overrides defined for the given instance"""
         return self.config_dict.get('monitoring', {})
 
+    def get_deploy_blacklist(self):
+        """The deploy blacklist is a list of lists, where the lists indicate
+        which locations the service should not be deployed"""
+        return self.config_dict.get('deploy_blacklist', [])
+
     def get_monitoring_blacklist(self):
         """The monitoring_blacklist is a list of tuples, where the tuples indicate
         which locations the user doesn't care to be monitored"""
-        return self.config_dict.get('monitoring_blacklist', [])
+        return self.config_dict.get('monitoring_blacklist', self.get_deploy_blacklist())
 
     def get_docker_image(self):
         """Get the docker image name (with tag) for a given service branch from
@@ -965,3 +970,17 @@ def is_under_replicated(num_available, expected_count, crit_threshold):
         return (True, ratio)
     else:
         return (False, ratio)
+
+
+def deploy_blacklist_to_constraints(deploy_blacklist):
+    """Converts a blacklist of locations into marathon appropriate constraints
+    https://mesosphere.github.io/marathon/docs/constraints.html#unlike-operator
+
+    :param blacklist: List of lists of locations to blacklist
+    :returns: List of lists of constraints
+    """
+    constraints = []
+    for blacklisted_location in deploy_blacklist:
+        constraints.append([blacklisted_location[0], "UNLIKE", blacklisted_location[1]])
+
+    return constraints

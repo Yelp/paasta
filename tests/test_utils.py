@@ -761,6 +761,20 @@ class TestInstanceConfig:
         fake_conf = utils.InstanceConfig({}, {})
         assert fake_conf.get_monitoring_blacklist() == []
 
+    def test_monitoring_blacklist_defaults_to_deploy_blacklist(self):
+        fake_deploy_blacklist = [["region", "fake_region"]]
+        fake_conf = utils.InstanceConfig({'deploy_blacklist': fake_deploy_blacklist}, {})
+        assert fake_conf.get_monitoring_blacklist() == fake_deploy_blacklist
+
+    def test_deploy_blacklist_default(self):
+        fake_conf = utils.InstanceConfig({}, {})
+        assert fake_conf.get_deploy_blacklist() == []
+
+    def test_deploy_blacklist_reads_blacklist(self):
+        fake_deploy_blacklist = [["region", "fake_region"]]
+        fake_conf = utils.InstanceConfig({'deploy_blacklist': fake_deploy_blacklist}, {})
+        assert fake_conf.get_deploy_blacklist() == fake_deploy_blacklist
+
 
 def test_is_under_replicated_ok():
     num_available = 1
@@ -784,3 +798,10 @@ def test_is_under_replicated_critical():
     crit_threshold = 50
     actual = utils.is_under_replicated(num_available, expected_count, crit_threshold)
     assert actual == (True, float(0))
+
+
+def test_deploy_blacklist_to_constraints():
+    fake_deploy_blacklist = [["region", "useast1-prod"], ["habitat", "fake_habitat"]]
+    expected_constraints = [["region", "UNLIKE", "useast1-prod"], ["habitat", "UNLIKE", "fake_habitat"]]
+    actual = utils.deploy_blacklist_to_constraints(fake_deploy_blacklist)
+    assert actual == expected_constraints

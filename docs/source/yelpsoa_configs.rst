@@ -79,6 +79,12 @@ instancename MAY have:
   * ``monitoring``: A dictionary of values that configure overrides for
     monitoring parameters that will take precedence over what is in
     `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
+  
+  * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
+
+      ``deploy_blacklist: [["region", "uswest1-prod"]]``
+
+   would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
 
   * ``monitoring_blacklist``: A list of lists indicating a set of locations to
     *not* monitor for Smartstack replication. For example:
