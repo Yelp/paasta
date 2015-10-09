@@ -84,6 +84,18 @@ def chronos_status_returns_healthy(context):
     assert "New" in output
 
 
+@then(u"paasta_serviceinit status --verbose exits with return code 0 and the correct output")
+def chronos_status_verbose_returns_healthy(context):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job status --verbose' % context.soa_dir
+    print 'Running cmd %s' % cmd
+    (exit_code, output) = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == 0
+    assert "Running Tasks:" in output
+
+
 @when(u"we paasta_serviceinit emergency-stop the chronos job")
 def chronos_emergency_stop_job(context):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job stop' % context.soa_dir

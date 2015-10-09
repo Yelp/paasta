@@ -37,12 +37,16 @@ from paasta_tools.utils import timeout
 
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
-log = logging.getLogger('__main__')
-
-logging.getLogger('marathon').setLevel(logging.WARNING)
-
+# Marathon creates Mesos tasks with an id composed of the app's full name, a
+# spacer, and a UUID. This variable is that spacer. Note that we don't control
+# this spacer, i.e. you can't change it here and expect the world to change
+# with you. We need to know what it is so we can decompose Mesos task ids.
+MESOS_TASK_SPACER = '.'
 PATH_TO_MARATHON_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'marathon.json')
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
+
+log = logging.getLogger('__main__')
+logging.getLogger('marathon').setLevel(logging.WARNING)
 
 
 def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
