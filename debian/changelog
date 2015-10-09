@@ -1,3 +1,10 @@
+paasta-tools (0.12.91-yelp1) lucid; urgency=low
+
+  * 0.12.91 tagged with 'make release'
+    Commit: Merge branch update-chronos-python
+
+ -- Robert Johnson <robj@yelp.com>  Fri, 09 Oct 2015 05:37:08 -0700
+
 paasta-tools (0.12.90-yelp1) lucid; urgency=low
 
   * 0.12.90 tagged with 'make release'
