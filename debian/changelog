@@ -1,3 +1,11 @@
+paasta-tools (0.12.92-yelp1) lucid; urgency=low
+
+  * 0.12.92 tagged with 'make release'
+    Commit: Merge branch PAASTA-1256  Conflicts:
+    docs/source/yelpsoa_configs.rst
+
+ -- David Nonne <dnonne@yelp.com>  Fri, 09 Oct 2015 11:17:17 -0700
+
 paasta-tools (0.12.91-yelp1) lucid; urgency=low
 
   * 0.12.91 tagged with 'make release'
