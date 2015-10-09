@@ -1,3 +1,12 @@
+paasta-tools (0.12.90-yelp1) lucid; urgency=low
+
+  * 0.12.90 tagged with 'make release'
+    Commit: Merge branch troscoe_PAASTA-973-3  Conflicts:
+    paasta_tools/chronos_serviceinit.py
+    paasta_tools/marathon_serviceinit.py
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 08 Oct 2015 18:02:01 -0700
+
 paasta-tools (0.12.89-yelp1) lucid; urgency=low
 
   * 0.12.89 tagged with 'make release'
