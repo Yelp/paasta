@@ -234,8 +234,8 @@ def add_subparser(subparsers):
         help='The name of the cluster you wish to simulate. If omitted, attempts to guess a cluster to simulate',
     ).completer = lazy_choices_completer(list_clusters)
     list_parser.add_argument(
-        '-y', '--yelpsoa-root',
-        dest='soaconfig_root',
+        '-y', '--yelpsoa-config-root',
+        dest='yelpsoa_config_root',
         help='A directory from which yelpsoa-configs should be read from',
         default=service_configuration_lib.DEFAULT_SOA_DIR
     )
@@ -492,7 +492,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         args.instance,
         cluster,
         load_deployments=False,
-        soa_dir=args.soaconfig_root
+        soa_dir=args.yelpsoa_config_root
     )
 
     if args.cmd:
@@ -538,7 +538,7 @@ def validate_environment():
 def paasta_local_run(args):
     validate_environment()
 
-    service = figure_out_service_name(args, soa_dir=args.soaconfig_root)
+    service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
 
     base_docker_url = get_docker_host()
 
@@ -548,7 +548,7 @@ def paasta_local_run(args):
     tag = os.environ.get('DOCKER_TAG', default_tag)
     os.environ['DOCKER_TAG'] = tag
 
-    paasta_cook_image(None, service=service, soa_dir=args.soaconfig_root)
+    paasta_cook_image(None, service=service, soa_dir=args.yelpsoa_config_root)
 
     try:
         configure_and_run_docker_container(docker_client, tag, service, args)
