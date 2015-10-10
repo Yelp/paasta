@@ -1,3 +1,11 @@
+paasta-tools (0.12.93-yelp1) lucid; urgency=low
+
+  * 0.12.93 tagged with 'make release'
+    Commit: Merge branch troscoe_rename_soaroot
+    https://reviewboard.yelpcorp.com/r/119118/
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Fri, 09 Oct 2015 17:14:26 -0700
+
 paasta-tools (0.12.92-yelp1) lucid; urgency=low
 
   * 0.12.92 tagged with 'make release'
