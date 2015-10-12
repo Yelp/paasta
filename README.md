@@ -5,7 +5,7 @@ PaaSTA - Build, Deploy, Connect, and Monitor Services
 =====================================================
 
 PaaSTA is a highly-available, distributed system for building, deploying, and
-running microservices using Docker containers and Mesos.
+running services using Docker containers and Mesos.
 
 
 Design Goals
