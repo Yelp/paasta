@@ -40,3 +40,21 @@ def see_expected_return_code(context):
 @then(u'we should see the environment variable "{var}" with the value "{val}" in the ouput')
 def env_var_in_output(context, var, val):
     assert "%s=%s" % (var, val) in context.local_run_output
+
+
+@when(u'we run paasta local-run in non-interactive mode on a chronos job')
+def local_run_on_chronos_job(context):
+    with Path("fake_simple_service"):
+        # The local-run invocation here is designed to run and return a sentinel
+        # exit code that we can look out for. It also sleeps a few seconds
+        # because the local-run code currently crashes when the docker
+        # container dies before it gets a chance to lookup the continerid
+        # (which causes jenkins flakes) The sleep can be removed once local-run
+        # understands that containers can die quickly.
+        localrun_cmd = ("paasta_cli.py local-run "
+                        "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
+                        "-s fake_simple_service "
+                        "--cluster test-cluster "
+                        "--instance chronos_job "
+                        "--cmd '/bin/sh -c \"sleep 2s && exit 42\"'")
+        context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=30)
