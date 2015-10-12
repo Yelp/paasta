@@ -12,7 +12,6 @@ Design Goals
 ------------
 
  * Declarative, rather than imperative, control
- * Interoperate with existing infrastructure
  * Fault tolerance
  * Service isolation
  * Efficient use of resources
