@@ -160,7 +160,7 @@ class ChronosJobConfig(InstanceConfig):
         """
         return self.config_dict.get('bounce_method', 'graceful')
 
-    def get_chronos_formatted_env(self):
+    def get_env(self):
         """The expected input env for PaaSTA is a dictionary of key/value pairs
         Chronos requires an array of dictionaries in a very specific format:
         https://mesos.github.io/chronos/docs/api.html#sample-job"""
@@ -308,7 +308,7 @@ class ChronosJobConfig(InstanceConfig):
                 'type': 'DOCKER',
                 'volumes': docker_volumes
             },
-            'environmentVariables': self.get_chronos_formatted_env(),
+            'environmentVariables': self.get_env(),
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
             'constraints': self.get_constraints(),

@@ -938,6 +938,7 @@ def test_get_instance_config_unknown(
     mock_validate_service_instance,
 ):
     with raises(NotImplementedError):
+        mock_validate_service_instance.return_value = 'some bogus unsupported framework'
         get_instance_config(
             service='fake_service',
             instance='fake_instance',

@@ -89,6 +89,14 @@ class InstanceConfig(dict):
         to be injected to the container environment"""
         return self.config_dict.get('env', {})
 
+    def get_unformatted_env(self):
+        """A dictionary of key/value pairs that represent environment variables
+        to be injected to the container environment.
+
+        This method always returns the raw ``env`` dictionary, and is not formatted in
+        any framework-specific way."""
+        return self.config_dict.get('env', {})
+
     def get_args(self):
         """Get the docker args specified in the service's configuration.
 
