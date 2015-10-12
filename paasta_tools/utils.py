@@ -89,6 +89,14 @@ class InstanceConfig(dict):
         to be injected to the container environment"""
         return self.config_dict.get('env', {})
 
+    def get_unformatted_env(self):
+        """A dictionary of key/value pairs that represent environment variables
+        to be injected to the container environment.
+
+        This method always returns the raw ``env`` dictionary, and is not formatted in
+        any framework-specific way."""
+        return self.config_dict.get('env', {})
+
     def get_args(self):
         """Get the docker args specified in the service's configuration.
 
@@ -183,6 +191,19 @@ class InstanceConfig(dict):
             if not check_passed:
                 error_msgs.append(check_msg)
         return error_msgs
+
+
+def validate_service_instance(service, instance, cluster, soa_dir):
+    marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon', soa_dir=soa_dir)
+    chronos_services = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
+    if (service, instance) in marathon_services:
+        return 'marathon'
+    elif (service, instance) in chronos_services:
+        return 'chronos'
+    else:
+        print ("Error: %s doesn't look like it has been deployed to this cluster! (%s)"
+               % (compose_job_id(service, instance), cluster))
+        sys.exit(3)
 
 
 class PaastaColors:

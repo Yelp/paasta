@@ -12,10 +12,10 @@ import service_configuration_lib
 
 from paasta_tools import chronos_serviceinit
 from paasta_tools import marathon_serviceinit
-from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import validate_service_instance
 
 
 log = logging.getLogger('__main__')
@@ -40,22 +40,6 @@ def parse_args():
     parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
     args = parser.parse_args()
     return args
-
-
-def validate_service_instance(service, instance, cluster, soa_dir):
-    log.info("Operating on cluster: %s" % cluster)
-    marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon', soa_dir=soa_dir)
-    chronos_services = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
-    if (service, instance) in marathon_services:
-        return 'marathon'
-    elif (service, instance) in chronos_services:
-        return 'chronos'
-    else:
-        print ("Error: %s doesn't look like it has been deployed to this cluster! (%s)"
-               % (compose_job_id(service, instance), cluster))
-        log.debug("Discovered marathon services %s" % marathon_services)
-        log.debug("Discovered chronos services %s" % chronos_services)
-        sys.exit(3)
 
 
 def main():
