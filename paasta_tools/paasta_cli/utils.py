@@ -340,12 +340,12 @@ def list_teams():
     return teams
 
 
-def calculate_remote_masters(cluster_name):
-    """Given a cluster_name, do a DNS lookup of that cluster_name (which
-    happens to point, eventually, to the Mesos masters in that cluster_name).
+def calculate_remote_masters(cluster):
+    """Given a cluster, do a DNS lookup of that cluster (which
+    happens to point, eventually, to the Mesos masters in that cluster).
     Return IPs of those Mesos masters.
     """
-    cluster_fqdn = "paasta-%s.yelp" % cluster_name
+    cluster_fqdn = "paasta-%s.yelp" % cluster
     try:
         _, _, ips = gethostbyname_ex(cluster_fqdn)
         output = None
@@ -434,19 +434,19 @@ def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, *
     return output
 
 
-def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, service, instancename, **kwargs):
+def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instancename, **kwargs):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
-    masters, output = calculate_remote_masters(cluster_name)
+    masters, output = calculate_remote_masters(cluster)
     if masters == []:
         return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
     if not master:
         return (
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
         )
-    return run_paasta_serviceinit(subcommand, master, service, instancename, cluster_name, **kwargs)
+    return run_paasta_serviceinit(subcommand, master, service, instancename, cluster, **kwargs)
 
 
 def run_paasta_metastatus(master, verbose=False):
@@ -464,17 +464,17 @@ def run_paasta_metastatus(master, verbose=False):
     return output
 
 
-def execute_paasta_metastatus_on_remote_master(cluster_name, verbose=False):
+def execute_paasta_metastatus_on_remote_master(cluster, verbose=False):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
-    masters, output = calculate_remote_masters(cluster_name)
+    masters, output = calculate_remote_masters(cluster)
     if masters == []:
         return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
     if not master:
         return (
-            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
         )
     return run_paasta_metastatus(master, verbose)
 

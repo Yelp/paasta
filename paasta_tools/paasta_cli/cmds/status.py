@@ -89,10 +89,10 @@ def list_deployed_clusters(pipeline, actual_deployments):
     deployed_clusters = []
     # Get cluster.instance in the order in which they appear in deploy.yaml
     for namespace in pipeline:
-        cluster_name, instance = namespace.split('.')
+        cluster, instance = namespace.split('.')
         if namespace in actual_deployments:
-            if cluster_name not in deployed_clusters:
-                deployed_clusters.append(cluster_name)
+            if cluster not in deployed_clusters:
+                deployed_clusters.append(cluster)
     return deployed_clusters
 
 
@@ -121,7 +121,7 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
         cluster_in_pipeline, instance = namespace.split('.')
 
         if cluster_in_pipeline != cluster:
-            # This function only prints things that are relevant to cluster_name
+            # This function only prints things that are relevant to cluster
             # We skip anything not in this cluster
             continue
 

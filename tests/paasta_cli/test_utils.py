@@ -175,7 +175,7 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
     mock_find_connectable_master,
     mock_calculate_remote_masters,
 ):
-    cluster_name = 'fake_cluster_name'
+    cluster = 'fake_cluster_name'
     service = 'fake_service'
     instancename = 'fake_instance'
     remote_masters = (
@@ -186,15 +186,15 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
     mock_calculate_remote_masters.return_value = (remote_masters, None)
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
 
-    actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster_name, service, instancename)
-    mock_calculate_remote_masters.assert_called_once_with(cluster_name)
+    actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster, service, instancename)
+    mock_calculate_remote_masters.assert_called_once_with(cluster)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
     mock_run_paasta_serviceinit.assert_called_once_with(
         'status',
         'fake_connectable_master',
         service,
         instancename,
-        cluster_name,
+        cluster,
     )
     assert actual == mock_run_paasta_serviceinit.return_value
 
@@ -209,15 +209,15 @@ def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
     mock_find_connectable_master,
     mock_calculate_remote_masters,
 ):
-    cluster_name = 'fake_cluster_name'
+    cluster = 'fake_cluster_name'
     service = 'fake_service'
     instancename = 'fake_instance'
     mock_find_connectable_master.return_value = (None, "fake_err_msg")
     mock_calculate_remote_masters.return_value = (['fake_master'], None)
 
-    actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster_name, service, instancename)
+    actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster, service, instancename)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
-    assert 'ERROR: could not find connectable master in cluster %s' % cluster_name in actual
+    assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert "fake_err_msg" in actual
 
 
@@ -229,7 +229,7 @@ def test_execute_paasta_metastatus_on_remote_master(
     mock_find_connectable_master,
     mock_calculate_remote_masters,
 ):
-    cluster_name = 'fake_cluster_name'
+    cluster = 'fake_cluster_name'
     remote_masters = (
         'fake_master1',
         'fake_master2',
@@ -238,8 +238,8 @@ def test_execute_paasta_metastatus_on_remote_master(
     mock_calculate_remote_masters.return_value = (remote_masters, None)
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
 
-    actual = utils.execute_paasta_metastatus_on_remote_master(cluster_name)
-    mock_calculate_remote_masters.assert_called_once_with(cluster_name)
+    actual = utils.execute_paasta_metastatus_on_remote_master(cluster)
+    mock_calculate_remote_masters.assert_called_once_with(cluster)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
     mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False)
     assert actual == mock_run_paasta_metastatus.return_value
@@ -255,13 +255,13 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     mock_find_connectable_master,
     mock_calculate_remote_masters,
 ):
-    cluster_name = 'fake_cluster_name'
+    cluster = 'fake_cluster_name'
     mock_find_connectable_master.return_value = (None, "fake_err_msg")
     mock_calculate_remote_masters.return_value = (['fake_master'], None)
 
-    actual = utils.execute_paasta_metastatus_on_remote_master(cluster_name)
+    actual = utils.execute_paasta_metastatus_on_remote_master(cluster)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
-    assert 'ERROR: could not find connectable master in cluster %s' % cluster_name in actual
+    assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert "fake_err_msg" in actual
 
 
