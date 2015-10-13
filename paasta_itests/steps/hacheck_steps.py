@@ -21,8 +21,8 @@ def a_fake_task_to_drain(context):
 @given('a HacheckDrainMethod object with delay {delay}')
 def a_HacheckDrainMethod_object_with_delay(context, delay):
     context.drain_method = drain_lib.HacheckDrainMethod(
-        service_name="service",
-        instance_name="instance",
+        service="service",
+        instance="instance",
         nerve_ns="namespace",
         delay=delay,
         hacheck_port=context.hacheck_port,

@@ -79,7 +79,7 @@ def test_log_event():
         start_stop_restart.log_event('fake_service', 'fake_instance', 'fake_cluster', 'stopped')
         mock_log.assert_called_once_with(
             instance='fake_instance',
-            service_name='fake_service',
+            service='fake_service',
             level='event',
             component='deploy',
             cluster='fake_cluster',

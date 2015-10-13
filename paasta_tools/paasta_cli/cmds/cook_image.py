@@ -29,15 +29,15 @@ def add_subparser(subparsers):
 def paasta_cook_image(args, service=None, soa_dir=None):
     """Build a docker image"""
     if service:
-        service_name = service
+        service = service
     else:
-        service_name = args.service
-    if service_name and service_name.startswith('services-'):
-        service_name = service_name.split('services-', 1)[1]
-    validate_service_name(service_name, soa_dir)
+        service = args.service
+    if service and service.startswith('services-'):
+        service = service.split('services-', 1)[1]
+    validate_service_name(service, soa_dir)
 
     run_env = os.environ.copy()
-    default_tag = 'paasta-cook-image-%s-%s' % (service_name, get_username())
+    default_tag = 'paasta-cook-image-%s-%s' % (service, get_username())
     tag = run_env.get('DOCKER_TAG', default_tag)
     run_env['DOCKER_TAG'] = tag
 
@@ -52,13 +52,13 @@ def paasta_cook_image(args, service=None, soa_dir=None):
         env=run_env,
         log=True,
         component='build',
-        service_name=service_name,
+        service=service,
         loglevel='debug'
     )
     if returncode != 0:
         _log(
-            service_name=service_name,
-            line='ERROR: make cook-image failed for %s.' % service_name,
+            service=service,
+            line='ERROR: make cook-image failed for %s.' % service,
             component='build',
             level='event',
         )

@@ -8,11 +8,11 @@ from paasta_tools.monitoring.replication_utils import (
 )
 
 
-def check_replication(service_name, service_replication,
+def check_replication(service, service_replication,
                       warn_range, crit_range):
     """Check for sufficient replication of a service
 
-    :param service_name: A string representing the name of the service
+    :param service: A string representing the name of the service
                          this replication check is relevant to.
     :param service_replication: An int representing the number of available
                                 service instances
@@ -49,7 +49,7 @@ def check_replication(service_name, service_replication,
         expected_message = ", expected value in {0}".format(interval)
 
     message = "{0} {1} has {2} instance(s){3}".format(
-        status, service_name, service_replication, expected_message
+        status, service, service_replication, expected_message
     )
 
     return code, message

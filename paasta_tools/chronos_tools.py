@@ -101,12 +101,12 @@ class InvalidChronosConfigError(Exception):
     pass
 
 
-def read_chronos_jobs_for_service(service_name, cluster, soa_dir=DEFAULT_SOA_DIR):
+def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
-    log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service_name, cluster))
+    log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
 
     return service_configuration_lib.read_extra_service_information(
-        service_name,
+        service,
         chronos_conf_file,
         soa_dir=soa_dir
     )
@@ -126,21 +126,21 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
 
 class ChronosJobConfig(InstanceConfig):
 
-    def __init__(self, service_name, job_name, config_dict, branch_dict):
+    def __init__(self, service, job_name, config_dict, branch_dict):
         super(ChronosJobConfig, self).__init__(config_dict, branch_dict)
-        self.service_name = service_name
+        self.service = service
         self.job_name = job_name
         self.config_dict = config_dict
         self.branch_dict = branch_dict
 
     def __eq__(self, other):
-        return ((self.service_name == other.service_name)
+        return ((self.service == other.service)
                 and (self.job_name == other.job_name)
                 and (self.config_dict == other.config_dict)
                 and (self.branch_dict == other.branch_dict))
 
-    def get_service_name(self):
-        return self.service_name
+    def get_service(self):
+        return self.service
 
     def get_job_name(self):
         return self.job_name
@@ -154,7 +154,7 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_owner(self):
         overrides = self.get_monitoring()
-        return monitoring_tools.get_team(overrides=overrides, service_name=self.get_service_name())
+        return monitoring_tools.get_team(overrides=overrides, service=self.get_service())
 
     def get_bounce_method(self):
         """Returns the bounce method specified for the Chronos job.
@@ -350,7 +350,7 @@ class ChronosJobConfig(InstanceConfig):
 
 
 # TODO just use utils.get_service_instance_list(cluster, instance_type='chronos', soa_dir)
-def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+def list_job_names(service, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the Chronos jobs defined for a service as a list of tuples.
 
     :param name: The service name
@@ -363,8 +363,8 @@ def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = "chronos-%s" % cluster
     log.info("Enumerating all jobs from config file: %s/*/%s.yaml" % (soa_dir, chronos_conf_file))
 
-    for job in read_chronos_jobs_for_service(service_name, cluster, soa_dir=soa_dir):
-        job_list.append((service_name, job))
+    for job in read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir):
+        job_list.append((service, job))
     log.debug("Enumerated the following jobs: %s" % job_list)
     return job_list
 
@@ -375,7 +375,7 @@ def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
 
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of (service_name, job_name)"""
+    :returns: A list of tuples of (service, job_name)"""
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
     rootdir = os.path.abspath(soa_dir)

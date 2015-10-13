@@ -52,12 +52,12 @@ def delete_app(app_id, client):
     short_app_id = remove_tag_from_job_id(app_id)
     log.warn("%s appears to be old; attempting to delete" % app_id)
     srv_instance = short_app_id.replace('--', '_')
-    service_name, instance, _ = decompose_job_id(srv_instance)
+    service, instance, _ = decompose_job_id(srv_instance)
     try:
         with bounce_lib.bounce_lock_zookeeper(srv_instance):
             bounce_lib.delete_marathon_app(app_id, client)
             log_line = "Deleted stale marathon job that looks lost: %s" % app_id
-            _log(service_name=service_name,
+            _log(service=service,
                  component='deploy',
                  level='event',
                  cluster=load_system_paasta_config().get_cluster(),
@@ -66,10 +66,10 @@ def delete_app(app_id, client):
     except IOError:
         log.debug("%s is being bounced, skipping" % app_id)
     except Exception:
-        loglines = ['Exception raised during cleanup of service %s:' % service_name]
+        loglines = ['Exception raised during cleanup of service %s:' % service]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
-            _log(service_name=service_name,
+            _log(service=service,
                  component='deploy',
                  level='debug',
                  cluster=load_system_paasta_config().get_cluster(),

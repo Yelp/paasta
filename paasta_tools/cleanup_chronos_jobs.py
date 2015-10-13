@@ -115,7 +115,7 @@ def main():
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 
-    # get_chronos_jobs_for_cluster returns (service_name, job)
+    # get_chronos_jobs_for_cluster returns (service, job)
     expected_service_jobs = chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)
 
     # filter jobs not related to paasta

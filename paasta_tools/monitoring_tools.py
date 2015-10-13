@@ -16,57 +16,57 @@ import pysensu_yelp
 from utils import load_system_paasta_config
 
 
-def get_team(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('team', overrides, service_name, soa_dir)
+def get_team(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('team', overrides, service, soa_dir)
 
 
-def get_runbook(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('runbook', overrides, service_name, soa_dir)
+def get_runbook(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('runbook', overrides, service, soa_dir)
 
 
-def get_tip(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('tip', overrides, service_name, soa_dir)
+def get_tip(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('tip', overrides, service, soa_dir)
 
 
-def get_notification_email(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('notification_email', overrides, service_name, soa_dir)
+def get_notification_email(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('notification_email', overrides, service, soa_dir)
 
 
-def get_page(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('page', overrides, service_name, soa_dir)
+def get_page(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('page', overrides, service, soa_dir)
 
 
-def get_alert_after(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('alert_after', overrides, service_name, soa_dir)
+def get_alert_after(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('alert_after', overrides, service, soa_dir)
 
 
-def get_realert_every(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('realert_every', overrides, service_name, soa_dir)
+def get_realert_every(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('realert_every', overrides, service, soa_dir)
 
 
-def get_check_every(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('check_every', overrides, service_name, soa_dir)
+def get_check_every(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('check_every', overrides, service, soa_dir)
 
 
-def get_irc_channels(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('irc_channels', overrides, service_name, soa_dir)
+def get_irc_channels(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('irc_channels', overrides, service, soa_dir)
 
 
-def get_dependencies(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('dependencies', overrides, service_name, soa_dir)
+def get_dependencies(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('dependencies', overrides, service, soa_dir)
 
 
-def get_ticket(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('ticket', overrides, service_name, soa_dir)
+def get_ticket(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('ticket', overrides, service, soa_dir)
 
 
-def get_project(overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    return __get_monitoring_config_value('project', overrides, service_name, soa_dir)
+def get_project(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    return __get_monitoring_config_value('project', overrides, service, soa_dir)
 
 
-def __get_monitoring_config_value(key, overrides, service_name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
-    general_config = service_configuration_lib.read_service_configuration(service_name, soa_dir=soa_dir)
-    monitor_config = read_monitoring_config(service_name, soa_dir=soa_dir)
+def __get_monitoring_config_value(key, overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+    general_config = service_configuration_lib.read_service_configuration(service, soa_dir=soa_dir)
+    monitor_config = read_monitoring_config(service, soa_dir=soa_dir)
     service_default = general_config.get(key, monitoring_defaults(key))
     service_default = general_config.get('monitoring', {key: service_default}).get(key, service_default)
     service_default = monitor_config.get(key, service_default)
@@ -98,9 +98,9 @@ def get_team_email_address(service, overrides=None, soa_dir=service_configuratio
     if overrides is None:
         overrides = {}
     email_address = __get_monitoring_config_value(
-        'notification_email', overrides=overrides, service_name=service, soa_dir=soa_dir)
+        'notification_email', overrides=overrides, service=service, soa_dir=soa_dir)
     if not email_address:
-        team = get_team(overrides=overrides, service_name=service)
+        team = get_team(overrides=overrides, service=service)
         email_address = get_sensu_team_data(team).get('notification_email', None)
     return email_address
 

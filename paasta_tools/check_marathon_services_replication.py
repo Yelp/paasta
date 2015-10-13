@@ -61,7 +61,7 @@ def send_event(service, namespace, cluster, soa_dir, status, output):
     check_name = 'check_marathon_services_replication.%s' % compose_job_id(service, namespace)
     monitoring_tools.send_event(service, check_name, monitoring_overrides, status, output, soa_dir)
     _log(
-        service_name=service,
+        service=service,
         line='Replication: %s' % output,
         component='monitoring',
         level='debug',
@@ -246,7 +246,7 @@ def check_service_replication(service, instance, cluster, crit_threshold, soa_di
 def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
     """Retrives number of available backends for given services
 
-    :param service_instances: A list of tuples of (service_name, instance_name)
+    :param service_instances: A list of tuples of (service, instance)
     :param namespaces: list of Smartstack namespaces
     :param blacklist: A list of blacklisted location tuples in the form (location, value)
     :returns: a dictionary of the form::
@@ -254,7 +254,7 @@ def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
         {
           'location_type': {
               'unique_location_name': {
-                  'service_name.instance_name': <# ofavailable backends>
+                  'service.instance': <# ofavailable backends>
               },
               'other_unique_location_name': ...
           }
@@ -292,7 +292,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
         repl_info = replication_utils.get_replication_for_services(
             synapse_host=synapse_host,
             synapse_port=smartstack_tools.DEFAULT_SYNAPSE_PORT,
-            service_names=[full_name],
+            services=[full_name],
         )
         replication_info[value] = repl_info
 

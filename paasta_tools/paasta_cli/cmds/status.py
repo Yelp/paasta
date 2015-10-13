@@ -44,17 +44,17 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_status)
 
 
-def missing_deployments_message(service_name):
+def missing_deployments_message(service):
     jenkins_url = PaastaColors.cyan(
-        'https://jenkins.yelpcorp.com/view/services-%s' % service_name)
+        'https://jenkins.yelpcorp.com/view/services-%s' % service)
     message = "%s No deployments in deployments.json yet.\n  " \
               "Has Jenkins run?\n  " \
               "Check: %s" % (x_mark(), jenkins_url)
     return message
 
 
-def get_deploy_info(service_name):
-    deploy_file_path = join(DEFAULT_SOA_DIR, service_name, "deploy.yaml")
+def get_deploy_info(service):
+    deploy_file_path = join(DEFAULT_SOA_DIR, service, "deploy.yaml")
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
         print PaastaCheckMessages.DEPLOY_YAML_MISSING
@@ -64,8 +64,7 @@ def get_deploy_info(service_name):
 
 def get_planned_deployments(deploy_info):
     """Yield deployment environments in the form 'cluster.instance' in the order
-    they appear in the deploy.yaml file for service service_name.
-    :param service_name : name of the service for we wish to inspect
+    they appear in the deploy.yaml file for service.
     :return : a series of strings of the form: 'cluster.instance', exits on
     error if deploy.yaml is not found"""
     cluster_dict = OrderedDict()
@@ -90,22 +89,22 @@ def list_deployed_clusters(pipeline, actual_deployments):
     deployed_clusters = []
     # Get cluster.instance in the order in which they appear in deploy.yaml
     for namespace in pipeline:
-        cluster_name, instance = namespace.split('.')
+        cluster, instance = namespace.split('.')
         if namespace in actual_deployments:
-            if cluster_name not in deployed_clusters:
-                deployed_clusters.append(cluster_name)
+            if cluster not in deployed_clusters:
+                deployed_clusters.append(cluster)
     return deployed_clusters
 
 
-def get_actual_deployments(service_name):
-    deployments_json = load_deployments_json(service_name, DEFAULT_SOA_DIR)
+def get_actual_deployments(service):
+    deployments_json = load_deployments_json(service, DEFAULT_SOA_DIR)
     if not deployments_json:
-        sys.stderr.write("Warning: it looks like %s has not been deployed anywhere yet!\n" % service_name)
-    # Create a dictionary of actual $service_name Jenkins deployments
+        sys.stderr.write("Warning: it looks like %s has not been deployed anywhere yet!\n" % service)
+    # Create a dictionary of actual $service Jenkins deployments
     actual_deployments = {}
     for key in deployments_json:
         service, namespace = key.encode('utf8').split(':')
-        if service == service_name:
+        if service == service:
             value = deployments_json[key]['docker_image'].encode('utf8')
             sha = value[value.rfind('-') + 1:]
             actual_deployments[namespace.replace('paasta-', '', 1)] = sha
@@ -122,7 +121,7 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
         cluster_in_pipeline, instance = namespace.split('.')
 
         if cluster_in_pipeline != cluster:
-            # This function only prints things that are relevant to cluster_name
+            # This function only prints things that are relevant to cluster
             # We skip anything not in this cluster
             continue
 
@@ -165,14 +164,14 @@ def report_bogus_filters(cluster_filter, deployed_clusters):
     return return_string
 
 
-def report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter, verbose=False):
-    pipeline_url = get_pipeline_url(service_name)
+def report_status(service, deploy_pipeline, actual_deployments, cluster_filter, verbose=False):
+    pipeline_url = get_pipeline_url(service)
     print "Pipeline: %s" % pipeline_url
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     for cluster in deployed_clusters:
         if cluster_filter is None or cluster in cluster_filter:
-            report_status_for_cluster(service_name, cluster, deploy_pipeline, actual_deployments, verbose)
+            report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, verbose)
 
     print report_bogus_filters(cluster_filter, deployed_clusters)
 
@@ -180,9 +179,9 @@ def report_status(service_name, deploy_pipeline, actual_deployments, cluster_fil
 def paasta_status(args):
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
-    service_name = figure_out_service_name(args)
-    actual_deployments = get_actual_deployments(service_name)
-    deploy_info = get_deploy_info(service_name)
+    service = figure_out_service_name(args)
+    actual_deployments = get_actual_deployments(service)
+    deploy_info = get_deploy_info(service)
     if args.clusters is not None:
         cluster_filter = args.clusters.split(",")
     else:
@@ -190,6 +189,6 @@ def paasta_status(args):
 
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(deploy_info))
-        report_status(service_name, deploy_pipeline, actual_deployments, cluster_filter, args.verbose)
+        report_status(service, deploy_pipeline, actual_deployments, cluster_filter, args.verbose)
     else:
-        print missing_deployments_message(service_name)
+        print missing_deployments_message(service)

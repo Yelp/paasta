@@ -724,7 +724,7 @@ def test_get_smartstack_replication_for_attribute():
         mock_get_replication_for_services.assert_any_call(
             synapse_host='fake_host_1',
             synapse_port=DEFAULT_SYNAPSE_PORT,
-            service_names=['fake_service.fake_main'],
+            services=['fake_service.fake_main'],
         )
 
 

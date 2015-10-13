@@ -44,19 +44,19 @@ def build_command(upstream_job_name, upstream_git_commit):
 
 def paasta_push_to_registry(args):
     """Upload a docker image to a registry"""
-    service_name = args.service
-    if service_name and service_name.startswith('services-'):
-        service_name = service_name.split('services-', 1)[1]
-    validate_service_name(service_name)
+    service = args.service
+    if service and service.startswith('services-'):
+        service = service.split('services-', 1)[1]
+    validate_service_name(service)
 
-    cmd = build_command(service_name, args.commit)
+    cmd = build_command(service, args.commit)
     loglines = []
     returncode, output = _run(
         cmd,
         timeout=3600,
         log=True,
         component='build',
-        service_name=service_name,
+        service=service,
         loglevel='debug'
     )
     if returncode != 0:
@@ -68,7 +68,7 @@ def paasta_push_to_registry(args):
         loglines.append('Successfully pushed image for %s to registry' % args.commit)
     for logline in loglines:
         _log(
-            service_name=service_name,
+            service=service,
             line=logline,
             component='build',
             level='event',

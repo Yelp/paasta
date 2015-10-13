@@ -241,12 +241,12 @@ class TestSetupMarathonJob:
             assert exc_info.value.code == 0
 
     def test_send_event(self):
-        fake_service_name = 'fake_service'
-        fake_instance_name = 'fake_instance'
+        fake_service = 'fake_service'
+        fake_instance = 'fake_instance'
         fake_status = '42'
         fake_output = 'The http port is not open'
         fake_soa_dir = ''
-        expected_check_name = 'setup_marathon_job.%s' % compose_job_id(fake_service_name, fake_instance_name)
+        expected_check_name = 'setup_marathon_job.%s' % compose_job_id(fake_service, fake_instance)
         with contextlib.nested(
             mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
             mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),
@@ -260,15 +260,15 @@ class TestSetupMarathonJob:
             load_marathon_service_config_patch.return_value.get_monitoring.return_value = {}
 
             setup_marathon_job.send_event(
-                fake_service_name,
-                fake_instance_name,
+                fake_service,
+                fake_instance,
                 fake_soa_dir,
                 fake_status,
                 fake_output
             )
 
             send_event_patch.assert_called_once_with(
-                fake_service_name,
+                fake_service,
                 expected_check_name,
                 {'alert_after': '10m', 'check_every': '10s'},
                 fake_status,
@@ -276,8 +276,8 @@ class TestSetupMarathonJob:
                 fake_soa_dir
             )
             load_marathon_service_config_patch.assert_called_once_with(
-                fake_service_name,
-                fake_instance_name,
+                fake_service,
+                fake_instance,
                 load_system_paasta_config_patch.return_value.get_cluster.return_value,
                 load_deployments=False,
             )
@@ -296,10 +296,10 @@ class TestSetupMarathonJob:
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
         fake_old_app_live_tasks = {}
         fake_old_app_draining_tasks = {}
-        fake_service_name = 'fake_service'
+        fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
-        fake_instance_name = 'fake_instance'
+        fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
@@ -322,11 +322,11 @@ class TestSetupMarathonJob:
                 happy_new_tasks=fake_happy_new_tasks,
                 old_app_live_tasks=fake_old_app_live_tasks,
                 old_app_draining_tasks=fake_old_app_draining_tasks,
-                service_name=fake_service_name,
+                service=fake_service,
                 bounce_method=fake_bounce_method,
                 serviceinstance=fake_serviceinstance,
                 cluster=self.fake_cluster,
-                instance_name=fake_instance_name,
+                instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
             )
@@ -358,10 +358,10 @@ class TestSetupMarathonJob:
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
         fake_old_app_live_tasks = {'fake_app_to_kill_1': set([fake_task_to_drain])}
         fake_old_app_draining_tasks = {'fake_app_to_kill_1': set()}
-        fake_service_name = 'fake_service'
+        fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
-        fake_instance_name = 'fake_instance'
+        fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
@@ -384,11 +384,11 @@ class TestSetupMarathonJob:
                 happy_new_tasks=fake_happy_new_tasks,
                 old_app_live_tasks=fake_old_app_live_tasks,
                 old_app_draining_tasks=fake_old_app_draining_tasks,
-                service_name=fake_service_name,
+                service=fake_service,
                 bounce_method=fake_bounce_method,
                 serviceinstance=fake_serviceinstance,
                 cluster=self.fake_cluster,
-                instance_name=fake_instance_name,
+                instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
             )
@@ -418,10 +418,10 @@ class TestSetupMarathonJob:
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
         fake_old_app_live_tasks = {'fake_app_to_kill_1': set([fake_task_to_drain])}
         fake_old_app_draining_tasks = {'fake_app_to_kill_1': set([])}
-        fake_service_name = 'fake_service'
+        fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
-        fake_instance_name = 'fake_instance'
+        fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock(is_safe_to_kill=lambda t: False)
         fake_marathon_jobid = 'fake.marathon.jobid'
@@ -444,11 +444,11 @@ class TestSetupMarathonJob:
                 happy_new_tasks=fake_happy_new_tasks,
                 old_app_live_tasks=fake_old_app_live_tasks,
                 old_app_draining_tasks=fake_old_app_draining_tasks,
-                service_name=fake_service_name,
+                service=fake_service,
                 bounce_method=fake_bounce_method,
                 serviceinstance=fake_serviceinstance,
                 cluster=self.fake_cluster,
-                instance_name=fake_instance_name,
+                instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
             )
@@ -478,10 +478,10 @@ class TestSetupMarathonJob:
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
         fake_old_app_live_tasks = {'fake_app_to_kill_1': set()}
         fake_old_app_draining_tasks = {'fake_app_to_kill_1': set()}
-        fake_service_name = 'fake_service'
+        fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
-        fake_instance_name = 'fake_instance'
+        fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
@@ -503,11 +503,11 @@ class TestSetupMarathonJob:
                 happy_new_tasks=fake_happy_new_tasks,
                 old_app_live_tasks=fake_old_app_live_tasks,
                 old_app_draining_tasks=fake_old_app_draining_tasks,
-                service_name=fake_service_name,
+                service=fake_service,
                 bounce_method=fake_bounce_method,
                 serviceinstance=fake_serviceinstance,
                 cluster=self.fake_cluster,
-                instance_name=fake_instance_name,
+                instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
             )
@@ -541,10 +541,10 @@ class TestSetupMarathonJob:
         fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
         fake_old_app_live_tasks = {}
         fake_old_app_draining_tasks = {}
-        fake_service_name = 'fake_service'
+        fake_service = 'fake_service'
         fake_serviceinstance = 'fake_service.fake_instance'
         self.fake_cluster = 'fake_cluster'
-        fake_instance_name = 'fake_instance'
+        fake_instance = 'fake_instance'
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
@@ -565,11 +565,11 @@ class TestSetupMarathonJob:
                 happy_new_tasks=fake_happy_new_tasks,
                 old_app_live_tasks=fake_old_app_live_tasks,
                 old_app_draining_tasks=fake_old_app_draining_tasks,
-                service_name=fake_service_name,
+                service=fake_service,
                 bounce_method=fake_bounce_method,
                 serviceinstance=fake_serviceinstance,
                 cluster=self.fake_cluster,
-                instance_name=fake_instance_name,
+                instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
             )
@@ -704,8 +704,8 @@ class TestSetupMarathonJob:
             get_bounce_patch.assert_called_once_with()
             get_drain_method_patch.assert_called_once_with(read_namespace_conf_patch.return_value)
             deploy_service_patch.assert_called_once_with(
-                service_name=fake_name,
-                instance_name=fake_instance,
+                service=fake_name,
+                instance=fake_instance,
                 marathon_jobid=full_id,
                 config=fake_complete,
                 client=fake_client,
@@ -759,8 +759,8 @@ class TestSetupMarathonJob:
         ) as (mock_log, mock_load_system_paasta_config, mock_drain_methods):
             mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             actual = setup_marathon_job.deploy_service(
-                service_name=fake_name,
-                instance_name=fake_instance,
+                service=fake_name,
+                instance=fake_instance,
                 marathon_jobid=fake_id,
                 config=fake_config,
                 client=fake_client,
@@ -794,8 +794,8 @@ class TestSetupMarathonJob:
         ) as (mock_log, mock_load_system_paasta_config):
             mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             actual = setup_marathon_job.deploy_service(
-                service_name=fake_name,
-                instance_name=fake_instance,
+                service=fake_name,
+                instance=fake_instance,
                 marathon_jobid=fake_id,
                 config=fake_config,
                 client=fake_client,
@@ -863,8 +863,8 @@ class TestSetupMarathonJob:
         ) as (_, _, _, kill_old_ids_patch, create_marathon_app_patch, mock_log, mock_load_system_paasta_config, _):
             mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             result = setup_marathon_job.deploy_service(
-                service_name=fake_name,
-                instance_name=fake_instance,
+                service=fake_name,
+                instance=fake_instance,
                 marathon_jobid=fake_id,
                 config=fake_config,
                 client=fake_client,
@@ -952,8 +952,8 @@ class TestSetupMarathonJob:
         ) as (_, _, _, _, mock_load_system_paasta_config):
             mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             result = setup_marathon_job.deploy_service(
-                service_name=fake_name,
-                instance_name=fake_instance,
+                service=fake_name,
+                instance=fake_instance,
                 marathon_jobid=fake_id,
                 config=fake_config,
                 client=fake_client,
@@ -984,8 +984,8 @@ class TestSetupMarathonJob:
             mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
             with raises(IOError):
                 setup_marathon_job.deploy_service(
-                    service_name=fake_name,
-                    instance_name=fake_instance,
+                    service=fake_name,
+                    instance=fake_instance,
                     marathon_jobid=fake_id,
                     config=fake_config,
                     client=fake_client,

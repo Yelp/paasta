@@ -148,7 +148,7 @@ class TestMarathonTools:
                 load_deployments=False,
                 soa_dir=fake_dir,
             )
-            assert expected.service_name == actual.service_name
+            assert expected.service == actual.service
             assert expected.instance == actual.instance
             assert expected.config_dict == actual.config_dict
             assert expected.branch_dict == actual.branch_dict
@@ -209,7 +209,7 @@ class TestMarathonTools:
                 load_deployments=True,
                 soa_dir=fake_dir,
             )
-            assert expected.service_name == actual.service_name
+            assert expected.service == actual.service
             assert expected.instance == actual.instance
             assert expected.config_dict == actual.config_dict
             assert expected.branch_dict == actual.branch_dict
@@ -1121,12 +1121,12 @@ class TestMarathonTools:
             assert second_id != third_id
 
     def test_get_expected_instance_count_for_namespace(self):
-        service_name = 'red'
+        service = 'red'
         namespace = 'rojo'
         soa_dir = 'que_esta'
-        fake_instances = [(service_name, 'blue'), (service_name, 'green')]
+        fake_instances = [(service, 'blue'), (service, 'green')]
         fake_srv_config = marathon_tools.MarathonServiceConfig(
-            service_name=service_name,
+            service=service,
             instance='blue',
             config_dict={'nerve_ns': 'rojo', 'instances': 11},
             branch_dict={},
@@ -1136,7 +1136,7 @@ class TestMarathonTools:
             if inst == 'blue':
                 return fake_srv_config
             else:
-                return marathon_tools.MarathonServiceConfig(service_name, 'green', {'nerve_ns': 'amarillo'}, {})
+                return marathon_tools.MarathonServiceConfig(service, 'green', {'nerve_ns': 'amarillo'}, {})
 
         with contextlib.nested(
             mock.patch('marathon_tools.get_service_instance_list',
@@ -1150,18 +1150,18 @@ class TestMarathonTools:
             read_config_patch,
         ):
             actual = marathon_tools.get_expected_instance_count_for_namespace(
-                service_name,
+                service,
                 namespace,
                 cluster='fake_cluster',
                 soa_dir=soa_dir,
             )
             assert actual == 11
-            inst_list_patch.assert_called_once_with(service_name,
+            inst_list_patch.assert_called_once_with(service,
                                                     cluster='fake_cluster',
                                                     instance_type='marathon',
                                                     soa_dir=soa_dir)
-            read_config_patch.assert_any_call(service_name, 'blue', 'fake_cluster', soa_dir=soa_dir)
-            read_config_patch.assert_any_call(service_name, 'green', 'fake_cluster', soa_dir=soa_dir)
+            read_config_patch.assert_any_call(service, 'blue', 'fake_cluster', soa_dir=soa_dir)
+            read_config_patch.assert_any_call(service, 'green', 'fake_cluster', soa_dir=soa_dir)
 
     def test_get_matching_appids(self):
         fakeapp1 = mock.Mock(id='/fake--service.fake--instance---bouncingold')
@@ -1537,13 +1537,13 @@ class TestServiceNamespaceConfig(object):
 
 
 def test_create_complete_config_no_smartstack():
-    service_name = "service"
-    instance_name = "instance"
+    service = "service"
+    instance = "instance"
     fake_job_id = "service.instance.some.hash"
     fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service_name,
-        instance_name,
+        service,
+        instance,
         {},
         {'docker_image': 'abcdef'},
     )
@@ -1569,7 +1569,7 @@ def test_create_complete_config_no_smartstack():
         _,
     ):
         mock_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
-        actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
+        actual = marathon_tools.create_complete_config(service, instance, fake_marathon_config)
         expected = {
             'container': {
                 'docker': {
@@ -1600,13 +1600,13 @@ def test_create_complete_config_no_smartstack():
 
 
 def test_create_complete_config_with_smartstack():
-    service_name = "service"
-    instance_name = "instance"
+    service = "service"
+    instance = "instance"
     fake_job_id = "service.instance.some.hash"
     fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service_name,
-        instance_name,
+        service,
+        instance,
         {},
         {'docker_image': 'abcdef'},
     )
@@ -1632,7 +1632,7 @@ def test_create_complete_config_with_smartstack():
         _,
     ):
         mock_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
-        actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
+        actual = marathon_tools.create_complete_config(service, instance, fake_marathon_config)
         expected = {
             'container': {
                 'docker': {

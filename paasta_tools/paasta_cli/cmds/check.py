@@ -23,8 +23,8 @@ from paasta_tools.utils import _run
 from service_configuration_lib import read_service_configuration
 
 
-def get_pipeline_config(service_name):
-    service_configuration = read_service_configuration(service_name)
+def get_pipeline_config(service):
+    service_configuration = read_service_configuration(service)
     return service_configuration.get('deploy', {}).get('pipeline', [])
 
 
@@ -47,8 +47,8 @@ def deploy_check(service_path):
         print PaastaCheckMessages.DEPLOY_YAML_MISSING
 
 
-def deploy_has_security_check(service_name):
-    pipeline = get_pipeline_config(service_name)
+def deploy_has_security_check(service):
+    pipeline = get_pipeline_config(service)
     steps = [step['instancename'] for step in pipeline]
     if 'security-check' in steps:
         print PaastaCheckMessages.DEPLOY_SECURITY_FOUND
@@ -58,8 +58,8 @@ def deploy_has_security_check(service_name):
         return False
 
 
-def deploy_has_performance_check(service_name):
-    pipeline = get_pipeline_config(service_name)
+def deploy_has_performance_check(service):
+    pipeline = get_pipeline_config(service)
     steps = [step['instancename'] for step in pipeline]
     if 'performance-check' in steps:
         print PaastaCheckMessages.DEPLOY_PERFORMANCE_FOUND
@@ -162,8 +162,8 @@ def makefile_check():
         print PaastaCheckMessages.MAKEFILE_MISSING
 
 
-def git_repo_check(service_name):
-    git_url = get_git_url(service_name)
+def git_repo_check(service):
+    git_url = get_git_url(service)
     cmd = 'git ls-remote %s' % git_url
     returncode, _ = _run(cmd, timeout=5)
     if returncode == 0:
@@ -185,25 +185,25 @@ def marathon_check(service_path):
         print PaastaCheckMessages.MARATHON_YAML_MISSING
 
 
-def get_marathon_steps(service_name):
+def get_marathon_steps(service):
     """This is a kind of funny function that gets all the marathon instances
     for a service and massages it into a form that matches up with what
     deploy.yaml's steps look like. This is only so we can compare it 1-1
     with what deploy.yaml has for linting."""
     steps = []
-    for cluster in list_clusters(service_name):
-        for instance in get_service_instance_list(service_name, cluster=cluster, instance_type='marathon'):
+    for cluster in list_clusters(service):
+        for instance in get_service_instance_list(service, cluster=cluster, instance_type='marathon'):
             steps.append("%s.%s" % (cluster, instance[1]))
     return steps
 
 
-def marathon_deployments_check(service_name):
+def marathon_deployments_check(service):
     """Checks for consistency between deploy.yaml and the marathon yamls"""
     the_return = True
-    pipeline_deployments = get_pipeline_config(service_name)
+    pipeline_deployments = get_pipeline_config(service)
     pipeline_steps = [step['instancename'] for step in pipeline_deployments]
     pipeline_steps = [step for step in pipeline_steps if step not in DEPLOY_PIPELINE_NON_DEPLOY_STEPS]
-    marathon_steps = get_marathon_steps(service_name)
+    marathon_steps = get_marathon_steps(service)
     in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
     if len(in_marathon_not_deploy) > 0:
         print "%s There are some instance(s) you have asked to run in marathon that" % x_mark()
@@ -225,8 +225,8 @@ def marathon_deployments_check(service_name):
     return the_return
 
 
-def pipeline_check(service_name):
-    url = "https://jenkins.yelpcorp.com/view/services-%s/api/xml" % service_name
+def pipeline_check(service):
+    url = "https://jenkins.yelpcorp.com/view/services-%s/api/xml" % service
     try:
         req_status = urllib2.urlopen(url).getcode()
         if req_status == 200:
@@ -237,15 +237,15 @@ def pipeline_check(service_name):
         print PaastaCheckMessages.PIPELINE_MISSING
 
 
-def sensu_check(service_name, service_path):
+def sensu_check(service, service_path):
     """Check whether monitoring.yaml exists in service directory,
     and that the team name is declared.
 
-    :param service_name: name of service currently being examined
+    :param service: name of service currently being examined
     :param service_path: path to loction of monitoring.yaml file"""
     if is_file_in_dir('monitoring.yaml', service_path):
         print PaastaCheckMessages.SENSU_MONITORING_FOUND
-        team = get_team(service_name=service_name, overrides={})
+        team = get_team(service=service, overrides={})
         if team is None:
             print PaastaCheckMessages.SENSU_TEAM_MISSING
         else:
@@ -254,28 +254,28 @@ def sensu_check(service_name, service_path):
         print PaastaCheckMessages.SENSU_MONITORING_MISSING
 
 
-def service_dir_check(service_name):
-    """Check whether directory service_name exists in /nail/etc/services
-    :param service_name: string of service name we wish to inspect
+def service_dir_check(service):
+    """Check whether directory service exists in /nail/etc/services
+    :param service: string of service name we wish to inspect
     """
     try:
-        validate_service_name(service_name)
-        print PaastaCheckMessages.service_dir_found(service_name)
+        validate_service_name(service)
+        print PaastaCheckMessages.service_dir_found(service)
     except NoSuchService:
-        print PaastaCheckMessages.service_dir_missing(service_name)
+        print PaastaCheckMessages.service_dir_missing(service)
 
 
-def smartstack_check(service_name, service_path):
+def smartstack_check(service, service_path):
     """Check whether smartstack.yaml exists in service directory, and the proxy
     ports are declared.  Print appropriate message depending on outcome.
 
-    :param service_name: name of service currently being examined
+    :param service: name of service currently being examined
     :param service_path: path to loction of smartstack.yaml file"""
     if is_file_in_dir('smartstack.yaml', service_path):
         print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
-        instances = get_all_namespaces_for_service(service_name)
+        instances = get_all_namespaces_for_service(service)
         if len(instances) > 0:
-            for namespace, config in get_all_namespaces_for_service(service_name, full_name=False):
+            for namespace, config in get_all_namespaces_for_service(service, full_name=False):
                 if 'proxy_port' in config:
                     print PaastaCheckMessages.smartstack_port_found(
                         namespace, config.get('proxy_port'))
@@ -288,21 +288,21 @@ def smartstack_check(service_name, service_path):
 def paasta_check(args):
     """Analyze the service in the PWD to determine if it is paasta ready
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
-    service_name = guess_service_name()
-    service_path = os.path.join('/nail/etc/services', service_name)
+    service = guess_service_name()
+    service_path = os.path.join('/nail/etc/services', service)
 
-    service_dir_check(service_name)
+    service_dir_check(service)
     deploy_check(service_path)
-    deploy_has_security_check(service_name)
-    deploy_has_performance_check(service_name)
-    pipeline_check(service_name)
-    git_repo_check(service_name)
+    deploy_has_security_check(service)
+    deploy_has_performance_check(service)
+    pipeline_check(service)
+    git_repo_check(service)
     docker_check()
     makefile_check()
     marathon_check(service_path)
     marathon_deployments_check(service_path)
-    sensu_check(service_name, service_path)
-    smartstack_check(service_name, service_path)
+    sensu_check(service, service_path)
+    smartstack_check(service, service_path)
 
 
 def read_dockerfile_lines(path):
