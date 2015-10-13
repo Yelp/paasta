@@ -7,11 +7,11 @@ from pytest import raises
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_cli.cmds.local_run import LostContainerException
 from paasta_tools.paasta_cli.cmds.local_run import configure_and_run_docker_container
-from paasta_tools.paasta_cli.cmds.local_run import get_cmd
 from paasta_tools.paasta_cli.cmds.local_run import get_cmd_string
 from paasta_tools.paasta_cli.cmds.local_run import get_container_id
 from paasta_tools.paasta_cli.cmds.local_run import get_container_name
 from paasta_tools.paasta_cli.cmds.local_run import get_docker_run_cmd
+from paasta_tools.paasta_cli.cmds.local_run import get_dockerfile_cmd
 from paasta_tools.paasta_cli.cmds.local_run import get_instance_config
 from paasta_tools.paasta_cli.cmds.local_run import paasta_local_run
 from paasta_tools.paasta_cli.cmds.local_run import perform_http_healthcheck
@@ -242,11 +242,11 @@ def test_get_container_name(mock_get_username, mock_randint):
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_marathon_service_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_docker_container', autospec=True)
 def test_configure_and_run_explicit_cluster(
     mock_run_docker_container,
-    mock_load_marathon_service_config,
+    mock_get_instance_config,
     mock_load_system_paasta_config,
 ):
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
@@ -263,11 +263,10 @@ def test_configure_and_run_explicit_cluster(
     args.cluster = 'fake_cluster'
     args.yelpsoa_config_root = 'fakesoa-configs/'
     assert configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
-    mock_load_marathon_service_config.assert_called_once_with(
-        fake_service,
-        args.instance,
-        args.cluster,
-        load_deployments=False,
+    mock_get_instance_config.assert_called_once_with(
+        service=fake_service,
+        instance=args.instance,
+        cluster=args.cluster,
         soa_dir=args.yelpsoa_config_root
     )
 
@@ -299,9 +298,9 @@ def test_configure_and_run_missing_cluster_exception(
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_marathon_service_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_instance_config', autospec=True)
 def test_configure_and_run_command_uses_cmd_from_config(
-    mock_load_marathon_service_config,
+    mock_get_instance_config,
     mock_load_system_paasta_config,
     mock_run_docker_container,
 ):
@@ -319,20 +318,20 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.interactive = False
     args.cluster = 'fake_cluster'
 
-    mock_load_marathon_service_config.return_value.get_cmd.return_value = 'fake_command'
+    mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
 
     configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
     mock_run_docker_container.assert_called_once_with(
-        mock_docker_client,
-        fake_service,
-        args.instance,
-        docker_hash,
-        [],
-        args.interactive,
-        shlex.split(mock_load_marathon_service_config.return_value.get_cmd.return_value),
-        args.healthcheck,
-        args.healthcheck_only,
-        mock_load_marathon_service_config.return_value
+        docker_client=mock_docker_client,
+        service=fake_service,
+        instance=args.instance,
+        docker_hash=docker_hash,
+        volumes=[],
+        interactive=args.interactive,
+        command=shlex.split(mock_get_instance_config.return_value.get_cmd.return_value),
+        healthcheck=args.healthcheck,
+        healthcheck_only=args.healthcheck_only,
+        instance_config=mock_get_instance_config.return_value
     )
 
 
@@ -868,11 +867,11 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     assert mock_run_healthcheck_on_container.call_count == 2
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_cmd', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_dockerfile_cmd', autospec=True)
 def test_get_cmd_string(
-    mock_get_cmd,
+    mock_get_dockerfile_cmd,
 ):
-    mock_get_cmd.return_value = 'fake_cmd'
+    mock_get_dockerfile_cmd.return_value = 'fake_cmd'
     actual = get_cmd_string()
     assert 'fake_cmd' in actual
 
@@ -882,7 +881,7 @@ def test_get_cmd_when_working(
     mock_read_local_dockerfile_lines,
 ):
     mock_read_local_dockerfile_lines.return_value = ['CMD BLA']
-    actual = get_cmd()
+    actual = get_dockerfile_cmd()
     assert 'BLA' == actual
 
 
@@ -891,7 +890,7 @@ def test_get_cmd_when_unknown(
     mock_read_local_dockerfile_lines,
 ):
     mock_read_local_dockerfile_lines.return_value = []
-    actual = get_cmd()
+    actual = get_dockerfile_cmd()
     assert 'Unknown' in actual
 
 

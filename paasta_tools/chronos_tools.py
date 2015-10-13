@@ -344,6 +344,10 @@ class ChronosJobConfig(InstanceConfig):
 
         return len(error_msgs) == 0, error_msgs
 
+    def get_healthcheck_mode(self, _):
+        # Healthchecks are not supported yet in chronos
+        return None
+
 
 # TODO just use utils.get_service_instance_list(cluster, instance_type='chronos', soa_dir)
 def list_job_names(service_name, cluster=None, soa_dir=DEFAULT_SOA_DIR):

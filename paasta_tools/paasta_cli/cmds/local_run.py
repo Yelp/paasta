@@ -137,7 +137,7 @@ def run_healthcheck_on_container(
 
 
 def simulate_healthcheck_on_service(
-    service_manifest,
+    instance_config,
     docker_client,
     container_id,
     healthcheck_mode,
@@ -146,7 +146,7 @@ def simulate_healthcheck_on_service(
 ):
     """Simulates Marathon-style healthcheck on given service if healthcheck is enabled
 
-    :param service_manifest: service manifest
+    :param instance_config: service manifest
     :param docker_client: Docker client object
     :param container_id: Docker container id
     :param healthcheck_data: tuple url to healthcheck
@@ -155,10 +155,10 @@ def simulate_healthcheck_on_service(
     """
     healthcheck_link = PaastaColors.cyan(healthcheck_data)
     if healthcheck_enabled:
-        grace_period = service_manifest.get_healthcheck_grace_period_seconds()
-        timeout = service_manifest.get_healthcheck_timeout_seconds()
-        interval = service_manifest.get_healthcheck_interval_seconds()
-        max_failures = service_manifest.get_healthcheck_max_consecutive_failures()
+        grace_period = instance_config.get_healthcheck_grace_period_seconds()
+        timeout = instance_config.get_healthcheck_timeout_seconds()
+        interval = instance_config.get_healthcheck_interval_seconds()
+        max_failures = instance_config.get_healthcheck_max_consecutive_failures()
 
         sys.stdout.write('\nStarting health check via %s (waiting %s seconds before '
                          'considering failures due to grace period):\n' % (healthcheck_link, grace_period))
@@ -205,7 +205,7 @@ def read_local_dockerfile_lines():
     return open(dockerfile).readlines()
 
 
-def get_cmd():
+def get_dockerfile_cmd():
     """Returns first CMD line from Dockerfile"""
     for line in read_local_dockerfile_lines():
         if line.startswith('CMD'):
@@ -215,10 +215,10 @@ def get_cmd():
 
 def get_cmd_string():
     """Returns get_cmd() with some formatting and explanation."""
-    cmd = get_cmd()
+    cmd = get_dockerfile_cmd()
     return ('You are in interactive mode, which may not run the exact command\n'
-            'that PaaSTA would have run. Run this command yourself to simulate\n'
-            'PaaSTA:\n%s\n' % PaastaColors.yellow(cmd))
+            'that PaaSTA would have run. Here is the command from the Dockerfile:\n'
+            '%s\n' % PaastaColors.yellow(cmd))
 
 
 def add_subparser(subparsers):
@@ -362,7 +362,7 @@ def run_docker_container(
     command,
     healthcheck,
     healthcheck_only,
-    service_manifest
+    instance_config
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -384,8 +384,8 @@ def run_docker_container(
             "Note that some programs behave differently when running with no\n"
             "tty attached (as your program is about to run).\n\n"
         ))
-    environment = service_manifest.get_env()
-    memory = service_manifest.get_mem()
+    environment = instance_config.get_unformatted_env()
+    memory = instance_config.get_mem()
     random_port = pick_random_port()
     container_name = get_container_name()
     docker_run_cmd = get_docker_run_cmd(
@@ -400,7 +400,7 @@ def run_docker_container(
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
-    healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(service, instance, service_manifest, random_port)
+    healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(service, instance, instance_config, random_port)
 
     sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
     if interactive:
@@ -436,11 +436,9 @@ def run_docker_container(
         # If the service has a healthcheck, simulate it
         if healthcheck_mode:
             status = simulate_healthcheck_on_service(
-                service_manifest, docker_client, container_id, healthcheck_mode, healthcheck_data, healthcheck)
+                instance_config, docker_client, container_id, healthcheck_mode, healthcheck_data, healthcheck)
         else:
             status = True
-            sys.stdout.write(PaastaColors.yellow(
-                'Your service does not have a healthcheck configured (it is optional, but recommended).\n'))
 
         if healthcheck_only:
             sys.stdout.write('Detected --healthcheck-only flag, exiting now.\n')
@@ -456,6 +454,7 @@ def run_docker_container(
             sys.stdout.write(PaastaColors.grey(line))
 
     except KeyboardInterrupt:
+        returncode = 3
         pass
 
     # Cleanup if the container exits on its own or interrupted.
@@ -516,34 +515,33 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         sys.stdout.write(PaastaColors.yellow(
             'Using cluster configuration for %s. To override, use the --cluster option.\n\n' % cluster))
 
-    service_manifest = load_marathon_service_config(
-        service,
-        args.instance,
-        cluster,
-        load_deployments=False,
-        soa_dir=args.yelpsoa_config_root
+    instance_config = get_instance_config(
+        service=service,
+        instance=args.instance,
+        cluster=cluster,
+        soa_dir=args.yelpsoa_config_root,
     )
 
     if args.cmd:
         command = shlex.split(args.cmd)
     else:
-        command_from_config = service_manifest.get_cmd()
+        command_from_config = instance_config.get_cmd()
         if command_from_config:
             command = shlex.split(command_from_config)
         else:
-            command = service_manifest.get_args()
+            command = instance_config.get_args()
 
     run_docker_container(
-        docker_client,
-        service,
-        args.instance,
-        docker_hash,
-        volumes,
-        args.interactive,
-        command,
-        args.healthcheck,
-        args.healthcheck_only,
-        service_manifest
+        docker_client=docker_client,
+        service=service,
+        instance=args.instance,
+        docker_hash=docker_hash,
+        volumes=volumes,
+        interactive=args.interactive,
+        command=command,
+        healthcheck=args.healthcheck,
+        healthcheck_only=args.healthcheck_only,
+        instance_config=instance_config,
     )
 
 
