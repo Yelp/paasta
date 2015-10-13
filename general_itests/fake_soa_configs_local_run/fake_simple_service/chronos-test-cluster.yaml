@@ -1,5 +1,5 @@
 ---
 chronos_job:
-    cpus: .1
-    mem: 100
-    instances: 1
+  cpus: .1
+  mem: 100
+  schedule: 'R/2015-08-14T10:00:00+00:00/PT10M'
