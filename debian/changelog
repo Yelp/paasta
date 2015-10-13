@@ -1,3 +1,10 @@
+paasta-tools (0.12.94-yelp1) lucid; urgency=low
+
+  * 0.12.94 tagged with 'make release'
+    Commit: Merge branch PAASTA-976d
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 13 Oct 2015 16:30:47 -0700
+
 paasta-tools (0.12.93-yelp1) lucid; urgency=low
 
   * 0.12.93 tagged with 'make release'
