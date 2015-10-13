@@ -404,7 +404,7 @@ class MarathonServiceConfig(InstanceConfig):
         return self.config_dict.get('bounce_health_params', default)
 
 
-def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
+def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     """Attempt to read the configuration for a service's namespace in a more strict fashion.
 
     Retrevies the following keys:
@@ -427,13 +427,13 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     - extra_healthcheck_headers: a dict of HTTP headers that must
       be supplied when health checking. E.g. { 'Host': 'example.com' }
 
-    :param srv_name: The service name
+    :param service: The service name
     :param namespace: The namespace to read
     :param soa_dir: The SOA config directory to read from
     :returns: A dict of the above keys, if they were defined
     """
 
-    service_config = service_configuration_lib.read_service_configuration(srv_name, soa_dir)
+    service_config = service_configuration_lib.read_service_configuration(service, soa_dir)
     smartstack_config = service_config.get('smartstack', {})
     namespace_config_from_file = smartstack_config.get(namespace, {})
 
@@ -535,21 +535,21 @@ def get_marathon_client(url, user, passwd):
     return MarathonClient(url, user, passwd, timeout=30)
 
 
-def format_job_id(name, instance, tag=None):
+def format_job_id(service, instance, tag=None):
     """Compose a Marathon app id formatted to meet Marathon's app id requirements.
 
     Marathon's app id requirements: https://mesosphere.github.io/marathon/docs/rest-api.html#id-string
 
-    :param name: The name of the service
+    :param service: The name of the service
     :param instance: The instance of the service
     :param tag: A hash or tag to append to the end of the id to make it unique
     :returns: a composed app id in a format that Marathon accepts
     """
-    name = str(name).replace('_', '--')
+    service = str(service).replace('_', '--')
     instance = str(instance).replace('_', '--')
     if tag:
         tag = str(tag).replace('_', '--')
-    formatted = compose_job_id(name, instance, tag)
+    formatted = compose_job_id(service, instance, tag)
     return formatted
 
 
@@ -796,18 +796,23 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_o
             sleep(0.5)
 
 
-def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
+def create_complete_config(service, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     """Generates a complete dictionary to be POST'ed to create an app on Marathon"""
     system_paasta_config = load_system_paasta_config()
-    partial_id = format_job_id(name, instance)
-    srv_config = load_marathon_service_config(name,
-                                              instance,
-                                              load_system_paasta_config().get_cluster(),
-                                              soa_dir=soa_dir)
-    docker_url = get_docker_url(system_paasta_config.get_docker_registry(), srv_config.get_docker_image())
-    service_namespace_config = load_service_namespace_config(name, srv_config.get_nerve_namespace())
+    partial_id = format_job_id(service=service, instance=instance)
+    instance_config = load_marathon_service_config(
+        service=service,
+        instance=instance,
+        cluster=load_system_paasta_config().get_cluster(),
+        soa_dir=soa_dir,
+    )
+    docker_url = get_docker_url(system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
+    service_namespace_config = load_service_namespace_config(
+        service=service,
+        namespace=instance_config.get_nerve_namespace(),
+    )
 
-    complete_config = srv_config.format_marathon_app_dict(
+    complete_config = instance_config.format_marathon_app_dict(
         partial_id,
         docker_url,
         system_paasta_config.get_volumes(),
@@ -816,10 +821,10 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(
         complete_config,
-        force_bounce=srv_config.get_force_bounce(),
+        force_bounce=instance_config.get_force_bounce(),
     )
     tag = "%s%s%s" % (code_sha, SPACER, config_hash)
-    full_id = format_job_id(name, instance, tag)
+    full_id = format_job_id(service, instance, tag)
     complete_config['id'] = full_id
     return complete_config
 
