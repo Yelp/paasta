@@ -33,7 +33,7 @@ class TestHacheckDrainMethod(object):
             actual = self.drain_method.get_spool(fake_task)
 
         expected = {
-            'service_name': 'service',
+            'service': 'service',
             'state': 'down',
             'reason': 'Drained by Paasta',
             'since': 1435694078.778886,

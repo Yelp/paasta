@@ -85,7 +85,7 @@ def log_event(service, instance, cluster, desired_state):
     line = "Issued request to change state of %s to '%s' by %s@%s" % (
         instance, desired_state, user, host)
     utils._log(
-        service_name=service,
+        service=service,
         level='event',
         cluster=cluster,
         instance=instance,

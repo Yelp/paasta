@@ -28,7 +28,7 @@ logging.basicConfig()
 def start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):
     name = PaastaColors.cyan(compose_job_id(service, instance))
     _log(
-        service_name=service,
+        service=service,
         line="EmergencyStart: scaling %s up to %d instances" % (name, normal_instance_count),
         component='deploy',
         level='event',
@@ -41,7 +41,7 @@ def start_marathon_job(service, instance, app_id, normal_instance_count, client,
 def stop_marathon_job(service, instance, app_id, client, cluster):
     name = PaastaColors.cyan(compose_job_id(service, instance))
     _log(
-        service_name=service,
+        service=service,
         line="EmergencyStop: Scaling %s down to 0 instances" % (name),
         component='deploy',
         level='event',

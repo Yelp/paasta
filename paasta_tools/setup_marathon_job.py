@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Usage: ./setup_marathon_job.py <service_name.instance_name> [options]
+Usage: ./setup_marathon_job.py <service.instance> [options]
 
 Deploy a service instance to Marathon from a configuration file.
 Attempts to load the marathon configuration at
@@ -12,7 +12,7 @@ from the soa_dir and generate a marathon job configuration for it,
 as well as handle deploying that configuration with a bounce strategy
 if there's an old version of the service. To determine whether or not
 a deployment is 'old', each marathon job has a complete id of
-service_name.instance_name.configuration_hash, where configuration_hash
+service.instance.configuration_hash, where configuration_hash
 is an MD5 hash of the configuration dict to be sent to marathon (without
 the configuration_hash in the id field, of course- we change that after
 the hash is calculated).
@@ -114,22 +114,22 @@ def do_bounce(
     happy_new_tasks,
     old_app_live_tasks,
     old_app_draining_tasks,
-    service_name,
+    service,
     bounce_method,
     serviceinstance,
     cluster,
-    instance_name,
+    instance,
     marathon_jobid,
     client,
 ):
     def log_bounce_action(line, level='debug'):
         return _log(
-            service_name=service_name,
+            service=service,
             line=line,
             component='deploy',
             level=level,
             cluster=cluster,
-            instance=instance_name
+            instance=instance
         )
 
     # log if we're not in a steady state.
@@ -241,8 +241,8 @@ def get_old_live_draining_tasks(other_apps, drain_method):
 
 
 def deploy_service(
-    service_name,
-    instance_name,
+    service,
+    instance,
     marathon_jobid,
     config,
     client,
@@ -255,8 +255,8 @@ def deploy_service(
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
 
-    :param service_name: The name of the service to deploy
-    :param instance_name: The instance of the service to deploy
+    :param service: The name of the service to deploy
+    :param instance: The instance of the service to deploy
     :param marathon_jobid: Full id of the marathon job
     :param config: The complete configuration dict to send to marathon
     :param client: A MarathonClient object
@@ -268,12 +268,12 @@ def deploy_service(
 
     def log_deploy_error(errormsg, level='event'):
         return _log(
-            service_name=service_name,
+            service=service,
             line=errormsg,
             component='deploy',
             level='event',
             cluster=cluster,
-            instance=instance_name
+            instance=instance
         )
 
     short_id = remove_tag_from_job_id(marathon_jobid)
@@ -283,14 +283,14 @@ def deploy_service(
     existing_apps = [app for app in app_list if short_id in app.id]
     new_app_list = [a for a in existing_apps if a.id == '/%s' % config['id']]
     other_apps = [a for a in existing_apps if a.id != '/%s' % config['id']]
-    serviceinstance = "%s.%s" % (service_name, instance_name)
+    serviceinstance = "%s.%s" % (service, instance)
 
     if new_app_list:
         new_app = new_app_list[0]
         if len(new_app_list) != 1:
             raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
         new_app_running = True
-        happy_new_tasks = bounce_lib.get_happy_tasks(new_app, service_name, nerve_ns, **bounce_health_params)
+        happy_new_tasks = bounce_lib.get_happy_tasks(new_app, service, nerve_ns, **bounce_health_params)
     else:
         new_app_running = False
         happy_new_tasks = []
@@ -298,8 +298,8 @@ def deploy_service(
     try:
         drain_method = drain_lib.get_drain_method(
             drain_method_name,
-            service_name=service_name,
-            instance_name=instance_name,
+            service=service,
+            instance=instance,
             nerve_ns=nerve_ns,
             drain_method_params=drain_method_params,
         )
@@ -342,11 +342,11 @@ def deploy_service(
                     happy_new_tasks=happy_new_tasks,
                     old_app_live_tasks=old_app_live_tasks,
                     old_app_draining_tasks=old_app_draining_tasks,
-                    service_name=service_name,
+                    service=service,
                     bounce_method=bounce_method,
                     serviceinstance=serviceinstance,
                     cluster=cluster,
-                    instance_name=instance_name,
+                    instance=instance,
                     marathon_jobid=marathon_jobid,
                     client=client,
                 )
@@ -355,7 +355,7 @@ def deploy_service(
             log.error("Instance %s already being bounced. Exiting", short_id)
             return (1, "Instance %s is already being bounced." % short_id)
     except Exception:
-        loglines = ['Exception raised during deploy of service %s:' % service_name]
+        loglines = ['Exception raised during deploy of service %s:' % service]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
             log_deploy_error(logline, level='debug')
@@ -364,39 +364,39 @@ def deploy_service(
     return (0, 'Service deployed.')
 
 
-def setup_service(service_name, instance_name, client, marathon_config,
+def setup_service(service, instance, client, marathon_config,
                   service_marathon_config):
     """Setup the service instance given and attempt to deploy it, if possible.
     Doesn't do anything if the service is already in Marathon and hasn't changed.
     If it's not, attempt to find old instances of the service and bounce them.
 
-    :param service_name: The service name to setup
-    :param instance_name: The instance of the service to setup
+    :param ervice: The service name to setup
+    :param instance: The instance of the service to setup
     :param client: A MarathonClient object
     :param marathon_config: The marathon configuration dict
     :param service_marathon_config: The service instance's configuration dict
     :returns: A tuple of (status, output) to be used with send_sensu_event"""
 
-    log.info("Setting up instance %s for service %s", instance_name, service_name)
+    log.info("Setting up instance %s for service %s", instance, service)
     try:
-        complete_config = marathon_tools.create_complete_config(service_name, instance_name, marathon_config)
+        complete_config = marathon_tools.create_complete_config(service, instance, marathon_config)
     except NoDockerImageError:
         error_msg = (
             "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"
         ).format(
-            service_name,
-            instance_name,
+            service,
+            instance,
         )
         log.error(error_msg)
         return (1, error_msg)
 
     full_id = complete_config['id']
-    service_namespace_config = marathon_tools.load_service_namespace_config(service_name, instance_name)
+    service_namespace_config = marathon_tools.load_service_namespace_config(service, instance)
 
     log.info("Desired Marathon instance id: %s", full_id)
     return deploy_service(
-        service_name=service_name,
-        instance_name=instance_name,
+        service=service,
+        instance=instance,
         marathon_jobid=full_id,
         config=complete_config,
         client=client,
@@ -427,9 +427,9 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service_name, instance_name, _ = decompose_job_id(args.service_instance)
+        service, instance, _ = decompose_job_id(args.service_instance)
     except ValueError:
-        log.error("Invalid service instance specified. Format is service_name.instance_name.")
+        log.error("Invalid service instance specified. Format is service.instance.")
         sys.exit(1)
 
     marathon_config = get_main_marathon_config()
@@ -438,8 +438,8 @@ def main():
 
     try:
         service_instance_config = marathon_tools.load_marathon_service_config(
-            service_name,
-            instance_name,
+            service,
+            instance,
             load_system_paasta_config().get_cluster(),
             soa_dir=soa_dir,
         )
@@ -447,28 +447,28 @@ def main():
         error_msg = "No deployments found for %s in cluster %s" % (args.service_instance,
                                                                    load_system_paasta_config().get_cluster())
         log.error(error_msg)
-        send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
     except NoConfigurationForServiceError:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
                     (args.service_instance, load_system_paasta_config().get_cluster())
         log.error(error_msg)
-        send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)
 
     try:
-        status, output = setup_service(service_name, instance_name, client, marathon_config,
+        status, output = setup_service(service, instance, client, marathon_config,
                                        service_instance_config)
         sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
-        send_event(service_name, instance_name, soa_dir, sensu_status, output)
+        send_event(service, instance, soa_dir, sensu_status, output)
         # We exit 0 because the script finished ok and the event was sent to the right team.
         sys.exit(0)
     except (KeyError, TypeError, AttributeError, InvalidInstanceConfig):
         import traceback
         error_str = traceback.format_exc()
         log.error(error_str)
-        send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
+        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
         # We exit 0 because the script finished ok and the event was sent to the right team.
         sys.exit(0)
 

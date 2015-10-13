@@ -15,8 +15,8 @@ def register_drain_method(name):
     return outer
 
 
-def get_drain_method(name, service_name, instance_name, nerve_ns, drain_method_params=None):
-    return _drain_methods[name](service_name, instance_name, nerve_ns, **(drain_method_params or {}))
+def get_drain_method(name, service, instance, nerve_ns, drain_method_params=None):
+    return _drain_methods[name](service, instance, nerve_ns, **(drain_method_params or {}))
 
 
 def list_drain_methods():
@@ -37,9 +37,9 @@ class DrainMethod(object):
     When implementing a drain method, be sure to decorate with @register_drain_method(name).
     """
 
-    def __init__(self, service_name, instance_name, nerve_ns, **kwargs):
-        self.service_name = service_name
-        self.instance_name = instance_name
+    def __init__(self, service, instance, nerve_ns, **kwargs):
+        self.service = service
+        self.instance = instance
         self.nerve_ns = nerve_ns
 
     def drain(self, task):
@@ -105,18 +105,18 @@ class TestDrainMethod(DrainMethod):
 class HacheckDrainMethod(DrainMethod):
     """This drain policy issues a POST to hacheck's /spool/{service}/{port}/status endpoint to cause healthchecks to
     fail. It considers tasks safe to kill if they've been down in hacheck for more than a specified delay."""
-    def __init__(self, service_name, instance_name, nerve_ns, delay=120, hacheck_port=6666, expiration=0, **kwargs):
-        super(HacheckDrainMethod, self).__init__(service_name, instance_name, nerve_ns)
+    def __init__(self, service, instance, nerve_ns, delay=120, hacheck_port=6666, expiration=0, **kwargs):
+        super(HacheckDrainMethod, self).__init__(service, instance, nerve_ns)
         self.delay = float(delay)
         self.hacheck_port = hacheck_port
         self.expiration = float(expiration) or float(delay) * 10
 
     def spool_url(self, task):
-        return 'http://%(task_host)s:%(hacheck_port)d/spool/%(service_name)s.%(nerve_ns)s/%(task_port)d/status' % {
+        return 'http://%(task_host)s:%(hacheck_port)d/spool/%(service)s.%(nerve_ns)s/%(task_port)d/status' % {
             'task_host': task.host,
             'task_port': task.ports[0],
             'hacheck_port': self.hacheck_port,
-            'service_name': self.service_name,
+            'service': self.service,
             'nerve_ns': self.nerve_ns,
         }
 
@@ -141,7 +141,7 @@ class HacheckDrainMethod(DrainMethod):
 
         regex = ''.join([
             "^",
-            r"Service (?P<service_name>.+)",
+            r"Service (?P<service>.+)",
             r" in (?P<state>.+) state",
             r"(?: since (?P<since>[0-9.]+))?",
             r"(?: until (?P<until>[0-9.]+))?",
@@ -151,7 +151,7 @@ class HacheckDrainMethod(DrainMethod):
         match = re.match(regex, response.text)
         groupdict = match.groupdict()
         info = {}
-        info['service_name'] = groupdict['service_name']
+        info['service'] = groupdict['service']
         info['state'] = groupdict['state']
         if 'since' in groupdict:
             info['since'] = float(groupdict['since'] or 0)

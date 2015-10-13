@@ -27,8 +27,8 @@ def given_a_new_app_to_be_deployed(context, state):
     else:
         return ValueError("can't start test app with unknown state %s", state)
 
-    context.service_name = 'bounce'
-    context.instance_name = 'test1'
+    context.service = 'bounce'
+    context.instance = 'test1'
     context.new_config = {
         'id': 'bounce.test1.newapp',
         'cmd': '/bin/sleep 300',
@@ -71,7 +71,7 @@ def when_there_are_num_which_tasks(context, num, which, state):
     # 120 * 0.5 = 60 seconds
     for _ in xrange(120):
         app = context.marathon_client.get_app(app_id, embed_tasks=True)
-        happy_count = len(get_happy_tasks(app, context.service_name, "fake_nerve_ns"))
+        happy_count = len(get_happy_tasks(app, context.service, "fake_nerve_ns"))
         if state == "healthy":
             if happy_count >= context.max_tasks:
                 return
@@ -92,7 +92,7 @@ def when_deploy_service_initiated(context, bounce_method, drain_method):
             # Wrap function call so we can select a subset of tasks or test
             # intermediate steps, like when an app is not completely up
             side_effect=lambda app, _, __, **kwargs: get_happy_tasks(
-                app, context.service_name, "fake_nerve_ns")[:context.max_tasks],
+                app, context.service, "fake_nerve_ns")[:context.max_tasks],
         ),
         mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
         mock.patch('paasta_tools.bounce_lib.create_app_lock', autospec=True),
@@ -107,15 +107,15 @@ def when_deploy_service_initiated(context, bounce_method, drain_method):
     ):
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         setup_marathon_job.deploy_service(
-            service_name=context.service_name,
-            instance_name=context.instance_name,
+            service=context.service,
+            instance=context.instance,
             marathon_jobid=context.new_config['id'],
             config=context.new_config,
             client=context.marathon_client,
             bounce_method=bounce_method,
             drain_method_name=drain_method,
             drain_method_params={},
-            nerve_ns=context.instance_name,
+            nerve_ns=context.instance,
             bounce_health_params={},
         )
 

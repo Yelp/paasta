@@ -74,10 +74,10 @@ def get_loglines(returncode, cmd, output, args):
 
 def paasta_mark_for_deployment(args):
     """Mark a docker image for deployment"""
-    service_name = args.service
-    if service_name and service_name.startswith('services-'):
-        service_name = service_name.split('services-', 1)[1]
-    validate_service_name(service_name)
+    service = args.service
+    if service and service.startswith('services-'):
+        service = service.split('services-', 1)[1]
+    validate_service_name(service)
     cmd = build_command(args.git_url, args.commit, args.clusterinstance)
     # Clusterinstance should be in cluster.instance format
     cluster, instance = args.clusterinstance.split('.')
@@ -88,7 +88,7 @@ def paasta_mark_for_deployment(args):
     loglines = get_loglines(returncode=returncode, cmd=cmd, output=output, args=args)
     for logline in loglines:
         _log(
-            service_name=service_name,
+            service=service,
             line=logline,
             component='deploy',
             level='event',

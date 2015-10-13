@@ -121,15 +121,15 @@ def working_paasta_cluster(context):
     }, 'volumes.json')
 
 
-@given(u'I have yelpsoa-configs for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
-def write_soa_dir_chronos_instance(context, service_name, disabled, instance_name):
+@given(u'I have yelpsoa-configs for the service "{service}" with {disabled} chronos instance "{instance}"')
+def write_soa_dir_chronos_instance(context, service, disabled, instance):
     soa_dir = mkdtemp()
     desired_disabled = (disabled == 'disabled')
-    if not os.path.exists(os.path.join(soa_dir, service_name)):
-        os.makedirs(os.path.join(soa_dir, service_name))
-    with open(os.path.join(soa_dir, service_name, 'chronos-%s.yaml' % context.cluster), 'w') as f:
+    if not os.path.exists(os.path.join(soa_dir, service)):
+        os.makedirs(os.path.join(soa_dir, service))
+    with open(os.path.join(soa_dir, service, 'chronos-%s.yaml' % context.cluster), 'w') as f:
         f.write(yaml.dump({
-            "%s" % instance_name: {
+            "%s" % instance: {
                 'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
                 'command': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
@@ -155,19 +155,19 @@ def write_soa_dir_marathon_job(context, job_id):
     context.soa_dir = soa_dir
 
 
-@given(u'I have a deployments.json for the service "{service_name}" with {disabled} instance "{instance_name}"')
-def write_soa_dir_chronos_deployments(context, service_name, disabled, instance_name):
+@given(u'I have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
+def write_soa_dir_chronos_deployments(context, service, disabled, instance):
     if disabled == 'disabled':
         desired_state = 'stop'
     else:
         desired_state = 'start'
 
-    if not os.path.exists(os.path.join(context.soa_dir, service_name)):
-        os.makedirs(os.path.join(context.soa_dir, service_name))
-    with open(os.path.join(context.soa_dir, service_name, 'deployments.json'), 'w') as dp:
+    if not os.path.exists(os.path.join(context.soa_dir, service)):
+        os.makedirs(os.path.join(context.soa_dir, service))
+    with open(os.path.join(context.soa_dir, service, 'deployments.json'), 'w') as dp:
         dp.write(json.dumps({
             'v1': {
-                '%s:%s' % (service_name, utils.get_default_branch(context.cluster, instance_name)): {
+                '%s:%s' % (service, utils.get_default_branch(context.cluster, instance)): {
                     'docker_image': 'test-image-foobar%d' % context.tag_version,
                     'desired_state': desired_state,
                 }

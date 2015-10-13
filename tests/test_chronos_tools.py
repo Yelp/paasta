@@ -10,7 +10,7 @@ from mock import Mock
 
 class TestChronosTools:
 
-    fake_service_name = 'test_service'
+    fake_service = 'test_service'
     fake_job_name = 'test'
     fake_cluster = 'penguin'
     fake_monitoring_info = {'fake_monitoring_info': 'fake_monitoring_value'}
@@ -28,9 +28,9 @@ class TestChronosTools:
     }
     fake_branch_dict = {
         'desired_state': 'start',
-        'docker_image': 'paasta-%s-%s' % (fake_service_name, fake_cluster),
+        'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
     }
-    fake_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service_name,
+    fake_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service,
                                                              fake_job_name,
                                                              fake_config_dict,
                                                              fake_branch_dict)
@@ -46,7 +46,7 @@ class TestChronosTools:
         'schedule': 'forever/now/5 min',
         'schedule_time_zone': '+0200',
     }
-    fake_invalid_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service_name,
+    fake_invalid_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service,
                                                                      fake_job_name,
                                                                      fake_invalid_config_dict,
                                                                      fake_branch_dict)
@@ -146,10 +146,10 @@ class TestChronosTools:
         ):
             mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
             mock_read_extra_service_information.return_value = self.fake_config_file
-            actual = chronos_tools.read_chronos_jobs_for_service(self.fake_service_name,
+            actual = chronos_tools.read_chronos_jobs_for_service(self.fake_service,
                                                                  self.fake_cluster,
                                                                  fake_soa_dir)
-            mock_read_extra_service_information.assert_called_once_with(self.fake_service_name,
+            mock_read_extra_service_information.assert_called_once_with(self.fake_service,
                                                                         expected_chronos_conf_file,
                                                                         soa_dir=fake_soa_dir)
             assert actual == self.fake_config_file
@@ -165,12 +165,12 @@ class TestChronosTools:
         ):
             mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
             mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
-            actual = chronos_tools.load_chronos_job_config(service=self.fake_service_name,
+            actual = chronos_tools.load_chronos_job_config(service=self.fake_service,
                                                            instance=self.fake_job_name,
                                                            cluster=self.fake_cluster,
                                                            soa_dir=fake_soa_dir)
-            mock_load_deployments_json.assert_called_once_with(self.fake_service_name, soa_dir=fake_soa_dir)
-            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
+            mock_load_deployments_json.assert_called_once_with(self.fake_service, soa_dir=fake_soa_dir)
+            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service,
                                                                        self.fake_cluster,
                                                                        soa_dir=fake_soa_dir)
             assert actual == self.fake_chronos_job_config
@@ -185,12 +185,12 @@ class TestChronosTools:
             mock_read_chronos_jobs_for_service,
         ):
             mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
-            actual = chronos_tools.load_chronos_job_config(service=self.fake_service_name,
+            actual = chronos_tools.load_chronos_job_config(service=self.fake_service,
                                                            instance=self.fake_job_name,
                                                            cluster=self.fake_cluster,
                                                            load_deployments=False,
                                                            soa_dir=fake_soa_dir)
-            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
+            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service,
                                                                        self.fake_cluster,
                                                                        soa_dir=fake_soa_dir)
             assert not mock_load_deployments_json.called
@@ -209,11 +209,11 @@ class TestChronosTools:
             mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
             mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
             with raises(chronos_tools.InvalidChronosConfigError) as exc:
-                chronos_tools.load_chronos_job_config(service=self.fake_service_name,
+                chronos_tools.load_chronos_job_config(service=self.fake_service,
                                                       instance=fake_job_name,
                                                       cluster=self.fake_cluster,
                                                       soa_dir=fake_soa_dir)
-            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service_name,
+            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service,
                                                                        self.fake_cluster,
                                                                        soa_dir=fake_soa_dir)
             assert str(exc.value) == 'No job named "polar bear" in config file chronos-penguin.yaml'
@@ -249,9 +249,9 @@ class TestChronosTools:
         actual = self.fake_chronos_job_config.get_docker_image()
         assert actual == expected
 
-    def test_get_service_name(self):
+    def test_get_service(self):
         expected = 'test_service'
-        actual = self.fake_chronos_job_config.get_service_name()
+        actual = self.fake_chronos_job_config.get_service()
         assert actual == expected
 
     def test_get_cmd_uses_time_parser(self):
@@ -534,7 +534,7 @@ class TestChronosTools:
         assert msg == 'Your Chronos config specifies "boat", an unsupported parameter.'
 
     def test_format_chronos_job_dict(self):
-        fake_service_name = 'test_service'
+        fake_service = 'test_service'
         fake_job_name = 'test_job'
         fake_owner = 'test_team'
         fake_command = 'echo foo >> /tmp/test_service_log'
@@ -544,7 +544,7 @@ class TestChronosTools:
         fake_docker_volumes = ['fake_docker_volume']
 
         chronos_job_config = chronos_tools.ChronosJobConfig(
-            fake_service_name,
+            fake_service,
             fake_job_name,
             {
                 'cmd': fake_command,
@@ -582,12 +582,12 @@ class TestChronosTools:
             assert actual == expected
 
     def test_format_chronos_job_dict_invalid_param(self):
-        fake_service_name = 'test_service'
+        fake_service = 'test_service'
         fake_job_name = 'test_job'
         fake_command = 'echo foo >> /tmp/test_service_log'
         fake_schedule = 'fake_bad_schedule'
         invalid_config = chronos_tools.ChronosJobConfig(
-            fake_service_name,
+            fake_service,
             fake_job_name,
             {
                 'cmd': fake_command,
@@ -601,10 +601,10 @@ class TestChronosTools:
         assert 'The specified schedule "%s" is invalid' % fake_schedule in exc.value
 
     def test_format_chronos_job_dict_incomplete(self):
-        fake_service_name = 'test_service'
+        fake_service = 'test_service'
         fake_job_name = 'test_job'
         incomplete_config = chronos_tools.ChronosJobConfig(
-            fake_service_name,
+            fake_service,
             fake_job_name,
             {},
             {}
@@ -614,10 +614,10 @@ class TestChronosTools:
         assert 'You must specify a "schedule" in your configuration' in exc.value
 
     def test_validate(self):
-        fake_service_name = 'test_service'
+        fake_service = 'test_service'
         fake_job_name = 'test_job'
         incomplete_config = chronos_tools.ChronosJobConfig(
-            fake_service_name,
+            fake_service,
             fake_job_name,
             {},
             {}
@@ -771,7 +771,7 @@ class TestChronosTools:
     def test_create_complete_config_desired_state_start(self):
         fake_owner = 'test_team'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service_name,
+            self.fake_service,
             self.fake_job_name,
             self.fake_config_dict,
             {
@@ -824,7 +824,7 @@ class TestChronosTools:
     def test_create_complete_config_desired_state_stop(self):
         fake_owner = 'test@test.com'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service_name,
+            self.fake_service,
             self.fake_job_name,
             self.fake_config_dict,
             {

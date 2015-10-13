@@ -150,23 +150,23 @@ class InvalidMarathonConfig(Exception):
 
 class MarathonServiceConfig(InstanceConfig):
 
-    def __init__(self, service_name, instance, config_dict, branch_dict):
+    def __init__(self, service, instance, config_dict, branch_dict):
         super(MarathonServiceConfig, self).__init__(config_dict, branch_dict)
-        self.service_name = service_name
+        self.service = service
         self.instance = instance
         self.config_dict = config_dict
         self.branch_dict = branch_dict
 
     def __repr__(self):
         return "MarathonServiceConfig(%r, %r, %r, %r)" % (
-            self.service_name,
+            self.service,
             self.instance,
             self.config_dict,
             self.branch_dict
         )
 
     def copy(self):
-        return self.__class__(self.service_name, self.instance, dict(self.config_dict), dict(self.branch_dict))
+        return self.__class__(self.service, self.instance, dict(self.config_dict), dict(self.branch_dict))
 
     def get_instances(self):
         """Get the number of instances specified in the service's marathon configuration.
@@ -404,7 +404,7 @@ class MarathonServiceConfig(InstanceConfig):
         return self.config_dict.get('bounce_health_params', default)
 
 
-def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
+def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     """Attempt to read the configuration for a service's namespace in a more strict fashion.
 
     Retrevies the following keys:
@@ -427,13 +427,13 @@ def load_service_namespace_config(srv_name, namespace, soa_dir=DEFAULT_SOA_DIR):
     - extra_healthcheck_headers: a dict of HTTP headers that must
       be supplied when health checking. E.g. { 'Host': 'example.com' }
 
-    :param srv_name: The service name
+    :param service: The service name
     :param namespace: The namespace to read
     :param soa_dir: The SOA config directory to read from
     :returns: A dict of the above keys, if they were defined
     """
 
-    service_config = service_configuration_lib.read_service_configuration(srv_name, soa_dir)
+    service_config = service_configuration_lib.read_service_configuration(service, soa_dir)
     smartstack_config = service_config.get('smartstack', {})
     namespace_config_from_file = smartstack_config.get(namespace, {})
 
@@ -585,22 +585,22 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     return nerve_dict.get('proxy_port')
 
 
-def get_all_namespaces_for_service(service_name, soa_dir=DEFAULT_SOA_DIR, full_name=True):
+def get_all_namespaces_for_service(service, soa_dir=DEFAULT_SOA_DIR, full_name=True):
     """Get all the smartstack namespaces listed for a given service name.
 
-    :param service_name: The service name
+    :param service: The service name
     :param soa_dir: The SOA config directory to read from
     :param full_name: A boolean indicating if the service name should be prepended to the namespace in the
                       returned tuples as described below (Default: True)
-    :returns: A list of tuples of the form (service_name<SPACER>namespace, namespace_config) if full_name is true,
+    :returns: A list of tuples of the form (service<SPACER>namespace, namespace_config) if full_name is true,
               otherwise of the form (namespace, namespace_config)
     """
-    service_config = service_configuration_lib.read_service_configuration(service_name, soa_dir)
+    service_config = service_configuration_lib.read_service_configuration(service, soa_dir)
     smartstack = service_config.get('smartstack', {})
     namespace_list = []
     for namespace in smartstack:
         if full_name:
-            name = compose_job_id(service_name, namespace)
+            name = compose_job_id(service, namespace)
         else:
             name = namespace
         namespace_list.append((name, smartstack[namespace]))
@@ -612,7 +612,7 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     This is mostly so synapse can get everything it needs in one call.
 
     :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of the form (service_name.namespace, namespace_config)"""
+    :returns: A list of tuples of the form (service.namespace, namespace_config)"""
     rootdir = os.path.abspath(soa_dir)
     namespace_list = []
     for srv_dir in os.listdir(rootdir):
@@ -622,7 +622,7 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
 
 def marathon_services_running_here():
     """See what marathon services are being run by a mesos-slave on this host.
-    :returns: A list of triples of (service_name, instance_name, port)"""
+    :returns: A list of triples of (service, instance, port)"""
     slave_state = get_local_slave_state()
     frameworks = [fw for fw in slave_state.get('frameworks', []) if 'marathon' in fw['name']]
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
@@ -714,8 +714,8 @@ def get_services_running_here_for_nerve(cluster=None, soa_dir=DEFAULT_SOA_DIR):
 
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of the form (service_name.namespace, service_config)
-              AND (service_name, service_config) for legacy SOA services"""
+    :returns: A list of tuples of the form (service.namespace, service_config)
+              AND (service, service_config) for legacy SOA services"""
     # All Legacy yelpsoa services are also announced
     return get_marathon_services_running_here_for_nerve(cluster, soa_dir) + \
         get_classic_services_running_here_for_nerve(soa_dir)
@@ -824,19 +824,19 @@ def create_complete_config(name, instance, marathon_config, soa_dir=DEFAULT_SOA_
     return complete_config
 
 
-def get_expected_instance_count_for_namespace(service_name, namespace, cluster=None, soa_dir=DEFAULT_SOA_DIR):
+def get_expected_instance_count_for_namespace(service, namespace, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Get the number of expected instances for a namespace, based on the number
     of instances set to run on that namespace as specified in Marathon service
     configuration files.
 
-    :param service_name: The service's name
+    :param service: The service's name
     :param namespace: The namespace for that service to check
     :param soa_dir: The SOA configuration directory to read from
     :returns: An integer value of the # of expected instances for the namespace"""
     total_expected = 0
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
-    for name, instance in get_service_instance_list(service_name,
+    for name, instance in get_service_instance_list(service,
                                                     cluster=cluster,
                                                     instance_type='marathon',
                                                     soa_dir=soa_dir):
@@ -855,12 +855,12 @@ def get_matching_appids(servicename, instance, client):
     return [app.id for app in client.list_apps() if app.id.startswith("/%s" % jobid)]
 
 
-def get_healthcheck_for_instance(service_name, instance, service_manifest, random_port):
+def get_healthcheck_for_instance(service, instance, service_manifest, random_port):
     """
     Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
     or (None, None) if no healthcheck
     """
-    smartstack_config = load_service_namespace_config(service_name, instance)
+    smartstack_config = load_service_namespace_config(service, instance)
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     hostname = socket.getfqdn()
 

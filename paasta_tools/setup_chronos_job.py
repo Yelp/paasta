@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 """
-Usage: ./setup_chronos_job.py <service_name.instance_name> [options]
+Usage: ./setup_chronos_job.py <service.instance> [options]
 
 Deploy a service instance to Chronos from a configuration file.
 Reads from the soa_dir /nail/etc/services by default.
@@ -10,7 +10,7 @@ from the soa_dir and generate a chronos job configuration for it,
 as well as handle deploying that configuration if there's an old version of the service.
 
 To determine whether or not a deployment is 'old', each chronos job has a complete id of
-service_name.instance_name.configuration_hash, where configuration_hash
+service.instance.configuration_hash, where configuration_hash
 is an MD5 hash of the configuration dict to be sent to marathon (without
 the configuration_hash in the id field, of course- we change that after
 the hash is calculated).
@@ -112,8 +112,8 @@ def _setup_new_job(job_id, previous_jobs, complete_job_config, client):
     return (0, "Deployed job '%s'" % job_id)
 
 
-def setup_job(service_name, instance_name, chronos_job_config, complete_job_config, client, cluster):
-    job_prefix = compose_job_id(service_name, instance_name, spacer=chronos_tools.SPACER)
+def setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster):
+    job_prefix = compose_job_id(service, instance, spacer=chronos_tools.SPACER)
     job_id = complete_job_config['name']
     existing_jobs = chronos_tools.lookup_chronos_jobs(
         r'^%s$' % job_id,
@@ -133,7 +133,7 @@ def setup_job(service_name, instance_name, chronos_job_config, complete_job_conf
         else:
             return _setup_new_job(job_id, matching_jobs, complete_job_config, client)
     elif bounce_method == 'brutal':
-        restart_chronos_job(service_name, instance_name, job_id, client, cluster, matching_jobs, complete_job_config)
+        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, complete_job_config)
         return (0, "Job '%s' bounced using the 'brutal' method" % job_id)
     else:
         return (1, ("ERROR: bounce_method '%s' not recognized. Must be one of (%s)."
@@ -149,9 +149,9 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service_name, instance_name, _ = decompose_job_id(args.service_instance)
+        service, instance, _ = decompose_job_id(args.service_instance)
     except InvalidJobNameError:
-        log.error("Invalid service instance '%s' specified. Format is service_name%sinstance_name."
+        log.error("Invalid service instance '%s' specified. Format is service%sinstance."
                   % (args.service_instance, SPACER))
         sys.exit(1)
 
@@ -160,14 +160,14 @@ def main():
 
     try:
         chronos_job_config = chronos_tools.load_chronos_job_config(
-            service=service_name,
-            instance=instance_name,
+            service=service,
+            instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
         error_msg = "No deployments found for %s in cluster %s" % (args.service_instance, cluster)
-        send_event(service_name, None, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        send_event(service, None, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         log.error(error_msg)
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
@@ -176,14 +176,14 @@ def main():
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
             "Error was: %s" % str(e))
         log.error(error_msg)
-        send_event(service_name, instance_name, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
 
-    complete_job_config = chronos_tools.create_complete_config(service_name, instance_name, soa_dir=soa_dir)
-    status, output = setup_job(service_name, instance_name, chronos_job_config, complete_job_config, client, cluster)
+    complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
+    status, output = setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster)
     sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
-    send_event(service_name, instance_name, soa_dir, sensu_status, output)
+    send_event(service, instance, soa_dir, sensu_status, output)
     print status, output
     # We exit 0 because the script finished ok and the event was sent to the right team.
     sys.exit(0)

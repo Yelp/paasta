@@ -91,9 +91,9 @@ def test_log_raise_on_unknown_level():
 
 
 def test_get_log_name_for_service():
-    service_name = 'foo'
-    expected = 'stream_paasta_%s' % service_name
-    assert utils.get_log_name_for_service(service_name) == expected
+    service = 'foo'
+    expected = 'stream_paasta_%s' % service
+    assert utils.get_log_name_for_service(service) == expected
 
 
 def test_get_files_in_dir_ignores_unreadable():
@@ -455,7 +455,7 @@ def test_remove_ansi_escape_sequences():
 
 
 def test_get_default_cluster_for_service():
-    fake_service_name = 'fake_service'
+    fake_service = 'fake_service'
     fake_clusters = ['fake_cluster-1', 'fake_cluster-2']
     with contextlib.nested(
         mock.patch('utils.list_clusters', autospec=True, return_value=fake_clusters),
@@ -465,12 +465,12 @@ def test_get_default_cluster_for_service():
         mock_load_system_paasta_config,
     ):
         mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
-        assert utils.get_default_cluster_for_service(fake_service_name) == 'fake_cluster-1'
-        mock_list_clusters.assert_called_once_with(fake_service_name)
+        assert utils.get_default_cluster_for_service(fake_service) == 'fake_cluster-1'
+        mock_list_clusters.assert_called_once_with(fake_service)
 
 
 def test_get_default_cluster_for_service_empty_deploy_config():
-    fake_service_name = 'fake_service'
+    fake_service = 'fake_service'
     with contextlib.nested(
         mock.patch('utils.list_clusters', autospec=True, return_value=[]),
         mock.patch('utils.load_system_paasta_config', autospec=True),
@@ -480,8 +480,8 @@ def test_get_default_cluster_for_service_empty_deploy_config():
     ):
         mock_load_system_paasta_config.side_effect = utils.PaastaNotConfiguredError
         with raises(utils.NoConfigurationForServiceError):
-            utils.get_default_cluster_for_service(fake_service_name)
-        mock_list_clusters.assert_called_once_with(fake_service_name)
+            utils.get_default_cluster_for_service(fake_service)
+        mock_list_clusters.assert_called_once_with(fake_service)
 
 
 def test_list_clusters_no_service_given_lists_all_of_them():

@@ -31,12 +31,12 @@ def report_event(event_dict):
     pysensu_yelp.send_event(**event_dict)
 
 
-def do_replication_check(service_name, monitoring_config, service_replication):
+def do_replication_check(service, monitoring_config, service_replication):
     """Do a replication check on the provided service and generate
     notification events based on the information in monitoring_config and
     service_replication. Note that the caller must provide replication data
 
-    :param service_name: The name of the service to send an event for
+    :param service: The name of the service to send an event for
     :param monitoring_config: A dictionary conforming to the mandatory
         monitoring keys (as defined by extract_replication_info) and
         optionally providing additional keys:
@@ -76,11 +76,11 @@ def do_replication_check(service_name, monitoring_config, service_replication):
     warn_range = (goal_replication, sys.maxint)
     crit_range = warn_range
 
-    status_code, message = check_replication(service_name,
+    status_code, message = check_replication(service,
                                              service_replication,
                                              warn_range, crit_range)
     return {
-        'name': "replication_{0}".format(service_name),
+        'name': "replication_{0}".format(service),
         'status': status_code,
         'output': message,
         'team': monitoring_config['team'],
@@ -172,22 +172,22 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         service_replication = self.get_service_replication(all_service_config.keys())
 
         checked_services = []
-        for service_name, service_config in all_service_config.iteritems():
+        for service, service_config in all_service_config.iteritems():
             do_monitoring, monitoring_config = extract_replication_info(
                 service_config
             )
 
             if do_monitoring:
-                self.log.debug("Checking {0}".format(service_name))
-                replication = service_replication.get('%s.main' % service_name, 0)
-                event = do_replication_check(service_name, monitoring_config,
+                self.log.debug("Checking {0}".format(service))
+                replication = service_replication.get('%s.main' % service, 0)
+                event = do_replication_check(service, monitoring_config,
                                              replication)
-                checked_services.append(service_name)
-                self.log.debug("Result for {0}: {1}".format(service_name,
+                checked_services.append(service)
+                self.log.debug("Result for {0}: {1}".format(service,
                                                             event['output']))
                 report_event(event)
             else:
-                self.log.debug("Not checking {0}".format(service_name))
+                self.log.debug("Not checking {0}".format(service))
 
         self.ok("Finished checking services: {0}".format(checked_services))
 

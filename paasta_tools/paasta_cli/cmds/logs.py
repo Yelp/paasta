@@ -368,7 +368,7 @@ def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
     queue = Queue()
     spawned_processes = []
     for scribe_env in scribe_envs:
-        # Tail stream_paasta_<service_name> for build or deploy components
+        # Tail stream_paasta_<service> for build or deploy components
         if any([component in components for component in DEFAULT_COMPONENTS]):
             # Start a thread that tails scribe in this env
             kw = {
@@ -492,10 +492,10 @@ def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
 def paasta_logs(args):
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
-    service_name = figure_out_service_name(args)
+    service = figure_out_service_name(args)
 
     if args.clusters is None:
-        clusters = list_clusters(service_name)
+        clusters = list_clusters(service)
     else:
         clusters = args.clusters.split(",")
 
@@ -511,8 +511,8 @@ def paasta_logs(args):
         log.setLevel(logging.WARN)
         levels = [DEFAULT_LOGLEVEL]
 
-    log.info("Going to get logs for %s on clusters %s" % (service_name, clusters))
+    log.info("Going to get logs for %s on clusters %s" % (service, clusters))
     if args.tail:
-        tail_paasta_logs(service_name, levels, components, clusters, raw_mode=args.raw_mode)
+        tail_paasta_logs(service, levels, components, clusters, raw_mode=args.raw_mode)
     else:
         print "Non-tailing actions are not yet supported"

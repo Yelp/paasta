@@ -4,7 +4,7 @@
 Enumerates all marathon instances for services in the soa directory that
 are for the current cluster (defined by the marathon configuration file).
 
-Outputs (to stdout) a space separated list of service_name.instance_name
+Outputs (to stdout) a space separated list of service.instance
 for each instance found in marathon-<CLUSTER>.yaml for every folder
 in the SOA Configuration directory.
 

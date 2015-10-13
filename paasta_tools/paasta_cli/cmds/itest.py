@@ -34,19 +34,19 @@ def add_subparser(subparsers):
 
 def paasta_itest(args):
     """Build and test a docker image"""
-    service_name = args.service
-    if service_name and service_name.startswith('services-'):
-        service_name = service_name.split('services-', 1)[1]
-    validate_service_name(service_name)
+    service = args.service
+    if service and service.startswith('services-'):
+        service = service.split('services-', 1)[1]
+    validate_service_name(service)
 
-    tag = build_docker_tag(service_name, args.commit)
+    tag = build_docker_tag(service, args.commit)
     run_env = os.environ.copy()
     run_env['DOCKER_TAG'] = tag
     cmd = "make itest"
     loglines = []
 
     _log(
-        service_name=service_name,
+        service=service,
         line='starting itest for %s.' % args.commit,
         component='build',
         level='event'
@@ -57,7 +57,7 @@ def paasta_itest(args):
         timeout=3600,
         log=True,
         component='build',
-        service_name=service_name,
+        service=service,
         loglevel='debug'
     )
     if returncode != 0:
@@ -69,12 +69,12 @@ def paasta_itest(args):
             loglines.append('See output: %s' % output)
     else:
         loglines.append('itest passed for %s.' % args.commit)
-        if not check_docker_image(service_name, args.commit):
+        if not check_docker_image(service, args.commit):
             loglines.append('ERROR: itest has not created %s' % tag)
             returncode = 1
     for logline in loglines:
         _log(
-            service_name=service_name,
+            service=service,
             line=logline,
             component='build',
             level='event',

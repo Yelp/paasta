@@ -230,16 +230,16 @@ class PaastaCheckMessages:
             "and will be automatically load balanced" % (instance, port))
 
     @staticmethod
-    def service_dir_found(service_name):
+    def service_dir_found(service):
         message = "yelpsoa-config directory for %s found in /nail/etc/services" \
-                  % PaastaColors.cyan(service_name)
+                  % PaastaColors.cyan(service)
         return success(message)
 
     @staticmethod
-    def service_dir_missing(service_name):
+    def service_dir_missing(service):
         message = "Failed to locate yelpsoa-config directory for %s.\n" \
                   "  Please follow the guide linked below to get boilerplate." \
-                  % service_name
+                  % service
         return failure(message, "http://y/paasta-deploy")
 
 
@@ -277,15 +277,15 @@ def guess_service_name():
     return os.path.basename(os.getcwd())
 
 
-def validate_service_name(service_name, soa_dir=DEFAULT_SOA_DIR):
-    """Determine whether directory named service_name exists in the provided soa_dir
-    :param service_name: a string of the name of the service you wish to check exists
+def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
+    """Determine whether directory named service exists in the provided soa_dir
+    :param service: a string of the name of the service you wish to check exists
     :param soa_dir: directory to look for service names
     :return : boolean True
     :raises: NoSuchService exception
     """
-    if not service_name or not os.path.isdir(os.path.join(soa_dir, service_name)):
-        raise NoSuchService(service_name)
+    if not service or not os.path.isdir(os.path.join(soa_dir, service)):
+        raise NoSuchService(service)
     return True
 
 
@@ -299,18 +299,18 @@ def list_paasta_services():
     least one service.instance (including Marathon and Chronos instances), which indicates it is on PaaSTA
     """
     the_list = []
-    for service_name in list_services():
-        if list_all_instances_for_service(service_name):
-            the_list.append(service_name)
+    for service in list_services():
+        if list_all_instances_for_service(service):
+            the_list.append(service)
     return the_list
 
 
 def list_service_instances():
     """Returns a sorted list of service<SPACER>instance names"""
     the_list = []
-    for service_name in list_services():
-        for instance in list_all_instances_for_service(service_name):
-            the_list.append(compose_job_id(service_name, instance))
+    for service in list_services():
+        for instance in list_all_instances_for_service(service):
+            the_list.append(compose_job_id(service, instance))
     return the_list
 
 
@@ -320,13 +320,13 @@ def list_instances():
     operating on, otherwise we just provide *all* of them
     """
     all_instances = set()
-    service_name = guess_service_name()
+    service = guess_service_name()
     try:
-        validate_service_name(service_name)
-        all_instances = set(list_all_instances_for_service(service_name))
+        validate_service_name(service)
+        all_instances = set(list_all_instances_for_service(service))
     except NoSuchService:
-        for service_name in list_services():
-            for instance in list_all_instances_for_service(service_name):
+        for service in list_services():
+            for instance in list_all_instances_for_service(service):
                 all_instances.add(instance)
     return sorted(all_instances)
 
@@ -410,7 +410,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     return (False, output)
 
 
-def run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster, **kwargs):
+def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, **kwargs):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if 'verbose' in kwargs and kwargs['verbose']:
         verbose_flag = "-v "
@@ -426,7 +426,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
         master,
         verbose_flag,
         app_id_flag,
-        compose_job_id(service_name, instancename),
+        compose_job_id(service, instancename),
         subcommand
     )
     log.debug("Running Command: %s" % command)
@@ -434,7 +434,7 @@ def run_paasta_serviceinit(subcommand, master, service_name, instancename, clust
     return output
 
 
-def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, service_name, instancename, **kwargs):
+def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, service, instancename, **kwargs):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
@@ -446,7 +446,7 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster_name, servic
         return (
             'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster_name, output)
         )
-    return run_paasta_serviceinit(subcommand, master, service_name, instancename, cluster_name, **kwargs)
+    return run_paasta_serviceinit(subcommand, master, service, instancename, cluster_name, **kwargs)
 
 
 def run_paasta_metastatus(master, verbose=False):
@@ -488,13 +488,13 @@ def lazy_choices_completer(list_func):
 
 def figure_out_service_name(args, soa_dir=DEFAULT_SOA_DIR):
     """Figures out and validates the input service name"""
-    service_name = args.service or guess_service_name()
+    service = args.service or guess_service_name()
     try:
-        validate_service_name(service_name, soa_dir=soa_dir)
+        validate_service_name(service, soa_dir=soa_dir)
     except NoSuchService as service_not_found:
         print service_not_found
         exit(1)
-    return service_name
+    return service
 
 
 def figure_out_cluster(args):

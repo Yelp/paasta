@@ -4,7 +4,7 @@
 Enumerates all Chronos jobs for services in the SOA directory that
 are for the current cluster (defined by the Chronos configuration file).
 
-Outputs (to stdout) a space-separated list of service_name.job_name
+Outputs (to stdout) a space-separated list of service.job_name
 for each job found in chronos-<CLUSTER>.yaml for every folder
 in the SOA Configuration directory.
 

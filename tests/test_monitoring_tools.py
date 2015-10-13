@@ -56,79 +56,79 @@ class TestMonitoring_Tools:
     framework = 'fake_framework'
     overrides = {}
     instance = 'fake_instance'
-    service_name = 'fake_service'
+    service = 'fake_service'
     soa_dir = '/fake/soa/dir'
 
     def test_get_team(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_team(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('team', self.overrides, self.service_name,
+            monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('team', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_runbook(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_runbook(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('runbook', self.overrides, self.service_name,
+            monitoring_tools.get_runbook(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('runbook', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_tip(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_tip(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('tip', self.overrides, self.service_name,
+            monitoring_tools.get_tip(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('tip', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_notification_email(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_notification_email(self.overrides, self.service_name, self.soa_dir)
+            monitoring_tools.get_notification_email(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('notification_email', self.overrides,
-                                                                      self.service_name, self.soa_dir)
+                                                                      self.service, self.soa_dir)
 
     def test_get_page(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_page(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('page', self.overrides, self.service_name,
+            monitoring_tools.get_page(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('page', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_alert_after(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_alert_after(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('alert_after', self.overrides, self.service_name,
+            monitoring_tools.get_alert_after(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('alert_after', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_realert_every(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_realert_every(self.overrides, self.service_name, self.soa_dir)
+            monitoring_tools.get_realert_every(self.overrides, self.service, self.soa_dir)
             get_monitoring_config_value_patch.assert_called_once_with('realert_every', self.overrides,
-                                                                      self.service_name, self.soa_dir)
+                                                                      self.service, self.soa_dir)
 
     def test_get_check_every(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_check_every(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('check_every', self.overrides, self.service_name,
+            monitoring_tools.get_check_every(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('check_every', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_irc_channels(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_irc_channels(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('irc_channels', self.overrides, self.service_name,
+            monitoring_tools.get_irc_channels(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('irc_channels', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_dependencies(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_dependencies(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('dependencies', self.overrides, self.service_name,
+            monitoring_tools.get_dependencies(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('dependencies', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_ticket(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_ticket(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('ticket', self.overrides, self.service_name,
+            monitoring_tools.get_ticket(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('ticket', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_project(self):
         with mock.patch('monitoring_tools.__get_monitoring_config_value') as get_monitoring_config_value_patch:
-            monitoring_tools.get_project(self.overrides, self.service_name, self.soa_dir)
-            get_monitoring_config_value_patch.assert_called_once_with('project', self.overrides, self.service_name,
+            monitoring_tools.get_project(self.overrides, self.service, self.soa_dir)
+            get_monitoring_config_value_patch.assert_called_once_with('project', self.overrides, self.service,
                                                                       self.soa_dir)
 
     def test_get_monitoring_config_value_with_monitor_config(self):
@@ -145,10 +145,10 @@ class TestMonitoring_Tools:
             load_system_paasta_config_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
-            actual = monitoring_tools.get_team(self.overrides, self.service_name, self.soa_dir)
+            actual = monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
             assert expected == actual
-            service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
+            service_configuration_lib_patch.assert_called_once_with(self.service, soa_dir=self.soa_dir)
+            read_monitoring_patch.assert_called_once_with(self.service, soa_dir=self.soa_dir)
 
     def test_get_monitoring_config_value_with_service_config(self):
         expected = 'general_test_team'
@@ -164,10 +164,10 @@ class TestMonitoring_Tools:
             load_system_paasta_config_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
-            actual = monitoring_tools.get_team(self.overrides, self.service_name, self.soa_dir)
+            actual = monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
             assert expected == actual
-            service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
+            service_configuration_lib_patch.assert_called_once_with(self.service, soa_dir=self.soa_dir)
+            read_monitoring_patch.assert_called_once_with(self.service, soa_dir=self.soa_dir)
 
     def test_get_monitoring_config_value_with_defaults(self):
         expected = None
@@ -183,10 +183,10 @@ class TestMonitoring_Tools:
             load_system_paasta_config_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
-            actual = monitoring_tools.get_team(self.overrides, self.service_name, self.soa_dir)
+            actual = monitoring_tools.get_team(self.overrides, self.service, self.soa_dir)
             assert expected == actual
-            service_configuration_lib_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
-            read_monitoring_patch.assert_called_once_with(self.service_name, soa_dir=self.soa_dir)
+            service_configuration_lib_patch.assert_called_once_with(self.service, soa_dir=self.soa_dir)
+            read_monitoring_patch.assert_called_once_with(self.service, soa_dir=self.soa_dir)
 
     def test_get_team_email_address_uses_override_if_specified(self):
         fake_email = 'fake_email'
@@ -246,7 +246,7 @@ class TestMonitoring_Tools:
             assert actual is None
 
     def test_send_event(self):
-        fake_service_name = 'fake_service'
+        fake_service = 'fake_service'
         fake_monitoring_overrides = {}
         fake_check_name = 'fake_check_name'
         fake_status = '42'
@@ -322,7 +322,7 @@ class TestMonitoring_Tools:
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             monitoring_tools.send_event(
-                fake_service_name,
+                fake_service,
                 fake_check_name,
                 fake_monitoring_overrides,
                 fake_status,
@@ -331,27 +331,27 @@ class TestMonitoring_Tools:
             )
             get_team_patch.assert_called_once_with(
                 fake_monitoring_overrides,
-                fake_service_name,
+                fake_service,
                 fake_soa_dir,
             )
             get_tip_patch.assert_called_once_with(
                 fake_monitoring_overrides,
-                fake_service_name,
+                fake_service,
                 fake_soa_dir
             )
             get_notification_email_patch.assert_called_once_with(
                 fake_monitoring_overrides,
-                fake_service_name,
+                fake_service,
                 fake_soa_dir
             )
             get_irc_patch.assert_called_once_with(
                 fake_monitoring_overrides,
-                fake_service_name,
+                fake_service,
                 fake_soa_dir
             )
             get_page_patch.assert_called_once_with(
                 fake_monitoring_overrides,
-                fake_service_name,
+                fake_service,
                 fake_soa_dir
             )
             pysensu_yelp_send_event_patch.assert_called_once_with(

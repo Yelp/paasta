@@ -90,8 +90,8 @@ def get_service_info(service):
     output.append('Service Name: %s' % service)
     output.append('Description: %s' % description)
     output.append('External Link (CEP/SCF): %s' % PaastaColors.cyan(external_link))
-    output.append('Monitored By: team %s' % get_team(service_name=service, overrides={}))
-    output.append('Runbook: %s' % PaastaColors.cyan(get_runbook(service_name=service, overrides={})))
+    output.append('Monitored By: team %s' % get_team(service=service, overrides={}))
+    output.append('Runbook: %s' % PaastaColors.cyan(get_runbook(service=service, overrides={})))
     output.append('Git Repo: %s' % git_url)
     output.append('Jenkins Pipeline: %s' % pipeline_url)
     output.append('Deployed to the following clusters:')
@@ -108,5 +108,5 @@ def get_service_info(service):
 
 def paasta_info(args):
     """Prints general information about a service"""
-    service_name = figure_out_service_name(args)
-    print get_service_info(service_name)
+    service = figure_out_service_name(args)
+    print get_service_info(service)

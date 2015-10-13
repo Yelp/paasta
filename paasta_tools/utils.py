@@ -425,11 +425,11 @@ def format_log_line(level, cluster, instance, component, line, timestamp=None):
     return message
 
 
-def get_log_name_for_service(service_name):
-    return 'stream_paasta_%s' % service_name
+def get_log_name_for_service(service):
+    return 'stream_paasta_%s' % service
 
 
-def _log(service_name, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+def _log(service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
     """This expects someone (currently the paasta cli main()) to have already
     configured the log object. We'll just write things to it.
     """
@@ -439,7 +439,7 @@ def _log(service_name, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUS
         print(line, file=sys.stderr)
     else:
         raise NoSuchLogLevel
-    log_name = get_log_name_for_service(service_name)
+    log_name = get_log_name_for_service(service)
     formatted_line = format_log_line(level, cluster, instance, component, line)
     clog.log_line(log_name, formatted_line)
 
@@ -572,7 +572,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     :param timeout: If specified, the command will be terminated after timeout
         seconds.
     :param log: If True, the _log will be handled by _run. If set, it is mandatory
-        to pass at least a :service_name: and a :component: parameter. Optionally you
+        to pass at least a :service: and a :component: parameter. Optionally you
         can pass :cluster:, :instance: and :loglevel: parameters for logging.
     We wanted to use plumbum instead of rolling our own thing with
     subprocess.Popen but were blocked by
@@ -581,7 +581,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     """
     output = []
     if log:
-        service_name = kwargs['service_name']
+        service = kwargs['service']
         component = kwargs['component']
         cluster = kwargs.get('cluster', ANY_CLUSTER)
         instance = kwargs.get('instance', ANY_INSTANCE)
@@ -596,7 +596,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
         for line in iter(process.stdout.readline, ''):
             if log:
                 _log(
-                    service_name=service_name,
+                    service=service,
                     line=line.rstrip('\n'),
                     component=component,
                     level=loglevel,
@@ -609,7 +609,7 @@ def _run(command, env=os.environ, timeout=None, log=False, **kwargs):
     except OSError as e:
         if log:
             _log(
-                service_name=service_name,
+                service=service,
                 line=e.strerror.rstrip('\n'),
                 component=component,
                 level=loglevel,
@@ -731,15 +731,15 @@ def build_docker_tag(upstream_job_name, upstream_git_commit):
     return tag
 
 
-def check_docker_image(service_name, tag):
-    """Checks whether the given image for :service_name: with :tag: exists.
+def check_docker_image(service, tag):
+    """Checks whether the given image for :service: with :tag: exists.
 
     :raises: ValueError if more than one docker image with :tag: found.
     :returns: True if there is exactly one matching image found.
     """
     docker_client = docker.Client(timeout=60)
-    image_name = build_docker_image_name(service_name)
-    docker_tag = build_docker_tag(service_name, tag)
+    image_name = build_docker_image_name(service)
+    docker_tag = build_docker_tag(service, tag)
     images = docker_client.images(name=image_name)
     result = [image for image in images if docker_tag in image['RepoTags']]
     if len(result) > 1:
@@ -765,16 +765,16 @@ def get_username():
     return pwd.getpwuid(os.getuid())[0]
 
 
-def get_default_cluster_for_service(service_name):
+def get_default_cluster_for_service(service):
     cluster = None
     try:
         cluster = load_system_paasta_config().get_cluster()
     except PaastaNotConfiguredError:
-        clusters_deployed_to = list_clusters(service_name)
+        clusters_deployed_to = list_clusters(service)
         if len(clusters_deployed_to) > 0:
             cluster = clusters_deployed_to[0]
         else:
-            raise NoConfigurationForServiceError("No cluster configuration found for service %s" % service_name)
+            raise NoConfigurationForServiceError("No cluster configuration found for service %s" % service)
     return cluster
 
 
@@ -845,7 +845,7 @@ def get_services_for_cluster(cluster=None, instance_type=None, soa_dir=DEFAULT_S
     :param cluster: The cluster to read the configuration for
     :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
     :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of (service_name, instance_name)
+    :returns: A list of tuples of (service, instance)
     """
     if not cluster:
         cluster = load_system_paasta_config().get_cluster()
@@ -915,8 +915,8 @@ class NoDeploymentsAvailable(Exception):
     pass
 
 
-def load_deployments_json(service_name, soa_dir=DEFAULT_SOA_DIR):
-    deployment_file = os.path.join(soa_dir, service_name, 'deployments.json')
+def load_deployments_json(service, soa_dir=DEFAULT_SOA_DIR):
+    deployment_file = os.path.join(soa_dir, service, 'deployments.json')
     if os.path.isfile(deployment_file):
         with open(deployment_file) as f:
             return DeploymentsJson(json.load(f)['v1'])
@@ -926,8 +926,8 @@ def load_deployments_json(service_name, soa_dir=DEFAULT_SOA_DIR):
 
 class DeploymentsJson(dict):
 
-    def get_branch_dict(self, service_name, branch):
-        full_branch = '%s:%s' % (service_name, branch)
+    def get_branch_dict(self, service, branch):
+        full_branch = '%s:%s' % (service, branch)
         return self.get(full_branch, {})
 
 

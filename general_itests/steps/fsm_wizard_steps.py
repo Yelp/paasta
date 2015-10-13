@@ -25,27 +25,27 @@ def step_impl_given(context):
     )
 
 
-def _load_yelpsoa_configs(context, service_name):
+def _load_yelpsoa_configs(context, service):
     all_services = read_services_configuration(soa_dir=context.fake_yelpsoa_configs)
-    context.my_config = all_services[service_name]
+    context.my_config = all_services[service]
 
 
 @when(u'we fsm a new service with --auto')
 def step_impl_when_fsm_auto(context):
-    service_name = "new_paasta_service"
+    service = "new_paasta_service"
     cmd = (
         "../paasta_tools/paasta_cli/paasta_cli.py fsm "
         "--yelpsoa-config-root %s "
         "--auto "
         "--service-name %s "
         "--team paasta"
-        % (context.fake_yelpsoa_configs, service_name)
+        % (context.fake_yelpsoa_configs, service)
     )
     print "Running cmd %s" % cmd
     (returncode, output) = _run(cmd)
     print "Got returncode %s with output:" % returncode
     print output
-    _load_yelpsoa_configs(context, service_name)
+    _load_yelpsoa_configs(context, service)
 
 
 @then(u'the new yelpsoa-configs directory has the expected smartstack proxy_port')

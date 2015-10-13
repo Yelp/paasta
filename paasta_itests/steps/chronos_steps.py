@@ -19,19 +19,19 @@ def create_trivial_chronos_job(context):
     context.chronos_job_name = job_config['name']
 
 
-@when(u'we load the configs for instance "{instance_name}" of service "{service_name}" into a ChronosJobConfig')
-def create_chronos_job_config_object_from_configs(context, instance_name, service_name):
+@when(u'we load the configs for instance "{instance}" of service "{service}" into a ChronosJobConfig')
+def create_chronos_job_config_object_from_configs(context, instance, service):
     context.chronos_job_config_obj = chronos_tools.load_chronos_job_config(
-        service=service_name,
-        instance=instance_name,
+        service=service,
+        instance=instance,
         cluster=context.cluster,
         soa_dir=context.soa_dir,
     )
 
 
-@when(u'we create a chronos job dict from the configs for instance "{instance_name}" of service "{service_name}"')
-def create_chronos_job_from_configs(context, instance_name, service_name):
-    chronos_job_config = chronos_tools.create_complete_config(service_name, instance_name, context.soa_dir)
+@when(u'we create a chronos job dict from the configs for instance "{instance}" of service "{service}"')
+def create_chronos_job_from_configs(context, instance, service):
+    chronos_job_config = chronos_tools.create_complete_config(service, instance, context.soa_dir)
     context.chronos_job_config = chronos_job_config
     context.chronos_job_name = chronos_job_config['name']
 
@@ -41,12 +41,12 @@ def set_bounce_method_chronos_job_config(context, bounce_method):
     context.chronos_job_config_obj.config_dict['bounce_method'] = bounce_method
 
 
-@when(u'we update the tag for the service "{service_name}" with {disabled} chronos instance "{instance_name}"')
-def update_job_tag(context, service_name, disabled, instance_name):
+@when(u'we update the tag for the service "{service}" with {disabled} chronos instance "{instance}"')
+def update_job_tag(context, service, disabled, instance):
     context.old_chronos_job_name = context.chronos_job_name
     context.tag_version = context.tag_version + 1
     context.execute_steps('Given I have a deployments.json for the service "%s" with %s chronos instance "%s"'
-                          % (service_name, disabled, instance_name))
+                          % (service, disabled, instance))
 
 
 @when(u'we send the job to chronos')

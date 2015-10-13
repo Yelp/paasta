@@ -7,14 +7,14 @@ import requests
 from paasta_tools.utils import timeout
 
 
-def get_service_connection_string(service_name):
+def get_service_connection_string(service):
     """Given a container name this function returns
     the host and ephemeral port that you need to use to connect to. For example
     if you are spinning up a 'web' container that inside listens on 80, this
     function would return 0.0.0.0:23493 or whatever ephemeral forwarded port
     it has from docker-compose"""
-    service_name = service_name.upper()
-    raw_host_port = os.environ['%s_PORT' % service_name]
+    service = service.upper()
+    raw_host_port = os.environ['%s_PORT' % service]
     # Remove leading tcp:// or similar
     host_port = raw_host_port.split("://")[1]
     return host_port

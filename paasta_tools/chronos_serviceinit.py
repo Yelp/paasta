@@ -26,7 +26,7 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, em
     log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
     log_immediate_run = " and running it immediately" if not job_config["disabled"] else ""
     _log(
-        service_name=service,
+        service=service,
         line="%s: Sending job %s to Chronos%s" % (log_reason, name, log_immediate_run),
         component="deploy",
         level="event",
@@ -44,7 +44,7 @@ def stop_chronos_job(service, instance, client, cluster, existing_jobs, emergenc
     for job in existing_jobs:
         name = PaastaColors.cyan(job["name"])
         _log(
-            service_name=service,
+            service=service,
             line="%s: Killing all tasks for job %s" % (log_reason, name),
             component="deploy",
             level="event",

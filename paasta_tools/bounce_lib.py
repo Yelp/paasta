@@ -203,13 +203,13 @@ def kill_old_ids(old_ids, client):
             continue
 
 
-def get_happy_tasks(app, service_name, nerve_ns, min_task_uptime=None, check_haproxy=False):
+def get_happy_tasks(app, service, nerve_ns, min_task_uptime=None, check_haproxy=False):
     """Given a MarathonApp object, return the subset of tasks which are considered healthy.
     With the default options, this returns tasks where at least one of the defined Marathon healthchecks passes.
     For it to do anything interesting, set min_task_uptime or check_haproxy.
 
     :param app: A MarathonApp object.
-    :param service_name: The name of the service.
+    :param service: The name of the service.
     :param nerve_ns: The nerve namespace
     :param min_task_uptime: Minimum number of seconds that a task must be running before we consider it healthy. Useful
                             if tasks take a while to start up.
@@ -221,9 +221,9 @@ def get_happy_tasks(app, service_name, nerve_ns, min_task_uptime=None, check_hap
 
     if check_haproxy:
         tasks_in_smartstack = []
-        service_namespace = compose_job_id(service_name, nerve_ns)
+        service_namespace = compose_job_id(service, nerve_ns)
 
-        service_namespace_config = marathon_tools.load_service_namespace_config(service_name, nerve_ns)
+        service_namespace_config = marathon_tools.load_service_namespace_config(service, nerve_ns)
         discover_location_type = service_namespace_config.get_discover()
         unique_values = mesos_tools.get_mesos_slaves_grouped_by_attribute(discover_location_type)
 

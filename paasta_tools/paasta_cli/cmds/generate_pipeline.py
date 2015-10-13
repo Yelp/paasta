@@ -33,14 +33,14 @@ def add_subparser(subparsers):
 def paasta_generate_pipeline(args):
     """Generate a Jenkins build pipeline.
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
-    service_name = args.service or guess_service_name()
+    service = args.service or guess_service_name()
     try:
-        validate_service_name(service_name)
+        validate_service_name(service)
     except NoSuchService as service_not_found:
         print service_not_found
         sys.exit(1)
 
-    generate_pipeline(service=service_name)
+    generate_pipeline(service=service)
 
 
 def validate_git_url_for_fab_repo(git_url):
@@ -68,7 +68,7 @@ def generate_pipeline(service):
     email_address = get_team_email_address(service=service)
     repo = get_git_repo_for_fab_repo(service)
     if email_address is None:
-        owner = get_team(overrides={}, service_name=service)
+        owner = get_team(overrides={}, service=service)
     else:
         # fab_repo tacks on the domain, so we only want the first
         # part of the email.

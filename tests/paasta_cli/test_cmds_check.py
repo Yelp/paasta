@@ -77,10 +77,10 @@ def test_check_paasta_check_calls_everything(
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_service_dir_check_pass(mock_stdout, mock_validate_service_name):
     mock_validate_service_name.return_value = None
-    service_name = 'fake_service'
+    service = 'fake_service'
     expected_output = \
-        "%s\n" % PaastaCheckMessages.service_dir_found(service_name)
-    service_dir_check(service_name)
+        "%s\n" % PaastaCheckMessages.service_dir_found(service)
+    service_dir_check(service)
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -89,11 +89,11 @@ def test_check_service_dir_check_pass(mock_stdout, mock_validate_service_name):
 @patch('paasta_tools.paasta_cli.cmds.check.validate_service_name')
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_service_dir_check_fail(mock_stdout, mock_validate_service_name):
-    service_name = 'fake_service'
-    mock_validate_service_name.side_effect = NoSuchService(service_name)
+    service = 'fake_service'
+    mock_validate_service_name.side_effect = NoSuchService(service)
     expected_output = "%s\n" \
-                      % PaastaCheckMessages.service_dir_missing(service_name)
-    service_dir_check(service_name)
+                      % PaastaCheckMessages.service_dir_missing(service)
+    service_dir_check(service)
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -227,7 +227,7 @@ def test_check_sensu_check_pass(mock_stdout, mock_get_team,
     output = mock_stdout.getvalue()
 
     assert output == expected_output
-    mock_get_team.assert_called_once_with(service_name='fake_service', overrides={})
+    mock_get_team.assert_called_once_with(service='fake_service', overrides={})
 
 
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
