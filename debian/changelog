@@ -1,3 +1,10 @@
+paasta-tools (0.12.95-yelp1) lucid; urgency=low
+
+  * 0.12.95 tagged with 'make release'
+    Commit: Merge branch service_instance_names
+
+ -- Kyle Anderson <kwa@yelp.com>  Tue, 13 Oct 2015 16:55:21 -0700
+
 paasta-tools (0.12.94-yelp1) lucid; urgency=low
 
   * 0.12.94 tagged with 'make release'
