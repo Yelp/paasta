@@ -874,6 +874,75 @@ class TestChronosTools:
             }
             assert actual == expected
 
+    def test_create_complete_config_respects_extra_volumes(self):
+        fake_owner = 'test@test.com'
+        fake_extra_volumes = [
+            {
+                "containerPath": "/extra",
+                "hostPath": "/extra",
+                "mode": "RO"
+            }
+        ]
+        fake_system_volumes = [
+            {
+                "containerPath": "/system",
+                "hostPath": "/system",
+                "mode": "RO"
+            }
+        ]
+        fake_instance_config = self.fake_config_dict
+        fake_instance_config['extra_volumes'] = fake_extra_volumes
+        fake_chronos_job_config = chronos_tools.ChronosJobConfig(
+            self.fake_service_name,
+            self.fake_job_name,
+            fake_instance_config,
+            {
+                'desired_state': 'stop',
+                'docker_image': 'fake_image'
+            }
+        )
+        with contextlib.nested(
+            mock.patch('chronos_tools.load_system_paasta_config', autospec=True),
+            mock.patch('chronos_tools.load_chronos_job_config',
+                       autospec=True, return_value=fake_chronos_job_config),
+            mock.patch('chronos_tools.get_code_sha_from_dockerurl', autospec=True, return_value="sha"),
+            mock.patch('chronos_tools.get_config_hash', autospec=True, return_value="hash"),
+            mock.patch('monitoring_tools.get_team', return_value=fake_owner)
+        ) as (
+            load_system_paasta_config_patch,
+            load_chronos_job_config_patch,
+            code_sha_patch,
+            config_hash_patch,
+            mock_get_team,
+        ):
+            load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=fake_system_volumes)
+            load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
+            actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
+            expected = {
+                'arguments': None,
+                'constraints': None,
+                'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
+                'async': False,
+                'cpus': 5.5,
+                'scheduleTimeZone': 'Zulu',
+                'environmentVariables': [],
+                'retries': 5,
+                'disabled': True,
+                'name': 'fake_service fake_job sha hash',
+                'command': '/bin/sleep 40',
+                'epsilon': 'PT30M',
+                'container': {
+                    'network': 'BRIDGE',
+                    'volumes': fake_system_volumes + fake_extra_volumes,
+                    'image': "fake_registry/fake_image",
+                    'type': 'DOCKER'
+                },
+                'mem': 1024.4,
+                'owner': fake_owner,
+                'shell': True,
+            }
+            assert actual == expected
+
     def test_wait_for_job(self):
         fake_config = chronos_tools.ChronosConfig(
             {'user': 'test', 'password': 'pass', 'url': ['some_fake_host']}, '/fake/path')

@@ -192,6 +192,13 @@ class InstanceConfig(dict):
                 error_msgs.append(check_msg)
         return error_msgs
 
+    def get_extra_volumes(self):
+        """Extra volumes are a specially formatted list of dictionaries that should
+        be bind mounted in a container The format of the dictionaries should
+        conform to the `Mesos container volumes spec
+        <https://mesosphere.github.io/marathon/docs/native-docker.html>`_"""
+        return self.config_dict.get('extra_volumes', [])
+
 
 def validate_service_instance(service, instance, cluster, soa_dir):
     marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon', soa_dir=soa_dir)

@@ -393,10 +393,11 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
         service, job_name, system_paasta_config.get_cluster(), soa_dir=soa_dir)
     docker_url = get_docker_url(
         system_paasta_config.get_docker_registry(), chronos_job_config.get_docker_image())
+    docker_volumes = system_paasta_config.get_volumes() + chronos_job_config.get_extra_volumes()
 
     complete_config = chronos_job_config.format_chronos_job_dict(
         docker_url,
-        system_paasta_config.get_volumes(),
+        docker_volumes,
     )
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(complete_config)

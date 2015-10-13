@@ -76,10 +76,31 @@ instancename MAY have:
       to work around this, see `PAASTA-267
       <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
 
+  * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
+    inside the container. Can be used to expose filesystem resources available
+    on the host into the running container. Common use cases might be to share
+    secrets that exist on the host, or mapping read-write volumes for shared
+    data location. For example::
+
+      extra_volumes:
+        - {containerPath: /etc/secrets, hostPath: /etc/secrets, mode: RO}
+        - {containerPath: /tmp, hostPath: /tmp, mode: RW}
+
+    Note: The format of these dictionaries must match the specification for the
+    `Mesos Docker containers schema
+    <https://mesosphere.github.io/marathon/docs/native-docker.html>`_, no
+    error-checking is performed.
+
+    **WARNING**: This option should be used sparingly. Any specified bind-mount
+    must exist on the filesystem beforehand, or the container will not run.
+    Additionally it is possible for a service to be defined with a read-write
+    volume on a sensitive part of the filesystem, as root. PaaSTA does not
+    validate that the bind mounts are "safe".
+
   * ``monitoring``: A dictionary of values that configure overrides for
     monitoring parameters that will take precedence over what is in
     `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
-  
+
   * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 
       ``deploy_blacklist: [["region", "uswest1-prod"]]``
@@ -234,6 +255,8 @@ Each job configuration MAY specify the following options:
   * ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``env``: See the `marathon-[clustername].yaml`_ section for details
+
+  * ``extra_volumes``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``constraints``: Array of rules to ensure jobs run on slaves with specific
     Mesos attributes. See the `official documentation

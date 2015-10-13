@@ -1670,3 +1670,80 @@ def test_create_complete_config_with_smartstack():
 
         # Assert that the complete config can be inserted into the MarathonApp model
         assert MarathonApp(**actual)
+
+
+def test_create_complete_config_utilizes_extra_volumes():
+    service_name = "service"
+    instance_name = "instance"
+    fake_job_id = "service.instance.some.hash"
+    fake_extra_volumes = [
+        {
+            "containerPath": "/extra",
+            "hostPath": "/extra",
+            "mode": "RO"
+        }
+    ]
+    fake_system_volumes = [
+        {
+            "containerPath": "/system",
+            "hostPath": "/system",
+            "mode": "RO"
+        }
+    ]
+    fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service_name,
+        instance_name,
+        {'extra_volumes': fake_extra_volumes},
+        {'docker_image': 'abcdef'},
+    )
+    fake_system_paasta_config = SystemPaastaConfig({
+        'volumes': fake_system_volumes,
+        'docker_registry': 'fake_docker_registry:443'
+    }, '/fake/dir/')
+    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+    fake_cluster = "clustername"
+
+    with contextlib.nested(
+        mock.patch('marathon_tools.load_marathon_service_config', return_value=fake_marathon_service_config),
+        mock.patch('marathon_tools.load_service_namespace_config', return_value=fake_service_namespace_config),
+        mock.patch('marathon_tools.format_job_id', return_value=fake_job_id),
+        mock.patch('marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute',
+                   autospec=True, return_value={'fake_region': {}})
+    ) as (
+        mock_load_marathon_service_config,
+        mock_load_service_namespace_config,
+        mock_format_job_id,
+        mock_system_paasta_config,
+        _,
+    ):
+        mock_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
+        actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
+        expected = {
+            'container': {
+                'docker': {
+                    'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
+                    'image': 'fake_docker_registry:443/abcdef',
+                    'network': 'BRIDGE'
+                },
+                'type': 'DOCKER',
+                'volumes': fake_system_volumes + fake_extra_volumes,
+            },
+            'instances': 1,
+            'mem': 1024.0,
+            'cmd': None,
+            'args': [],
+            'backoff_factor': 2,
+            'cpus': 0.25,
+            'uris': ['file:///root/.dockercfg'],
+            'backoff_seconds': 1,
+            'health_checks': [],
+            'env': {},
+            'id': fake_job_id,
+            'constraints': [["region", "GROUP_BY", "1"]],
+        }
+        assert actual == expected
+
+        # Assert that the complete config can be inserted into the MarathonApp model
+        assert MarathonApp(**actual)

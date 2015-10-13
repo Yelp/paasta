@@ -811,12 +811,13 @@ def create_complete_config(service, instance, marathon_config, soa_dir=DEFAULT_S
         service=service,
         namespace=instance_config.get_nerve_namespace(),
     )
+    docker_volumes = system_paasta_config.get_volumes() + instance_config.get_extra_volumes()
 
     complete_config = instance_config.format_marathon_app_dict(
-        partial_id,
-        docker_url,
-        system_paasta_config.get_volumes(),
-        service_namespace_config,
+        app_id=partial_id,
+        docker_url=docker_url,
+        docker_volumes=docker_volumes,
+        service_namespace_config=service_namespace_config,
     )
     code_sha = get_code_sha_from_dockerurl(docker_url)
     config_hash = get_config_hash(
