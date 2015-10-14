@@ -1,3 +1,10 @@
+paasta-tools (0.12.96-yelp1) lucid; urgency=low
+
+  * 0.12.96 tagged with 'make release'
+    Commit: Merge branch INFRA-3774
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 14 Oct 2015 12:12:56 -0700
+
 paasta-tools (0.12.95-yelp1) lucid; urgency=low
 
   * 0.12.95 tagged with 'make release'
