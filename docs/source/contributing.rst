@@ -54,7 +54,7 @@ If you wish to merge commits from the upstream library into our fork:
   care to ensure that setup.py is merged correctly, and contains the yelp specific release tag:
 
   * ``git reset --hard yelp-fork/master``
-  * ``git merge yelp-fork/master``
+  * ``git merge upstream/master``
 
 * Edit ``setup.py`` of the library and update the ``version`` field.
 * Edit ``setup.py`` of paasta-tools to ensure the dependency version is correct.
