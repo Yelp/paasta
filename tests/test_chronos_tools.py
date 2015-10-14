@@ -893,7 +893,7 @@ class TestChronosTools:
         fake_instance_config = self.fake_config_dict
         fake_instance_config['extra_volumes'] = fake_extra_volumes
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service_name,
+            self.fake_service,
             self.fake_job_name,
             fake_instance_config,
             {
