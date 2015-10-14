@@ -775,6 +775,21 @@ class TestInstanceConfig:
         fake_conf = utils.InstanceConfig({'deploy_blacklist': fake_deploy_blacklist}, {})
         assert fake_conf.get_deploy_blacklist() == fake_deploy_blacklist
 
+    def test_extra_volumes_default(self):
+        fake_conf = utils.InstanceConfig({}, {})
+        assert fake_conf.get_extra_volumes() == []
+
+    def test_extra_volumes_normal(self):
+        fake_extra_volumes = [
+            {
+                "containerPath": "/etc/a",
+                "hostPath": "/var/data/a",
+                "mode": "RO"
+            },
+        ]
+        fake_conf = utils.InstanceConfig({'extra_volumes': fake_extra_volumes}, {})
+        assert fake_conf.get_extra_volumes() == fake_extra_volumes
+
 
 def test_is_under_replicated_ok():
     num_available = 1
