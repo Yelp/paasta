@@ -305,6 +305,7 @@ class PaastaColors:
     def default(text):
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
+
 LOG_COMPONENTS = {
     'build': {
         'color': PaastaColors.blue,
@@ -1012,3 +1013,44 @@ def deploy_blacklist_to_constraints(deploy_blacklist):
         constraints.append([blacklisted_location[0], "UNLIKE", blacklisted_location[1]])
 
     return constraints
+
+
+def terminal_len(text):
+    """Return the number of characters that text will take up on a terminal. """
+    return len(remove_ansi_escape_sequences(text))
+
+
+def format_table(rows, min_spacing=2):
+    """Formats a table for use on the command line.
+
+    :param rows: List of rows, each of which can either be a tuple of strings containing the row's values, or a string
+                 to be inserted verbatim. Each row (except literal strings) should be the same number of elements as
+                 all the others.
+    :returns: A string containing rows formatted as a table.
+    """
+
+    list_rows = [r for r in rows if not isinstance(r, basestring)]
+
+    # If all of the rows are strings, we have nothing to do, so short-circuit.
+    if not list_rows:
+        return rows
+
+    widths = []
+    for i in xrange(len(list_rows[0])):
+        widths.append(max(terminal_len(r[i]) for r in list_rows))
+
+    expanded_rows = []
+    for row in rows:
+        if row not in list_rows:
+            expanded_rows.append([row])
+        else:
+            expanded_row = []
+            for i, cell in enumerate(row):
+                if i == len(row) - 1:
+                    padding = ''
+                else:
+                    padding = ' ' * (widths[i] - terminal_len(cell))
+                expanded_row.append(cell + padding)
+            expanded_rows.append(expanded_row)
+
+    return [(' ' * min_spacing).join(r) for r in expanded_rows]

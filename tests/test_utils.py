@@ -899,3 +899,50 @@ def test_validate_service_instance_invalid():
             fake_soa_dir,
         )
         sys_exit_patch.assert_called_once_with(3)
+
+
+def test_terminal_len():
+    assert len('some text') == utils.terminal_len(utils.PaastaColors.red('some text'))
+
+
+def test_format_table():
+    actual = utils.format_table(
+        [
+            ['looooong', 'y', 'z'],
+            ['a', 'looooong', 'c'],
+            ['j', 'k', 'looooong']
+        ]
+    )
+    expected = [
+        'looooong  y         z',
+        'a         looooong  c',
+        'j         k         looooong',
+    ]
+    assert actual == expected
+    assert ["a     b     c"] == utils.format_table([['a', 'b', 'c']], min_spacing=5)
+
+
+def test_format_table_with_interjected_lines():
+    actual = utils.format_table(
+        [
+            ['looooong', 'y', 'z'],
+            'interjection',
+            ['a', 'looooong', 'c'],
+            u'unicode interjection',
+            ['j', 'k', 'looooong']
+        ]
+    )
+    expected = [
+        'looooong  y         z',
+        'interjection',
+        'a         looooong  c',
+        u'unicode interjection',
+        'j         k         looooong',
+    ]
+    assert actual == expected
+
+
+def test_format_table_all_strings():
+    actual = utils.format_table(['foo', 'bar', 'baz'])
+    expected = ['foo', 'bar', 'baz']
+    assert actual == expected

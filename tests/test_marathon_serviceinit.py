@@ -11,6 +11,7 @@ from paasta_tools import marathon_tools, marathon_serviceinit
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import NoDockerImageError
+from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import PaastaColors
 
 
@@ -124,9 +125,35 @@ def test_get_verbose_status_of_marathon_app():
     tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app)
     assert 'fake_task_id' in out
     assert '/fake--service' in out
-    assert 'App created: 2015-01-14 21:30:49' in out
+    assert 'App created: 2015-01-15 05:30:49' in out
     assert 'fake_deployed_host:6666' in out
     assert tasks == [fake_task]
+
+
+def test_get_verbose_status_of_marathon_app_column_alignment():
+    fake_app = mock.create_autospec(marathon.models.app.MarathonApp)
+    fake_app.version = '2015-01-15T05:30:49.862Z'
+    fake_app.id = '/fake--service'
+
+    fake_task1 = mock.create_autospec(marathon.models.app.MarathonTask)
+    fake_task1.id = 'fake_task1_id'
+    fake_task1.host = 'fake_deployed_host'
+    fake_task1.ports = [6666]
+    fake_task1.staged_at = datetime.datetime.fromtimestamp(0)
+
+    fake_task2 = mock.create_autospec(marathon.models.app.MarathonTask)
+    fake_task2.id = 'fake_task2_id'
+    fake_task2.host = 'fake_deployed_host_with_a_really_long_name'
+    fake_task2.ports = [6666]
+    fake_task2.staged_at = datetime.datetime.fromtimestamp(0)
+
+    fake_app.tasks = [fake_task1, fake_task2]
+    tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app)
+    (_, _, _, headers_line, task1_line, task2_line) = out.split('\n')
+    assert headers_line.index('Host deployed to') == task1_line.index('fake_deployed_host')
+    assert headers_line.index('Host deployed to') == task2_line.index('fake_deployed_host_with_a_really_long_name')
+    assert headers_line.index('Deployed at what localtime') == task1_line.index('1970-01-01T00:00')
+    assert headers_line.index('Deployed at what localtime') == task2_line.index('1970-01-01T00:00')
 
 
 def test_status_marathon_job_when_running():
@@ -205,8 +232,25 @@ def tests_status_marathon_job_when_running_running_tasks_with_deployments():
         assert 'Deploying' in output
 
 
-def test_pretty_print_haproxy_backend():
-    pass
+def test_format_haproxy_backend_row():
+    actual = marathon_serviceinit.format_haproxy_backend_row(
+        backend={
+            'svname': '169.254.123.1:1234_host1',
+            'status': 'UP',
+            'check_status': 'L7OK',
+            'check_code': '200',
+            'check_duration': 4,
+            'lastchg': 0
+        },
+        is_correct_instance=True,
+    )
+    expected = (
+        '      host1:1234',
+        'L7OK/200 in 4ms',
+        'now',
+        PaastaColors.default('UP'),
+    )
+    assert actual == expected
 
 
 def test_status_smartstack_backends_normal():
@@ -502,7 +546,7 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             synapse_port=3212,
         )
         assert "fake_location1" in actual
-        assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.DEFAULT), actual)
+        assert "hostname1:1001" in actual
         assert re.search(r"%s[^\n]*hostname2:1002" % re.escape(PaastaColors.GREY), actual)
 
 
@@ -566,9 +610,9 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             blacklist=[],
         )
         assert "fake_location1 - %s" % PaastaColors.green('Healthy') in actual
-        assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.DEFAULT), actual)
+        assert "hostname1:1001" in actual
         assert "fake_location2 - %s" % PaastaColors.green('Healthy') in actual
-        assert re.search(r"%s[^\n]*hostname2:1002" % re.escape(PaastaColors.DEFAULT), actual)
+        assert "hostname2:1002" in actual
 
 
 def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
@@ -726,5 +770,70 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
             'start', fake_service, fake_instance, fake_cluster, False, soa_dir)
         assert actual == 1
 
+
+def test_pretty_print_smartstack_backends_for_locations_verbose():
+    hosts_grouped_by_location = {'place1': ['host1'], 'place2': ['host2'], 'place3': ['host3']}
+    host_ip_mapping = {
+        'host1': '169.254.123.1',
+        'host2': '169.254.123.2',
+        'host3': '169.254.123.3',
+    }
+    tasks = [
+        mock.Mock(host='host1', ports=[1234]),
+        mock.Mock(host='host2', ports=[1234]),
+        mock.Mock(host='host3', ports=[1234])
+    ]
+    backends = {
+        'host1': {
+            'svname': '169.254.123.1:1234_host1',
+            'status': 'UP',
+            'check_status': 'L7OK',
+            'check_code': '200',
+            'check_duration': 4,
+            'lastchg': 0
+        },
+        'host2': {
+            'svname': '169.254.123.2:1234_host2',
+            'status': 'UP',
+            'check_status': 'L7OK',
+            'check_code': '200',
+            'check_duration': 4,
+            'lastchg': 0
+        },
+        'host3': {
+            'svname': '169.254.123.3:1234_host3',
+            'status': 'UP',
+            'check_status': 'L7OK',
+            'check_code': '200',
+            'check_duration': 4,
+            'lastchg': 0
+        },
+    }
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True,
+                   side_effect=lambda _, synapse_host, synapse_port: [backends[synapse_host]]),
+        mock.patch('socket.gethostbyname', side_effect=lambda name: host_ip_mapping[name], autospec=True),
+    ) as (
+        mock_get_backends,
+        mock_gethostbyname,
+    ):
+        actual = marathon_serviceinit.pretty_print_smartstack_backends_for_locations(
+            service_instance='fake_service.fake_instance',
+            tasks=tasks,
+            locations=hosts_grouped_by_location,
+            expected_count=3,
+            verbose=True,
+        )
+
+        colorstripped_actual = [remove_ansi_escape_sequences(l) for l in actual]
+        assert colorstripped_actual == [
+            '      Name        LastCheck        LastChange  Status',
+            '    place1 - Healthy - in haproxy with (1/1) total backends UP in this namespace.',
+            '      host1:1234  L7OK/200 in 4ms  now         UP',
+            '    place2 - Healthy - in haproxy with (1/1) total backends UP in this namespace.',
+            '      host2:1234  L7OK/200 in 4ms  now         UP',
+            '    place3 - Healthy - in haproxy with (1/1) total backends UP in this namespace.',
+            '      host3:1234  L7OK/200 in 4ms  now         UP',
+        ]
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4

@@ -15,6 +15,7 @@ from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import format_table
 from paasta_tools.utils import is_under_replicated
 from paasta_tools.utils import _log
 from paasta_tools.utils import NoDockerImageError
@@ -108,20 +109,24 @@ def get_verbose_status_of_marathon_app(app):
     create_datetime = datetime_from_utc_to_local(isodate.parse_datetime(app.version))
     output.append("  Marathon app ID: %s" % PaastaColors.bold(app.id))
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
-    output.append("    Tasks:  Mesos Task ID                  Host deployed to         Deployed at what localtime")
+    output.append("    Tasks:")
+
+    rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime")]
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
         if task.host is not None:
             hostname = "%s:%s" % (task.host.split(".")[0], task.ports[0])
         else:
             hostname = "Unknown"
-        format_tuple = (
+        rows.append((
             get_short_task_id(task.id),
             hostname,
-            local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
-            humanize.naturaltime(local_deployed_datetime),
-        )
-        output.append('      {0[0]:^37}{0[1]:<25} {0[2]:<17}({0[3]:})'.format(format_tuple))
+            '%s (%s)' % (
+                local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
+                humanize.naturaltime(local_deployed_datetime),
+            )
+        ))
+    output.append('\n'.join(["      %s" % line for line in format_table(rows)]))
     if len(app.tasks) == 0:
         output.append("      No tasks associated with this marathon app")
     return app.tasks, "\n".join(output)
@@ -163,7 +168,7 @@ def haproxy_backend_report(normal_instance_count, up_backends):
     return "%s - in haproxy with %s total backends %s in this namespace." % (status, count, up_string)
 
 
-def pretty_print_haproxy_backend(backend, is_correct_instance):
+def format_haproxy_backend_row(backend, is_correct_instance):
     """Pretty Prints the status of a given haproxy backend
     Takes the fields described in the CSV format of haproxy:
     http://www.haproxy.org/download/1.5/doc/configuration.txt
@@ -182,17 +187,17 @@ def pretty_print_haproxy_backend(backend, is_correct_instance):
     lastcheck = "%s/%s in %sms" % (backend['check_status'], backend['check_code'], backend['check_duration'])
     lastchange = humanize.naturaltime(datetime.timedelta(seconds=int(backend['lastchg'])))
 
-    status_text = '      {name:<32}{lastcheck:<20}{lastchange:<16}{status:}'.format(
-        name=pretty_backend_name,
-        lastcheck=lastcheck,
-        lastchange=lastchange,
-        status=status,
+    row = (
+        '      %s' % pretty_backend_name,
+        lastcheck,
+        lastchange,
+        status,
     )
 
     if is_correct_instance:
-        return PaastaColors.color_text(PaastaColors.DEFAULT, status_text)
+        return row
     else:
-        return PaastaColors.color_text(PaastaColors.GREY, remove_ansi_escape_sequences(status_text))
+        return tuple(PaastaColors.grey(remove_ansi_escape_sequences(col)) for col in row)
 
 
 def status_smartstack_backends(service, instance, job_config, cluster, tasks, expected_count, soa_dir, verbose):
@@ -222,7 +227,7 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
         output.append("Smartstack:")
         if verbose:
             output.append("  Haproxy Service Name: %s" % service_instance)
-            output.append("  Backends: Name                      LastCheck           LastChange      Status")
+            output.append("  Backends:")
 
         output.extend(pretty_print_smartstack_backends_for_locations(
             service_instance,
@@ -238,7 +243,7 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
     """
     Pretty prints the status of smartstack backends of a specified service and instance in the specified locations
     """
-    output = []
+    rows = [("      Name", "LastCheck", "LastChange", "Status")]
     expected_count_per_location = int(expected_count / len(locations))
     for location in sorted(locations):
         hosts = locations[location]
@@ -251,15 +256,14 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
                                  reverse=True)  # Specify reverse so that backends in 'UP' are placed above 'MAINT'
         matched_tasks = match_backends_and_tasks(sorted_backends, tasks)
         running_count = sum(1 for backend, task in matched_tasks if backend and backend_is_up(backend))
-        output.append("    %s - %s" %
-                      (location, haproxy_backend_report(expected_count_per_location, running_count)))
+        rows.append("    %s - %s" % (location, haproxy_backend_report(expected_count_per_location, running_count)))
 
         # If verbose mode is specified, show status of individual backends
         if verbose:
             for backend, task in matched_tasks:
                 if backend is not None:
-                    output.append(pretty_print_haproxy_backend(backend, task is not None))
-    return output
+                    rows.append(format_haproxy_backend_row(backend, task is not None))
+    return format_table(rows)
 
 
 def get_short_task_id(task_id):

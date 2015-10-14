@@ -9,6 +9,7 @@ import humanize
 from kazoo.client import KazooClient
 from mesos.cli.exceptions import SlaveDoesNotExist
 
+from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
@@ -19,10 +20,6 @@ from paasta_tools.utils import TimeoutError
 # read in the config for zookeeper, etc
 if 'MESOS_CLI_CONFIG' not in os.environ:
     os.environ['MESOS_CLI_CONFIG'] = '/nail/etc/mesos-cli.json'
-
-
-RUNNING_TASK_FORMAT = '    {0[0]:^37}{0[1]:<20}{0[2]:<10}{0[3]:<6}{0[4]:}'
-NON_RUNNING_TASK_FORMAT = '    {0[0]:^37}{0[1]:<20}{0[2]:<33}{0[3]:}'
 
 
 class MasterNotAvailableException(Exception):
@@ -195,27 +192,25 @@ def get_cpu_usage(task):
         return "Timed Out"
 
 
-def pretty_format_running_mesos_task(task, get_short_task_id):
+def format_running_mesos_task_row(task, get_short_task_id):
     """Returns a pretty formatted string of a running mesos task attributes"""
-    format_tuple = (
+    return (
         get_short_task_id(task['id']),
         get_short_hostname_from_task(task),
         get_mem_usage(task),
         get_cpu_usage(task),
         get_first_status_timestamp(task),
     )
-    return RUNNING_TASK_FORMAT.format(format_tuple)
 
 
-def pretty_format_non_running_mesos_task(task, get_short_task_id):
+def format_non_running_mesos_task_row(task, get_short_task_id):
     """Returns a pretty formatted string of a running mesos task attributes"""
-    format_tuple = (
-        get_short_task_id(task['id']),
-        get_short_hostname_from_task(task),
-        get_first_status_timestamp(task),
-        task['state'],
+    return (
+        PaastaColors.grey(get_short_task_id(task['id'])),
+        PaastaColors.grey(get_short_hostname_from_task(task)),
+        PaastaColors.grey(get_first_status_timestamp(task)),
+        PaastaColors.grey(task['state']),
     )
-    return PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format(format_tuple))
 
 
 def status_mesos_tasks_verbose(job_id, get_short_task_id):
@@ -227,27 +222,30 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id):
     printing.
     """
     output = []
-
     running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
-    output.append(RUNNING_TASK_FORMAT.format((
-        "  Running Tasks:  Mesos Task ID",
+    output.append("  Running Tasks:")
+    rows_running = [[
+        "Mesos Task ID",
         "Host deployed to",
         "Ram",
         "CPU",
         "Deployed at what localtime"
-    )))
+    ]]
     for task in running_and_active_tasks:
-        output.append(pretty_format_running_mesos_task(task, get_short_task_id))
+        rows_running.append(format_running_mesos_task_row(task, get_short_task_id))
+    output.extend(["    %s" % row for row in format_table(rows_running)])
 
     non_running_tasks = reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:])
-    output.append(PaastaColors.grey(NON_RUNNING_TASK_FORMAT.format((
-        "  Non-Running Tasks:  Mesos Task ID",
-        "Host deployed to",
-        "Deployed at what localtime",
-        "Status"
-    ))))
+    output.append(PaastaColors.grey("  Non-Running Tasks"))
+    rows_non_running = [[
+        PaastaColors.grey("Mesos Task ID"),
+        PaastaColors.grey("Host deployed to"),
+        PaastaColors.grey("Deployed at what localtime"),
+        PaastaColors.grey("Status"),
+    ]]
     for task in non_running_tasks:
-        output.append(pretty_format_non_running_mesos_task(task, get_short_task_id))
+        rows_non_running.append(format_non_running_mesos_task_row(task, get_short_task_id))
+    output.extend(["    %s" % row for row in format_table(rows_non_running)])
 
     return "\n".join(output)
 
