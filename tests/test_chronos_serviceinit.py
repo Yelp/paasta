@@ -119,7 +119,7 @@ def test_format_chronos_job_name_does_not_exist():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.red("UNKNOWN") in actual
+    assert PaastaColors.red('UNKNOWN') in actual
 
 
 def test_format_chronos_job_status_disabled():
@@ -130,7 +130,7 @@ def test_format_chronos_job_status_disabled():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.red("Disabled") in actual
+    assert PaastaColors.red('Disabled') in actual
 
 
 def test_format_chronos_job_status_enabled():
@@ -141,7 +141,7 @@ def test_format_chronos_job_status_enabled():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.green("Enabled") in actual
+    assert PaastaColors.green('Enabled') in actual
 
 
 def test_format_chronos_job_status_desired_state_passed_through():
@@ -162,8 +162,8 @@ def test_format_chronos_job_status_no_last_run():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.yellow("New") in actual
-    assert "(never)" in actual
+    assert PaastaColors.yellow('New') in actual
+    assert '(never)' in actual
 
 
 def test_format_chronos_job_status_failure_no_success():
@@ -175,7 +175,7 @@ def test_format_chronos_job_status_failure_no_success():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.red("Fail") in actual
+    assert PaastaColors.red('Fail') in actual
     assert '(2015-04-20' in actual
     assert 'ago)' in actual
 
@@ -189,7 +189,7 @@ def test_format_chronos_job_status_success_no_failure():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.green("OK") in actual
+    assert PaastaColors.green('OK') in actual
     assert '(2015-04-20' in actual
     assert 'ago)' in actual
 
@@ -203,7 +203,7 @@ def test_format_chronos_job_status_failure_and_then_success():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.green("OK") in actual
+    assert PaastaColors.green('OK') in actual
     assert '(2015-04-21' in actual
     assert 'ago)' in actual
 
@@ -217,7 +217,7 @@ def test_format_chronos_job_status_success_and_then_failure():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.red("Fail") in actual
+    assert PaastaColors.red('Fail') in actual
     assert '(2015-04-21' in actual
     assert 'ago)' in actual
 
@@ -228,7 +228,7 @@ def test_format_chronos_job_zero_mesos_tasks():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.grey("Not running") in actual
+    assert PaastaColors.grey('Not running') in actual
 
 
 def test_format_chronos_job_one_mesos_task():
@@ -237,7 +237,7 @@ def test_format_chronos_job_one_mesos_task():
     running_tasks = ['slay the nemean lion']
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.yellow("Running") in actual
+    assert PaastaColors.yellow('Running') in actual
 
 
 def test_format_chronos_job_two_mesos_tasks():
@@ -246,7 +246,7 @@ def test_format_chronos_job_two_mesos_tasks():
     running_tasks = ['slay the nemean lion', 'slay the lernaean hydra']
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert "Critical" in actual
+    assert 'Critical' in actual
 
 
 def test_format_chronos_job_mesos_verbose():
