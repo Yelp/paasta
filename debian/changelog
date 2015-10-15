@@ -1,3 +1,11 @@
+paasta-tools (0.12.97-yelp1) lucid; urgency=low
+
+  * 0.12.97 tagged with 'make release'
+    Commit: Fix table formatting on mesos, marathon, smartstack sections
+    of paasta status -v
+
+ -- Evan Krall <krall@yelp.com>  Thu, 15 Oct 2015 16:22:23 -0700
+
 paasta-tools (0.12.96-yelp1) lucid; urgency=low
 
   * 0.12.96 tagged with 'make release'
