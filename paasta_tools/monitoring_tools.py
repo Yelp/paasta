@@ -125,29 +125,29 @@ def _load_sensu_team_data():
     return team_data
 
 
-def send_event(name, check_name, overrides, status, output, soa_dir):
+def send_event(service, check_name, overrides, status, output, soa_dir):
     """Send an event to sensu via pysensu_yelp with the given information.
 
-    :param name: The service name the event is about
-    :param instance: The instance of the service the event is about
-    :param status: The status to emit for this event
+    :param service: The service name the event is about
+    :param check_name: The name of the check as it appears in Sensu
     :param overrides: A dictionary containing overrides for monitoring options
                       (e.g. notification_email, ticket, page)
+    :param status: The status to emit for this event
     :param output: The output to emit for this event
     :param soa_dir: The service directory to read monitoring information from
     """
     # This function assumes the input is a string like "mumble.main"
-    team = get_team(overrides, name, soa_dir)
+    team = get_team(overrides, service, soa_dir)
     if not team:
         return
     runbook = overrides.get('runbook', 'http://y/paasta-troubleshooting')
     result_dict = {
-        'tip': get_tip(overrides, name, soa_dir),
-        'notification_email': get_notification_email(overrides, name, soa_dir),
-        'irc_channels': get_irc_channels(overrides, name, soa_dir),
-        'ticket': get_ticket(overrides, name, soa_dir),
-        'project': get_project(overrides, name, soa_dir),
-        'page': get_page(overrides, name, soa_dir),
+        'tip': get_tip(overrides, service, soa_dir),
+        'notification_email': get_notification_email(overrides, service, soa_dir),
+        'irc_channels': get_irc_channels(overrides, service, soa_dir),
+        'ticket': get_ticket(overrides, service, soa_dir),
+        'project': get_project(overrides, service, soa_dir),
+        'page': get_page(overrides, service, soa_dir),
         'alert_after': overrides.get('alert_after', '5m'),
         'check_every': overrides.get('check_every', '1m'),
         'realert_every': -1,
@@ -156,13 +156,13 @@ def send_event(name, check_name, overrides, status, output, soa_dir):
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 
 
-def read_monitoring_config(name, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
+def read_monitoring_config(service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
     """Read a service's monitoring.yaml file.
 
-    :param name: The service name
+    :param service: The service name
     :param soa_dir: THe SOA configuration directory to read from
     :returns: A dictionary of whatever was in soa_dir/name/monitoring.yaml"""
     rootdir = os.path.abspath(soa_dir)
-    monitoring_file = os.path.join(rootdir, name, "monitoring.yaml")
+    monitoring_file = os.path.join(rootdir, service, "monitoring.yaml")
     monitor_conf = service_configuration_lib.read_monitoring(monitoring_file)
     return monitor_conf

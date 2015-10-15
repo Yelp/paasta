@@ -74,7 +74,7 @@ def send_event(service, instance, soa_dir, status, output):
     """
     cluster = load_system_paasta_config().get_cluster()
     monitoring_overrides = chronos_tools.load_chronos_job_config(
-        service=name,
+        service=service,
         instance=instance,
         cluster=cluster,
         soa_dir=soa_dir,
@@ -87,8 +87,15 @@ def send_event(service, instance, soa_dir, status, output):
     # that will probably be fixed eventually, so we set an alert_after
     # to suppress extra noise
     monitoring_overrides['alert_after'] = '10m'
-    check_name = 'setup_chronos_job.%s' % compose_job_id(name, instance)
-    monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
+    check_name = 'setup_chronos_job.%s' % compose_job_id(service, instance)
+    monitoring_tools.send_event(
+        service=service,
+        check_name=check_name,
+        overrides=monitoring_overrides,
+        status=status,
+        output=output,
+        soa_dir=soa_dir,
+    )
 
 
 def _setup_existing_job(service, instance, cluster, job_id, existing_job, complete_job_config, client):
@@ -139,11 +146,37 @@ def setup_job(service, instance, chronos_job_config, complete_job_config, client
     bounce_method = chronos_job_config.get_bounce_method()
     if bounce_method == 'graceful':
         if len(existing_jobs) > 0:
-            return _setup_existing_job(job_id, existing_jobs[0], complete_job_config, client)
+            log.debug("Gracefully bouncing %s because it has existing jobs" % compose_job_id(service, instance))
+            return _setup_existing_job(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                job_id=job_id,
+                existing_job=existing_jobs[0],
+                complete_job_config=complete_job_config,
+                client=client,
+            )
         else:
-            return _setup_new_job(job_id, matching_jobs, complete_job_config, client)
+            log.debug("Setting up %s as a new job because it has no existing jobs" % compose_job_id(service, instance))
+            return _setup_new_job(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                job_id=job_id,
+                previous_jobs=matching_jobs,
+                complete_job_config=complete_job_config,
+                client=client,
+            )
     elif bounce_method == 'brutal':
-        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, complete_job_config)
+        restart_chronos_job(
+            service=service,
+            instance=instance,
+            job_id=job_id,
+            client=client,
+            cluster=cluster,
+            matching_jobs=matching_jobs,
+            job_config=complete_job_config,
+        )
         return (0, "Job '%s' bounced using the 'brutal' method" % job_id)
     else:
         return (1, ("ERROR: bounce_method '%s' not recognized. Must be one of (%s)."
@@ -177,7 +210,13 @@ def main():
         )
     except NoDeploymentsAvailable:
         error_msg = "No deployments found for %s in cluster %s" % (args.service_instance, cluster)
-        send_event(service, None, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        send_event(
+            service=service,
+            instance=None,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.CRITICAL,
+            output=error_msg,
+        )
         log.error(error_msg)
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
@@ -186,15 +225,37 @@ def main():
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
             "Error was: %s" % str(e))
         log.error(error_msg)
-        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        send_event(
+            service=service,
+            instance=instance,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.CRITICAL,
+            output=error_msg,
+        )
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
 
-    complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
-    status, output = setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster)
+    complete_job_config = chronos_tools.create_complete_config(
+        service=service,
+        job_name=instance,
+        soa_dir=soa_dir,
+    )
+    status, output = setup_job(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        chronos_job_config=chronos_job_config,
+        complete_job_config=complete_job_config,
+        client=client,
+    )
     sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
-    send_event(service, instance, soa_dir, sensu_status, output)
-    print status, output
+    send_event(
+        service=service,
+        instance=instance,
+        soa_dir=soa_dir,
+        status=sensu_status,
+        output=output,
+    )
     # We exit 0 because the script finished ok and the event was sent to the right team.
     sys.exit(0)
 
