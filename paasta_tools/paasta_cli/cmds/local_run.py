@@ -500,9 +500,6 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
 
     volumes = list()
 
-    for volume in system_paasta_config.get_volumes():
-        volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
-
     if args.cluster:
         cluster = args.cluster
     else:
@@ -521,6 +518,9 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         cluster=cluster,
         soa_dir=args.yelpsoa_config_root,
     )
+
+    for volume in system_paasta_config.get_volumes() + instance_config.get_extra_volumes():
+        volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     if args.cmd:
         command = shlex.split(args.cmd)
