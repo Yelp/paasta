@@ -235,6 +235,17 @@ def test_format_chronos_job_schedule():
     assert example_job['epsilon'] in actual
 
 
+def test_format_chronos_job_command():
+    example_job = {
+        'command': 'do the hokey pokey',
+    }
+    desired_state = ''
+    running_tasks = []
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
+    assert example_job['command'] in actual
+
+
 def test_format_chronos_job_zero_mesos_tasks():
     example_job = {}
     desired_state = ''
