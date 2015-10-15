@@ -512,7 +512,8 @@ class TestSetupChronosJob:
                 fake_complete_config,
                 fake_client
             )
-            assert actual == (0, "Job '%s' state is already set to '%s'" % (fake_complete_config['name'], fake_state))
+            assert actual == (0, "Job '%s' state is already setup and set to '%s'" % (
+                fake_complete_config['name'], fake_state))
             assert fake_client.update.call_count == 0
 
     def test_send_event(self):
@@ -521,7 +522,7 @@ class TestSetupChronosJob:
         fake_status = '42'
         fake_output = 'something went wrong'
         fake_soa_dir = ''
-        expected_check_name = 'setup_chronos_job.%s' % compose_job_id(fake_service_name, fake_instance_name)
+        expected_check_name = 'setup_chronos_job.%s' % compose_job_id(self.fake_service, self.fake_instance)
         with contextlib.nested(
             mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
             mock.patch("paasta_tools.chronos_tools.load_chronos_job_config", autospec=True),

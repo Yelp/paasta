@@ -209,7 +209,7 @@ def main():
     soa_dir = os.path.abspath(args.soa_dir)
     service = args.service
     if args.verbose:
-        log.setLevel(logging.INFO)
+        log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
     try:

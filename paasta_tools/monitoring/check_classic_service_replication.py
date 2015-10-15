@@ -127,7 +127,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         if self.options.debug:
             self.log.setLevel(logging.DEBUG)
         else:
-            self.log.setLevel(logging.WARN)
+            self.log.setLevel(logging.WARNING)
 
     def setup(self):
         self.parser.add_argument('-d', '--debug', default=False,

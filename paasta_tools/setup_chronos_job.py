@@ -35,6 +35,7 @@ import service_configuration_lib
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.chronos_serviceinit import restart_chronos_job
+from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import configure_log
 from paasta_tools.utils import decompose_job_id
@@ -62,10 +63,10 @@ def parse_args():
     return args
 
 
-def send_event(name, instance, soa_dir, status, output):
+def send_event(service, instance, soa_dir, status, output):
     """Send an event to sensu via pysensu_yelp with the given information.
 
-    :param name: The service name the event is about
+    :param service: The service name the event is about
     :param instance: The instance of the service the event is about
     :param soa_dir: The service directory to read monitoring information from
     :param status: The status to emit for this event
@@ -90,25 +91,34 @@ def send_event(name, instance, soa_dir, status, output):
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
 
-def _setup_existing_job(job_id, existing_job, complete_job_config, client):
+def _setup_existing_job(service, instance, cluster, job_id, existing_job, complete_job_config, client):
     desired_state = 'stop' if complete_job_config['disabled'] else 'start'
     # Do nothing if job state doesn't need to change, otherwise update job with new state
     if complete_job_config['disabled'] == existing_job['disabled']:
-        output = "Job '%s' state is already set to '%s'" % (job_id, desired_state)
+        output = "Job '%s' state is already setup and set to '%s'" % (job_id, desired_state)
     else:
         state_change = 'Disabled' if complete_job_config['disabled'] else 'Enabled'
         client.update(complete_job_config)
         output = "%s job '%s'" % (state_change, job_id)
+        _log(service=service, instance=instance, component='deploy',
+             cluster=cluster, level='event', line=output)
+    log.info(output)
     return (0, output)
 
 
-def _setup_new_job(job_id, previous_jobs, complete_job_config, client):
+def _setup_new_job(service, instance, cluster, job_id, previous_jobs, complete_job_config, client):
     # The job hash has changed so we disable the old jobs and start a new one
     for previous_job in previous_jobs:
         previous_job['disabled'] = True
         client.update(previous_job)
+        log_line = "Disabling old job %s to make way for a new chronos job." % previous_job['name']
+        _log(service=service, instance=instance, component='deploy',
+             cluster=cluster, level='event', line=log_line)
 
     client.add(complete_job_config)
+    output = "Deployed new chronos job: '%s'" % job_id
+    _log(service=service, instance=instance, component='deploy',
+         cluster=cluster, level='event', line=output)
     return (0, "Deployed job '%s'" % job_id)
 
 
@@ -145,7 +155,7 @@ def main():
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
-        log.setLevel(logging.INFO)
+        log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
     try:

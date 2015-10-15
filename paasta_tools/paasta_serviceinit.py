@@ -45,7 +45,7 @@ def parse_args():
 def main():
     args = parse_args()
     if args.debug:
-        log.setLevel(logging.INFO)
+        log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
 

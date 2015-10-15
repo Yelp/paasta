@@ -83,7 +83,7 @@ def main():
     if args.verbose:
         log.setLevel(logging.DEBUG)
     else:
-        log.setLevel(logging.INFO)
+        log.setLevel(logging.WARNING)
     print check_thresholds(args.percent)
 
 
