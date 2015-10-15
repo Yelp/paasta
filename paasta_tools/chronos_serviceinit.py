@@ -152,13 +152,6 @@ def _format_last_result(job):
     return (last_result, pretty_last_result_when)
 
 
-def _format_chronos_status(job):
-    schedule = job.get("schedule", PaastaColors.red("UNKNOWN"))
-    epsilon = job.get("epsilon", PaastaColors.red("UNKNOWN"))
-    chronos_status = "Schedule: %s Epsilon: %s" % (schedule, epsilon)
-    return chronos_status
-
-
 def _format_mesos_status(job, running_tasks):
     mesos_status = PaastaColors.red("UNKNOWN")
     num_tasks = len(running_tasks)
@@ -185,7 +178,6 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
     job_tag = _format_job_tag(job)
     disabled_state = _format_disabled_status(job)
     (last_result, last_result_when) = _format_last_result(job)
-    chronos_status = _format_chronos_status(job)
     mesos_status = _format_mesos_status(job, running_tasks)
     if verbose:
         mesos_status_verbose = status_mesos_tasks_verbose(job["name"], get_short_task_id)
@@ -194,14 +186,12 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
         "Tag:        %(job_tag)s\n"
         "  Status:   %(disabled_state)s, %(desired_state)s\n"
         "  Last:     %(last_result)s (%(last_result_when)s)\n"
-        "  Chronos:  %(chronos_status)s\n"
         "  Mesos:    %(mesos_status)s" % {
             "job_tag": job_tag,
             "disabled_state": disabled_state,
             "desired_state": desired_state,
             "last_result": last_result,
             "last_result_when": last_result_when,
-            "chronos_status": chronos_status,
             "mesos_status": mesos_status,
         }
     )

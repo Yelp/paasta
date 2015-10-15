@@ -222,19 +222,6 @@ def test_format_chronos_job_status_success_and_then_failure():
     assert 'ago)' in actual
 
 
-def test_format_chronos_job_chronos():
-    example_job = {
-        'schedule': 'R/2015-04-20T23:20:00+00:00/PT60M',
-        'epsilon': 'PT42S',
-    }
-    desired_state = ''
-    running_tasks = []
-    verbose = False
-    actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert example_job['schedule'] in actual
-    assert example_job['epsilon'] in actual
-
-
 def test_format_chronos_job_zero_mesos_tasks():
     example_job = {}
     desired_state = ''
