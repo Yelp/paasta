@@ -8,6 +8,18 @@ PaaSTA is a highly-available, distributed system for building, deploying, and
 running services using containers and Apache Mesos.
 
 
+Components
+----------
+
+ * [Docker](http://www.docker.com/) for code delivery and containment
+ * [Mesos](http://mesos.apache.org/) for code execution and scheduling (runs Docker containers)
+ * [Marathon](https://mesosphere.github.io/marathon/) for managing long-running services
+ * [Chronos](https://mesos.github.io/chronos/) for running things on a timer (nightly batches)
+ * [SmartStack](http://nerds.airbnb.com/smartstack-service-discovery-cloud/) for service registration and discovery
+ * [Sensu](https://sensuapp.org/) for monitoring/alerting
+ * [Jenkins](https://jenkins-ci.org/) (optionally) for continuous deployment
+
+
 Design Goals
 ------------
 
@@ -43,3 +55,4 @@ Contributing
 Everyone is encouraged to contribute to PaaSTA by forking the
 [Github repository](http://github.com/Yelp/PaaSTA) and making a pull request or
 opening an issue.
+
