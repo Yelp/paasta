@@ -1,3 +1,10 @@
+paasta-tools (0.12.99-yelp1) lucid; urgency=low
+
+  * 0.12.99 tagged with 'make release'
+    Commit: Merge branch troscoe_PAASTA-973-4
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 15 Oct 2015 18:04:36 -0700
+
 paasta-tools (0.12.98-yelp1) lucid; urgency=low
 
   * 0.12.98 tagged with 'make release'
