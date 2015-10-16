@@ -310,7 +310,7 @@ def test_atomic_file_write():
                         prefix='.durp-',
                         delete=False,
                     )
-                chmod_patch.assert_called_once_with('/hurp/.durp-AAA', 0644)
+                chmod_patch.assert_called_once_with('/hurp/.durp-AAA', mock.ANY)
 
             rename_patch.assert_called_once_with(
                 '/hurp/.durp-AAA',

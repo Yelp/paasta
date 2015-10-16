@@ -34,20 +34,26 @@ def test_paasta_generate_pipeline_service_not_found(
     assert output == expected_output
 
 
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.generate_pipeline._run', autospec=True)
 def test_generate_pipeline_run_fails(
-        mock_run
+        mock_run,
+        mock_get_team_email_address,
 ):
+    mock_get_team_email_address.return_value = 'fake_email'
     mock_run.return_value = (1, 'Big bad wolf')
     with raises(SystemExit) as sys_exit:
         generate_pipeline('fake_service')
     assert sys_exit.value.code == 1
 
 
+@patch('paasta_tools.paasta_cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.generate_pipeline._run', autospec=True)
 def test_generate_pipeline_success(
         mock_run,
+        mock_get_team_email_address,
 ):
+    mock_get_team_email_address.return_value = 'fake_email'
     mock_run.return_value = (0, 'Everything OK')
     assert generate_pipeline('fake_service') is None
 
