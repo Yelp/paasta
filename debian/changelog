@@ -1,3 +1,10 @@
+paasta-tools (0.12.98-yelp1) lucid; urgency=low
+
+  * 0.12.98 tagged with 'make release'
+    Commit: Merge branch add_extra_volumes_to_local_run_INFRA-3774
+
+ -- Chris Gordon <cgordon@yelp.com>  Thu, 15 Oct 2015 17:27:20 -0700
+
 paasta-tools (0.12.97-yelp1) lucid; urgency=low
 
   * 0.12.97 tagged with 'make release'
