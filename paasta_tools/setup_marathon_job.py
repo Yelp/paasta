@@ -423,7 +423,7 @@ def main():
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
-        log.setLevel(logging.INFO)
+        log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
     try:

@@ -17,8 +17,8 @@ class TestSetupChronosJob:
     fake_docker_image = 'test_docker:1.0'
     fake_cluster = 'fake_test_cluster'
 
-    fake_service_name = 'test_service'
-    fake_job_name = 'test'
+    fake_service = 'test_service'
+    fake_instance = 'test'
     fake_cluster = 'penguin'
     fake_config_dict = {
         'description': 'This is a test Chronos job.',
@@ -36,16 +36,16 @@ class TestSetupChronosJob:
         'schedule_time_zone': 'Zulu',
     }
     fake_branch_dict = {
-        'docker_image': 'paasta-%s-%s' % (fake_service_name, fake_cluster),
+        'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
     }
-    fake_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service_name,
-                                                             fake_job_name,
+    fake_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service,
+                                                             fake_instance,
                                                              fake_config_dict,
                                                              fake_branch_dict)
 
     fake_docker_registry = 'remote_registry.com'
     fake_args = mock.MagicMock(
-        service_instance=compose_job_id(fake_service_name, fake_job_name),
+        service_instance=compose_job_id(fake_service, fake_instance),
         soa_dir='no_more',
         verbose=False,
     )
@@ -92,25 +92,25 @@ class TestSetupChronosJob:
             parse_args_patch.assert_called_once_with()
             get_client_patch.assert_called_once_with(load_chronos_config_patch.return_value)
             load_chronos_job_config_patch.assert_called_once_with(
-                service=self.fake_service_name,
-                instance=self.fake_job_name,
+                service=self.fake_service,
+                instance=self.fake_instance,
                 cluster=self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir,
             )
             setup_job_patch.assert_called_once_with(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_chronos_job_config,
-                fake_complete_job_config,
-                fake_client,
-                self.fake_cluster,
+                service=self.fake_service,
+                instance=self.fake_instance,
+                chronos_job_config=self.fake_chronos_job_config,
+                complete_job_config=fake_complete_job_config,
+                client=fake_client,
+                cluster=self.fake_cluster,
             )
             send_event_patch.assert_called_once_with(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_args.soa_dir,
-                expected_status,
-                expected_output,
+                service=self.fake_service,
+                instance=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir,
+                status=expected_status,
+                output=expected_output,
             )
             sys_exit_patch.assert_called_once_with(0)
 
@@ -181,14 +181,14 @@ class TestSetupChronosJob:
             assert excinfo.value.code == 0
             expected_error_msg = (
                 "Could not read chronos configuration file for %s in cluster %s\nError was: test bad configuration"
-                % (compose_job_id(self.fake_service_name, self.fake_job_name), self.fake_cluster)
+                % (compose_job_id(self.fake_service, self.fake_instance), self.fake_cluster)
             )
             send_event_patch.assert_called_once_with(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_args.soa_dir,
-                Status.CRITICAL,
-                expected_error_msg
+                service=self.fake_service,
+                instance=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir,
+                status=Status.CRITICAL,
+                output=expected_error_msg
             )
 
     def test_setup_job_new_app(self):
@@ -211,23 +211,26 @@ class TestSetupChronosJob:
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
             complete_config = chronos_tools.create_complete_config(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_args.soa_dir
+                service=self.fake_service,
+                job_name=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir
             )
             actual = setup_chronos_job.setup_job(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_chronos_job_config,
-                complete_config,
-                fake_client,
-                self.fake_cluster,
+                service=self.fake_service,
+                instance=self.fake_instance,
+                chronos_job_config=self.fake_chronos_job_config,
+                complete_job_config=complete_config,
+                client=fake_client,
+                cluster=self.fake_cluster,
             )
             setup_new_job_patch.assert_called_once_with(
-                complete_config['name'],
-                fake_existing_jobs,
-                complete_config,
-                fake_client
+                service=self.fake_service,
+                instance=self.fake_instance,
+                cluster=self.fake_cluster,
+                job_id=complete_config['name'],
+                previous_jobs=fake_existing_jobs,
+                complete_job_config=complete_config,
+                client=fake_client
             )
             assert actual == setup_new_job_patch.return_value
 
@@ -251,23 +254,26 @@ class TestSetupChronosJob:
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
             complete_config = chronos_tools.create_complete_config(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_args.soa_dir
+                service=self.fake_service,
+                job_name=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir
             )
             actual = setup_chronos_job.setup_job(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_chronos_job_config,
-                complete_config,
-                fake_client,
-                self.fake_cluster,
+                service=self.fake_service,
+                instance=self.fake_instance,
+                chronos_job_config=self.fake_chronos_job_config,
+                complete_job_config=complete_config,
+                client=fake_client,
+                cluster=self.fake_cluster,
             )
             setup_existing_job_patch.assert_called_once_with(
-                complete_config['name'],
-                fake_existing_job,
-                complete_config,
-                fake_client
+                service=self.fake_service,
+                instance=self.fake_instance,
+                cluster=self.fake_cluster,
+                job_id=complete_config['name'],
+                existing_job=fake_existing_job,
+                complete_job_config=complete_config,
+                client=fake_client,
             )
             assert actual == setup_existing_job_patch.return_value
 
@@ -295,36 +301,36 @@ class TestSetupChronosJob:
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
             complete_config = chronos_tools.create_complete_config(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_args.soa_dir
+                service=self.fake_service,
+                job_name=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir
             )
             actual = setup_chronos_job.setup_job(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_chronos_job_config,
-                complete_config,
-                fake_client,
-                self.fake_cluster,
+                service=self.fake_service,
+                instance=self.fake_instance,
+                chronos_job_config=self.fake_chronos_job_config,
+                complete_job_config=complete_config,
+                client=fake_client,
+                cluster=self.fake_cluster,
             )
             restart_chronos_job_patch.assert_called_once_with(
-                self.fake_service_name,
-                self.fake_job_name,
-                complete_config['name'],
-                fake_client,
-                self.fake_cluster,
-                fake_existing_jobs,
-                complete_config
+                service=self.fake_service,
+                instance=self.fake_instance,
+                cluster=self.fake_cluster,
+                job_id=mock.ANY,
+                matching_jobs=fake_existing_jobs,
+                job_config=complete_config,
+                client=fake_client,
             )
             assert actual == (0, "Job '%s' bounced using the 'brutal' method" % complete_config['name'])
 
     def test_setup_new_job(self):
         fake_client = mock.MagicMock()
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service_name,
-            self.fake_job_name,
-            self.fake_config_dict,
-            {
+            service=self.fake_service,
+            job_name=self.fake_instance,
+            config_dict=self.fake_config_dict,
+            branch_dict={
                 'desired_state': 'start',
                 'docker_image': 'fake_image'
             }
@@ -344,15 +350,18 @@ class TestSetupChronosJob:
             config_hash_patch,
         ):
             fake_complete_config = chronos_tools.create_complete_config(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_args.soa_dir
+                service=self.fake_service,
+                job_name=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir
             )
             actual = setup_chronos_job._setup_new_job(
-                fake_complete_config['name'],
-                fake_existing_jobs,
-                fake_complete_config,
-                fake_client
+                service=self.fake_service,
+                instance=self.fake_instance,
+                cluster=self.fake_cluster,
+                job_id=fake_complete_config['name'],
+                previous_jobs=fake_existing_jobs,
+                complete_job_config=fake_complete_config,
+                client=fake_client,
             )
             assert actual == (0, "Deployed job '%s'" % fake_complete_config['name'])
             fake_client.add.assert_called_once_with(fake_complete_config)
@@ -376,10 +385,13 @@ class TestSetupChronosJob:
         }
 
         actual = setup_chronos_job._setup_new_job(
-            fake_new_job['name'],
-            [fake_existing_job],
-            fake_new_job,
-            fake_client,
+            service=self.fake_service,
+            instance=self.fake_instance,
+            cluster=self.fake_cluster,
+            job_id=fake_new_job['name'],
+            previous_jobs=[fake_existing_job],
+            complete_job_config=fake_new_job,
+            client=fake_client,
         )
         assert fake_existing_job['disabled'] is True
         fake_client.update.assert_called_once_with(fake_existing_job_disabled)
@@ -390,10 +402,10 @@ class TestSetupChronosJob:
         fake_client = mock.MagicMock()
         fake_state = 'start'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service_name,
-            self.fake_job_name,
-            self.fake_config_dict,
-            {
+            service=self.fake_service,
+            job_name=self.fake_instance,
+            config_dict=self.fake_config_dict,
+            branch_dict={
                 'desired_state': fake_state,
                 'docker_image': 'fake_image'
             }
@@ -412,19 +424,22 @@ class TestSetupChronosJob:
             config_hash_patch,
         ):
             fake_complete_config = chronos_tools.create_complete_config(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_args.soa_dir
+                service=self.fake_service,
+                job_name=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir
             )
             fake_existing_job = fake_complete_config.copy()
             # Simulate the job being stopped
             fake_existing_job['disabled'] = True
 
             actual = setup_chronos_job._setup_existing_job(
-                fake_complete_config['name'],
-                fake_existing_job,
-                fake_complete_config,
-                fake_client
+                service=self.fake_service,
+                instance=self.fake_instance,
+                cluster=self.fake_cluster,
+                job_id=fake_complete_config['name'],
+                existing_job=fake_existing_job,
+                complete_job_config=fake_complete_config,
+                client=fake_client,
             )
             assert actual == (0, "Enabled job '%s'" % fake_complete_config['name'])
             fake_client.update.assert_called_once_with(fake_complete_config)
@@ -433,10 +448,10 @@ class TestSetupChronosJob:
         fake_client = mock.MagicMock()
         fake_state = 'stop'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service_name,
-            self.fake_job_name,
-            self.fake_config_dict,
-            {
+            service=self.fake_service,
+            job_name=self.fake_instance,
+            config_dict=self.fake_config_dict,
+            branch_dict={
                 'desired_state': fake_state,
                 'docker_image': 'fake_image'
             }
@@ -455,19 +470,22 @@ class TestSetupChronosJob:
             config_hash_patch,
         ):
             fake_complete_config = chronos_tools.create_complete_config(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_args.soa_dir
+                service=self.fake_service,
+                job_name=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir,
             )
             fake_existing_job = fake_complete_config.copy()
             # Pretend the job is already running
             fake_existing_job['disabled'] = False
 
             actual = setup_chronos_job._setup_existing_job(
-                fake_complete_config['name'],
-                fake_existing_job,
-                fake_complete_config,
-                fake_client
+                service=self.fake_service,
+                instance=self.fake_instance,
+                cluster=self.fake_cluster,
+                job_id=fake_complete_config['name'],
+                existing_job=fake_existing_job,
+                complete_job_config=fake_complete_config,
+                client=fake_client,
             )
             assert actual == (0, "Disabled job '%s'" % fake_complete_config['name'])
             fake_client.update.assert_called_once_with(fake_complete_config)
@@ -476,10 +494,10 @@ class TestSetupChronosJob:
         fake_client = mock.MagicMock()
         fake_state = 'start'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service_name,
-            self.fake_job_name,
-            self.fake_config_dict,
-            {
+            service=self.fake_service,
+            job_name=self.fake_instance,
+            config_dict=self.fake_config_dict,
+            branch_dict={
                 'desired_state': fake_state,
                 'docker_image': 'fake_image'
             }
@@ -498,30 +516,32 @@ class TestSetupChronosJob:
             config_hash_patch,
         ):
             fake_complete_config = chronos_tools.create_complete_config(
-                self.fake_service_name,
-                self.fake_job_name,
-                self.fake_args.soa_dir
+                service=self.fake_service,
+                job_name=self.fake_instance,
+                soa_dir=self.fake_args.soa_dir
             )
             fake_existing_job = fake_complete_config.copy()
             # Pretend the job is already running
             fake_existing_job['disabled'] = False
 
             actual = setup_chronos_job._setup_existing_job(
-                fake_complete_config['name'],
-                fake_existing_job,
-                fake_complete_config,
-                fake_client
+                service=self.fake_service,
+                instance=self.fake_instance,
+                cluster=self.fake_cluster,
+                job_id=fake_complete_config['name'],
+                existing_job=fake_existing_job,
+                complete_job_config=fake_complete_config,
+                client=fake_client,
             )
-            assert actual == (0, "Job '%s' state is already set to '%s'" % (fake_complete_config['name'], fake_state))
+            assert actual == (0, "Job '%s' state is already setup and set to '%s'" % (
+                fake_complete_config['name'], fake_state))
             assert fake_client.update.call_count == 0
 
     def test_send_event(self):
-        fake_service_name = 'fake_service'
-        fake_instance_name = 'fake_instance'
         fake_status = '42'
         fake_output = 'something went wrong'
         fake_soa_dir = ''
-        expected_check_name = 'setup_chronos_job.%s' % compose_job_id(fake_service_name, fake_instance_name)
+        expected_check_name = 'setup_chronos_job.%s' % compose_job_id(self.fake_service, self.fake_instance)
         with contextlib.nested(
             mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
             mock.patch("paasta_tools.chronos_tools.load_chronos_job_config", autospec=True),
@@ -535,23 +555,23 @@ class TestSetupChronosJob:
             mock_load_chronos_job_config.return_value.get_monitoring.return_value = {}
 
             setup_chronos_job.send_event(
-                fake_service_name,
-                fake_instance_name,
-                fake_soa_dir,
-                fake_status,
-                fake_output
+                service=self.fake_service,
+                instance=self.fake_instance,
+                soa_dir=fake_soa_dir,
+                status=fake_status,
+                output=fake_output,
             )
             mock_send_event.assert_called_once_with(
-                fake_service_name,
-                expected_check_name,
-                {'alert_after': '10m', 'check_every': '10s'},
-                fake_status,
-                fake_output,
-                fake_soa_dir
+                service=self.fake_service,
+                check_name=expected_check_name,
+                overrides={'alert_after': '10m', 'check_every': '10s'},
+                status=fake_status,
+                output=fake_output,
+                soa_dir=fake_soa_dir
             )
             mock_load_chronos_job_config.assert_called_once_with(
-                service=fake_service_name,
-                instance=fake_instance_name,
+                service=self.fake_service,
+                instance=self.fake_instance,
                 cluster=mock_load_system_paasta_config.return_value.get_cluster.return_value,
-                soa_dir=fake_soa_dir
+                soa_dir=fake_soa_dir,
             )

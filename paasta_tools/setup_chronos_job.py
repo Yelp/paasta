@@ -35,6 +35,7 @@ import service_configuration_lib
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.chronos_serviceinit import restart_chronos_job
+from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import configure_log
 from paasta_tools.utils import decompose_job_id
@@ -62,10 +63,10 @@ def parse_args():
     return args
 
 
-def send_event(name, instance, soa_dir, status, output):
+def send_event(service, instance, soa_dir, status, output):
     """Send an event to sensu via pysensu_yelp with the given information.
 
-    :param name: The service name the event is about
+    :param service: The service name the event is about
     :param instance: The instance of the service the event is about
     :param soa_dir: The service directory to read monitoring information from
     :param status: The status to emit for this event
@@ -73,7 +74,7 @@ def send_event(name, instance, soa_dir, status, output):
     """
     cluster = load_system_paasta_config().get_cluster()
     monitoring_overrides = chronos_tools.load_chronos_job_config(
-        service=name,
+        service=service,
         instance=instance,
         cluster=cluster,
         soa_dir=soa_dir,
@@ -86,29 +87,45 @@ def send_event(name, instance, soa_dir, status, output):
     # that will probably be fixed eventually, so we set an alert_after
     # to suppress extra noise
     monitoring_overrides['alert_after'] = '10m'
-    check_name = 'setup_chronos_job.%s' % compose_job_id(name, instance)
-    monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
+    check_name = 'setup_chronos_job.%s' % compose_job_id(service, instance)
+    monitoring_tools.send_event(
+        service=service,
+        check_name=check_name,
+        overrides=monitoring_overrides,
+        status=status,
+        output=output,
+        soa_dir=soa_dir,
+    )
 
 
-def _setup_existing_job(job_id, existing_job, complete_job_config, client):
+def _setup_existing_job(service, instance, cluster, job_id, existing_job, complete_job_config, client):
     desired_state = 'stop' if complete_job_config['disabled'] else 'start'
     # Do nothing if job state doesn't need to change, otherwise update job with new state
     if complete_job_config['disabled'] == existing_job['disabled']:
-        output = "Job '%s' state is already set to '%s'" % (job_id, desired_state)
+        output = "Job '%s' state is already setup and set to '%s'" % (job_id, desired_state)
     else:
         state_change = 'Disabled' if complete_job_config['disabled'] else 'Enabled'
         client.update(complete_job_config)
         output = "%s job '%s'" % (state_change, job_id)
+        _log(service=service, instance=instance, component='deploy',
+             cluster=cluster, level='event', line=output)
+    log.info(output)
     return (0, output)
 
 
-def _setup_new_job(job_id, previous_jobs, complete_job_config, client):
+def _setup_new_job(service, instance, cluster, job_id, previous_jobs, complete_job_config, client):
     # The job hash has changed so we disable the old jobs and start a new one
     for previous_job in previous_jobs:
         previous_job['disabled'] = True
         client.update(previous_job)
+        log_line = "Disabling old job %s to make way for a new chronos job." % previous_job['name']
+        _log(service=service, instance=instance, component='deploy',
+             cluster=cluster, level='event', line=log_line)
 
     client.add(complete_job_config)
+    output = "Deployed new chronos job: '%s'" % job_id
+    _log(service=service, instance=instance, component='deploy',
+         cluster=cluster, level='event', line=output)
     return (0, "Deployed job '%s'" % job_id)
 
 
@@ -129,11 +146,37 @@ def setup_job(service, instance, chronos_job_config, complete_job_config, client
     bounce_method = chronos_job_config.get_bounce_method()
     if bounce_method == 'graceful':
         if len(existing_jobs) > 0:
-            return _setup_existing_job(job_id, existing_jobs[0], complete_job_config, client)
+            log.debug("Gracefully bouncing %s because it has existing jobs" % compose_job_id(service, instance))
+            return _setup_existing_job(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                job_id=job_id,
+                existing_job=existing_jobs[0],
+                complete_job_config=complete_job_config,
+                client=client,
+            )
         else:
-            return _setup_new_job(job_id, matching_jobs, complete_job_config, client)
+            log.debug("Setting up %s as a new job because it has no existing jobs" % compose_job_id(service, instance))
+            return _setup_new_job(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                job_id=job_id,
+                previous_jobs=matching_jobs,
+                complete_job_config=complete_job_config,
+                client=client,
+            )
     elif bounce_method == 'brutal':
-        restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, complete_job_config)
+        restart_chronos_job(
+            service=service,
+            instance=instance,
+            job_id=job_id,
+            client=client,
+            cluster=cluster,
+            matching_jobs=matching_jobs,
+            job_config=complete_job_config,
+        )
         return (0, "Job '%s' bounced using the 'brutal' method" % job_id)
     else:
         return (1, ("ERROR: bounce_method '%s' not recognized. Must be one of (%s)."
@@ -145,7 +188,7 @@ def main():
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
-        log.setLevel(logging.INFO)
+        log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
     try:
@@ -167,7 +210,13 @@ def main():
         )
     except NoDeploymentsAvailable:
         error_msg = "No deployments found for %s in cluster %s" % (args.service_instance, cluster)
-        send_event(service, None, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        send_event(
+            service=service,
+            instance=None,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.CRITICAL,
+            output=error_msg,
+        )
         log.error(error_msg)
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
@@ -176,15 +225,37 @@ def main():
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
             "Error was: %s" % str(e))
         log.error(error_msg)
-        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
+        send_event(
+            service=service,
+            instance=instance,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.CRITICAL,
+            output=error_msg,
+        )
         # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
 
-    complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
-    status, output = setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster)
+    complete_job_config = chronos_tools.create_complete_config(
+        service=service,
+        job_name=instance,
+        soa_dir=soa_dir,
+    )
+    status, output = setup_job(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        chronos_job_config=chronos_job_config,
+        complete_job_config=complete_job_config,
+        client=client,
+    )
     sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
-    send_event(service, instance, soa_dir, sensu_status, output)
-    print status, output
+    send_event(
+        service=service,
+        instance=instance,
+        soa_dir=soa_dir,
+        status=sensu_status,
+        output=output,
+    )
     # We exit 0 because the script finished ok and the event was sent to the right team.
     sys.exit(0)
 

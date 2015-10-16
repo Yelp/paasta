@@ -285,7 +285,7 @@ class MarathonServiceConfig(InstanceConfig):
             'cmd': self.get_cmd(),
             'args': self.get_args(),
         }
-        log.info("Complete configuration for instance is: %s", complete_config)
+        log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
 
     def get_healthchecks(self, service_namespace_config):

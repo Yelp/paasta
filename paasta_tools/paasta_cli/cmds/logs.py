@@ -508,7 +508,7 @@ def paasta_logs(args):
         log.setLevel(logging.DEBUG)
         levels = [DEFAULT_LOGLEVEL, 'debug']
     else:
-        log.setLevel(logging.WARN)
+        log.setLevel(logging.WARNING)
         levels = [DEFAULT_LOGLEVEL]
 
     log.info("Going to get logs for %s on clusters %s" % (service, clusters))
