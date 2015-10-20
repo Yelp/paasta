@@ -18,7 +18,6 @@ import contextlib
 import pysensu_yelp
 
 import check_marathon_services_replication
-from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from utils import compose_job_id
@@ -557,21 +556,81 @@ def test_check_service_replication_for_non_smartstack():
         mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance', autospec=True, return_value=None),
         mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
                    autospec=True, return_value=100),
-        mock.patch('check_marathon_services_replication.check_mesos_replication_for_service', autospec=True),
+        mock.patch('check_marathon_services_replication.check_healthy_marathon_tasks_for_service_instance',
+                   autospec=True),
+        mock.patch('check_marathon_services_replication.marathon_tools.get_marathon_client', autospec=True),
+        mock.patch('check_marathon_services_replication.marathon_tools.load_marathon_config', autospec=True),
     ) as (
         mock_get_proxy_port_for_instance,
         mock_get_expected_count,
-        mock_get_mesos_replication_for_service,
+        mock_check_healthy_marathon_tasks,
+        mock_get_marathon_client,
+        mock_load_config,
     ):
+        mock_config = mock.Mock()
+        mock_config.get_url.return_value = 'x'
+        mock_config.get_username.return_value = 'x'
+        mock_config.get_password.return_value = 'x'
+        mock_client = mock.Mock()
+        mock_load_config.return_value = mock.Mock()
+        mock_get_marathon_client.return_value = mock_client
         check_marathon_services_replication.check_service_replication(
             service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
-        mock_get_mesos_replication_for_service.assert_called_once_with(
+
+        mock_check_healthy_marathon_tasks.assert_called_once_with(
+            client=mock_client,
             service=service,
             instance=instance,
             cluster=cluster,
             soa_dir=None,
             crit_threshold=None,
             expected_count=100)
+
+
+def test_get_healthy_marathon_instances_for_short_app_id():
+    fake_client = mock.Mock()
+    fakes = []
+    for i in range(0, 4):
+        fake_task = mock.Mock()
+        fake_task.app_id = '/service.instance.foo%s.bar%s' % (i, i)
+        fake_task.health_check_results.alive = True if i % 2 == 0 else False
+        fakes.append(fake_task)
+    fake_client.list_tasks.return_value = fakes
+    actual = check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id(
+        fake_client,
+        'service.instance',
+    )
+    assert actual == 2
+
+
+@mock.patch('check_marathon_services_replication.send_event_if_under_replication')
+@mock.patch('check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id')
+def test_check_healthy_marathon_tasks_for_service_instance(mock_healthy_instances,
+                                                           mock_send_event_if_under_replication):
+    service = 'service'
+    instance = 'instance'
+    cluster = 'cluster'
+    soa_dir = 'soa_dir'
+    client = mock.Mock()
+    mock_healthy_instances.return_value = 2
+    check_marathon_services_replication.check_healthy_marathon_tasks_for_service_instance(
+        client=client,
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+        crit_threshold=50,
+        expected_count=10
+    )
+    assert mock_send_event_if_under_replication.called_once_with(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        crit_threshold=50,
+        expected_count=10,
+        num_available=2,
+        soa_dir=soa_dir
+    )
 
 
 def test_check_service_replication_for_namespace_with_no_deployments():
@@ -582,45 +641,14 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance', autospec=True, return_value=None),
         mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
                    autospec=True),
-        mock.patch('check_marathon_services_replication.check_mesos_replication_for_service', autospec=True),
     ) as (
         mock_get_proxy_port_for_instance,
         mock_get_expected_count,
-        mock_get_mesos_replication_for_service,
     ):
         mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(
             service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
         assert mock_get_proxy_port_for_instance.call_count == 0
-
-
-def test_check_mesos_replication_for_service_good():
-    service = 'test_service'
-    instance = 'worker'
-    cluster = 'fake_cluster'
-    running_tasks = ['a', 'b']
-    crit = 90
-    expected_tasks = 66
-    with contextlib.nested(
-        mock.patch('check_marathon_services_replication.send_event_if_under_replication', autospec=True),
-        mock.patch('check_marathon_services_replication.get_running_tasks_from_active_frameworks', autospec=True),
-    ) as (
-        mock_send_event_if_under_replication,
-        mock_get_running_tasks_from_active_frameworks,
-    ):
-        mock_get_running_tasks_from_active_frameworks.return_value = running_tasks
-        check_marathon_services_replication.check_mesos_replication_for_service(
-            service, instance, cluster, None, crit, expected_tasks)
-        mock_get_running_tasks_from_active_frameworks.assert_called_once_with(format_job_id(service, instance))
-        mock_send_event_if_under_replication.assert_called_once_with(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            crit_threshold=crit,
-            expected_count=expected_tasks,
-            num_available=len(running_tasks),
-            soa_dir=None
-        )
 
 
 def test_send_event_if_under_replication_handles_0_expected():

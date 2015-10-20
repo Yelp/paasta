@@ -40,7 +40,6 @@ from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import smartstack_tools
-from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.monitoring import replication_utils
 from paasta_tools.monitoring.context import get_context
@@ -171,22 +170,24 @@ def add_context_to_event(service, instance, output):
     return output
 
 
-def check_mesos_replication_for_service(service, instance, cluster, soa_dir, crit_threshold, expected_count):
-    # To inspect marathon tasks, we need to use the marathon version of the
-    # job_id, which has characters escaped and stuff.
-    job_id = format_job_id(service, instance)
-    log.info("Checking %s in marathon as it is not in smartstack" % job_id)
-    running_tasks = get_running_tasks_from_active_frameworks(job_id)
-    num_available = len(running_tasks)
-    # Non-Smartstack services aren't aware of replication within specific
-    # locations (since they don't define an advertise/discover level)
+def get_healthy_marathon_instances_for_short_app_id(client, app_id):
+    tasks = client.list_tasks()
+    tasks_for_app = [task for task in tasks if task.app_id.startswith('/%s' % app_id)]
+    return len([task for task in tasks_for_app if task.health_check_results.alive is True])
+
+
+def check_healthy_marathon_tasks_for_service_instance(client, service, instance, cluster,
+                                                      soa_dir, crit_threshold, expected_count):
+    app_id = format_job_id(service, instance)
+    log.info("Checking %s in marathon as it is not in smartstack" % app_id)
+    num_healthy_tasks = get_healthy_marathon_instances_for_short_app_id(client, app_id)
     send_event_if_under_replication(
         service=service,
         instance=instance,
         cluster=cluster,
         crit_threshold=crit_threshold,
         expected_count=expected_count,
-        num_available=num_available,
+        num_available=num_healthy_tasks,
         soa_dir=soa_dir,
     )
 
@@ -248,13 +249,17 @@ def check_service_replication(service, instance, cluster, crit_threshold, soa_di
             crit_threshold=crit_threshold,
             expected_count=expected_count)
     else:
-        check_mesos_replication_for_service(
+        config = marathon_tools.load_marathon_config()
+        client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password)
+        check_healthy_marathon_tasks_for_service_instance(
+            client=client,
             service=service,
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
             crit_threshold=crit_threshold,
-            expected_count=expected_count)
+            expected_count=expected_count,
+        )
 
 
 def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
