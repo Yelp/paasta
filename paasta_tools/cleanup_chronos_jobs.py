@@ -33,7 +33,6 @@ import sys
 import service_configuration_lib
 
 from paasta_tools import chronos_tools
-from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import InvalidJobNameError
 
 
@@ -138,7 +137,7 @@ def main():
     to_delete = jobs_to_delete(expected_service_jobs, running_service_jobs)
 
     # recompose the job ids again for deletion
-    to_delete_job_ids = [compose_job_id(*job, spacer=chronos_tools.SPACER) for job in to_delete]
+    to_delete_job_ids = [chronos_tools.compose_job_id(*job) for job in to_delete]
 
     task_responses = cleanup_tasks(client, to_delete_job_ids)
     task_successes = []
