@@ -678,6 +678,7 @@ def atomic_file_write(target_path):
     os.rename(temp_target_path, target_path)
 
 
+# ###
 def compose_job_id(name, instance, tag=None, spacer=SPACER):
     """Compose a job/app id by concatenating its name, instance, and tag.
 
@@ -702,14 +703,16 @@ def decompose_job_id(job_id, spacer=SPACER):
     :param job_id: The composed id of the job/app
     :returns: A tuple (name, instance, tag) that comprise the job_id
     """
-    decomposed = job_id.split(spacer, 2)
-    if len(decomposed) < 2:
-        raise InvalidJobNameError('invalid job id %s' % job_id)
-    if len(decomposed) < 3:
-        tag = None
+    decomposed = job_id.split(spacer)
+    if len(decomposed) == 2:
+        git_hash = None
+        config_hash = None
+    elif len(decomposed) == 4:
+        git_hash = decomposed[2]
+        config_hash = decomposed[3]
     else:
-        tag = decomposed[2]
-    return (decomposed[0], decomposed[1], tag)
+        raise InvalidJobNameError('invalid job id %s' % job_id)
+    return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
 def remove_tag_from_job_id(job_id, spacer=SPACER):

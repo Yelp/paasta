@@ -90,7 +90,7 @@ def get_matching_jobs(client, job_id, all_tags):
     """
     matching_jobs_pattern = r"^UNINITIALIZED PATTERN$"
     if all_tags:
-        (service, instance, _) = chronos_tools.decompose_job_id(job_id)
+        (service, instance, _, __) = chronos_tools.decompose_job_id(job_id)
         # We add SPACER to the end as an anchor to prevent catching
         # "my_service my_job_extra" when looking for "my_service my_job".
         matching_jobs_pattern = r"^%s%s" % (chronos_tools.compose_job_id(service, instance), chronos_tools.SPACER)
@@ -105,12 +105,12 @@ def get_short_task_id(task_id):
     return task_id.split(chronos_tools.MESOS_TASK_SPACER)[1]
 
 
-def _format_job_tag(job):
-    job_tag = PaastaColors.red("UNKNOWN")
+def _format_config_hash(job):
+    config_hash = PaastaColors.red("UNKNOWN")
     job_id = job.get("name", None)
     if job_id:
-        (_, _, job_tag) = chronos_tools.decompose_job_id(job_id)
-    return job_tag
+        (_, __, ___, config_hash) = chronos_tools.decompose_job_id(job_id)
+    return config_hash
 
 
 def _format_disabled_status(job):
@@ -200,7 +200,7 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
     :param running_tasks: a list of Mesos tasks associated with `job`, e.g. the
     result of mesos_tools.get_running_tasks_from_active_frameworks().
     """
-    job_tag = _format_job_tag(job)
+    config_hash = _format_config_hash(job)
     disabled_state = _format_disabled_status(job)
     (last_result, last_result_when) = _format_last_result(job)
     schedule = _format_schedule(job)
@@ -210,13 +210,13 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
         mesos_status_verbose = status_mesos_tasks_verbose(job["name"], get_short_task_id)
         mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
     return (
-        "Tag:        %(job_tag)s\n"
+        "Config:     %(config_hash)s\n"
         "  Status:   %(disabled_state)s, %(desired_state)s\n"
         "  Last:     %(last_result)s (%(last_result_when)s)\n"
         "  Schedule: %(schedule)s\n"
         "  Command:  %(command)s\n"
         "  Mesos:    %(mesos_status)s" % {
-            "job_tag": job_tag,
+            "config_hash": config_hash,
             "disabled_state": disabled_state,
             "desired_state": desired_state,
             "last_result": last_result,

@@ -829,7 +829,8 @@ class TestSetupMarathonJob:
         fake_drain_method_name = 'noop'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
-        fake_id = marathon_tools.format_job_id(fake_name, fake_instance, tag='blah')
+        # ### Cheating and hardcoding spacer here until I refactor compose_job_id and friends.
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance, tag='blah.flaw')
         fake_config = {'id': fake_id, 'instances': 2}
 
         old_app_id = ('%s2' % fake_id)
@@ -923,7 +924,8 @@ class TestSetupMarathonJob:
         fake_drain_method = 'noop'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
-        fake_id = marathon_tools.format_job_id(fake_name, fake_instance, tag='blah')
+        # ### Cheating and hardcoding spacer here until I refactor compose_job_id and friends.
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance, tag='blah.flaw')
         fake_config = {'id': fake_id, 'instances': 2}
 
         old_app_id = ('%s2' % fake_id)

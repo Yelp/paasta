@@ -51,8 +51,8 @@ class TestCleanupMarathonJobs:
     def test_cleanup_apps(self):
         soa_dir = 'not_really_a_dir'
         expected_apps = [('present', 'away'), ('on-app', 'off')]
-        fake_app_ids = [mock.Mock(id='present.away.gone'), mock.Mock(id='on-app.off.stop'),
-                        mock.Mock(id='not-here.oh.no')]
+        fake_app_ids = [mock.Mock(id='present.away.gone.wtf'), mock.Mock(id='on-app.off.stop.jrm'),
+                        mock.Mock(id='not-here.oh.no.weirdo')]
         self.fake_marathon_client.list_apps = mock.Mock(return_value=fake_app_ids)
         with contextlib.nested(
             mock.patch('cleanup_marathon_jobs.get_services_for_cluster',
@@ -75,7 +75,7 @@ class TestCleanupMarathonJobs:
             client_patch.assert_called_once_with(self.fake_marathon_config.get_url(),
                                                  self.fake_marathon_config.get_username(),
                                                  self.fake_marathon_config.get_password())
-            delete_patch.assert_called_once_with('not-here.oh.no', self.fake_marathon_client)
+            delete_patch.assert_called_once_with('not-here.oh.no.weirdo', self.fake_marathon_client)
 
     def test_cleanup_apps_doesnt_delete_unknown_apps(self):
         soa_dir = 'not_really_a_dir'

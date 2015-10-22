@@ -155,7 +155,7 @@ def write_soa_dir_chronos_instance(context, service, disabled, instance):
 
 @given(u'I have yelpsoa-configs for the marathon job "{job_id}"')
 def write_soa_dir_marathon_job(context, job_id):
-    (service, instance, _) = decompose_job_id(job_id)
+    (service, instance, _, __) = decompose_job_id(job_id)
     soa_dir = mkdtemp()
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))

@@ -107,6 +107,7 @@ def get_chronos_client(config):
                            password=config.get_password())
 
 
+# ###
 def compose_job_id(service, instance, tag=None):
     """Thin wrapper around generic compose_job_id to use our local SPACER."""
     return utils_compose_job_id(service, instance, tag, spacer=SPACER)

@@ -24,7 +24,7 @@ from paasta_tools import marathon_tools
 
 fake_service_name = 'fake_complete_service'
 fake_instance_name = 'fake_instance'
-fake_appid = 'fake--complete--service.gitdeadbeef.configdeadbeef2'
+fake_appid = 'fake--complete--service.fake--instance.gitdeadbeef.configdeadbeef2'
 fake_service_marathon_config = marathon_tools.MarathonServiceConfig(
     fake_service_name,
     fake_instance_name,

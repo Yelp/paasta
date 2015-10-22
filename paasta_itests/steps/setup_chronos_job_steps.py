@@ -79,7 +79,7 @@ def create_complete_job(context):
 
 @when(u'we run setup_chronos_job')
 def setup_the_chronos_job(context):
-    service, instance, _ = chronos_tools.decompose_job_id(context.chronos_job_config['name'])
+    service, instance, _, __ = chronos_tools.decompose_job_id(context.chronos_job_config['name'])
     exit_code, output = setup_chronos_job.setup_job(
         service,
         instance,

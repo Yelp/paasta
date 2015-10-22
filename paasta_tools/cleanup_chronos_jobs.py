@@ -137,7 +137,8 @@ def main():
     to_delete = jobs_to_delete(expected_service_jobs, running_service_jobs)
 
     # recompose the job ids again for deletion
-    to_delete_job_ids = [chronos_tools.compose_job_id(*job) for job in to_delete]
+    # ### tmp hack until compose_job_id -- *job is a lot better!
+    to_delete_job_ids = [chronos_tools.compose_job_id(job[0], job[1], "%s %s" % (job[2], job[3])) for job in to_delete]
 
     task_responses = cleanup_tasks(client, to_delete_job_ids)
     task_successes = []

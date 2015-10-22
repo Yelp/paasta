@@ -563,6 +563,7 @@ def format_job_id(service, instance, tag=None):
     instance = str(instance).replace('_', '--')
     if tag:
         tag = str(tag).replace('_', '--')
+    # ###
     formatted = compose_job_id(service, instance, tag)
     return formatted
 

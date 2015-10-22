@@ -441,7 +441,7 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service, instance, _ = decompose_job_id(args.service_instance)
+        service, instance, _, __ = decompose_job_id(args.service_instance)
     except ValueError:
         log.error("Invalid service instance specified. Format is service.instance.")
         sys.exit(1)

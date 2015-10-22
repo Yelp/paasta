@@ -367,6 +367,7 @@ def test_configure_log():
     utils.configure_log()
 
 
+# ###
 def test_compose_job_id_with_tag():
     fake_service = "my_cool_service"
     fake_instance = "main"
@@ -386,14 +387,14 @@ def test_compose_job_id_without_tag():
 
 def test_decompose_job_id_with_tag():
     fake_job_id = "my_cool_service.main.git123abc.config456def"
-    expected = ("my_cool_service", "main", "git123abc.config456def")
+    expected = ("my_cool_service", "main", "git123abc", "config456def")
     actual = utils.decompose_job_id(fake_job_id)
     assert actual == expected
 
 
 def test_decompose_job_id_without_tag():
     fake_job_id = "my_cool_service.main"
-    expected = ("my_cool_service", "main", None)
+    expected = ("my_cool_service", "main", None, None)
     actual = utils.decompose_job_id(fake_job_id)
     assert actual == expected
 

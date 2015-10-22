@@ -65,7 +65,7 @@ def main():
 
     command = args.command
     service_instance = args.service_instance
-    service, instance, _ = decompose_job_id(service_instance)
+    service, instance, _, __ = decompose_job_id(service_instance)
 
     cluster = load_system_paasta_config().get_cluster()
     instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)

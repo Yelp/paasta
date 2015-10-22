@@ -206,7 +206,7 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service, instance, _ = decompose_job_id(args.service_instance)
+        service, instance, _, __ = decompose_job_id(args.service_instance)
     except InvalidJobNameError:
         log.error("Invalid service instance '%s' specified. Format is service%sinstance."
                   % (args.service_instance, SPACER))
