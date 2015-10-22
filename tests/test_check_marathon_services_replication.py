@@ -786,9 +786,6 @@ def test_main():
         mock_load_marathon_config,
     ):
         mock_config = mock.Mock()
-        mock_config.get_url.return_value = 'x'
-        mock_config.get_username.return_value = 'x'
-        mock_config.get_password.return_value = 'x'
         mock_load_marathon_config.return_value = mock_config
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
         check_marathon_services_replication.main()
