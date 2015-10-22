@@ -24,7 +24,6 @@ import chronos_tools
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.utils import datetime_from_utc_to_local
-from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import _log
 from paasta_tools.utils import PaastaColors
 
@@ -91,7 +90,7 @@ def get_matching_jobs(client, job_id, all_tags):
     """
     matching_jobs_pattern = r"^UNINITIALIZED PATTERN$"
     if all_tags:
-        (service, instance, _) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
+        (service, instance, _) = chronos_tools.decompose_job_id(job_id)
         # We add SPACER to the end as an anchor to prevent catching
         # "my_service my_job_extra" when looking for "my_service my_job".
         matching_jobs_pattern = r"^%s%s" % (chronos_tools.compose_job_id(service, instance), chronos_tools.SPACER)
@@ -110,7 +109,7 @@ def _format_job_tag(job):
     job_tag = PaastaColors.red("UNKNOWN")
     job_id = job.get("name", None)
     if job_id:
-        (_, _, job_tag) = decompose_job_id(job_id, spacer=chronos_tools.SPACER)
+        (_, _, job_tag) = chronos_tools.decompose_job_id(job_id)
     return job_tag
 
 
