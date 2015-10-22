@@ -173,7 +173,12 @@ def add_context_to_event(service, instance, output):
 def get_healthy_marathon_instances_for_short_app_id(client, app_id):
     tasks = client.list_tasks()
     tasks_for_app = [task for task in tasks if task.app_id.startswith('/%s' % app_id)]
-    return len([task for task in tasks_for_app if task.health_check_results.alive is True])
+
+    healthy_tasks = []
+    for task in tasks_for_app:
+        if all([health_check_result.alive for health_check_result in task.health_check_results]):
+            healthy_tasks.append(task)
+    return len(healthy_tasks)
 
 
 def check_healthy_marathon_tasks_for_service_instance(client, service, instance, cluster,

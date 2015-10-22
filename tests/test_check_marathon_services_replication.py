@@ -585,7 +585,9 @@ def test_get_healthy_marathon_instances_for_short_app_id():
     for i in range(0, 4):
         fake_task = mock.Mock()
         fake_task.app_id = '/service.instance.foo%s.bar%s' % (i, i)
-        fake_task.health_check_results.alive = True if i % 2 == 0 else False
+        mock_result = mock.Mock()
+        mock_result.alive = True if i % 2 == 0 else False
+        fake_task.health_check_results = [mock_result]
         fakes.append(fake_task)
     fake_client.list_tasks.return_value = fakes
     actual = check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id(
