@@ -678,23 +678,29 @@ def atomic_file_write(target_path):
     os.rename(temp_target_path, target_path)
 
 
-# ###
-def compose_job_id(name, instance, tag=None, spacer=SPACER):
-    """Compose a job/app id by concatenating its name, instance, and tag.
+class InvalidJobNameError(Exception):
+    pass
+
+
+def compose_job_id(name, instance, git_hash=None, config_hash=None, spacer=SPACER):
+    """Compose a job/app id by concatenating its name, instance, git hash, and config hash.
 
     :param name: The name of the service
     :param instance: The instance of the service
-    :param tag: A hash or tag to append to the end of the id to make it unique
+    :param git_hash: The git_hash portion of the job_id. If git_hash is set,
+    config_hash must also be set.
+    :param config_hash: The config_hash portion of the job_id. If config_hash
+    is set, git_hash must also be set.
     :returns: <name><SPACER><instance> if no tag, or <name><SPACER><instance><SPACER><tag> if tag given
     """
     composed = '%s%s%s' % (name, spacer, instance)
-    if tag:
-        composed = '%s%s%s' % (composed, spacer, tag)
+    if git_hash and config_hash:
+        composed = '%s%s%s%s%s' % (composed, spacer, git_hash, spacer, config_hash)
+    elif git_hash or config_hash:
+        raise InvalidJobNameError(
+            'invalid job id because git_hash (%s) and config_hash (%s) must '
+            'both be defined or neither can be defined' % (git_hash, config_hash))
     return composed
-
-
-class InvalidJobNameError(Exception):
-    pass
 
 
 def decompose_job_id(job_id, spacer=SPACER):
