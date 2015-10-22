@@ -537,15 +537,17 @@ def test_check_service_replication_for_normal_smartstack():
         mock_get_expected_count,
         mock_check_smartstack_replication_for_service
     ):
+        mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
-            service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
+            client=mock_client, service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
         mock_check_smartstack_replication_for_service.assert_called_once_with(
             service=service,
             instance=instance,
             cluster=cluster,
             soa_dir=None,
             crit_threshold=None,
-            expected_count=100)
+            expected_count=100
+        )
 
 
 def test_check_service_replication_for_non_smartstack():
@@ -558,24 +560,14 @@ def test_check_service_replication_for_non_smartstack():
                    autospec=True, return_value=100),
         mock.patch('check_marathon_services_replication.check_healthy_marathon_tasks_for_service_instance',
                    autospec=True),
-        mock.patch('check_marathon_services_replication.marathon_tools.get_marathon_client', autospec=True),
-        mock.patch('check_marathon_services_replication.marathon_tools.load_marathon_config', autospec=True),
     ) as (
         mock_get_proxy_port_for_instance,
         mock_get_expected_count,
         mock_check_healthy_marathon_tasks,
-        mock_get_marathon_client,
-        mock_load_config,
     ):
-        mock_config = mock.Mock()
-        mock_config.get_url.return_value = 'x'
-        mock_config.get_username.return_value = 'x'
-        mock_config.get_password.return_value = 'x'
         mock_client = mock.Mock()
-        mock_load_config.return_value = mock.Mock()
-        mock_get_marathon_client.return_value = mock_client
         check_marathon_services_replication.check_service_replication(
-            service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
+            mock_client, service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
 
         mock_check_healthy_marathon_tasks.assert_called_once_with(
             client=mock_client,
@@ -645,9 +637,10 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock_get_proxy_port_for_instance,
         mock_get_expected_count,
     ):
+        mock_client = mock.Mock()
         mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(
-            service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
+            client=mock_client, service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
         assert mock_get_proxy_port_for_instance.call_count == 0
 
 
@@ -784,12 +777,19 @@ def test_main():
                    autospec=True),
         mock.patch('check_marathon_services_replication.load_system_paasta_config',
                    autospec=True),
+        mock.patch('check_marathon_services_replication.marathon_tools.load_marathon_config')
     ) as (
         mock_parse_args,
         mock_get_services_for_cluster,
         mock_check_service_replication,
         mock_load_system_paasta_config,
+        mock_load_marathon_config,
     ):
+        mock_config = mock.Mock()
+        mock_config.get_url.return_value = 'x'
+        mock_config.get_username.return_value = 'x'
+        mock_config.get_password.return_value = 'x'
+        mock_load_marathon_config.return_value = mock_config
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
         check_marathon_services_replication.main()
         mock_parse_args.assert_called_once_with()

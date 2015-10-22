@@ -220,7 +220,7 @@ def send_event_if_under_replication(
         output=output)
 
 
-def check_service_replication(service, instance, cluster, crit_threshold, soa_dir):
+def check_service_replication(client, service, instance, cluster, crit_threshold, soa_dir):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
@@ -249,8 +249,6 @@ def check_service_replication(service, instance, cluster, crit_threshold, soa_di
             crit_threshold=crit_threshold,
             expected_count=expected_count)
     else:
-        config = marathon_tools.load_marathon_config()
-        client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password)
         check_healthy_marathon_tasks_for_service_instance(
             client=client,
             service=service,
@@ -331,8 +329,11 @@ def main():
     service_instances = get_services_for_cluster(
         cluster=cluster, instance_type='marathon', soa_dir=args.soa_dir)
 
+    config = marathon_tools.load_marathon_config()
+    client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password())
     for service, instance in service_instances:
         check_service_replication(
+            client=client,
             service=service,
             instance=instance,
             cluster=cluster,
