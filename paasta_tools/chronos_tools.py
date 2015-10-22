@@ -426,6 +426,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
     # Chronos clears the history for a job whenever it is updated, so we use a new job name for each revision
     # so that we can keep history of old job revisions rather than just the latest version
+    # ###
     full_id = compose_job_id(service, job_name, tag)
     complete_config['name'] = full_id
     desired_state = chronos_job_config.get_desired_state()
