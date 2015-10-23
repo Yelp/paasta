@@ -546,7 +546,7 @@ def test_check_service_replication_for_normal_smartstack():
             cluster=cluster,
             soa_dir=None,
             crit_threshold=None,
-            expected_count=100
+            expected_count=100,
         )
 
 
@@ -567,7 +567,7 @@ def test_check_service_replication_for_non_smartstack():
     ):
         mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
-            mock_client, service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
+            client=mock_client, service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
 
         mock_check_healthy_marathon_tasks.assert_called_once_with(
             client=mock_client,
