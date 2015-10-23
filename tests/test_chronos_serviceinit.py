@@ -123,7 +123,7 @@ def test_format_chronos_job_name_exists():
     # (as these are unnecessary and would just add clutter).
     assert 'my_service' not in actual
     assert 'my_instance' not in actual
-    assert 'gityourmom' in actual
+    assert 'gityourmom' not in actual
     assert 'configyourdad' in actual
 
 

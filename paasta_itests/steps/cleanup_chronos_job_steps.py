@@ -28,7 +28,7 @@ def launch_jobs(context, num_jobs, state, service, job):
         'async': False,
         'command': 'echo 1',
         'epsilon': 'PT15M',
-        'name': compose_job_id(service, job, 'config%d' % x),
+        'name': compose_job_id(service, job, 'githash', 'config%d' % x),
         'owner': 'paasta',
         'disabled': True,
         'schedule': 'R/2014-01-01T00:00:00Z/PT60M',

@@ -66,7 +66,7 @@ def delete_app(app_id, client):
     short_app_id = remove_tag_from_job_id(app_id)
     log.warn("%s appears to be old; attempting to delete" % app_id)
     srv_instance = short_app_id.replace('--', '_')
-    service, instance, _ = decompose_job_id(srv_instance)
+    service, instance, _, __ = decompose_job_id(srv_instance)
     try:
         with bounce_lib.bounce_lock_zookeeper(srv_instance):
             bounce_lib.delete_marathon_app(app_id, client)

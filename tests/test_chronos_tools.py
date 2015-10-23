@@ -140,13 +140,26 @@ class TestChronosTools:
             chronos_tools.get_chronos_client(fake_config)
             assert mock_connect.call_count == 1
 
-    def test_compose_job_id(self):
+    def test_compose_job_id_without_hashes(self):
         actual = chronos_tools.compose_job_id('service', 'instance')
-        assert actual == "service instance"
+        assert actual == 'service instance'
 
-    def test_compose_job_id_with_tag(self):
-        actual = chronos_tools.compose_job_id('service', 'instance', tag='gityourmom')
-        assert actual == "service instance gityourmom"
+    def test_compose_job_id_with_hashes(self):
+        actual = chronos_tools.compose_job_id(
+            'service',
+            'instance',
+            'gityourmom',
+            'configyourdad',
+        )
+        assert actual == 'service instance gityourmom configyourdad'
+
+    def test_decompose_job_id_without_hashes(self):
+        actual = chronos_tools.decompose_job_id('service instance')
+        assert actual == ('service', 'instance', None, None)
+
+    def test_decompose_job_id_with_hashes(self):
+        actual = chronos_tools.decompose_job_id('service instance gityourmom configyourdad')
+        assert actual == ('service', 'instance', 'gityourmom', 'configyourdad')
 
     def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'

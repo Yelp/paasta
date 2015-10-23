@@ -144,7 +144,7 @@ def _setup_new_job(service, instance, cluster, job_id, previous_jobs, complete_j
 
 
 def setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster):
-    job_prefix = compose_job_id(service, instance, spacer=chronos_tools.SPACER)
+    job_prefix = chronos_tools.compose_job_id(service, instance)
     job_id = complete_job_config['name']
     existing_jobs = chronos_tools.lookup_chronos_jobs(
         r'^%s$' % job_id,
@@ -206,7 +206,7 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service, instance, _ = decompose_job_id(args.service_instance)
+        service, instance, _, __ = decompose_job_id(args.service_instance)
     except InvalidJobNameError:
         log.error("Invalid service instance '%s' specified. Format is service%sinstance."
                   % (args.service_instance, SPACER))

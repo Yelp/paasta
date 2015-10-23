@@ -47,7 +47,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
-from paasta_tools.utils import SPACER
 from paasta_tools.utils import timeout
 
 CONTAINER_PORT = 8888
@@ -549,21 +548,26 @@ def get_marathon_client(url, user, passwd):
     return MarathonClient(url, user, passwd, timeout=30)
 
 
-def format_job_id(service, instance, tag=None):
+def format_job_id(service, instance, git_hash=None, config_hash=None):
     """Compose a Marathon app id formatted to meet Marathon's app id requirements.
 
     Marathon's app id requirements: https://mesosphere.github.io/marathon/docs/rest-api.html#id-string
 
     :param service: The name of the service
     :param instance: The instance of the service
-    :param tag: A hash or tag to append to the end of the id to make it unique
+    :param git_hash: The git_hash portion of the job_id. If git_hash is set,
+    config_hash must also be set.
+    :param config_hash: The config_hash portion of the job_id. If config_hash
+    is set, git_hash must also be set.
     :returns: a composed app id in a format that Marathon accepts
     """
     service = str(service).replace('_', '--')
     instance = str(instance).replace('_', '--')
-    if tag:
-        tag = str(tag).replace('_', '--')
-    formatted = compose_job_id(service, instance, tag)
+    if git_hash:
+        git_hash = str(git_hash).replace('_', '--')
+    if config_hash:
+        config_hash = str(config_hash).replace('_', '--')
+    formatted = compose_job_id(service, instance, git_hash, config_hash)
     return formatted
 
 
@@ -838,8 +842,7 @@ def create_complete_config(service, instance, marathon_config, soa_dir=DEFAULT_S
         complete_config,
         force_bounce=instance_config.get_force_bounce(),
     )
-    tag = "%s%s%s" % (code_sha, SPACER, config_hash)
-    full_id = format_job_id(service, instance, tag)
+    full_id = format_job_id(service, instance, code_sha, config_hash)
     complete_config['id'] = full_id
     return complete_config
 

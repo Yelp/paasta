@@ -367,16 +367,7 @@ def test_configure_log():
     utils.configure_log()
 
 
-def test_compose_job_id_with_tag():
-    fake_service = "my_cool_service"
-    fake_instance = "main"
-    fake_tag = "git123abc.config456def"
-    expected = "my_cool_service.main.git123abc.config456def"
-    actual = utils.compose_job_id(fake_service, fake_instance, fake_tag)
-    assert actual == expected
-
-
-def test_compose_job_id_without_tag():
+def test_compose_job_id_without_hashes():
     fake_service = "my_cool_service"
     fake_instance = "main"
     expected = "my_cool_service.main"
@@ -384,23 +375,49 @@ def test_compose_job_id_without_tag():
     assert actual == expected
 
 
-def test_decompose_job_id_with_tag():
-    fake_job_id = "my_cool_service.main.git123abc.config456def"
-    expected = ("my_cool_service", "main", "git123abc.config456def")
-    actual = utils.decompose_job_id(fake_job_id)
+def test_compose_job_id_with_git_hash():
+    fake_service = "my_cool_service"
+    fake_instance = "main"
+    fake_git_hash = "git123abc"
+    with raises(utils.InvalidJobNameError):
+        utils.compose_job_id(fake_service, fake_instance, git_hash=fake_git_hash)
+
+
+def test_compose_job_id_with_config_hash():
+    fake_service = "my_cool_service"
+    fake_instance = "main"
+    fake_config_hash = "config456def"
+    with raises(utils.InvalidJobNameError):
+        utils.compose_job_id(fake_service, fake_instance, config_hash=fake_config_hash)
+
+
+def test_compose_job_id_with_hashes():
+    fake_service = "my_cool_service"
+    fake_instance = "main"
+    fake_git_hash = "git123abc"
+    fake_config_hash = "config456def"
+    expected = "my_cool_service.main.git123abc.config456def"
+    actual = utils.compose_job_id(fake_service, fake_instance, fake_git_hash, fake_config_hash)
     assert actual == expected
 
 
-def test_decompose_job_id_without_tag():
-    fake_job_id = "my_cool_service.main"
-    expected = ("my_cool_service", "main", None)
-    actual = utils.decompose_job_id(fake_job_id)
-    assert actual == expected
-
-
-def test_job_id_too_short():
+def test_decompose_job_id_too_short():
     with raises(utils.InvalidJobNameError):
         utils.decompose_job_id('foo')
+
+
+def test_decompose_job_id_without_hashes():
+    fake_job_id = "my_cool_service.main"
+    expected = ("my_cool_service", "main", None, None)
+    actual = utils.decompose_job_id(fake_job_id)
+    assert actual == expected
+
+
+def test_decompose_job_id_with_hashes():
+    fake_job_id = "my_cool_service.main.git123abc.config456def"
+    expected = ("my_cool_service", "main", "git123abc", "config456def")
+    actual = utils.decompose_job_id(fake_job_id)
+    assert actual == expected
 
 
 def test_remove_tag_from_job_id_with_tag():

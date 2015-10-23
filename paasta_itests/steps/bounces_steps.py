@@ -44,7 +44,7 @@ def given_a_new_app_to_be_deployed(context, state):
     context.service = 'bounce'
     context.instance = 'test1'
     context.new_config = {
-        'id': 'bounce.test1.newapp',
+        'id': 'bounce.test1.newapp.confighash',
         'cmd': '/bin/sleep 300',
         'instances': 2,
         'backoff_seconds': 0.1,
@@ -60,7 +60,7 @@ def given_a_new_app_to_be_deployed(context, state):
 
 @given(u'an old app to be destroyed')
 def given_an_old_app_to_be_destroyed(context):
-    old_app_name = "bounce.test1.oldapp"
+    old_app_name = "bounce.test1.oldapp.confighash"
     context.old_ids = [old_app_name]
     context.old_app_config = {
         'id': old_app_name,

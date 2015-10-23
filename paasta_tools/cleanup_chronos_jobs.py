@@ -33,8 +33,6 @@ import sys
 import service_configuration_lib
 
 from paasta_tools import chronos_tools
-from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import InvalidJobNameError
 
 
@@ -114,7 +112,7 @@ def filter_paasta_jobs(jobs):
     for job in jobs:
         try:
             # attempt to decompose it
-            decompose_job_id(job, spacer=chronos_tools.SPACER)
+            chronos_tools.decompose_job_id(job)
             formatted.append(job)
         except InvalidJobNameError:
             pass
@@ -134,12 +132,12 @@ def main():
     # filter jobs not related to paasta
     # and decompose into (service, instance, tag) tuples
     paasta_jobs = filter_paasta_jobs(deployed_job_names(client))
-    running_service_jobs = [decompose_job_id(job, chronos_tools.SPACER) for job in paasta_jobs]
+    running_service_jobs = [chronos_tools.decompose_job_id(job) for job in paasta_jobs]
 
     to_delete = jobs_to_delete(expected_service_jobs, running_service_jobs)
 
     # recompose the job ids again for deletion
-    to_delete_job_ids = [compose_job_id(*job, spacer=chronos_tools.SPACER) for job in to_delete]
+    to_delete_job_ids = [chronos_tools.compose_job_id(*job) for job in to_delete]
 
     task_responses = cleanup_tasks(client, to_delete_job_ids)
     task_successes = []
