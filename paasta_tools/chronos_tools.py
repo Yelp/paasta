@@ -57,6 +57,11 @@ DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
 
 
+class LastRunState:
+    """Cheap enum to represent the state of the last run"""
+    Success, Fail, NotRun = range(0, 3)
+
+
 class ChronosNotConfigured(Exception):
     pass
 
@@ -437,6 +442,60 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
     return complete_config
+
+
+def most_recent(first, second):
+    """ Given two datetime strings, return the most recent.  """
+    return first if isodate.parse_datetime(first) > isodate.parse_datetime(second) else second
+
+
+def filter_enabled_jobs(jobs):
+    """Given a list of chronos jobs, find those which are not disabled"""
+    return [job for job in jobs if job['disabled'] is False]
+
+
+def last_success_for_job(job):
+    """
+    Given a job, find the last time it was successful. In the case that it hasn't
+    completed a successful run, return None.
+    """
+    return job.get('lastSuccess', None)
+
+
+def last_failure_for_job(job):
+    """
+    Given a job, find the last time it failed. In the case that it has never failed,
+    return None.
+    """
+    return job.get('lastError', None)
+
+
+def get_status_last_run(job):
+    """ Given a job, find whether the last run of the job was a success or failure. """
+    last_success = last_success_for_job(job)
+    last_failure = last_failure_for_job(job)
+    if not last_success and not last_failure:
+        return LastRunState.NotRun
+    elif not last_failure:
+        return LastRunState.Success
+    elif not last_success:
+        return LastRunState.Fail
+    else:
+        if most_recent(last_success, last_failure) is last_success:
+            return LastRunState.Success
+        else:
+            return LastRunState.Fail
+
+
+def match_job_names_to_service_instance(service, instance, jobs):
+    """Given a list of chronos jobs, return those which are associated with a given service and instance."""
+    decomposed_jobs = [(decompose_job_id(job['name'])) for job in jobs]
+    matching = []
+    for job_pair in decomposed_jobs:
+        decomposed, job = job_pair[0], job_pair[1]
+        if (decomposed[0], decomposed[1]) == (service, instance):
+            matching.append(job)
+    return matching
 
 
 def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=False):

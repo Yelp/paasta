@@ -986,3 +986,68 @@ class TestChronosTools:
         expected = 'ls 2012-03-13 foo'
         actual = chronos_tools.parse_time_variables(input_string=test_input, parse_time=input_time)
         assert actual == expected
+
+    def test_most_recent(self):
+        before = '2015-09-22T16:46:25.111Z'
+        after = '2015-09-24T16:54:38.917Z'
+        assert chronos_tools.most_recent(before, after) == after
+
+    def test_last_success_for_job(self):
+        fake_job = {
+            'foo': 'bar',
+            'lastSuccess': 'fakeTimeStamp',
+            'baz': 'qux',
+        }
+        assert chronos_tools.last_success_for_job(fake_job) == 'fakeTimeStamp'
+
+    def test_last_failure_for_job(self):
+        fake_job = {
+            'foo': 'bar',
+            'lastError': 'fakeTimeStamp',
+            'baz': 'qux',
+        }
+        assert chronos_tools.last_failure_for_job(fake_job) == 'fakeTimeStamp'
+
+    def test_status_last_run_no_runs(self):
+        fake_job = {
+            'name': 'myjob',
+            'lastError': '',
+            'lastSuccess': '',
+        }
+        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.NotRun
+
+    def test_stats_last_run_no_failure(self):
+        fake_job = {
+            'name': 'myjob',
+            'lastError': '',
+            'lastSuccess': '2015-09-24T16:54:38.917Z',
+        }
+        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.Success
+
+    def test_stats_last_run_no_success(self):
+        fake_job = {
+            'name': 'myjob',
+            'lastError': '2015-09-24T16:54:38.917Z',
+            'lastSuccess': '',
+        }
+        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.Fail
+
+    def test_stats_last_run_failure(self):
+        fake_job = {
+            'name': 'myjob',
+            'lastError': '2015-09-24T16:54:38.917Z',
+            'lastSuccess': '2015-09-23T16:54:38.917Z',
+        }
+        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.Fail
+
+    def test_stats_last_run_success(self):
+        fake_job = {
+            'name': 'myjob',
+            'lastError': '2015-09-23T16:54:38.917Z',
+            'lastSuccess': '2015-09-24T16:54:38.917Z',
+        }
+        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.Success
+
+    def test_filter_enabled_jobs(self):
+        fake_jobs = [{'name': 'foo', 'disabled': False}, {'name': 'bar', 'disabled': True}]
+        assert chronos_tools.filter_enabled_jobs(fake_jobs) == [{'name': 'foo', 'disabled': False}]
