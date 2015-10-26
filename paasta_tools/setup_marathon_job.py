@@ -113,6 +113,42 @@ def send_event(name, instance, soa_dir, status, output):
     monitoring_tools.send_event(name, check_name, monitoring_overrides, status, output, soa_dir)
 
 
+def send_sensu_bounce_keepalive(service, instance, cluster, soa_dir):
+    """Send a Sensu event with a special ``ttl``, to let Sensu know that
+    the everything is fine. This event is **not** fired when the bounce is in
+    progress.
+
+    If the bounce goes on for too long, this the ``ttl`` will expire and Sensu
+    will emit a new event saying that this one didn't check in within the expected
+    time-to-live."""
+    ttl = '1h'
+    monitoring_overrides = marathon_tools.load_marathon_service_config(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        load_deployments=False,
+    ).get_monitoring()
+    # Sensu currently emits events for expired ttl checks every 30s
+    monitoring_overrides['check_every'] = '30s'
+    monitoring_overrides['alert_after'] = '2m'
+    monitoring_overrides['runbook'] = 'http://y/paasta-troubleshooting'
+    monitoring_overrides['tip'] = ("Check out `paasta logs`. If the bounce hasn't made progress, "
+                                   "it may mean that the new version isn't healthy.")
+    # Dogfooding this alert till I'm comfortable it doesn't spam people
+    monitoring_overrides['team'] = 'noop'
+    monitoring_overrides['notification_email'] = 'kwa@yelp.com'
+
+    monitoring_tools.send_event(
+        service=service,
+        check_name='paasta_bounce_progress.%s' % compose_job_id(service, instance),
+        overrides=monitoring_overrides,
+        status=pysensu_yelp.Status.OK,
+        output="The bounce is in a steady state",
+        soa_dir=soa_dir,
+        ttl=ttl,
+    )
+
+
 def get_main_marathon_config():
     log.debug("Reading marathon configuration")
     marathon_config = marathon_tools.load_marathon_config()
@@ -135,6 +171,7 @@ def do_bounce(
     instance,
     marathon_jobid,
     client,
+    soa_dir,
 ):
     def log_bounce_action(line, level='debug'):
         return _log(
@@ -161,6 +198,14 @@ def do_bounce(
                 '%d old apps.' % len(old_app_live_tasks.keys()),
             ]),
             level='event',
+        )
+    else:
+        # In a steady state. Let's let Sensu know everything is fine.
+        send_sensu_bounce_keepalive(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
         )
 
     all_draining_tasks = set()
@@ -265,6 +310,7 @@ def deploy_service(
     drain_method_params,
     nerve_ns,
     bounce_health_params,
+    soa_dir,
 ):
     """Deploy the service to marathon, either directly or via a bounce if needed.
     Called by setup_service when it's time to actually deploy.
@@ -363,6 +409,7 @@ def deploy_service(
                     instance=instance,
                     marathon_jobid=marathon_jobid,
                     client=client,
+                    soa_dir=soa_dir,
                 )
 
         except bounce_lib.LockHeldException:
@@ -379,7 +426,7 @@ def deploy_service(
 
 
 def setup_service(service, instance, client, marathon_config,
-                  service_marathon_config):
+                  service_marathon_config, soa_dir):
     """Setup the service instance given and attempt to deploy it, if possible.
     Doesn't do anything if the service is already in Marathon and hasn't changed.
     If it's not, attempt to find old instances of the service and bounce them.
@@ -419,6 +466,7 @@ def setup_service(service, instance, client, marathon_config,
         drain_method_params=service_marathon_config.get_drain_method_params(service_namespace_config),
         nerve_ns=service_marathon_config.get_nerve_namespace(),
         bounce_health_params=service_marathon_config.get_bounce_health_params(service_namespace_config),
+        soa_dir=soa_dir,
     )
 
 
@@ -473,7 +521,7 @@ def main():
 
     try:
         status, output = setup_service(service, instance, client, marathon_config,
-                                       service_instance_config)
+                                       service_instance_config, soa_dir)
         sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
         send_event(service, instance, soa_dir, sensu_status, output)
         # We exit 0 because the script finished ok and the event was sent to the right team.
