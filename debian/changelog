@@ -1,3 +1,10 @@
+paasta-tools (0.13.3-yelp1) lucid; urgency=low
+
+  * 0.13.3 tagged with 'make release'
+    Commit: add check_chronos_jobs script
+
+ -- Robert Johnson <robj@yelp.com>  Mon, 26 Oct 2015 14:59:10 -0700
+
 paasta-tools (0.13.2-yelp1) lucid; urgency=low
 
   * 0.13.2 tagged with 'make release'
