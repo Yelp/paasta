@@ -139,7 +139,7 @@ def _load_sensu_team_data():
     return team_data
 
 
-def send_event(service, check_name, overrides, status, output, soa_dir):
+def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None):
     """Send an event to sensu via pysensu_yelp with the given information.
 
     :param service: The service name the event is about
@@ -166,6 +166,7 @@ def send_event(service, check_name, overrides, status, output, soa_dir):
         'check_every': overrides.get('check_every', '1m'),
         'realert_every': -1,
         'source': 'paasta-%s' % load_system_paasta_config().get_cluster(),
+        'ttl': ttl,
     }
     pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
 

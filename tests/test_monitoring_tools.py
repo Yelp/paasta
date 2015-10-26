@@ -284,6 +284,7 @@ class TestMonitoring_Tools:
             'check_every': '1m',
             'realert_every': -1,
             'source': 'paasta-fake_cluster',
+            'ttl': None,
         }
         with contextlib.nested(
             mock.patch(

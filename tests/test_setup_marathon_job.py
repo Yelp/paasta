@@ -125,6 +125,7 @@ class TestSetupMarathonJob:
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config,
+                'no_more',
             )
             sys_exit_patch.assert_called_once_with(0)
 
@@ -187,7 +188,9 @@ class TestSetupMarathonJob:
                 decompose_job_id(self.fake_args.service_instance)[1],
                 fake_client,
                 self.fake_marathon_config,
-                self.fake_marathon_service_config)
+                self.fake_marathon_service_config,
+                'no_more',
+            )
             sys_exit_patch.assert_called_once_with(0)
 
     def test_main_sends_event_if_no_deployments(self):
@@ -296,6 +299,42 @@ class TestSetupMarathonJob:
                 load_deployments=False,
             )
 
+    def test_send_bounce_keepalive(self):
+        fake_service = 'fake_service'
+        fake_instance = 'fake_instance'
+        fake_cluster = 'fake_cluster'
+        fake_soa_dir = ''
+        expected_check_name = 'paasta_bounce_progress.%s' % compose_job_id(fake_service, fake_instance)
+        with contextlib.nested(
+            mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
+            mock.patch("paasta_tools.marathon_tools.load_marathon_service_config", autospec=True),
+        ) as (
+            send_event_patch,
+            load_marathon_service_config_patch,
+        ):
+            load_marathon_service_config_patch.return_value.get_monitoring.return_value = {}
+            setup_marathon_job.send_sensu_bounce_keepalive(
+                service=fake_service,
+                instance=fake_instance,
+                cluster=fake_cluster,
+                soa_dir=fake_soa_dir,
+            )
+            send_event_patch.assert_called_once_with(
+                service=fake_service,
+                check_name=expected_check_name,
+                overrides=mock.ANY,
+                status=0,
+                output=mock.ANY,
+                soa_dir=fake_soa_dir,
+                ttl='1h',
+            )
+            load_marathon_service_config_patch.assert_called_once_with(
+                service=fake_service,
+                instance=fake_instance,
+                cluster=fake_cluster,
+                load_deployments=False,
+            )
+
     def test_do_bounce_when_create_app_and_new_app_not_running(self):
         fake_bounce_func_return = {
             'create_app': True,
@@ -343,6 +382,7 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
+                soa_dir='fake_soa_dir',
             )
             assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
@@ -405,6 +445,7 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
+                soa_dir='fake_soa_dir',
             )
             first_logged_line = mock_log.mock_calls[0][2]["line"]
             assert '%s new tasks' % expected_new_task_count in first_logged_line
@@ -465,6 +506,7 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
+                soa_dir='fake_soa_dir',
             )
             # assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
@@ -524,6 +566,7 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
+                soa_dir='fake_soa_dir',
             )
             assert mock_log.call_count == 3
             first_logged_line = mock_log.mock_calls[0][2]["line"]
@@ -570,7 +613,13 @@ class TestSetupMarathonJob:
             mock.patch('setup_marathon_job._log', autospec=True),
             mock.patch('setup_marathon_job.bounce_lib.create_marathon_app', autospec=True),
             mock.patch('setup_marathon_job.bounce_lib.kill_old_ids', autospec=True),
-        ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
+            mock.patch('setup_marathon_job.send_sensu_bounce_keepalive', autospec=True),
+        ) as (
+            mock_log,
+            mock_create_marathon_app,
+            mock_kill_old_ids,
+            mock_send_sensu_bounce_keepalive,
+        ):
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,
@@ -586,11 +635,19 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 marathon_jobid=fake_marathon_jobid,
                 client=fake_client,
+                soa_dir='fake_soa_dir',
             )
             assert mock_log.call_count == 0
             assert mock_create_marathon_app.call_count == 0
             assert fake_drain_method.drain.call_count == 0
             assert mock_kill_old_ids.call_count == 0
+            # When doing nothing, we need to send the keepalive heartbeat to Sensu
+            mock_send_sensu_bounce_keepalive.assert_called_once_with(
+                service=fake_service,
+                instance=fake_instance,
+                cluster=self.fake_cluster,
+                soa_dir='fake_soa_dir',
+            )
 
     def test_setup_service_srv_already_exists(self):
         fake_name = 'if_trees_could_talk'
@@ -624,11 +681,12 @@ class TestSetupMarathonJob:
             deploy_service_patch,
         ):
             setup_marathon_job.setup_service(
-                fake_name,
-                fake_instance,
-                fake_client,
-                self.fake_marathon_config,
-                self.fake_marathon_service_config
+                service=fake_name,
+                instance=fake_instance,
+                client=fake_client,
+                marathon_config=self.fake_marathon_config,
+                service_marathon_config=self.fake_marathon_service_config,
+                soa_dir=None,
             )
             create_config_patch.assert_called_once_with(
                 fake_name,
@@ -701,11 +759,12 @@ class TestSetupMarathonJob:
             read_namespace_conf_patch,
         ):
             status, output = setup_marathon_job.setup_service(
-                fake_name,
-                fake_instance,
-                fake_client,
-                self.fake_marathon_config,
-                self.fake_marathon_service_config,
+                service=fake_name,
+                instance=fake_instance,
+                client=fake_client,
+                marathon_config=self.fake_marathon_config,
+                service_marathon_config=self.fake_marathon_service_config,
+                soa_dir=None,
             )
             assert status == 111
             assert output == 'Never'
@@ -729,6 +788,7 @@ class TestSetupMarathonJob:
                 nerve_ns=self.fake_marathon_service_config.get_nerve_namespace(),
                 bounce_health_params=self.fake_marathon_service_config.get_bounce_health_params(
                     read_namespace_conf_patch.return_value),
+                soa_dir=None,
             )
 
     def test_setup_service_srv_complete_config_raises(self):
@@ -739,11 +799,12 @@ class TestSetupMarathonJob:
             side_effect=NoDockerImageError,
         ):
             status, output = setup_marathon_job.setup_service(
-                fake_name,
-                fake_instance,
-                None,
-                None,
-                None
+                service=fake_name,
+                instance=fake_instance,
+                client=None,
+                marathon_config=None,
+                service_marathon_config=None,
+                soa_dir=None,
             )
             assert status == 1
             expected = 'Docker image for test_service.test_instance not in'
@@ -783,6 +844,7 @@ class TestSetupMarathonJob:
                 drain_method_params={},
                 nerve_ns=fake_instance,
                 bounce_health_params={},
+                soa_dir='fake_soa_dir',
             )
             assert mock_log.call_count == 1
         assert expected == actual
@@ -818,6 +880,7 @@ class TestSetupMarathonJob:
                 drain_method_params={},
                 nerve_ns=fake_instance,
                 bounce_health_params={},
+                soa_dir='fake_soa_dir',
             )
             assert mock_log.call_count == 1
         assert expected == actual
@@ -887,6 +950,7 @@ class TestSetupMarathonJob:
                 drain_method_params={},
                 nerve_ns=fake_instance,
                 bounce_health_params={},
+                soa_dir='fake_soa_dir',
             )
             assert result[0] == 0, "Expected successful result; got (%d, %s)" % result
             fake_client.list_apps.assert_called_once_with(embed_failures=True)
@@ -976,6 +1040,7 @@ class TestSetupMarathonJob:
                 drain_method_params={},
                 nerve_ns=fake_instance,
                 bounce_health_params={},
+                soa_dir='fake_soa_dir',
             )
             assert result == (1, "Instance %s is already being bounced." % fake_short_id)
 
@@ -1008,6 +1073,7 @@ class TestSetupMarathonJob:
                     drain_method_params={},
                     nerve_ns=fake_instance,
                     bounce_health_params={},
+                    soa_dir='fake_soa_dir',
                 )
             assert fake_name in mock_log.mock_calls[0][2]["line"]
             assert 'Traceback' in mock_log.mock_calls[1][2]["line"]
