@@ -247,10 +247,9 @@ Each job configuration MAY specify the following options:
   * ``mem``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``bounce_method``: Controls what happens to the old version(s) of a job
-    when a new version is deployed. Options are ``graceful`` to disable the old
-    version but allow it to finish its current run, or ``brutal`` to disable
-    the old version and immediately kill any running tasks it has.  If
-    unspecified, defaults to ``graceful``.
+    when a new version is deployed. Currently the only option is ``graceful``,
+    which disable the old versions but allows them to finish their current run.
+    If unspecified, defaults to ``graceful``.
 
   * ``monitoring``: See the `marathon-[clustername].yaml`_ section for details
 

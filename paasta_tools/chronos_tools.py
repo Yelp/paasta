@@ -51,7 +51,7 @@ INTERNAL_SPACER = '.'
 # we can decompose Mesos task ids.
 MESOS_TASK_SPACER = ':'
 
-VALID_BOUNCE_METHODS = ['graceful', 'brutal']
+VALID_BOUNCE_METHODS = ['graceful']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 log = logging.getLogger('__main__')
@@ -201,6 +201,13 @@ class ChronosJobConfig(InstanceConfig):
     def get_constraints(self):
         return self.config_dict.get('constraints')
 
+    def check_bounce_method(self):
+        bounce_method = self.get_bounce_method()
+        if bounce_method not in VALID_BOUNCE_METHODS:
+            return False, ('The specified bounce method "%s" is invalid. It must be one of (%s).'
+                           % (bounce_method, ', '.join(VALID_BOUNCE_METHODS)))
+        return True, ''
+
     def get_epsilon(self):
         return self.config_dict.get('epsilon', 'PT60S')
 
@@ -223,13 +230,6 @@ class ChronosJobConfig(InstanceConfig):
         activate."""
         args = self.get_args()
         return args == [] or args is None
-
-    def check_bounce_method(self):
-        bounce_method = self.get_bounce_method()
-        if bounce_method not in VALID_BOUNCE_METHODS:
-            return False, ('The specified bounce method "%s" is invalid. It must be one of (%s).'
-                           % (bounce_method, ', '.join(VALID_BOUNCE_METHODS)))
-        return True, ''
 
     def check_epsilon(self):
         epsilon = self.get_epsilon()

@@ -48,7 +48,6 @@ import service_configuration_lib
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
-from paasta_tools.chronos_serviceinit import restart_chronos_job
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import configure_log
@@ -112,89 +111,80 @@ def send_event(service, instance, soa_dir, status, output):
     )
 
 
-def _setup_existing_job(service, instance, cluster, job_id, existing_job, complete_job_config, client):
-    desired_state = 'stop' if complete_job_config['disabled'] else 'start'
-    # Do nothing if job state doesn't need to change, otherwise update job with new state
-    if complete_job_config['disabled'] == existing_job['disabled']:
-        output = "Job '%s' state is already setup and set to '%s'" % (job_id, desired_state)
-    else:
-        state_change = 'Disabled' if complete_job_config['disabled'] else 'Enabled'
-        client.update(complete_job_config)
-        output = "%s job '%s'" % (state_change, job_id)
+def disable_job(client, job):
+    job["disabled"] = True
+    log.debug("Disabling job: %s" % job)
+    client.update(job)
+
+
+def delete_job(client, job):
+    log.debug("Disabling job: %s" % job)
+    client.delete(job)
+
+
+def create_job(client, job):
+    log.debug("Creating job: %s" % job)
+    client.add(job)
+
+
+def bounce_chronos_job(
+    service,
+    instance,
+    cluster,
+    jobs_to_disable,
+    jobs_to_delete,
+    job_to_create,
+    client
+):
+    if any([jobs_to_disable, jobs_to_delete, job_to_create]):
+        log_line = "Chronos bouncing. Jobs to disable: %s, jobs to delete: %s, job_to_create: %s" % (
+            jobs_to_disable, jobs_to_delete, job_to_create)
         _log(service=service, instance=instance, component='deploy',
-             cluster=cluster, level='event', line=output)
-    log.info(output)
-    return (0, output)
-
-
-def _setup_new_job(service, instance, cluster, job_id, previous_jobs, complete_job_config, client):
-    # The job hash has changed so we disable the old jobs and start a new one
-    for previous_job in previous_jobs:
-        previous_job['disabled'] = True
-        client.update(previous_job)
-        log_line = "Disabling old job %s to make way for a new chronos job." % previous_job['name']
+             cluster=cluster, level='debug', line=log_line)
+    else:
+        log.debug("Not doing any chronos bounce action for %s" % chronos_tools.compose_job_id(
+            service, instance))
+    for job in jobs_to_disable:
+        disable_job(client=client, job=job)
+    for job in jobs_to_delete:
+        delete_job(client=client, job=job)
+    if job_to_create:
+        create_job(client=client, job=job_to_create)
+        log_line = 'Created new Chronos job: %s' % job_to_create['name']
         _log(service=service, instance=instance, component='deploy',
              cluster=cluster, level='event', line=log_line)
-
-    client.add(complete_job_config)
-    output = "Deployed new chronos job: '%s'" % job_id
-    _log(service=service, instance=instance, component='deploy',
-         cluster=cluster, level='event', line=output)
-    return (0, "Deployed job '%s'" % job_id)
+    return (0, "All chronos bouncing tasks finished.")
 
 
 def setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster):
     job_prefix = chronos_tools.compose_job_id(service, instance)
     job_id = complete_job_config['name']
-    existing_jobs = chronos_tools.lookup_chronos_jobs(
-        r'^%s$' % job_id,
-        client,
-        max_expected=1,
-    )
-    matching_jobs = chronos_tools.lookup_chronos_jobs(
+    all_existing_jobs = chronos_tools.lookup_chronos_jobs(
         r'^%s%s' % (job_prefix, chronos_tools.SPACER),
         client,
         include_disabled=True,
     )
+    # TODO: Sort the jobs in the right order so we delete the least relevant
+    old_jobs = [job for job in all_existing_jobs if job["name"] != job_id]
+    enabled_old_jobs = [job for job in old_jobs if not job["disabled"]]
 
-    bounce_method = chronos_job_config.get_bounce_method()
-    if bounce_method == 'graceful':
-        if len(existing_jobs) > 0:
-            log.debug("Gracefully bouncing %s because it has existing jobs" % compose_job_id(service, instance))
-            return _setup_existing_job(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                job_id=job_id,
-                existing_job=existing_jobs[0],
-                complete_job_config=complete_job_config,
-                client=client,
-            )
-        else:
-            log.debug("Setting up %s as a new job because it has no existing jobs" % compose_job_id(service, instance))
-            return _setup_new_job(
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                job_id=job_id,
-                previous_jobs=matching_jobs,
-                complete_job_config=complete_job_config,
-                client=client,
-            )
-    elif bounce_method == 'brutal':
-        restart_chronos_job(
-            service=service,
-            instance=instance,
-            job_id=job_id,
-            client=client,
-            cluster=cluster,
-            matching_jobs=matching_jobs,
-            job_config=complete_job_config,
-        )
-        return (0, "Job '%s' bounced using the 'brutal' method" % job_id)
+    if all_existing_jobs == old_jobs:
+        print "all existing jobs: %s" % all_existing_jobs
+        print "all old jobs: %s" % old_jobs
+        print "The new job id is %s" % job_id
+        job_to_create = complete_job_config
     else:
-        return (1, ("ERROR: bounce_method '%s' not recognized. Must be one of (%s)."
-                    % (bounce_method, ', '.join(chronos_tools.VALID_BOUNCE_METHODS))))
+        job_to_create = None
+
+    return bounce_chronos_job(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        jobs_to_disable=enabled_old_jobs,
+        jobs_to_delete=old_jobs[3:],
+        job_to_create=job_to_create,
+        client=client,
+    )
 
 
 def main():
