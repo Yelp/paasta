@@ -1,3 +1,10 @@
+paasta-tools (0.13.5-yelp1) lucid; urgency=low
+
+  * 0.13.5 tagged with 'make release'
+    Commit: Merge branch PAASTA-1004
+
+ -- Abigail Egea Amugu <aby@yelp.com>  Tue, 27 Oct 2015 09:16:14 -0700
+
 paasta-tools (0.13.4-yelp1) lucid; urgency=low
 
   * 0.13.4 tagged with 'make release'
