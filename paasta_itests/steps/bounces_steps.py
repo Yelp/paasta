@@ -131,6 +131,7 @@ def when_deploy_service_initiated(context, bounce_method, drain_method):
             drain_method_params={},
             nerve_ns=context.instance,
             bounce_health_params={},
+            soa_dir=None,
         )
 
 
