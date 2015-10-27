@@ -339,6 +339,7 @@ class ChronosJobConfig(InstanceConfig):
                 'type': 'DOCKER',
                 'volumes': docker_volumes
             },
+            'uris': ['file:///root/.dockercfg', ],
             'environmentVariables': self.get_env(),
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
