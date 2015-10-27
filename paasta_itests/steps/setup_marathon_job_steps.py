@@ -82,11 +82,12 @@ def create_complete_app(context):
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
         print marathon_tools.load_marathon_config()
         return_tuple = setup_marathon_job.setup_service(
-            fake_service_name,
-            fake_instance_name,
-            context.marathon_client,
-            context.marathon_config,
-            fake_service_marathon_config,
+            service=fake_service_name,
+            instance=fake_instance_name,
+            client=context.marathon_client,
+            marathon_config=context.marathon_config,
+            service_marathon_config=fake_service_marathon_config,
+            soa_dir=None,
         )
         assert return_tuple[0] == 0
         assert 'deployed' in return_tuple[1]

@@ -60,20 +60,25 @@ def paasta_cook_image(args, service=None, soa_dir=None):
                          'http://y/paasta-contract and PAASTA-601 for more details.\n')
         sys.exit(1)
 
-    cmd = 'make cook-image'
-    returncode, output = _run(
-        cmd,
-        env=run_env,
-        log=True,
-        component='build',
-        service=service,
-        loglevel='debug'
-    )
-    if returncode != 0:
-        _log(
-            service=service,
-            line='ERROR: make cook-image failed for %s.' % service,
+    try:
+        cmd = 'make cook-image'
+        returncode, output = _run(
+            cmd,
+            env=run_env,
+            log=True,
             component='build',
-            level='event',
+            service=service,
+            loglevel='debug'
         )
-        sys.exit(returncode)
+        if returncode != 0:
+            _log(
+                service=service,
+                line='ERROR: make cook-image failed for %s.' % service,
+                component='build',
+                level='event',
+            )
+            sys.exit(returncode)
+
+    except KeyboardInterrupt:
+        sys.stderr.write('\nProcess interrupted by the user. Cancelling.\n')
+        sys.exit(2)
