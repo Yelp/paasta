@@ -602,6 +602,7 @@ class TestChronosTools:
                 'image': fake_docker_url,
                 'type': 'DOCKER',
             },
+            'uris': ['file:///root/.dockercfg', ],
             'shell': True,
         }
         with mock.patch('monitoring_tools.get_team', return_value=fake_owner):
@@ -789,6 +790,7 @@ class TestChronosTools:
                     'image': "fake_registry/paasta-test_service-penguin",
                     'type': 'DOCKER'
                 },
+                'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
                 'owner': fake_owner,
                 'shell': True,
@@ -842,6 +844,7 @@ class TestChronosTools:
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER'
                 },
+                'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
                 'owner': fake_owner,
                 'shell': True,
@@ -895,6 +898,7 @@ class TestChronosTools:
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER'
                 },
+                'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
                 'owner': fake_owner,
                 'shell': True,
@@ -964,6 +968,7 @@ class TestChronosTools:
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER'
                 },
+                'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
                 'owner': fake_owner,
                 'shell': True,
