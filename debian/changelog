@@ -1,3 +1,11 @@
+paasta-tools (0.13.6-yelp1) lucid; urgency=low
+
+  * 0.13.6 tagged with 'make release'
+    Commit: Revert back to using devc for now as the source of the build
+    logs
+
+ -- Kyle Anderson <kwa@yelp.com>  Wed, 28 Oct 2015 11:35:02 -0700
+
 paasta-tools (0.13.5-yelp1) lucid; urgency=low
 
   * 0.13.5 tagged with 'make release'
