@@ -325,7 +325,7 @@ LOG_COMPONENTS = {
         'color': PaastaColors.blue,
         'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
         'command': 'NA - TODO: tee jenkins build steps into scribe PAASTA-201',
-        'source_env': 'env1',
+        'source_env': 'devc',
     },
     'deploy': {
         'color': PaastaColors.cyan,
