@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import datetime
 import logging
 
 import humanize
@@ -122,47 +121,43 @@ def _format_disabled_status(job):
     return status
 
 
-def _prettify_datetime(dt):
-    """Prettify datetime objects further. Ignore hardcoded values like "never"."""
-    pretty_dt = dt
-    if isinstance(pretty_dt, datetime.datetime):
-        dt_localtime = datetime_from_utc_to_local(dt)
-        pretty_dt = "%s, %s" % (
-            dt_localtime.strftime("%Y-%m-%dT%H:%M"),
-            humanize.naturaltime(dt_localtime),
-        )
+def _prettify_time(time):
+    """Given a time, return a formatted representation of that time"""
+    try:
+        dt = isodate.parse_datetime(time)
+    except isodate.isoerror.ISO8601Error:
+        print "unable to parse datetime %s" % time
+        raise
+    dt_localtime = datetime_from_utc_to_local(dt)
+    pretty_dt = "%s, %s" % (
+        dt_localtime.strftime("%Y-%m-%dT%H:%M"),
+        humanize.naturaltime(dt_localtime),
+    )
     return pretty_dt
 
 
+def _prettify_status(status):
+    if status not in (
+        chronos_tools.LastRunState.Fail,
+        chronos_tools.LastRunState.Success,
+        chronos_tools.LastRunState.NotRun,
+    ):
+        raise ValueError("Expected valid state, got %s" % status)
+    if status == chronos_tools.LastRunState.Fail:
+        return PaastaColors.red("Failed")
+    elif status == chronos_tools.LastRunState.Success:
+        return PaastaColors.green("OK")
+    elif status == chronos_tools.LastRunState.NotRun:
+        return PaastaColors.yellow("New")
+
+
 def _format_last_result(job):
-    last_result = PaastaColors.red("UNKNOWN")
-    last_result_when = PaastaColors.red("UNKNOWN")
-    fail_result = PaastaColors.red("Fail")
-    ok_result = PaastaColors.green("OK")
-    last_error = job.get("lastError")
-    last_success = job.get("lastSuccess")
-
-    if not last_error and not last_success:
-        last_result = PaastaColors.yellow("New")
-        last_result_when = "never"
-    elif not last_error:
-        last_result = ok_result
-        last_result_when = isodate.parse_datetime(last_success)
-    elif not last_success:
-        last_result = fail_result
-        last_result_when = isodate.parse_datetime(last_error)
+    time, status = chronos_tools.get_status_last_run(job)
+    if status is chronos_tools.LastRunState.NotRun:
+        formatted_time = "never"
     else:
-        fail_dt = isodate.parse_datetime(last_error)
-        ok_dt = isodate.parse_datetime(last_success)
-        if ok_dt > fail_dt:
-            last_result = ok_result
-            last_result_when = ok_dt
-        else:
-            last_result = fail_result
-            last_result_when = fail_dt
-
-    pretty_last_result_when = _prettify_datetime(last_result_when)
-    return (last_result, pretty_last_result_when)
+        formatted_time = _prettify_time(time)
+    return _prettify_status(status), formatted_time
 
 
 def _format_schedule(job):
@@ -202,7 +197,7 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
     """
     config_hash = _format_config_hash(job)
     disabled_state = _format_disabled_status(job)
-    (last_result, last_result_when) = _format_last_result(job)
+    last_result, formatted_time = _format_last_result(job)
     schedule = _format_schedule(job)
     command = _format_command(job)
     mesos_status = _format_mesos_status(job, running_tasks)
@@ -212,7 +207,7 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
     return (
         "Config:     %(config_hash)s\n"
         "  Status:   %(disabled_state)s, %(desired_state)s\n"
-        "  Last:     %(last_result)s (%(last_result_when)s)\n"
+        "  Last:     %(last_result)s (%(formatted_time)s)\n"
         "  Schedule: %(schedule)s\n"
         "  Command:  %(command)s\n"
         "  Mesos:    %(mesos_status)s" % {
@@ -220,7 +215,7 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
             "disabled_state": disabled_state,
             "desired_state": desired_state,
             "last_result": last_result,
-            "last_result_when": last_result_when,
+            "formatted_time": formatted_time,
             "schedule": schedule,
             "command": command,
             "mesos_status": mesos_status,
