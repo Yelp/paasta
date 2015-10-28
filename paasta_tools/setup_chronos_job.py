@@ -118,7 +118,7 @@ def disable_job(client, job):
 
 
 def delete_job(client, job):
-    log.debug("Disabling job: %s" % job)
+    log.debug("Deleting job: %s" % job)
     client.delete(job)
 
 
@@ -165,23 +165,23 @@ def setup_job(service, instance, chronos_job_config, complete_job_config, client
         include_disabled=True,
     )
     # TODO: Sort the jobs in the right order so we delete the least relevant
+    # This currently depends on implicit behavior that Chronos returns jobs
+    # "oldest first"
     old_jobs = [job for job in all_existing_jobs if job["name"] != job_id]
     enabled_old_jobs = [job for job in old_jobs if not job["disabled"]]
 
     if all_existing_jobs == old_jobs:
-        print "all existing jobs: %s" % all_existing_jobs
-        print "all old jobs: %s" % old_jobs
-        print "The new job id is %s" % job_id
         job_to_create = complete_job_config
     else:
         job_to_create = None
 
+    number_of_old_jobs_to_keep = 5
     return bounce_chronos_job(
         service=service,
         instance=instance,
         cluster=cluster,
         jobs_to_disable=enabled_old_jobs,
-        jobs_to_delete=old_jobs[3:],
+        jobs_to_delete=old_jobs[number_of_old_jobs_to_keep:],
         job_to_create=job_to_create,
         client=client,
     )

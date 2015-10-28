@@ -74,7 +74,6 @@ def create_complete_job(context):
         "fake_cluster",
     )
     assert return_tuple[0] == 0
-    assert 'Deployed job' in return_tuple[1]
 
 
 @when(u'we run setup_chronos_job')
@@ -94,5 +93,6 @@ def setup_the_chronos_job(context):
 # TODO DRY out in PAASTA-1174
 @then(u'we should see it in the list of jobs')
 def see_it_in_list_of_jobs(context):
-    job_names = [job['name'] for job in context.chronos_client.list()]
-    assert fake_job_id in job_names
+    jobs_with_our_name = [job for job in context.chronos_client.list() if job['name'] == fake_job_id]
+    assert len(jobs_with_our_name) == 1
+    assert jobs_with_our_name[0]["disabled"] is False

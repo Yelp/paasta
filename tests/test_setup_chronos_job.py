@@ -35,7 +35,7 @@ class TestSetupChronosJob:
     fake_instance = 'test'
     fake_cluster = 'fake_test_cluster'
     fake_config_dict = {
-        'name': 'test_service test gitshaconfig',
+        'name': 'test_service test gitsha config',
         'description': 'This is a test Chronos job.',
         'command': '/bin/sleep 40',
         'bounce_method': 'graceful',
@@ -203,7 +203,7 @@ class TestSetupChronosJob:
                 output=expected_error_msg
             )
 
-    def test_setup_job_new_app(self):
+    def test_setup_job_new_app_with_no_previous_jobs(self):
         fake_existing_jobs = []
         with contextlib.nested(
             mock.patch('setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
@@ -245,7 +245,7 @@ class TestSetupChronosJob:
             )
             assert actual == mock_bounce_chronos_job.return_value
 
-    def test_setup_job_new_app_with_previous(self):
+    def test_setup_job_with_previously_enabled_job(self):
         fake_existing_job = {
             'name': 'fake_job',
             'disabled': False,
