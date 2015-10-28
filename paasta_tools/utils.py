@@ -1005,6 +1005,24 @@ def get_code_sha_from_dockerurl(docker_url):
     return "git%s" % parts[-1][:8]
 
 
+def get_routing_constraints_group_by_value(discover_level, locations, deploy_blacklist=None):
+    """Calculates routing constraints GROUP_BY value given a list of locations,
+    their discover level and an optional deploy blacklist
+
+    :param discover_level: discover level of the locations list
+    :param locations: list of locations to calculate the GROUP_BY value on
+    :param deploy_blacklist: location blacklist that will be subtracted from the GROUP_BY
+    value if the contents match the discover level and the locations list
+    """
+    group_by_value = len(locations)
+    if deploy_blacklist:
+        for blacklisted_location in deploy_blacklist:
+            if blacklisted_location[0] == discover_level:
+                if blacklisted_location[1] in locations:
+                    group_by_value = group_by_value - 1
+    return group_by_value
+
+
 def is_under_replicated(num_available, expected_count, crit_threshold):
     """Calculates if something is under replicated
 

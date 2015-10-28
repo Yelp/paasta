@@ -853,6 +853,24 @@ def test_deploy_blacklist_to_constraints():
     assert actual == expected_constraints
 
 
+def test_get_routing_constraints_group_by_value():
+    fake_locations = {'fake_region': {}, 'fake_region_two': {}}
+    fake_discover_level = 'region'
+    expected_group_by_value = 2
+    actual = utils.get_routing_constraints_group_by_value(fake_discover_level, fake_locations)
+    assert actual == expected_group_by_value
+
+
+def test_get_routing_constraints_group_by_value_respects_deploy_blacklist():
+    fake_locations = {'fake_region': {}, 'fake_blacklisted_region': {}}
+    fake_discover_level = 'region'
+    fake_deploy_blacklist = [["region", "fake_blacklisted_region"]]
+    expected_group_by_value = 1
+    actual = utils.get_routing_constraints_group_by_value(
+        fake_discover_level, fake_locations, fake_deploy_blacklist)
+    assert actual == expected_group_by_value
+
+
 def test_validate_service_instance_valid_marathon():
     mock_marathon_services = [('service1', 'main'), ('service2', 'main')]
     mock_chronos_services = [('service1', 'worker'), ('service2', 'tailer')]

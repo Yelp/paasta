@@ -39,6 +39,7 @@ from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_docker_url
+from paasta_tools.utils import get_routing_constraints_group_by_value
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
@@ -241,7 +242,9 @@ class MarathonServiceConfig(InstanceConfig):
             discover_level = service_namespace_config.get_discover()
             locations = get_mesos_slaves_grouped_by_attribute(discover_level)
             deploy_constraints = deploy_blacklist_to_constraints(self.get_deploy_blacklist())
-            routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
+            routing_constraints_group_by_value = get_routing_constraints_group_by_value(
+                discover_level, locations, self.get_deploy_blacklist())
+            routing_constraints = [[discover_level, "GROUP_BY", str(routing_constraints_group_by_value)]]
             return routing_constraints + deploy_constraints
 
     def format_marathon_app_dict(self, app_id, docker_url, docker_volumes, service_namespace_config):
