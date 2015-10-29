@@ -1,17 +1,12 @@
-.. paasta_tools documentation master file, created by
-   sphinx-quickstart on Tue Aug  5 17:43:04 2014.
-   You can adapt this file completely to your liking, but it should at least
-   contain the root `toctree` directive.
-
-paasta_tools: PaaSTA sauce
-======================================
+paasta_tools: PaaSTA Sauce
+==========================
 
 paasta_tools is a Python library. It is the sauce that combines the
 individual strands of `PaaSTA <http://y/paasta>`_ -- Jenkins, Docker, Mesos,
 etc. -- into a cohesive, highly-available, distributed meal.
 
-Directions
-----------
+Directions (For PaaSTA Users)
+-----------------------------
 
 .. toctree::
    :maxdepth: 2
@@ -73,6 +68,14 @@ Development
    style_guide
    upgrading_marathon
    upgrading_mesos
+
+Installing The PaaSTA Infrastructure
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+.. toctree::
+   :maxdepth: 2
+
+   installation/getting_started
 
 
 Indices and tables
