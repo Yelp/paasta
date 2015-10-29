@@ -110,46 +110,34 @@ def test_get_log_name_for_service():
     assert utils.get_log_name_for_service(service) == expected
 
 
-def test_get_files_in_dir_ignores_unreadable():
-    fake_dir = '/fake/dir/'
+def test_get_readable_files_in_glob_ignores_unreadable():
+    fake_dir = '/fake/'
     fake_file_contents = {'foo': 'bar'}
     expected = [os.path.join(fake_dir, 'a.json'), os.path.join(fake_dir, 'c.json')]
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
-        mock.patch('os.listdir', autospec=True, return_value=['b.json', 'a.json', 'c.json']),
+        mock.patch('glob.glob', autospec=True, return_value=['/fake/b.json', '/fake/a.json', '/fake/c.json']),
         mock.patch('os.path.isfile', autospec=True, return_value=True),
         mock.patch('os.access', autospec=True, side_effect=[True, False, True]),
         mock.patch('utils.open', create=True, return_value=file_mock),
         mock.patch('utils.json.load', autospec=True, return_value=fake_file_contents)
-    ) as (
-        listdir_patch,
-        isfile_patch,
-        access_patch,
-        open_file_patch,
-        json_patch,
     ):
-        assert utils.get_files_in_dir(fake_dir) == expected
+        assert utils.get_readable_files_in_glob(fake_dir) == expected
 
 
-def test_get_files_in_dir_is_lexicographic():
-    fake_dir = '/fake/dir/'
+def test_get_readable_files_in_glob_is_lexicographic():
+    fake_dir = '/fake/'
     fake_file_contents = {'foo': 'bar'}
     expected = [os.path.join(fake_dir, 'a.json'), os.path.join(fake_dir, 'b.json')]
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
-        mock.patch('os.listdir', autospec=True, return_value=['b.json', 'a.json']),
+        mock.patch('glob.glob', autospec=True, return_value=['/fake/b.json', '/fake/a.json']),
         mock.patch('os.path.isfile', autospec=True, return_value=True),
         mock.patch('os.access', autospec=True, return_value=True),
         mock.patch('utils.open', create=True, return_value=file_mock),
         mock.patch('utils.json.load', autospec=True, return_value=fake_file_contents)
-    ) as (
-        listdir_patch,
-        isfile_patch,
-        access_patch,
-        open_file_patch,
-        json_patch,
     ):
-        assert utils.get_files_in_dir(fake_dir) == expected
+        assert utils.get_readable_files_in_glob(fake_dir) == expected
 
 
 def test_load_system_paasta_config():
@@ -160,14 +148,14 @@ def test_load_system_paasta_config():
         mock.patch('os.path.isdir', return_value=True),
         mock.patch('os.access', return_value=True),
         mock.patch('utils.open', create=True, return_value=file_mock),
-        mock.patch('utils.get_files_in_dir', autospec=True,
+        mock.patch('utils.get_readable_files_in_glob', autospec=True,
                    return_value=['/some/fake/dir/some_file.json']),
         mock.patch('utils.json.load', autospec=True, return_value=json_load_return_value)
     ) as (
         os_is_dir_patch,
         os_access_patch,
         open_file_patch,
-        get_files_in_dir_patch,
+        mock_get_readable_files_in_glob,
         json_patch,
     ):
         actual = utils.load_system_paasta_config()
@@ -215,12 +203,12 @@ def test_load_system_paasta_config_file_dne():
         mock.patch('os.path.isdir', return_value=True),
         mock.patch('os.access', return_value=True),
         mock.patch('utils.open', create=True, side_effect=IOError(2, 'a', 'b')),
-        mock.patch('utils.get_files_in_dir', autospec=True, return_value=[fake_path]),
+        mock.patch('utils.get_readable_files_in_glob', autospec=True, return_value=[fake_path]),
     ) as (
         isdir_patch,
         access_patch,
         open_patch,
-        get_files_in_dir_patch,
+        mock_get_readable_files_in_glob,
     ):
         with raises(utils.PaastaNotConfiguredError) as excinfo:
             utils.load_system_paasta_config(fake_path)
@@ -236,14 +224,14 @@ def test_load_system_paasta_config_merge_lexographically():
         mock.patch('os.path.isdir', return_value=True),
         mock.patch('os.access', return_value=True),
         mock.patch('utils.open', create=True, return_value=file_mock),
-        mock.patch('utils.get_files_in_dir', autospec=True,
+        mock.patch('utils.get_readable_files_in_glob', autospec=True,
                    return_value=['a', 'b']),
         mock.patch('utils.json.load', autospec=True, side_effect=[fake_file_a, fake_file_b])
     ) as (
         os_is_dir_patch,
         os_access_patch,
         open_file_patch,
-        get_files_in_dir_patch,
+        mock_get_readable_files_in_glob,
         json_patch,
     ):
         actual = utils.load_system_paasta_config()
