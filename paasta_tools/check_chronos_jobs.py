@@ -60,8 +60,12 @@ def send_event_to_sensu(service, instance, monitoring_overrides, soa_dir, status
 
 
 def last_run_state_for_jobs(jobs):
-    """Map over a list of jobs to create a pair of (job, LasRunState)"""
-    return [(chronos_job, chronos_tools.get_status_last_run(chronos_job)) for chronos_job in jobs]
+    """
+    Map over a list of jobs to create a pair of (job, LasRunState).
+    ``chronos_tools.get_status_last_run`` returns a pair of (time, state), of which
+    we only need the latter([-1]).
+    """
+    return [(chronos_job, chronos_tools.get_status_last_run(chronos_job)[-1]) for chronos_job in jobs]
 
 
 def sensu_event_for_last_run_state(state):

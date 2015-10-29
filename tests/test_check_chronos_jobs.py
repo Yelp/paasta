@@ -54,9 +54,9 @@ def test_send_event_to_sensu(mock_send_event):
 @patch('check_chronos_jobs.chronos_tools.get_status_last_run')
 def test_last_run_state_for_jobs(mock_status_last_run):
     mock_status_last_run.side_effect = [
-        chronos_tools.LastRunState.Success,
-        chronos_tools.LastRunState.Fail,
-        chronos_tools.LastRunState.NotRun
+        ('faketimestamp', chronos_tools.LastRunState.Success),
+        ('faketimestamp', chronos_tools.LastRunState.Fail),
+        ('faketimestamp', chronos_tools.LastRunState.NotRun),
     ]
     assert check_chronos_jobs.last_run_state_for_jobs([{}, {}, {}]) == [
         ({}, chronos_tools.LastRunState.Success),
@@ -92,9 +92,9 @@ def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs
     mock_match_job_names.side_effect = [[{}, {}, {}] for x in range(0, 3)]
     mock_filter_enabled_jobs.side_effect = [[{}, {}, {}] for x in range(0, 3)]
     mock_last_run_state.side_effect = [
-        chronos_tools.LastRunState.Success,
-        chronos_tools.LastRunState.Fail,
-        chronos_tools.LastRunState.NotRun,
+        ('faketimestamp', chronos_tools.LastRunState.Success),
+        ('faketimestamp', chronos_tools.LastRunState.Fail),
+        ('faketimestamp', chronos_tools.LastRunState.NotRun),
     ] * 3
 
     fake_configured_jobs = [('service1', 'main'), ('service2', 'main'), ('service3', 'main')]

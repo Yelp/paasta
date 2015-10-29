@@ -189,8 +189,8 @@ def test_format_chronos_job_status_failure_no_success():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.red('Fail') in actual
-    assert '(2015-04-20' in actual
+    assert PaastaColors.red('Failed') in actual
+    assert '(2015-04-20T23:20' in actual
     assert 'ago)' in actual
 
 
@@ -231,7 +231,7 @@ def test_format_chronos_job_status_success_and_then_failure():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    assert PaastaColors.red('Fail') in actual
+    assert PaastaColors.red('Failed') in actual
     assert '(2015-04-21' in actual
     assert 'ago)' in actual
 

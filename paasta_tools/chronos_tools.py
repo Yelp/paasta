@@ -472,20 +472,22 @@ def last_failure_for_job(job):
 
 
 def get_status_last_run(job):
-    """ Given a job, find whether the last run of the job was a success or failure. """
+    """
+    Return the time of the last run of a job and the appropriate LastRunState.
+    """
     last_success = last_success_for_job(job)
     last_failure = last_failure_for_job(job)
     if not last_success and not last_failure:
-        return LastRunState.NotRun
+        return (None, LastRunState.NotRun)
     elif not last_failure:
-        return LastRunState.Success
+        return (last_success, LastRunState.Success)
     elif not last_success:
-        return LastRunState.Fail
+        return (last_failure, LastRunState.Fail)
     else:
         if most_recent(last_success, last_failure) is last_success:
-            return LastRunState.Success
+            return (last_success, LastRunState.Success)
         else:
-            return LastRunState.Fail
+            return (last_failure, LastRunState.Fail)
 
 
 def match_job_names_to_service_instance(service, instance, jobs):

@@ -1019,7 +1019,7 @@ class TestChronosTools:
             'lastError': '',
             'lastSuccess': '',
         }
-        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.NotRun
+        assert chronos_tools.get_status_last_run(fake_job) == (None, chronos_tools.LastRunState.NotRun)
 
     def test_stats_last_run_no_failure(self):
         fake_job = {
@@ -1027,7 +1027,8 @@ class TestChronosTools:
             'lastError': '',
             'lastSuccess': '2015-09-24T16:54:38.917Z',
         }
-        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.Success
+        assert (chronos_tools.get_status_last_run(fake_job) ==
+                ('2015-09-24T16:54:38.917Z', chronos_tools.LastRunState.Success))
 
     def test_stats_last_run_no_success(self):
         fake_job = {
@@ -1035,7 +1036,8 @@ class TestChronosTools:
             'lastError': '2015-09-24T16:54:38.917Z',
             'lastSuccess': '',
         }
-        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.Fail
+        assert (chronos_tools.get_status_last_run(fake_job) ==
+                ('2015-09-24T16:54:38.917Z', chronos_tools.LastRunState.Fail))
 
     def test_stats_last_run_failure(self):
         fake_job = {
@@ -1043,7 +1045,8 @@ class TestChronosTools:
             'lastError': '2015-09-24T16:54:38.917Z',
             'lastSuccess': '2015-09-23T16:54:38.917Z',
         }
-        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.Fail
+        assert (chronos_tools.get_status_last_run(fake_job) ==
+                ('2015-09-24T16:54:38.917Z', chronos_tools.LastRunState.Fail))
 
     def test_stats_last_run_success(self):
         fake_job = {
@@ -1051,7 +1054,8 @@ class TestChronosTools:
             'lastError': '2015-09-23T16:54:38.917Z',
             'lastSuccess': '2015-09-24T16:54:38.917Z',
         }
-        assert chronos_tools.get_status_last_run(fake_job) == chronos_tools.LastRunState.Success
+        assert (chronos_tools.get_status_last_run(fake_job) ==
+                ('2015-09-24T16:54:38.917Z', chronos_tools.LastRunState.Success))
 
     def test_filter_enabled_jobs(self):
         fake_jobs = [{'name': 'foo', 'disabled': False}, {'name': 'bar', 'disabled': True}]
