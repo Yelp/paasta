@@ -60,6 +60,7 @@ setup(
         'paasta_tools/check_marathon_services_replication.py',
         'paasta_tools/check_mesos_resource_utilization.py',
         'paasta_tools/cleanup_chronos_jobs.py',
+        'paasta_tools/check_chronos_jobs.py',
         'paasta_tools/cleanup_marathon_jobs.py',
         'paasta_tools/deploy_chronos_jobs',
         'paasta_tools/deploy_marathon_services',
