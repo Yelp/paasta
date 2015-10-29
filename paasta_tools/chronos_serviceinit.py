@@ -197,7 +197,7 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
     """
     config_hash = _format_config_hash(job)
     disabled_state = _format_disabled_status(job)
-    last_result, formatted_time = _format_last_result(job)
+    (last_result, formatted_time) = _format_last_result(job)
     schedule = _format_schedule(job)
     command = _format_command(job)
     mesos_status = _format_mesos_status(job, running_tasks)
