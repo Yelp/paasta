@@ -252,14 +252,14 @@ class TestSetupChronosJob:
         }
         with contextlib.nested(
             mock.patch('setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
-            mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
+            mock.patch('paasta_tools.chronos_tools.match_job_names_to_service_instance',
                        autospec=True, return_value=[fake_existing_job]),
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=self.fake_chronos_job_config),
         ) as (
             mock_bounce_chronos_job,
-            lookup_chronos_jobs_patch,
+            mock_match_job_names_to_service_instance,
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
         ):
@@ -286,20 +286,21 @@ class TestSetupChronosJob:
                 job_to_create=complete_config,
                 client=self.fake_client,
             )
+            assert mock_match_job_names_to_service_instance.called
             assert actual == mock_bounce_chronos_job.return_value
 
     def test_setup_job_does_nothing_with_only_existing_app(self):
         fake_existing_job = self.fake_config_dict
         with contextlib.nested(
             mock.patch('setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
-            mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
+            mock.patch('paasta_tools.chronos_tools.match_job_names_to_service_instance',
                        autospec=True, return_value=[fake_existing_job]),
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=self.fake_chronos_job_config),
         ) as (
             mock_bounce_chronos_job,
-            lookup_chronos_jobs_patch,
+            mock_match_job_names_to_service_instance,
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
         ):
@@ -329,6 +330,7 @@ class TestSetupChronosJob:
                 job_to_create=None,
                 client=self.fake_client,
             )
+            assert mock_match_job_names_to_service_instance.called
             assert actual == mock_bounce_chronos_job.return_value
 
     def test_send_event(self):
