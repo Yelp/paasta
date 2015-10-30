@@ -111,22 +111,6 @@ def send_event(service, instance, soa_dir, status, output):
     )
 
 
-def disable_job(client, job):
-    job["disabled"] = True
-    log.debug("Disabling job: %s" % job)
-    client.update(job)
-
-
-def delete_job(client, job):
-    log.debug("Deleting job: %s" % job)
-    client.delete(job)
-
-
-def create_job(client, job):
-    log.debug("Creating job: %s" % job)
-    client.add(job)
-
-
 def bounce_chronos_job(
     service,
     instance,
@@ -145,11 +129,11 @@ def bounce_chronos_job(
         log.debug("Not doing any chronos bounce action for %s" % chronos_tools.compose_job_id(
             service, instance))
     for job in jobs_to_disable:
-        disable_job(client=client, job=job)
+        chronos_tools.disable_job(client=client, job=job)
     for job in jobs_to_delete:
-        delete_job(client=client, job=job)
+        chronos_tools.delete_job(client=client, job=job)
     if job_to_create:
-        create_job(client=client, job=job_to_create)
+        chronos_tools.create_job(client=client, job=job_to_create)
         log_line = 'Created new Chronos job: %s' % job_to_create['name']
         _log(service=service, instance=instance, component='deploy',
              cluster=cluster, level='event', line=log_line)

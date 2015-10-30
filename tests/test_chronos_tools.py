@@ -1051,3 +1051,21 @@ class TestChronosTools:
     def test_filter_enabled_jobs(self):
         fake_jobs = [{'name': 'foo', 'disabled': False}, {'name': 'bar', 'disabled': True}]
         assert chronos_tools.filter_enabled_jobs(fake_jobs) == [{'name': 'foo', 'disabled': False}]
+
+    def test_disable_job(self):
+        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
+        fake_client = fake_client_class(servers=[])
+        chronos_tools.disable_job(job={}, client=fake_client)
+        fake_client.update.assert_called_once_with({"disabled": True})
+
+    def test_delete_job(self):
+        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
+        fake_client = fake_client_class(servers=[])
+        chronos_tools.delete_job(job=self.fake_config_dict, client=fake_client)
+        fake_client.delete.assert_called_once_with(self.fake_config_dict)
+
+    def test_create_job(self):
+        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
+        fake_client = fake_client_class(servers=[])
+        chronos_tools.create_job(job=self.fake_config_dict, client=fake_client)
+        fake_client.add.assert_called_once_with(self.fake_config_dict)

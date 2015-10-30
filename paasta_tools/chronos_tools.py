@@ -566,3 +566,19 @@ def parse_time_variables(input_string, parse_time=None):
     job_context.job_run.run_time = parse_time
     # The job_context object works like a normal dictionary for string replacement
     return input_string % job_context
+
+
+def disable_job(client, job):
+    job["disabled"] = True
+    log.debug("Disabling job: %s" % job)
+    client.update(job)
+
+
+def delete_job(client, job):
+    log.debug("Deleting job: %s" % job)
+    client.delete(job)
+
+
+def create_job(client, job):
+    log.debug("Creating job: %s" % job)
+    client.add(job)

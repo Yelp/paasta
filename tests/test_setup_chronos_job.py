@@ -372,33 +372,15 @@ class TestSetupChronosJob:
                 soa_dir=fake_soa_dir,
             )
 
-    def test_disable_job(self):
-        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
-        fake_client = fake_client_class(servers=[])
-        setup_chronos_job.disable_job(job={}, client=fake_client)
-        fake_client.update.assert_called_once_with({"disabled": True})
-
-    def test_delete_job(self):
-        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
-        fake_client = fake_client_class(servers=[])
-        setup_chronos_job.delete_job(job=self.fake_config_dict, client=fake_client)
-        fake_client.delete.assert_called_once_with(self.fake_config_dict)
-
-    def test_create_job(self):
-        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
-        fake_client = fake_client_class(servers=[])
-        setup_chronos_job.create_job(job=self.fake_config_dict, client=fake_client)
-        fake_client.add.assert_called_once_with(self.fake_config_dict)
-
     def test_bounce_chronos_job_takes_actions(self):
         fake_jobs_to_disable = [{'name': 'job_to_disable'}]
         fake_jobs_to_delete = [{'name': 'job_to_delete'}]
         fake_job_to_create = {'name': 'job_to_create'}
         with contextlib.nested(
             mock.patch("setup_chronos_job._log", autospec=True),
-            mock.patch("setup_chronos_job.disable_job", autospec=True),
-            mock.patch("setup_chronos_job.delete_job", autospec=True),
-            mock.patch("setup_chronos_job.create_job", autospec=True),
+            mock.patch("paasta_tools.chronos_tools.disable_job", autospec=True),
+            mock.patch("paasta_tools.chronos_tools.delete_job", autospec=True),
+            mock.patch("paasta_tools.chronos_tools.create_job", autospec=True),
         ) as (
             mock_log,
             mock_disable_job,
@@ -440,9 +422,9 @@ class TestSetupChronosJob:
         fake_job_to_create = []
         with contextlib.nested(
             mock.patch("setup_chronos_job._log", autospec=True),
-            mock.patch("setup_chronos_job.disable_job", autospec=True),
-            mock.patch("setup_chronos_job.delete_job", autospec=True),
-            mock.patch("setup_chronos_job.create_job", autospec=True),
+            mock.patch("paasta_tools.chronos_tools.disable_job", autospec=True),
+            mock.patch("paasta_tools.chronos_tools.delete_job", autospec=True),
+            mock.patch("paasta_tools.chronos_tools.create_job", autospec=True),
         ) as (
             mock_log,
             mock_disable_job,
