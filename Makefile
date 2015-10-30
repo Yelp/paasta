@@ -18,7 +18,7 @@ docs:
 	tox -e docs
 
 test:
-#	rm -rf .tox
+	rm -rf .tox
 	tox
 
 itest: test
