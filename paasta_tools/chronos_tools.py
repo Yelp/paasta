@@ -446,7 +446,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
 
 def most_recent(first, second):
-    """ Given two datetime strings, return the most recent.  """
+    """Given two datetime strings, return the most recent."""
     return first if isodate.parse_datetime(first) > isodate.parse_datetime(second) else second
 
 
