@@ -1060,3 +1060,17 @@ class TestChronosTools:
     def test_filter_enabled_jobs(self):
         fake_jobs = [{'name': 'foo', 'disabled': False}, {'name': 'bar', 'disabled': True}]
         assert chronos_tools.filter_enabled_jobs(fake_jobs) == [{'name': 'foo', 'disabled': False}]
+
+    def test_sort_jobs_enabled_before_disabled(self):
+        disabled_job = {
+            # name isn't strictly necessary but since we're just comparing
+            # dicts later this keeps things unambiguous.
+            'name': 'disabled_job',
+            'disabled': True,
+        }
+        enabled_job = {
+            'name': 'enabled_job',
+            'disabled': False,
+        }
+        jobs = [disabled_job, enabled_job]
+        assert chronos_tools.sort_jobs(jobs) == [enabled_job, disabled_job]

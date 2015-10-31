@@ -490,6 +490,14 @@ def get_status_last_run(job):
             return (last_failure, LastRunState.Fail)
 
 
+def sort_jobs(jobs):
+    """Sorts a list of chronos jobs by a few heuristics.
+
+    :param jobs: list of dicts of job configuration, as returned by the chronos client
+    """
+    return sorted(jobs, key=lambda job: job['disabled'])
+
+
 def match_job_names_to_service_instance(service, instance, jobs):
     """Given a list of chronos jobs, return those which are associated with a given service and instance."""
     decomposed_jobs = [(decompose_job_id(job['name'])) for job in jobs]
