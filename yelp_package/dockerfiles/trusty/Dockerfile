@@ -14,9 +14,11 @@
 
 FROM ubuntu:trusty
 RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
-  python-dev debhelper dh-virtualenv python-yaml python-pytest pyflakes \
+  python-dev debhelper python-yaml python-pytest pyflakes \
   help2man
 
-ENV HOME /work
-ENV PWD /work
+# Older versions of dh-virtualenv are buggy and don't.. work
+RUN curl http://ppa.launchpad.net/dh-virtualenv/daily/ubuntu/pool/main/d/dh-virtualenv/dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb --output dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb && \
+  dpkg -i dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb && rm dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb
+
 WORKDIR /work
