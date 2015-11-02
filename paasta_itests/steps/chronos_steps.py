@@ -24,7 +24,7 @@ def create_trivial_chronos_job(context):
         'async': False,
         'command': 'echo 1',
         'epsilon': 'PT15M',
-        'name': 'test-service job git12345678 config90abcdef',
+        'name': 'fake-service fake-instance git12345678 config90abcdef',
         'owner': '',
         'disabled': True,
         'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
@@ -103,7 +103,10 @@ def chronos_check_running_tasks(context, old_or_new_job, has_or_not):
 @then(u"the {old_or_new_job} is {disabled} in chronos")
 def chronos_check_job_state(context, old_or_new_job, disabled):
     desired_disabled = (disabled == 'disabled')
-    job_id = context.old_chronos_job_name if old_or_new_job == 'old job' else context.chronos_job_name
+    if old_or_new_job == 'old job':
+        job_id = context.old_chronos_job_name
+    else:
+        job_id = context.chronos_job_name
     jobs = chronos_tools.lookup_chronos_jobs(
         job_id,
         context.chronos_client,

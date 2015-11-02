@@ -239,7 +239,8 @@ class MarathonServiceConfig(InstanceConfig):
             return self.config_dict.get('constraints')
         else:
             discover_level = service_namespace_config.get_discover()
-            locations = get_mesos_slaves_grouped_by_attribute(discover_level)
+            locations = get_mesos_slaves_grouped_by_attribute(
+                attribute=discover_level, blacklist=self.get_deploy_blacklist())
             deploy_constraints = deploy_blacklist_to_constraints(self.get_deploy_blacklist())
             routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
             return routing_constraints + deploy_constraints
