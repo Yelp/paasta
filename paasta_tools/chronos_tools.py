@@ -492,11 +492,10 @@ def get_status_last_run(job):
 
 def match_job_names_to_service_instance(service, instance, jobs):
     """Given a list of chronos jobs, return those which are associated with a given service and instance."""
-    decomposed_jobs = [(decompose_job_id(job['name'])) for job in jobs]
     matching = []
-    for job_pair in decomposed_jobs:
-        decomposed, job = job_pair[0], job_pair[1]
-        if (decomposed[0], decomposed[1]) == (service, instance):
+    for job in jobs:
+        jobs_service, jobs_instance, _, _ = decompose_job_id(job['name'])
+        if jobs_service == service and jobs_instance == instance:
             matching.append(job)
     return matching
 
