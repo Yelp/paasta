@@ -1,3 +1,11 @@
+paasta-tools (0.13.9-yelp1) lucid; urgency=low
+
+  * 0.13.9 tagged with 'make release'
+    Commit: Merge pull request #8 from Yelp/PAASTA-1373  Added changes
+    to remove blacklisted locations from the GROUP_BY value
+
+ -- David Nonne <dnonne@yelp.com>  Mon, 02 Nov 2015 09:20:36 -0800
+
 paasta-tools (0.13.8-yelp1) lucid; urgency=low
 
   * 0.13.8 tagged with 'make release'
