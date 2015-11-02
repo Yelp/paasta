@@ -1,3 +1,10 @@
+paasta-tools (0.13.10-yelp1) lucid; urgency=low
+
+  * 0.13.10 tagged with 'make release'
+    Commit: Merge branch fix_match_job_names
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 02 Nov 2015 14:25:52 -0800
+
 paasta-tools (0.13.9-yelp1) lucid; urgency=low
 
   * 0.13.9 tagged with 'make release'
