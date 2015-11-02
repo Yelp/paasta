@@ -12,14 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM docker-dev.yelpcorp.com/lucid_yelp
+FROM ubuntu:trusty
+RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF
+RUN apt-get update && apt-get -y install mesos=0.22.1-1.0.ubuntu1404
 
-RUN apt-get update
-RUN apt-get -y install oracle-java7-jre
-
-RUN locale-gen en_US.UTF-8
-RUN apt-get -y install mesos=0.22.1-yelp1
-
-RUN apt-get -y install marathon=0.8.2-yelp1.ubuntu1204
+RUN apt-get -y install marathon=0.8.2-1.0.306.ubuntu1404
 
 EXPOSE 8080
