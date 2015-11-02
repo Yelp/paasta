@@ -490,15 +490,14 @@ class NoConfigurationForServiceError(Exception):
     pass
 
 
-def get_files_in_dir(directory):
+def get_readable_files_in_glob(input_glob):
     """
-    Returns lexicographically-sorted list of files that are readable in a given directory
+    Returns lexicographically-sorted list of files that are readable in an input glob
     """
     files = []
-    for f in sorted(os.listdir(directory)):
-        path = os.path.join(directory, f)
-        if os.path.isfile(path) and os.access(path, os.R_OK):
-            files.append(path)
+    for f in sorted(glob.glob(input_glob)):
+        if os.path.isfile(f) and os.access(f, os.R_OK):
+            files.append(f)
     return files
 
 
@@ -514,7 +513,7 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
         raise PaastaNotConfiguredError("Could not read from system paasta configuration directory: %s" % path)
 
     try:
-        for config_file in get_files_in_dir(path):
+        for config_file in get_readable_files_in_glob("%s/*.json" % path):
             with open(os.path.join(path, config_file)) as f:
                 config.update(json.load(f))
     except IOError as e:
