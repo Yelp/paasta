@@ -1062,6 +1062,29 @@ class TestChronosTools:
         fake_jobs = [{'name': 'foo', 'disabled': False}, {'name': 'bar', 'disabled': True}]
         assert chronos_tools.filter_enabled_jobs(fake_jobs) == [{'name': 'foo', 'disabled': False}]
 
+    def test_sort_jobs_enabled_before_disabled(self):
+        disabled_job = {
+            # name isn't strictly necessary but since we're just comparing
+            # dicts later this keeps things unambiguous.
+            'name': 'disabled_job',
+            'disabled': True,
+        }
+        enabled_job = {
+            'name': 'enabled_job',
+            'disabled': False,
+        }
+        jobs = [disabled_job, enabled_job]
+        assert chronos_tools.sort_jobs(jobs) == [enabled_job, disabled_job]
+
+    def test_match_job_names_to_service_handles_mutiple_jobs(self):
+        mock_jobs = [{'name': 'fake-service fake-instance git1 config1'},
+                     {'name': 'fake-service fake-instance git2 config2'},
+                     {'name': 'other-service other-instance git config'}]
+        expected = mock_jobs[:2]
+        actual = chronos_tools.match_job_names_to_service_instance(
+            service='fake-service', instance='fake-instance', jobs=mock_jobs)
+        assert sorted(actual) == sorted(expected)
+
     def test_disable_job(self):
         fake_client_class = mock.Mock(spec='chronos.ChronosClient')
         fake_client = fake_client_class(servers=[])
@@ -1079,26 +1102,3 @@ class TestChronosTools:
         fake_client = fake_client_class(servers=[])
         chronos_tools.create_job(job=self.fake_config_dict, client=fake_client)
         fake_client.add.assert_called_once_with(self.fake_config_dict)
-
-    def test_match_job_names_to_service_handles_mutiple_jobs(self):
-        mock_jobs = [{'name': 'fake-service fake-instance git1 config1'},
-                     {'name': 'fake-service fake-instance git2 config2'},
-                     {'name': 'other-service other-instance git config'}]
-        expected = mock_jobs[:2]
-        actual = chronos_tools.match_job_names_to_service_instance(
-            service='fake-service', instance='fake-instance', jobs=mock_jobs)
-        assert sorted(actual) == sorted(expected)
-
-    def test_sort_jobs_enabled_before_disabled(self):
-        disabled_job = {
-            # name isn't strictly necessary but since we're just comparing
-            # dicts later this keeps things unambiguous.
-            'name': 'disabled_job',
-            'disabled': True,
-        }
-        enabled_job = {
-            'name': 'enabled_job',
-            'disabled': False,
-        }
-        jobs = [disabled_job, enabled_job]
-        assert chronos_tools.sort_jobs(jobs) == [enabled_job, disabled_job]
