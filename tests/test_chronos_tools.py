@@ -24,7 +24,8 @@ from mock import Mock
 
 class TestChronosTools:
 
-    fake_service = 'test_service'
+    fake_service = 'test-service'
+    fake_instance = 'fake-instance'
     fake_job_name = 'test'
     fake_cluster = 'penguin'
     fake_monitoring_info = {'fake_monitoring_info': 'fake_monitoring_value'}
@@ -277,7 +278,7 @@ class TestChronosTools:
         assert actual == expected
 
     def test_get_service(self):
-        expected = 'test_service'
+        expected = 'test-service'
         actual = self.fake_chronos_job_config.get_service()
         assert actual == expected
 
@@ -770,7 +771,7 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
+            actual = chronos_tools.create_complete_config('fake-service', 'fake-job')
             expected = {
                 'arguments': None,
                 'constraints': None,
@@ -781,13 +782,13 @@ class TestChronosTools:
                 'environmentVariables': [],
                 'retries': 5,
                 'disabled': False,
-                'name': 'fake_service fake_job sha hash',
+                'name': 'fake-service fake-job sha hash',
                 'command': '/bin/sleep 40',
                 'epsilon': 'PT30M',
                 'container': {
                     'network': 'BRIDGE',
                     'volumes': [],
-                    'image': "fake_registry/paasta-test_service-penguin",
+                    'image': "fake_registry/paasta-test-service-penguin",
                     'type': 'DOCKER'
                 },
                 'uris': ['file:///root/.dockercfg', ],
@@ -1078,3 +1079,12 @@ class TestChronosTools:
         fake_client = fake_client_class(servers=[])
         chronos_tools.create_job(job=self.fake_config_dict, client=fake_client)
         fake_client.add.assert_called_once_with(self.fake_config_dict)
+
+    def test_match_job_names_to_service_handles_mutiple_jobs(self):
+        mock_jobs = [{'name': 'fake-service fake-instance git1 config1'},
+                     {'name': 'fake-service fake-instance git2 config2'},
+                     {'name': 'other-service other-instance git config'}]
+        expected = mock_jobs[:2]
+        actual = chronos_tools.match_job_names_to_service_instance(
+            service='fake-service', instance='fake-instance', jobs=mock_jobs)
+        assert sorted(actual) == sorted(expected)

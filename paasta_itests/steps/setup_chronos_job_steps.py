@@ -20,8 +20,8 @@ sys.path.append('../')
 from paasta_tools import setup_chronos_job
 from paasta_tools import chronos_tools
 
-fake_service_name = 'fake_complete_service'
-fake_instance_name = 'fake_instance'
+fake_service_name = 'test-service'
+fake_instance_name = 'test-instance'
 fake_job_id = 'fake_job_id'
 fake_service_job_config = chronos_tools.ChronosJobConfig(
     fake_service_name,
@@ -78,14 +78,13 @@ def create_complete_job(context):
 
 @when(u'we run setup_chronos_job')
 def setup_the_chronos_job(context):
-    service, instance, _, __ = chronos_tools.decompose_job_id(context.chronos_job_config['name'])
     exit_code, output = setup_chronos_job.setup_job(
-        service,
-        instance,
-        context.chronos_job_config_obj,
-        context.chronos_job_config,
-        context.chronos_client,
-        context.cluster
+        service=fake_service_name,
+        instance=fake_instance_name,
+        chronos_job_config=context.chronos_job_config_obj,
+        complete_job_config=context.chronos_job_config,
+        client=context.chronos_client,
+        cluster=context.cluster
     )
     print 'setup_chronos_job returned exitcode %s with output:\n%s\n' % (exit_code, output)
 
