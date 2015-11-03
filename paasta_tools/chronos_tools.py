@@ -447,6 +447,12 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
 
 def _safe_parse_datetime(dt):
+    """
+    If a datetime string is unparseable, it is represented as a
+    datetime.datetime set to the epoch in UTC (i.e. a value which will never be
+    the most recent). If you call this function with (first='bogus',
+    second='bogus'), that's the value you'll get back.
+    """
     epoch = datetime.datetime(1970, 1, 1, tzinfo=dateutil.tz.tzutc())
     try:
         parsed_dt = isodate.parse_datetime(dt)
@@ -460,32 +466,22 @@ def _safe_parse_datetime(dt):
     return parsed_dt
 
 
-def most_recent(first, second, return_raw_form=False):
-    """Calculate the most recent of two datetime strings.
+def cmp_datetimes(first, second):
+    """Compare two datetime strings and sort by most recent.
 
     :param first: A string containing a datetime
     :param second: A string containing a datetime
-    :returns: The datetime that is more recent. By default, returns a
-    datetime.datetime object representing the input string. If return_raw_form
-    is True, returns the input string.
-
-    If a datetime string is unparseable, it is represented as a
-    datetime.datetime set to the epoch in UTC (i.e. a value which will never be
-    the most recent). If you call this function with (first='bogus',
-    second='bogus', return_raw_mode=False), that's the value you'll get back.
+    :returns: -1 if `first` is more recent, 1 if `second` is more recent`, or 0
+    if they are equivalent.
     """
     parsed_first = _safe_parse_datetime(first)
     parsed_second = _safe_parse_datetime(second)
-    if parsed_first >= parsed_second:
-        if return_raw_form:
-            return first
-        else:
-            return parsed_first
+    if parsed_first > parsed_second:
+        return -1
+    elif parsed_first == parsed_second:
+        return 0
     else:
-        if return_raw_form:
-            return second
-        else:
-            return parsed_second
+        return 1
 
 
 def filter_enabled_jobs(jobs):
@@ -522,7 +518,7 @@ def get_status_last_run(job):
     elif not last_success:
         return (last_failure, LastRunState.Fail)
     else:
-        if most_recent(last_success, last_failure, return_raw_form=True) is last_success:
+        if cmp_datetimes(last_success, last_failure) <= 0:
             return (last_success, LastRunState.Success)
         else:
             return (last_failure, LastRunState.Fail)
@@ -535,14 +531,17 @@ def sort_jobs(jobs):
     :param jobs: list of dicts of job configuration, as returned by the chronos client
     """
     def cmp_jobs(left_job, right_job):
-        left_newest = most_recent(left_job.get('lastError'), left_job.get('lastSuccess'))
-        right_newest = most_recent(right_job.get('lastError'), right_job.get('lastSuccess'))
-        return cmp(left_newest, right_newest)
+        left_failure = last_failure_for_job(left_job)
+        left_success = last_success_for_job(left_job)
+        left_newest = left_failure if cmp_datetimes(left_failure, left_success) < 0 else left_success
+        right_failure = last_failure_for_job(right_job)
+        right_success = last_success_for_job(right_job)
+        right_newest = right_failure if cmp_datetimes(right_failure, right_success) < 0 else right_success
+        return cmp_datetimes(left_newest, right_newest)
 
     return sorted(
         jobs,
         cmp=cmp_jobs,
-        reverse=True,
     )
 
 

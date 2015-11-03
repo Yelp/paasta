@@ -15,7 +15,6 @@
 import contextlib
 import datetime
 
-import isodate
 import mock
 from pytest import raises
 
@@ -994,20 +993,15 @@ class TestChronosTools:
         actual = chronos_tools.parse_time_variables(input_string=test_input, parse_time=input_time)
         assert actual == expected
 
-    def test_most_recent(self):
+    def test_cmp_datetimes(self):
         before = '2015-09-22T16:46:25.111Z'
         after = '2015-09-24T16:54:38.917Z'
-        assert chronos_tools.most_recent(before, after) == isodate.parse_datetime(after)
+        assert chronos_tools.cmp_datetimes(before, after) == 1
 
-    def test_most_recent_with_empty_value(self):
+    def test_cmp_datetimes_with_empty_value(self):
         before = ''
         after = '2015-09-24T16:54:38.917Z'
-        assert chronos_tools.most_recent(before, after) == isodate.parse_datetime(after)
-
-    def test_most_recent_return_raw_form(self):
-        before = '2015-09-22T16:46:25.111Z'
-        after = '2015-09-24T16:54:38.917Z'
-        assert chronos_tools.most_recent(before, after, return_raw_form=True) == after
+        assert chronos_tools.cmp_datetimes(before, after) == 1
 
     def test_last_success_for_job(self):
         fake_job = {
@@ -1086,8 +1080,8 @@ class TestChronosTools:
             'name': 'late_job',
             'disabled': True,
             # Only last time counts, so even though this job's error comes
-            # before either early_job result, it is superceded by this job's
-            # success.
+            # before either early_job result, that result is superceded by this
+            # job's later success.
             'lastError': '2015-04-20T16:10:00.000Z',
             'lastSuccess': '2015-04-20T16:40:00.000Z',
         }
