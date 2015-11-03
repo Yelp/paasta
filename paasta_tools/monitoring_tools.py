@@ -22,12 +22,16 @@ on the framework that is asking, and still allows you to set your team
 Everything in here is private, and you shouldn't worry about it.
 """
 import json
+import logging
 import os
 
 import service_configuration_lib
 import pysensu_yelp
 
 from utils import load_system_paasta_config
+
+
+log = logging.getLogger('__main__')
 
 
 def get_team(overrides, service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):
@@ -134,8 +138,12 @@ def get_sensu_team_data(team):
 
 
 def _load_sensu_team_data():
-    with open('/etc/sensu/team_data.json') as f:
-        team_data = json.load(f)
+    try:
+        with open('/etc/sensu/team_data.json') as f:
+            team_data = json.load(f)
+    except IOError:
+        log.warning("No Sensu Team data (/etc/sensu/team_data.json) available. Using empty defaults")
+        team_data = {}
     return team_data
 
 
