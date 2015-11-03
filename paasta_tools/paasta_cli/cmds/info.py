@@ -30,7 +30,10 @@ from service_configuration_lib import read_service_configuration
 NO_DESCRIPTION_MESSAGE = (
     "No 'description' entry in service.yaml. Please a one line sentance that describes this service"
 )
-NO_EXTERNAL_LINK_MESSAGE = "No 'external_link' entry in service.yaml. Please add on that points to your CEP/SCF"
+NO_EXTERNAL_LINK_MESSAGE = (
+    "No 'external_link' entry in service.yaml. "
+    "Please add on that points to a reference doc for your service"
+)
 
 
 def add_subparser(subparsers):
@@ -103,7 +106,7 @@ def get_service_info(service):
     output = []
     output.append('Service Name: %s' % service)
     output.append('Description: %s' % description)
-    output.append('External Link (CEP/SCF): %s' % PaastaColors.cyan(external_link))
+    output.append('External Link: %s' % PaastaColors.cyan(external_link))
     output.append('Monitored By: team %s' % get_team(service=service, overrides={}))
     output.append('Runbook: %s' % PaastaColors.cyan(get_runbook(service=service, overrides={})))
     output.append('Git Repo: %s' % git_url)

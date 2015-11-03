@@ -75,6 +75,7 @@ Installing The PaaSTA Infrastructure
 .. toctree::
    :maxdepth: 2
 
+   soa_configs
    installation/getting_started
 
 

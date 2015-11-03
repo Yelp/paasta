@@ -59,7 +59,7 @@ def add_subparser(subparsers):
         "--external-link",
         dest="external_link",
         default=None,
-        help="Link to a CEP or SCF of the service. If AUTO will have placeholder text")
+        help="Link to a reference doc for the service. If AUTO will have placeholder text")
     fsm_parser.add_argument(
         "-a",
         "--auto",
