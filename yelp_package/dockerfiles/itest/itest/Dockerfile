@@ -12,26 +12,5 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM docker-dev.yelpcorp.com/lucid_yelp
-MAINTAINER Sophie Haskins <shaskins@yelp.com>
-
-RUN apt-get update
-RUN apt-get -y install chronos
-RUN apt-get -y install rbenv-ruby-1.9.3-p448
-
-RUN apt-get -y install dpkg-dev python-tox python-setuptools
-RUN apt-get -y install python-dev debhelper
-
-# Make sure we get a package suitable for building this package correctly.
-# Per dnephin we need https://github.com/spotify/dh-virtualenv/pull/20
-# Which at this time is in this package
-RUN apt-get -y install dh-virtualenv=0.6-yelp2
-RUN apt-get -y install python-yaml
-RUN apt-get -y install python-pytest
-RUN apt-get -y install pyflakes
-RUN apt-get -y install man
-
-RUN mkdir -p /chronos-config/dependent
-RUN mkdir -p /chronos-config/scheduled
-
-ADD yelpsoa-configs /yelpsoa-configs
+FROM ubuntu:trusty
+RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools python-dev debhelper

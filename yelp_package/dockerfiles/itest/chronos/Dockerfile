@@ -12,15 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM docker-dev.yelpcorp.com/lucid_yelp
+FROM ubuntu:trusty
+RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF
+RUN apt-get update && apt-get -y install mesos=0.22.1-1.0.ubuntu1404
 
-RUN apt-get update
-RUN apt-get -y install oracle-java7-jre
-
-RUN locale-gen en_US.UTF-8
-RUN apt-get -y install mesos=0.22.1-yelp1
-
-RUN apt-get -y install chronos
+RUN apt-get -y install chronos=2.3.3-1.0.1.ubuntu1404
 # Chronos will look in here for zk config, so we blow away the bogus defaults
 RUN rm -rf /etc/mesos/
 
@@ -29,7 +26,6 @@ RUN echo 'zk://zookeeper:2181/mesos-testcluster' > /etc/chronos/conf/master
 RUN echo 'zookeeper:2181' > /etc/chronos/conf/zk_hosts
 RUN echo '/chronos' > /etc/chronos/conf/zk_path
 
-ENV PATH="/usr/lib/jvm/java-7-oracle-1.7.0.60/bin/:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-CMD rsyslogd ; (/usr/bin/chronos &) ; tail -f /var/log/messages
+CMD rsyslogd ; (/usr/bin/chronos &) ; tail -f /var/log/syslog
 
 EXPOSE 8081
