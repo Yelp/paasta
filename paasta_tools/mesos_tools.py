@@ -232,8 +232,8 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id):
 
     :param job_id: An id used for looking up Mesos tasks
     :param get_short_task_id: A function which given a
-    task_id returns a short task_id suitable for
-    printing.
+                              task_id returns a short task_id suitable for
+                              printing.
     """
     output = []
     running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
