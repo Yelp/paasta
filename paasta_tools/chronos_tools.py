@@ -530,7 +530,7 @@ def get_status_last_run(job):
 
 def sort_jobs(jobs):
     """Takes a list of chronos jobs and returns a sorted list where the job
-    with the most recent results is first.
+    with the most recent result is first.
 
     :param jobs: list of dicts of job configuration, as returned by the chronos client
     """
