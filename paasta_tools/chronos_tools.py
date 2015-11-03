@@ -450,22 +450,29 @@ def _safe_parse_datetime(dt):
     epoch = datetime.datetime(1970, 1, 1, tzinfo=dateutil.tz.tzutc())
     try:
         parsed_dt = isodate.parse_datetime(dt)
-    # I tried to limit this except to isodate.ISO8601Error but parse_datetime()
-    # can also throw "AttributeError: 'NoneType' object has no attribute
-    # 'split'".
-    except Exception:
+    # I tried to limit this to isodate.ISO8601Error but parse_datetime() can
+    # also throw "AttributeError: 'NoneType' object has no attribute 'split'",
+    # and presumably other exceptions.
+    except Exception as exc:
+        log.debug("Failed to parse datetime '%s'" % dt)
+        log.debug(exc)
         parsed_dt = epoch
     return parsed_dt
 
 
 def most_recent(first, second, return_raw_form=False):
-    """Given two datetime strings, return the most recent in its parsed
-    datetime.datetime form. If a datetime string is unparseable, return a
-    datetime.datetime set to the epoch in UTC (i.e. a value which will never be
-    the most recent).
+    """Calculate the most recent of two datetime strings.
 
-    If return_raw_form is True, return the unparsed string instead of the
-    parsed datetime.datetime.
+    :param first: A string containing a datetime
+    :param second: A string containing a datetime
+    :returns: The datetime that is more recent. By default, returns a
+    datetime.datetime object representing the input string. If return_raw_form
+    is True, returns the input string.
+
+    If a datetime string is unparseable, it is represented as a
+    datetime.datetime set to the epoch in UTC (i.e. a value which will never be
+    the most recent). If you call this function with (first='bogus',
+    second='bogus', return_raw_mode=False), that's the value you'll get back.
     """
     parsed_first = _safe_parse_datetime(first)
     parsed_second = _safe_parse_datetime(second)
