@@ -687,10 +687,12 @@ def compose_job_id(name, instance, git_hash=None, config_hash=None, spacer=SPACE
     :param name: The name of the service
     :param instance: The instance of the service
     :param git_hash: The git_hash portion of the job_id. If git_hash is set,
-    config_hash must also be set.
+                     config_hash must also be set.
     :param config_hash: The config_hash portion of the job_id. If config_hash
-    is set, git_hash must also be set.
-    :returns: <name><SPACER><instance> if no tag, or <name><SPACER><instance><SPACER><tag> if tag given
+                        is set, git_hash must also be set.
+    :returns: <name><SPACER><instance> if no tag, or <name><SPACER><instance><SPACER><hashes>...
+              if extra hash inputs are provided.
+
     """
     composed = '%s%s%s' % (name, spacer, instance)
     if git_hash and config_hash:

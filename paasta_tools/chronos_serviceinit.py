@@ -190,10 +190,11 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
 
     :param job: dictionary of the job status
     :param desired_state: a pretty-formatted string representing the
-    job's started/stopped state as set with paasta emergency-[stop|start], e.g.
-    the result of get_desired_state_human()
-    :param running_tasks: a list of Mesos tasks associated with `job`, e.g. the
-    result of mesos_tools.get_running_tasks_from_active_frameworks().
+                          job's started/stopped state as set with paasta emergency-[stop|start], e.g.
+                          the result of ``get_desired_state_human()``
+    :param running_tasks: a list of Mesos tasks associated with ``job``, e.g. the
+                          result of ``mesos_tools.get_running_tasks_from_active_frameworks()``.
+
     """
     config_hash = _format_config_hash(job)
     disabled_state = _format_disabled_status(job)
