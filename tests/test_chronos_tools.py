@@ -12,11 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import datetime
+
+import isodate
 import mock
 from pytest import raises
-
-import contextlib
 
 import chronos_tools
 from mock import Mock
@@ -996,7 +997,17 @@ class TestChronosTools:
     def test_most_recent(self):
         before = '2015-09-22T16:46:25.111Z'
         after = '2015-09-24T16:54:38.917Z'
-        assert chronos_tools.most_recent(before, after) == after
+        assert chronos_tools.most_recent(before, after) == isodate.parse_datetime(after)
+
+    def test_most_recent_with_empty_value(self):
+        before = ''
+        after = '2015-09-24T16:54:38.917Z'
+        assert chronos_tools.most_recent(before, after) == isodate.parse_datetime(after)
+
+    def test_most_recent_return_raw_form(self):
+        before = '2015-09-22T16:46:25.111Z'
+        after = '2015-09-24T16:54:38.917Z'
+        assert chronos_tools.most_recent(before, after, return_raw_form=True) == after
 
     def test_last_success_for_job(self):
         fake_job = {
@@ -1062,19 +1073,32 @@ class TestChronosTools:
         fake_jobs = [{'name': 'foo', 'disabled': False}, {'name': 'bar', 'disabled': True}]
         assert chronos_tools.filter_enabled_jobs(fake_jobs) == [{'name': 'foo', 'disabled': False}]
 
-    def test_sort_jobs_enabled_before_disabled(self):
-        disabled_job = {
+    def test_sort_jobs(self):
+        early_job = {
             # name isn't strictly necessary but since we're just comparing
             # dicts later this keeps things unambiguous.
-            'name': 'disabled_job',
+            'name': 'early_job',
+            'disabled': False,  # Not used but keeping things honest by having a mix of enabled and disabled
+            'lastError': '2015-04-20T16:20:00.000Z',
+            'lastSuccess': '2015-04-20T16:30:00.000Z',
+        }
+        late_job = {
+            'name': 'late_job',
             'disabled': True,
+            # Only last time counts, so even though this job's error comes
+            # before either early_job result, it is superceded by this job's
+            # success.
+            'lastError': '2015-04-20T16:10:00.000Z',
+            'lastSuccess': '2015-04-20T16:40:00.000Z',
         }
-        enabled_job = {
-            'name': 'enabled_job',
+        unrun_job = {
+            'name': 'unrun_job',
             'disabled': False,
+            'lastError': '',
+            'lastSuccess': '',
         }
-        jobs = [disabled_job, enabled_job]
-        assert chronos_tools.sort_jobs(jobs) == [enabled_job, disabled_job]
+        jobs = [early_job, unrun_job, late_job]
+        assert chronos_tools.sort_jobs(jobs) == [late_job, early_job, unrun_job]
 
     def test_match_job_names_to_service_handles_mutiple_jobs(self):
         mock_jobs = [{'name': 'fake-service fake-instance git1 config1'},

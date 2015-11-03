@@ -21,6 +21,7 @@ import urlparse
 from time import sleep
 
 import chronos
+import dateutil
 import isodate
 from tron import command_context
 
@@ -445,9 +446,39 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     return complete_config
 
 
-def most_recent(first, second):
-    """Given two datetime strings, return the most recent."""
-    return first if isodate.parse_datetime(first) > isodate.parse_datetime(second) else second
+def _safe_parse_datetime(dt):
+    epoch = datetime.datetime(1970, 1, 1, tzinfo=dateutil.tz.tzutc())
+    try:
+        parsed_dt = isodate.parse_datetime(dt)
+    # I tried to limit this except to isodate.ISO8601Error but parse_datetime()
+    # can also throw "AttributeError: 'NoneType' object has no attribute
+    # 'split'".
+    except Exception:
+        parsed_dt = epoch
+    return parsed_dt
+
+
+def most_recent(first, second, return_raw_form=False):
+    """Given two datetime strings, return the most recent in its parsed
+    datetime.datetime form. If a datetime string is unparseable, return a
+    datetime.datetime set to the epoch in UTC (i.e. a value which will never be
+    the most recent).
+
+    If return_raw_form is True, return the unparsed string instead of the
+    parsed datetime.datetime.
+    """
+    parsed_first = _safe_parse_datetime(first)
+    parsed_second = _safe_parse_datetime(second)
+    if parsed_first >= parsed_second:
+        if return_raw_form:
+            return first
+        else:
+            return parsed_first
+    else:
+        if return_raw_form:
+            return second
+        else:
+            return parsed_second
 
 
 def filter_enabled_jobs(jobs):
@@ -484,18 +515,33 @@ def get_status_last_run(job):
     elif not last_success:
         return (last_failure, LastRunState.Fail)
     else:
-        if most_recent(last_success, last_failure) is last_success:
+        if most_recent(last_success, last_failure, return_raw_form=True) is last_success:
             return (last_success, LastRunState.Success)
         else:
             return (last_failure, LastRunState.Fail)
 
 
 def sort_jobs(jobs):
-    """Sorts a list of chronos jobs by a few heuristics.
+    """Takes a list of chronos jobs and returns a sorted list where the job
+    with the most recent results is first.
 
     :param jobs: list of dicts of job configuration, as returned by the chronos client
     """
-    return sorted(jobs, key=lambda job: job['disabled'])
+    def get_keys(job):
+        return (job.get('lastError'), job.get('lastSuccess'))
+
+    def cmp_keys(left, right):
+        # Determine the latest date for a given job.
+        left_newest = most_recent(left[0], left[1])
+        right_newest = most_recent(right[0], right[1])
+        return cmp(left_newest, right_newest)
+
+    return sorted(
+        jobs,
+        key=get_keys,
+        cmp=cmp_keys,
+        reverse=True,
+    )
 
 
 def match_job_names_to_service_instance(service, instance, jobs):
