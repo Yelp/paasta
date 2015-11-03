@@ -534,19 +534,14 @@ def sort_jobs(jobs):
 
     :param jobs: list of dicts of job configuration, as returned by the chronos client
     """
-    def get_keys(job):
-        return (job.get('lastError'), job.get('lastSuccess'))
-
-    def cmp_keys(left, right):
-        # Determine the latest date for a given job.
-        left_newest = most_recent(left[0], left[1])
-        right_newest = most_recent(right[0], right[1])
+    def cmp_jobs(left_job, right_job):
+        left_newest = most_recent(left_job.get('lastError'), left_job.get('lastSuccess'))
+        right_newest = most_recent(right_job.get('lastError'), right_job.get('lastSuccess'))
         return cmp(left_newest, right_newest)
 
     return sorted(
         jobs,
-        key=get_keys,
-        cmp=cmp_keys,
+        cmp=cmp_jobs,
         reverse=True,
     )
 
