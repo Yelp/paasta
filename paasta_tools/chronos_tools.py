@@ -225,7 +225,7 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('schedule_time_zone')
 
     def get_shell(self):
-        """Per https://mesos.github.io/chronos/docs/api.html, `shell` defaults
+        """Per https://mesos.github.io/chronos/docs/api.html, ``shell`` defaults
         to true, but if arguments are set, they will be ignored. If arguments are
         set in our config, then we need to set shell: False so that they will
         activate."""
@@ -451,7 +451,7 @@ def _safe_parse_datetime(dt):
     Parse a datetime, swallowing exceptions.
 
     :param dt: A string containing a datetime
-    :returns: A datetime.datetime object representing `dt`. If a datetime
+    :returns: A datetime.datetime object representing ``dt``. If a datetime
     string is unparseable, it is represented as a datetime.datetime set to the
     epoch in UTC (i.e. a value which will never be the most recent).
     """
@@ -473,7 +473,7 @@ def cmp_datetimes(first, second):
 
     :param first: A string containing a datetime
     :param second: A string containing a datetime
-    :returns: -1 if `first` is more recent, 1 if `second` is more recent`, or 0
+    :returns: -1 if ``first`` is more recent, 1 if ``second`` is more recent, or 0
     if they are equivalent.
     """
     parsed_first = _safe_parse_datetime(first)
