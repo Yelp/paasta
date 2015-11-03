@@ -1,6 +1,7 @@
 build/
 dist/
 .tox
+.pip/
 *.py?
 .*.sw?
 paasta_tools.egg-info/
