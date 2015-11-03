@@ -448,10 +448,12 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
 def _safe_parse_datetime(dt):
     """
-    If a datetime string is unparseable, it is represented as a
-    datetime.datetime set to the epoch in UTC (i.e. a value which will never be
-    the most recent). If you call this function with (first='bogus',
-    second='bogus'), that's the value you'll get back.
+    Parse a datetime, swallowing exceptions.
+
+    :param dt: A string containing a datetime
+    :returns: A datetime.datetime object representing `dt`. If a datetime
+    string is unparseable, it is represented as a datetime.datetime set to the
+    epoch in UTC (i.e. a value which will never be the most recent).
     """
     epoch = datetime.datetime(1970, 1, 1, tzinfo=dateutil.tz.tzutc())
     try:
