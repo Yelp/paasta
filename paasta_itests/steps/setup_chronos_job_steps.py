@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import copy
 import sys
 
 from behave import when, then
@@ -95,3 +96,45 @@ def see_it_in_list_of_jobs(context):
     jobs_with_our_name = [job for job in context.chronos_client.list() if job['name'] == fake_job_id]
     assert len(jobs_with_our_name) == 1
     assert jobs_with_our_name[0]["disabled"] is False
+
+
+@when(u'{job_count} old jobs are left over from previous bounces')
+def old_jobs_leftover(context, job_count):
+    old_job = copy.deepcopy(fake_service_config)
+    for n in xrange(0, int(job_count)):
+        old_job["name"] = chronos_tools.compose_job_id(
+            service=fake_service_name,
+            instance=fake_instance_name,
+            git_hash="git%d" % n,
+            config_hash="config",
+        )
+        context.chronos_client.add(old_job)
+
+
+@then(u'there should be {job_count} enabled jobs')
+def should_be_enabled_jobs(context, job_count):
+    search_pattern = chronos_tools.compose_job_id(
+        service=fake_service_name,
+        instance=fake_instance_name,
+    )
+    enabled_jobs = chronos_tools.lookup_chronos_jobs(
+        pattern=search_pattern,
+        client=context.chronos_client,
+        include_disabled=False,
+    )
+    assert len(enabled_jobs) == int(job_count)
+
+
+@then(u'there should be {job_count} disabled jobs')
+def should_be_disabled_jobs(context, job_count):
+    search_pattern = chronos_tools.compose_job_id(
+        service=fake_service_name,
+        instance=fake_instance_name,
+    )
+    all_related_jobs = chronos_tools.lookup_chronos_jobs(
+        pattern=search_pattern,
+        client=context.chronos_client,
+        include_disabled=True,
+    )
+    disabled_jobs = [job for job in all_related_jobs if job["disabled"] is True]
+    assert len(disabled_jobs) == int(job_count)

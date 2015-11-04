@@ -1,6 +1,32 @@
 Contributing
 ============
 
+Running The Tests
+-----------------
+
+Unit Tests
+^^^^^^^^^^
+
+Python 2.7 and tox are required for running the unit tests. You can simply run
+``make test`` or ``tox`` to execute them.
+
+This will build a virtualenv with the required python packages, then run the tests
+writen in the ``tests`` directory
+
+Integration Tests
+^^^^^^^^^^^^^^^^^
+
+Python 2.7, tox, and Docker are required to run the integration test suite.
+You can run ``make itest`` to execute them.
+
+Syste Package Building / itests
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+PaaSTA is distributed as a debian package. This package can be built and tested
+with ``make itest_trusty``. These tests make assertions about the
+packaging implementation.
+
+
 Making new versions
 -------------------
 * Make a branch. WRITE TESTS FIRST (TDD)! Add features.
