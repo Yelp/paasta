@@ -14,4 +14,4 @@ Feature: paasta_execute_docker_command can find and run commands inside a docker
     Given a running docker container with task id foo
     When we paasta_execute_docker_command a command with exit code 0 in container with task id foo
     And we paasta_execute_docker_command a command with exit code 0 in container with task id foo
-    Then the docker container has 1 exec instances
+    Then the docker container has at most 1 exec instances

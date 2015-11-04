@@ -21,4 +21,6 @@ RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
 RUN curl http://ppa.launchpad.net/dh-virtualenv/daily/ubuntu/pool/main/d/dh-virtualenv/dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb --output dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb && \
   dpkg -i dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb && rm dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb
 
+ENV HOME /work
+ENV PWD /work
 WORKDIR /work
