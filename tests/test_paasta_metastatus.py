@@ -277,16 +277,16 @@ def test_get_mesos_status(
     expected_masters_quorum_output = \
         "quorum: masters: 5 configured quorum: 3 "
 
-    outputs, oks = paasta_metastatus.get_mesos_status()
+    results = paasta_metastatus.get_mesos_status()
 
     assert mock_get_mesos_stats.called_once()
     assert mock_get_mesos_state_from_leader.called_once()
-    assert expected_masters_quorum_output in outputs
-    assert expected_cpus_output in outputs
-    assert expected_mem_output in outputs
-    assert expected_tasks_output in outputs
-    assert expected_duplicate_frameworks_output in outputs
-    assert expected_slaves_output in outputs
+    assert (expected_masters_quorum_output, True) in results
+    assert (expected_cpus_output, True) in results
+    assert (expected_mem_output, True) in results
+    assert (expected_tasks_output, True) in results
+    assert (expected_duplicate_frameworks_output, False) in results
+    assert (expected_slaves_output, True) in results
 
 
 @patch('paasta_tools.paasta_metastatus.marathon_tools.get_marathon_client', autospec=True)
@@ -313,15 +313,15 @@ def test_get_marathon_status(
         "MarathonTask::2",
         "MarathonTask::3"
     ]
-    expected_apps_output = "marathon apps: 2"
-    expected_deployment_output = "marathon deployments: 1"
-    expected_tasks_output = "marathon tasks: 3"
+    expected_apps_output = ("marathon apps: 2", True)
+    expected_deployment_output = ("marathon deployments: 1", True)
+    expected_tasks_output = ("marathon tasks: 3", True)
 
-    output, oks = paasta_metastatus.get_marathon_status(client)
+    results = paasta_metastatus.get_marathon_status(client)
 
-    assert expected_apps_output in output
-    assert expected_deployment_output in output
-    assert expected_tasks_output in output
+    assert expected_apps_output in results
+    assert expected_deployment_output in results
+    assert expected_tasks_output in results
 
 
 def test_get_marathon_client():
@@ -338,9 +338,8 @@ def test_get_marathon_client():
 def test_assert_chronos_scheduled_jobs():
     mock_client = ChronosClient(servers="fake_hostname")
     mock_client.list = lambda: []
-    output, ok = paasta_metastatus.assert_chronos_scheduled_jobs(mock_client)
-    assert output == 'chronos jobs: 0'
-    assert ok
+    results = paasta_metastatus.assert_chronos_scheduled_jobs(mock_client)
+    assert results == ('chronos jobs: 0', True)
 
 
 def test_get_chronos_status_no_chronos():
@@ -355,9 +354,8 @@ def test_get_chronos_status_no_chronos():
     # unavailable.
     mock_client.list = Mock(side_effect=ServerNotFoundError)
 
-    outputs, oks = paasta_metastatus.get_chronos_status(mock_client)
-    assert outputs == ['chronos jobs: 0']
-    assert all(oks)
+    results = paasta_metastatus.get_chronos_status(mock_client)
+    assert results == [('chronos jobs: 0', True)]
 
 
 @patch('paasta_tools.chronos_tools.get_chronos_client', autospec=True)
@@ -369,11 +367,10 @@ def test_get_chronos_status(
         {'name': 'fake_job1'},
         {'name': 'fake_job1'},
     ]
-    expected_jobs_output = "chronos jobs: 2"
+    expected_jobs_output = ("chronos jobs: 2", True)
+    results = paasta_metastatus.get_chronos_status(client)
 
-    output, oks = paasta_metastatus.get_chronos_status(client)
-
-    assert expected_jobs_output in output
+    assert expected_jobs_output in results
 
 
 def test_main_no_marathon_config():
@@ -381,9 +378,9 @@ def test_main_no_marathon_config():
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
         patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_status', autospec=True,
-              return_value=(['fake_output'], [True])),
+              return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
-              return_value=(['fake_output'], [True])),
+              return_value=([('fake_output', True)])),
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
@@ -401,9 +398,9 @@ def test_main_no_chronos_config():
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
         patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_status', autospec=True,
-              return_value=(['fake_output'], [True])),
+              return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
-              return_value=(['fake_output'], [True])),
+              return_value=([('fake_output', True)])),
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,

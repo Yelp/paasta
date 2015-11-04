@@ -157,28 +157,21 @@ def get_mesos_status():
     """
 
     state = get_mesos_state_from_leader()
-    cluster_outputs, cluster_ok = run_healthchecks_with_param(state, [assert_quorum_size,
-                                                                      assert_no_duplicate_frameworks])
+    cluster_results = run_healthchecks_with_param(state, [assert_quorum_size, assert_no_duplicate_frameworks])
 
     metrics = get_mesos_stats()
-    metrics_outputs, metrics_ok = run_healthchecks_with_param(metrics, [
+    results = run_healthchecks_with_param(metrics, [
         assert_cpu_health,
         assert_memory_health,
         assert_slave_health,
         assert_tasks_running])
 
-    cluster_outputs.extend(metrics_outputs)
-    cluster_ok.extend(metrics_ok)
-    return cluster_outputs, cluster_ok
+    cluster_results.extend(results)
+    return cluster_results
 
 
 def run_healthchecks_with_param(param, healthcheck_functions):
-    outputs, oks = [], []
-    for healthcheck in healthcheck_functions:
-        output, ok = healthcheck(param)
-        outputs.append(output)
-        oks.append(ok)
-    return outputs, oks
+    return [healthcheck(param) for healthcheck in healthcheck_functions]
 
 
 def assert_marathon_apps(client):
@@ -210,11 +203,10 @@ def assert_marathon_deployments(client):
 def get_marathon_status(client):
     """ Gathers information about marathon.
     :return: string containing the status.  """
-    outputs, oks = run_healthchecks_with_param(client, [
+    return run_healthchecks_with_param(client, [
         assert_marathon_apps,
         assert_marathon_tasks,
         assert_marathon_deployments])
-    return outputs, oks
 
 
 def assert_chronos_scheduled_jobs(client):
@@ -229,17 +221,16 @@ def assert_chronos_scheduled_jobs(client):
 
 
 def get_chronos_status(chronos_client):
-    """ Gather information about chronos.
+    """Gather information about chronos.
     :return: string containing the status
     """
-    outputs, oks = run_healthchecks_with_param(chronos_client, [
+    return run_healthchecks_with_param(chronos_client, [
         assert_chronos_scheduled_jobs,
     ])
-    return outputs, oks
 
 
 def get_marathon_client(marathon_config):
-    """ Given a MarathonConfig object, return
+    """Given a MarathonConfig object, return
     a client.
     :param marathon_config: a MarathonConfig object
     :returns client: a marathon client
