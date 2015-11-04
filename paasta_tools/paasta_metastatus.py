@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import sys
 
 from collections import Counter, OrderedDict
@@ -31,6 +32,15 @@ from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 from paasta_tools.mesos_tools import MasterNotAvailableException
+
+
+def parse_args(args):
+    parser = argparse.ArgumentParser(
+        description='',
+    )
+    parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
+                        help="Print out more output regarding the state of the cluster")
+    return parser.parse_args(args)
 
 
 def get_num_masters(state):
@@ -242,9 +252,10 @@ def get_marathon_client(marathon_config):
     )
 
 
-def main():
+def main(args=[]):
     marathon_config = None
     chronos_config = None
+    args = parse_args(args)
 
     # Check to see if Marathon should be running here by checking for config
     try:
@@ -291,4 +302,4 @@ def main():
 
 
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
