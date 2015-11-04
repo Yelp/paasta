@@ -68,6 +68,4 @@ def check_container_exec_instances(context, num):
     else:
         execs = container_info['ExecIDs']
     print 'Container info:\n%s' % container_info
-    print "Number of execs %d" % len(execs)
-    print "Number expected: %d" % int(num)
     assert len(execs) <= int(num)
