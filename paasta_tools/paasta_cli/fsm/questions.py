@@ -52,14 +52,16 @@ def get_description(description, auto):
 def get_external_link(link, auto):
     if link is None:
         if auto:
-            link = "Please add a link to some reference documentation for your service"
+            link = "Please add a link to a reference doc for your service"
         while not link:
             link = ask('Link to a reference doc?')
     return link
 
 
 def get_smartstack_stanza(yelpsoa_config_root, auto, port):
-    """Produce a smartstack.yaml"""
+    """Produce a basic smartstack.yaml in a `format <yelpsoa_configs.html#smartstack-yaml>`_
+    PaaSTA can use.
+    """
     if port is None:
         suggested_port = suggest_smartstack_proxy_port(yelpsoa_config_root)
         if auto:
@@ -89,7 +91,8 @@ def get_service_stanza(description, external_link, auto):
 
 
 def get_monitoring_stanza(auto, team, legacy_style=False):
-    """Produce a monitoring.yaml
+    """Produce a monitoring.yaml in a `format <yelpsoa_configs.html#monitoring-yaml>`_
+    that PaaSTA can read.
 
     'team' is the critical key and is not calculable so it is required.
 

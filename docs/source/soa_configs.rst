@@ -28,8 +28,10 @@ directory. There is one folder per service. Here is an example tree::
   │   └── smartstack.yaml
   ...
 
-See the `paasta-specific soa-configs documentation <yelpsoa-configs>`_ for more information
+See the `paasta-specific soa-configs documentation <yelpsoa-configs.html>`_ for more information
 about the structure and contents of some example files in soa-configs that PaaSTA uses.
 
 For more information about why we chose this method of config distribution,
-watch `this talk on Yelp's soa-config and how it is used <https://vimeo.com/141231345>`_.
+watch `this talk on Yelp's soa-configs and how it is used <https://vimeo.com/141231345>`_.
+
+For reading soa-configs, PaaSTA uses `service_configuration_lib <https://github.com/Yelp/service_configuration_lib>`_.

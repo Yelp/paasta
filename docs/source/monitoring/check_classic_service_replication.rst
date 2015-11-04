@@ -8,7 +8,7 @@ in yelpsoa-configs.
 Monitoring.yaml
 ===============
 
-The ``soa-configs`` house a file called monitoring.yaml whose keys are exposed through service_configuration_lib. You can use it to specify information relevant to monitoring for your service, such as who is responsible for the service, who to contact when it has problems, and even what to look for to ensure it stays up.
+The `soa-configs <https://github.com/Yelp/service_configuration_lib>`_ house a file called monitoring.yaml whose keys are exposed through service_configuration_lib. You can use it to specify information relevant to monitoring for your service, such as who is responsible for the service, who to contact when it has problems, and even what to look for to ensure it stays up.
 
 Available Keys
 --------------

@@ -32,7 +32,7 @@ NO_DESCRIPTION_MESSAGE = (
 )
 NO_EXTERNAL_LINK_MESSAGE = (
     "No 'external_link' entry in service.yaml. "
-    "Please add on that points to a reference doc for your service"
+    "Please add one that points to a reference doc for your service"
 )
 
 
