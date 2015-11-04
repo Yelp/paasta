@@ -411,3 +411,22 @@ def test_main_no_chronos_config():
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main()
         assert excinfo.value.code == 0
+
+
+def test_status_for_results():
+    assert paasta_metastatus.status_for_results([('message', True), ('message', False)]) == [True, False]
+
+
+def test_generate_summary_for_results_ok():
+    assert (paasta_metastatus.generate_summary_for_check("Myservice", True) ==
+            "Myservice Status: %s" % PaastaColors.green("OK"))
+
+
+def test_generate_summary_for_results_critical():
+    assert (paasta_metastatus.generate_summary_for_check("Myservice", False) ==
+            "Myservice Status: %s" % PaastaColors.red("CRITICAL"))
+
+
+def test_critical_events_in_outputs():
+    assert (paasta_metastatus.critical_events_in_outputs([('myservice', True), ('myservice_false', False)]) ==
+            [('myservice_false', False)])
