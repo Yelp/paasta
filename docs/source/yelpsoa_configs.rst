@@ -2,7 +2,7 @@ Preparation: paasta_tools and yelpsoa-configs
 =========================================================
 
 paasta_tools reads configuration about services from several YAML
-files in `yelpsoa-configs <http://y/cep319>`_:
+files in `soa-configs <soa_configs.html>`_:
 
 marathon-[clustername].yaml
 ---------------------------
@@ -267,7 +267,7 @@ smartstack.yaml
 
 The yaml where nerve namespaces are defined and bound to ports.
 
-See `CEP 319 <http://y/cep319>`_
+TODO: Link to nerve/synapse documentation on the format of this file.
 
 monitoring.yaml
 ---------------
