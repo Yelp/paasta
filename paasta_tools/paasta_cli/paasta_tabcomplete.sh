@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+if [[ -n ${ZSH_VERSION-} ]]; then
+	autoload -U +X bashcompinit && bashcompinit
+fi
+
 # This magic eval enables tab-completion for the "paasta" command
 # http://argcomplete.readthedocs.org/en/latest/index.html#synopsis
 # This comes from the paasta-tools system package
