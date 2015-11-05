@@ -21,6 +21,7 @@ import urlparse
 from time import sleep
 
 import chronos
+import dateutil
 import isodate
 from tron import command_context
 
@@ -224,7 +225,7 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('schedule_time_zone')
 
     def get_shell(self):
-        """Per https://mesos.github.io/chronos/docs/api.html, `shell` defaults
+        """Per https://mesos.github.io/chronos/docs/api.html, ``shell`` defaults
         to true, but if arguments are set, they will be ignored. If arguments are
         set in our config, then we need to set shell: False so that they will
         activate."""
@@ -445,9 +446,44 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     return complete_config
 
 
-def most_recent(first, second):
-    """ Given two datetime strings, return the most recent.  """
-    return first if isodate.parse_datetime(first) > isodate.parse_datetime(second) else second
+def _safe_parse_datetime(dt):
+    """
+    Parse a datetime, swallowing exceptions.
+
+    :param dt: A string containing a datetime
+    :returns: A datetime.datetime object representing ``dt``. If a datetime
+    string is unparseable, it is represented as a datetime.datetime set to the
+    epoch in UTC (i.e. a value which will never be the most recent).
+    """
+    epoch = datetime.datetime(1970, 1, 1, tzinfo=dateutil.tz.tzutc())
+    try:
+        parsed_dt = isodate.parse_datetime(dt)
+    # I tried to limit this to isodate.ISO8601Error but parse_datetime() can
+    # also throw "AttributeError: 'NoneType' object has no attribute 'split'",
+    # and presumably other exceptions.
+    except Exception as exc:
+        log.debug("Failed to parse datetime '%s'" % dt)
+        log.debug(exc)
+        parsed_dt = epoch
+    return parsed_dt
+
+
+def cmp_datetimes(first, second):
+    """Compare two datetime strings and sort by most recent.
+
+    :param first: A string containing a datetime
+    :param second: A string containing a datetime
+    :returns: -1 if ``first`` is more recent, 1 if ``second`` is more recent, or 0
+    if they are equivalent.
+    """
+    parsed_first = _safe_parse_datetime(first)
+    parsed_second = _safe_parse_datetime(second)
+    if parsed_first > parsed_second:
+        return -1
+    elif parsed_first == parsed_second:
+        return 0
+    else:
+        return 1
 
 
 def filter_enabled_jobs(jobs):
@@ -484,10 +520,29 @@ def get_status_last_run(job):
     elif not last_success:
         return (last_failure, LastRunState.Fail)
     else:
-        if most_recent(last_success, last_failure) is last_success:
+        if cmp_datetimes(last_success, last_failure) <= 0:
             return (last_success, LastRunState.Success)
         else:
             return (last_failure, LastRunState.Fail)
+
+
+def sort_jobs(jobs):
+    """Takes a list of chronos jobs and returns a sorted list where the job
+    with the most recent result is first.
+
+    :param jobs: list of dicts of job configuration, as returned by the chronos client
+    """
+    def get_key(job):
+        failure = last_failure_for_job(job)
+        success = last_success_for_job(job)
+        newest = failure if cmp_datetimes(failure, success) < 0 else success
+        return _safe_parse_datetime(newest)
+
+    return sorted(
+        jobs,
+        key=get_key,
+        reverse=True,
+    )
 
 
 def match_job_names_to_service_instance(service, instance, jobs):

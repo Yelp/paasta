@@ -274,6 +274,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         if verbose:
             all_tags = True
         matching_jobs = get_matching_jobs(client, job_id, all_tags)
+        sorted_matching_jobs = chronos_tools.sort_jobs(matching_jobs)
         job_config = chronos_tools.load_chronos_job_config(service, instance, cluster, soa_dir=soa_dir)
         job_config = chronos_tools.load_chronos_job_config(
             service=service,
@@ -281,7 +282,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             cluster=cluster,
             soa_dir=soa_dir,
         )
-        print status_chronos_jobs(matching_jobs, job_config, verbose)
+        print status_chronos_jobs(sorted_matching_jobs, job_config, verbose)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)

@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import contextlib
 import copy
 import datetime
+
 import mock
 from pytest import raises
-
-import contextlib
 
 import chronos_tools
 from mock import Mock
@@ -994,10 +994,15 @@ class TestChronosTools:
         actual = chronos_tools.parse_time_variables(input_string=test_input, parse_time=input_time)
         assert actual == expected
 
-    def test_most_recent(self):
+    def test_cmp_datetimes(self):
         before = '2015-09-22T16:46:25.111Z'
         after = '2015-09-24T16:54:38.917Z'
-        assert chronos_tools.most_recent(before, after) == after
+        assert chronos_tools.cmp_datetimes(before, after) == 1
+
+    def test_cmp_datetimes_with_empty_value(self):
+        before = ''
+        after = '2015-09-24T16:54:38.917Z'
+        assert chronos_tools.cmp_datetimes(before, after) == 1
 
     def test_last_success_for_job(self):
         fake_job = {
@@ -1063,6 +1068,42 @@ class TestChronosTools:
         fake_jobs = [{'name': 'foo', 'disabled': False}, {'name': 'bar', 'disabled': True}]
         assert chronos_tools.filter_enabled_jobs(fake_jobs) == [{'name': 'foo', 'disabled': False}]
 
+    def test_sort_jobs(self):
+        early_job = {
+            # name isn't strictly necessary but since we're just comparing
+            # dicts later this keeps things unambiguous.
+            'name': 'early_job',
+            'disabled': False,  # Not used but keeping things honest by having a mix of enabled and disabled
+            'lastError': '2015-04-20T16:20:00.000Z',
+            'lastSuccess': '2015-04-20T16:30:00.000Z',
+        }
+        late_job = {
+            'name': 'late_job',
+            'disabled': True,
+            # Only last time counts, so even though this job's error comes
+            # before either early_job result, that result is superceded by this
+            # job's later success.
+            'lastError': '2015-04-20T16:10:00.000Z',
+            'lastSuccess': '2015-04-20T16:40:00.000Z',
+        }
+        unrun_job = {
+            'name': 'unrun_job',
+            'disabled': False,
+            'lastError': '',
+            'lastSuccess': '',
+        }
+        jobs = [early_job, late_job, unrun_job]
+        assert chronos_tools.sort_jobs(jobs) == [late_job, early_job, unrun_job]
+
+    def test_match_job_names_to_service_handles_mutiple_jobs(self):
+        mock_jobs = [{'name': 'fake-service fake-instance git1 config1'},
+                     {'name': 'fake-service fake-instance git2 config2'},
+                     {'name': 'other-service other-instance git config'}]
+        expected = mock_jobs[:2]
+        actual = chronos_tools.match_job_names_to_service_instance(
+            service='fake-service', instance='fake-instance', jobs=mock_jobs)
+        assert sorted(actual) == sorted(expected)
+
     def test_disable_job(self):
         fake_client_class = mock.Mock(spec='chronos.ChronosClient')
         fake_client = fake_client_class(servers=[])
@@ -1082,12 +1123,3 @@ class TestChronosTools:
         fake_client = fake_client_class(servers=[])
         chronos_tools.create_job(job=self.fake_config_dict, client=fake_client)
         fake_client.add.assert_called_once_with(self.fake_config_dict)
-
-    def test_match_job_names_to_service_handles_mutiple_jobs(self):
-        mock_jobs = [{'name': 'fake-service fake-instance git1 config1'},
-                     {'name': 'fake-service fake-instance git2 config2'},
-                     {'name': 'other-service other-instance git config'}]
-        expected = mock_jobs[:2]
-        actual = chronos_tools.match_job_names_to_service_instance(
-            service='fake-service', instance='fake-instance', jobs=mock_jobs)
-        assert sorted(actual) == sorted(expected)
