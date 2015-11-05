@@ -572,6 +572,11 @@ def format_job_id(service, instance, git_hash=None, config_hash=None):
     return formatted
 
 
+def deformat_job_id(job_id):
+    job_id = job_id.replace('--', '_')
+    return decompose_job_id(job_id)
+
+
 def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Retreive a service instance's nerve namespace from its configuration file.
     If one is not defined in the config file, returns instance instead."""
