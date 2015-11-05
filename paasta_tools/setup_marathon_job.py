@@ -432,7 +432,7 @@ def setup_service(service, instance, client, marathon_config,
     Doesn't do anything if the service is already in Marathon and hasn't changed.
     If it's not, attempt to find old instances of the service and bounce them.
 
-    :param ervice: The service name to setup
+    :param service: The service name to setup
     :param instance: The instance of the service to setup
     :param client: A MarathonClient object
     :param marathon_config: The marathon configuration dict
