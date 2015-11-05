@@ -632,8 +632,8 @@ def disable_job(client, job):
 
 
 def delete_job(client, job):
-    log.debug("Deleting job: %s" % job)
-    client.delete(job)
+    log.debug("Deleting job: %s" % job["name"])
+    client.delete(job["name"])
 
 
 def create_job(client, job):

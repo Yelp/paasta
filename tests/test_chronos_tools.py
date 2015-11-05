@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import contextlib
+import copy
 import datetime
 
 import mock
@@ -1110,10 +1111,12 @@ class TestChronosTools:
         fake_client.update.assert_called_once_with({"disabled": True})
 
     def test_delete_job(self):
+        fake_job_to_delete = copy.deepcopy(self.fake_config_dict)
+        fake_job_to_delete["name"] = 'fake_job'
         fake_client_class = mock.Mock(spec='chronos.ChronosClient')
         fake_client = fake_client_class(servers=[])
-        chronos_tools.delete_job(job=self.fake_config_dict, client=fake_client)
-        fake_client.delete.assert_called_once_with(self.fake_config_dict)
+        chronos_tools.delete_job(job=fake_job_to_delete, client=fake_client)
+        fake_client.delete.assert_called_once_with('fake_job')
 
     def test_create_job(self):
         fake_client_class = mock.Mock(spec='chronos.ChronosClient')

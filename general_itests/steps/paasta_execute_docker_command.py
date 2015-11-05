@@ -35,7 +35,7 @@ def create_docker_container(context, task_id):
         pass
     container = docker_client.create_container(
         name=container_name,
-        image='docker-dev.yelpcorp.com/trusty_yelp:latest',
+        image='ubuntu:trusty',
         command='/bin/sleep infinity',
         environment={'MESOS_TASK_ID': task_id},
     )
@@ -57,8 +57,15 @@ def paasta_execute_docker_command_result(context, code):
     assert int(code) == int(context.return_code)
 
 
-@then(u'the docker container has {num} exec instances')
+@then(u'the docker container has at most {num} exec instances')
 def check_container_exec_instances(context, num):
+    """Modern docker versions remove ExecIDs after they finished, but older
+    docker versions leave ExecIDs behind. This test is for assering that
+    the ExecIDs are cleaned up one way or another"""
     container_info = context.docker_client.inspect_container(context.running_container_id)
+    if container_info['ExecIDs'] is None:
+        execs = []
+    else:
+        execs = container_info['ExecIDs']
     print 'Container info:\n%s' % container_info
-    assert len(container_info['ExecIDs']) == int(num)
+    assert len(execs) <= int(num)

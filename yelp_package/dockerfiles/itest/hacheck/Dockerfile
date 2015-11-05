@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM docker-dev.yelpcorp.com/lucid_yelp
-LABEL break-cache="1"
+FROM ubuntu:trusty
 
-RUN apt-get update
-RUN apt-get -y install git python2.7 python-virtualenv python-pkg-resources
+RUN apt-get update && apt-get -y install git python2.7 python-virtualenv python-pkg-resources
 
 RUN git clone --branch=yelp git://github.com/Yelp/hacheck
 WORKDIR /hacheck

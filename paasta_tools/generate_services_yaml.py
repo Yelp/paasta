@@ -13,16 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# CEP 324: Generation of services.yaml file
-
 import sys
 
 import yaml
 from paasta_tools.marathon_tools import get_all_namespaces
 from paasta_tools.utils import atomic_file_write
 
-
-# CEP 337 address for accessing services
 YOCALHOST = '169.254.255.254'
 
 

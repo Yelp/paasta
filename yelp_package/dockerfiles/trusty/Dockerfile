@@ -12,22 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM docker-dev.yelpcorp.com/trusty_yelp
-MAINTAINER Kyle Anderson <kwa@yelp.com>
+FROM ubuntu:trusty
+RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
+  python-dev debhelper python-yaml python-pytest pyflakes \
+  help2man zsh
 
-RUN apt-get update && apt-get update
-
-RUN apt-get -y install dpkg-dev python-tox python-setuptools
-RUN apt-get -y install python-dev debhelper
-
-# Make sure we get a package suitable for building this package correctly.
-# Per dnephin we need https://github.com/spotify/dh-virtualenv/pull/20
-# Which at this time is in this package
-RUN apt-get -y install dh-virtualenv=0.6-yelp2
-RUN apt-get -y install python-yaml
-RUN apt-get -y install python-pytest
-RUN apt-get -y install pyflakes
-RUN apt-get -y install help2man
+# Older versions of dh-virtualenv are buggy and don't.. work
+RUN curl http://ppa.launchpad.net/dh-virtualenv/daily/ubuntu/pool/main/d/dh-virtualenv/dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb --output dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb && \
+  dpkg -i dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb && rm dh-virtualenv_0.10-0~80~ubuntu14.04.1_all.deb
 
 ENV HOME /work
 ENV PWD /work

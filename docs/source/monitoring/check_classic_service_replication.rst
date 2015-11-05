@@ -8,7 +8,7 @@ in yelpsoa-configs.
 Monitoring.yaml
 ===============
 
-`yelpsoa-configs (CEP 319) <https://docs.google.com/a/yelp.com/document/d/1ZBg5ykniRU30UXj4YcsKfmmnuegQbtR2VuqCAIGi-50/view#>`_ houses a file called monitoring.yaml whose keys are exposed through service_configuration_lib. You can use it to specify information relevant to monitoring for your service, such as who is responsible for the service, who to contact when it has problems, and even what to look for to ensure it stays up.
+The `soa-configs <https://github.com/Yelp/service_configuration_lib>`_ house a file called monitoring.yaml whose keys are exposed through service_configuration_lib. You can use it to specify information relevant to monitoring for your service, such as who is responsible for the service, who to contact when it has problems, and even what to look for to ensure it stays up.
 
 Available Keys
 --------------
@@ -16,12 +16,6 @@ Within your monitoring.yaml file you can specify the following keys:
 * team (mandatory): The team that owns the service. If this is not defined then no alerts will ever fire
 
   * This team key must be already defined in puppet for sensu to recognize it. This is a one time thing, once the team-data exists, your team can use sensu.
-
-    * See the currently defined teams: https://opengrok.yelpcorp.com/xref/sysgit/puppet/hieradata/common.yaml (search for sensu_handlers::teams)
-
-    * Read the docs on the `team-data syntax <https://github.com/Yelp/sensu_handlers/blob/master/README.md#team-syntax>`_
-
-  * If team does not exist, you will need to add it. Instructions on updating the configs is in `Runbook: Puppet <https://docs.google.com/document/d/1T7M0fpw6A8WWo2xzicbxEn_WzRv1IPNfn-wio1KS  E3o/edit#heading=h.k4y6rx1mtq1y>`_
 
 * page: A boolean that indicates if this service's alerts should be email only or escalate to a pager
 

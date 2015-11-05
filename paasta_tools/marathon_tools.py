@@ -550,17 +550,17 @@ def get_marathon_client(url, user, passwd):
 
 
 def format_job_id(service, instance, git_hash=None, config_hash=None):
-    """Compose a Marathon app id formatted to meet Marathon's app id requirements.
-
-    Marathon's app id requirements: https://mesosphere.github.io/marathon/docs/rest-api.html#id-string
+    """Compose a Marathon app id formatted to meet Marathon's
+    `app id requirements <https://mesosphere.github.io/marathon/docs/rest-api.html#id-string>`_
 
     :param service: The name of the service
     :param instance: The instance of the service
     :param git_hash: The git_hash portion of the job_id. If git_hash is set,
-    config_hash must also be set.
+                     config_hash must also be set.
     :param config_hash: The config_hash portion of the job_id. If config_hash
-    is set, git_hash must also be set.
+                        is set, git_hash must also be set.
     :returns: a composed app id in a format that Marathon accepts
+
     """
     service = str(service).replace('_', '--')
     instance = str(instance).replace('_', '--')

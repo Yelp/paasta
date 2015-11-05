@@ -16,8 +16,8 @@ Mesos, scheduling crons to run the deployment scripts, etc. See the
 
 Service configuration
 ---------------------
-`CEP 319 <http://y/cep319>`_ discusses how yelpsoa-configs are distributed to
-``/nail/etc/services`` on machines in the cluster.
+``soa-configs`` are used to centrally configure services. See the documentation for
+`soa-configs <soa_configs.html>`_ for more information on what these are.
 
 Contract with services
 ----------------------
@@ -42,10 +42,7 @@ the right state -- cluster X should be running version Y of service Z.
 
 How PaaSTA Runs Docker Containers
 ---------------------------------
-Marathon launches the Docker containers that comprise a PaaSTA service. The
-default configuration is managed by puppet in the `paasta_tools
-module
-<https://opengrok.yelpcorp.com/xref/sysgit/puppet/modules/paasta_tools/manifests/init.pp>`_.
+Marathon launches the Docker containers that comprise a PaaSTA service.
 
 Docker images are run by Mesos's native Docker executor. PaaSTA composes the
 configuration for the running image:
@@ -61,7 +58,7 @@ configuration for the running image:
 
 * ``--env``: Any environment variables specified in the ``env`` section will be here.
 
-  * **WARNING**: A PORT variable is provided to the docker image, but it represents the EXTERNAL port, not the internal one. The internal service MUST listen on 8888, so this PORT variable confuses some service stacks that are listening for this variable. Such services MUST overwrite this environment variable to function. (``PORT=8888 ./uwisgi.py```) We tried to work around this, see `PAASTA-267 <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
+  * **WARNING**: A PORT variable is provided to the docker image, but it represents the EXTERNAL port, not the internal one. The internal service MUST listen on 8888, so this PORT variable confuses some service stacks that are listening for this variable. Such services MUST overwrite this environment variable to function. (``PORT=8888 ./uwisgi.py```)
 
 * ``--publish``: Mesos picks a random port on the host that maps to and exposes
   port 8888 inside the container. This random port is announced to Smartstack

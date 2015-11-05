@@ -271,7 +271,9 @@ def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
     :param service_instances: A list of tuples of (service, instance)
     :param namespaces: list of Smartstack namespaces
     :param blacklist: A list of blacklisted location tuples in the form (location, value)
-    :returns: a dictionary of the form::
+    :returns: a dictionary of the form
+
+    ::
 
         {
           'location_type': {

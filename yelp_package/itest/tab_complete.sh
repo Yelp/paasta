@@ -48,6 +48,13 @@ else
     tab_complete_fail "$pre_typed" "$actual" "$expected"
 fi
 
+# Test tab completion in zsh
+zsh_actual=$(zsh -c "COMP_LINE='paasta $pre_typed' COMP_POINT=99 _ARGCOMPLETE=1 paasta 8>&1 9>/dev/null")
+if [[ $expected == $zsh_actual ]]; then
+    tab_complete_pass "$pre_typed"
+else
+    tab_complete_fail "$pre_typed" "$zsh_actual" "$expected"
+fi
 
 # laziness test
 #

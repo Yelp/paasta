@@ -52,14 +52,16 @@ def get_description(description, auto):
 def get_external_link(link, auto):
     if link is None:
         if auto:
-            link = "Please add a url to your CEP or SCF here"
+            link = "Please add a link to a reference doc for your service"
         while not link:
-            link = ask('Link to your CEP or SCF?')
+            link = ask('Link to a reference doc?')
     return link
 
 
 def get_smartstack_stanza(yelpsoa_config_root, auto, port):
-    """Produce a smartstack.yaml a la http://y/cep319"""
+    """Produce a basic smartstack.yaml in a `format <yelpsoa_configs.html#smartstack-yaml>`_
+    PaaSTA can use.
+    """
     if port is None:
         suggested_port = suggest_smartstack_proxy_port(yelpsoa_config_root)
         if auto:
@@ -89,8 +91,8 @@ def get_service_stanza(description, external_link, auto):
 
 
 def get_monitoring_stanza(auto, team, legacy_style=False):
-    """Produce a monitoring.yaml a la
-    https://trac.yelpcorp.com/wiki/HowToService/Monitoring/monitoring.yaml
+    """Produce a monitoring.yaml in a `format <yelpsoa_configs.html#monitoring-yaml>`_
+    that PaaSTA can read.
 
     'team' is the critical key and is not calculable so it is required.
 
@@ -159,7 +161,7 @@ def get_clusternames_from_deploy_stanza(deploy_stanza):
 
 def get_marathon_stanza():
     """Produce a ``marathon-*.yaml`` a la
-    http://servicedocs.yelpcorp.com/docs/paasta_tools/yelpsoa_configs.html#marathon-clustername-yaml
+    `the docs <yelpsoa_configs.html#marathon-clustername-yaml>`_
 
     We want to default to The Simplest Thing That Can Possibly Work. This
     allows new services to hit the ground running, but forces developers to
