@@ -61,7 +61,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import remove_tag_from_job_id
 from paasta_tools.utils import SPACER
 
 # Marathon REST API:
@@ -336,7 +335,8 @@ def deploy_service(
             instance=instance
         )
 
-    short_id = remove_tag_from_job_id(marathon_jobid)
+    (service, instance, _, __) = marathon_tools.decompose_job_id(marathon_jobid)
+    short_id = marathon_tools.compose_job_id(service, instance)
 
     cluster = load_system_paasta_config().get_cluster()
     app_list = client.list_apps(embed_failures=True)
