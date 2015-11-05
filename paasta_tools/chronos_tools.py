@@ -532,18 +532,16 @@ def sort_jobs(jobs):
 
     :param jobs: list of dicts of job configuration, as returned by the chronos client
     """
-    def cmp_jobs(left_job, right_job):
-        left_failure = last_failure_for_job(left_job)
-        left_success = last_success_for_job(left_job)
-        left_newest = left_failure if cmp_datetimes(left_failure, left_success) < 0 else left_success
-        right_failure = last_failure_for_job(right_job)
-        right_success = last_success_for_job(right_job)
-        right_newest = right_failure if cmp_datetimes(right_failure, right_success) < 0 else right_success
-        return cmp_datetimes(left_newest, right_newest)
+    def get_key(job):
+        failure = last_failure_for_job(job)
+        success = last_success_for_job(job)
+        newest = failure if cmp_datetimes(failure, success) < 0 else success
+        return _safe_parse_datetime(newest)
 
     return sorted(
         jobs,
-        cmp=cmp_jobs,
+        key=get_key,
+        reverse=True,
     )
 
 

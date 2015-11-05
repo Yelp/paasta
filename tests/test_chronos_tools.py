@@ -1091,7 +1091,7 @@ class TestChronosTools:
             'lastError': '',
             'lastSuccess': '',
         }
-        jobs = [early_job, unrun_job, late_job]
+        jobs = [early_job, late_job, unrun_job]
         assert chronos_tools.sort_jobs(jobs) == [late_job, early_job, unrun_job]
 
     def test_match_job_names_to_service_handles_mutiple_jobs(self):
