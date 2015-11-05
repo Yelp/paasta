@@ -57,6 +57,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import configure_log
 from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -490,8 +491,8 @@ def main():
         log.setLevel(logging.WARNING)
     try:
         service, instance, _, __ = decompose_job_id(args.service_instance)
-    except ValueError:
-        log.error("Invalid service instance specified. Format is service.instance.")
+    except InvalidJobNameError:
+        log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
         sys.exit(1)
 
     marathon_config = get_main_marathon_config()
