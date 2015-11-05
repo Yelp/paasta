@@ -653,8 +653,7 @@ def marathon_services_running_here():
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
     srv_list = []
     for executor in executors:
-        srv_name = decompose_job_id(executor['id'])[0].replace('--', '_')
-        srv_instance = decompose_job_id(executor['id'])[1].replace('--', '_')
+        (srv_name, srv_instance, _, __) = deformat_job_id(executor['id'])
         srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list
