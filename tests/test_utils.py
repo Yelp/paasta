@@ -408,20 +408,6 @@ def test_decompose_job_id_with_hashes():
     assert actual == expected
 
 
-def test_remove_tag_from_job_id_with_tag():
-    fake_job_id = "my_cool_service.main.git123abc.config456def"
-    expected = "my_cool_service.main"
-    actual = utils.remove_tag_from_job_id(fake_job_id)
-    assert actual == expected
-
-
-def test_remove_tag_from_job_id_without_tag():
-    fake_job_id = "my_cool_service.main"
-    expected = fake_job_id
-    actual = utils.remove_tag_from_job_id(fake_job_id)
-    assert actual == expected
-
-
 def test_build_docker_tag():
     upstream_job_name = 'fake_upstream_job_name'
     upstream_git_commit = 'fake_upstream_git_commit'

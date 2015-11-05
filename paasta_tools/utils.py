@@ -724,18 +724,6 @@ def decompose_job_id(job_id, spacer=SPACER):
     return (decomposed[0], decomposed[1], git_hash, config_hash)
 
 
-def remove_tag_from_job_id(job_id, spacer=SPACER):
-    """Remove the tag from a job id, if there is one.
-
-    :param job_id: The job_id.
-    :returns: The job_id with the tag removed, if there was one."""
-    try:
-        parts = decompose_job_id(job_id)
-        return '%s%s%s' % (parts[0], spacer, parts[1])
-    except InvalidJobNameError:
-        raise
-
-
 def build_docker_image_name(upstream_job_name):
     """docker-paasta.yelpcorp.com:443 is the URL for the Registry where PaaSTA
     will look for your images.
