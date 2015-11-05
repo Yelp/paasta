@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import os
+import re
 import sys
 
 from behave import when, then
@@ -66,7 +67,12 @@ def check_metastatus_return_code(context, expected_return_code, expected_output)
     env['MESOS_CLI_CONFIG'] = context.mesos_cli_config_filename
     print 'Running cmd %s with MESOS_CLI_CONFIG=%s' % (cmd, env['MESOS_CLI_CONFIG'])
     (exit_code, output) = _run(cmd, env=env)
+
+    # we don't care about the colouring here, so remove any ansi escape sequences
+    ansi_escape = re.compile(r'\x1b[^m]*m')
+    escaped_output = ansi_escape.sub('', output)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print '\n'
 
     assert exit_code == int(expected_return_code)
-    assert expected_output in output
+    assert expected_output in escaped_output
