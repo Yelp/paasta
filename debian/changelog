@@ -1,3 +1,11 @@
+paasta-tools (0.13.11-yelp1) lucid; urgency=low
+
+  * 0.13.11 tagged with 'make release'
+    Commit: Merge pull request #15 from Yelp/mrtyler_sorting_hat
+    sorting hat
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 05 Nov 2015 11:32:16 -0800
+
 paasta-tools (0.13.10-yelp1) lucid; urgency=low
 
   * 0.13.10 tagged with 'make release'
