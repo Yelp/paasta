@@ -336,8 +336,7 @@ def deploy_service(
             instance=instance
         )
 
-    (service, instance, _, __) = marathon_tools.decompose_job_id(marathon_jobid)
-    short_id = marathon_tools.compose_job_id(service, instance)
+    short_id = marathon_tools.format_job_id(service, instance)
 
     cluster = load_system_paasta_config().get_cluster()
     app_list = client.list_apps(embed_failures=True)
