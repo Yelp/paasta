@@ -34,6 +34,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
@@ -566,7 +567,11 @@ def lookup_chronos_jobs(service, instance, client, include_disabled=False):
     jobs = client.list()
     matching_jobs = []
     for job in jobs:
-        if job['name'].startswith(compose_job_id(service, instance)):
+        try:
+            (job_service, job_instance, _, __) = decompose_job_id(job['name'])
+        except InvalidJobNameError:
+            continue
+        if job_service == service and job_instance == instance:
             if job['disabled'] and not include_disabled:
                 continue
             else:
