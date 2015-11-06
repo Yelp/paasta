@@ -556,22 +556,35 @@ def match_job_names_to_service_instance(service, instance, jobs):
     return matching
 
 
-def lookup_chronos_jobs(service, instance, client, include_disabled=False):
+def lookup_chronos_jobs(service, instance, client, git_hash=None, config_hash=None, include_disabled=False):
     """Retrieves Chronos jobs with names that match a specified pattern.
 
     :param service: service we're looking for
     :param instance: instance we're looking for
     :param client: Chronos client object
-    :param include_disabled: boolean indicating if disabled jobs should be included in matches
+    :param git_hash: git_hash we're looking for. Optional; return jobs with any
+    git_hash if omitted.
+    :param config_hash: config_hash we're looking for. Optional; return jobs
+    with any git_hash if omitted.
+    :param include_disabled: boolean indicating if disabled jobs should be
+    included in the returned list
+    :returns: list of job dicts whose name matches the ``service`` and
+    ``instance`` (and maybe ``git_hash`` and ``config_hash``) arguments
+    provided
     """
     jobs = client.list()
     matching_jobs = []
     for job in jobs:
         try:
-            (job_service, job_instance, _, __) = decompose_job_id(job['name'])
+            (job_service, job_instance, job_git_hash, job_config_hash) = decompose_job_id(job['name'])
         except InvalidJobNameError:
             continue
-        if job_service == service and job_instance == instance:
+        if (
+            job_service == service
+            and job_instance == instance
+            and (git_hash is None or job_git_hash == git_hash)
+            and (config_hash is None or job_config_hash == config_hash)
+        ):
             if job['disabled'] and not include_disabled:
                 continue
             else:
