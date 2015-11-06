@@ -38,18 +38,19 @@ from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import get_default_cluster_for_service
+from paasta_tools.utils import get_docker_host
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import _run
-from paasta_tools.utils import get_docker_host
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 from paasta_tools.utils import validate_service_instance
-
 
 BAD_PORT_WARNING = 'This_service_is_listening_on_the_PORT_variable__You_must_use_8888__see_y/paasta_deploy'
 
@@ -510,7 +511,15 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
     """
-    system_paasta_config = load_system_paasta_config()
+    try:
+        system_paasta_config = load_system_paasta_config()
+    except PaastaNotConfiguredError:
+        sys.stdout.write(PaastaColors.yellow(
+            "Warning: Couldn't load config files from '/etc/paasta'. This indicates\n"
+            "PaaSTA is not configured locally on this host, and local-run may not behave\n"
+            "the same way it would behave on a server configured for PaaSTA.\n"
+        ))
+        system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
 
     volumes = list()
 

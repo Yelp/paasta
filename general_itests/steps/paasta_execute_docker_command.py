@@ -23,23 +23,28 @@ from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_host
 
 
-@given(u'a running docker container with task id {task_id}')
-def create_docker_container(context, task_id):
+@given(u'Docker is available')
+def docker_is_available(context):
     base_docker_url = get_docker_host()
     docker_client = Client(base_url=base_docker_url)
+    assert docker_client.ping()
     context.docker_client = docker_client
+
+
+@given(u'a running docker container with task id {task_id}')
+def create_docker_container(context, task_id):
     container_name = 'paasta-itest-execute-in-containers'
     try:
-        docker_client.remove_container(container_name, force=True)
+        context.docker_client.remove_container(container_name, force=True)
     except APIError:
         pass
-    container = docker_client.create_container(
+    container = context.docker_client.create_container(
         name=container_name,
         image='ubuntu:trusty',
         command='/bin/sleep infinity',
         environment={'MESOS_TASK_ID': task_id},
     )
-    docker_client.start(container=container.get('Id'))
+    context.docker_client.start(container=container.get('Id'))
     context.running_container_id = container.get('Id')
 
 
