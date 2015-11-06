@@ -113,12 +113,9 @@ def old_jobs_leftover(context, job_count):
 
 @then(u'there should be {job_count} enabled jobs')
 def should_be_enabled_jobs(context, job_count):
-    search_pattern = chronos_tools.compose_job_id(
+    enabled_jobs = chronos_tools.lookup_chronos_jobs(
         service=fake_service_name,
         instance=fake_instance_name,
-    )
-    enabled_jobs = chronos_tools.lookup_chronos_jobs(
-        pattern=search_pattern,
         client=context.chronos_client,
         include_disabled=False,
     )
@@ -127,12 +124,9 @@ def should_be_enabled_jobs(context, job_count):
 
 @then(u'there should be {job_count} disabled jobs')
 def should_be_disabled_jobs(context, job_count):
-    search_pattern = chronos_tools.compose_job_id(
+    all_related_jobs = chronos_tools.lookup_chronos_jobs(
         service=fake_service_name,
         instance=fake_instance_name,
-    )
-    all_related_jobs = chronos_tools.lookup_chronos_jobs(
-        pattern=search_pattern,
         client=context.chronos_client,
         include_disabled=True,
     )

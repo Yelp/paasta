@@ -107,12 +107,15 @@ def chronos_check_job_state(context, old_or_new_job, disabled):
         job_id = context.old_chronos_job_name
     else:
         job_id = context.chronos_job_name
+    (service, instance, git_hash, config_hash) = chronos_tools.decompose_job_id(job_id)
     jobs = chronos_tools.lookup_chronos_jobs(
-        job_id,
-        context.chronos_client,
-        max_expected=1,
-        include_disabled=desired_disabled
+        service=service,
+        instance=instance,
+        git_hash=git_hash,
+        config_hash=config_hash,
+        client=context.chronos_client,
+        include_disabled=desired_disabled,
     )
-    assert jobs != []
+    assert len(jobs) == 1
     for job in jobs:
         assert job['disabled'] == desired_disabled
