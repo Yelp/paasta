@@ -88,24 +88,6 @@ def test_stop_chronos_job():
             mock_client.delete_tasks.assert_any_call(job['name'])
 
 
-def test_get_matching_jobs_all_tags_true():
-    job_id = 'my_service my_instance gityourmom configyourdad'
-    client = 'unused'
-    expected_pattern = r'^my_service my_instance '  # Trailing space is important!
-    with mock.patch('chronos_serviceinit.chronos_tools.lookup_chronos_jobs') as mock_lookup_chronos_jobs:
-        chronos_serviceinit.get_matching_jobs(client, job_id, all_tags=True)
-    mock_lookup_chronos_jobs.assert_called_once_with(expected_pattern, client, include_disabled=True)
-
-
-def test_get_matching_jobs_all_tags_false():
-    job_id = 'my_service my_instance gityourmom configyourdad'
-    client = 'unused'
-    expected_pattern = r'^my_service my_instance gityourmom configyourdad'
-    with mock.patch('chronos_serviceinit.chronos_tools.lookup_chronos_jobs') as mock_lookup_chronos_jobs:
-        chronos_serviceinit.get_matching_jobs(client, job_id, all_tags=False)
-    mock_lookup_chronos_jobs.assert_called_once_with(expected_pattern, client, include_disabled=True)
-
-
 def test_get_short_task_id():
     task_id = 'ct:1111111111111:0:my_service my_instance gityourmom configyourdad:'
     assert chronos_serviceinit.get_short_task_id(task_id) == '1111111111111'
