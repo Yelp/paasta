@@ -13,13 +13,13 @@
 # limitations under the License.
 
 import os
-import re
 import sys
 
 from behave import when, then
 
 sys.path.append('../')
 from paasta_tools.utils import _run
+from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools import marathon_tools
 from marathon import MarathonApp
 
@@ -62,15 +62,14 @@ def check_metastatus_return_code(context, expected_return_code, expected_output)
     # We don't want to invoke the "paasta metastatus" wrapper because by
     # default it will check every cluster. This is also the way sensu invokes
     # this check.
-    cmd = '../paasta_tools/paasta_metastatus.py'
+    cmd = '../paasta_tools/paasta_metastatus.py --v'
     env = dict(os.environ)
     env['MESOS_CLI_CONFIG'] = context.mesos_cli_config_filename
     print 'Running cmd %s with MESOS_CLI_CONFIG=%s' % (cmd, env['MESOS_CLI_CONFIG'])
     (exit_code, output) = _run(cmd, env=env)
 
     # we don't care about the colouring here, so remove any ansi escape sequences
-    ansi_escape = re.compile(r'\x1b[^m]*m')
-    escaped_output = ansi_escape.sub('', output)
+    escaped_output = remove_ansi_escape_sequences(output)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print '\n'
 
