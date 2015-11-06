@@ -106,7 +106,9 @@ def get_monitoring_stanza(auto, team, legacy_style=False):
             print "Here are the existing teams:"
             print ", ".join(sorted(all_teams))
             team = ask("Team responsible for this service?")
-    if team not in all_teams:
+    if not all_teams:
+        sys.stderr.write("Warning: No sensu teams are defined on disk, cannot perform validation on this team name")
+    elif team not in all_teams:
         print "I Don't See Your Team '%s' In The List Of Valid Teams:" % team
         sys.exit(", ".join(sorted(all_teams)))
 
