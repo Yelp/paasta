@@ -381,12 +381,18 @@ def test_main_no_marathon_config():
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
               return_value=([('fake_output', True)])),
+        patch('paasta_tools.paasta_metastatus.parse_args', autospec=True),
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
         load_get_mesos_status_patch,
         load_get_marathon_status_patch,
+        parse_args_patch,
     ):
+        fake_args = Mock(
+            verbose=False,
+        )
+        parse_args_patch.return_value = fake_args
         load_marathon_config_patch.side_effect = MarathonNotConfigured
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main()
@@ -401,12 +407,19 @@ def test_main_no_chronos_config():
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
               return_value=([('fake_output', True)])),
+        patch('paasta_tools.paasta_metastatus.parse_args', autospec=True),
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
         load_get_mesos_status_patch,
         load_get_marathon_status_patch,
+        parse_args_patch,
     ):
+
+        fake_args = Mock(
+            verbose=False,
+        )
+        parse_args_patch.return_value = fake_args
         load_chronos_config_patch.side_effect = ChronosNotConfigured
         with raises(SystemExit) as excinfo:
             paasta_metastatus.main()

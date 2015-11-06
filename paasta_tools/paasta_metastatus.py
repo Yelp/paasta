@@ -34,13 +34,13 @@ from paasta_tools.utils import print_with_indent
 from paasta_tools.mesos_tools import MasterNotAvailableException
 
 
-def parse_args(args):
+def parse_args():
     parser = argparse.ArgumentParser(
         description='',
     )
     parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
                         help="Print out more output regarding the state of the cluster")
-    return parser.parse_args(args)
+    return parser.parse_args()
 
 
 def get_num_masters(state):
@@ -285,10 +285,10 @@ def print_results_for_healthchecks(summary, ok, results, verbose):
             print_with_indent(line, 2)
 
 
-def main(args=[]):
+def main():
     marathon_config = None
     chronos_config = None
-    args = parse_args(args)
+    args = parse_args()
 
     # Check to see if Marathon should be running here by checking for config
     try:
@@ -337,4 +337,4 @@ def main(args=[]):
 
 
 if __name__ == '__main__':
-    main(sys.argv[1:])
+    main()
