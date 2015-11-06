@@ -57,11 +57,11 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import configure_log
 from paasta_tools.utils import InvalidInstanceConfig
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import remove_tag_from_job_id
 from paasta_tools.utils import SPACER
 
 # Marathon REST API:
@@ -336,7 +336,7 @@ def deploy_service(
             instance=instance
         )
 
-    short_id = remove_tag_from_job_id(marathon_jobid)
+    short_id = marathon_tools.format_job_id(service, instance)
 
     cluster = load_system_paasta_config().get_cluster()
     app_list = client.list_apps(embed_failures=True)
@@ -431,7 +431,7 @@ def setup_service(service, instance, client, marathon_config,
     Doesn't do anything if the service is already in Marathon and hasn't changed.
     If it's not, attempt to find old instances of the service and bounce them.
 
-    :param ervice: The service name to setup
+    :param service: The service name to setup
     :param instance: The instance of the service to setup
     :param client: A MarathonClient object
     :param marathon_config: The marathon configuration dict
@@ -490,8 +490,8 @@ def main():
         log.setLevel(logging.WARNING)
     try:
         service, instance, _, __ = decompose_job_id(args.service_instance)
-    except ValueError:
-        log.error("Invalid service instance specified. Format is service.instance.")
+    except InvalidJobNameError:
+        log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
         sys.exit(1)
 
     marathon_config = get_main_marathon_config()

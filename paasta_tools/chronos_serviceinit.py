@@ -73,32 +73,6 @@ def restart_chronos_job(service, instance, job_id, client, cluster, matching_job
     start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
 
 
-def get_matching_jobs(client, job_id, all_tags):
-    """Use Chronos client `client` to get a list of configured Chronos jobs
-    related to `job_id`, the full name of the job as calculated by
-    create_complete_config().
-
-    If all_tags is False, fetch only the exact job specified by job_id.
-
-    If all_tags is True, fetch all jobs including those with different git and
-    config hashes (i.e. older versions of jobs associated with a given service
-    + instance).
-
-    Returns a list of dicts, each representing the configuration of a Chronos
-    job.
-    """
-    matching_jobs_pattern = r"^UNINITIALIZED PATTERN$"
-    if all_tags:
-        (service, instance, _, __) = chronos_tools.decompose_job_id(job_id)
-        # We add SPACER to the end as an anchor to prevent catching
-        # "my_service my_job_extra" when looking for "my_service my_job".
-        matching_jobs_pattern = r"^%s%s" % (chronos_tools.compose_job_id(service, instance), chronos_tools.SPACER)
-    else:
-        matching_jobs_pattern = r"^%s" % job_id
-    matching_jobs = chronos_tools.lookup_chronos_jobs(matching_jobs_pattern, client, include_disabled=True)
-    return matching_jobs
-
-
 def get_short_task_id(task_id):
     """Return just the Chronos-generated timestamp section of a Mesos task id."""
     return task_id.split(chronos_tools.MESOS_TASK_SPACER)[1]
@@ -252,10 +226,20 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     if command == "start":
         start_chronos_job(service, instance, job_id, client, cluster, complete_job_config, emergency=True)
     elif command == "stop":
-        matching_jobs = get_matching_jobs(client, job_id, all_tags=True)
+        matching_jobs = chronos_tools.lookup_chronos_jobs(
+            service=service,
+            instance=instance,
+            client=client,
+            include_disabled=True,
+        )
         stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency=True)
     elif command == "restart":
-        matching_jobs = get_matching_jobs(client, job_id, all_tags=True)
+        matching_jobs = chronos_tools.lookup_chronos_jobs(
+            service=service,
+            instance=instance,
+            client=client,
+            include_disabled=True,
+        )
         restart_chronos_job(
             service,
             instance,
@@ -269,13 +253,23 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
     elif command == "status":
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
-        # Verbose mode may want to display information about previous versions and configurations
-        all_tags = False
+        # Verbose mode shows previous versions.
         if verbose:
-            all_tags = True
-        matching_jobs = get_matching_jobs(client, job_id, all_tags)
+            git_hash = None
+            config_hash = None
+        # Non-verbose shows only the version specified via
+        # create_complete_config.
+        else:
+            (_, __, git_hash, config_hash) = chronos_tools.decompose_job_id(job_id)
+        matching_jobs = chronos_tools.lookup_chronos_jobs(
+            service=service,
+            instance=instance,
+            git_hash=git_hash,
+            config_hash=config_hash,
+            client=client,
+            include_disabled=True,
+        )
         sorted_matching_jobs = chronos_tools.sort_jobs(matching_jobs)
-        job_config = chronos_tools.load_chronos_job_config(service, instance, cluster, soa_dir=soa_dir)
         job_config = chronos_tools.load_chronos_job_config(
             service=service,
             instance=instance,

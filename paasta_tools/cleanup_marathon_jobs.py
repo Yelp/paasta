@@ -39,10 +39,8 @@ from paasta_tools import bounce_lib
 from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import _log
-from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import remove_tag_from_job_id
 
 
 log = logging.getLogger('__main__')
@@ -63,12 +61,10 @@ def parse_args():
 def delete_app(app_id, client):
     """Deletes a marathon app safely and logs to notify the user that it
     happened"""
-    short_app_id = remove_tag_from_job_id(app_id)
     log.warn("%s appears to be old; attempting to delete" % app_id)
-    srv_instance = short_app_id.replace('--', '_')
-    service, instance, _, __ = decompose_job_id(srv_instance)
+    service, instance, _, __ = marathon_tools.deformat_job_id(app_id)
     try:
-        with bounce_lib.bounce_lock_zookeeper(srv_instance):
+        with bounce_lib.bounce_lock_zookeeper(marathon_tools.compose_job_id(service, instance)):
             bounce_lib.delete_marathon_app(app_id, client)
             log_line = "Deleted stale marathon job that looks lost: %s" % app_id
             _log(service=service,
@@ -105,17 +101,16 @@ def cleanup_apps(soa_dir):
                                                 marathon_config.get_password())
 
     valid_services = get_services_for_cluster(instance_type='marathon', soa_dir=soa_dir)
-    valid_short_app_ids = [marathon_tools.format_job_id(name, instance) for (name, instance) in valid_services]
     running_app_ids = marathon_tools.list_all_marathon_app_ids(client)
 
     for app_id in running_app_ids:
         log.debug("Checking app id %s", app_id)
         try:
-            short_app_id = remove_tag_from_job_id(app_id)
+            service, instance, _, __ = marathon_tools.deformat_job_id(app_id)
         except InvalidJobNameError:
             log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app_id)
             continue
-        if short_app_id not in valid_short_app_ids:
+        if (service, instance) not in valid_services:
             delete_app(app_id, client)
 
 

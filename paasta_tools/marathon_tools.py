@@ -572,6 +572,11 @@ def format_job_id(service, instance, git_hash=None, config_hash=None):
     return formatted
 
 
+def deformat_job_id(job_id):
+    job_id = job_id.replace('--', '_')
+    return decompose_job_id(job_id)
+
+
 def read_namespace_for_service_instance(name, instance, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     """Retreive a service instance's nerve namespace from its configuration file.
     If one is not defined in the config file, returns instance instead."""
@@ -648,8 +653,7 @@ def marathon_services_running_here():
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
     srv_list = []
     for executor in executors:
-        srv_name = decompose_job_id(executor['id'])[0].replace('--', '_')
-        srv_instance = decompose_job_id(executor['id'])[1].replace('--', '_')
+        (srv_name, srv_instance, _, __) = deformat_job_id(executor['id'])
         srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list
