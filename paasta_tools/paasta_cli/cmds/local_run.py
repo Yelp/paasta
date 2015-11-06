@@ -515,8 +515,8 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         system_paasta_config = load_system_paasta_config()
     except PaastaNotConfiguredError:
         sys.stdout.write(PaastaColors.yellow(
-            "Warning: Couldn't load config files from '/etc/paasta'. This indicates \n"
-            "PaaSTA is not configured locally on this host, and local-run may not behave \n"
+            "Warning: Couldn't load config files from '/etc/paasta'. This indicates\n"
+            "PaaSTA is not configured locally on this host, and local-run may not behave\n"
             "the same way it would behave on a server configured for PaaSTA.\n"
         ))
         system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
