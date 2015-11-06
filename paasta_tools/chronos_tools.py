@@ -555,34 +555,22 @@ def match_job_names_to_service_instance(service, instance, jobs):
     return matching
 
 
-def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=False):
+def lookup_chronos_jobs(service, instance, client, include_disabled=False):
     """Retrieves Chronos jobs with names that match a specified pattern.
 
-    :param pattern: a Python style regular expression that the job name will be matched against
-                    (after being passed to re.compile)
+    :param service: service we're looking for
+    :param instance: instance we're looking for
     :param client: Chronos client object
-    :param max_expected: maximum number of results that is expected. If exceeded, raises a ValueError.
-                         If unspecified, defaults to no limit.
     :param include_disabled: boolean indicating if disabled jobs should be included in matches
     """
-    try:
-        regexp = re.compile(pattern)
-    except re.error:
-        raise ValueError("Invalid regex pattern '%s'" % pattern)
     jobs = client.list()
     matching_jobs = []
     for job in jobs:
-        if regexp.search(job['name']):
+        if job['name'].startswith(compose_job_id(service, instance)):
             if job['disabled'] and not include_disabled:
                 continue
             else:
                 matching_jobs.append(job)
-
-    if max_expected and len(matching_jobs) > max_expected:
-        matching_ids = [job['name'] for job in matching_jobs]
-        raise ValueError("Found %d jobs for pattern '%s', but max_expected is set to %d (ids: %s)" %
-                         (len(matching_jobs), pattern, max_expected, ', '.join(matching_ids)))
-
     return matching_jobs
 
 

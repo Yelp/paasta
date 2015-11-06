@@ -694,65 +694,42 @@ class TestChronosTools:
             list_jobs_patch.assert_any_call('dir2', cluster, soa_dir)
             assert list_jobs_patch.call_count == 2
 
-    def test_lookup_chronos_jobs_ok(self):
+    def test_lookup_chronos_jobs_with_service_and_instance(self):
         fake_service = 'fake_service'
+        fake_instance = 'fake_instance'
         fake_jobs = [
             {
-                'name': fake_service,
-                'disabled': False
+                'name': chronos_tools.compose_job_id(
+                    fake_service,
+                    fake_instance,
+                    'git1111',
+                    'config1111',
+                ),
+                'disabled': False,
             },
             {
-                'name': 'fake_other_service',
-                'disabled': False
-            }
-        ]
-        fake_client = mock.Mock(list=mock.Mock(return_value=fake_jobs))
-        actual = chronos_tools.lookup_chronos_jobs(r'^%s$' % fake_service, fake_client)
-        expected = [fake_jobs[0]]
-        assert actual == expected
-
-    def test_lookup_chronos_jobs_invalid(self):
-        fake_regex = 'fake)badregex'
-        fake_jobs = []
-        fake_client = mock.Mock(list=mock.Mock(return_value=fake_jobs))
-        with raises(ValueError) as excinfo:
-            chronos_tools.lookup_chronos_jobs(r'%s' % fake_regex, fake_client, max_expected=1)
-        assert "Invalid regex pattern '%s'" % fake_regex in excinfo.value
-
-    def test_lookup_chronos_jobs_max_expected(self):
-        fake_service = 'fake_service'
-        fake_jobs = [
-            {
-                'name': fake_service,
-                'disabled': False
+                'name': chronos_tools.compose_job_id(
+                    fake_service,
+                    fake_instance,
+                    'git2222',
+                    'config2222',
+                ),
+                'disabled': False,
             },
             {
-                'name': fake_service,
-                'disabled': False
-            }
-        ]
-        fake_client = mock.Mock(list=mock.Mock(return_value=fake_jobs))
-        with raises(ValueError) as excinfo:
-            chronos_tools.lookup_chronos_jobs(r'^%s$' % fake_service, fake_client, max_expected=1)
-        assert "Found 2 jobs for pattern '^%s$', but max_expected is set to 1 (ids: %s, %s)" % (
-            fake_service, fake_service, fake_service) in excinfo.value
-
-    def test_lookup_chronos_jobs_disabled(self):
-        fake_service = 'fake_service'
-        fake_jobs = [
-            {
-                'name': fake_service,
-                'disabled': True
+                'name': chronos_tools.compose_job_id(
+                    'some_other_service',
+                    'some_other_instance',
+                    'git3333',
+                    'config3333',
+                ),
+                'disabled': False,
             },
-            {
-                'name': fake_service,
-                'disabled': False
-            }
         ]
         fake_client = mock.Mock(list=mock.Mock(return_value=fake_jobs))
-        actual = chronos_tools.lookup_chronos_jobs(r'^%s$' % fake_service, fake_client, include_disabled=False)
-        expected = [fake_jobs[1]]
-        assert actual == expected
+        expected = [fake_jobs[0], fake_jobs[1]]
+        actual = chronos_tools.lookup_chronos_jobs(fake_service, fake_instance, fake_client)
+        assert sorted(actual) == sorted(expected)
 
     def test_create_complete_config(self):
         fake_owner = 'test_team'
