@@ -257,7 +257,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         if verbose:
             git_hash = None
             config_hash = None
-        # Non-verbose only shows the version specified via
+        # Non-verbose shows only the version specified via
         # create_complete_config.
         else:
             (_, __, git_hash, config_hash) = chronos_tools.decompose_job_id(job_id)
