@@ -546,16 +546,6 @@ def sort_jobs(jobs):
     )
 
 
-def match_job_names_to_service_instance(service, instance, jobs):
-    """Given a list of chronos jobs, return those which are associated with a given service and instance."""
-    matching = []
-    for job in jobs:
-        jobs_service, jobs_instance, _, _ = decompose_job_id(job['name'])
-        if jobs_service == service and jobs_instance == instance:
-            matching.append(job)
-    return matching
-
-
 def lookup_chronos_jobs(service, instance, client, git_hash=None, config_hash=None, include_disabled=False):
     """Retrieves Chronos jobs with names that match a specified pattern.
 
@@ -565,7 +555,7 @@ def lookup_chronos_jobs(service, instance, client, git_hash=None, config_hash=No
     :param git_hash: git_hash we're looking for. Optional; return jobs with any
     git_hash if omitted.
     :param config_hash: config_hash we're looking for. Optional; return jobs
-    with any git_hash if omitted.
+    with any config_hash if omitted.
     :param include_disabled: boolean indicating if disabled jobs should be
     included in the returned list
     :returns: list of job dicts whose name matches the ``service`` and

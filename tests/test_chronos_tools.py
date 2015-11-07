@@ -1202,15 +1202,6 @@ class TestChronosTools:
         jobs = [early_job, late_job, unrun_job]
         assert chronos_tools.sort_jobs(jobs) == [late_job, early_job, unrun_job]
 
-    def test_match_job_names_to_service_handles_mutiple_jobs(self):
-        mock_jobs = [{'name': 'fake-service fake-instance git1 config1'},
-                     {'name': 'fake-service fake-instance git2 config2'},
-                     {'name': 'other-service other-instance git config'}]
-        expected = mock_jobs[:2]
-        actual = chronos_tools.match_job_names_to_service_instance(
-            service='fake-service', instance='fake-instance', jobs=mock_jobs)
-        assert sorted(actual) == sorted(expected)
-
     def test_disable_job(self):
         fake_client_class = mock.Mock(spec='chronos.ChronosClient')
         fake_client = fake_client_class(servers=[])

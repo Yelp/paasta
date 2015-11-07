@@ -85,20 +85,23 @@ def test_sensu_event_for_last_run_state_invalid():
         check_chronos_jobs.sensu_event_for_last_run_state(100)
 
 
-@patch('check_chronos_jobs.chronos_tools.match_job_names_to_service_instance')
-@patch('check_chronos_jobs.chronos_tools.filter_enabled_jobs')
-@patch('check_chronos_jobs.chronos_tools.get_status_last_run')
-def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs, mock_match_job_names):
-    mock_match_job_names.side_effect = [[{}, {}, {}] for x in range(0, 3)]
-    mock_filter_enabled_jobs.side_effect = [[{}, {}, {}] for x in range(0, 3)]
-    mock_last_run_state.side_effect = [
+@patch('check_chronos_jobs.chronos_tools.lookup_chronos_jobs', autospec=True)
+@patch('check_chronos_jobs.chronos_tools.filter_enabled_jobs', autospec=True)
+@patch('check_chronos_jobs.chronos_tools.get_status_last_run', autospec=True)
+def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs, mock_lookup_chronos_jobs):
+    # iter() is a workaround
+    # (http://lists.idyll.org/pipermail/testing-in-python/2013-April/005527.html)
+    # for a bug in mock (http://bugs.python.org/issue17826)
+    mock_lookup_chronos_jobs.side_effect = iter([[{}, {}, {}] for x in range(0, 3)])
+    mock_filter_enabled_jobs.side_effect = iter([[{}, {}, {}] for x in range(0, 3)])
+    mock_last_run_state.side_effect = iter([
         ('faketimestamp', chronos_tools.LastRunState.Success),
         ('faketimestamp', chronos_tools.LastRunState.Fail),
         ('faketimestamp', chronos_tools.LastRunState.NotRun),
-    ] * 3
+    ] * 3)
 
     fake_configured_jobs = [('service1', 'main'), ('service2', 'main'), ('service3', 'main')]
-    fake_running_jobs = [('service1', 'main'), ('service2', 'main'), ('service3', 'main')]
+    fake_client = Mock(list=Mock(return_value=[('service1', 'main'), ('service2', 'main'), ('service3', 'main')]))
 
     expected_job_states = [
         ({}, chronos_tools.LastRunState.Success),
@@ -111,7 +114,7 @@ def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs
         ('service2', 'main'): expected_job_states,
         ('service3', 'main'): expected_job_states,
     }
-    assert check_chronos_jobs.build_service_job_mapping(fake_configured_jobs, fake_running_jobs) == expected
+    assert check_chronos_jobs.build_service_job_mapping(fake_client, fake_configured_jobs) == expected
 
 
 def test_message_for_status_fail():
