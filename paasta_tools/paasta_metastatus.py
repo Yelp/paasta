@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import argparse
 import sys
 
 from collections import Counter, OrderedDict
@@ -31,6 +32,15 @@ from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 from paasta_tools.mesos_tools import MasterNotAvailableException
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(
+        description='',
+    )
+    parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
+                        help="Print out more output regarding the state of the cluster")
+    return parser.parse_args()
 
 
 def get_num_masters(state):
@@ -157,28 +167,20 @@ def get_mesos_status():
     """
 
     state = get_mesos_state_from_leader()
-    cluster_outputs, cluster_ok = run_healthchecks_with_param(state, [assert_quorum_size,
-                                                                      assert_no_duplicate_frameworks])
+    cluster_results = run_healthchecks_with_param(state, [assert_quorum_size, assert_no_duplicate_frameworks])
 
     metrics = get_mesos_stats()
-    metrics_outputs, metrics_ok = run_healthchecks_with_param(metrics, [
+    metrics_results = run_healthchecks_with_param(metrics, [
         assert_cpu_health,
         assert_memory_health,
         assert_slave_health,
         assert_tasks_running])
 
-    cluster_outputs.extend(metrics_outputs)
-    cluster_ok.extend(metrics_ok)
-    return cluster_outputs, cluster_ok
+    return cluster_results + metrics_results
 
 
 def run_healthchecks_with_param(param, healthcheck_functions):
-    outputs, oks = [], []
-    for healthcheck in healthcheck_functions:
-        output, ok = healthcheck(param)
-        outputs.append(output)
-        oks.append(ok)
-    return outputs, oks
+    return [healthcheck(param) for healthcheck in healthcheck_functions]
 
 
 def assert_marathon_apps(client):
@@ -210,11 +212,10 @@ def assert_marathon_deployments(client):
 def get_marathon_status(client):
     """ Gathers information about marathon.
     :return: string containing the status.  """
-    outputs, oks = run_healthchecks_with_param(client, [
+    return run_healthchecks_with_param(client, [
         assert_marathon_apps,
         assert_marathon_tasks,
         assert_marathon_deployments])
-    return outputs, oks
 
 
 def assert_chronos_scheduled_jobs(client):
@@ -229,17 +230,16 @@ def assert_chronos_scheduled_jobs(client):
 
 
 def get_chronos_status(chronos_client):
-    """ Gather information about chronos.
+    """Gather information about chronos.
     :return: string containing the status
     """
-    outputs, oks = run_healthchecks_with_param(chronos_client, [
+    return run_healthchecks_with_param(chronos_client, [
         assert_chronos_scheduled_jobs,
     ])
-    return outputs, oks
 
 
 def get_marathon_client(marathon_config):
-    """ Given a MarathonConfig object, return
+    """Given a MarathonConfig object, return
     a client.
     :param marathon_config: a MarathonConfig object
     :returns client: a marathon client
@@ -251,49 +251,86 @@ def get_marathon_client(marathon_config):
     )
 
 
+def critical_events_in_outputs(healthcheck_outputs):
+    """Given a list of healthcheck pairs (output, healthy), return
+    those which are unhealthy.
+    """
+    return [healthcheck for healthcheck in healthcheck_outputs if healthcheck[-1] is False]
+
+
+def generate_summary_for_check(name, ok):
+    """Given a check name and a boolean indicating if the service is OK, return
+    a formatted message.
+    """
+    status = PaastaColors.green("OK") if ok is True else PaastaColors.red("CRITICAL")
+    summary = "%s Status: %s" % (name, status)
+    return summary
+
+
+def status_for_results(results):
+    """Given a list of (output, ok) pairs, return the ok status
+    for each pair
+    """
+    return [result[-1] for result in results]
+
+
+def print_results_for_healthchecks(summary, ok, results, verbose):
+    print summary
+    if verbose:
+        for line in [res[0] for res in results]:
+            print_with_indent(line, 2)
+    elif not ok:
+        critical_results = critical_events_in_outputs(results)
+        for line in [res[0] for res in critical_results]:
+            print_with_indent(line, 2)
+
+
 def main():
     marathon_config = None
     chronos_config = None
+    args = parse_args()
 
     # Check to see if Marathon should be running here by checking for config
     try:
         marathon_config = marathon_tools.load_marathon_config()
     except MarathonNotConfigured:
-        marathon_outputs, marathon_oks = (['marathon is not configured to run here'], [True])
+        marathon_results = [('marathon is not configured to run here', True)]
 
     # Check to see if Chronos should be running here by checking for config
     try:
         chronos_config = load_chronos_config()
     except ChronosNotConfigured:
-        chronos_outputs, chronos_oks = (['chronos is not configured to run here'], [True])
+        chronos_results = [('chronos is not configured to run here', True)]
 
     try:
-        mesos_outputs, mesos_oks = get_mesos_status()
+        mesos_results = get_mesos_status()
     except MasterNotAvailableException as e:
         # if we can't connect to master at all,
         # then bomb out early
         print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
 
-    print("Mesos Status:")
-    for line in mesos_outputs:
-        print_with_indent(line, 2)
-
     if marathon_config:
         marathon_client = get_marathon_client(marathon_config)
-        marathon_outputs, marathon_oks = get_marathon_status(marathon_client)
-        print("Marathon Status:")
-        for line in marathon_outputs:
-            print_with_indent(line, 2)
+        marathon_results = get_marathon_status(marathon_client)
 
     if chronos_config:
         chronos_client = get_chronos_client(chronos_config)
-        chronos_outputs, chronos_oks = get_chronos_status(chronos_client)
-        print("Chronos Status:")
-        for line in chronos_outputs:
-            print_with_indent(line, 2)
+        chronos_results = get_chronos_status(chronos_client)
 
-    if False in mesos_oks or False in marathon_oks or False in chronos_oks:
+    mesos_ok = all(status_for_results(mesos_results))
+    marathon_ok = all(status_for_results(marathon_results))
+    chronos_ok = all(status_for_results(chronos_results))
+
+    mesos_summary = generate_summary_for_check("Mesos", mesos_ok)
+    marathon_summary = generate_summary_for_check("Marathon", marathon_ok)
+    chronos_summary = generate_summary_for_check("Chronos", chronos_ok)
+
+    print_results_for_healthchecks(mesos_summary, mesos_ok, mesos_results, args.verbose)
+    print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
+    print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
+
+    if not all([mesos_ok, marathon_ok, chronos_ok]):
         sys.exit(2)
     else:
         sys.exit(0)
