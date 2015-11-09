@@ -695,56 +695,25 @@ class TestChronosTools:
             assert list_jobs_patch.call_count == 2
 
     def test_lookup_chronos_jobs_with_service_and_instance(self):
+        fake_client = mock.Mock()
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
-        fake_jobs = [
-            {
-                'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'git1111',
-                    'config1111',
-                ),
-                'disabled': False,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'git2222',
-                    'config2222',
-                ),
-                'disabled': False,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'gitdisabled',
-                    'configdisabled',
-                ),
-                'disabled': True,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    'some_other_service',
-                    'some_other_instance',
-                    'git3333',
-                    'config3333',
-                ),
-                'disabled': False,
-            },
-        ]
-        fake_client = mock.Mock(list=mock.Mock(return_value=fake_jobs))
-        expected = [fake_jobs[0], fake_jobs[1]]
-        actual = chronos_tools.lookup_chronos_jobs(
-            service=fake_service,
-            instance=fake_instance,
-            client=fake_client,
-        )
-        assert sorted(actual) == sorted(expected)
+        with mock.patch('chronos_tools.filter_chronos_jobs', autospec=True) as mock_filter_chronos_jobs:
+            chronos_tools.lookup_chronos_jobs(
+                client=fake_client,
+                service=fake_service,
+                instance=fake_instance,
+            )
+            mock_filter_chronos_jobs.assert_called_once_with(
+                jobs=fake_client.list.return_value,
+                service=fake_service,
+                instance=fake_instance,
+                git_hash=None,
+                config_hash=None,
+                include_disabled=False,
+            )
 
-    def test_lookup_chronos_jobs_include_disabled(self):
+    def test_filter_chronos_jobs_with_no_filters(self):
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
         fake_jobs = [
@@ -779,23 +748,128 @@ class TestChronosTools:
                 'name': chronos_tools.compose_job_id(
                     'some_other_service',
                     'some_other_instance',
-                    'git3333',
-                    'config3333',
+                    'gitother',
+                    'configother',
                 ),
                 'disabled': False,
             },
         ]
-        fake_client = mock.Mock(list=mock.Mock(return_value=fake_jobs))
-        expected = [fake_jobs[0], fake_jobs[1], fake_jobs[2]]
-        actual = chronos_tools.lookup_chronos_jobs(
-            service=fake_service,
-            instance=fake_instance,
-            client=fake_client,
+        expected = fake_jobs
+        actual = chronos_tools.filter_chronos_jobs(
+            jobs=fake_jobs,
+            service=None,
+            instance=None,
+            git_hash=None,
+            config_hash=None,
             include_disabled=True,
         )
         assert sorted(actual) == sorted(expected)
 
-    def test_lookup_chronos_jobs_with_everything_specified(self):
+    def test_filter_chronos_jobs_with_service_and_instance(self):
+        fake_service = 'fake_service'
+        fake_instance = 'fake_instance'
+        fake_jobs = [
+            {
+                'name': chronos_tools.compose_job_id(
+                    fake_service,
+                    fake_instance,
+                    'git1111',
+                    'config1111',
+                ),
+                'disabled': False,
+            },
+            {
+                'name': chronos_tools.compose_job_id(
+                    fake_service,
+                    fake_instance,
+                    'git2222',
+                    'config2222',
+                ),
+                'disabled': False,
+            },
+            {
+                'name': chronos_tools.compose_job_id(
+                    fake_service,
+                    fake_instance,
+                    'gitdisabled',
+                    'configdisabled',
+                ),
+                'disabled': True,
+            },
+            {
+                'name': chronos_tools.compose_job_id(
+                    'some_other_service',
+                    'some_other_instance',
+                    'git3333',
+                    'config3333',
+                ),
+                'disabled': False,
+            },
+        ]
+        expected = [fake_jobs[0], fake_jobs[1]]
+        actual = chronos_tools.filter_chronos_jobs(
+            jobs=fake_jobs,
+            service=fake_service,
+            instance=fake_instance,
+            git_hash=None,
+            config_hash=None,
+            include_disabled=False,
+        )
+        assert sorted(actual) == sorted(expected)
+
+    def test_filter_chronos_jobs_include_disabled(self):
+        fake_service = 'fake_service'
+        fake_instance = 'fake_instance'
+        fake_jobs = [
+            {
+                'name': chronos_tools.compose_job_id(
+                    fake_service,
+                    fake_instance,
+                    'git1111',
+                    'config1111',
+                ),
+                'disabled': False,
+            },
+            {
+                'name': chronos_tools.compose_job_id(
+                    fake_service,
+                    fake_instance,
+                    'git2222',
+                    'config2222',
+                ),
+                'disabled': False,
+            },
+            {
+                'name': chronos_tools.compose_job_id(
+                    fake_service,
+                    fake_instance,
+                    'gitdisabled',
+                    'configdisabled',
+                ),
+                'disabled': True,
+            },
+            {
+                'name': chronos_tools.compose_job_id(
+                    'some_other_service',
+                    'some_other_instance',
+                    'git3333',
+                    'config3333',
+                ),
+                'disabled': False,
+            },
+        ]
+        expected = [fake_jobs[0], fake_jobs[1], fake_jobs[2]]
+        actual = chronos_tools.filter_chronos_jobs(
+            jobs=fake_jobs,
+            service=fake_service,
+            instance=fake_instance,
+            git_hash=None,
+            config_hash=None,
+            include_disabled=True,
+        )
+        assert sorted(actual) == sorted(expected)
+
+    def test_filter_chronos_jobs_with_everything_specified(self):
         fake_service = 'fake_service'
         fake_instance = 'fake_instance'
         fake_git_hash = 'fake_git_hash'
@@ -838,26 +912,32 @@ class TestChronosTools:
                 'disabled': False,
             },
         ]
-        fake_client = mock.Mock(list=mock.Mock(return_value=fake_jobs))
         expected = [fake_jobs[0]]
-        actual = chronos_tools.lookup_chronos_jobs(
+        actual = chronos_tools.filter_chronos_jobs(
+            jobs=fake_jobs,
             service=fake_service,
             instance=fake_instance,
             git_hash=fake_git_hash,
             config_hash=fake_config_hash,
-            client=fake_client,
+            include_disabled=False,
         )
         assert sorted(actual) == sorted(expected)
 
-    def test_lookup_chronos_jobs_skips_non_paasta_job_id(self):
+    def test_filter_chronos_jobs_skips_non_paasta_job_id(self):
         fake_jobs = [
             {
                 'name': 'some non-paasta job',
                 'disabled': False,
             },
         ]
-        fake_client = mock.Mock(list=mock.Mock(return_value=fake_jobs))
-        actual = chronos_tools.lookup_chronos_jobs('whatever', 'whatever', fake_client)
+        actual = chronos_tools.filter_chronos_jobs(
+            jobs=fake_jobs,
+            service='whatever',
+            instance='whatever',
+            git_hash='whatever',
+            config_hash='whatever',
+            include_disabled=False,
+        )
         # The main thing here is that InvalidJobNameError is not raised.
         assert actual == []
 

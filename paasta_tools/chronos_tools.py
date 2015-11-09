@@ -546,23 +546,44 @@ def sort_jobs(jobs):
     )
 
 
-def lookup_chronos_jobs(service, instance, client, git_hash=None, config_hash=None, include_disabled=False):
-    """Retrieves Chronos jobs with names that match a specified pattern.
+def lookup_chronos_jobs(client, service=None, instance=None, git_hash=None, config_hash=None, include_disabled=False):
+    """Discovers Chronos jobs and filters them with ``filter_chronos_jobs()``.
 
-    :param service: service we're looking for
-    :param instance: instance we're looking for
     :param client: Chronos client object
-    :param git_hash: git_hash we're looking for. Optional; return jobs with any
-    git_hash if omitted.
-    :param config_hash: config_hash we're looking for. Optional; return jobs
-    with any config_hash if omitted.
-    :param include_disabled: boolean indicating if disabled jobs should be
-    included in the returned list
-    :returns: list of job dicts whose name matches the ``service`` and
-    ``instance`` (and maybe ``git_hash`` and ``config_hash``) arguments
-    provided
+    :param service: passed on to ``filter_chronos_jobs()``
+    :param instance: passed on to ``filter_chronos_jobs()``
+    :param git_hash: passed on to ``filter_chronos_jobs()``
+    :param config_hash: passed on to ``filter_chronos_jobs()``
+    :param include_disabled: passed on to ``filter_chronos_jobs()``
+    :returns: list of job dicts discovered by ``client`` and filtered by
+    ``filter_chronos_jobs()`` using the other parameters
     """
     jobs = client.list()
+    return filter_chronos_jobs(
+        jobs=jobs,
+        service=service,
+        instance=instance,
+        git_hash=git_hash,
+        config_hash=config_hash,
+        include_disabled=include_disabled,
+    )
+
+
+def filter_chronos_jobs(jobs, service, instance, git_hash, config_hash, include_disabled):
+    """Filters a list of Chronos jobs based on several criteria.
+
+    :param jobs: a list of jobs, as calculated in ``lookup_chronos_jobs()``
+    :param service: service we're looking for. If None, don't filter based on this key.
+    :param instance: instance we're looking for. If None, don't filter based on this key.
+    :param git_hash: git_hash we're looking for. If None, don't filter based on
+    this key.
+    :param config_hash: config_hash we're looking for. If None, don't filter
+    based on this key.
+    :param include_disabled: boolean indicating if disabled jobs should be
+    included in the returned list
+    :returns: list of job dicts whose name matches the arguments (if any)
+    provided
+    """
     matching_jobs = []
     for job in jobs:
         try:
@@ -570,8 +591,8 @@ def lookup_chronos_jobs(service, instance, client, git_hash=None, config_hash=No
         except InvalidJobNameError:
             continue
         if (
-            job_service == service
-            and job_instance == instance
+            (service is None or job_service == service)
+            and (instance is None or job_instance == instance)
             and (git_hash is None or job_git_hash == git_hash)
             and (config_hash is None or job_config_hash == config_hash)
         ):
