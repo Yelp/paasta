@@ -20,6 +20,7 @@ from collections import Counter, OrderedDict
 from httplib2 import ServerNotFoundError
 
 from paasta_tools import marathon_tools
+from paasta_tools import chronos_tools
 from paasta_tools.chronos_tools import ChronosNotConfigured
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
@@ -223,10 +224,10 @@ def assert_chronos_scheduled_jobs(client):
     :returns: a tuple of a string and a bool containing representing if it is ok or not
     """
     try:
-        num_jobs = len(client.list())
+        num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
     except ServerNotFoundError:
         num_jobs = 0
-    return ("chronos jobs: %d" % num_jobs, True)
+    return ("Enabled chronos jobs: %d" % num_jobs, True)
 
 
 def get_chronos_status(chronos_client):

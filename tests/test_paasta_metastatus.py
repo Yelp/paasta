@@ -17,7 +17,6 @@ import contextlib
 
 from mock import Mock
 from mock import patch
-from chronos import ChronosClient
 from httplib2 import ServerNotFoundError
 from pytest import raises
 
@@ -336,10 +335,13 @@ def test_get_marathon_client():
 
 
 def test_assert_chronos_scheduled_jobs():
-    mock_client = ChronosClient(servers="fake_hostname")
-    mock_client.list = lambda: []
+    mock_client = Mock()
+    mock_client.list.return_value = [
+        {'name': 'myjob', 'disabled': False},
+        {'name': 'myjob', 'disabled': True},
+    ]
     results = paasta_metastatus.assert_chronos_scheduled_jobs(mock_client)
-    assert results == ('chronos jobs: 0', True)
+    assert results == ('Enabled chronos jobs: 1', True)
 
 
 def test_get_chronos_status_no_chronos():
@@ -347,27 +349,20 @@ def test_get_chronos_status_no_chronos():
         is not available. This needs to be removed and fixed when
         we have chronos available everywhere, but worth verifying
         it works as expected for now """
-    mock_client = ChronosClient(servers="fake_hostname")
-
-    # force the raising of the error rather than
-    # relying on the hostname of the config being
-    # unavailable.
-    mock_client.list = Mock(side_effect=ServerNotFoundError)
+    mock_client = Mock()
+    mock_client.list.side_effect = ServerNotFoundError
 
     results = paasta_metastatus.get_chronos_status(mock_client)
-    assert results == [('chronos jobs: 0', True)]
+    assert results == [('Enabled chronos jobs: 0', True)]
 
 
-@patch('paasta_tools.chronos_tools.get_chronos_client', autospec=True)
-def test_get_chronos_status(
-    mock_get_chronos_client,
-):
-    client = mock_get_chronos_client.return_value
+def test_get_chronos_status():
+    client = Mock()
     client.list.return_value = [
-        {'name': 'fake_job1'},
-        {'name': 'fake_job1'},
+        {'name': 'fake_job1', 'disabled': False},
+        {'name': 'fake_job2', 'disabled': False},
     ]
-    expected_jobs_output = ("chronos jobs: 2", True)
+    expected_jobs_output = ("Enabled chronos jobs: 2", True)
     results = paasta_metastatus.get_chronos_status(client)
 
     assert expected_jobs_output in results

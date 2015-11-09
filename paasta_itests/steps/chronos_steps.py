@@ -26,7 +26,7 @@ def create_trivial_chronos_job(context):
         'epsilon': 'PT15M',
         'name': 'fake-service fake-instance git12345678 config90abcdef',
         'owner': '',
-        'disabled': True,
+        'disabled': False,
         'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
     }
     context.chronos_client.add(job_config)
