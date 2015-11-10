@@ -169,7 +169,7 @@ aggregation, again using existing Docker idioms like docker volumes and
 docker logs.
 
 Compared to PaaSTA, the Docker Swarm solution requires far fewer components,
-making it much easier operators to get started. PaaSTA is more opinionated
-with regards to "how" Docker containers are orchestrated. Docker Swarm
-simply provides the raw Docker API, which allows for a lot of flexibility
-in deploying sets of docker containers.
+making it much easier for operators to get started. PaaSTA is more opinionated
+with regards to "how" Docker containers are orchestrated. Docker Swarm simply
+provides the raw Docker API, which allows for a lot of flexibility in deploying
+sets of docker containers.
