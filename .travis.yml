@@ -3,7 +3,6 @@ python:
   - "2.7"
 env:
   - TOX_ENV=docs
-  - TOX_ENV=manpages
   - TOX_ENV=general_itests
   - TOX_ENV=paasta_itests
 sudo: required
