@@ -6,7 +6,7 @@
 PaaSTA is a highly-available, distributed system for building, deploying, and
 running services using containers and Apache Mesos!
 
-*WARNING*: PaaSTA has been running in production at Yelp for more than a year,
+*Note*: PaaSTA has been running in production at Yelp for more than a year,
 and has a number of "Yelpisms" still lingering in the codebase. We have made
 efforts to excise them, but there are bound to be lingering issues. Please help us
 by opening an [issue](https://github.com/Yelp/paasta/issues/new) or
@@ -14,7 +14,7 @@ better yet a [pull request](https://github.com/Yelp/paasta/pulls).
 
 ## Components
 
-*WARNING*: PaaSTA is an opinionated platform that uses a few un-opinionated
+*Note*: PaaSTA is an opinionated platform that uses a few un-opinionated
 tools. It requires a non-trivial amount of infrastructure to be in place
 before it works completely:
 
@@ -27,7 +27,7 @@ before it works completely:
  * [Jenkins](https://jenkins-ci.org/) (optionally) for continuous deployment
 
 If you are looking for a project that doesn't require external components, we encourage you
-to look at the doc [comparing PaaSTA to other tools](https://github.com/Yelp/paasta/blob/master/comparison.md)
+to look at the doc [comparing PaaSTA to other tools](https://github.com/Yelp/paasta/blob/master/comparison.md).
 
 ## Design Goals
 
@@ -38,21 +38,24 @@ to look at the doc [comparing PaaSTA to other tools](https://github.com/Yelp/paa
  * No single points of failure
  * Pleasant interface
 
+PaaSTA is an opinionated platform, and it is not designed to interoperate with
+every possible backend service out there.
+
+Think of it as an example of how we have integrated these technologies together
+to build a cohesive PaaS. It is not a turn-key PaaS solution.
 
 ## Getting Started
 
-Coming Soon!
-
+See the [getting started](http://paasta.readthedocs.org/en/latest/installation/getting_started.html)
+documentation for how to deploy PaaSTA.
 
 ## Documentation
 
 Read the documentation at [Read the Docs](http://paasta.readthedocs.org/en/latest/).
 
-
 ## License
 
 PaaSTA is licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
-
 
 ## Contributing
 

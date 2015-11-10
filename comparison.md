@@ -12,7 +12,6 @@ must be solved in one way or another:
 
 * Code packaging and distribution
 * Resource scheduling
-* Log aggregation / distribution
 * Service Discovery
 * Monitoring / alerting
 * Workflow / orchestration
@@ -22,7 +21,29 @@ meant to be a comparison between every tool out there, but instead is just
 designed to give a general overview about what makes PaaSTA different, compared
 to some of the more popular tools in the same space.
 
-## Hashicorp Nomad + Consul
+As a baseline for comparison, here are the pieces that PaaSTA uses to solve
+the paritcular problems associated with running a production PaaS:
+
+| Problem             | PaaSTA Solution              |
+|---------------------|------------------------------|
+| Code containerizer  | Docker                       |
+| Scheduling          | Mesos + Marathon             |
+| Service Discovery   | SmartSTack                   |
+| Monitoring          | Sensu                        |
+| Workflow            | Jenkins or CLI + soa-configs |
+
+Hopefully by looking at these particular sub-problems we can better compare the
+different technologies out there.
+
+## Hashicorp Nomad
+
+| Problem             | Nomad/Hashicorp Solution |
+|---------------------|--------------------------|
+| Code containerizer  | Docker                   |
+| Scheduling          | Nomad                    |
+| Service Discovery   | Consul                   |
+| Monitoring          | Atlas?                   |
+| Workflow            | CLI                      |
 
 [Hashicorp Nomad](https://www.nomadproject.io/) is a resource manager and
 cluster manager. It integrates well with Hashicorp's other products like Consul
@@ -38,6 +59,14 @@ Hashicorp has its own page comparing the different scheduler idiosyncrasies of
 
 ## Amazon ECS (Elastic Container Service)
 
+| Problem             | ECS/Amazon Solution |
+|---------------------|---------------------|
+| Code containerizer  | Docker              |
+| Scheduling          | ECS                 |
+| Service Discovery   | ELBs + DNS          |
+| Monitoring          | CloudWatch          |
+| Workflow            | Console or CLI      |
+
 Amazon ECS is an Amazon-specific method of launching Docker containers on EC2
 instances.
 
@@ -50,8 +79,17 @@ higher-level tools, like [Empire](https://github.com/remind101/empire)
 
 ## Kubernetes
 
-Kubernetes is a cluster manager and resource manager. It does load balancing and
-service discovery. It also can do secret distribution and monitoring.
+| Problem             | Kubernetes Solution                |
+|---------------------|------------------------------------|
+| Code containerizer  | Docker                             |
+| Scheduling          | Kubernetes core                    |
+| Service Discovery   | Env Vars or Kubernetes DNS Service |
+| Monitoring          | Kubernetes + Webhooks              |
+| Workflow            | CLI / API                          |
+
+[Kubernetes](http://kubernetes.io/) is a cluster manager and resource manager.
+It does load balancing and service discovery. It also can do secret
+distribution and monitoring.
 
 Kubernetes can be closely compared to PaaSTA because they do most of the same
 functions.  The main difference is that PaaSTA uses existing open source
@@ -65,9 +103,18 @@ and deployment.
 
 ## Heroku
 
-Heroku is a full PaaS, and has a feature set more comparable to PaaSTA. PaaSTA uses
-Docker containers, which leaves it up to the service author to build their own
-software stack, compared to Heroku's provided stacks and buildpacks.
+| Problem             | Heroku Solution     |
+|---------------------|---------------------|
+| Code containerizer  | Dynos / cgroups     |
+| Scheduling          | Heroku              |
+| Service Discovery   | DNS + Heroku Router |
+| Monitoring          | via Addons          |
+| Workflow            | CLI or Dashboard    |
+
+[Heroku](https://www.heroku.com) is a full PaaS, and has a feature set more
+comparable to PaaSTA. PaaSTA uses Docker containers, which leaves it up to the
+service author to build their own software stack, compared to Heroku's provided
+stacks and buildpacks.
 
 One of the main philosophical differences between Heroku and PaaSTA is that Heroku
 is "imperative", in the sense that in order to make changes in Heroku, one must
@@ -79,3 +126,24 @@ Another major difference between the architecture of Heroku and PaaSTA is the
 cluster design. In PaaSTA there are many different clusters that code can be
 deployed to. In Heroku there is only the main Heroku platform, and users are
 expected to run different apps. (test-appname, staging-appname, etc)
+
+## Flynn
+
+| Problem             | Flynn Solution     |
+|---------------------|--------------------|
+| Code containerizer  | Docker             |
+| Scheduling          | Flynn              |
+| Service Discovery   | DNS + Flynn Router |
+| Monitoring          | N/A?               |
+| Workflow            | CLI                |
+
+Flynn is a Heroku-inspired PaaS. Flynn is unique in this comparison because it
+has first-class support for its embedded Postgress appliance, analogous to
+Heroku's Postgres Addon or Amazon's RDS. This reduces the number of components
+required to run a fully working setup, assuming Postgres meets the developers'
+needs. Most other PaaS's view this problem as "out of scope", including PaaSTA.
+
+Depending on your opinons on the [Twelve-Factor App manifesto](http://12factor.net/),
+Flynn, Heroku, or [Empire](http://empire.readthedocs.org/en/latest/) may be good
+solutions for environments that have apps that already conform to the twelve-factor
+specification.
