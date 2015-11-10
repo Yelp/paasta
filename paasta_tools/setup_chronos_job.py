@@ -142,14 +142,14 @@ def bounce_chronos_job(
 
 def setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster):
     job_id = complete_job_config['name']
-    all_existing_jobs = chronos_tools.lookup_chronos_jobs(
+    # Sort this initial list since other lists of jobs will come from it (with
+    # their orders preserved by list comprehensions) and since we'll care about
+    # ordering by recency when we go calculate jobs_to_delete.
+    all_existing_jobs = chronos_tools.sort_jobs(chronos_tools.lookup_chronos_jobs(
         service=service,
         instance=instance,
         client=client,
-    )
-    # TODO: Sort the jobs in the right order so we delete the least relevant
-    # This currently depends on implicit behavior that Chronos returns jobs
-    # "oldest first"
+    ))
     old_jobs = [job for job in all_existing_jobs if job["name"] != job_id]
     enabled_old_jobs = [job for job in old_jobs if not job["disabled"]]
 
