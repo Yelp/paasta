@@ -26,8 +26,20 @@ before it works completely:
  * [Sensu](https://sensuapp.org/) for monitoring/alerting
  * [Jenkins](https://jenkins-ci.org/) (optionally) for continuous deployment
 
-If you are looking for a project that doesn't require external components, we encourage you
-to look at the doc [comparing PaaSTA to other tools](https://github.com/Yelp/paasta/blob/master/comparison.md).
+The main advantage to having a PaaS composed of components like these is you
+get to reuse them for other purposes. For example at Yelp Sensu is not just for
+PaaSTA, it can be used to monitor all sorts of things. Also Mesos can be
+re-used for things like custom frameworks. For example at Yelp we use the Mesos
+infrastructure to run our large-scale testing framework:
+[seagull](http://www.slideshare.net/AmazonWebServices/arc348-seagull-how-yelp-built-a-system-for-task-execution)
+SmartStack is used at Yelp for service discovery for Non-PaaSTA things as well,
+like databases, legacy apps, and Puppet-defined apps. Most PaaS's do not
+allow for this type of component re-use.
+
+On the other hand, requiring lots of components means lots of infrastructure to
+setup before PaaSTA is fully baked. If you are looking for a project that
+doesn't require external components, we encourage you to look at the doc
+[comparing PaaSTA to other tools](https://github.com/Yelp/paasta/blob/master/comparison.md).
 
 ## Design Goals
 
@@ -62,4 +74,3 @@ PaaSTA is licensed under the Apache License, Version 2.0: http://www.apache.org/
 Everyone is encouraged to contribute to PaaSTA by forking the
 [Github repository](http://github.com/Yelp/PaaSTA) and making a pull request or
 opening an issue.
-

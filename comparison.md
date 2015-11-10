@@ -22,7 +22,7 @@ designed to give a general overview about what makes PaaSTA different, compared
 to some of the more popular tools in the same space.
 
 As a baseline for comparison, here are the pieces that PaaSTA uses to solve
-the paritcular problems associated with running a production PaaS:
+the particular problems associated with running a production PaaS:
 
 | Problem             | PaaSTA Solution              |
 |---------------------|------------------------------|
@@ -103,13 +103,13 @@ and deployment.
 
 ## Heroku
 
-| Problem             | Heroku Solution     |
-|---------------------|---------------------|
-| Code containerizer  | Dynos / cgroups     |
-| Scheduling          | Heroku              |
-| Service Discovery   | DNS + Heroku Router |
-| Monitoring          | via Addons          |
-| Workflow            | CLI or Dashboard    |
+| Problem             | Heroku Solution               |
+|---------------------|-------------------------------|
+| Code containerizer  | Dynos / cgroups (Docker beta) |
+| Scheduling          | Heroku                        |
+| Service Discovery   | DNS + Heroku Router           |
+| Monitoring          | via Addons                    |
+| Workflow            | CLI or Dashboard              |
 
 [Heroku](https://www.heroku.com) is a full PaaS, and has a feature set more
 comparable to PaaSTA. PaaSTA uses Docker containers, which leaves it up to the
@@ -139,11 +139,37 @@ expected to run different apps. (test-appname, staging-appname, etc)
 
 Flynn is a Heroku-inspired PaaS. Flynn is unique in this comparison because it
 has first-class support for its embedded Postgress appliance, analogous to
-Heroku's Postgres Addon or Amazon's RDS. This reduces the number of components
+Heroku's Postgres Add-on or Amazon's RDS. This reduces the number of components
 required to run a fully working setup, assuming Postgres meets the developers'
 needs. Most other PaaS's view this problem as "out of scope", including PaaSTA.
 
-Depending on your opinons on the [Twelve-Factor App manifesto](http://12factor.net/),
+Depending on your opinions on the [Twelve-Factor App manifesto](http://12factor.net/),
 Flynn, Heroku, or [Empire](http://empire.readthedocs.org/en/latest/) may be good
 solutions for environments that have apps that already conform to the twelve-factor
 specification.
+
+## Docker Swarm
+
+| Problem             | Docker Swarm Solution                               |
+|---------------------|-----------------------------------------------------|
+| Code containerizer  | Docker                                              |
+| Scheduling          | Docker Swarm (or Mesos)                             |
+| Service Discovery   | Docker links or the Ambassador pattern              |
+| Monitoring          | N/A                                                 |
+| Workflow            | Docker Compose or anything that uses the Docker API |
+
+[Docker Swarm](https://www.docker.com/docker-swarm) is a relatively new
+platform that uses many existing Docker idioms to construct a cluster and
+define applications.  Docker goes to great lengths to make Docker Swarm work
+like a normal Docker API, so existing tools and workflows can use it, including
+docker-compose.
+
+Docker also attempts to solve the problems of persistent storage and log
+aggregation, again using existing Docker idioms like docker volumes and
+docker logs.
+
+Compared to PaaSTA, the Docker Swarm solution requires far fewer components,
+making it much easier operators to get started. PaaSTA is more opinionated
+with regards to "how" Docker containers are orchestrated. Docker Swarm
+simply provides the raw Docker API, which allows for a lot of flexibility
+in deploying sets of docker containers.
