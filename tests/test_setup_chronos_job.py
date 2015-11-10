@@ -208,6 +208,8 @@ class TestSetupChronosJob:
         with contextlib.nested(
             mock.patch('setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
             mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
+                       autospec=True),
+            mock.patch('paasta_tools.chronos_tools.sort_jobs',
                        autospec=True,
                        return_value=fake_existing_jobs),
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
@@ -217,6 +219,7 @@ class TestSetupChronosJob:
         ) as (
             mock_bounce_chronos_job,
             lookup_chronos_jobs_patch,
+            sort_jobs_patch,
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
         ):
@@ -253,13 +256,17 @@ class TestSetupChronosJob:
         with contextlib.nested(
             mock.patch('setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
             mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
-                       autospec=True, return_value=[fake_existing_job]),
+                       autospec=True),
+            mock.patch('paasta_tools.chronos_tools.sort_jobs',
+                       autospec=True,
+                       return_value=[fake_existing_job]),
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=self.fake_chronos_job_config),
         ) as (
             mock_bounce_chronos_job,
             mock_lookup_chronos_jobs,
+            mock_sort_jobs,
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
         ):
@@ -294,13 +301,17 @@ class TestSetupChronosJob:
         with contextlib.nested(
             mock.patch('setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
             mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
-                       autospec=True, return_value=[fake_existing_job]),
+                       autospec=True),
+            mock.patch('paasta_tools.chronos_tools.sort_jobs',
+                       autospec=True,
+                       return_value=[fake_existing_job]),
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=self.fake_chronos_job_config),
         ) as (
             mock_bounce_chronos_job,
             mock_lookup_chronos_jobs,
+            mock_sort_jobs,
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
         ):
