@@ -17,10 +17,6 @@
 """A command line tool for viewing information from the PaaSTA stack."""
 import argcomplete
 import argparse
-import psutil
-import os
-import signal
-import contextlib
 
 from paasta_tools.paasta_cli import cmds
 from paasta_tools.paasta_cli.utils \
@@ -62,39 +58,6 @@ def parse_args():
     return parser.parse_args()
 
 
-@contextlib.contextmanager
-def set_pgrp_and_cleanup_procs_on_exit():
-    """
-        Set the pgrp of the process and all children.
-        After the task completes, cleanup any other processes in the
-        same pgrp.
-    """
-    try:
-        os.setpgrp()
-        kill_pgrp_when_finished = True
-    except OSError:
-        # Per http://linux.die.net/man/2/setpgid
-        # if we could not set our process group, that means we are not
-        # in charge of this session and we should not kill everything
-        # in our process group. This might happen if our parent process
-        # already ran setpgrp, setpgid, or execve.
-        kill_pgrp_when_finished = False
-        pass
-
-    try:
-        yield
-    finally:
-        if kill_pgrp_when_finished:
-            try:
-                pgrp = os.getpgrp()
-                pids_in_pgrp = [proc for proc in psutil.process_iter() if os.getpgid(proc.pid) == pgrp
-                                and proc.pid != os.getpid()]
-                for proc in pids_in_pgrp:
-                    os.kill(proc.pid, signal.SIGTERM)
-            except OSError:
-                pass
-
-
 def main():
     """Perform a paasta call. Read args from sys.argv and pass parsed args onto
     appropriate command in paata_cli/cmds directory.
@@ -103,8 +66,7 @@ def main():
     """
     configure_log()
     args = parse_args()
-    with set_pgrp_and_cleanup_procs_on_exit():
-        args.command(args)
+    args.command(args)
 
 if __name__ == '__main__':
     main()
