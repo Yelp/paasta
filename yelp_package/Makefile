@@ -49,7 +49,9 @@ clean:
 
 
 VERSION = $(firstword $(subst -, ,$(RELEASE) ))
-LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B )
+# This sed isn't really right but at least it doesn't crash (and I couldn't get
+# \' or ''' or \\' to work :( )
+LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e "s/'/"/g")
 release:
 	dch -v $(RELEASE) --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
 	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" ../setup.py
