@@ -1,3 +1,10 @@
+paasta-tools (0.14.1-yelp1) lucid; urgency=low
+
+  * 0.14.1 tagged with 'make release'
+    Commit:
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Mon, 09 Nov 2015 16:21:43 -0800
+
 paasta-tools (0.13.11-yelp1) lucid; urgency=low
 
   * 0.13.11 tagged with 'make release'
