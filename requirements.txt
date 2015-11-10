@@ -32,7 +32,7 @@ pysensu-yelp==0.2.2
 python-daemon==1.5.2
 python-dateutil==2.4.2
 pytz==2014.10
-requests==2.8.1
+requests==2.7.0
 requests-cache==0.4.10
 sensu-plugin==0.1.0
 service-configuration-lib==0.10.0

@@ -36,7 +36,7 @@ setup(
         'chronos-python == 0.33.0',
         # Don't update this unless you have confirmed the client works with the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
-        'dulwich >= 0.9.8',
+        'dulwich == 0.10.0',
         'humanize >= 0.5.1',
         'httplib2 >= 0.9, <= 1.0',
         'isodate >= 0.5.0',
