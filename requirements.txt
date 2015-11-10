@@ -42,5 +42,5 @@ thriftpy==0.1.15
 tron==0.6.1.1
 websocket-client==0.32.0
 wsgiref==0.1.2
-yelp-clog==2.2.9
+yelp-clog==2.2.10
 zope.interface==4.1.2
