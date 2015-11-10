@@ -1,6 +1,17 @@
 language: python
 python:
   - "2.7"
+env:
+  - TOX_ENV=docs
+  - TOX_ENV=manpages
+  - TOX_ENV=general_itests
+  - TOX_ENV=paasta_itests
+sudo: required
+services:
+  - docker
 install:
-  - pip install --use-mirrors tox
-script: make test
+  - pip install tox
+before_script:
+  - tox -e py
+script:
+  - tox -e $TOX_ENV
