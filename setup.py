@@ -47,7 +47,7 @@ setup(
         'path.py >= 8.1',
         'pysensu-yelp >= 0.2.2',
         'python-dateutil >= 2.4.0',
-        'requests >= 2.6.0',
+        'requests == 2.6.2',
         'requests-cache >= 0.4.10, <= 0.5.0',
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.9.2',
