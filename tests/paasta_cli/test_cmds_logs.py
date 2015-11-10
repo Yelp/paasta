@@ -19,12 +19,21 @@ from multiprocessing import Queue
 from Queue import Empty
 
 import isodate
+import pytest
 from pytest import raises
 
-from paasta_tools.paasta_cli.cmds import logs
+try:
+    from paasta_tools.paasta_cli.cmds import logs
+except ImportError:
+    pass
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import format_log_line
-from scribereader.scribereader import StreamTailerSetupError
+try:
+    from scribereader.scribereader import StreamTailerSetupError
+    scribereader_available = True
+except ImportError:
+    scribereader_available = False
+    pass
 
 
 def test_cluster_to_scribe_env_good():
@@ -242,6 +251,7 @@ def test_parse_chronos_log_line_ok():
     assert sorted(logs.parse_chronos_log_line(line, clusters)) == sorted(expected)
 
 
+@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')
 def test_scribe_tail_log_everything():
     env = 'fake_env'
     stream_name = 'fake_stream'
@@ -306,6 +316,7 @@ def test_scribe_tail_log_everything():
         assert 'level: second. component: deploy.' in second_line
 
 
+@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')
 def test_scribe_tail_log_nothing():
     env = 'fake_env'
     stream_name = 'fake_stream'
@@ -362,6 +373,7 @@ class FakeKeyboardInterrupt(KeyboardInterrupt):
     pass
 
 
+@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')
 def test_scribe_tail_ctrl_c():
     env = 'fake_env'
     stream_name = 'fake_stream'
@@ -399,6 +411,7 @@ def test_scribe_tail_ctrl_c():
         # was successful.
 
 
+@pytest.mark.skipif(not scribereader_available, reason='scribereader not available')
 def test_scribe_tail_handles_StreamTailerSetupError():
     env = 'fake_env'
     stream_name = 'fake_stream'

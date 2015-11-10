@@ -2,38 +2,40 @@ PyStaticConfiguration==0.9.0
 PyYAML==3.11
 Pygments==2.0.2
 argcomplete==0.8.1
+# argparse is pinned to 1.2.1 since it comes in the core python2.7 libs and pip can't seem to override it
 argparse==1.2.1
 backports.ssl-match-hostname==3.4.0.2
-blessings==1.6
-boto==2.38.0
--e git://github.com/asher/chronos-python.git@64dacd198d730e78dfb83bc8050623089c6e4751#egg=chronos-python
+blessings==1.5.1
+boto==2.34.0
+chronos-python==0.33.0-yelp1
+dateglob==0.1
+# Don't update this unless you have confirmed the client works with the Docker version deployed on PaaSTA servers
 docker-py==1.2.3
 dulwich==0.10.0
+filechunkio==1.5
 future==0.14.3
 futures==3.0.1
+geogrid==1.0.8
 httplib2==0.9
 humanize==0.5.1
 importlib==1.0.3
 isodate==0.5.1
 kazoo==2.2
-lockfile==0.9.1
--e git://github.com/yelp/marathon-python.git@e7e2116159528c45afdbb8b01c03fbd0333e0108#egg=marathon-python
-mccabe==0.3.1
+marathon==0.7.1-yelp3
 mesos.cli==0.1.3
-mesos.interface==0.22.1.2
+mesos.interface==0.22.1
+mrjob==0.4.4.post2
 ordereddict==1.1
 path.py==8.1
 ply==3.4
 prettytable==0.7.2
 protobuf==2.6.1
-pyasn1==0.1.8
-pycrypto==2.6.1
+psutil==2.1.1
 pysensu-yelp==0.2.2
-python-daemon==1.5.2
 python-dateutil==2.4.2
-pytz==2014.10
-requests==2.6.2
+requests==2.7.0
 requests-cache==0.4.10
+scribereader==0.1.25
 sensu-plugin==0.1.0
 service-configuration-lib==0.10.0
 simplejson==3.6.5
@@ -42,5 +44,6 @@ thriftpy==0.1.15
 tron==0.6.1.1
 websocket-client==0.32.0
 wsgiref==0.1.2
-yelp-clog==2.2.9
-zope.interface==4.1.2
+yelp-cgeom==1.3.1
+yelp-clog==2.2.4
+yelp-logging==1.0.37
