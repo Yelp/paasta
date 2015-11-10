@@ -28,7 +28,7 @@ the particular problems associated with running a production PaaS:
 |---------------------|------------------------------|
 | Code containerizer  | Docker                       |
 | Scheduling          | Mesos + Marathon             |
-| Service Discovery   | SmartSTack                   |
+| Service Discovery   | SmartStack                   |
 | Monitoring          | Sensu                        |
 | Workflow            | Jenkins or CLI + soa-configs |
 
@@ -138,7 +138,7 @@ expected to run different apps. (test-appname, staging-appname, etc)
 | Workflow            | CLI                |
 
 Flynn is a Heroku-inspired PaaS. Flynn is unique in this comparison because it
-has first-class support for its embedded Postgress appliance, analogous to
+has first-class support for its embedded Postgres appliance, analogous to
 Heroku's Postgres Add-on or Amazon's RDS. This reduces the number of components
 required to run a fully working setup, assuming Postgres meets the developers'
 needs. Most other PaaS's view this problem as "out of scope", including PaaSTA.
