@@ -26,8 +26,11 @@ import re
 import sys
 
 import isodate
-from scribereader import scribereader
-from scribereader.scribereader import StreamTailerSetupError
+try:
+    from scribereader import scribereader
+    from scribereader.scribereader import StreamTailerSetupError
+except ImportError:
+    pass
 
 from paasta_tools import chronos_tools
 from paasta_tools.marathon_tools import format_job_id

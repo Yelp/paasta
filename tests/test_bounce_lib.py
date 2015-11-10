@@ -85,7 +85,7 @@ class TestBounceLib:
             wait_patch,
         ):
             bounce_lib.create_marathon_app('fake_creation', fake_config, fake_client)
-            lock_patch.assert_called_once_with()
+            assert lock_patch.called
             assert fake_client.create_app.call_count == 1
             actual_call_args = fake_client.create_app.call_args
             actual_config = actual_call_args[0][1]
