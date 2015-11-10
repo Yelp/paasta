@@ -705,10 +705,12 @@ def compose_job_id(name, instance, git_hash=None, config_hash=None, spacer=SPACE
 
 
 def decompose_job_id(job_id, spacer=SPACER):
-    """Break down a composed job/app id into its (service name, instance, and tag) by splitting with <SPACER>.
+    """Break a composed job id into its constituent (service name, instance,
+    git hash, config hash) by splitting with ``spacer``.
 
     :param job_id: The composed id of the job/app
-    :returns: A tuple (name, instance, tag) that comprise the job_id
+    :returns: A tuple (service name, instance, git hash, config hash) that
+    comprise the job_id
     """
     decomposed = job_id.split(spacer)
     if len(decomposed) == 2:
@@ -720,18 +722,6 @@ def decompose_job_id(job_id, spacer=SPACER):
     else:
         raise InvalidJobNameError('invalid job id %s' % job_id)
     return (decomposed[0], decomposed[1], git_hash, config_hash)
-
-
-def remove_tag_from_job_id(job_id, spacer=SPACER):
-    """Remove the tag from a job id, if there is one.
-
-    :param job_id: The job_id.
-    :returns: The job_id with the tag removed, if there was one."""
-    try:
-        parts = decompose_job_id(job_id)
-        return '%s%s%s' % (parts[0], spacer, parts[1])
-    except InvalidJobNameError:
-        raise
 
 
 def build_docker_image_name(upstream_job_name):

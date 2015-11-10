@@ -27,7 +27,6 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import remove_tag_from_job_id
 import setup_marathon_job
 
 
@@ -1007,7 +1006,7 @@ class TestSetupMarathonJob:
             }
         )
 
-        fake_short_id = remove_tag_from_job_id(fake_id)
+        fake_short_id = marathon_tools.format_job_id(fake_name, fake_instance)
 
         with contextlib.nested(
             mock.patch(

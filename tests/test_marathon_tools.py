@@ -1551,6 +1551,11 @@ class TestServiceNamespaceConfig(object):
         assert marathon_tools.ServiceNamespaceConfig().get_discover() == 'region'
 
 
+def test_deformat_job_id():
+    expected = ('ser_vice', 'in_stance', 'git_hash', 'config_hash')
+    assert marathon_tools.deformat_job_id('ser--vice.in--stance.git--hash.config--hash') == expected
+
+
 def test_create_complete_config_no_smartstack():
     service = "service"
     instance = "instance"
