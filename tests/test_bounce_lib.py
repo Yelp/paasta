@@ -109,7 +109,7 @@ class TestBounceLib:
             fake_client.delete_app.assert_called_once_with(fake_id, force=True)
             sleep_patch.assert_called_once_with(1)
             wait_patch.assert_called_once_with(fake_id, fake_client)
-            lock_patch.assert_called_once_with()
+            assert lock_patch.called
 
     def test_kill_old_ids(self):
         old_ids = ['mmm.whatcha.say', 'that.you', 'only.meant.well']

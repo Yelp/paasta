@@ -17,6 +17,7 @@ from contextlib import nested
 import mock
 import pytest
 import requests
+import sys
 
 from paasta_tools.monitoring.check_classic_service_replication\
     import (
@@ -176,7 +177,9 @@ def test_classic_replication_check():
             mock.patch(replication_method, return_value=mock_replication),
             mock.patch(extract_method, return_value=(True, mock_monitoring)),
             mock.patch(check_method, return_value=mock_check),
-            mock.patch('pysensu_yelp.send_event')) as (_, _, _, mcheck, _):
+            mock.patch('pysensu_yelp.send_event'),
+            mock.patch.object(sys, 'argv', ['check_classic_service_replication.py']),
+    ) as (_, _, _, mcheck, _, _):
         with pytest.raises(SystemExit) as error:
             check = ClassicServiceReplicationCheck()
             check.run()
