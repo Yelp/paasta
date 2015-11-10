@@ -142,8 +142,11 @@ def bounce_chronos_job(
 
 def setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster):
     job_id = complete_job_config['name']
-    all_existing_jobs = chronos_tools.match_job_names_to_service_instance(
-        service=service, instance=instance, jobs=client.list())
+    all_existing_jobs = chronos_tools.lookup_chronos_jobs(
+        service=service,
+        instance=instance,
+        client=client,
+    )
     # TODO: Sort the jobs in the right order so we delete the least relevant
     # This currently depends on implicit behavior that Chronos returns jobs
     # "oldest first"

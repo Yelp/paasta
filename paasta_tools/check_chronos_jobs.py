@@ -86,16 +86,23 @@ def sensu_event_for_last_run_state(state):
         return pysensu_yelp.Status.OK
 
 
-def build_service_job_mapping(configured_jobs, running_jobs):
+def build_service_job_mapping(client, configured_jobs):
     """
-    Create a dict of {(service, instance): [(chronos job, lastrunstate)]}
-    where the chronos job is any with a matching (service, instance)
-    in its name and disabled == false
+    :param client: A Chronos client used for getting the list of running jobs
+    :param configured_jobs: A list of jobs configured in Paasta, i.e. jobs we
+    expect to be able to find
+    :returns: A dict of {(service, instance): [(chronos job, lastrunstate)]}
+    where the chronos job is any with a matching (service, instance) in its
+    name and disabled == False
     """
     service_job_mapping = {}
     for job in configured_jobs:
-        # find all those jobs in the client.list belonging to each service
-        matching_jobs = chronos_tools.match_job_names_to_service_instance(job[0], job[1], running_jobs)
+        # find all the jobs belonging to each service
+        matching_jobs = chronos_tools.lookup_chronos_jobs(
+            service=job[0],
+            instance=job[1],
+            client=client,
+        )
         # filter the enabled jobs
         enabled = chronos_tools.filter_enabled_jobs(matching_jobs)
         # get the last run state for the job
@@ -143,10 +150,7 @@ def main(args):
     # get those jobs listed in configs
     configured_jobs = chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)
 
-    # get the running jobs
-    running_jobs = client.list()
-
-    service_job_mapping = build_service_job_mapping(configured_jobs, running_jobs)
+    service_job_mapping = build_service_job_mapping(client, configured_jobs)
     for service_instance, job_state_pairs in service_job_mapping.items():
         service, instance = service_instance[0], service_instance[1]
         sensu_output, sensu_status = sensu_message_status_for_jobs(service, instance, job_state_pairs)

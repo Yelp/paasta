@@ -34,6 +34,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_default_branch
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import InstanceConfig
+from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
@@ -545,44 +546,60 @@ def sort_jobs(jobs):
     )
 
 
-def match_job_names_to_service_instance(service, instance, jobs):
-    """Given a list of chronos jobs, return those which are associated with a given service and instance."""
-    matching = []
-    for job in jobs:
-        jobs_service, jobs_instance, _, _ = decompose_job_id(job['name'])
-        if jobs_service == service and jobs_instance == instance:
-            matching.append(job)
-    return matching
+def lookup_chronos_jobs(client, service=None, instance=None, git_hash=None, config_hash=None, include_disabled=False):
+    """Discovers Chronos jobs and filters them with ``filter_chronos_jobs()``.
 
-
-def lookup_chronos_jobs(pattern, client, max_expected=None, include_disabled=False):
-    """Retrieves Chronos jobs with names that match a specified pattern.
-
-    :param pattern: a Python style regular expression that the job name will be matched against
-                    (after being passed to re.compile)
     :param client: Chronos client object
-    :param max_expected: maximum number of results that is expected. If exceeded, raises a ValueError.
-                         If unspecified, defaults to no limit.
-    :param include_disabled: boolean indicating if disabled jobs should be included in matches
+    :param service: passed on to ``filter_chronos_jobs()``
+    :param instance: passed on to ``filter_chronos_jobs()``
+    :param git_hash: passed on to ``filter_chronos_jobs()``
+    :param config_hash: passed on to ``filter_chronos_jobs()``
+    :param include_disabled: passed on to ``filter_chronos_jobs()``
+    :returns: list of job dicts discovered by ``client`` and filtered by
+    ``filter_chronos_jobs()`` using the other parameters
     """
-    try:
-        regexp = re.compile(pattern)
-    except re.error:
-        raise ValueError("Invalid regex pattern '%s'" % pattern)
     jobs = client.list()
+    return filter_chronos_jobs(
+        jobs=jobs,
+        service=service,
+        instance=instance,
+        git_hash=git_hash,
+        config_hash=config_hash,
+        include_disabled=include_disabled,
+    )
+
+
+def filter_chronos_jobs(jobs, service, instance, git_hash, config_hash, include_disabled):
+    """Filters a list of Chronos jobs based on several criteria.
+
+    :param jobs: a list of jobs, as calculated in ``lookup_chronos_jobs()``
+    :param service: service we're looking for. If None, don't filter based on this key.
+    :param instance: instance we're looking for. If None, don't filter based on this key.
+    :param git_hash: git_hash we're looking for. If None, don't filter based on
+    this key.
+    :param config_hash: config_hash we're looking for. If None, don't filter
+    based on this key.
+    :param include_disabled: boolean indicating if disabled jobs should be
+    included in the returned list
+    :returns: list of job dicts whose name matches the arguments (if any)
+    provided
+    """
     matching_jobs = []
     for job in jobs:
-        if regexp.search(job['name']):
+        try:
+            (job_service, job_instance, job_git_hash, job_config_hash) = decompose_job_id(job['name'])
+        except InvalidJobNameError:
+            continue
+        if (
+            (service is None or job_service == service)
+            and (instance is None or job_instance == instance)
+            and (git_hash is None or job_git_hash == git_hash)
+            and (config_hash is None or job_config_hash == config_hash)
+        ):
             if job['disabled'] and not include_disabled:
                 continue
             else:
                 matching_jobs.append(job)
-
-    if max_expected and len(matching_jobs) > max_expected:
-        matching_ids = [job['name'] for job in matching_jobs]
-        raise ValueError("Found %d jobs for pattern '%s', but max_expected is set to %d (ids: %s)" %
-                         (len(matching_jobs), pattern, max_expected, ', '.join(matching_ids)))
-
     return matching_jobs
 
 
