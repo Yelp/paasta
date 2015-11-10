@@ -90,17 +90,15 @@ def get_service_stanza(description, external_link, auto):
     return stanza
 
 
-def get_monitoring_stanza(auto, team, legacy_style=False):
+def get_monitoring_stanza(auto, team):
     """Produce a monitoring.yaml in a `format <yelpsoa_configs.html#monitoring-yaml>`_
     that PaaSTA can read.
 
     'team' is the critical key and is not calculable so it is required.
-
-    legacy_style changes some behavior for use with wizard.py.
     """
     all_teams = list_teams()
     if team is None:
-        if auto and not legacy_style:
+        if auto:
             sys.exit("I'd Really Rather You Didn't Use --auto Without --team")
         while not team:
             print "Here are the existing teams:"
@@ -115,8 +113,6 @@ def get_monitoring_stanza(auto, team, legacy_style=False):
     stanza = {}
     stanza["team"] = team
     stanza["service_type"] = "marathon"
-    if legacy_style:
-        stanza["service_type"] = "classic"
     return stanza
 
 

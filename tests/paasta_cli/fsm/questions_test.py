@@ -199,25 +199,6 @@ class TestGetMonitoringStanzaTestCase(TestQuestions):
         assert 1 == mock_ask.call_count
         assert ("team", mock_ask.return_value) in actual.items()
 
-    def test_team_not_passed_in_auto_true_legacy_style_true(self, mock_ask, mock_list_teams):
-        """If a value is not specified and --auto was requested and
-        legacy_style is on, prompt the user.
-        """
-        team = None
-        auto = True
-
-        mock_ask.return_value = "red_jaguars"
-        actual = fsm.get_monitoring_stanza(auto, team, legacy_style=True)
-        assert 1 == mock_ask.call_count
-        assert ("team", mock_ask.return_value) in actual.items()
-
-    def test_service_type_marathon_when_legacy_style_true(self, mock_ask, mock_list_teams):
-        team = "red_jaguars"
-        auto = "UNUSED"
-
-        actual = fsm.get_monitoring_stanza(auto, team, legacy_style=True)
-        assert ("service_type", "classic") in actual.items()
-
 
 class TestGetDeployStanzaTestCase(TestQuestions):
     def test(self, mock_ask):
