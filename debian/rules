@@ -19,7 +19,7 @@ override_dh_auto_build:
 	true
 
 override_dh_installdocs:
-	tox -e manpages
+	tox -i http://pypi.yelpcorp.com -e manpages
 
 # do not call `make test` as part of packaging
 override_dh_auto_test:

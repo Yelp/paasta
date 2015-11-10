@@ -26,7 +26,7 @@ itest: test
 	tox -e paasta_itests
 
 # See the makefile in yelp_package/Makefile for packaging stuff
-itest_%:
+itest_%_yelp:
 	make -C yelp_package $@
 
 # Steps to release
@@ -43,4 +43,3 @@ clean:
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete
 	rm -rf .tox
-
