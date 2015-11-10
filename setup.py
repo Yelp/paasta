@@ -42,7 +42,7 @@ setup(
         'isodate >= 0.5.0',
         'kazoo >= 2.0.0',
         'marathon >= 0.7.1',
-        'mesos.cli >= 0.1.3',
+        'mesos.cli == 0.1.3',
         'ordereddict >= 1.1',
         'path.py >= 8.1',
         'pysensu-yelp >= 0.2.2',
