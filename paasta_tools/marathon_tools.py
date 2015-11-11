@@ -440,6 +440,8 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
       e.g. [('region:dc6-prod', 'region:useast1-prod')]
     - extra_healthcheck_headers: a dict of HTTP headers that must
       be supplied when health checking. E.g. { 'Host': 'example.com' }
+    - balance: load balancing method e.g. 'leastconn' or 'roundrobin' (see
+      haproxy parameter of the same name for complete list)
 
     :param service: The service name
     :param namespace: The namespace to read
@@ -470,7 +472,8 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
         'mode',
         'discover',
         'advertise',
-        'extra_healthcheck_headers'
+        'extra_healthcheck_headers',
+        'balance'
     ])
 
     for key, value in namespace_config_from_file.items():
