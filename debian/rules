@@ -19,11 +19,11 @@ override_dh_auto_build:
 	true
 
 override_dh_installdocs:
-	tox -i http://pypi.yelpcorp.com -e manpages
+	tox -e manpages
 
 # do not call `make test` as part of packaging
 override_dh_auto_test:
 	true
 
 override_dh_virtualenv:
-	dh_virtualenv --pypi-url='http://pypi.yelpcorp.com/simple' --python=/usr/bin/python2.7
+	dh_virtualenv --extra-index-url 'http://pypi.yelpcorp.com/simple' --python=/usr/bin/python2.7

@@ -20,7 +20,7 @@ lockfile==0.9.1
 -e git://github.com/yelp/marathon-python.git@e7e2116159528c45afdbb8b01c03fbd0333e0108#egg=marathon-python
 mccabe==0.3.1
 mesos.cli==0.1.3
-mesos.interface==0.22.1
+mesos.interface==0.22.1.2
 ordereddict==1.1
 path.py==8.1
 ply==3.4
@@ -42,5 +42,5 @@ thriftpy==0.1.15
 tron==0.6.1.1
 websocket-client==0.32.0
 wsgiref==0.1.2
-yelp-clog==2.2.9
+yelp-clog==2.2.10
 zope.interface==4.1.2
