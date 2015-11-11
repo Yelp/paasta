@@ -93,7 +93,7 @@ distribution and monitoring.
 
 Kubernetes can be closely compared to PaaSTA because they do most of the same
 functions.  The main difference is that PaaSTA uses existing open source
-technologies, instead of of a single Go binary. The consolidated
+technologies, instead of a single Go binary. The consolidated
 approach has the benefit of making it easier to setup and deploy, at the expense
 of being able to swap out components.
 
