@@ -25,22 +25,20 @@ DOCKER_RUN_TRUSTY:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_trusty_c
 build_lucid_docker:
 	[ -d ../dist ] || mkdir ../dist
 	cd dockerfiles/lucid/ && docker build -t "paastatools_lucid_container" .
-package_lucid_yelp: build_lucid_docker
-	cp setup.py ../; cp requirements.txt ../
+package_lucid: build_lucid_docker
 	$(DOCKER_RUN_LUCID) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	$(DOCKER_RUN_LUCID) chown -R $(UID):$(GID) /work
-itest_lucid_yelp: package_lucid_yelp
+itest_lucid: package_lucid
 	$(DOCKER_RUN_LUCID) /work/yelp_package/itest/ubuntu.sh
 
 
 build_trusty_docker:
 	[ -d ../dist ] || mkdir ../dist
 	cd dockerfiles/trusty/ && docker build -t "paastatools_trusty_container" .
-package_trusty_yelp: build_trusty_docker
-	cp setup.py ../; cp requirements.txt ../
+package_trusty: build_trusty_docker
 	$(DOCKER_RUN_TRUSTY) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work
-itest_trusty_yelp: package_trusty_yelp
+itest_trusty: package_trusty
 	$(DOCKER_RUN_TRUSTY) /work/yelp_package/itest/ubuntu.sh
 
 

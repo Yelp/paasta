@@ -25,8 +25,9 @@ itest: test
 	tox -e general_itests
 	tox -e paasta_itests
 
-# See the makefile in yelp_package/Makefile for packaging stuff
 itest_%:
+	# See the makefile in yelp_package/Makefile for packaging stuff
+	# Note: For now, these builds only work inside Yelp's environment.
 	make -C yelp_package $@
 
 # Steps to release
@@ -43,4 +44,3 @@ clean:
 	find . -name '*.pyc' -delete
 	find . -name '__pycache__' -delete
 	rm -rf .tox
-
