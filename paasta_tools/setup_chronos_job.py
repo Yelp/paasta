@@ -55,6 +55,7 @@ from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SPACER
 
 
@@ -195,8 +196,9 @@ def main():
             cluster=cluster,
             soa_dir=soa_dir,
         )
-    except NoDeploymentsAvailable:
-        error_msg = "No deployments found for %s in cluster %s" % (args.service_instance, cluster)
+    except (NoDeploymentsAvailable, NoDockerImageError):
+        error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
+            args.service_instance, cluster)
         send_event(
             service=service,
             instance=None,
