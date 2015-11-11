@@ -1,5 +1,5 @@
 [![Build Status](https://travis-ci.org/Yelp/paasta.svg?branch=master)](https://travis-ci.org/Yelp/paasta)
-[![Coverage Status](https://coveralls.io/repos/Yelp/paasta/badge.svg)](https://coveralls.io/r/Yelp/paasta)
+[![Coverage Status](https://coveralls.io/repos/Yelp/paasta/badge.svg?branch=master&service=github)](https://coveralls.io/github/Yelp/paasta?branch=master)
 
 # PaaSTA - Build, Deploy, Connect, and Monitor Services
 
