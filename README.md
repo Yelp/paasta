@@ -6,6 +6,9 @@
 PaaSTA is a highly-available, distributed system for building, deploying, and
 running services using containers and Apache Mesos!
 
+Want to know more about the opinions behind what makes PaaSTA special? Check
+out the [PaaSTA Principles](http://paasta.readthedocs.org/en/latest/about/paasta_principles.html).
+
 *Note*: PaaSTA has been running in production at Yelp for more than a year,
 and has a number of "Yelpisms" still lingering in the codebase. We have made
 efforts to excise them, but there are bound to be lingering issues. Please help us
