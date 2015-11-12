@@ -17,7 +17,7 @@ importlib==1.0.3
 isodate==0.5.1
 kazoo==2.2
 lockfile==0.9.1
--e git://github.com/yelp/marathon-python.git@e7e2116159528c45afdbb8b01c03fbd0333e0108#egg=marathon-python
+-e git://github.com/yelp/marathon-python.git@e7e2116159528c45afdbb8b01c03fbd0333e0108#egg=marathon
 mccabe==0.3.1
 mesos.cli==0.1.3
 mesos.interface==0.22.1.2
