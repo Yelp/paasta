@@ -69,6 +69,9 @@ mkdir -p /etc/paasta
 [ -L /etc/paasta/chronos.json ] || ln -s /work/yelp_package/itest/chronos.json /etc/paasta/chronos.json
 [ -L /etc/paasta/cluster.json ] || ln -s /work/yelp_package/itest/cluster.json /etc/paasta/cluster.json
 
+# If left there, they are included in the python path and can pollute the tests.
+rm -r debian/paasta-tools/
+
 if dpkg -i /work/dist/*.deb; then
   echo "Looks like it installed correctly"
 else
@@ -80,6 +83,7 @@ for scr in $SCRIPTS
 do
   which $scr >/dev/null || (echo "$scr failed to install!"; exit 1)
 done
+setup_marathon_job --help >/dev/null
 
 for srv in $MARATHON_SERVICES
 do
