@@ -55,6 +55,11 @@ def add_subparser(subparsers):
         help="A comma-separated list of clusters to view. Defaults to view all clusters.\n"
              "For example: --clusters norcal-prod,nova-prod"
     ).completer = lazy_choices_completer(list_clusters)
+    status_parser.add_argument(
+        '-i', '--instances',
+        help="A comma-separated list of instances to view. Defaults to view all instances.\n"
+             "For example: --instances canary,main"
+    )  # No completer because we need to know service first and we can't until some other stuff has happened
     status_parser.set_defaults(command=paasta_status)
 
 
@@ -200,9 +205,20 @@ def paasta_status(args):
         cluster_filter = args.clusters.split(",")
     else:
         cluster_filter = None
+    if args.instances is not None:
+        instance_filter = args.instances.split(",")
+    else:
+        instance_filter = None
 
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(deploy_info))
-        report_status(service, deploy_pipeline, actual_deployments, cluster_filter, args.verbose)
+        report_status(
+            service=service,
+            deploy_pipeline=deploy_pipeline,
+            actual_deployments=actual_deployments,
+            cluster_filter=cluster_filter,
+            instance_filter=instance_filter,
+            verbose=args.verbose,
+        )
     else:
         print missing_deployments_message(service)

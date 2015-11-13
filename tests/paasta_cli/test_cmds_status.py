@@ -334,6 +334,7 @@ def test_status_calls_sergeants(
     args = MagicMock()
     args.service = service
     args.clusters = None
+    args.instances = None
     args.verbose = False
     paasta_status(args)
 
@@ -341,7 +342,13 @@ def test_status_calls_sergeants(
     mock_get_actual_deployments.assert_called_once_with(service)
     mock_get_deploy_info.assert_called_once_with(service)
     mock_report_status.assert_called_once_with(
-        service, planned_deployments, actual_deployments, None, False)
+        service=service,
+        deploy_pipeline=planned_deployments,
+        actual_deployments=actual_deployments,
+        cluster_filter=None,
+        instance_filter=None,
+        verbose=False,
+    )
 
 
 def test_report_bogus_filters_nofilter():
