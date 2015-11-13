@@ -130,7 +130,7 @@ def get_actual_deployments(service):
     return actual_deployments
 
 
-def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, verbose=False):
+def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_filter, verbose=False):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     # Get cluster.instance in the order in which they appear in deploy.yaml
