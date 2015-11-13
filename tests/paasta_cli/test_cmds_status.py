@@ -368,21 +368,33 @@ def test_report_bogus_filters_with_filter():
 @patch('paasta_tools.paasta_cli.cmds.status.report_status_for_cluster')
 @patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters')
 @patch('sys.stdout', new_callable=StringIO)
-def test_report_status_obeys_filter(
+def test_report_status_obeys_cluster_filter(
     mock_stdout,
     mock_report_bogus_filters,
     mock_report_status_for_cluster,
 ):
     service = 'fake_service'
     cluster_filter = ['cluster1']
+    instance_filter = None
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     report_status(
-        service, deploy_pipeline, actual_deployments, cluster_filter)
+        service=service,
+        deploy_pipeline=deploy_pipeline,
+        actual_deployments=actual_deployments,
+        cluster_filter=cluster_filter,
+        instance_filter=instance_filter,
+    )
     mock_report_bogus_filters.assert_called_once_with(
         cluster_filter, ['cluster1', 'cluster2', 'cluster3'])
-    mock_report_status_for_cluster.assert_called_once_with(service, 'cluster1', deploy_pipeline,
-                                                           actual_deployments, False)
+    mock_report_status_for_cluster.assert_called_once_with(
+        service=service,
+        cluster='cluster1',
+        deploy_pipeline=deploy_pipeline,
+        actual_deployments=actual_deployments,
+        instance_filter=instance_filter,
+        verbose=False
+    )
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.report_status_for_cluster')
@@ -395,13 +407,37 @@ def test_report_status_handle_none_filter(
 ):
     service = 'fake_service'
     cluster_filter = None
+    instance_filter = None
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     report_status(
-        service, deploy_pipeline, actual_deployments, cluster_filter)
+        service=service,
+        deploy_pipeline=deploy_pipeline,
+        actual_deployments=actual_deployments,
+        cluster_filter=cluster_filter,
+        instance_filter=instance_filter,
+    )
     mock_report_status_for_cluster.assert_any_call(
-        service, 'cluster1', deploy_pipeline, actual_deployments, False)
+        service=service,
+        cluster='cluster1',
+        deploy_pipeline=deploy_pipeline,
+        actual_deployments=actual_deployments,
+        instance_filter=instance_filter,
+        verbose=False
+    )
     mock_report_status_for_cluster.assert_any_call(
-        service, 'cluster2', deploy_pipeline, actual_deployments, False)
+        service=service,
+        cluster='cluster2',
+        deploy_pipeline=deploy_pipeline,
+        actual_deployments=actual_deployments,
+        instance_filter=instance_filter,
+        verbose=False
+    )
     mock_report_status_for_cluster.assert_any_call(
-        service, 'cluster3', deploy_pipeline, actual_deployments, False)
+        service=service,
+        cluster='cluster3',
+        deploy_pipeline=deploy_pipeline,
+        actual_deployments=actual_deployments,
+        instance_filter=instance_filter,
+        verbose=False
+    )

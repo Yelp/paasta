@@ -183,14 +183,21 @@ def report_bogus_filters(cluster_filter, deployed_clusters):
     return return_string
 
 
-def report_status(service, deploy_pipeline, actual_deployments, cluster_filter, verbose=False):
+def report_status(service, deploy_pipeline, actual_deployments, cluster_filter, instance_filter, verbose=False):
     pipeline_url = get_pipeline_url(service)
     print "Pipeline: %s" % pipeline_url
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     for cluster in deployed_clusters:
         if cluster_filter is None or cluster in cluster_filter:
-            report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, verbose)
+            report_status_for_cluster(
+                service=service,
+                cluster=cluster,
+                deploy_pipeline=deploy_pipeline,
+                actual_deployments=actual_deployments,
+                instance_filter=instance_filter,
+                verbose=verbose,
+            )
 
     print report_bogus_filters(cluster_filter, deployed_clusters)
 
