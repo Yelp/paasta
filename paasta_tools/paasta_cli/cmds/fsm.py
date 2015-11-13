@@ -159,9 +159,9 @@ def paasta_fsm(args):
     print "Customize Them If It Makes You Happy -- http://y/paasta For Details"
     print "Remember To Add, Commit, And Push When You're Done:"
     print
-    print "cd %s" % join(args.yelpsoa_config_root, args.srvname)
+    print "cd %s" % join(args.yelpsoa_config_root, srvname)
     print "# Review And/Or Customize Files"
     print "git add ."
-    print "git commit -m'Initial Commit For %s'" % args.srvname
+    print "git commit -m'Initial Commit For %s'" % srvname
     print "git push origin HEAD  # Pushmaster Or Ops Deputy Privs Required"
     print
