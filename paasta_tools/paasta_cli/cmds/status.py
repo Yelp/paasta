@@ -167,13 +167,13 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
     print report_bogus_filters(instance_filter, seen_instances)
 
 
-def report_bogus_filters(cluster_filter, deployed_clusters):
+def report_bogus_filters(cluster_filters, deployed_clusters):
     """Warns the user if the filter used is not even in the deployed
     list. Helps pick up typos"""
     return_string = ""
-    if cluster_filter is not None:
+    if cluster_filters is not None:
         bogus_clusters = []
-        for c in cluster_filter:
+        for c in cluster_filters:
             if c not in deployed_clusters:
                 bogus_clusters.append(c)
         if len(bogus_clusters) > 0:

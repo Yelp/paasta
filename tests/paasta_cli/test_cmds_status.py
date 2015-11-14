@@ -442,14 +442,14 @@ def test_status_calls_sergeants(
     )
 
 
-def test_report_bogus_filters_nofilter():
+def test_report_bogus_filters_no_filters():
     filters = None
     deployed_clusters = ['cluster1', 'cluster2', 'cluster3']
     actual = report_bogus_filters(filters, deployed_clusters)
     assert actual == ''
 
 
-def test_report_bogus_filters_with_filter():
+def test_report_bogus_filters_with_filters():
     filters = ['bogus1', 'cluster1']
     deployed_clusters = ['cluster1', 'cluster2', 'cluster3']
     actual = report_bogus_filters(filters, deployed_clusters)
