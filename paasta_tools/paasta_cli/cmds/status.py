@@ -140,8 +140,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
         cluster_in_pipeline, instance = namespace.split('.')
 
         if cluster_in_pipeline != cluster:
-            # This function only prints things that are relevant to cluster
-            # We skip anything not in this cluster
+            continue
+        if instance_filter and instance not in instance_filter:
             continue
 
         # Case: service deployed to cluster.instance
