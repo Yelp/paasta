@@ -292,6 +292,28 @@ def test_report_status_for_cluster_obeys_instance_filter(
     assert 'instance2' not in output
 
 
+@patch('paasta_tools.paasta_cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
+@patch('sys.stdout', new_callable=StringIO)
+def test_report_status_calls_report_bogus_filters(
+    mock_stdout,
+    mock_execute_paasta_serviceinit_on_remote_master,
+):
+    service = 'fake_service'
+    planned_deployments = ['cluster.instance1', 'cluster.instance2']
+    actual_deployments = {}
+    instance_filter = None
+
+    with patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True) as mock_report_bogus_filters:
+        status.report_status_for_cluster(
+            service=service,
+            cluster='cluster',
+            deploy_pipeline=planned_deployments,
+            actual_deployments=actual_deployments,
+            instance_filter=instance_filter,
+        )
+        mock_report_bogus_filters.assert_called_once_with(instance_filter, ['instance1', 'instance2'])
+
+
 @patch('paasta_tools.paasta_cli.cmds.status.figure_out_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.status.get_deploy_info', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.status.get_actual_deployments', autospec=True)

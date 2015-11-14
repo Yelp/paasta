@@ -136,8 +136,10 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
     # Get cluster.instance in the order in which they appear in deploy.yaml
     print
     print "cluster: %s" % cluster
+    seen_instances = []
     for namespace in deploy_pipeline:
         cluster_in_pipeline, instance = namespace.split('.')
+        seen_instances.append(instance)
 
         if cluster_in_pipeline != cluster:
             continue
@@ -161,6 +163,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
         if status is not None:
             for line in status.rstrip().split('\n'):
                 print '    %s' % line
+
+    print report_bogus_filters(instance_filter, seen_instances)
 
 
 def report_bogus_filters(cluster_filter, deployed_clusters):
