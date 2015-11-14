@@ -164,24 +164,23 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             for line in status.rstrip().split('\n'):
                 print '    %s' % line
 
-    print report_bogus_filters(instance_filter, seen_instances)
+    print report_bogus_filters(instance_filter, seen_instances, 'instance')
 
 
-def report_bogus_filters(cluster_filters, deployed_clusters):
+def report_bogus_filters(filters, items, item_type):
     """Warns the user if the filter used is not even in the deployed
     list. Helps pick up typos"""
     return_string = ""
-    if cluster_filters is not None:
-        bogus_clusters = []
-        for c in cluster_filters:
-            if c not in deployed_clusters:
-                bogus_clusters.append(c)
-        if len(bogus_clusters) > 0:
+    if filters is not None:
+        bogus_filters = []
+        for filt in filters:
+            if filt not in items:
+                bogus_filters.append(filt)
+        if len(bogus_filters) > 0:
             return_string = (
                 "\n"
-                "Warning: The following clusters in the filter look bogus, this service\n"
-                "is not deployed to the following cluster(s):\n%s"
-            ) % ",".join(bogus_clusters)
+                "Warning: This service does not have any %s matching these filters:\n%s"
+            ) % (item_type, ",".join(bogus_filters))
     return return_string
 
 
@@ -201,7 +200,7 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_filter, 
                 verbose=verbose,
             )
 
-    print report_bogus_filters(cluster_filter, deployed_clusters)
+    print report_bogus_filters(cluster_filter, deployed_clusters, 'cluster')
 
 
 def paasta_status(args):

@@ -324,7 +324,7 @@ def test_report_status_calls_report_bogus_filters(
         actual_deployments=actual_deployments,
         instance_filter=instance_filter,
     )
-    mock_report_bogus_filters.assert_called_once_with(instance_filter, ['instance1', 'instance2'])
+    mock_report_bogus_filters.assert_called_once_with(instance_filter, ['instance1', 'instance2'], 'instance')
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.figure_out_service_name', autospec=True)
@@ -444,17 +444,20 @@ def test_status_calls_sergeants(
 
 def test_report_bogus_filters_no_filters():
     filters = None
-    deployed_clusters = ['cluster1', 'cluster2', 'cluster3']
-    actual = report_bogus_filters(filters, deployed_clusters)
+    items = ['cluster1', 'cluster2', 'cluster3']
+    item_type = 'thingy'
+    actual = report_bogus_filters(filters, items, item_type)
     assert actual == ''
 
 
 def test_report_bogus_filters_with_filters():
     filters = ['bogus1', 'cluster1']
-    deployed_clusters = ['cluster1', 'cluster2', 'cluster3']
-    actual = report_bogus_filters(filters, deployed_clusters)
-    assert 'bogus1' in actual
+    items = ['cluster1', 'cluster2', 'cluster3']
+    item_type = 'thingy'
+    actual = report_bogus_filters(filters, items, item_type)
     assert 'Warning' in actual
+    assert item_type in actual
+    assert 'bogus1' in actual
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.report_status_for_cluster', autospec=True)
@@ -478,7 +481,7 @@ def test_report_status_obeys_cluster_filter(
         instance_filter=instance_filter,
     )
     mock_report_bogus_filters.assert_called_once_with(
-        cluster_filter, ['cluster1', 'cluster2', 'cluster3'])
+        cluster_filter, ['cluster1', 'cluster2', 'cluster3'], 'cluster')
     mock_report_status_for_cluster.assert_called_once_with(
         service=service,
         cluster='cluster1',
