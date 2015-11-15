@@ -79,7 +79,7 @@ deployed for which clusters. This has some nice benifits:
 
 One downside to using git as a control plane is that it means PaaSTA components
 might need to access this metadata from remote environments. PaaSTA solves this
-by generating a ``deployments.json`` for each service and using `soa-configs <../soa_configs.html>_` to
+by generating a ``deployments.json`` for each service and using `soa-configs <../soa_configs.html>`_ to
 distribute it. This allows PaaSTA to extract all the metadata out of a git repo
 once, and distribute it globally to each PaaSTA cluster. It also helps isolate
 PaaSTA from git failures or outages.
@@ -90,13 +90,38 @@ PaaSTA from git failures or outages.
 Most of the PaaSTA code base assumes that team data is available for a service.
 That is because at Yelp, all services are owned by some team.
 
-This principle manifests in PaaSTA through the `monitoring.yaml <../yelpsoa_configs.html#monitoring-yaml>_` file. The
+This principle manifests in PaaSTA through the `monitoring.yaml <../yelpsoa_configs.html#monitoring-yaml>`_ file. The
 minimal amount of data required in that file is the ``team``. Additionally
 we encourage services to have at least a ``description`` and ``external_link``
-in `soa-configs <../soa-configs.html>_`.
+in `soa-configs <../soa-configs.html>`_.
 
 This helps emphasize that PaaSTA is built for the long-haul, and designed to
 run services in a production setting. Things are monitored by default, and alerts
 are sent to the team that owns the service. PaaSTA isn't optimized for quickly
-spinning up, say, "a redis container in prod". It is optimized for services that
+spinning up, say, "a Redis container in prod". It is optimized for services that
 exist for months or years.
+
+4. Services (and hence Docker images) should be reproducible
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The PaaSTA architecture is built with the assumption that the ultimate
+source of a service is a source code repo. In theory, the state of a production
+PaaSTA cluster could be reproduced from just the soa-configs repo and the
+source code repos of the services deployed there.
+
+This is different than other Docker-based platforms, where the fundamental
+building block is the *Docker image*. With PaaSTA the Docker image treated
+as only an intermediate artifact. In fact, with PaaSTA the user never actually
+specifies the exact Docker image to use. The image name is programmatically
+generated from service name and Git sha that generated it.
+
+Enforcing this principle at the infrastructure level ensures that every
+service can be traced to the source git repo. This principle is analogous
+to requiring that system images for things like Amazon AMIs, Vagrant
+boxes, or Vmware images be reproducible from scratch.
+
+The downside to this principle is that it discourages users from pulling
+images directly off a remote image repository, like the Docker Hub, and
+using the image as-is. The upside is that (hopefully) more thought is put
+into the sustainability of such a practice, especially in a production
+environment.
