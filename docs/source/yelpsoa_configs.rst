@@ -44,7 +44,7 @@ instancename MAY have:
 
   * ``drain_method_params``: A dictionary of parameters for the specified
     drain_method. Valid parameters are any of the kwargs defined for the
-    specified bounce_method in `bounce_lib <bounce_lib.html>`_.
+    specified bounce_method in `drain_lib <drain_lib.html>`_.
 
   * ``constraints``: Specifies placement constraints for services. Should be
     defined as an array within an array (E.g ``[["habitat", "GROUP_BY"]]``).
@@ -72,7 +72,7 @@ instancename MAY have:
       represents the EXTERNAL port, not the internal one. The internal service
       MUST listen on 8888, so this PORT variable confuses some service stacks
       that are listening for this variable. Such services MUST overwrite this
-      environment variable to function. (``PORT=8888 ./uwisgi.py```) We tried
+      environment variable to function. (``PORT=8888 ./uwsgi.py```) We tried
       to work around this, see `PAASTA-267
       <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
 
