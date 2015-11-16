@@ -778,12 +778,15 @@ def app_has_tasks(client, app_id, expected_tasks, exact_matches_only=False):
     Raises a marathon.NotFoundError when no app with matching id is found.
 
     :param client: the marathon client
-    :param app_id: the app_id to which the tasks should belong
+    :param app_id: the app_id to which the tasks should belong. The app_id has a / prepended
+    to it in the case it does not start with one.
     :param expected_tasks: the number of tasks to check for
     :param exact_matches_only: a boolean indicating whether we require exactly expected_tasks to be running
     :returns: a boolean indicating whether there are atleast expected_tasks tasks with
         an app id matching app_id
     """
+    if not app_id.startswith("/"):
+        app_id = "/%s" % app_id
     try:
         tasks = client.list_tasks(app_id=app_id)
     except NotFoundError:
