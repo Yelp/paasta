@@ -1042,6 +1042,13 @@ class TestMarathonTools:
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4) is False
         assert marathon_tools.app_has_tasks(fake_client, 'fake_app', 4, exact_matches_only=True) is False
 
+    @patch('marathon_tools.MarathonClient.list_tasks')
+    def test_add_leading_slash(self, patch_list_tasks):
+        fake_client = mock.Mock()
+        fake_client.list_tasks = patch_list_tasks
+        marathon_tools.app_has_tasks(fake_client, 'fake_app', 4)
+        assert patch_list_tasks.called_with('/fake_app')
+
     def test_get_code_sha_from_dockerurl(self):
         fake_docker_url = 'docker-paasta.yelpcorp.com:443/services-cieye:paasta-93340779404579'
         actual = marathon_tools.get_code_sha_from_dockerurl(fake_docker_url)
