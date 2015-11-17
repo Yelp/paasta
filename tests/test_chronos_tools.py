@@ -451,7 +451,7 @@ class TestChronosTools:
         assert msg == ''
 
     def test_check_schedule_invalid_empty_start_time(self):
-        fake_schedule = 'R10//PT2S'
+        fake_schedule = 'R10//PT70S'
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -459,7 +459,7 @@ class TestChronosTools:
 
     def test_check_schedule_invalid_start_time_no_t_designator(self):
         fake_start_time = 'now'
-        fake_schedule = 'R10/%s/PT2S' % fake_start_time
+        fake_schedule = 'R10/%s/PT70S' % fake_start_time
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         fake_isodate_exception = 'ISO 8601 time designator \'T\' missing. Unable to parse datetime string \'now\''
         okay, msg = chronos_config.check_schedule()
@@ -469,7 +469,7 @@ class TestChronosTools:
 
     def test_check_schedule_invalid_start_time_bad_date(self):
         fake_start_time = 'todayT19:20:30Z'
-        fake_schedule = 'R10/%s/PT2S' % fake_start_time
+        fake_schedule = 'R10/%s/PT70S' % fake_start_time
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         fake_isodate_exception = 'Unrecognised ISO 8601 date format: \'today\''
         okay, msg = chronos_config.check_schedule()
@@ -479,7 +479,7 @@ class TestChronosTools:
 
     def test_check_schedule_invalid_start_time_bad_time(self):
         fake_start_time = '1994-02-18Tmorning'
-        fake_schedule = 'R10/%s/PT2S' % fake_start_time
+        fake_schedule = 'R10/%s/PT70S' % fake_start_time
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         fake_isodate_exception = 'Unrecognised ISO 8601 time format: \'morning\''
         okay, msg = chronos_config.check_schedule()
@@ -503,8 +503,15 @@ class TestChronosTools:
         assert msg == ('The specified interval "Mondays" in schedule "%s" does not conform to the ISO 8601 format.'
                        % fake_schedule)
 
+    def test_check_schedule_low_interval(self):
+        fake_schedule = 'R10/2015-03-25T19:36:35Z/PT10S'
+        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        okay, msg = chronos_config.check_schedule()
+        assert okay is False
+        assert msg == 'Unsupported interval "PT10S": jobs must be run at an interval of > 60 seconds'
+
     def test_check_schedule_invalid_empty_repeat(self):
-        fake_schedule = '/2015-03-25T19:36:35Z/PT2S'
+        fake_schedule = '/2015-03-25T19:36:35Z/PT70S'
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -512,7 +519,7 @@ class TestChronosTools:
                        % fake_schedule)
 
     def test_check_schedule_invalid_repeat(self):
-        fake_schedule = 'forever/2015-03-25T19:36:35Z/PT2S'
+        fake_schedule = 'forever/2015-03-25T19:36:35Z/PT70S'
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         okay, msg = chronos_config.check_schedule()
         assert okay is False
