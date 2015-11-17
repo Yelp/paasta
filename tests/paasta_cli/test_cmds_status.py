@@ -85,7 +85,7 @@ def test_report_status_for_cluster_displays_deployed_service(
     actual_deployments = {
         'cluster.instance': 'sha'
     }
-    instance_filter = None
+    instance_filter = []
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
     expected_output = (
@@ -125,7 +125,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
     actual_deployments = {
         'cluster.instance': 'this_is_a_sha'
     }
-    instance_filter = None
+    instance_filter = []
     fake_status = 'status: SOMETHING FAKE\nand then something fake\non another line!\n\n\n'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
     expected_output = (
@@ -163,7 +163,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         'a_cluster.a_instance': '533976a9',
         'a_cluster.b_instance': '533976a9',
     }
-    instance_filter = None
+    instance_filter = []
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
     expected_output = (
@@ -211,7 +211,7 @@ def test_print_cluster_status_missing_deploys_in_red(
     actual_deployments = {
         'a_cluster.a_instance': '533976a981679d586bed1cfb534fdba4b4e2c815',
     }
-    instance_filter = None
+    instance_filter = []
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
     expected_output = (
@@ -256,7 +256,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
     }
-    instance_filter = None
+    instance_filter = []
     fake_output = "Marathon: 5 instances"
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_output
     expected_output = "    %s\n" % fake_output
@@ -315,7 +315,7 @@ def test_report_status_calls_report_bogus_filters(
     service = 'fake_service'
     planned_deployments = ['cluster.instance1', 'cluster.instance2']
     actual_deployments = {}
-    instance_filter = None
+    instance_filter = []
 
     status.report_status_for_cluster(
         service=service,
@@ -470,7 +470,7 @@ def test_report_status_obeys_cluster_filter(
 ):
     service = 'fake_service'
     cluster_filter = ['cluster1']
-    instance_filter = None
+    instance_filter = []
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     report_status(
@@ -501,8 +501,8 @@ def test_report_status_handle_none_filter(
     mock_report_status_for_cluster,
 ):
     service = 'fake_service'
-    cluster_filter = None
-    instance_filter = None
+    cluster_filter = []
+    instance_filter = []
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     report_status(
