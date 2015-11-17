@@ -2,6 +2,7 @@
 [![Coverage Status](https://coveralls.io/repos/Yelp/paasta/badge.svg?branch=master&service=github)](https://coveralls.io/github/Yelp/paasta?branch=master)
 
 # PaaSTA - Build, Deploy, Connect, and Monitor Services
+![PaaSTA Logo](http://engineeringblog.yelp.com/images/previews/paasta_preview.png)
 
 PaaSTA is a highly-available, distributed system for building, deploying, and
 running services using containers and Apache Mesos!
