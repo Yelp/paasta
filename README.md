@@ -68,6 +68,12 @@ documentation for how to deploy PaaSTA.
 
 Read the documentation at [Read the Docs](http://paasta.readthedocs.org/en/latest/).
 
+## Videos / Talks About PaaSTA
+
+* @Rob-Johnson talks about PaaSTA at [MesosCon 2015](https://www.youtube.com/watch?v=fxYfmzWctRc)
+* @EvanKrall speaks at [Qcon London 2015](http://www.infoq.com/presentations/paasta-yelp)
+* @EvanKrall, @solarkennedy, and @jnb give a [behind the scenes tour of PaaSTA at Yelp](https://vimeo.com/141231345)
+
 ## License
 
 PaaSTA is licensed under the Apache License, Version 2.0: http://www.apache.org/licenses/LICENSE-2.0
