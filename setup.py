@@ -21,7 +21,7 @@ from setuptools import setup, find_packages
 setup(
     name           = 'paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version        = '0.15.1',
+    version        = '0.15.2',
     provides       = ["paasta_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -33,7 +33,7 @@ setup(
         'argcomplete >= 0.8.1',
         # argparse is pinned to 1.2.1 since it comes in the core python2.7 libs and pip can't seem to override it
         'argparse == 1.2.1',
-        'chronos-python == 0.33.0',
+        'chronos-python == 0.34.0',
         # Don't update this unless you have confirmed the client works with the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
         'dulwich == 0.10.0',
@@ -41,7 +41,7 @@ setup(
         'httplib2 >= 0.9, <= 1.0',
         'isodate >= 0.5.0',
         'kazoo >= 2.0.0',
-        'marathon >= 0.7.1',
+        'marathon >= 0.7.3',
         'mesos.cli == 0.1.3',
         'ordereddict >= 1.1',
         'path.py >= 8.1',
