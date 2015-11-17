@@ -104,24 +104,24 @@ exist for months or years.
 4. Services (and hence Docker images) should be reproducible
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-The PaaSTA architecture is built with the assumption that the ultimate
-source of a service is a source code repo. In theory, the state of a production
-PaaSTA cluster could be reproduced from just the soa-configs repo and the
-source code repos of the services deployed there.
+The PaaSTA architecture is built with the assumption that the ultimate source
+of truth about a service is its source code repository. In theory, the state of
+a production PaaSTA cluster could be reproduced from just the `soa-configs <../soa-configs.html>`_
+repo and the source code repo of the services deployed there.
 
 This is different than other Docker-based platforms, where the fundamental
-building block is the *Docker image*. With PaaSTA the Docker image treated
+building block is the *Docker image*. With PaaSTA the Docker image is treated
 as only an intermediate artifact. In fact, with PaaSTA the user never actually
 specifies the exact Docker image to use. The image name is programmatically
-generated from service name and Git sha that generated it.
+generated from the service name and Git sha that generated it.
 
 Enforcing this principle at the infrastructure level ensures that every
-service can be traced to the source git repo. This principle is analogous
+service can be traced to its source Git repo. This principle is analogous
 to requiring that system images for things like Amazon AMIs, Vagrant
-boxes, or Vmware images be reproducible from scratch.
+boxes, or VMware images are reproducible from scratch.
 
-The downside to this principle is that it discourages users from pulling
-images directly off a remote image repository, like the Docker Hub, and
-using the image as-is. The upside is that (hopefully) more thought is put
-into the sustainability of such a practice, especially in a production
-environment.
+The downside to this principle is that it discourages users from pulling images
+directly off a remote image repository, like the Docker Hub, and using the
+image as-is. Such images may or may not be reproducible. The upside is that
+(hopefully) more thought is put into the sustainability of such a practice,
+especially in a production environment.
