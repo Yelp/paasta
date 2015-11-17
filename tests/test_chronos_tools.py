@@ -508,7 +508,7 @@ class TestChronosTools:
         chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
         okay, msg = chronos_config.check_schedule()
         assert okay is False
-        assert msg == 'Unsupported interval "PT10S": jobs must be run at an interval of > 60seconds'
+        assert msg == 'Unsupported interval "PT10S": jobs must be run at an interval of > 60 seconds'
 
     def test_check_schedule_invalid_empty_repeat(self):
         fake_schedule = '/2015-03-25T19:36:35Z/PT70S'
