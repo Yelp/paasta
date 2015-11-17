@@ -436,14 +436,14 @@ def test_status_calls_sergeants(
         service=service,
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
-        cluster_filter=None,
-        instance_filter=None,
+        cluster_filter=[],
+        instance_filter=[],
         verbose=False,
     )
 
 
 def test_report_bogus_filters_no_filters():
-    filters = None
+    filters = []
     items = ['cluster1', 'cluster2', 'cluster3']
     item_type = 'thingy'
     actual = report_bogus_filters(filters, items, item_type)
