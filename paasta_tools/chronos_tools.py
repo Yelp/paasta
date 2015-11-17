@@ -277,7 +277,13 @@ class ChronosJobConfig(InstanceConfig):
                                 'does not conform to the ISO 8601 format:\n%s' % (start_time, schedule, str(exc)))
 
             try:
-                isodate.parse_duration(interval)  # 'interval' and 'duration' are interchangeable terms
+                # 'interval' and 'duration' are interchangeable terms
+                parsed_interval = isodate.parse_duration(interval)
+                # until we make this configurable, throw an
+                # error if we have a schedule < 60 seconds (the default schedule_horizone for chronos)
+                # https://github.com/mesos/chronos/issues/508
+                if parsed_interval < datetime.timedelta(seconds=60):
+                    msgs.append('Unsupported interval "%s": jobs must be run at an interval of > 60seconds' % interval)
             except isodate.ISO8601Error:
                 msgs.append('The specified interval "%s" in schedule "%s" '
                             'does not conform to the ISO 8601 format.' % (interval, schedule))
