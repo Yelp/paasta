@@ -9,8 +9,11 @@ sudo: required
 services:
   - docker
 install:
+  - pip install coveralls
   - pip install tox
 before_script:
   - tox -e py
 script:
   - tox -e $TOX_ENV
+after_success:
+  - coveralls
