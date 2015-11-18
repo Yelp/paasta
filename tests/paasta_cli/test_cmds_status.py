@@ -23,7 +23,7 @@ from paasta_tools.paasta_cli.utils import \
     NoSuchService, PaastaColors, PaastaCheckMessages
 from paasta_tools.paasta_cli.cmds.status import paasta_status, \
     missing_deployments_message
-from paasta_tools.paasta_cli.cmds.status import report_bogus_filters
+from paasta_tools.paasta_cli.cmds.status import report_bogus_whitelists
 from paasta_tools.paasta_cli.cmds.status import report_status
 from paasta_tools.paasta_cli.cmds import status
 
@@ -72,11 +72,11 @@ def test_status_arg_service_not_found(mock_stdout, mock_guess_service_name,
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_whitelists', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
 def test_report_status_for_cluster_displays_deployed_service(
     mock_stdout,
-    mock_report_bogus_filters,
+    mock_report_bogus_whitelists,
     mock_execute_paasta_serviceinit_on_remote_master,
 ):
     # paasta_status with no args displays deploy info - vanilla case
@@ -85,7 +85,7 @@ def test_report_status_for_cluster_displays_deployed_service(
     actual_deployments = {
         'cluster.instance': 'sha'
     }
-    instance_filter = []
+    instance_whitelist = []
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
     expected_output = (
@@ -105,18 +105,18 @@ def test_report_status_for_cluster_displays_deployed_service(
         cluster='cluster',
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
     )
     output = mock_stdout.getvalue()
     assert expected_output in output
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_whitelists', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
 def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_serviceinit_on_remote_master(
     mock_stdout,
-    mock_report_bogus_filters,
+    mock_report_bogus_whitelists,
     mock_execute_paasta_serviceinit_on_remote_master,
 ):
     # paasta_status with no args displays deploy info - vanilla case
@@ -125,7 +125,7 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
     actual_deployments = {
         'cluster.instance': 'this_is_a_sha'
     }
-    instance_filter = []
+    instance_whitelist = []
     fake_status = 'status: SOMETHING FAKE\nand then something fake\non another line!\n\n\n'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
     expected_output = (
@@ -139,18 +139,18 @@ def test_report_status_for_cluster_displays_multiple_lines_from_execute_paasta_s
         cluster='cluster',
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
     )
     output = mock_stdout.getvalue()
     assert expected_output in output
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_whitelists', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
 def test_report_status_for_cluster_instance_sorts_in_deploy_order(
     mock_stdout,
-    mock_report_bogus_filters,
+    mock_report_bogus_whitelists,
     mock_execute_paasta_serviceinit_on_remote_master,
 ):
     # paasta_status with no args displays deploy info
@@ -163,7 +163,7 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         'a_cluster.a_instance': '533976a9',
         'a_cluster.b_instance': '533976a9',
     }
-    instance_filter = []
+    instance_whitelist = []
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
     expected_output = (
@@ -188,18 +188,18 @@ def test_report_status_for_cluster_instance_sorts_in_deploy_order(
         cluster='a_cluster',
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
     )
     output = mock_stdout.getvalue()
     assert expected_output in output
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_whitelists', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
 def test_print_cluster_status_missing_deploys_in_red(
     mock_stdout,
-    mock_report_bogus_filters,
+    mock_report_bogus_whitelists,
     mock_execute_paasta_serviceinit_on_remote_master,
 ):
     # paasta_status displays missing deploys in red
@@ -211,7 +211,7 @@ def test_print_cluster_status_missing_deploys_in_red(
     actual_deployments = {
         'a_cluster.a_instance': '533976a981679d586bed1cfb534fdba4b4e2c815',
     }
-    instance_filter = []
+    instance_whitelist = []
     fake_status = 'status: SOMETHING FAKE'
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_status
     expected_output = (
@@ -234,18 +234,18 @@ def test_print_cluster_status_missing_deploys_in_red(
         cluster='a_cluster',
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
     )
     output = mock_stdout.getvalue()
     assert expected_output in output
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_whitelists', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
 def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     mock_stdout,
-    mock_report_bogus_filters,
+    mock_report_bogus_whitelists,
     mock_execute_paasta_serviceinit_on_remote_master,
 ):
     service = 'fake_service'
@@ -256,7 +256,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     actual_deployments = {
         'a_cluster.a_instance': 'this_is_a_sha',
     }
-    instance_filter = []
+    instance_whitelist = []
     fake_output = "Marathon: 5 instances"
     mock_execute_paasta_serviceinit_on_remote_master.return_value = fake_output
     expected_output = "    %s\n" % fake_output
@@ -266,7 +266,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
         cluster='a_cluster',
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
     )
     assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 1
     mock_execute_paasta_serviceinit_on_remote_master.assert_any_call(
@@ -277,11 +277,11 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_whitelists', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
-def test_report_status_for_cluster_obeys_instance_filter(
+def test_report_status_for_cluster_obeys_instance_whitelist(
     mock_stdout,
-    mock_report_bogus_filters,
+    mock_report_bogus_whitelists,
     mock_execute_paasta_serviceinit_on_remote_master,
 ):
     service = 'fake_service'
@@ -290,14 +290,14 @@ def test_report_status_for_cluster_obeys_instance_filter(
         'cluster.instance1': 'sha',
         'cluster.instance2': 'sha',
     }
-    instance_filter = ['instance1']
+    instance_whitelist = ['instance1']
 
     status.report_status_for_cluster(
         service=service,
         cluster='cluster',
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
     )
     output = mock_stdout.getvalue()
     assert 'instance1' in output
@@ -305,26 +305,26 @@ def test_report_status_for_cluster_obeys_instance_filter(
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_whitelists', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
-def test_report_status_calls_report_bogus_filters(
+def test_report_status_calls_report_bogus_whitelists(
     mock_stdout,
-    mock_report_bogus_filters,
+    mock_report_bogus_whitelists,
     mock_execute_paasta_serviceinit_on_remote_master,
 ):
     service = 'fake_service'
     planned_deployments = ['cluster.instance1', 'cluster.instance2']
     actual_deployments = {}
-    instance_filter = []
+    instance_whitelist = []
 
     status.report_status_for_cluster(
         service=service,
         cluster='cluster',
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
     )
-    mock_report_bogus_filters.assert_called_once_with(instance_filter, ['instance1', 'instance2'], 'instance')
+    mock_report_bogus_whitelists.assert_called_once_with(instance_whitelist, ['instance1', 'instance2'], 'instance')
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.figure_out_service_name', autospec=True)
@@ -436,88 +436,88 @@ def test_status_calls_sergeants(
         service=service,
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
-        cluster_filter=[],
-        instance_filter=[],
+        cluster_whitelist=[],
+        instance_whitelist=[],
         verbose=False,
     )
 
 
-def test_report_bogus_filters_no_filters():
-    filters = []
+def test_report_bogus_whitelists_no_whitelists():
+    whitelists = []
     items = ['cluster1', 'cluster2', 'cluster3']
     item_type = 'thingy'
-    actual = report_bogus_filters(filters, items, item_type)
+    actual = report_bogus_whitelists(whitelists, items, item_type)
     assert actual == ''
 
 
-def test_report_bogus_filters_with_filters():
-    filters = ['bogus1', 'cluster1']
+def test_report_bogus_whitelists_with_whitelists():
+    whitelists = ['bogus1', 'cluster1']
     items = ['cluster1', 'cluster2', 'cluster3']
     item_type = 'thingy'
-    actual = report_bogus_filters(filters, items, item_type)
+    actual = report_bogus_whitelists(whitelists, items, item_type)
     assert 'Warning' in actual
     assert item_type in actual
     assert 'bogus1' in actual
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.report_status_for_cluster', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_whitelists', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
-def test_report_status_obeys_cluster_filter(
+def test_report_status_obeys_cluster_whitelist(
     mock_stdout,
-    mock_report_bogus_filters,
+    mock_report_bogus_whitelists,
     mock_report_status_for_cluster,
 ):
     service = 'fake_service'
-    cluster_filter = ['cluster1']
-    instance_filter = []
+    cluster_whitelist = ['cluster1']
+    instance_whitelist = []
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     report_status(
         service=service,
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
-        cluster_filter=cluster_filter,
-        instance_filter=instance_filter,
+        cluster_whitelist=cluster_whitelist,
+        instance_whitelist=instance_whitelist,
     )
-    mock_report_bogus_filters.assert_called_once_with(
-        cluster_filter, ['cluster1', 'cluster2', 'cluster3'], 'cluster')
+    mock_report_bogus_whitelists.assert_called_once_with(
+        cluster_whitelist, ['cluster1', 'cluster2', 'cluster3'], 'cluster')
     mock_report_status_for_cluster.assert_called_once_with(
         service=service,
         cluster='cluster1',
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
         verbose=False
     )
 
 
 @patch('paasta_tools.paasta_cli.cmds.status.report_status_for_cluster', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_filters', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.status.report_bogus_whitelists', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
-def test_report_status_handle_none_filter(
+def test_report_status_handle_none_whitelist(
     mock_stdout,
-    mock_report_bogus_filters,
+    mock_report_bogus_whitelists,
     mock_report_status_for_cluster,
 ):
     service = 'fake_service'
-    cluster_filter = []
-    instance_filter = []
+    cluster_whitelist = []
+    instance_whitelist = []
     deploy_pipeline = actual_deployments = [
         'cluster1.main', 'cluster2.main', 'cluster3.main']
     report_status(
         service=service,
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
-        cluster_filter=cluster_filter,
-        instance_filter=instance_filter,
+        cluster_whitelist=cluster_whitelist,
+        instance_whitelist=instance_whitelist,
     )
     mock_report_status_for_cluster.assert_any_call(
         service=service,
         cluster='cluster1',
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
         verbose=False
     )
     mock_report_status_for_cluster.assert_any_call(
@@ -525,7 +525,7 @@ def test_report_status_handle_none_filter(
         cluster='cluster2',
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
         verbose=False
     )
     mock_report_status_for_cluster.assert_any_call(
@@ -533,6 +533,6 @@ def test_report_status_handle_none_filter(
         cluster='cluster3',
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
-        instance_filter=instance_filter,
+        instance_whitelist=instance_whitelist,
         verbose=False
     )

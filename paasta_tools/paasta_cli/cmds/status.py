@@ -130,7 +130,7 @@ def get_actual_deployments(service):
     return actual_deployments
 
 
-def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_filter, verbose=False):
+def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist, verbose=False):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     # Get cluster.instance in the order in which they appear in deploy.yaml
@@ -143,7 +143,7 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
 
         if cluster_in_pipeline != cluster:
             continue
-        if instance_filter and instance not in instance_filter:
+        if instance_whitelist and instance not in instance_whitelist:
             continue
 
         # Case: service deployed to cluster.instance
@@ -164,42 +164,42 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             for line in status.rstrip().split('\n'):
                 print '    %s' % line
 
-    print report_bogus_filters(instance_filter, seen_instances, 'instance')
+    print report_bogus_whitelists(instance_whitelist, seen_instances, 'instance')
 
 
-def report_bogus_filters(filters, items, item_type):
-    """Warns the user if the filter used is not even in the deployed
+def report_bogus_whitelists(whitelists, items, item_type):
+    """Warns the user if the whitelist used is not even in the deployed
     list. Helps pick up typos"""
     return_string = ""
-    bogus_filters = []
-    for filt in filters:
-        if filt not in items:
-            bogus_filters.append(filt)
-    if len(bogus_filters) > 0:
+    bogus_whitelists = []
+    for whitelist in whitelists:
+        if whitelist not in items:
+            bogus_whitelists.append(whitelist)
+    if len(bogus_whitelists) > 0:
         return_string = (
             "\n"
             "Warning: This service does not have any %s matching these names:\n%s"
-        ) % (item_type, ",".join(bogus_filters))
+        ) % (item_type, ",".join(bogus_whitelists))
     return return_string
 
 
-def report_status(service, deploy_pipeline, actual_deployments, cluster_filter, instance_filter, verbose=False):
+def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist, verbose=False):
     pipeline_url = get_pipeline_url(service)
     print "Pipeline: %s" % pipeline_url
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     for cluster in deployed_clusters:
-        if not cluster_filter or cluster in cluster_filter:
+        if not cluster_whitelist or cluster in cluster_whitelist:
             report_status_for_cluster(
                 service=service,
                 cluster=cluster,
                 deploy_pipeline=deploy_pipeline,
                 actual_deployments=actual_deployments,
-                instance_filter=instance_filter,
+                instance_whitelist=instance_whitelist,
                 verbose=verbose,
             )
 
-    print report_bogus_filters(cluster_filter, deployed_clusters, 'cluster')
+    print report_bogus_whitelists(cluster_whitelist, deployed_clusters, 'cluster')
 
 
 def paasta_status(args):
@@ -209,13 +209,13 @@ def paasta_status(args):
     actual_deployments = get_actual_deployments(service)
     deploy_info = get_deploy_info(service)
     if args.clusters is not None:
-        cluster_filter = args.clusters.split(",")
+        cluster_whitelist = args.clusters.split(",")
     else:
-        cluster_filter = []
+        cluster_whitelist = []
     if args.instances is not None:
-        instance_filter = args.instances.split(",")
+        instance_whitelist = args.instances.split(",")
     else:
-        instance_filter = []
+        instance_whitelist = []
 
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(deploy_info))
@@ -223,8 +223,8 @@ def paasta_status(args):
             service=service,
             deploy_pipeline=deploy_pipeline,
             actual_deployments=actual_deployments,
-            cluster_filter=cluster_filter,
-            instance_filter=instance_filter,
+            cluster_whitelist=cluster_whitelist,
+            instance_whitelist=instance_whitelist,
             verbose=args.verbose,
         )
     else:
