@@ -164,22 +164,23 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             for line in status.rstrip().split('\n'):
                 print '    %s' % line
 
-    print report_bogus_whitelists(instance_whitelist, seen_instances, 'instance')
+    print report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance')
 
 
-def report_bogus_whitelists(whitelists, items, item_type):
-    """Warns the user if the whitelist used is not even in the deployed
-    list. Helps pick up typos"""
+def report_invalid_whitelist_values(whitelist, items, item_type):
+    """Warns the user if there are entries in ``whitelist`` which don't
+    correspond to any item in ``items``. Helps highlight typos.
+    """
     return_string = ""
-    bogus_whitelists = []
-    for whitelist in whitelists:
-        if whitelist not in items:
-            bogus_whitelists.append(whitelist)
-    if len(bogus_whitelists) > 0:
+    bogus_entries = []
+    for entry in whitelist:
+        if entry not in items:
+            bogus_entries.append(entry)
+    if len(bogus_entries) > 0:
         return_string = (
             "\n"
             "Warning: This service does not have any %s matching these names:\n%s"
-        ) % (item_type, ",".join(bogus_whitelists))
+        ) % (item_type, ",".join(bogus_entries))
     return return_string
 
 
@@ -199,7 +200,7 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
                 verbose=verbose,
             )
 
-    print report_bogus_whitelists(cluster_whitelist, deployed_clusters, 'cluster')
+    print report_invalid_whitelist_values(cluster_whitelist, deployed_clusters, 'cluster')
 
 
 def paasta_status(args):
