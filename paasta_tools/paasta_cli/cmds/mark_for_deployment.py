@@ -22,7 +22,8 @@ import sys
 from paasta_tools.paasta_cli.utils import get_jenkins_build_output_url
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import _log
-from paasta_tools.utils import _run
+from paasta_tools.utils import get_paasta_branch
+from paasta_tools import remote_git
 
 
 def add_subparser(subparsers):

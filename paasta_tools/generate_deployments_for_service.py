@@ -48,7 +48,7 @@ import service_configuration_lib
 
 from paasta_tools import remote_git
 from paasta_tools.utils import atomic_file_write
-from paasta_tools.utils import get_default_branch
+from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_git_url
 
 
@@ -93,7 +93,7 @@ def get_branches_from_config_file(file_dir, filename):
                 # cluster may contain dashes (and frequently does) so
                 # reassemble the cluster after stripping the chronos/marathon prefix
                 cluster = '-'.join(filename.split('-')[1:]).split('.')[0]
-                target_branch = get_default_branch(cluster, instance)
+                target_branch = get_paasta_branch(cluster, instance)
             except IndexError:
                 pass
         if target_branch:
