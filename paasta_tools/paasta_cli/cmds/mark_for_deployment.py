@@ -56,7 +56,8 @@ def add_subparser(subparsers):
 def build_command(
     upstream_git_url,
     upstream_git_commit,
-    clusterinstance,
+    cluster,
+    instance,
 ):
     """upstream_git_url is the Git URL where the service lives (e.g.
     git@git.yelpcorp.com:services/foo)
@@ -64,42 +65,45 @@ def build_command(
     instancename is where you want to deploy. E.g. cluster1.canary indicates
     a Mesos cluster (cluster1) and an instance within that cluster (canary)
     """
-    cmd = 'git push -f %s %s:refs/heads/paasta-%s' % (
+    cmd = 'git push -f %s %s:refs/heads/paasta-%s.%s' % (
         upstream_git_url,
         upstream_git_commit,
-        clusterinstance,
+        cluster,
+        instance,
     )
     return cmd
 
 
-def get_loglines(returncode, cmd, output, args):
+def get_loglines(returncode, cmd, output, commit, cluster, instance):
     loglines = []
     if returncode != 0:
-        loglines.append('ERROR: Failed to mark %s for deployment in %s.' % (args.commit, args.clusterinstance))
+        loglines.append('ERROR: Failed to mark %s for deployment in %s.%s.' % (commit, cluster, instance))
         loglines.append("Ran: '%s'" % cmd)
         loglines.append("Output: %s" % output)
         output_url = get_jenkins_build_output_url()
         if output_url:
             loglines.append('See Jenkins output at %s' % output)
     else:
-        loglines.append('Marked %s in %s for deployment.' % (args.commit, args.clusterinstance))
+        loglines.append('Marked %s in %s.%s for deployment.' % (commit, cluster, instance))
     return loglines
 
 
-def paasta_mark_for_deployment(args):
+def mark_for_deployment(git_url, cluster, instance, service, commit):
     """Mark a docker image for deployment"""
-    service = args.service
-    if service and service.startswith('services-'):
-        service = service.split('services-', 1)[1]
-    validate_service_name(service)
-    cmd = build_command(args.git_url, args.commit, args.clusterinstance)
+    cmd = build_command(git_url, commit, cluster=cluster, instance=instance)
     # Clusterinstance should be in cluster.instance format
-    cluster, instance = args.clusterinstance.split('.')
     returncode, output = _run(
         cmd,
         timeout=30,
     )
-    loglines = get_loglines(returncode=returncode, cmd=cmd, output=output, args=args)
+    loglines = get_loglines(
+        returncode=returncode,
+        cmd=cmd,
+        output=output,
+        commit=commit,
+        cluster=cluster,
+        instance=instance
+    )
     for logline in loglines:
         _log(
             service=service,
@@ -109,4 +113,21 @@ def paasta_mark_for_deployment(args):
             cluster=cluster,
             instance=instance,
         )
+    return returncode
+
+
+def paasta_mark_for_deployment(args):
+    """Wrapping mark_for_deployment"""
+    cluster, instance = args.clusterinstance.split('.')
+    service = args.service
+    if service and service.startswith('services-'):
+        service = service.split('services-', 1)[1]
+    validate_service_name(service)
+    returncode = mark_for_deployment(
+        git_url=args.git_url,
+        cluster=cluster,
+        instance=instance,
+        service=service,
+        commit=args.commit
+    )
     sys.exit(returncode)
