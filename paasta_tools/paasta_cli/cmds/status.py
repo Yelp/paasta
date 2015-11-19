@@ -55,6 +55,11 @@ def add_subparser(subparsers):
         help="A comma-separated list of clusters to view. Defaults to view all clusters.\n"
              "For example: --clusters norcal-prod,nova-prod"
     ).completer = lazy_choices_completer(list_clusters)
+    status_parser.add_argument(
+        '-i', '--instances',
+        help="A comma-separated list of instances to view. Defaults to view all instances.\n"
+             "For example: --instances canary,main"
+    )  # No completer because we need to know service first and we can't until some other stuff has happened
     status_parser.set_defaults(command=paasta_status)
 
 
@@ -125,69 +130,77 @@ def get_actual_deployments(service):
     return actual_deployments
 
 
-def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, verbose=False):
+def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist, verbose=False):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     # Get cluster.instance in the order in which they appear in deploy.yaml
     print
     print "cluster: %s" % cluster
+    seen_instances = []
     for namespace in deploy_pipeline:
         cluster_in_pipeline, instance = namespace.split('.')
+        seen_instances.append(instance)
 
         if cluster_in_pipeline != cluster:
-            # This function only prints things that are relevant to cluster
-            # We skip anything not in this cluster
+            continue
+        if instance_whitelist and instance not in instance_whitelist:
             continue
 
         # Case: service deployed to cluster.instance
         if namespace in actual_deployments:
-            unformatted_instance = instance
-            instance = PaastaColors.blue(instance)
+            formatted_instance = PaastaColors.blue(instance)
             version = actual_deployments[namespace][:8]
             # TODO: Perform sanity checks once per cluster instead of for each namespace
-            status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, unformatted_instance,
-                                                                 verbose=verbose)
+            status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, instance, verbose=verbose)
         # Case: service NOT deployed to cluster.instance
         else:
-            instance = PaastaColors.red(instance)
+            formatted_instance = PaastaColors.red(instance)
             version = 'None'
             status = None
 
-        print '  instance: %s' % instance
+        print '  instance: %s' % formatted_instance
         print '    Git sha:    %s' % version
         if status is not None:
             for line in status.rstrip().split('\n'):
                 print '    %s' % line
 
+    print report_invalid_whitelist_values(instance_whitelist, seen_instances, 'instance')
 
-def report_bogus_filters(cluster_filter, deployed_clusters):
-    """Warns the user if the filter used is not even in the deployed
-    list. Helps pick up typos"""
+
+def report_invalid_whitelist_values(whitelist, items, item_type):
+    """Warns the user if there are entries in ``whitelist`` which don't
+    correspond to any item in ``items``. Helps highlight typos.
+    """
     return_string = ""
-    if cluster_filter is not None:
-        bogus_clusters = []
-        for c in cluster_filter:
-            if c not in deployed_clusters:
-                bogus_clusters.append(c)
-        if len(bogus_clusters) > 0:
-            return_string = (
-                "\n"
-                "Warning: The following clusters in the filter look bogus, this service\n"
-                "is not deployed to the following cluster(s):\n%s"
-            ) % ",".join(bogus_clusters)
+    bogus_entries = []
+    for entry in whitelist:
+        if entry not in items:
+            bogus_entries.append(entry)
+    if len(bogus_entries) > 0:
+        return_string = (
+            "\n"
+            "Warning: This service does not have any %s matching these names:\n%s"
+        ) % (item_type, ",".join(bogus_entries))
     return return_string
 
 
-def report_status(service, deploy_pipeline, actual_deployments, cluster_filter, verbose=False):
+def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist, verbose=False):
     pipeline_url = get_pipeline_url(service)
     print "Pipeline: %s" % pipeline_url
 
     deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
     for cluster in deployed_clusters:
-        if cluster_filter is None or cluster in cluster_filter:
-            report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, verbose)
+        if not cluster_whitelist or cluster in cluster_whitelist:
+            report_status_for_cluster(
+                service=service,
+                cluster=cluster,
+                deploy_pipeline=deploy_pipeline,
+                actual_deployments=actual_deployments,
+                instance_whitelist=instance_whitelist,
+                verbose=verbose,
+            )
 
-    print report_bogus_filters(cluster_filter, deployed_clusters)
+    print report_invalid_whitelist_values(cluster_whitelist, deployed_clusters, 'cluster')
 
 
 def paasta_status(args):
@@ -197,12 +210,23 @@ def paasta_status(args):
     actual_deployments = get_actual_deployments(service)
     deploy_info = get_deploy_info(service)
     if args.clusters is not None:
-        cluster_filter = args.clusters.split(",")
+        cluster_whitelist = args.clusters.split(",")
     else:
-        cluster_filter = None
+        cluster_whitelist = []
+    if args.instances is not None:
+        instance_whitelist = args.instances.split(",")
+    else:
+        instance_whitelist = []
 
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(deploy_info))
-        report_status(service, deploy_pipeline, actual_deployments, cluster_filter, args.verbose)
+        report_status(
+            service=service,
+            deploy_pipeline=deploy_pipeline,
+            actual_deployments=actual_deployments,
+            cluster_whitelist=cluster_whitelist,
+            instance_whitelist=instance_whitelist,
+            verbose=args.verbose,
+        )
     else:
         print missing_deployments_message(service)
