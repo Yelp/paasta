@@ -258,12 +258,11 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-C', '--cmd',
-        help=(
-            'Run Docker container with particular command, '
-            'for instance bash'
-        ),
+        help=('Run Docker container with particular command, '
+              'for example: "bash". By default will use the command or args specified by the '
+              'soa-configs or what was specified in the Dockefile'),
         required=False,
-        default='',
+        default=None,
     )
     list_parser.add_argument(
         '-i', '--instance',
@@ -280,7 +279,8 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-I', '--interactive',
-        help='Run container in interactive mode',
+        help=('Run container in interactive mode. If interactive is set the default command will be "bash" '
+              'unless otherwise set by the "--cmd" flag'),
         action='store_true',
         required=False,
         default=False,
@@ -301,7 +301,6 @@ def add_subparser(subparsers):
         required=False,
         default=False,
     )
-
     list_parser.set_defaults(command=paasta_local_run)
 
 
@@ -550,7 +549,9 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
     for volume in system_paasta_config.get_volumes() + extra_volumes:
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
-    if args.cmd:
+    if args.interactive is True and args.cmd is None:
+        command = 'bash'
+    elif args.cmd:
         command = shlex.split(args.cmd)
     else:
         command_from_config = instance_config.get_cmd()

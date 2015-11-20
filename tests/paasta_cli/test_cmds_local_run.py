@@ -349,6 +349,43 @@ def test_configure_and_run_command_uses_cmd_from_config(
     )
 
 
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_docker_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_instance_config', autospec=True)
+def test_configure_and_run_uses_bash_by_default_when_interactive(
+    mock_get_instance_config,
+    mock_load_system_paasta_config,
+    mock_run_docker_container,
+):
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+        {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    fake_service = 'fake_service'
+    docker_hash = '8' * 40
+    args = mock.MagicMock()
+    args.cmd = None
+    args.service = fake_service
+    args.healthcheck = False
+    args.healthcheck_only = False
+    args.instance = 'fake_instance'
+    args.interactive = True
+    args.cluster = 'fake_cluster'
+
+    configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
+    mock_run_docker_container.assert_called_once_with(
+        docker_client=mock_docker_client,
+        service=fake_service,
+        instance=args.instance,
+        docker_hash=docker_hash,
+        volumes=[],
+        interactive=args.interactive,
+        command='bash',
+        healthcheck=args.healthcheck,
+        healthcheck_only=args.healthcheck_only,
+        instance_config=mock_get_instance_config.return_value
+    )
+
+
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.validate_environment', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
