@@ -118,7 +118,7 @@ def test_format_chronos_job_status_disabled():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
-    assert PaastaColors.red('Disabled') in actual
+    assert PaastaColors.grey('Not scheduled') in actual
 
 
 def test_format_chronos_job_status_enabled():
@@ -128,7 +128,7 @@ def test_format_chronos_job_status_enabled():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
-    assert PaastaColors.green('Enabled') in actual
+    assert PaastaColors.green('Scheduled') in actual
 
 
 def test_format_chronos_job_status_no_last_run():

@@ -86,9 +86,9 @@ def _format_config_hash(job):
 def _format_disabled_status(job):
     status = PaastaColors.red("UNKNOWN")
     if job.get("disabled", False):
-        status = PaastaColors.red("Disabled")
+        status = PaastaColors.grey("Not scheduled")
     else:
-        status = PaastaColors.green("Enabled")
+        status = PaastaColors.green("Scheduled")
     return status
 
 
