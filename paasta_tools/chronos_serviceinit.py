@@ -155,14 +155,11 @@ def _format_mesos_status(job, running_tasks):
     return mesos_status
 
 
-def format_chronos_job_status(job, desired_state, running_tasks, verbose):
+def format_chronos_job_status(job, running_tasks, verbose):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
 
     :param job: dictionary of the job status
-    :param desired_state: a pretty-formatted string representing the
-                          job's started/stopped state as set with paasta emergency-[stop|start], e.g.
-                          the result of ``get_desired_state_human()``
     :param running_tasks: a list of Mesos tasks associated with ``job``, e.g. the
                           result of ``mesos_tools.get_running_tasks_from_active_frameworks()``.
 
@@ -178,14 +175,13 @@ def format_chronos_job_status(job, desired_state, running_tasks, verbose):
         mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
     return (
         "Config:     %(config_hash)s\n"
-        "  Status:   %(disabled_state)s, %(desired_state)s\n"
+        "  Status:   %(disabled_state)s\n"
         "  Last:     %(last_result)s (%(formatted_time)s)\n"
         "  Schedule: %(schedule)s\n"
         "  Command:  %(command)s\n"
         "  Mesos:    %(mesos_status)s" % {
             "config_hash": config_hash,
             "disabled_state": disabled_state,
-            "desired_state": desired_state,
             "last_result": last_result,
             "formatted_time": formatted_time,
             "schedule": schedule,
@@ -208,9 +204,10 @@ def status_chronos_jobs(jobs, job_config, verbose):
     else:
         output = []
         desired_state = job_config.get_desired_state_human()
+        output.append("Desired:    %s" % desired_state)
         for job in jobs:
             running_tasks = get_running_tasks_from_active_frameworks(job["name"])
-            output.append(format_chronos_job_status(job, desired_state, running_tasks, verbose))
+            output.append(format_chronos_job_status(job, running_tasks, verbose))
         return "\n".join(output)
 
 
