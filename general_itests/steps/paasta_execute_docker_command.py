@@ -38,6 +38,7 @@ def create_docker_container(context, task_id):
         context.docker_client.remove_container(container_name, force=True)
     except APIError:
         pass
+    context.docker_client.pull('ubuntu:trusty')
     container = context.docker_client.create_container(
         name=container_name,
         image='ubuntu:trusty',
