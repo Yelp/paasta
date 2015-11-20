@@ -1,3 +1,10 @@
+paasta-tools (0.15.9-yelp1) UNRELEASED; urgency=medium
+
+  * 0.15.9 tagged with 'make release'
+    Commit:
+
+ -- kwa <kwa@kwa-MacBookPro>  Fri, 20 Nov 2015 13:04:54 -0800
+
 paasta-tools (0.15.8-yelp1) lucid; urgency=low
 
   * 0.15.8 tagged with 'make release'

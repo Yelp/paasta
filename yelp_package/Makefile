@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.15.8-yelp1
+RELEASE=0.15.9-yelp1
 
 SHELL=/bin/bash
 
@@ -66,7 +66,7 @@ release:
 	dch -v $(RELEASE) --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
 	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" ../setup.py
 	@echo "$(RELEASE) has the changelog set."
-	github_changelog_generator
+	github_changelog_generator --future-release $(VERSION)
 	@git diff
 	@echo "Now Run:"
 	@echo 'git commit -a -m "Released $(RELEASE) via make release"'

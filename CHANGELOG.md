@@ -1,5 +1,13 @@
 # Change Log
 
+## [0.15.9](https://github.com/Yelp/paasta/tree/0.15.9) (2015-11-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.8...0.15.9)
+
+**Merged pull requests:**
+
+- Added automatic changelog [\#71](https://github.com/Yelp/paasta/pull/71) ([solarkennedy](https://github.com/solarkennedy))
+- Use dulwich for mark for deployment [\#68](https://github.com/Yelp/paasta/pull/68) ([solarkennedy](https://github.com/solarkennedy))
+
 ## [v0.15.8](https://github.com/Yelp/paasta/tree/v0.15.8) (2015-11-20)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.7...v0.15.8)
 
