@@ -101,12 +101,7 @@ def test_format_chronos_job_name_exists():
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, desired_state, running_tasks, verbose)
-    # Includes only the 'tag' portion of the name, not the service and instance
-    # (as these are unnecessary and would just add clutter).
-    assert 'my_service' not in actual
-    assert 'my_instance' not in actual
-    assert 'gityourmom' not in actual
-    assert 'configyourdad' in actual
+    assert example_job['name'] in actual
 
 
 def test_format_chronos_job_name_does_not_exist():

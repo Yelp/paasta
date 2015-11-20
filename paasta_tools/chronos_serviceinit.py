@@ -79,11 +79,8 @@ def get_short_task_id(task_id):
 
 
 def _format_config_hash(job):
-    config_hash = PaastaColors.red("UNKNOWN")
-    job_id = job.get("name", None)
-    if job_id:
-        (_, __, ___, config_hash) = chronos_tools.decompose_job_id(job_id)
-    return config_hash
+    job_id = job.get("name", PaastaColors.red("UNKNOWN"))
+    return job_id
 
 
 def _format_disabled_status(job):
