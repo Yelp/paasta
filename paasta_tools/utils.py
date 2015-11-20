@@ -953,7 +953,7 @@ class DeploymentsJson(dict):
         return self.get(full_branch, {})
 
 
-def get_default_branch(cluster, instance):
+def get_paasta_branch(cluster, instance):
     return 'paasta-%s.%s' % (cluster, instance)
 
 

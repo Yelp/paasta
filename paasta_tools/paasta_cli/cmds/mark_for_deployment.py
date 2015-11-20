@@ -19,10 +19,10 @@ deployment to a cluster.instance.
 
 import sys
 
-from paasta_tools.paasta_cli.utils import get_jenkins_build_output_url
 from paasta_tools.paasta_cli.utils import validate_service_name
 from paasta_tools.utils import _log
-from paasta_tools.utils import _run
+from paasta_tools.utils import get_paasta_branch
+from paasta_tools import remote_git
 
 
 def add_subparser(subparsers):
@@ -53,57 +53,24 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
-def build_command(
-    upstream_git_url,
-    upstream_git_commit,
-    cluster,
-    instance,
-):
-    """upstream_git_url is the Git URL where the service lives (e.g.
-    git@git.yelpcorp.com:services/foo)
-
-    instancename is where you want to deploy. E.g. cluster1.canary indicates
-    a Mesos cluster (cluster1) and an instance within that cluster (canary)
-    """
-    cmd = 'git push -f %s %s:refs/heads/paasta-%s.%s' % (
-        upstream_git_url,
-        upstream_git_commit,
-        cluster,
-        instance,
-    )
-    return cmd
-
-
-def get_loglines(returncode, cmd, output, commit, cluster, instance):
-    loglines = []
-    if returncode != 0:
-        loglines.append('ERROR: Failed to mark %s for deployment in %s.%s.' % (commit, cluster, instance))
-        loglines.append("Ran: '%s'" % cmd)
-        loglines.append("Output: %s" % output)
-        output_url = get_jenkins_build_output_url()
-        if output_url:
-            loglines.append('See Jenkins output at %s' % output)
-    else:
-        loglines.append('Marked %s in %s.%s for deployment.' % (commit, cluster, instance))
-    return loglines
-
-
 def mark_for_deployment(git_url, cluster, instance, service, commit):
     """Mark a docker image for deployment"""
-    cmd = build_command(git_url, commit, cluster=cluster, instance=instance)
-    # Clusterinstance should be in cluster.instance format
-    returncode, output = _run(
-        cmd,
-        timeout=30,
+    remote_branch = get_paasta_branch(cluster=cluster, instance=instance)
+    ref_mutator = remote_git.make_force_push_mutate_refs_func(
+        target_branches=[remote_branch],
+        sha=commit,
     )
-    loglines = get_loglines(
-        returncode=returncode,
-        cmd=cmd,
-        output=output,
-        commit=commit,
-        cluster=cluster,
-        instance=instance
-    )
+    try:
+        remote_git.create_remote_refs(git_url=git_url, ref_mutator=ref_mutator, force=True)
+    except Exception as e:
+        loglines = ["Failed to mark %s in for deployment on %s in the %s cluster!" % (commit, instance, cluster)]
+        for line in str(e).split('\n'):
+            loglines.append(line)
+        return_code = 1
+    else:
+        loglines = ["Marked %s in for deployment on %s in the %s cluster" % (commit, instance, cluster)]
+        return_code = 0
+
     for logline in loglines:
         _log(
             service=service,
@@ -113,7 +80,7 @@ def mark_for_deployment(git_url, cluster, instance, service, commit):
             cluster=cluster,
             instance=instance,
         )
-    return returncode
+    return return_code
 
 
 def paasta_mark_for_deployment(args):

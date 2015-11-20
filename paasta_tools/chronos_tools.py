@@ -31,7 +31,7 @@ from paasta_tools.utils import compose_job_id as utils_compose_job_id
 from paasta_tools.utils import decompose_job_id as utils_decompose_job_id
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_default_branch
+from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
@@ -146,7 +146,7 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
     branch_dict = {}
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
-        branch = get_default_branch(cluster, instance)
+        branch = get_paasta_branch(cluster=cluster, instance=instance)
         branch_dict = deployments_json.get_branch_dict(service, branch)
     return ChronosJobConfig(service, instance, service_chronos_jobs[instance], branch_dict)
 
