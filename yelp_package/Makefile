@@ -59,10 +59,14 @@ VERSION = $(firstword $(subst -, ,$(RELEASE) ))
 # This sed isn't really right but at least it doesn't crash (and I couldn't get
 # \' or ''' or \\' to work :( )
 LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e "s/'/"/g")
+# github_changelog_generator comes from
+# https://github.com/skywinder/github-changelog-generator
+# Follow the instructions to generate a github api token
 release:
 	dch -v $(RELEASE) --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
 	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" ../setup.py
 	@echo "$(RELEASE) has the changelog set."
+	github_changelog_generator
 	@git diff
 	@echo "Now Run:"
 	@echo 'git commit -a -m "Released $(RELEASE) via make release"'
