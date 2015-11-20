@@ -13,86 +13,70 @@
 # limitations under the License.
 
 from mock import patch
+from mock import ANY
+from pytest import raises
 
-from paasta_tools.paasta_cli.cmds.mark_for_deployment import get_loglines
-from paasta_tools.paasta_cli.cmds.mark_for_deployment import mark_for_deployment
+from paasta_tools.paasta_cli.cmds import mark_for_deployment
 
 
 class fake_args:
-    cluster = 'cluster'
-    instance = 'instance'
+    clusterinstance = 'cluster.instance'
     service = 'test_service'
     git_url = 'git://false.repo/services/test_services'
     commit = 'fake-hash'
 
 
-@patch('paasta_tools.paasta_cli.cmds.mark_for_deployment._run', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.mark_for_deployment._log', autospec=True)
-def test_mark_for_deployment_run_fail(
-    mock_log,
-    mock_run,
+@patch('paasta_tools.paasta_cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+def test_paasta_mark_for_deployment_acts_like_main(
+    mock_mark_for_deployment,
+    mock_validate_service_name,
 ):
-    mock_run.return_value = (1, 'Exterminate!')
-    actual = mark_for_deployment(
-        fake_args.git_url,
-        fake_args.cluster,
-        fake_args.instance,
-        fake_args.service,
-        fake_args.commit
+    mock_mark_for_deployment.return_value = 42
+    with raises(SystemExit) as sys_exit:
+        mark_for_deployment.paasta_mark_for_deployment(fake_args)
+    mock_mark_for_deployment.assert_called_once_with(
+        service='test_service',
+        instance='instance',
+        cluster='cluster',
+        commit='fake-hash',
+        git_url='git://false.repo/services/test_services',
+    )
+
+    assert mock_validate_service_name.called
+    assert sys_exit.value.code == 42
+
+
+@patch('paasta_tools.remote_git.create_remote_refs', autospec=True)
+def test_mark_for_deployment_happy(mock_create_remote_refs):
+    actual = mark_for_deployment.mark_for_deployment(
+        git_url='fake_git_url',
+        cluster='fake_cluster',
+        instance='fake_instance',
+        service='fake_service',
+        commit='fake_commit',
+    )
+    assert actual == 0
+    mock_create_remote_refs.assert_called_once_with(
+        git_url='fake_git_url',
+        ref_mutator=ANY,
+        force=True,
+    )
+
+
+@patch('paasta_tools.remote_git.create_remote_refs', autospec=True)
+def test_mark_for_deployment_sad(mock_create_remote_refs):
+    mock_create_remote_refs.side_effect = Exception('something bad')
+    actual = mark_for_deployment.mark_for_deployment(
+        git_url='fake_git_url',
+        cluster='fake_cluster',
+        instance='fake_instance',
+        service='fake_service',
+        commit='fake_commit',
     )
     assert actual == 1
-
-
-@patch('paasta_tools.paasta_cli.cmds.mark_for_deployment._run', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.mark_for_deployment._log', autospec=True)
-def test_mark_for_deployment_success(
-    mock_log,
-    mock_run,
-):
-    mock_run.return_value = (0, 'Interminate!')
-    assert mark_for_deployment(
-        fake_args.git_url,
-        fake_args.cluster,
-        fake_args.instance,
-        fake_args.service,
-        fake_args.commit
-    ) == 0
-
-
-def test_get_loglines_good_hides_output():
-    returncode = 0
-    cmd = 'testcmd'
-    output = 'goodoutput'
-    commit = 'testcommit'
-    cluster = 'test-cluster'
-    instance = 'test-instance'
-    actual = get_loglines(
-        returncode=returncode,
-        cmd=cmd,
-        output=output,
-        commit=commit,
-        cluster=cluster,
-        instance=instance
+    mock_create_remote_refs.assert_called_once_with(
+        git_url='fake_git_url',
+        ref_mutator=ANY,
+        force=True,
     )
-    assert 'Marked %s in %s.%s for deployment.' % (commit, cluster, instance) in actual
-    assert 'Output: %s' % output not in actual
-
-
-def test_get_loglines_bad_return_outputs_the_error():
-    returncode = 1
-    cmd = 'testcmd'
-    output = 'BAD OUTPUT'
-    commit = 'testcommit'
-    cluster = 'test-cluster'
-    instance = 'test-instance'
-    actual = get_loglines(
-        returncode=returncode,
-        cmd=cmd,
-        output=output,
-        commit=commit,
-        cluster=cluster,
-        instance=instance
-    )
-    assert 'Output: %s' % output in actual
-    assert "Ran: '%s'" % cmd in actual
-    assert 'ERROR: Failed to mark %s for deployment in %s.%s.' % (commit, cluster, instance) in actual
