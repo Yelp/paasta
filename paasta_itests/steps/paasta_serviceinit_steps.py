@@ -94,7 +94,7 @@ def chronos_status_returns_healthy(context):
     print  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
-    assert "Disabled" in output
+    assert "Stopped" in output
     assert "New" in output
 
 
