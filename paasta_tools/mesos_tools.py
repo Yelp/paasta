@@ -100,7 +100,7 @@ def get_current_tasks(job_id):
     :param job_id: the job id of the tasks.
     :return tasks: a list of mesos.cli.Task.
     """
-    return master.CURRENT.tasks(fltr=job_id, active_only=True)
+    return master.CURRENT.tasks(fltr=job_id, active_only=False)
 
 
 def filter_running_tasks(tasks):
