@@ -75,7 +75,7 @@ def scale_marathon_job(service, instance, app_id, delta, client, cluster):
     name = PaastaColors.cyan(compose_job_id(service, instance))
     _log(
         service=service,
-        line="EmergencyScale: Scaling %s %s to %d instances" % (name, 'down' if delta < 0 else 'up', abs(int(delta))),
+        line="EmergencyScale: Scaling %s %s by %d instances" % (name, 'down' if delta < 0 else 'up', abs(int(delta))),
         component='deploy',
         level='event',
         cluster=cluster,

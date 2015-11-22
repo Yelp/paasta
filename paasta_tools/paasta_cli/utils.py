@@ -437,7 +437,7 @@ def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, *
     else:
         app_id_flag = ''
     if 'delta' in kwargs and kwargs['delta']:
-        delta = "--delta %s " % kwargs['delta']
+        delta = "--delta %s" % kwargs['delta']
     else:
         delta = ''
     command = 'ssh -A -n %s sudo paasta_serviceinit %s%s%s %s %s' % (
