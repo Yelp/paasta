@@ -10,7 +10,10 @@ Basic requirements
 Codebase
 --------
 
-PaaSTA assumes there is one git repo and one resulting Docker image of that service. This image is deployed to multiple locations. This Docker image also may be used for slightly different use cases (worker daemon, web task, etc).
+PaaSTA assumes that the source for a service is stored in a single Git
+repository, which can produce a single Docker image. The image MUST run that
+service, though the same image MAY support multiple use cases (worker daemon,
+web task, etc).
 
 Dependencies
 ------------
@@ -20,7 +23,9 @@ The Docker image MUST contain all the code necessary to run the service.
 State
 -----
 
-PaaSTA services SHOULD be stateless. Services MAY do filesystem IO, but all disks are ephemeral with Docker. (with the possible exception of RW bind-mounts, which are discouraged)
+PaaSTA services SHOULD be stateless. Services MAY do filesystem IO, but all
+disks are ephemeral with Docker (with the possible exception of RW
+bind-mounts, which are discouraged).
 
 Logs
 ----
@@ -30,15 +35,16 @@ Services should log to external log processors, at Yelp this is Scribe.
 Bouncing
 --------
 
-PaaSTA reserves the right to cause a bounce on your service at any time. Please make sure your service can handle this.
-See the docs on `bouncing <../workflow.html#bouncing>`_ for bounce settings that can help make bounces less impactful to your service.
+PaaSTA reserves the right to cause a bounce on your service at any time. Please
+make sure your service can handle this.  See the docs on `bouncing <../workflow.html#bouncing>`_
+for bounce settings that can help make bounces less impactful to your service.
 
 
 HTTP/TCP services
 -----------------
 
 * MUST be discoverable by SmartStack
-* MUST bind to port 8888 if it listens for traffic (e.g. if it runs a daemon that handles HTTP/TCP requests)
+* MUST bind to port 8888
 
 Long-running tasks (services that don’t listen on a port, or “batch daemons”)
 -----------------------------------------------------------------------------
@@ -79,8 +85,8 @@ Most services will want to use Jenkins to drive the deploy process. You can thin
 * The Makefile SHOULD delegate non-trivial work to helper scripts written in an appropriate language
    * Helper scripts MAY live in paasta/ and MAY be named after the Makefile targets that call them, e.g. paasta/test, paasta/itest,  etc.
 * MUST respond to make test
-* SHOULD respond by running unit tests
-* MUST respond to make itest by generating a Docker image which will run the currently checked-out code
+* SHOULD respond to ``make test`` by running unit tests
+* MUST respond to ``make itest`` by generating a Docker image which will run with the currently checked-out code
 * SHOULD respond by running some kind of system-level test (integration, e2e, contract, smoke) which exercises the generated Docker image
 * MUST accept a parameter $(DOCKER_TAG) to make itest. Jenkins will calculate a tag for the newly-built Docker image and pass it to the service’s build scripts via this parameter::
 
@@ -104,7 +110,10 @@ Most services will want to use Jenkins to drive the deploy process. You can thin
 Manual Steps (Not Recommended)
 ------------------------------
 
-This section describes how to operate the PaaSTA deploy system. If for some reason you don’t want to use Jenkins, you can pull the levers yourself. The PaaSTA CLI contains subcommands to help with this (these same subcommands are used by Jenkins)
+This section describes how to operate the PaaSTA deploy system. If for some
+reason you don’t want to use Jenkins, you can pull the levers yourself. The
+PaaSTA CLI contains subcommands to help with this (these same subcommands are
+used by Jenkins)
 
 * Docker images MUST be tagged
    * You’ll tag your image at build time with something like docker build -t "$DOCKER_TAG" .
