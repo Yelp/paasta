@@ -56,7 +56,6 @@ def add_subparser(subparsers):
     )
     status_parser.add_argument(
         '--delta',
-        default=0,
         required=True,
         help="Number of instances you want to scale up (positive number) or down (negative number)",
     )
