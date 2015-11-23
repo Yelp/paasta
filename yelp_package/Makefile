@@ -66,7 +66,7 @@ release:
 	dch -v $(RELEASE) --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
 	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" ../setup.py
 	@echo "$(RELEASE) has the changelog set."
-	github_changelog_generator --future-release $(VERSION)
+	github_changelog_generator --future-release $(VERSION) || echo github_changelog_generator not installed, not generating changelog!!
 	@git diff
 	@echo "Now Run:"
 	@echo 'git commit -a -m "Released $(RELEASE) via make release"'
