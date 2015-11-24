@@ -265,9 +265,140 @@ Each job configuration MAY specify the following options:
 smartstack.yaml
 ---------------
 
-The yaml where nerve namespaces are defined and bound to ports.
+Configure service registration, discovery, and load balancing.
 
-TODO: Link to nerve/synapse documentation on the format of this file.
+Here is an example smartstack.yaml::
+
+    ---
+    main:
+      extra_advertise:
+        ecosystem:stagec
+        - ecosystem:stagec
+        region:uswest1-prod
+        - region:uswest2-prod
+      proxy_port: 20028
+      timeout_server_ms: 5000
+
+Available Options
+~~~~~~~~~~~~~~~~~
+
+Basic HTTP and TCP options
+``````````````````````````
+
+ * ``proxy_port``: integer-valued port on which HAProxy listens for requests.
+   This must be unique across all environments where PaaSTA (or synapse) runs.
+   At Yelp, we pick from the range [20000, 21000]. Feel free to pick the next
+   available value -- paasta fsm will do this for you automatically!
+
+ * ``mode``: string of value ``http`` or ``tcp``, specifying whether the service is an HTTP or TCP service respectively.  Defaults to ``http``.
+
+ * ``extra_headers``: for use in http mode. Headers that should be added to the request before being forwarded to the server. Example: ::
+
+  extra_headers:
+    X-Mode: ro
+
+Advertisement/Discovery
+```````````````````````
+
+The following three keys have to do with how your service instances advertise
+and how other services discover your service. If you want to change these you
+should understand how PaaSTA environments are laid out and classified into
+latency zones. For information on this, see the `environment_tools documentation
+<https://github.com/Yelp/environment_tools/blob/master/README.md>`_.
+
+ * ``advertise``: List of location types that must be defined in your
+   ``location_types.json``. This is the level of your location hierarchy that
+   your service instances advertise themselves at, and should match up with how
+   your service is deployed. Think of this as the answer to “where does nerve
+   register me”. Defaults to ``['region']``
+
+   - If you set this to a wider location type than where your ZooKeeper clusters
+     are deployed, this will cause additional ZooKeeper load. Be careful, and
+     consult with the team responsible for your ZooKeeper clusters.
+
+   - This is a list so that you can do a graceful change in ``discover`` (see
+     immediately below). You add both types to the advertise list and then when
+     you’ve switched ``discover`` you shrink it back down to one.
+
+ * ``discover``: Location type that smartstack should discover your service
+   instances at. Think of this as the answer to “where does synapse look for
+   registrations”. Defaults to ‘region’.
+
+   - This *must* be one of the location types listed in your ``advertise`` key
+     to make sense.
+   - Changing this key has potential to bring down your service everywhere all
+     at once, change it only if you are sure what you are doing.
+
+ * ``extra_advertise``: Mapping of location to locations, where locations are
+   specified as ``<location_type>:<location_instance>`` strings. For example,
+   ``habitat:devc`` or ``ecosystem:prod``. These are ad-hoc advertisements that
+   read logically left to right. If you have X: [Y] in your extra_advertise
+   object, then that will cause service instances in X to be available in Y.
+   Defaults to an empty dictionary.
+
+   - Be careful when putting a large location on the right side of this mapping:
+     your service instances may be advertised into multiple ZooKeeper clusters.
+
+   - The right-hand side must be the same or more general than your ``discover``
+     level. For instance, if your service discovers at the region level, you
+     cannot advertise to a habitat, but you could advertise to a region or
+     superregion.
+
+   - Here's an example of how to advertise an sf-devc service instance into
+     uswest1-devc::
+
+     extra_advertise:
+         region:sf-devc: ['region:uswest1-devc']
+
+
+Healthchecks
+````````````
+
+You can control your healthchecks with the following keys.
+
+ * ``healthcheck_uri``: string specifying the URI which SmartStack should use to
+   healthcheck the service. Defaults to ``/status``. This is ignored for TCP
+   services.
+
+ * ``healthcheck_port``: an alternative port to use for healthchecking your
+   service. This is not required; it defaults to the port your service instance
+   is running on.
+
+ * ``healthcheck_timeout_s``: maximum number of seconds that a nerve
+   healthcheck may take; defaults to 1.
+
+ * ``updown_timeout_s``: maximum number of seconds after which a service
+   instance needs to be able to respond to healthchecks after updown_service has
+   been called.
+
+ * ``extra_healthcheck_headers``: Extra headers/values that are appended to the
+   healthcheck requests. Example::
+
+     extra_healthcheck_headers:
+         X-Mode: ro
+
+Routing and Reliability
+```````````````````````
+
+ * ``retries``: Number of HAProxy connection failure `retries <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#retries>`_,
+   defaults to 1.
+
+ * ``allredisp``: If set, haproxy will redispatch (choose a different server) on
+   every connection retry. It only makes sense to set this option if you have a
+   low connection timeout, and a number of retries > 1. This is useful for when
+   machines crash or network partitions occur because your service doesn’t waste
+   any retries on the dead server, and immediately redispatches to other
+   functional backends. For example, for a latency sensitive service you may
+   want to set ``timeout_connect_ms`` to 100ms, with 3-5 retries and
+   ``allredisp`` set to ``true``.
+
+ * ``timeout_connect_ms``: HAProxy `server connect timeout
+   <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20connect>`_
+   in milliseconds, defaults to 200.
+ * ``timeout_server_ms``: HAProxy `server inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20server>`_
+   in milliseconds, defaults to 1000.
+ * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
+   in milliseconds, defaults to 1000.
 
 monitoring.yaml
 ---------------
