@@ -40,6 +40,7 @@ from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import list_services
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import get_docker_host
+from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
@@ -255,6 +256,27 @@ def add_subparser(subparsers):
         dest='yelpsoa_config_root',
         help='A directory from which yelpsoa-configs should be read from',
         default=service_configuration_lib.DEFAULT_SOA_DIR
+    )
+    build_pull_group = list_parser.add_mutually_exclusive_group()
+    build_pull_group.add_argument(
+        '-b', '--build',
+        help=("Build the docker image to run from scratch using the local Makefile's ",
+              "'cook-image' target. Defaults to try to use the local Makefile if present. ",
+              "otherwise local-run will pull and run the Docker image that is marked for ",
+              "deployment in the Docker registry."),
+        required=False,
+        action='store_true',
+        default=None,
+    )
+    build_pull_group.add_argument(
+        '-p', '--pull',
+        help=("Pull the docker image marked for deployment from the Docker registry and ",
+              "use that for the local-run. This is the opposite of --build. Defaults to ",
+              "autodetect a Makefile, if present will not pull, and instead assume that ",
+              "a local build is desired."),
+        required=False,
+        action='store_true',
+        default=None,
     )
     list_parser.add_argument(
         '-C', '--cmd',
@@ -505,7 +527,7 @@ def get_instance_config(service, instance, cluster, soa_dir):
     )
 
 
-def configure_and_run_docker_container(docker_client, docker_hash, service, args):
+def configure_and_run_docker_container(docker_client, docker_hash, service, args, pull_image=False):
     """
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
@@ -541,6 +563,12 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         soa_dir=args.yelpsoa_config_root,
     )
 
+    if pull_image:
+        docker_url = get_docker_url(
+            system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
+        docker_client.pull(docker_url)
+        docker_hash = instance_config.get_docker_image()
+
     # if only one volume specified, extra_volumes should be converted to a list
     extra_volumes = instance_config.get_extra_volumes()
     if type(extra_volumes) == dict:
@@ -574,40 +602,42 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
     )
 
 
-def validate_environment():
-    """Validates whether the current directory is good for running
-    paasta local_run"""
-    if os.getcwd() == os.path.expanduser("~"):
-        sys.stderr.write(
-            'ERROR: Don\'t run this command from your home directory.\n'
-            'Try changing to the root of your working copy of the service.\n'
-        )
-        sys.exit(1)
-    if not os.path.isfile(os.path.join(os.getcwd(), 'Dockerfile')):
-        sys.stderr.write(
-            'ERROR: No Dockerfile in the current directory.\n'
-            'Are you in the root folder of the service directory? Does a Dockerfile exist?\n'
-        )
-        sys.exit(1)
+def local_makefile_present():
+    return True
 
 
 def paasta_local_run(args):
-    validate_environment()
+    # Try to autodetect if we should build the image locally or not
+    if local_makefile_present() and args.build is None and args.pull is None:
+        sys.stderr.write("Local Makefile detected, building a local Docker image. Use --pull to override.\n")
+        build = True
+    elif args.pull is not None:
+        build = False
+    else:
+        build = True
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
-
     base_docker_url = get_docker_host()
-
     docker_client = Client(base_url=base_docker_url)
 
-    default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
-    tag = os.environ.get('DOCKER_TAG', default_tag)
-    os.environ['DOCKER_TAG'] = tag
-
-    paasta_cook_image(None, service=service, soa_dir=args.yelpsoa_config_root)
+    if build:
+        default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
+        tag = os.environ.get('DOCKER_TAG', default_tag)
+        os.environ['DOCKER_TAG'] = tag
+        pull_image = False
+        paasta_cook_image(None, service=service, soa_dir=args.yelpsoa_config_root)
+    else:
+        pull_image = True
+        tag = None
 
     try:
-        configure_and_run_docker_container(docker_client, tag, service, args)
+        configure_and_run_docker_container(
+            docker_client=docker_client,
+            docker_hash=tag,
+            service=service,
+            args=args,
+            pull_image=pull_image,
+        )
     except errors.APIError as e:
         sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))
         sys.exit(1)

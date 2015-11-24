@@ -34,7 +34,6 @@ from paasta_tools.paasta_cli.cmds.local_run import perform_cmd_healthcheck
 from paasta_tools.paasta_cli.cmds.local_run import simulate_healthcheck_on_service
 from paasta_tools.paasta_cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.paasta_cli.cmds.local_run import run_docker_container
-from paasta_tools.paasta_cli.cmds.local_run import validate_environment
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
@@ -202,43 +201,6 @@ def test_run_healthcheck_cmd_fails(mock_sleep, mock_perform_cmd_healthcheck):
     mock_perform_cmd_healthcheck.assert_called_once_with(mock_docker_client, fake_container_id, fake_cmd, fake_timeout)
 
 
-@mock.patch('os.path.expanduser', autospec=True)
-@mock.patch('os.getcwd', autospec=True)
-def test_validate_environment_fail_in_homedir(
-    mock_getcwd,
-    mock_expanduser,
-):
-    fake_home = '/fake_home'
-    mock_getcwd.return_value = fake_home
-    mock_expanduser.return_value = fake_home
-
-    with raises(SystemExit) as sys_exit:
-        validate_environment()
-
-    assert sys_exit.value.code == 1
-
-
-@mock.patch('os.path.join', autospec=True)
-@mock.patch('os.path.isfile', autospec=True)
-@mock.patch('os.path.expanduser', autospec=True)
-@mock.patch('os.getcwd', autospec=True)
-def test_validate_environment_fail_no_dockerfile(
-    mock_getcwd,
-    mock_expanduser,
-    mock_isfile,
-    mock_pathjoin,
-):
-    mock_getcwd.return_value = 'doesntmatter'
-    mock_expanduser.return_value = 'nothomedir'
-    mock_pathjoin.return_value = 'something'
-    mock_isfile.return_value = False
-
-    with raises(SystemExit) as sys_exit:
-        validate_environment()
-
-    assert sys_exit.value.code == 1
-
-
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.randint',
             autospec=True,
             # http://operations.irclogs.yelpcorp.com/2015-05-12.html#0/h0,1
@@ -276,7 +238,12 @@ def test_configure_and_run_explicit_cluster(
     args.interactive = False
     args.cluster = 'fake_cluster'
     args.yelpsoa_config_root = 'fakesoa-configs/'
-    assert configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
+    assert configure_and_run_docker_container(
+        docker_client=mock_docker_client,
+        docker_hash=docker_hash,
+        service=fake_service,
+        args=args,
+    ) is None
     mock_get_instance_config.assert_called_once_with(
         service=fake_service,
         instance=args.instance,
@@ -306,7 +273,12 @@ def test_configure_and_run_missing_cluster_exception(
     args.interactive = False
     args.cluster = None
     with raises(SystemExit) as excinfo:
-        configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args)
+        configure_and_run_docker_container(
+            docker_client=mock_docker_client,
+            docker_hash=docker_hash,
+            service=fake_service,
+            args=args,
+        )
     assert excinfo.value.code == 2
 
 
@@ -331,10 +303,14 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.instance = 'fake_instance'
     args.interactive = False
     args.cluster = 'fake_cluster'
-
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
 
-    configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
+    configure_and_run_docker_container(
+        docker_client=mock_docker_client,
+        docker_hash=docker_hash,
+        service=fake_service,
+        args=args,
+    ) is None
     mock_run_docker_container.assert_called_once_with(
         docker_client=mock_docker_client,
         service=fake_service,
@@ -371,7 +347,12 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.interactive = True
     args.cluster = 'fake_cluster'
 
-    configure_and_run_docker_container(mock_docker_client, docker_hash, fake_service, args) is None
+    configure_and_run_docker_container(
+        docker_client=mock_docker_client,
+        docker_hash=docker_hash,
+        service=fake_service,
+        args=args,
+    ) is None
     mock_run_docker_container.assert_called_once_with(
         docker_client=mock_docker_client,
         service=fake_service,
@@ -386,7 +367,6 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     )
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.validate_environment', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.Client', autospec=True)
@@ -400,7 +380,6 @@ def test_run_success(
     mock_Client,
     mock_run_docker_container,
     mock_figure_out_service_name,
-    mock_validate_environment,
 ):
     mock_run.return_value = (0, 'Output')
     mock_makefile_responds_to.return_value = True
@@ -408,7 +387,6 @@ def test_run_success(
     mock_Client.return_value = None
     mock_run_docker_container.return_value = None
     mock_figure_out_service_name.return_value = 'fake_service'
-    mock_validate_environment.return_value = None
 
     args = mock.MagicMock()
     args.service = 'fake_service'
