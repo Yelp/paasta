@@ -21,7 +21,7 @@ Service configuration
 
 Contract with services
 ----------------------
-The `Paasta Contract <http://y/paasta-contract>`_ describes the
+The `Paasta Contract <../about/contract.html>`_ describes the
 responsibilities of services that wish to work with PaaSTA.
 
 paasta_tools contains the implementation of several of these rules.
