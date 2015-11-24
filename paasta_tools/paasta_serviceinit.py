@@ -13,9 +13,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Usage: ./paasta_servceinit.py [-v] <servicename> <stop|start|restart|status>
+"""Usage: ./paasta_servceinit.py [-v] <servicename> <stop|start|restart|status|scale>
 
-Interacts with the framework APIs to start/stop/restart/get status for an
+Interacts with the framework APIs to start/stop/restart/get status/scale for an
 instance. Assumes that the credentials are available, so must run as root.
 """
 import argparse
@@ -38,7 +38,7 @@ logging.basicConfig()
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='Runs start/stop/restart/status on a PaaSTA service in a given cluster.',
+        description='Runs start/stop/restart/status/scale on a PaaSTA service in a given cluster.',
     )
     parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
                         help="Print out more output regarding the state of the service")
@@ -50,7 +50,9 @@ def parse_args():
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
     parser.add_argument('-a', '--appid', dest="app_id",
                         help="app ID as returned by paasta status -v to operate on")
-    command_choices = ['start', 'stop', 'restart', 'status']
+    parser.add_argument('--delta', dest="delta",
+                        help="Number of instances you want to scale up (positive number) or down (negative number)")
+    command_choices = ['start', 'stop', 'restart', 'status', 'scale']
     parser.add_argument('command', choices=command_choices, help='Command to run. Eg: status')
     args = parser.parse_args()
     return args
@@ -78,6 +80,7 @@ def main():
             verbose=args.verbose,
             soa_dir=args.soa_dir,
             app_id=args.app_id,
+            delta=args.delta,
         )
         sys.exit(return_code)
     elif instance_type == 'chronos':

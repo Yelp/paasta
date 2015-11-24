@@ -168,6 +168,18 @@ def paasta_serviceinit_command_appid(context, command, job_id):
     assert exit_code == 0
 
 
+@when(u'we run paasta serviceinit scale --delta "{delta}" on "{job_id}"')
+def paasta_serviceinit_command_scale(context, delta, job_id):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s scale --delta %s' \
+          % (context.soa_dir, job_id, delta)
+    print 'Running cmd %s' % cmd
+    (exit_code, output) = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == 0
+
+
 @when(u'we wait for "{job_id}" to launch exactly {task_count:d} tasks')
 def wait_launch_tasks(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
@@ -180,9 +192,8 @@ def wait_launch_tasks(context, job_id, task_count):
 def marathon_app_task_count(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
     app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
-    client = context.marathon_client
 
-    tasks = client.list_tasks(app_id=app_id)
+    tasks = context.marathon_client.get_app(app_id).tasks
     assert len(tasks) == task_count
 
 

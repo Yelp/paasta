@@ -100,4 +100,14 @@ Feature: paasta_serviceinit
       And we wait for "test-service.main" to launch exactly 0 tasks
      Then "test-service.main" has exactly 0 requested tasks in marathon
 
+  Scenario: paasta_serviceinit can run emergency-scale on a marathon app
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the marathon job "test-service.main"
+      And I have a deployments.json for the service "test-service" with enabled instance "main"
+     When we run the marathon app "test-service.main"
+      And we wait for it to be deployed
+      And we run paasta serviceinit scale --delta "1" on "test-service.main"
+      And we wait for "test-service.main" to launch exactly 2 tasks
+     Then "test-service.main" has exactly 2 requested tasks in marathon
+
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2

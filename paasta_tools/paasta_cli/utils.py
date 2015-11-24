@@ -436,12 +436,17 @@ def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, *
         app_id_flag = "--appid %s " % kwargs['app_id']
     else:
         app_id_flag = ''
-    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s%s %s' % (
+    if 'delta' in kwargs and kwargs['delta']:
+        delta = "--delta %s" % kwargs['delta']
+    else:
+        delta = ''
+    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s%s %s %s' % (
         master,
         verbose_flag,
         app_id_flag,
         compose_job_id(service, instancename),
-        subcommand
+        subcommand,
+        delta
     )
     log.debug("Running Command: %s" % command)
     _, output = _run(command, timeout=timeout)
