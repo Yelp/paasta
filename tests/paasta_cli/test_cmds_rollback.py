@@ -13,16 +13,8 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from mock import patch
+from mock import patch, Mock
 from paasta_tools.paasta_cli.cmds.rollback import paasta_rollback
-
-
-class fake_args:
-    cluster = 'cluster1'
-    instance = 'instance1'
-    service = 'test_service'
-    git_url = 'git://git.repo'
-    commit = '123456'
 
 
 @patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
@@ -38,8 +30,16 @@ def test_paasta_rollback_mark_for_deployment_invocation(
     mock_figure_out_service_name,
 ):
 
-    mock_get_git_url.return_value = 'git://git.repo'
-    mock_figure_out_service_name.return_value = 'test_service'
+    fake_args = Mock(
+        cluster='cluster1',
+        instance='instance1',
+        service='test_service',
+        git_url='git://git.repo',
+        commit='123456'
+    )
+
+    mock_get_git_url.return_value = fake_args.git_url
+    mock_figure_out_service_name.return_value = fake_args.service
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
 
     paasta_rollback(fake_args)
@@ -66,8 +66,16 @@ def test_paasta_rollback_mark_for_deployment_wrong_cluster(
     mock_figure_out_service_name,
 ):
 
-    mock_get_git_url.return_value = 'git://git.repo'
-    mock_figure_out_service_name.return_value = 'test_service'
+    fake_args = Mock(
+        cluster='cluster1',
+        instance='instance1',
+        service='test_service',
+        git_url='git://git.repo',
+        commit='123456'
+    )
+
+    mock_get_git_url.return_value = fake_args.git_url
+    mock_figure_out_service_name.return_value = fake_args.service
     mock_list_clusters.return_value = ['cluster0', 'cluster2']
 
     paasta_rollback(fake_args)
