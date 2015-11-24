@@ -133,7 +133,7 @@ def test_check_ssh_and_sudo_on_master_check_sudo_failure(mock_run):
 @patch('paasta_tools.paasta_cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
-    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit fake_service.fake_instance status'
+    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit fake_service.fake_instance status '
 
     actual = utils.run_paasta_serviceinit(
         'status',
@@ -149,7 +149,7 @@ def test_run_paasta_serviceinit_status(mock_run):
 @patch('paasta_tools.paasta_cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status_verbose(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
-    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v fake_service.fake_instance status'
+    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v fake_service.fake_instance status '
 
     actual = utils.run_paasta_serviceinit(
         'status',
@@ -211,6 +211,24 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
         cluster,
     )
     assert actual == mock_run_paasta_serviceinit.return_value
+
+
+@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+def test_run_paasta_serviceinit_scaling(mock_run):
+    mock_run.return_value = ('unused', 'fake_output')
+    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v fake_service.fake_instance status --delta 1'
+
+    actual = utils.run_paasta_serviceinit(
+        'status',
+        'fake_master',
+        'fake_service',
+        'fake_instance',
+        'fake_cluster',
+        verbose=True,
+        delta=1,
+    )
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    assert actual == mock_run.return_value[1]
 
 
 @patch('paasta_tools.paasta_cli.utils.calculate_remote_masters', autospec=True)

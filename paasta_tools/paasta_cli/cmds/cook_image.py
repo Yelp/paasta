@@ -57,7 +57,7 @@ def paasta_cook_image(args, service=None, soa_dir=None):
 
     if not makefile_responds_to('cook-image'):
         sys.stderr.write('ERROR: local-run now requires a cook-image target to be present in the Makefile. See '
-                         'http://y/paasta-contract and PAASTA-601 for more details.\n')
+                         'http://paasta.readthedocs.org/en/latest/about/contract.html\n')
         sys.exit(1)
 
     try:

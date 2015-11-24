@@ -1,4 +1,5 @@
-#!/usr/bin/python
+#!/usr/bin/env python
+# -*- coding: utf-8 -*-
 # Copyright 2015 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
@@ -13,7 +14,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-# -*- coding: utf-8 -*-
 
 from setuptools import setup, find_packages
 
@@ -26,8 +26,7 @@ setup(
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
     description    = 'Tools for Yelps SOA infrastructure',
-    packages       = find_packages(exclude=["tests", "scripts"]),
-    setup_requires = ['setuptools'],
+    packages       = find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
     install_requires = [
         'argcomplete >= 0.8.1',
@@ -51,6 +50,7 @@ setup(
         'requests-cache >= 0.4.10, <= 0.5.0',
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.9.2',
+        'setuptools != 18.6',
         'tron == 0.6.1.1',
         'yelp_clog >= 2.2.0',
     ],

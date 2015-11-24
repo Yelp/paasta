@@ -2,7 +2,7 @@ paasta_tools: PaaSTA Sauce
 ==========================
 
 paasta_tools is a Python library. It is the sauce that combines the
-individual strands of `PaaSTA <http://y/paasta>`_ -- Jenkins, Docker, Mesos,
+individual strands of `PaaSTA <https://github.com/Yelp/paasta>`_ -- Jenkins, Docker, Mesos,
 etc. -- into a cohesive, highly-available, distributed meal.
 
 Directions (For PaaSTA Users)

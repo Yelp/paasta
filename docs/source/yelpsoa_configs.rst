@@ -322,8 +322,6 @@ Various PaaSTA utilities look at the following keys from service.yaml
  * ``description``
  * ``external_link``
 
-For the canonical description of these values, see the `official documentation <http://y/cep319>`_.
-
 Where does paasta_tools look for yelpsoa-configs?
 -------------------------------------------------------------
 
