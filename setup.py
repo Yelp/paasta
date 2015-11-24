@@ -51,6 +51,7 @@ setup(
         'requests-cache >= 0.4.10, <= 0.5.0',
         'sensu-plugin >= 0.1.0',
         'service-configuration-lib >= 0.9.2',
+        'setuptools != 18.6',
         'tron == 0.6.1.1',
         'yelp_clog >= 2.2.0',
     ],
