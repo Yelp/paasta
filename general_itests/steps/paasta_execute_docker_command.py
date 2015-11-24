@@ -31,16 +31,17 @@ def docker_is_available(context):
     context.docker_client = docker_client
 
 
-@given(u'a running docker container with task id {task_id}')
-def create_docker_container(context, task_id):
+@given(u'a running docker container with task id {task_id} and image {image_name}')
+def create_docker_container(context, task_id, image_name):
     container_name = 'paasta-itest-execute-in-containers'
     try:
         context.docker_client.remove_container(container_name, force=True)
     except APIError:
         pass
+    context.docker_client.pull(image_name)
     container = context.docker_client.create_container(
         name=container_name,
-        image='ubuntu:trusty',
+        image=image_name,
         command='/bin/sleep infinity',
         environment={'MESOS_TASK_ID': task_id},
     )

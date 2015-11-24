@@ -1,3 +1,38 @@
+paasta-tools (0.16.0-yelp1) lucid; urgency=low
+
+  * 0.16.0 tagged with 'make release'
+    Commit:
+
+ -- Robert Johnson <robj@yelp.com>  Mon, 23 Nov 2015 13:58:49 -0800
+
+paasta-tools (0.15.9-yelp1) UNRELEASED; urgency=medium
+
+  * 0.15.9 tagged with 'make release'
+    Commit:
+
+ -- kwa <kwa@kwa-MacBookPro>  Fri, 20 Nov 2015 13:04:54 -0800
+
+paasta-tools (0.15.8-yelp1) lucid; urgency=low
+
+  * 0.15.8 tagged with 'make release'
+    Commit:
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 19 Nov 2015 20:06:06 -0800
+
+paasta-tools (0.15.7-yelp1) lucid; urgency=low
+
+  * 0.15.7 tagged with 'make release'
+    Commit:
+
+ -- Tyler Roscoe <troscoe@yelp.com>  Thu, 19 Nov 2015 19:33:09 -0800
+
+paasta-tools (0.15.6-yelp1) lucid; urgency=low
+
+  * 0.15.6 tagged with 'make release'
+    Commit:
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 19 Nov 2015 16:30:10 -0800
+
 paasta-tools (0.15.5-yelp1) lucid; urgency=low
 
   * 0.15.5 tagged with 'make release'

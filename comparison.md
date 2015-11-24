@@ -131,11 +131,11 @@ expected to run different apps. (test-appname, staging-appname, etc)
 
 | Problem             | Flynn Solution     |
 |---------------------|--------------------|
-| Code containerizer  | Docker             |
+| Code containerizer  | Flynn              |
 | Scheduling          | Flynn              |
-| Service Discovery   | DNS + Flynn Router |
-| Monitoring          | N/A?               |
-| Workflow            | CLI                |
+| Service Discovery   | DNS / API / Router |
+| Monitoring          | N/A                |
+| Workflow            | CLI / Web / API    |
 
 Flynn is a Heroku-inspired PaaS. Flynn is unique in this comparison because it
 has first-class support for its embedded Postgres appliance, analogous to

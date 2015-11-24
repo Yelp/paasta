@@ -14,12 +14,14 @@ Directions (For PaaSTA Users)
    yelpsoa_configs
    workflow
 
-
-Ingredients
------------
+About PaaSTA's Architecture
+---------------------------
 
 .. toctree::
-   smartstack_interaction
+   :maxdepth: 2
+   :glob:
+
+   about/*
 
 Scripts
 ~~~~~~~

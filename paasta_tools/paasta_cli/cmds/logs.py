@@ -26,11 +26,12 @@ import re
 import sys
 
 import isodate
+
 try:
     from scribereader import scribereader
     from scribereader.scribereader import StreamTailerSetupError
 except ImportError:
-    pass
+    scribereader = None
 
 from paasta_tools import chronos_tools
 from paasta_tools.marathon_tools import format_job_id
@@ -509,6 +510,12 @@ def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
 def paasta_logs(args):
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
+    if scribereader is None:
+        sys.exit(
+            "Unfortunately, `paasta logs` is unavailable without Scribe."
+            " We're working to support alternative logging backends in PaaSTA:"
+            " follow https://github.com/Yelp/paasta/issues/64 for updates."
+        )
     service = figure_out_service_name(args)
 
     if args.clusters is None:
