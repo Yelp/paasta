@@ -1,1 +1,1 @@
-scribereader==0.1.25
+scribereader==0.1.30
