@@ -279,6 +279,15 @@ Here is an example smartstack.yaml::
       proxy_port: 20028
       timeout_server_ms: 5000
 
+The ``main`` key is the service namespace.  Namespaces were introduced for
+PaaSTA services in order to support running multiple daemons from a single
+service codebase. In PaaSTA, each instance in your marathon.yaml maps to a
+smartstack namespace of the same name, unless you specify a different
+``nerve_ns``.
+
+We now describe which keys are supported within a namespace.  Note that all but
+proxy_port are optional.
+
 Available Options
 ~~~~~~~~~~~~~~~~~
 
@@ -290,12 +299,14 @@ Basic HTTP and TCP options
    At Yelp, we pick from the range [20000, 21000]. Feel free to pick the next
    available value -- paasta fsm will do this for you automatically!
 
- * ``mode``: string of value ``http`` or ``tcp``, specifying whether the service is an HTTP or TCP service respectively.  Defaults to ``http``.
+ * ``mode``: string of value ``http`` or ``tcp``, specifying whether the service
+   is an HTTP or TCP service respectively.  Defaults to ``http``.
 
- * ``extra_headers``: for use in http mode. Headers that should be added to the request before being forwarded to the server. Example: ::
+ * ``extra_headers``: for use in http mode. Headers that should be added to the
+   request before being forwarded to the server. Example: ::
 
-  extra_headers:
-    X-Mode: ro
+      extra_headers:
+        X-Mode: ro
 
 Advertisement/Discovery
 ```````````````````````
@@ -347,8 +358,8 @@ latency zones. For information on this, see the `environment_tools documentation
    - Here's an example of how to advertise an sf-devc service instance into
      uswest1-devc::
 
-     extra_advertise:
-         region:sf-devc: ['region:uswest1-devc']
+       extra_advertise:
+           region:sf-devc: ['region:uswest1-devc']
 
 
 Healthchecks
@@ -399,6 +410,39 @@ Routing and Reliability
    in milliseconds, defaults to 1000.
  * ``timeout_client_ms``: HAProxy `client inactivity timeout <http://cbonte.github.io/haproxy-dconv/configuration-1.5.html#4.2-timeout%20client>`_
    in milliseconds, defaults to 1000.
+
+Moving a Service to a different location type
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+If you don’t care about dropping traffic you can just change ``discover`` and
+``advertise`` and then wait until the configuration and registrations propagate.
+If you want to do it gracefully you have to ensure that nerve registrations have
+time to propagate before you switch synapse’s ``discover`` key.
+
+An example of switching from region to superregion discovery:
+
+1. Append to your advertise key::
+
+    - advertise: [region]
+    + advertise: [region, superregion]
+
+2. (Optional) Use zkCli.sh to monitor your new registrations for each
+superregion you are changing::
+
+    $ /usr/share/zookeeper/bin/zkCli.sh
+    [zk: localhost:2181(CONNECTING) 0] connect 10.40.5.6:22181
+    [zk: 10.40.5.6:22181(CONNECTED) 1] ls /nerve/superregion:norcal-devc/servicename.main
+    [host1-uswest1adevc_0000015910, host2-uswest1cdevc_0000015898, host3-uswest1cdevc_0000015893]
+    [zk: 10.40.5.6:22181(CONNECTED) 2]
+
+3. Once zookeeper shows the proper servers, switch the discovery key::
+
+    - discover: region
+    + discover: superregion
+
+4. Wait a while, usually about 10 minutes, Then change advertise to just superregion::
+
+    - advertise: [region, superregion]
+    + advertise: [superregion]
 
 monitoring.yaml
 ---------------
