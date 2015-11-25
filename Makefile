@@ -12,6 +12,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Set ENV to 'YELP' if FQDN ends in '.yelpcorp.com'
+# Otherwise, set ENV to the FQDN
+ifeq ($(findstring .yelpcorp.com,$(shell hostname -f)), .yelpcorp.com)
+	ENV := YELP
+else
+	ENV := $(shell hostname -f)
+endif
+
 .PHONY: all docs test itest
 
 docs:
@@ -28,7 +36,11 @@ itest: test
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
 	# Note: For now, these builds only work inside Yelp's environment.
-	make -C yelp_package $@
+	@if [ "$(ENV)" = "YELP" ]; then \
+		make -C yelp_package $@; \
+	else \
+		echo "This Makefile target currently will NOT work outside of Yelp's Environment."; \
+	fi
 
 # Steps to release
 # 1. Bump version in yelp_package/Makefile
