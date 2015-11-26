@@ -408,18 +408,21 @@ def test_decompose_job_id_with_hashes():
     assert actual == expected
 
 
-def test_build_docker_tag():
-    upstream_job_name = 'fake_upstream_job_name'
-    upstream_git_commit = 'fake_upstream_git_commit'
-    expected = 'docker-paasta.yelpcorp.com:443/services-%s:paasta-%s' % (
-        upstream_job_name,
+@mock.patch('utils.build_docker_image_name')
+def test_build_docker_tag(mock_build_docker_image_name):
+    upstream_job_name = 'foo'
+    upstream_git_commit = 'bar'
+    mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
+    expected = 'fake-registry/services-foo:paasta-%s' % (
         upstream_git_commit,
     )
     actual = utils.build_docker_tag(upstream_job_name, upstream_git_commit)
     assert actual == expected
 
 
-def test_check_docker_image_false():
+@mock.patch('utils.build_docker_image_name')
+def test_check_docker_image_false(mock_build_docker_image_name):
+    mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
     fake_app = 'fake_app'
     fake_commit = 'fake_commit'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
@@ -436,9 +439,11 @@ def test_check_docker_image_false():
         assert utils.check_docker_image('test_service', 'tag2') is False
 
 
-def test_check_docker_image_true():
+@mock.patch('utils.build_docker_image_name')
+def test_check_docker_image_true(mock_build_docker_image_name):
     fake_app = 'fake_app'
     fake_commit = 'fake_commit'
+    mock_build_docker_image_name.return_value = 'fake-registry/services-foo'
     docker_tag = utils.build_docker_tag(fake_app, fake_commit)
     with mock.patch('docker.Client') as mock_docker:
         docker_client = mock_docker.return_value

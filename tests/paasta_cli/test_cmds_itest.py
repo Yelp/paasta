@@ -23,13 +23,16 @@ from paasta_tools.paasta_cli.cmds.itest import paasta_itest
 @patch('sys.exit')
 @patch('paasta_tools.paasta_cli.cmds.itest._log', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.itest.check_docker_image', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.itest.build_docker_tag', autospec=True)
 def test_itest_run_fail(
+    mock_build_docker_tag,
     mock_docker_image,
     mock_log,
     mock_exit,
     mock_run,
     mock_validate_service_name,
 ):
+    mock_build_docker_tag.return_value = 'fake-registry/services-foo:paasta-bar'
     mock_docker_image.return_value = True
     mock_run.return_value = (1, 'fake_output')
     args = MagicMock()
@@ -42,13 +45,16 @@ def test_itest_run_fail(
 @patch('sys.exit')
 @patch('paasta_tools.paasta_cli.cmds.itest._log', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.itest.check_docker_image', autospec=True)
+@patch('paasta_tools.paasta_cli.cmds.itest.build_docker_tag', autospec=True)
 def test_itest_success(
+    mock_build_docker_tag,
     mock_docker_image,
     mock_log,
     mock_exit,
     mock_run,
     mock_validate_service_name,
 ):
+    mock_build_docker_tag.return_value = 'fake-registry/services-foo:paasta-bar'
     mock_docker_image.return_value = True
     mock_run.return_value = (0, 'Yeeehaaa')
 
