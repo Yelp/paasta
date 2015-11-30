@@ -358,6 +358,21 @@ class LostContainerException(Exception):
     pass
 
 
+def docker_pull_image(docker_url):
+    """Pull an image via ``docker pull``. Uses the actual pull command instead of the python
+    bindings due to the docker auth/registry transition. Once we are past Docker 1.6
+    we can use better credential management, but for now this function assumes the
+    user running the command has already been authorized for the registry"""
+    sys.stderr.write("Please wait while the image (%s) is pulled..." % docker_url)
+    ret, output = _run('docker pull %s' % docker_url)
+    if ret != 0:
+        sys.stderr.write("\nPull failed:\n")
+        sys.stderr.write(output)
+        sys.exit(1)
+    else:
+        sys.stderr.write(" Done.\n")
+
+
 def get_container_id(docker_client, container_name):
     """Use 'docker_client' to find the container we started, identifiable by
     its 'container_name'. If we can't find the id, raise
@@ -500,7 +515,7 @@ def run_docker_container(
     sys.exit(returncode)
 
 
-def get_instance_config(service, instance, cluster, soa_dir):
+def get_instance_config(service, instance, cluster, load_deployments, soa_dir):
     """ Returns the InstanceConfig object for whatever type of instance
     it is. (chronos or marathon) """
     instance_type = validate_service_instance(
@@ -522,7 +537,7 @@ def get_instance_config(service, instance, cluster, soa_dir):
         service=service,
         instance=instance,
         cluster=cluster,
-        load_deployments=False,
+        load_deployments=load_deployments,
         soa_dir=soa_dir
     )
 
@@ -560,14 +575,16 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         service=service,
         instance=args.instance,
         cluster=cluster,
+        load_deployments=pull_image,
         soa_dir=args.yelpsoa_config_root,
     )
 
     if pull_image:
         docker_url = get_docker_url(
             system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
-        docker_client.pull(docker_url)
-        docker_hash = instance_config.get_docker_image()
+        docker_pull_image(docker_url)
+
+        docker_hash = docker_url
 
     # if only one volume specified, extra_volumes should be converted to a list
     extra_volumes = instance_config.get_extra_volumes()
