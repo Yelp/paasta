@@ -21,6 +21,7 @@ from pytest import raises
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.paasta_cli.cmds.local_run import LostContainerException
 from paasta_tools.paasta_cli.cmds.local_run import configure_and_run_docker_container
+from paasta_tools.paasta_cli.cmds.local_run import docker_pull_image
 from paasta_tools.paasta_cli.cmds.local_run import get_cmd_string
 from paasta_tools.paasta_cli.cmds.local_run import get_container_id
 from paasta_tools.paasta_cli.cmds.local_run import get_container_name
@@ -203,7 +204,6 @@ def test_run_healthcheck_cmd_fails(mock_sleep, mock_perform_cmd_healthcheck):
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.randint',
             autospec=True,
-            # http://operations.irclogs.yelpcorp.com/2015-05-12.html#0/h0,1
             return_value=543534,
             )
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_username',
@@ -248,7 +248,8 @@ def test_configure_and_run_explicit_cluster(
         service=fake_service,
         instance=args.instance,
         cluster=args.cluster,
-        soa_dir=args.yelpsoa_config_root
+        soa_dir=args.yelpsoa_config_root,
+        load_deployments=mock.ANY,
     )
 
 
@@ -974,3 +975,17 @@ def test_get_instance_config_unknown(
             soa_dir='fake_soa_dir',
         )
         assert mock_validate_service_instance.call_count == 1
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
+def test_pull_image_runs_docker_pull(mock_run):
+    docker_pull_image('fake_image')
+    mock_run.assert_called_once_with('docker pull fake_image')
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(42, 'fake _run output'))
+def test_pull_docker_image_exists_with_failure(mock_run):
+    with raises(SystemExit) as excinfo:
+        docker_pull_image('fake_image')
+    assert excinfo.value.code == 42
+    mock_run.assert_called_once_with('docker pull fake_image')

@@ -255,7 +255,7 @@ def add_subparser(subparsers):
         '-y', '--yelpsoa-config-root',
         dest='yelpsoa_config_root',
         help='A directory from which yelpsoa-configs should be read from',
-        default=service_configuration_lib.DEFAULT_SOA_DIR
+        default=service_configuration_lib.DEFAULT_SOA_DIR,
     )
     build_pull_group = list_parser.add_mutually_exclusive_group()
     build_pull_group.add_argument(
@@ -368,7 +368,7 @@ def docker_pull_image(docker_url):
     if ret != 0:
         sys.stderr.write("\nPull failed:\n")
         sys.stderr.write(output)
-        sys.exit(1)
+        sys.exit(ret)
     else:
         sys.stderr.write(" Done.\n")
 
@@ -515,7 +515,7 @@ def run_docker_container(
     sys.exit(returncode)
 
 
-def get_instance_config(service, instance, cluster, load_deployments, soa_dir):
+def get_instance_config(service, instance, cluster, soa_dir, load_deployments=False):
     """ Returns the InstanceConfig object for whatever type of instance
     it is. (chronos or marathon) """
     instance_type = validate_service_instance(
