@@ -732,7 +732,8 @@ def build_docker_image_name(upstream_job_name):
     service's path in git. E.g. For git.yelpcorp.com:services/foo the
     upstream_job_name is services-foo.
     """
-    name = 'docker-paasta.yelpcorp.com:443/services-%s' % upstream_job_name
+    docker_registry_url = load_system_paasta_config().get_docker_registry()
+    name = '%s/services-%s' % (docker_registry_url, upstream_job_name)
     return name
 
 

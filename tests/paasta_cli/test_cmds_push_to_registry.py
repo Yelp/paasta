@@ -19,17 +19,15 @@ from paasta_tools.paasta_cli.cmds.push_to_registry import build_command
 from paasta_tools.paasta_cli.cmds.push_to_registry import paasta_push_to_registry
 
 
-def test_build_command():
-    upstream_job_name = 'fake_upstream_job_name'
-    upstream_git_commit = 'fake_upstream_git_commit'
-    expected = 'docker push docker-paasta.yelpcorp.com:443/services-%s:paasta-%s' % (
-        upstream_job_name,
-        upstream_git_commit,
-    )
-    actual = build_command(upstream_job_name, upstream_git_commit)
+@patch('paasta_tools.paasta_cli.cmds.push_to_registry.build_docker_tag')
+def test_build_command(mock_build_docker_tag):
+    mock_build_docker_tag.return_value = 'my-docker-registry/services-foo:paasta-asdf'
+    expected = 'docker push my-docker-registry/services-foo:paasta-asdf'
+    actual = build_command('foo', 'bar')
     assert actual == expected
 
 
+@patch('paasta_tools.paasta_cli.cmds.push_to_registry.build_command')
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry._log', autospec=True)
@@ -39,13 +37,16 @@ def test_push_to_registry_run_fail(
     mock_log,
     mock_run,
     mock_validate_service_name,
+    mock_build_command,
 ):
+    mock_build_command.return_value = 'docker push my-docker-registry/services-foo:paasta-asdf'
     mock_run.return_value = (1, 'Bad')
     args = MagicMock()
     paasta_push_to_registry(args)
     mock_exit.assert_called_once_with(1)
 
 
+@patch('paasta_tools.paasta_cli.cmds.push_to_registry.build_command')
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry.validate_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry._run', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.push_to_registry._log', autospec=True)
@@ -55,7 +56,9 @@ def test_push_to_registry_success(
     mock_log,
     mock_run,
     mock_validate_service_name,
+    mock_build_command,
 ):
+    mock_build_command.return_value = 'docker push my-docker-registry/services-foo:paasta-asdf'
     mock_run.return_value = (0, 'Success')
     args = MagicMock()
     assert paasta_push_to_registry(args) is None
