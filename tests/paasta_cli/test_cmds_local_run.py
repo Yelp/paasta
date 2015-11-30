@@ -35,6 +35,7 @@ from paasta_tools.paasta_cli.cmds.local_run import perform_cmd_healthcheck
 from paasta_tools.paasta_cli.cmds.local_run import simulate_healthcheck_on_service
 from paasta_tools.paasta_cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.paasta_cli.cmds.local_run import run_docker_container
+from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
@@ -348,7 +349,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.interactive = True
     args.cluster = 'fake_cluster'
 
-    configure_and_run_docker_container(
+    assert configure_and_run_docker_container(
         docker_client=mock_docker_client,
         docker_hash=docker_hash,
         service=fake_service,
@@ -359,6 +360,54 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         service=fake_service,
         instance=args.instance,
         docker_hash=docker_hash,
+        volumes=[],
+        interactive=args.interactive,
+        command='bash',
+        healthcheck=args.healthcheck,
+        healthcheck_only=args.healthcheck_only,
+        instance_config=mock_get_instance_config.return_value
+    )
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.docker_pull_image', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_docker_container', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_instance_config', autospec=True)
+def test_configure_and_run_pulls_image_when_asked(
+    mock_get_instance_config,
+    mock_load_system_paasta_config,
+    mock_run_docker_container,
+    mock_docker_pull_image,
+):
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+        {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    fake_instance_config = mock.MagicMock(InstanceConfig)
+    fake_instance_config.get_docker_image.return_value = 'fake_image'
+    mock_get_instance_config.return_value = fake_instance_config
+    fake_service = 'fake_service'
+    args = mock.MagicMock()
+    args.cmd = None
+    args.service = fake_service
+    args.healthcheck = False
+    args.healthcheck_only = False
+    args.instance = 'fake_instance'
+    args.interactive = True
+    args.cluster = 'fake_cluster'
+
+    assert configure_and_run_docker_container(
+        docker_client=mock_docker_client,
+        docker_hash=None,
+        service=fake_service,
+        args=args,
+        pull_image=True,
+    ) is None
+    mock_docker_pull_image.assert_called_once_with('fake_registry/fake_image')
+    mock_run_docker_container.assert_called_once_with(
+        docker_client=mock_docker_client,
+        service=fake_service,
+        instance=args.instance,
+        docker_hash='fake_registry/fake_image',
         volumes=[],
         interactive=args.interactive,
         command='bash',
