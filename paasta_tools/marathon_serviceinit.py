@@ -349,8 +349,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     elif command == 'status':
         # Setting up transparent cache for http API calls
         requests_cache.install_cache('paasta_serviceinit', backend='memory')
-    elif command == 'scale':
-        scale_marathon_job(service, instance, app_id, delta, client, cluster)
 
         print status_desired_state(service, instance, client, job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
@@ -371,6 +369,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 soa_dir=soa_dir,
                 verbose=verbose,
             )
+    elif command == 'scale':
+        scale_marathon_job(service, instance, app_id, delta, client, cluster)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
