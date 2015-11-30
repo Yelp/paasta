@@ -1,3 +1,10 @@
+paasta-tools (0.16.1-yelp1) lucid; urgency=low
+
+  * 0.16.1 tagged with 'make release'
+    Commit:
+
+ -- Francesco Di Chiara <fdc@yelp.com>  Wed, 25 Nov 2015 10:16:23 -0800
+
 paasta-tools (0.16.0-yelp1) lucid; urgency=low
 
   * 0.16.0 tagged with 'make release'
