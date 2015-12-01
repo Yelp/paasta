@@ -25,6 +25,7 @@ from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.cmds.mark_for_deployment import mark_for_deployment
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import list_all_instances_for_service
+from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):
@@ -34,35 +35,35 @@ def add_subparser(subparsers):
         help='Rollback a docker image to a previous deploy')
 
     list_parser.add_argument('-k', '--commit',
-                             help='Git sha to mark for rollback',
+                             help='Git SHA to mark for rollback',
                              required=True,
                              )
-    list_parser.add_argument('-i', '--instance',
-                             help='Mark the instance[s] we want to roll back (e.g. '
-                             'canary, main)',
+    list_parser.add_argument('-i', '--instances',
+                             help='Mark one or more instances to roll back (e.g. '
+                             '"canary", "canary,main"). If no instances specified,'
+                             ' all instances for that service are rolled back',
+                             default='',
                              required=False,
                              ).completer = lazy_choices_completer(list_instances)
     list_parser.add_argument('-c', '--cluster',
-                             help='Mark the cluster we want to rollback (e.g. '
-                             'cluster1, cluster2)',
+                             help='Mark the cluster to rollback (e.g. '
+                             'cluster1)',
                              required=True,
                              ).completer = lazy_choices_completer(list_clusters)
     list_parser.add_argument('-s', '--service',
-                             help='Name of service you wish to rollback'
+                             help='Name of the service to rollback (e.g. '
+                             'service1)'
                              ).completer = lazy_choices_completer(list_services)
 
     list_parser.set_defaults(command=paasta_rollback)
 
 
-def validate_given_instances(service, args_instances):
+def validate_given_instances(service_instances, args_instances):
     """Trying to find which instances are actually valid for the given service"""
-    service_instances = list_all_instances_for_service(service)
-    invalid_instances = None
-
-    if not args_instances:
-        valid_instances = service_instances
+    if len(args_instances) is 0:
+        valid_instances = set(service_instances)
+        invalid_instances = set([])
     else:
-        args_instances = args_instances.split(",")
         valid_instances = set(args_instances).intersection(service_instances)
         invalid_instances = set(args_instances).difference(service_instances)
 
@@ -75,28 +76,29 @@ def paasta_rollback(args):
     cluster = args.cluster
     git_url = get_git_url(service)
     commit = args.commit
+    given_instances = args.instances.split(",")
 
     if cluster in list_clusters(service):
-        instances, invalid = validate_given_instances(service, args.instance)
+        service_instances = list_all_instances_for_service(service)
+        instances, invalid = validate_given_instances(service_instances, given_instances)
 
-        if invalid:
-            print "WARNING: These instances are not valid and will not be deployed: %s.\n" % (",").join(invalid)
+        if len(invalid) > 0:
+            print PaastaColors.yellow("These instances are not valid and will be skipped: %s.\n" % (",").join(invalid))
 
-        if instances:
-            for instance in instances:
-                print "Deploying %s to %s.%s.\n" % (service, cluster, instance)
-                returncode = mark_for_deployment(
-                    git_url=git_url,
-                    cluster=cluster,
-                    instance=instance,
-                    service=service,
-                    commit=commit
-                )
-        else:
-            print "ERROR: No valid instances specified for %s.\n" % (service)
+        if len(instances) is 0:
+            print PaastaColors.red("ERROR: No valid instances specified for %s.\n" % (service))
             returncode = 1
+
+        for instance in instances:
+            returncode = mark_for_deployment(
+                git_url=git_url,
+                cluster=cluster,
+                instance=instance,
+                service=service,
+                commit=commit,
+            )
     else:
-        print "ERROR: The service %s is not deployed into cluster %s.\n" % (service, cluster)
+        print PaastaColors.red("ERROR: The service %s is not deployed into cluster %s.\n" % (service, cluster))
         returncode = 1
 
     sys.exit(returncode)

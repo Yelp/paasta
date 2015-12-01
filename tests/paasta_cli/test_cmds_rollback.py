@@ -19,6 +19,7 @@ from paasta_tools.paasta_cli.cmds.rollback import paasta_rollback
 from paasta_tools.paasta_cli.cmds.rollback import validate_given_instances
 
 
+@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
@@ -30,17 +31,19 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
     mock_list_clusters,
     mock_figure_out_service_name,
     mock_validate_given_instances,
+    mock_list_all_instances_for_service,
 ):
 
     fake_args = Mock(
         cluster='cluster1',
-        instance='instance1',
+        instances='instance1',
         commit='123456'
     )
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = 'fakeservice'
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
+    mock_list_all_instances_for_service.return_value = ['instance1', 'instance2']
     mock_validate_given_instances.return_value = [['instance1'], []]
 
     with raises(SystemExit) as sys_exit:
@@ -50,7 +53,7 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
     mock_mark_for_deployment.assert_called_once_with(
         git_url=mock_get_git_url.return_value,
         cluster=fake_args.cluster,
-        instance=fake_args.instance,
+        instance=fake_args.instances,
         service=mock_figure_out_service_name.return_value,
         commit=fake_args.commit
     )
@@ -58,6 +61,7 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
     assert mock_mark_for_deployment.call_count == 1
 
 
+@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
@@ -69,17 +73,19 @@ def test_paasta_rollback_mark_for_deployment_wrong_cluster(
     mock_list_clusters,
     mock_figure_out_service_name,
     mock_validate_given_instances,
+    mock_list_all_instances_for_service,
 ):
 
     fake_args = Mock(
         cluster='cluster1',
-        instance='instance1',
+        instances='instance1',
         commit='123456'
     )
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = 'fakeservice'
     mock_list_clusters.return_value = ['cluster0', 'cluster2']
+    mock_list_all_instances_for_service.return_value = ['instance1', 'instance2']
     mock_validate_given_instances.return_value = [['instance1'], []]
 
     with raises(SystemExit) as sys_exit:
@@ -89,6 +95,7 @@ def test_paasta_rollback_mark_for_deployment_wrong_cluster(
     assert mock_mark_for_deployment.call_count == 0
 
 
+@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
@@ -100,17 +107,19 @@ def test_paasta_rollback_mark_for_deployment_no_instance_arg(
     mock_list_clusters,
     mock_figure_out_service_name,
     mock_validate_given_instances,
+    mock_list_all_instances_for_service,
 ):
 
     fake_args = Mock(
         cluster='cluster1',
         commit='123456',
-        instance=None
+        instances='',
     )
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = 'fakeservice'
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
+    mock_list_all_instances_for_service.return_value = ['instance1', 'instance2']
     mock_validate_given_instances.return_value = [['instance1', 'instance2'], []]
 
     with raises(SystemExit) as sys_exit:
@@ -138,6 +147,7 @@ def test_paasta_rollback_mark_for_deployment_no_instance_arg(
     assert mock_mark_for_deployment.call_count == 2
 
 
+@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
@@ -149,17 +159,19 @@ def test_paasta_rollback_mark_for_deployment_wrong_instance_args(
     mock_list_clusters,
     mock_figure_out_service_name,
     mock_validate_given_instances,
+    mock_list_all_instances_for_service,
 ):
 
     fake_args = Mock(
         cluster='cluster1',
         commit='123456',
-        instance='instance0,not_an_instance'
+        instances='instance0,not_an_instance'
     )
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = 'fakeservice'
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
+    mock_list_all_instances_for_service.return_value = ['instance1', 'instance2']
     mock_validate_given_instances.return_value = [[], ['instance0', 'not_an_instance']]
 
     with raises(SystemExit) as sys_exit:
@@ -169,6 +181,7 @@ def test_paasta_rollback_mark_for_deployment_wrong_instance_args(
     assert mock_mark_for_deployment.call_count == 0
 
 
+@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
 @patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
@@ -180,17 +193,19 @@ def test_paasta_rollback_mark_for_deployment_multiple_instance_args(
     mock_list_clusters,
     mock_figure_out_service_name,
     mock_validate_given_instances,
+    mock_list_all_instances_for_service,
 ):
 
     fake_args = Mock(
         cluster='cluster1',
-        instance='instance1,instance2',
+        instances='instance1,instance2',
         commit='123456'
     )
 
     mock_get_git_url.return_value = 'git://git.repo'
     mock_figure_out_service_name.return_value = 'fakeservice'
     mock_list_clusters.return_value = ['cluster1', 'cluster2']
+    mock_list_all_instances_for_service.return_value = ['instance1', 'instance2', 'instance3']
     mock_validate_given_instances.return_value = [['instance1', 'instance2'], []]
 
     with raises(SystemExit) as sys_exit:
@@ -218,40 +233,66 @@ def test_paasta_rollback_mark_for_deployment_multiple_instance_args(
     assert mock_mark_for_deployment.call_count == 2
 
 
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
-def test_validate_given_instances_wrong_arg(
-    mock_list_all_instances_for_service,
-):
-    mock_list_all_instances_for_service.return_value = ['instance1', 'instance2']
-    given_instances = 'instance0,not_an_instance'
+def test_validate_given_instances_no_arg():
+    service_instances = ['instance1', 'instance2']
+    given_instances = []
 
-    actual_valid, actual_invalid = validate_given_instances('test_service', given_instances)
+    expected_valid = set(['instance1', 'instance2'])
+    expected_invalid = set([])
 
-    assert actual_valid == set([])
-    assert actual_invalid == set(['instance0', 'not_an_instance'])
+    actual_valid, actual_invalid = validate_given_instances(service_instances, given_instances)
 
-
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
-def test_validate_given_instances_single_arg(
-    mock_list_all_instances_for_service,
-):
-    mock_list_all_instances_for_service.return_value = ['instance1', 'instance2']
-    given_instances = 'instance1'
-
-    actual_valid, actual_invalid = validate_given_instances('test_service', given_instances)
-
-    assert actual_valid == set(['instance1'])
-    assert actual_invalid == set([])
+    assert actual_valid == expected_valid
+    assert actual_invalid == expected_invalid
 
 
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
-def test_validate_given_instances_multiple_args(
-    mock_list_all_instances_for_service,
-):
-    mock_list_all_instances_for_service.return_value = ['instance1', 'instance2', 'instance3']
-    given_instances = 'instance1,instance2'
+def test_validate_given_instances_wrong_arg():
+    service_instances = ['instance1', 'instance2']
+    given_instances = ['instance0', 'not_an_instance']
 
-    actual_valid, actual_invalid = validate_given_instances('test_service', given_instances)
+    expected_valid = set([])
+    expected_invalid = set(['instance0', 'not_an_instance'])
 
-    assert actual_valid == set(['instance1', 'instance2'])
-    assert actual_invalid == set([])
+    actual_valid, actual_invalid = validate_given_instances(service_instances, given_instances)
+
+    assert actual_valid == expected_valid
+    assert actual_invalid == expected_invalid
+
+
+def test_validate_given_instances_single_arg():
+    service_instances = ['instance1', 'instance2']
+    given_instances = ['instance1']
+
+    expected_valid = set(['instance1'])
+    expected_invalid = set([])
+
+    actual_valid, actual_invalid = validate_given_instances(service_instances, given_instances)
+
+    assert actual_valid == expected_valid
+    assert actual_invalid == expected_invalid
+
+
+def test_validate_given_instances_multiple_args():
+    service_instances = ['instance1', 'instance2', 'instance3']
+    given_instances = ['instance1', 'instance2']
+
+    expected_valid = set(['instance1', 'instance2'])
+    expected_invalid = set([])
+
+    actual_valid, actual_invalid = validate_given_instances(service_instances, given_instances)
+
+    assert actual_valid == expected_valid
+    assert actual_invalid == expected_invalid
+
+
+def test_validate_given_instances_duplicate_args():
+    service_instances = ['instance1', 'instance2', 'instance3']
+    given_instances = ['instance1', 'instance1']
+
+    expected_valid = set(['instance1'])
+    expected_invalid = set([])
+
+    actual_valid, actual_invalid = validate_given_instances(service_instances, given_instances)
+
+    assert actual_valid == expected_valid
+    assert actual_invalid == expected_invalid
