@@ -40,7 +40,7 @@ setup(
         'httplib2 >= 0.9, <= 1.0',
         'isodate >= 0.5.0',
         'kazoo >= 2.0.0',
-        'marathon >= 0.7.3',
+        'marathon >= 0.7.4',
         'mesos.cli == 0.1.3',
         'ordereddict >= 1.1',
         'path.py >= 8.1',
