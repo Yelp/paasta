@@ -34,6 +34,7 @@ from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.paasta_cli.cmds.cook_image import paasta_cook_image
+from paasta_tools.paasta_cli.cmds.check import makefile_responds_to
 from paasta_tools.paasta_cli.utils import figure_out_service_name
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
@@ -263,7 +264,7 @@ def add_subparser(subparsers):
         help=("Build the docker image to run from scratch using the local Makefile's ",
               "'cook-image' target. Defaults to try to use the local Makefile if present. ",
               "otherwise local-run will pull and run the Docker image that is marked for ",
-              "deployment in the Docker registry."),
+              "deployment in the Docker registry. Mutually exclusive with '--pull'."),
         required=False,
         action='store_true',
         default=None,
@@ -273,7 +274,7 @@ def add_subparser(subparsers):
         help=("Pull the docker image marked for deployment from the Docker registry and ",
               "use that for the local-run. This is the opposite of --build. Defaults to ",
               "autodetect a Makefile, if present will not pull, and instead assume that ",
-              "a local build is desired."),
+              "a local build is desired. Mutally exclusive with '--build'"),
         required=False,
         action='store_true',
         default=None,
@@ -620,18 +621,21 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
 
 
 def local_makefile_present():
-    return True
+    if makefile_responds_to('cook-image'):
+        sys.stderr.write("Local Makefile with 'cook-image' target deteced. Assuming --build\n")
+        return True
+    else:
+        sys.stderr.write("No Makefile with 'cook-image' target detected. Assuming --pull\n")
+        return False
 
 
 def paasta_local_run(args):
-    # Try to autodetect if we should build the image locally or not
-    if local_makefile_present() and args.build is None and args.pull is None:
-        sys.stderr.write("Local Makefile detected, building a local Docker image. Use --pull to override.\n")
-        build = True
-    elif args.pull is not None:
+    if args.pull:
         build = False
-    else:
+    elif args.build:
         build = True
+    else:
+        build = local_makefile_present()
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     base_docker_url = get_docker_host()
