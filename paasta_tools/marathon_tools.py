@@ -406,7 +406,7 @@ class MarathonServiceConfig(InstanceConfig):
         return self.config_dict.get('healthcheck_timeout_seconds', 10)
 
     def get_healthcheck_max_consecutive_failures(self):
-        return self.config_dict.get('healthcheck_max_consecutive_failures', 6)
+        return self.config_dict.get('healthcheck_max_consecutive_failures', 30)
 
     def get_nerve_namespace(self):
         return self.config_dict.get('nerve_ns', self.instance)
