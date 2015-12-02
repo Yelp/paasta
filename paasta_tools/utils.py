@@ -782,10 +782,11 @@ def datetime_convert_timezone(datetime, from_zone, to_zone):
 
 
 def get_username():
-    """Returns the current username in a portable way
+    """Returns the current username in a portable way. Will use the SUDO_USER
+    environment variable if present.
     http://stackoverflow.com/a/2899055
     """
-    return pwd.getpwuid(os.getuid())[0]
+    return os.environ.get('SUDO_USER', pwd.getpwuid(os.getuid())[0])
 
 
 def get_default_cluster_for_service(service):
