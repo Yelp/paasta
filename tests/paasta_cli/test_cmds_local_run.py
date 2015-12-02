@@ -28,6 +28,8 @@ from paasta_tools.paasta_cli.cmds.local_run import get_container_name
 from paasta_tools.paasta_cli.cmds.local_run import get_docker_run_cmd
 from paasta_tools.paasta_cli.cmds.local_run import get_dockerfile_cmd
 from paasta_tools.paasta_cli.cmds.local_run import get_instance_config
+from paasta_tools.paasta_cli.cmds.local_run import guess_cluster
+from paasta_tools.paasta_cli.cmds.local_run import guess_instance
 from paasta_tools.paasta_cli.cmds.local_run import paasta_local_run
 from paasta_tools.paasta_cli.cmds.local_run import perform_http_healthcheck
 from paasta_tools.paasta_cli.cmds.local_run import perform_tcp_healthcheck
@@ -218,66 +220,71 @@ def test_get_container_name(mock_get_username, mock_randint):
     assert actual == expected
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_instance_config', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_docker_container', autospec=True)
-def test_configure_and_run_explicit_cluster(
-    mock_run_docker_container,
-    mock_get_instance_config,
-    mock_load_system_paasta_config,
-):
-    mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-        {'cluster': 'fake_cluster_that_will_be_overriden', 'volumes': []}, '/fake_dir/')
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    fake_service = 'fake_service'
-    docker_hash = '8' * 40
+def test_guess_cluster_uses_provided_cluster():
     args = mock.MagicMock()
-    args.cmd = 'fake_command'
-    args.service = fake_service
-    args.healthcheck = False
-    args.instance = 'fake_instance'
-    args.interactive = False
     args.cluster = 'fake_cluster'
-    args.yelpsoa_config_root = 'fakesoa-configs/'
-    assert configure_and_run_docker_container(
-        docker_client=mock_docker_client,
-        docker_hash=docker_hash,
-        service=fake_service,
-        args=args,
-    ) is None
-    mock_get_instance_config.assert_called_once_with(
-        service=fake_service,
-        instance=args.instance,
-        cluster=args.cluster,
-        soa_dir=args.yelpsoa_config_root,
-        load_deployments=mock.ANY,
-    )
+    actual = guess_cluster(service='fake_service', args=args)
+    assert actual == 'fake_cluster'
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_system_paasta_config', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.load_marathon_service_config', autospec=True)
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_default_cluster_for_service', autospec=True)
-def test_configure_and_run_missing_cluster_exception(
+def test_guess_cluster_when_missing_cluster_exception(
     mock_get_default_cluster_for_service,
-    mock_load_marathon_service_config,
-    mock_load_system_paasta_config,
 ):
     mock_get_default_cluster_for_service.side_effect = NoConfigurationForServiceError()
-    mock_load_system_paasta_config.return_value = SystemPaastaConfig({'volumes': []}, '/fake_dir/')
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     fake_service = 'fake_service'
-    docker_hash = '8' * 40
     args = mock.MagicMock()
-    args.cmd = 'fake_command'
     args.service = fake_service
-    args.healthcheck = False
     args.instance = 'fake_instance'
-    args.interactive = False
     args.cluster = None
     with raises(SystemExit) as excinfo:
-        configure_and_run_docker_container(
-            docker_client=mock_docker_client,
-            docker_hash=docker_hash,
+        guess_cluster(
+            service=fake_service,
+            args=args,
+        )
+    assert excinfo.value.code == 2
+
+
+def test_guess_instance_uses_provided_cluster():
+    args = mock.MagicMock()
+    args.instance = 'fake_instance1'
+    actual = guess_instance(service='fake_service', cluster=None, args=args)
+    assert actual == 'fake_instance1'
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.list_all_instances_for_service', autospec=True)
+def test_guess_uses_main_if_available(
+    mock_list_all_instances_for_service,
+):
+    mock_list_all_instances_for_service.return_value = ['a', 'b', 'main', 'c']
+    args = mock.MagicMock()
+    args.instance = None
+    actual = guess_instance(service='fake_service', cluster=None, args=args)
+    assert actual == 'main'
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.list_all_instances_for_service', autospec=True)
+def test_guess_picks_something(
+    mock_list_all_instances_for_service,
+):
+    mock_list_all_instances_for_service.return_value = ['a', 'b', 'c']
+    args = mock.MagicMock()
+    args.instance = None
+    actual = guess_instance(service='fake_service', cluster=None, args=args)
+    assert actual in ['a', 'b', 'c']
+
+
+@mock.patch('paasta_tools.paasta_cli.cmds.local_run.list_all_instances_for_service', autospec=True)
+def test_guess_instance_fails(
+    mock_list_all_instances_for_service,
+):
+    mock_list_all_instances_for_service.side_effect = NoConfigurationForServiceError()
+    fake_service = 'fake_service'
+    args = mock.MagicMock()
+    args.service = fake_service
+    args.cluster = None
+    with raises(SystemExit) as excinfo:
+        guess_cluster(
             service=fake_service,
             args=args,
         )
@@ -302,15 +309,15 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args.service = fake_service
     args.healthcheck = False
     args.healthcheck_only = False
-    args.instance = 'fake_instance'
     args.interactive = False
-    args.cluster = 'fake_cluster'
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
 
     configure_and_run_docker_container(
         docker_client=mock_docker_client,
         docker_hash=docker_hash,
         service=fake_service,
+        instance='fake_instance',
+        cluster='fake_cluster',
         args=args,
     ) is None
     mock_run_docker_container.assert_called_once_with(
@@ -345,14 +352,14 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.service = fake_service
     args.healthcheck = False
     args.healthcheck_only = False
-    args.instance = 'fake_instance'
     args.interactive = True
-    args.cluster = 'fake_cluster'
 
     assert configure_and_run_docker_container(
         docker_client=mock_docker_client,
         docker_hash=docker_hash,
         service=fake_service,
+        instance='fake_instance',
+        cluster='fake_cluster',
         args=args,
     ) is None
     mock_run_docker_container.assert_called_once_with(
@@ -391,14 +398,14 @@ def test_configure_and_run_pulls_image_when_asked(
     args.service = fake_service
     args.healthcheck = False
     args.healthcheck_only = False
-    args.instance = 'fake_instance'
     args.interactive = True
-    args.cluster = 'fake_cluster'
 
     assert configure_and_run_docker_container(
         docker_client=mock_docker_client,
         docker_hash=None,
         service=fake_service,
+        instance='fake_instance',
+        cluster='fake_cluster',
         args=args,
         pull_image=True,
     ) is None

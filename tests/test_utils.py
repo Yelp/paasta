@@ -567,7 +567,7 @@ def test_list_all_instances_for_service():
         actual = utils.list_all_instances_for_service(service)
         assert actual == expected
         mock_list_clusters.assert_called_once_with(service)
-        mock_service_instance_list.assert_called_once_with(service, clusters[0], None)
+        mock_service_instance_list.assert_called_once_with(service, clusters[0], None, soa_dir=mock.ANY)
 
 
 def test_get_service_instance_list():
