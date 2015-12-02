@@ -364,14 +364,11 @@ def docker_pull_image(docker_url):
     bindings due to the docker auth/registry transition. Once we are past Docker 1.6
     we can use better credential management, but for now this function assumes the
     user running the command has already been authorized for the registry"""
-    sys.stderr.write("Please wait while the image (%s) is pulled..." % docker_url)
-    ret, output = _run('docker pull %s' % docker_url)
+    sys.stderr.write("Please wait while the image (%s) is pulled...\n" % docker_url)
+    ret, output = _run('docker pull %s' % docker_url, stream=True)
     if ret != 0:
-        sys.stderr.write("\nPull failed:\n")
-        sys.stderr.write(output)
+        sys.stderr.write("\nPull failed. Are you authorized to run docker commands?")
         sys.exit(ret)
-    else:
-        sys.stderr.write(" Done.\n")
 
 
 def get_container_id(docker_client, container_name):
