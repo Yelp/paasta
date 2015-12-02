@@ -59,7 +59,13 @@ def add_subparser(subparsers):
 
 
 def validate_given_instances(service_instances, args_instances):
-    """Trying to find which instances are actually valid for the given service"""
+    """Given two lists of instances, return the intersection and difference between them.
+
+    :param service_instances: instances actually belonging to a service
+    :param args_instances: the desired instances
+    :returns: a tuple with (common, difference) indicating instances common in both
+    lists and those only in args_instances
+    """
     if len(args_instances) is 0:
         valid_instances = set(service_instances)
         invalid_instances = set([])
@@ -71,7 +77,11 @@ def validate_given_instances(service_instances, args_instances):
 
 
 def paasta_rollback(args):
-    """Call mark_for_deployment with rollback parameters"""
+    """Call mark_for_deployment with rollback parameters
+    :param args: contains all the arguments passed onto the script: service,
+    cluster, instance and sha. These arguments will be verified and passed onto
+    mark_for_deployment.
+    """
     service = figure_out_service_name(args)
     cluster = args.cluster
     git_url = get_git_url(service)
