@@ -243,7 +243,12 @@ def do_bounce(
         if drain_method.is_safe_to_kill(task):
             killed_tasks.add(task)
             log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
-            client.kill_task(task.app_id, task.id, scale=True)
+            try:
+                client.kill_task(task.app_id, task.id, scale=True)
+            except KeyError:
+                # TODO: Marathon 11 doesn't return a task object with scale=True,
+                # which the python binding see as a KeyError because it is expecting 'task'
+                pass
 
     apps_to_kill = []
     for app in old_app_live_tasks.keys():
