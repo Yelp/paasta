@@ -52,13 +52,13 @@ emergency-restart
 fsm
 info
 itest
+local-run
 mark-for-deployment
 metastatus
 performance-check
 push-to-registry
 security-check
-status
-version"
+status"
 
 mkdir -p /nail/etc
 [ -L /nail/etc/services ] || ln -s /work/yelp_package/itest/fake_services /nail/etc/services
