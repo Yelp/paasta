@@ -400,5 +400,5 @@ def test_modules_in_pkg():
     from paasta_tools.paasta_cli import cmds
     ret = tuple(utils.modules_in_pkg(cmds))
     assert '__init__' not in ret
-    assert 'version' in ret
+    assert 'cook_image' in ret
     assert 'list_clusters' in ret

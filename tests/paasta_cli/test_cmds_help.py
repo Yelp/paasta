@@ -33,8 +33,12 @@ def test_list_paasta_list(mock_stdout):
 def each_command():
     parser = get_argparser()
     # We're doing some wacky inspection here, let's make sure things are sane
-    assert isinstance(parser._actions[1], argparse._SubParsersAction)
-    choices = tuple(parser._actions[1].choices)
+    subparsers, = [
+        action
+        for action in parser._actions
+        if isinstance(action, argparse._SubParsersAction)
+    ]
+    choices = tuple(subparsers.choices)
     assert choices
     assert 'local-run' in choices
     return choices

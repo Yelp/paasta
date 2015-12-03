@@ -118,8 +118,8 @@ do
   echo "Checking for a man page"
   man -f paasta-$command
 done
-echo "Running 'paasta version', it should return non-zero"
-paasta version || (echo "paasta version failed to execute!"; exit 1)
+echo "Running 'paasta --version', it should return non-zero"
+paasta --version || (echo "paasta --version failed to execute!"; exit 1)
 
 if check_synapse_replication --help >/dev/null; then
   echo "Looks like we can check_synapse_replication with --help"

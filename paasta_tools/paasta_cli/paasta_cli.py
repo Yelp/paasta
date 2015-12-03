@@ -18,6 +18,8 @@
 import argcomplete
 import argparse
 
+import pkg_resources
+
 from paasta_tools.paasta_cli import cmds
 from paasta_tools.paasta_cli.utils \
     import modules_in_pkg as paasta_commands_dir, load_method
@@ -42,6 +44,15 @@ def add_subparser(command, subparsers):
 
 def get_argparser():
     parser = argparse.ArgumentParser(description="Yelp PaaSTA client")
+
+    # http://stackoverflow.com/a/8521644/812183
+    parser.add_argument(
+        '-V', '--version',
+        action='version',
+        version='paasta-tools {0}'.format(
+            pkg_resources.get_distribution('paasta-tools').version
+        )
+    )
 
     subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help")
 
