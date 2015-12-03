@@ -20,7 +20,7 @@ import argparse
 
 from paasta_tools.paasta_cli import cmds
 from paasta_tools.paasta_cli.utils \
-    import file_names_in_dir as paasta_commands_dir, load_method
+    import modules_in_pkg as paasta_commands_dir, load_method
 from paasta_tools.utils import configure_log
 
 
@@ -40,12 +40,7 @@ def add_subparser(command, subparsers):
     add_subparser_fn(subparsers)
 
 
-def parse_args():
-    """Initialize autocompletion and configure the argument parser.
-
-    :return: an argparse.Namespace object mapping parameter names to the inputs
-             from sys.argv
-    """
+def get_argparser():
     parser = argparse.ArgumentParser(description="Yelp PaaSTA client")
 
     subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help")
@@ -53,19 +48,29 @@ def parse_args():
     for command in sorted(paasta_commands_dir(cmds)):
         add_subparser(command, subparsers)
 
+    return parser
+
+
+def parse_args(argv):
+    """Initialize autocompletion and configure the argument parser.
+
+    :return: an argparse.Namespace object mapping parameter names to the inputs
+             from sys.argv
+    """
+    parser = get_argparser()
     argcomplete.autocomplete(parser)
 
-    return parser.parse_args()
+    return parser.parse_args(argv)
 
 
-def main():
+def main(argv=None):
     """Perform a paasta call. Read args from sys.argv and pass parsed args onto
     appropriate command in paata_cli/cmds directory.
 
     Ensure we kill any child pids before we quit
     """
     configure_log()
-    args = parse_args()
+    args = parse_args(argv)
     args.command(args)
 
 if __name__ == '__main__':
