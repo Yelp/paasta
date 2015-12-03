@@ -13,8 +13,8 @@
 # limitations under the License.
 
 import fnmatch
-import glob
 import logging
+import pkgutil
 import os
 from socket import gaierror
 from socket import gethostbyname_ex
@@ -46,21 +46,15 @@ def load_method(module_name, method_name):
     return method
 
 
-def file_names_in_dir(directory):
-    """Read and return the files names in the directory.
+def modules_in_pkg(pkg):
+    """Return the list of modules in a python package (a module with a
+    __init__.py file.)
 
-    :return: a list of strings such as ['list','check'] that correspond to the
-             files in the directory without their extensions.
+    :return: a list of strings such as `['list', 'check']` that correspond to
+             the module names in the package.
     """
-    dir_path = os.path.dirname(os.path.abspath(directory.__file__))
-    path = os.path.join(dir_path, '*.py')
-
-    for file_name in glob.glob(path):
-        basename = os.path.basename(file_name)
-        root, _ = os.path.splitext(basename)
-        if root == '__init__':
-            continue
-        yield root
+    for _, module_name, _ in pkgutil.walk_packages(pkg.__path__):
+        yield module_name
 
 
 def is_file_in_dir(file_name, path):

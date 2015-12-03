@@ -394,3 +394,11 @@ def test_list_teams():
 def test_lazy_choices_completer():
     completer = utils.lazy_choices_completer(lambda: ['1', '2', '3'])
     assert completer(prefix='') == ['1', '2', '3']
+
+
+def test_modules_in_pkg():
+    from paasta_tools.paasta_cli import cmds
+    ret = tuple(utils.modules_in_pkg(cmds))
+    assert '__init__' not in ret
+    assert 'version' in ret
+    assert 'list_clusters' in ret
