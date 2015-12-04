@@ -21,6 +21,7 @@ import urllib2
 
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_team
+from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import is_file_in_dir
 from paasta_tools.cli.utils import NoSuchService
@@ -107,10 +108,6 @@ def makefile_responds_to(target):
     # 2 - Don't know what you are talking about
     returncode, _ = _run(cmd, timeout=5)
     return returncode in [0, 1]
-
-
-def get_file_contents(path):
-    return open(path).read()
 
 
 def makefile_has_a_tab(makefile_path):

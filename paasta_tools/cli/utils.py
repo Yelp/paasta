@@ -75,6 +75,15 @@ def is_file_in_dir(file_name, path):
     return False
 
 
+def get_file_contents(path):
+    """Open a file for reading
+
+    :param path: path of file to read
+    """
+    with open(path) as p:
+        return p.read()
+
+
 def check_mark():
     """
     :return: string that can print a checkmark
@@ -575,45 +584,3 @@ def get_jenkins_build_output_url():
     if build_output:
         build_output = build_output + 'console'
     return build_output
-
-
-class PaastaValidateMessages:
-
-    """Collection of messages printed out by 'paasta validate'.
-    Helpful as it avoids cumbersome maintenance of the unit tests.
-    """
-
-    SCHEMA_VALID = success("Successfully validated schema")
-    SCHEMA_INVALID = failure(
-        "Failed to validate schema. More info:", "http://y/yelpsoa-configs")
-
-
-class PaastaValidateSchemas:
-
-    """Collection of jsonschemas used by 'paasta validate'.
-    Helpful as it avoids cumbersome maintenance of the unit tests.
-    """
-
-    MARATHON_SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "description": "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html",
-        "type": "object",
-        "minProperties": 1,
-        "additionalProperties": {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": True
-        }
-    }
-
-    CHRONOS_SCHEMA = {
-        "$schema": "http://json-schema.org/draft-04/schema#",
-        "description": "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#chronos-clustername-yaml",
-        "type": "object",
-        "minProperties": 1,
-        "additionalProperties": {
-            "type": "object",
-            "properties": {},
-            "additionalProperties": True
-        }
-    }

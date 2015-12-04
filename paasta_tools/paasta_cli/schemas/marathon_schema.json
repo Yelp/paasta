@@ -1,0 +1,11 @@
+{
+    "$schema": "http://json-schema.org/draft-04/schema#",
+    "description": "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#marathon-clustername-yaml",
+    "type": "object",
+    "minProperties": 1,
+    "additionalProperties": {
+        "type": "object",
+        "properties": {},
+        "additionalProperties": true
+    }
+}

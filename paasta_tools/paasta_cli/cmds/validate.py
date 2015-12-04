@@ -15,6 +15,7 @@
 
 import json
 import os
+import pkgutil
 import yaml
 
 from glob import glob
@@ -22,36 +23,57 @@ from glob import glob
 from jsonschema import Draft4Validator
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
-from paasta_tools.paasta_cli.utils import guess_service_name
-from paasta_tools.paasta_cli.utils import PaastaValidateMessages
-from paasta_tools.paasta_cli.utils import PaastaValidateSchemas
+from paasta_tools.paasta_cli.utils import failure
+from paasta_tools.paasta_cli.utils import get_file_contents
+from paasta_tools.paasta_cli.utils import success
 
 
-def get_file_contents(path):
-    """Open a file for reading
+SCHEMA_VALID = success("Successfully validated schema")
 
-    :param path: path of file to read"""
-    return open(path).read()
+SCHEMA_INVALID = failure(
+    "Failed to validate schema. More info:",
+    "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+
+SCHEMA_NOT_FOUND = failure(
+    "Failed to find schema to validate against. More info:",
+    "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+
+FAILED_READING_FILE = failure(
+    "Failed to read file. More info:",
+    "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
 
 
 def get_schema(file_type):
     """Get the correct schema to use for validation
 
-    :param file_type: what schema type should we validate against"""
-    schema_name = '%s_SCHEMA' % file_type.upper()
-    return getattr(PaastaValidateSchemas, schema_name)
+    :param file_type: what schema type should we validate against
+    """
+    schema_path = 'schemas/%s_schema.json' % file_type
+    try:
+        schema = pkgutil.get_data('paasta_tools.paasta_cli', schema_path)
+    except IOError:
+        return None
+    return json.loads(schema)
 
 
 def validate_schema(file_path, file_type):
     """Check if the specified config file has a valid schema
 
     :param file_path: path to file to validate
-    :param file_type: what schema type should we validate against"""
+    :param file_type: what schema type should we validate against
+    """
     schema = get_schema(file_type)
+    if (schema is None):
+        print '%s: %s' % (SCHEMA_NOT_FOUND, file_path)
+        return
     validator = Draft4Validator(schema, format_checker=FormatChecker())
     basename = os.path.basename(file_path)
     extension = os.path.splitext(basename)[1]
-    config_file = get_file_contents(file_path)
+    try:
+        config_file = get_file_contents(file_path)
+    except IOError:
+        print '%s: %s' % (FAILED_READING_FILE, file_path)
+        return
     if extension == '.yaml':
         config_file_object = yaml.load(config_file)
     elif extension == '.json':
@@ -61,10 +83,10 @@ def validate_schema(file_path, file_type):
     try:
         validator.validate(config_file_object)
     except ValidationError as e:
-        print '%s: %s' % (PaastaValidateMessages.SCHEMA_INVALID, file_path)
+        print '%s: %s' % (SCHEMA_INVALID, file_path)
         print '  Validation Message: %s' % e.message
     else:
-        print '%s: %s' % (PaastaValidateMessages.SCHEMA_VALID, file_path)
+        print '%s: %s' % (SCHEMA_VALID, file_path)
 
 
 def validate_all_schemas(service_path):
@@ -93,7 +115,6 @@ def add_subparser(subparsers):
 def paasta_validate(args):
     """Analyze the service in the PWD to determine if conf files are all valid
     :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
-    service = guess_service_name()
-    service_path = os.path.join('/nail/etc/services', service)
+    service_path = os.getcwd()
 
     validate_all_schemas(service_path)
