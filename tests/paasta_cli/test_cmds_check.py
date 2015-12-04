@@ -21,7 +21,6 @@ from paasta_tools.paasta_cli.cmds.check import deploy_check
 from paasta_tools.paasta_cli.cmds.check import deploy_has_performance_check
 from paasta_tools.paasta_cli.cmds.check import deploy_has_security_check
 from paasta_tools.paasta_cli.cmds.check import docker_check
-from paasta_tools.paasta_cli.cmds.check import docker_file_reads_from_yelpcorp
 from paasta_tools.paasta_cli.cmds.check import get_marathon_steps
 from paasta_tools.paasta_cli.cmds.check import makefile_check
 from paasta_tools.paasta_cli.cmds.check import makefile_has_a_tab
@@ -142,58 +141,31 @@ def test_check_deploy_check_fail(mock_stdout, mock_is_file_in_dir):
 
 
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
-@patch('paasta_tools.paasta_cli.cmds.check.'
-       'docker_file_reads_from_yelpcorp')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_docker_check_pass(
-        mock_stdout, mock_docker_file_reads_from_yelpcorp,
-        mock_is_file_in_dir):
-    # Dockerfile exists and is valid
-
+def test_check_docker_exists_and_is_valid(
+    mock_stdout,
+    mock_is_file_in_dir,
+):
     mock_is_file_in_dir.return_value = "/fake/path"
-    mock_docker_file_reads_from_yelpcorp.return_value = True
 
     docker_check()
     output = mock_stdout.getvalue()
 
     assert PaastaCheckMessages.DOCKERFILE_FOUND in output
-    assert PaastaCheckMessages.DOCKERFILE_YELPCORP in output
 
 
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
-@patch('paasta_tools.paasta_cli.cmds.check.'
-       'docker_file_reads_from_yelpcorp')
-@patch('sys.stdout', new_callable=StringIO)
-def test_check_docker_check_doesnt_read_yelpcorp(
-        mock_stdout, mock_docker_file_reads_from_yelpcorp,
-        mock_is_file_in_dir):
-
-    mock_is_file_in_dir.return_value = "/fake/path"
-    mock_docker_file_reads_from_yelpcorp.return_value = False
-
-    docker_check()
-    output = mock_stdout.getvalue()
-
-    assert PaastaCheckMessages.DOCKERFILE_FOUND in output
-    assert PaastaCheckMessages.DOCKERFILE_NOT_YELPCORP in output
-
-
-@patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
-@patch('paasta_tools.paasta_cli.cmds.check.'
-       'docker_file_reads_from_yelpcorp')
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_docker_check_file_not_found(
-        mock_stdout, mock_docker_file_reads_from_yelpcorp,
-        mock_is_file_in_dir):
-
+    mock_stdout,
+    mock_is_file_in_dir
+):
     mock_is_file_in_dir.return_value = False
-    mock_docker_file_reads_from_yelpcorp.return_value = False
 
     docker_check()
     output = mock_stdout.getvalue()
 
     assert PaastaCheckMessages.DOCKERFILE_MISSING in output
-    assert PaastaCheckMessages.DOCKERFILE_NOT_YELPCORP not in output
 
 
 @patch('paasta_tools.paasta_cli.cmds.check.is_file_in_dir')
@@ -616,28 +588,6 @@ def test_marathon_deployments_marathon_but_not_deploy(
     actual = marathon_deployments_check('fake_service')
     assert actual is False
     assert 'BOGUS' in mock_stdout.getvalue()
-
-
-@patch('paasta_tools.paasta_cli.cmds.check.read_dockerfile_lines', autospec=True)
-def test_docker_file_reads_from_yelpcorp_sad(
-    mock_read_dockerfile_lines,
-):
-    mock_read_dockerfile_lines.return_value = [
-        '# some comment',
-        'FROM BAD',
-    ]
-    assert docker_file_reads_from_yelpcorp("unused") is False
-
-
-@patch('paasta_tools.paasta_cli.cmds.check.read_dockerfile_lines', autospec=True)
-def test_docker_file_reads_from_yelpcorp_happy(
-    mock_read_dockerfile_lines,
-):
-    mock_read_dockerfile_lines.return_value = [
-        '# some comment',
-        'FROM docker-dev.yelpcorp.com/trusty_yelp',
-    ]
-    assert docker_file_reads_from_yelpcorp("unused") is True
 
 
 def test_makefile_check():
