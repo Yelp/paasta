@@ -365,7 +365,8 @@ def docker_pull_image(docker_url):
     we can use better credential management, but for now this function assumes the
     user running the command has already been authorized for the registry"""
     sys.stderr.write("Please wait while the image (%s) is pulled...\n" % docker_url)
-    ret, output = _run('docker pull %s' % docker_url, stream=True)
+    DEVNULL = open(os.devnull, 'wb')
+    ret, output = _run('docker pull %s' % docker_url, stream=True, stdin=DEVNULL)
     if ret != 0:
         sys.stderr.write("\nPull failed. Are you authorized to run docker commands?")
         sys.exit(ret)

@@ -586,7 +586,7 @@ class SystemPaastaConfig(dict):
             raise PaastaNotConfiguredError('Could not find scribe_map in configuration directory: %s' % self.directory)
 
 
-def _run(command, env=os.environ, timeout=None, log=False, stream=False, **kwargs):
+def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
     output.
 
@@ -608,8 +608,7 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, **kwarg
         instance = kwargs.get('instance', ANY_INSTANCE)
         loglevel = kwargs.get('loglevel', DEFAULT_LOGLEVEL)
     try:
-        DEVNULL = open(os.devnull, 'wb')
-        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, stdin=DEVNULL, env=env)
+        process = Popen(shlex.split(command), stdout=PIPE, stderr=STDOUT, stdin=stdin, env=env)
         process.name = command
         # start the timer if we specified a timeout
         if timeout:

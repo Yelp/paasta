@@ -1029,7 +1029,7 @@ def test_get_instance_config_unknown(
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 def test_pull_image_runs_docker_pull(mock_run):
     docker_pull_image('fake_image')
-    mock_run.assert_called_once_with('docker pull fake_image', stream=True)
+    mock_run.assert_called_once_with('docker pull fake_image', stream=True, stdin=mock.ANY)
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run._run', autospec=True, return_value=(42, 'fake _run output'))
@@ -1037,4 +1037,4 @@ def test_pull_docker_image_exists_with_failure(mock_run):
     with raises(SystemExit) as excinfo:
         docker_pull_image('fake_image')
     assert excinfo.value.code == 42
-    mock_run.assert_called_once_with('docker pull fake_image', stream=True)
+    mock_run.assert_called_once_with('docker pull fake_image', stream=True, stdin=mock.ANY)
