@@ -1,6 +1,44 @@
 Cooking: How it all comes together
 ==================================
 
+Ways That PaaSTA Can Run Services
+---------------------------------
+
+Long Running Services
+^^^^^^^^^^^^^^^^^^^^^
+
+Long running services are are processes that are expected to run continuously
+and usually have the same process id throughout. PaaSTA uses
+`Marathon <yelpsoa_configs.html#marathon-clustername-yaml>`_ to configure how these
+services should run.
+
+These services often serve network traffic, usually HTTP. PaaSTA integrates with
+SmartStack to make it easy for others to discover these long running services, or
+operators can use alternative service discovery methods to interact with them.
+
+Alternative names: workers, daemons, batch daemons, servers
+
+Scheduled Jobs
+^^^^^^^^^^^^^^
+
+Scheduled tasks are those tasks that are periodically run, and are not expected
+to run continously. Due to their ephemeral nature, they often do not expose a TCP port.
+
+PaaSTA uses `Chronos <yelpsoa_configs.html#chronos-clustername-yaml>_` to define
+how these scheduled jobs should be executed, and how often they should run.
+
+Alternative names: scheduled tasks, scheduled batches, cron jobs (Note: Chronos does not support cron-syntax)
+
+Adhoc Tasks
+^^^^^^^^^^^
+
+Adhoc tasks are often required to support one-time tasks, like a database migration.
+Sometimes they are also useful for exploritory purposes, or even sometimes for end-to-end
+tests. PaaSTA supports this use case through ``paasta local-run``, which supports
+building images locally, as well as using the same image as a "live" deployment.
+
+Alternative names: Adhoc batches, interactive batches, one-off dynos, one-off tasks
+
 Build and deploy workflow
 -------------------------
 `These slides
@@ -152,7 +190,7 @@ There are four bounce methods available:
 A service author can select a bounce method by setting ``bounce_method`` in
 the marathon configuration file. (e.g. ``marathon-SHARED.yaml``) This setting
 is set per-instance. If not set, it will default to the ``crossover`` method.
-See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>_` file.
+See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-yaml>`_ file.
 
 Additionally, a service author can configure how the bounce code determines
 which instances are healthy by setting ``bounce_health_params``. This
