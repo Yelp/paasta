@@ -24,8 +24,14 @@ instancename MAY have:
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
   * ``nerve_ns``: Specifies that this namespace should be routed to by another
-    namespace. E.g. ``canary`` instances have a different configuration but
-    traffic from the ``main`` pool reaches them.
+    namespace in SmartStack. In SmartStack, each service has difference pools
+    of backend servers that are listening on a particul port. In PaaSTA we call
+    these "Nerve Namespaces". By default, the Namespace assigned to a particular
+    instance in PaaSTA has the *same name*, so the ``main`` instance will correspond
+    to the ``main`` Nerve namespace defined in ``smartstack.yaml``. This ``nerve_ns``
+    option allows users to make particular instances appear under an *alternative*
+    namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
+    their traffic to the same pool as the other ``main`` instances.
 
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <bounce_lib.html>`_
 
