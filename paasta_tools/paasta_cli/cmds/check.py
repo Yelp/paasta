@@ -83,30 +83,12 @@ def deploy_has_performance_check(service):
         return False
 
 
-def docker_file_reads_from_yelpcorp(path):
-    """Ensure Dockerfile is valid.
-
-    :param path : path to a Dockerfile
-    :return : A boolean that is True if the Dockerfile reads from yelpcorp"""
-
-    docker_dev_re = re.compile('FROM\s+docker-dev.yelpcorp.com.*')
-    for line in read_dockerfile_lines(path):
-        if docker_dev_re.match(line):
-            return True
-    return False
-
-
 def docker_check():
     """Check whether Dockerfile exists in service directory, and is valid.
     Prints suitable message depending on outcome"""
     docker_file_path = is_file_in_dir('Dockerfile', os.getcwd())
     if docker_file_path:
         print PaastaCheckMessages.DOCKERFILE_FOUND
-
-        if docker_file_reads_from_yelpcorp(docker_file_path):
-            print PaastaCheckMessages.DOCKERFILE_YELPCORP
-        else:
-            print PaastaCheckMessages.DOCKERFILE_NOT_YELPCORP
     else:
         print PaastaCheckMessages.DOCKERFILE_MISSING
 
