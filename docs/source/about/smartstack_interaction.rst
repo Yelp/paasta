@@ -170,6 +170,87 @@ ensures that clients can be satisfied by tasks in the same region if not by
 tasks in the same habitat.
 
 
+The Relationship Between Nerve "namespaces" and PaaSTA "instances"
+------------------------------------------------------------------
+
+Example: One-to-one Mapping
+^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+SmartStack's Nerve component can be configured to advertise different
+components of the same service on different ports. In PaaSTA we call these
+"Nerve namespaces". Here is an example of a service with two namespaces::
+
+    #smartstack.yaml
+    main:
+        proxy_port: 20001
+    api:
+        proxy_port: 20002
+
+The corresponding Marathon configuration in PaaSTA might look like this::
+
+    #marathon.yaml
+    main:
+       instances: 10
+       cmd: myserver.py
+    api:
+       instances: 3
+       cmd: apiserver.py
+
+In this way, a service can provide two different "modes", while using the same
+codebases. Here there is a one-to-one mapping between the "Nerve namespaces" and
+the "PaaSTA instances". By default the PaaSTA will advertise a service under the
+Nerve namespace with the *same name* as the instance.
+
+Example: Canary
+^^^^^^^^^^^^^^^
+
+However, there are situations where you would like to pool instances together under
+the same Nerve namespace. Consider this example::
+
+    #smartstack.yaml
+    main:
+        proxy_port: 20001
+
+    #marathon.yaml
+    main:
+        instances: 10
+        cmd: myserver.py
+    canary:
+        instances: 1
+        nerve_ns: main
+        cmd: myserver.py --experiment
+
+With this example, the ``canary`` instance gets advertised *under* the ``main`` Nerve
+namespace, which gives an effective pool of *11* instances listening behind port 20001.
+
+This allows the canary instance, which may be configured differently than the main instance,
+to participate in the normal "main" pool.
+
+Example: Sharding
+^^^^^^^^^^^^^^^^^
+
+Sharding is another use case for using alternative namespaces::
+
+    #smartstack.yaml
+    main:
+        proxy_port: 20001
+
+    #marathon.yaml
+    shard1:
+        instances: 10
+        nerve_ns: main
+    shard2:
+        instances: 10
+        nerve_ns: main
+    shard3:
+        instances: 10
+        nerve_ns: main
+
+These shards all end up being load-balanced in the same "main" pool. More
+complex YAML definitions can take advantage of YAML's
+`anchors and references <https://gist.github.com/bowsersenior/979804>`_
+to reduce duplication.
+
 Addendum: Non-Smartstack Monitoring
 ***********************************
 
