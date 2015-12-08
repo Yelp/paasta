@@ -1,8 +1,70 @@
 # Change Log
 
-## [Unreleased](https://github.com/Yelp/paasta/tree/HEAD)
+## [0.16.4](https://github.com/Yelp/paasta/tree/0.16.4) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.3...0.16.4)
 
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.8...HEAD)
+**Closed issues:**
+
+- paasta local-run --interactive default cmd is "b a s h" [\#115](https://github.com/Yelp/paasta/issues/115)
+- paasta local-run --help crashes [\#114](https://github.com/Yelp/paasta/issues/114)
+- automate builds with pypi [\#35](https://github.com/Yelp/paasta/issues/35)
+
+**Merged pull requests:**
+
+- Documented the relationship between instance and nerve\_ns better [\#112](https://github.com/Yelp/paasta/pull/112) ([solarkennedy](https://github.com/solarkennedy))
+- Support --version instead of version [\#109](https://github.com/Yelp/paasta/pull/109) ([asottile](https://github.com/asottile))
+- Fix --help for local-run and add a test [\#108](https://github.com/Yelp/paasta/pull/108) ([asottile](https://github.com/asottile))
+
+## [v0.16.3](https://github.com/Yelp/paasta/tree/v0.16.3) (2015-12-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.2...v0.16.3)
+
+**Merged pull requests:**
+
+- Setup Travis autodeploy configs [\#103](https://github.com/Yelp/paasta/pull/103) ([tomelm](https://github.com/tomelm))
+- Paasta rollback now accepts none, one or a list of instances. [\#99](https://github.com/Yelp/paasta/pull/99) ([zeldinha](https://github.com/zeldinha))
+- Enabled local-run to work on docker images on registries instead of building locally [\#88](https://github.com/Yelp/paasta/pull/88) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.2](https://github.com/Yelp/paasta/tree/v0.16.2) (2015-11-30)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.1...v0.16.2)
+
+**Closed issues:**
+
+- 0.16.1 Release Broke 'paasta status' [\#91](https://github.com/Yelp/paasta/issues/91)
+- http://paasta.readthedocs.org/en/latest/ references y/paasta [\#57](https://github.com/Yelp/paasta/issues/57)
+
+**Merged pull requests:**
+
+- Fix scale condition poistion [\#100](https://github.com/Yelp/paasta/pull/100) ([dichiarafrancesco](https://github.com/dichiarafrancesco))
+- remove hardcoded docker registry location [\#93](https://github.com/Yelp/paasta/pull/93) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- bump scribereader version in line with aed1812b917daba17a5fd8f1a0fe9b… [\#92](https://github.com/Yelp/paasta/pull/92) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Only allow the itest\_% Makefile target to run at Yelp [\#90](https://github.com/Yelp/paasta/pull/90) ([nhandler](https://github.com/nhandler))
+- More smartstack.yaml docs: explanation of the top level, and moving a… [\#89](https://github.com/Yelp/paasta/pull/89) ([EvanKrall](https://github.com/EvanKrall))
+- Bump scribereader requirement [\#86](https://github.com/Yelp/paasta/pull/86) ([asottile](https://github.com/asottile))
+
+## [v0.16.1](https://github.com/Yelp/paasta/tree/v0.16.1) (2015-11-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.0...v0.16.1)
+
+**Merged pull requests:**
+
+- Minor fixups to setup.py [\#87](https://github.com/Yelp/paasta/pull/87) ([asottile](https://github.com/asottile))
+- Added paasta\_rollback command [\#79](https://github.com/Yelp/paasta/pull/79) ([zeldinha](https://github.com/zeldinha))
+- Add emergency scale feature [\#74](https://github.com/Yelp/paasta/pull/74) ([dichiarafrancesco](https://github.com/dichiarafrancesco))
+- Make local-run default to use bash if set to be interactive [\#73](https://github.com/Yelp/paasta/pull/73) ([solarkennedy](https://github.com/solarkennedy))
+- drain\_method\_params affect drain\_method, not bounce\_method. Also fix uwsgi typo. [\#58](https://github.com/Yelp/paasta/pull/58) ([EvanKrall](https://github.com/EvanKrall))
+- Flesh out docs for smartstack.yaml [\#47](https://github.com/Yelp/paasta/pull/47) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.16.0](https://github.com/Yelp/paasta/tree/v0.16.0) (2015-11-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.9...v0.16.0)
+
+**Merged pull requests:**
+
+- don't use vars\(\) to check for scribereader [\#80](https://github.com/Yelp/paasta/pull/80) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- update dh-virtualenv location [\#78](https://github.com/Yelp/paasta/pull/78) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Update Flynn comparison [\#76](https://github.com/Yelp/paasta/pull/76) ([titanous](https://github.com/titanous))
+- Added first pass at paasta-contract transplant [\#75](https://github.com/Yelp/paasta/pull/75) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.15.9](https://github.com/Yelp/paasta/tree/v0.15.9) (2015-11-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.8...v0.15.9)
 
 **Merged pull requests:**
 
