@@ -1,7 +1,14 @@
 # Change Log
 
-## [0.16.5](https://github.com/Yelp/paasta/tree/0.16.5) (2015-12-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.4...0.16.5)
+## [0.16.6](https://github.com/Yelp/paasta/tree/0.16.6) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.5...0.16.6)
+
+**Merged pull requests:**
+
+- Bump max\_consecutive\_failures to 30 \(5 minutes\) [\#101](https://github.com/Yelp/paasta/pull/101) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.5](https://github.com/Yelp/paasta/tree/v0.16.5) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.4...v0.16.5)
 
 **Merged pull requests:**
 
