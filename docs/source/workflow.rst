@@ -25,7 +25,8 @@ Scheduled tasks are those tasks that are periodically run, and are not expected
 to run continously. Due to their ephemeral nature, they often do not expose a TCP port.
 
 PaaSTA uses `Chronos <yelpsoa_configs.html#chronos-clustername-yaml>_` to define
-how these scheduled jobs should be executed, and how often they should run.
+the command these scheduled jobs should execute, as well as their RAM, CPU, environment
+variables, etc.
 
 Alternative names: scheduled tasks, scheduled batches, cron jobs (Note: Chronos does not support cron-syntax)
 
