@@ -79,6 +79,10 @@ else
   exit 1
 fi
 
+if ! /usr/share/python/paasta-tools/bin/python -c 'import yaml; assert yaml.__with_libyaml__' >/dev/null; then
+  echo "Python doesn't have the C-based yaml loader and will be really slow!"
+fi
+
 for scr in $SCRIPTS
 do
   which $scr >/dev/null || (echo "$scr failed to install!"; exit 1)
