@@ -22,7 +22,11 @@ instance MAY have:
     A task can burst to use any available free CPU, but is guaranteed to get
     the CPU shares specified.
 
-  * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB).
+  * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
+    memory is constrained to the specified limit, and tasks will reach out-of-memory
+    (OOM) conditions if they attempt to exceed these limits, and then be killed.
+    There is currently not way to detect if this condition is met, other than a
+    ``TASK_FAILED`` message.
 
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
