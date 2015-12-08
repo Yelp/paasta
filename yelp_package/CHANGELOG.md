@@ -1,7 +1,7 @@
 # Change Log
 
-## [0.16.6](https://github.com/Yelp/paasta/tree/0.16.6) (2015-12-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.5...0.16.6)
+## [v0.16.6](https://github.com/Yelp/paasta/tree/v0.16.6) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.5...v0.16.6)
 
 **Merged pull requests:**
 
