@@ -1415,7 +1415,7 @@ class TestMarathonServiceConfig(object):
                 "intervalSeconds": 10,
                 "portIndex": 0,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1431,7 +1431,7 @@ class TestMarathonServiceConfig(object):
                 "intervalSeconds": 10,
                 "portIndex": 0,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1450,7 +1450,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1470,7 +1470,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1490,7 +1490,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1515,7 +1515,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": fake_timeout,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1700,7 +1700,7 @@ def test_create_complete_config_with_smartstack():
                     'timeoutSeconds': 10,
                     'intervalSeconds': 10,
                     'gracePeriodSeconds': 60,
-                    'maxConsecutiveFailures': 6,
+                    'maxConsecutiveFailures': 30,
                     'path': '/status',
                 }
             ],

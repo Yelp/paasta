@@ -140,10 +140,12 @@ unhealthy tasks from continuously filling up disks and logs -- the more times
 that your service has failed to start, the longer Mesos will wait before
 trying to start it again.
 
-Mesos *will* healthcheck the task based on the same healthcheck that Smartstack
-uses, in order to prune unhealthy tasks. This pruning is less agressive than
-smartstack's checking, so a dead task will go DOWN in smartstack before it is
-reaped by Mesos.
+Mesos *will* healthcheck the task based on the same healthcheck that SmartStack
+uses, in order to prune unhealthy tasks. This pruning is less aggressive than
+SmartStack's checking, so a dead task will go DOWN in SmartStack before it is
+reaped by Marathon. By default the healthchecks occur every 10 seconds, and a service
+must fail 30 times before that task is pruned and a new one is launched in its place.
+This means a task had 5 minutes by default to properly respond to its healthchecks.
 
 Time Zones In Docker Containers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
