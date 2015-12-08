@@ -25,6 +25,9 @@ from jsonschema import FormatChecker
 from jsonschema import ValidationError
 from paasta_tools.paasta_cli.utils import failure
 from paasta_tools.paasta_cli.utils import get_file_contents
+from paasta_tools.paasta_cli.utils import lazy_choices_completer
+from paasta_tools.paasta_cli.utils import list_services
+from paasta_tools.paasta_cli.utils import PaastaColors
 from paasta_tools.paasta_cli.utils import success
 
 
@@ -41,6 +44,11 @@ SCHEMA_NOT_FOUND = failure(
 FAILED_READING_FILE = failure(
     "Failed to read file. More info:",
     "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+
+UNKNOWN_SERVICE = "Unable to determine service to validate.\n" \
+                  "Please supply the %s name you wish to " \
+                  "validate with the %s option." \
+                  % (PaastaColors.cyan('SERVICE'), PaastaColors.cyan('-s'))
 
 
 def get_schema(file_type):
@@ -93,7 +101,8 @@ def validate_all_schemas(service_path):
     """Finds all recognized config files in service directory,
     and validates their schema.
 
-    :param service_path: path to location of configuration files"""
+    :param service_path: path to location of configuration files
+    """
 
     path = os.path.join(service_path, '*.yaml')
 
@@ -109,12 +118,47 @@ def add_subparser(subparsers):
         'validate',
         description="Execute 'paasta validate' from service repo root",
         help="Validate that all paasta config files in pwd are correct")
+    validate_parser.add_argument(
+        '-s', '--service',
+        required=False,
+        help="Service that you want to validate. Like 'example_service'.",
+    ).completer = lazy_choices_completer(list_services)
+    validate_parser.add_argument(
+        '-y', '--yelpsoa-config-root',
+        dest='yelpsoa_config_root',
+        default=os.getcwd(),
+        required=False,
+        help="Path to root of yelpsoa-configs checkout",
+    )
     validate_parser.set_defaults(command=paasta_validate)
+
+
+def get_service_path(service, soa_dir):
+    """Determine the path of the directory containing the conf files
+
+    :param args: argparse.Namespace obj created from sys.args by paasta_cli
+    """
+    if service:
+        return os.path.join(soa_dir, service)
+    else:
+        if soa_dir == os.getcwd():
+            return os.getcwd()
+        else:
+            print UNKNOWN_SERVICE
+            return None
 
 
 def paasta_validate(args):
     """Analyze the service in the PWD to determine if conf files are all valid
-    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
-    service_path = os.getcwd()
+
+    :param args: argparse.Namespace obj created from sys.args by paasta_cli
+    """
+
+    service = args.service
+    soa_dir = args.yelpsoa_config_root
+    service_path = get_service_path(service, soa_dir)
+
+    if service_path is None:
+        return 1
 
     validate_all_schemas(service_path)

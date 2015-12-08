@@ -12,25 +12,70 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import mock
+import os
+
 from mock import patch
 from StringIO import StringIO
 
 from paasta_tools.paasta_cli.cmds.validate import get_schema
+from paasta_tools.paasta_cli.cmds.validate import get_service_path
 from paasta_tools.paasta_cli.cmds.validate import validate_schema
 from paasta_tools.paasta_cli.cmds.validate import paasta_validate
 from paasta_tools.paasta_cli.cmds.validate import SCHEMA_VALID
 from paasta_tools.paasta_cli.cmds.validate import SCHEMA_INVALID
+from paasta_tools.paasta_cli.cmds.validate import UNKNOWN_SERVICE
 
 
 @patch('paasta_tools.paasta_cli.cmds.validate.validate_all_schemas')
+@patch('paasta_tools.paasta_cli.cmds.validate.get_service_path')
 def test_paasta_validate_calls_everything(
-        mock_validate_all_schemas
+    mock_get_service_path,
+    mock_validate_all_schemas
 ):
     # Ensure each check in 'paasta_validate' is called
 
-    paasta_validate(None)
+    mock_get_service_path.return_value = 'unused_path'
+
+    args = mock.MagicMock()
+    args.service = None
+    args.soa_dir = None
+
+    paasta_validate(args)
 
     assert mock_validate_all_schemas.called
+
+
+@patch('sys.stdout', new_callable=StringIO)
+def test_get_service_path_unknown(
+    mock_stdout
+):
+    service = None
+    soa_dir = 'unused'
+
+    assert get_service_path(service, soa_dir) is None
+
+    output = mock_stdout.getvalue()
+
+    assert UNKNOWN_SERVICE in output
+
+
+def test_get_service_path_cwd():
+    service = None
+    soa_dir = os.getcwd()
+
+    service_path = get_service_path(service, soa_dir)
+
+    assert service_path == os.getcwd()
+
+
+def test_get_service_path_soa_dir():
+    service = 'some_service'
+    soa_dir = 'some/path'
+
+    service_path = get_service_path(service, soa_dir)
+
+    assert service_path == '%s/%s' % (soa_dir, service)
 
 
 def is_schema(schema):
