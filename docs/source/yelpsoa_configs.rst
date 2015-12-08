@@ -15,11 +15,14 @@ lowercase. (non alphanumeric lowercase characters are ignored)
 The yaml where marathon jobs are actually defined.
 
 Top level keys are instancenames, e.g. ``main`` and ``canary``. Each
-instancename MAY have:
+instance MAY have:
 
-  * ``cpus``: Number of CPUs an instance needs.
+  * ``cpus``: Number of CPUs an instance needs. Defaults to .25. CPUs in Mesos
+    are "shares" and represent a minimal amount of a CPU to share with a task.
+    A task can burst to use any available free CPU, but is guaranteed to get
+    the CPU shares specified.
 
-  * ``mem``: Memory (in MB) an instance needs.
+  * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB).
 
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
@@ -39,7 +42,7 @@ instancename MAY have:
 
     * ``check_haproxy``: Boolean indicating if PaaSTA should check the local
       haproxy to make sure this task has been registered and discovered
-      (Defaults to ``True`` if service is in Smartstack)
+      (Defaults to ``True`` if service is in SmartStack)
 
     * ``min_task_uptime``: Minimum number of seconds that a task must be
       running before we consider it healthy (Disabled by default)
@@ -337,7 +340,7 @@ latency zones. For information on this, see the `environment_tools documentation
      immediately below). You add both types to the advertise list and then when
      you’ve switched ``discover`` you shrink it back down to one.
 
- * ``discover``: Location type that smartstack should discover your service
+ * ``discover``: Location type that SmartStack should discover your service
    instances at. Think of this as the answer to “where does synapse look for
    registrations”. Defaults to ‘region’.
 
