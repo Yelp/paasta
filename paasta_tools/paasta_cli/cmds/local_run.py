@@ -600,7 +600,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     if args.interactive is True and args.cmd is None:
-        command = 'bash'
+        command = ['bash']
     elif args.cmd:
         command = shlex.split(args.cmd)
     else:
