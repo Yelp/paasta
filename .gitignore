@@ -6,7 +6,6 @@ dist/
 .*.sw?
 paasta_tools.egg-info/
 docs/man/
-docs/source/generated/
 tags
 venv
 .bash_history

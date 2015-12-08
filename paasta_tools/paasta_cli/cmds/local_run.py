@@ -261,20 +261,24 @@ def add_subparser(subparsers):
     build_pull_group = list_parser.add_mutually_exclusive_group()
     build_pull_group.add_argument(
         '-b', '--build',
-        help=("Build the docker image to run from scratch using the local Makefile's ",
-              "'cook-image' target. Defaults to try to use the local Makefile if present. ",
-              "otherwise local-run will pull and run the Docker image that is marked for ",
-              "deployment in the Docker registry. Mutually exclusive with '--pull'."),
+        help=(
+            "Build the docker image to run from scratch using the local Makefile's "
+            "'cook-image' target. Defaults to try to use the local Makefile if present. "
+            "otherwise local-run will pull and run the Docker image that is marked for "
+            "deployment in the Docker registry. Mutually exclusive with '--pull'."
+        ),
         required=False,
         action='store_true',
         default=None,
     )
     build_pull_group.add_argument(
         '-p', '--pull',
-        help=("Pull the docker image marked for deployment from the Docker registry and ",
-              "use that for the local-run. This is the opposite of --build. Defaults to ",
-              "autodetect a Makefile, if present will not pull, and instead assume that ",
-              "a local build is desired. Mutally exclusive with '--build'"),
+        help=(
+            "Pull the docker image marked for deployment from the Docker registry and "
+            "use that for the local-run. This is the opposite of --build. Defaults to "
+            "autodetect a Makefile, if present will not pull, and instead assume that "
+            "a local build is desired. Mutally exclusive with '--build'"
+        ),
         required=False,
         action='store_true',
         default=None,
@@ -583,7 +587,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         volumes.append('%s:%s:%s' % (volume['hostPath'], volume['containerPath'], volume['mode'].lower()))
 
     if args.interactive is True and args.cmd is None:
-        command = 'bash'
+        command = ['bash']
     elif args.cmd:
         command = shlex.split(args.cmd)
     else:

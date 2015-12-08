@@ -467,3 +467,11 @@ def test_guess_instance_fails(
             args=args,
         )
     assert excinfo.value.code == 2
+
+
+def test_modules_in_pkg():
+    from paasta_tools.paasta_cli import cmds
+    ret = tuple(utils.modules_in_pkg(cmds))
+    assert '__init__' not in ret
+    assert 'cook_image' in ret
+    assert 'list_clusters' in ret

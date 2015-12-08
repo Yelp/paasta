@@ -11,12 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
 
-import mock
+import pytest
 
-from paasta_tools.paasta_cli.cmds import version
+from paasta_tools.paasta_cli.paasta_cli import main
 
 
-def test_paasta_version():
-    args = mock.MagicMock()
-    version.paasta_version(args)
+def test_paasta_version(capsys):
+    with pytest.raises(SystemExit) as excinfo:
+        main(('-V',))
+    assert excinfo.value.code == 0
+    output = capsys.readouterr()[1]
+    assert re.match('^paasta-tools \d+\.\d+\.\d+\n$', output)
