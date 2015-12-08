@@ -1,7 +1,14 @@
 # Change Log
 
-## [0.16.4](https://github.com/Yelp/paasta/tree/0.16.4) (2015-12-08)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.3...0.16.4)
+## [0.16.5](https://github.com/Yelp/paasta/tree/0.16.5) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.4...0.16.5)
+
+**Merged pull requests:**
+
+- Make backoff\_seconds work as a function of the instance count. [\#102](https://github.com/Yelp/paasta/pull/102) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.4](https://github.com/Yelp/paasta/tree/v0.16.4) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.3...v0.16.4)
 
 **Closed issues:**
 
@@ -11,6 +18,7 @@
 
 **Merged pull requests:**
 
+- Added docs explaining the difference between difference service modes [\#113](https://github.com/Yelp/paasta/pull/113) ([solarkennedy](https://github.com/solarkennedy))
 - Documented the relationship between instance and nerve\_ns better [\#112](https://github.com/Yelp/paasta/pull/112) ([solarkennedy](https://github.com/solarkennedy))
 - Support --version instead of version [\#109](https://github.com/Yelp/paasta/pull/109) ([asottile](https://github.com/asottile))
 - Fix --help for local-run and add a test [\#108](https://github.com/Yelp/paasta/pull/108) ([asottile](https://github.com/asottile))
@@ -1092,13 +1100,13 @@
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.5.0...v0.6.0)
 
 ## [v0.5.0](https://github.com/Yelp/paasta/tree/v0.5.0) (2014-10-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.8...v0.5.0)
-
-## [v0.4.8](https://github.com/Yelp/paasta/tree/v0.4.8) (2014-10-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.9...v0.4.8)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.9...v0.5.0)
 
 ## [v0.4.9](https://github.com/Yelp/paasta/tree/v0.4.9) (2014-10-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.7...v0.4.9)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.8...v0.4.9)
+
+## [v0.4.8](https://github.com/Yelp/paasta/tree/v0.4.8) (2014-10-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.7...v0.4.8)
 
 ## [v0.4.7](https://github.com/Yelp/paasta/tree/v0.4.7) (2014-10-10)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.6...v0.4.7)
