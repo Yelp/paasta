@@ -41,6 +41,7 @@ def non_interactive_local_run(context, var, val):
                         "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
                         "--service fake_simple_service "
                         "--cluster test-cluster "
+                        "--build "
                         "--cmd '/bin/sh -c \"echo \"%s=$%s\" && sleep 2s && exit 42\"'" % (var, val))
         context.local_run_return_code, context.local_run_output = _run(command=localrun_cmd, timeout=30)
 
