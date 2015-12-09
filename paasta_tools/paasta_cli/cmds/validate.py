@@ -19,7 +19,6 @@ import pkgutil
 import yaml
 
 from glob import glob
-
 from jsonschema import Draft4Validator
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
@@ -107,10 +106,12 @@ def validate_all_schemas(service_path):
     path = os.path.join(service_path, '*.yaml')
 
     for file_name in glob(path):
+        if os.path.islink(file_name):
+            continue
         basename = os.path.basename(file_name)
         for file_type in ['chronos', 'marathon']:
             if basename.startswith(file_type):
-                validate_schema(basename, file_type)
+                validate_schema(file_name, file_type)
 
 
 def add_subparser(subparsers):
