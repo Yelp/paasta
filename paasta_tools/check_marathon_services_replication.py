@@ -42,7 +42,6 @@ from paasta_tools import monitoring_tools
 from paasta_tools import smartstack_tools
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.monitoring import replication_utils
-from paasta_tools.monitoring.context import get_context
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
@@ -135,7 +134,6 @@ def check_smartstack_replication_for_instance(
         status = pysensu_yelp.Status.CRITICAL
         output = ('Service %s has no Smartstack replication info. Make sure the discover key in your smartstack.yaml '
                   'is valid!\n') % full_name
-        output = add_context_to_event(service, instance, output)
         log.error(output)
     else:
         expected_count_per_location = int(expected_count / len(smartstack_replication_info))
@@ -156,18 +154,11 @@ def check_smartstack_replication_for_instance(
 
         if any(under_replication_per_location):
             status = pysensu_yelp.Status.CRITICAL
-            output = add_context_to_event(service, instance, output)
             log.error(output)
         else:
             status = pysensu_yelp.Status.OK
             log.info(output)
     send_event(service=service, namespace=instance, cluster=cluster, soa_dir=soa_dir, status=status, output=output)
-
-
-def add_context_to_event(service, instance, output):
-    context = get_context(service, instance)
-    output = '%s\n%s' % (output, context)
-    return output
 
 
 def get_healthy_marathon_instances_for_short_app_id(client, app_id):
