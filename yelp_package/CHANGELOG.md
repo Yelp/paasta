@@ -1,5 +1,17 @@
 # Change Log
 
+## [0.16.8](https://github.com/Yelp/paasta/tree/0.16.8) (2015-12-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.7...0.16.8)
+
+**Merged pull requests:**
+
+- Use https internal pypi [\#118](https://github.com/Yelp/paasta/pull/118) ([asottile](https://github.com/asottile))
+- Autodetect the instance in local-run [\#105](https://github.com/Yelp/paasta/pull/105) ([solarkennedy](https://github.com/solarkennedy))
+- Make local-run stream the docker-pull with /dev/null as stdin [\#104](https://github.com/Yelp/paasta/pull/104) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.7](https://github.com/Yelp/paasta/tree/v0.16.7) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.6...v0.16.7)
+
 ## [v0.16.6](https://github.com/Yelp/paasta/tree/v0.16.6) (2015-12-08)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.5...v0.16.6)
 
