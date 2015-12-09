@@ -369,7 +369,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         docker_hash=docker_hash,
         volumes=[],
         interactive=args.interactive,
-        command='bash',
+        command=['bash'],
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value
@@ -417,7 +417,7 @@ def test_configure_and_run_pulls_image_when_asked(
         docker_hash='fake_registry/fake_image',
         volumes=[],
         interactive=args.interactive,
-        command='bash',
+        command=['bash'],
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value

@@ -195,6 +195,19 @@ class MarathonServiceConfig(InstanceConfig):
         else:
             return 0
 
+    def get_backoff_seconds(self):
+        """backoff_seconds represents how many seconds a penalization factor for failing tasks.
+        Every time a task fails, Marathon adds this value multiplied by a backoff_factor.
+        In PaaSTA we know how many instances a service has, so we adjust the backoff_seconds
+        to account for this, which prevents services with large number of instances from
+        being penalized more than services with small instance counts. (for example, a service
+        with 30 instances will get backed off 10 times faster than a service with 3 instances)."""
+        instances = self.get_instances()
+        if instances == 0:
+            return 1
+        else:
+            return float(10.0/instances)
+
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.
 
@@ -288,7 +301,7 @@ class MarathonServiceConfig(InstanceConfig):
                 'volumes': docker_volumes,
             },
             'uris': ['file:///root/.dockercfg', ],
-            'backoff_seconds': 1,
+            'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),
             'env': self.get_env(),
@@ -406,7 +419,7 @@ class MarathonServiceConfig(InstanceConfig):
         return self.config_dict.get('healthcheck_timeout_seconds', 10)
 
     def get_healthcheck_max_consecutive_failures(self):
-        return self.config_dict.get('healthcheck_max_consecutive_failures', 6)
+        return self.config_dict.get('healthcheck_max_consecutive_failures', 30)
 
     def get_nerve_namespace(self):
         return self.config_dict.get('nerve_ns', self.instance)

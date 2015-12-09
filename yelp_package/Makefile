@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.16.3-yelp1
+RELEASE=0.16.7-yelp1
 
 SHELL=/bin/bash
 
@@ -67,6 +67,7 @@ release:
 	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" ../setup.py
 	@echo "$(RELEASE) has the changelog set."
 	github_changelog_generator --future-release $(VERSION) || echo github_changelog_generator not installed, not generating changelog!!
+	cd .. && make docs
 	@git diff
 	@echo "Now Run:"
 	@echo 'git commit -a -m "Released $(RELEASE) via make release"'

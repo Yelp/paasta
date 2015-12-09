@@ -52,13 +52,13 @@ emergency-restart
 fsm
 info
 itest
+local-run
 mark-for-deployment
 metastatus
 performance-check
 push-to-registry
 security-check
-status
-version"
+status"
 
 mkdir -p /nail/etc
 [ -L /nail/etc/services ] || ln -s /work/yelp_package/itest/fake_services /nail/etc/services
@@ -77,6 +77,10 @@ if dpkg -i /work/dist/*.deb; then
 else
   echo "Dpkg install failed"
   exit 1
+fi
+
+if ! /usr/share/python/paasta-tools/bin/python -c 'import yaml; assert yaml.__with_libyaml__' >/dev/null; then
+  echo "Python doesn't have the C-based yaml loader and will be really slow!"
 fi
 
 for scr in $SCRIPTS
@@ -118,8 +122,8 @@ do
   echo "Checking for a man page"
   man -f paasta-$command
 done
-echo "Running 'paasta version', it should return non-zero"
-paasta version || (echo "paasta version failed to execute!"; exit 1)
+echo "Running 'paasta --version', it should return non-zero"
+paasta --version || (echo "paasta --version failed to execute!"; exit 1)
 
 if check_synapse_replication --help >/dev/null; then
   echo "Looks like we can check_synapse_replication with --help"

@@ -818,8 +818,8 @@ class TestMarathonTools:
             'cmd': fake_cmd,
             'args': fake_args,
             'health_checks': fake_healthchecks,
-            'backoff_seconds': 1,
             'backoff_factor': 2,
+            'backoff_seconds': mock.ANY,
         }
         config = marathon_tools.MarathonServiceConfig(
             'can_you_dig_it',
@@ -1415,7 +1415,7 @@ class TestMarathonServiceConfig(object):
                 "intervalSeconds": 10,
                 "portIndex": 0,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1431,7 +1431,7 @@ class TestMarathonServiceConfig(object):
                 "intervalSeconds": 10,
                 "portIndex": 0,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1450,7 +1450,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1470,7 +1470,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1490,7 +1490,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": 10,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1515,7 +1515,7 @@ class TestMarathonServiceConfig(object):
                 "gracePeriodSeconds": 60,
                 "intervalSeconds": 10,
                 "timeoutSeconds": fake_timeout,
-                "maxConsecutiveFailures": 6
+                "maxConsecutiveFailures": 30
             },
         ]
         actual = fake_marathon_service_config.get_healthchecks(fake_service_namespace_config)
@@ -1531,6 +1531,21 @@ class TestMarathonServiceConfig(object):
         namespace_config = marathon_tools.ServiceNamespaceConfig({})
         with raises(marathon_tools.InvalidMarathonHealthcheckMode):
             marathon_config.get_healthchecks(namespace_config)
+
+    def test_get_backoff_seconds_scales_up(self):
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            "service", "instance", {'instances': 100}, {})
+        assert marathon_config.get_backoff_seconds() == 0.1
+
+    def test_get_backoff_seconds_scales_down(self):
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            "service", "instance", {'instances': 1}, {})
+        assert marathon_config.get_backoff_seconds() == 10
+
+    def test_get_backoff_doesnt_devide_by_zero(self):
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            "service", "instance", {'instances': 0}, {})
+        assert marathon_config.get_backoff_seconds() == 1
 
 
 class TestServiceNamespaceConfig(object):
@@ -1612,9 +1627,9 @@ def test_create_complete_config_no_smartstack():
             'cmd': None,
             'args': [],
             'backoff_factor': 2,
+            'backoff_seconds': mock.ANY,
             'cpus': 0.25,
             'uris': ['file:///root/.dockercfg'],
-            'backoff_seconds': 1,
             'health_checks': [],
             'env': {},
             'id': fake_job_id,
@@ -1675,9 +1690,9 @@ def test_create_complete_config_with_smartstack():
             'cmd': None,
             'args': [],
             'backoff_factor': 2,
+            'backoff_seconds': mock.ANY,
             'cpus': 0.25,
             'uris': ['file:///root/.dockercfg'],
-            'backoff_seconds': 1,
             'health_checks': [
                 {
                     'portIndex': 0,
@@ -1685,7 +1700,7 @@ def test_create_complete_config_with_smartstack():
                     'timeoutSeconds': 10,
                     'intervalSeconds': 10,
                     'gracePeriodSeconds': 60,
-                    'maxConsecutiveFailures': 6,
+                    'maxConsecutiveFailures': 30,
                     'path': '/status',
                 }
             ],
@@ -1761,10 +1776,10 @@ def test_create_complete_config_utilizes_extra_volumes():
             'mem': 1024.0,
             'cmd': None,
             'args': [],
-            'backoff_factor': 2,
             'cpus': 0.25,
             'uris': ['file:///root/.dockercfg'],
-            'backoff_seconds': 1,
+            'backoff_factor': 2,
+            'backoff_seconds': mock.ANY,
             'health_checks': [],
             'env': {},
             'id': fake_job_id,

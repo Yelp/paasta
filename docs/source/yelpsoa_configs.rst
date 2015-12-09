@@ -15,17 +15,30 @@ lowercase. (non alphanumeric lowercase characters are ignored)
 The yaml where marathon jobs are actually defined.
 
 Top level keys are instancenames, e.g. ``main`` and ``canary``. Each
-instancename MAY have:
+instance MAY have:
 
-  * ``cpus``: Number of CPUs an instance needs.
+  * ``cpus``: Number of CPUs an instance needs. Defaults to .25. CPUs in Mesos
+    are "shares" and represent a minimal amount of a CPU to share with a task.
+    A task can burst to use any available free CPU, but is guaranteed to get
+    the CPU shares specified.
 
-  * ``mem``: Memory (in MB) an instance needs.
+  * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
+    memory is constrained to the specified limit, and tasks will reach out-of-memory
+    (OOM) conditions if they attempt to exceed these limits, and then be killed.
+    There is currently not way to detect if this condition is met, other than a
+    ``TASK_FAILED`` message.
 
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
   * ``nerve_ns``: Specifies that this namespace should be routed to by another
-    namespace. E.g. ``canary`` instances have a different configuration but
-    traffic from the ``main`` pool reaches them.
+    namespace in SmartStack. In SmartStack, each service has difference pools
+    of backend servers that are listening on a particul port. In PaaSTA we call
+    these "Nerve Namespaces". By default, the Namespace assigned to a particular
+    instance in PaaSTA has the *same name*, so the ``main`` instance will correspond
+    to the ``main`` Nerve namespace defined in ``smartstack.yaml``. This ``nerve_ns``
+    option allows users to make particular instances appear under an *alternative*
+    namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
+    their traffic to the same pool as the other ``main`` instances.
 
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <bounce_lib.html>`_
 
@@ -33,7 +46,7 @@ instancename MAY have:
 
     * ``check_haproxy``: Boolean indicating if PaaSTA should check the local
       haproxy to make sure this task has been registered and discovered
-      (Defaults to ``True`` if service is in Smartstack)
+      (Defaults to ``True`` if service is in SmartStack)
 
     * ``min_task_uptime``: Minimum number of seconds that a task must be
       running before we consider it healthy (Disabled by default)
@@ -331,7 +344,7 @@ latency zones. For information on this, see the `environment_tools documentation
      immediately below). You add both types to the advertise list and then when
      you’ve switched ``discover`` you shrink it back down to one.
 
- * ``discover``: Location type that smartstack should discover your service
+ * ``discover``: Location type that SmartStack should discover your service
    instances at. Think of this as the answer to “where does synapse look for
    registrations”. Defaults to ‘region’.
 

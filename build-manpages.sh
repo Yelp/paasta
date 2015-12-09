@@ -21,7 +21,7 @@ mkdir -p /nail/etc/services
 mkdir -p docs/man/
 . .tox/manpages/bin/activate
 
-VERSION=`./paasta_tools/paasta_cli/paasta_cli.py version`
+VERSION=`./paasta_tools/paasta_cli/paasta_cli.py --version 2>&1 | cut -f 2 -d ' '`
 
 function build_man() {
     COMMAND=$1
