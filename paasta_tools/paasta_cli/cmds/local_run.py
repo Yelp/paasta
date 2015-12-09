@@ -36,16 +36,16 @@ from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.paasta_cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to
 from paasta_tools.paasta_cli.utils import figure_out_service_name
+from paasta_tools.paasta_cli.utils import guess_instance
+from paasta_tools.paasta_cli.utils import guess_cluster
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import get_docker_host
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import _run
@@ -295,7 +295,7 @@ def add_subparser(subparsers):
         '-i', '--instance',
         help='Simulate a docker run for a particular instance of the service, like "main" or "canary"',
         required=False,
-        default='main',
+        default=None,
     ).completer = lazy_choices_completer(list_instances)
     list_parser.add_argument(
         '-v', '--verbose',
@@ -547,7 +547,7 @@ def get_instance_config(service, instance, cluster, soa_dir, load_deployments=Fa
     )
 
 
-def configure_and_run_docker_container(docker_client, docker_hash, service, args, pull_image=False):
+def configure_and_run_docker_container(docker_client, docker_hash, service, instance, cluster, args, pull_image=False):
     """
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
@@ -563,22 +563,9 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, args
         system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
 
     volumes = list()
-
-    if args.cluster:
-        cluster = args.cluster
-    else:
-        try:
-            cluster = get_default_cluster_for_service(service)
-        except NoConfigurationForServiceError:
-            sys.stdout.write(PaastaColors.red(
-                'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
-            sys.exit(2)
-        sys.stdout.write(PaastaColors.yellow(
-            'Using cluster configuration for %s. To override, use the --cluster option.\n\n' % cluster))
-
     instance_config = get_instance_config(
         service=service,
-        instance=args.instance,
+        instance=instance,
         cluster=cluster,
         load_deployments=pull_image,
         soa_dir=args.yelpsoa_config_root,
@@ -642,6 +629,8 @@ def paasta_local_run(args):
         build = local_makefile_present()
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
+    cluster = guess_cluster(service=service, args=args)
+    instance = guess_instance(service=service, cluster=cluster, args=args)
     base_docker_url = get_docker_host()
     docker_client = Client(base_url=base_docker_url)
 
@@ -650,7 +639,7 @@ def paasta_local_run(args):
         tag = os.environ.get('DOCKER_TAG', default_tag)
         os.environ['DOCKER_TAG'] = tag
         pull_image = False
-        paasta_cook_image(None, service=service, soa_dir=args.yelpsoa_config_root)
+        paasta_cook_image(args=None, service=service, soa_dir=args.yelpsoa_config_root)
     else:
         pull_image = True
         tag = None
@@ -660,6 +649,8 @@ def paasta_local_run(args):
             docker_client=docker_client,
             docker_hash=tag,
             service=service,
+            instance=instance,
+            cluster=cluster,
             args=args,
             pull_image=pull_image,
         )

@@ -16,6 +16,7 @@ import fnmatch
 import logging
 import pkgutil
 import os
+import sys
 from socket import gaierror
 from socket import gethostbyname_ex
 
@@ -26,8 +27,10 @@ from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoConfigurationForServiceError
 
 
 log = logging.getLogger('__main__')
@@ -283,6 +286,44 @@ def guess_service_name():
     :return : A string representing the service name
     """
     return os.path.basename(os.getcwd())
+
+
+def guess_instance(service, cluster, args):
+    """Returns instance from args if available, otherwise uses 'main' if it is a valid instance,
+    otherwise takes a good guess and returns the first instance available"""
+    if args.instance:
+        instance = args.instance
+    else:
+        try:
+            instances = list_all_instances_for_service(
+                service=service, cluster=cluster, instance_type=None, soa_dir=args.yelpsoa_config_root)
+            if 'main' in instances:
+                instance = 'main'
+            else:
+                instance = list(instances)[0]
+        except NoConfigurationForServiceError:
+            sys.stdout.write(PaastaColors.red(
+                'Could not automatically detect instance to emulate. Please specify one with the --instance option.\n'))
+            sys.exit(2)
+        sys.stdout.write(PaastaColors.yellow(
+            'Guessing instance configuration for %s. To override, use the --instance option.\n' % instance))
+    return instance
+
+
+def guess_cluster(service, args):
+    """Returns the cluster from args if available, otherwise uses the "default" one"""
+    if args.cluster:
+        cluster = args.cluster
+    else:
+        try:
+            cluster = get_default_cluster_for_service(service)
+        except NoConfigurationForServiceError:
+            sys.stdout.write(PaastaColors.red(
+                'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
+            sys.exit(2)
+        sys.stdout.write(PaastaColors.yellow(
+            'Guesing cluster configuration for %s. To override, use the --cluster option.\n' % cluster))
+    return cluster
 
 
 def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
