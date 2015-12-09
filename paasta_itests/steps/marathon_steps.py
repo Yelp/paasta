@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import sys
+import time
 
 from behave import when, then
 import mock
@@ -20,12 +21,15 @@ import mock
 sys.path.append('../')
 import paasta_tools
 
+APP_ID = 'test--marathon--app.instance.git01234567.configabcdef01'
+
 
 @when(u'we create a trivial marathon app')
 def create_trivial_marathon_app(context):
     app_config = {
-        'id': 'test--marathon--app',
-        'cmd': '/bin/true',
+        'id': APP_ID,
+        'cmd': '/bin/sleep 30',
+        'instances': 1,
     }
     with mock.patch('paasta_tools.bounce_lib.create_app_lock'):
         paasta_tools.bounce_lib.create_marathon_app(app_config['id'], app_config, context.marathon_client)
@@ -33,5 +37,28 @@ def create_trivial_marathon_app(context):
 
 @then(u'we should see it running in marathon')
 def list_marathon_apps_has_trivial_app(context):
-    assert 'test--marathon--app' in paasta_tools.marathon_tools.list_all_marathon_app_ids(context.marathon_client)
-    assert context.marathon_client.get_app('/test--marathon--app')
+    actual = paasta_tools.marathon_tools.list_all_marathon_app_ids(context.marathon_client)
+    assert APP_ID in actual
+    assert context.marathon_client.get_app('/%s' % APP_ID)
+
+
+@then(u'it should show up in marathon_services_running_here')
+def marathon_services_running_here_works(context):
+    with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value='mesosslave'):
+        (discovered,) = paasta_tools.marathon_tools.marathon_services_running_here()
+
+    assert discovered[0] == u'test_marathon_app', repr(discovered)
+    assert discovered[1] == 'instance'
+
+
+@when(u'the task has started')
+def when_the_task_has_started(context):
+    # 120 * 0.5 = 60 seconds
+    for _ in xrange(120):
+        app = context.marathon_client.get_app(APP_ID, embed_tasks=True)
+        happy_count = len(app.tasks)
+        if happy_count >= 1:
+            return
+        time.sleep(0.5)
+
+    raise Exception("timed out waiting for task to start")
