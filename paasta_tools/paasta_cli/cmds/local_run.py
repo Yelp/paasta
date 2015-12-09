@@ -222,22 +222,6 @@ def read_local_dockerfile_lines():
     return open(dockerfile).readlines()
 
 
-def get_dockerfile_cmd():
-    """Returns first CMD line from Dockerfile"""
-    for line in read_local_dockerfile_lines():
-        if line.startswith('CMD'):
-            return line.lstrip('CMD ')
-    return "Unknown. Is there a CMD line in the Dockerfile?"
-
-
-def get_cmd_string():
-    """Returns get_cmd() with some formatting and explanation."""
-    cmd = get_dockerfile_cmd()
-    return ('You are in interactive mode, which may not run the exact command\n'
-            'that PaaSTA would have run. Here is the command from the Dockerfile:\n'
-            '%s\n' % PaastaColors.yellow(cmd))
-
-
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'local-run',
@@ -458,7 +442,6 @@ def run_docker_container(
 
     sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
     if interactive:
-        sys.stdout.write(get_cmd_string())
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
         execlp('docker', *docker_run_cmd)
