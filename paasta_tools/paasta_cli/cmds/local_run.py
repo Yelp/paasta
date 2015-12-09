@@ -36,17 +36,16 @@ from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.paasta_cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.paasta_cli.cmds.check import makefile_responds_to
 from paasta_tools.paasta_cli.utils import figure_out_service_name
+from paasta_tools.paasta_cli.utils import guess_instance
+from paasta_tools.paasta_cli.utils import guess_cluster
 from paasta_tools.paasta_cli.utils import lazy_choices_completer
 from paasta_tools.paasta_cli.utils import list_instances
 from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import get_docker_host
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
-from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import _run
@@ -546,44 +545,6 @@ def get_instance_config(service, instance, cluster, soa_dir, load_deployments=Fa
         load_deployments=load_deployments,
         soa_dir=soa_dir
     )
-
-
-def guess_instance(service, cluster, args):
-    """Returns instance from args if available, otherwise uses 'main' if it is a valid instance,
-    otherwise takes a good guess and returns the first instance available"""
-    if args.instance:
-        instance = args.instance
-    else:
-        try:
-            instances = list_all_instances_for_service(
-                service=service, cluster=cluster, instance_type=None, soa_dir=args.yelpsoa_config_root)
-            if 'main' in instances:
-                instance = 'main'
-            else:
-                instance = list(instances)[0]
-        except NoConfigurationForServiceError:
-            sys.stdout.write(PaastaColors.red(
-                'Could not automatically detect instance to emulate. Please specify one with the --instance option.\n'))
-            sys.exit(2)
-        sys.stdout.write(PaastaColors.yellow(
-            'Guessing instance configuration for %s. To override, use the --instance option.\n' % instance))
-    return instance
-
-
-def guess_cluster(service, args):
-    """Returns the cluster from args if available, otherwise uses the "default" one"""
-    if args.cluster:
-        cluster = args.cluster
-    else:
-        try:
-            cluster = get_default_cluster_for_service(service)
-        except NoConfigurationForServiceError:
-            sys.stdout.write(PaastaColors.red(
-                'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
-            sys.exit(2)
-        sys.stdout.write(PaastaColors.yellow(
-            'Guesing cluster configuration for %s. To override, use the --cluster option.\n' % cluster))
-    return cluster
 
 
 def configure_and_run_docker_container(docker_client, docker_hash, service, instance, cluster, args, pull_image=False):

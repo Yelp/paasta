@@ -28,8 +28,6 @@ from paasta_tools.paasta_cli.cmds.local_run import get_container_name
 from paasta_tools.paasta_cli.cmds.local_run import get_docker_run_cmd
 from paasta_tools.paasta_cli.cmds.local_run import get_dockerfile_cmd
 from paasta_tools.paasta_cli.cmds.local_run import get_instance_config
-from paasta_tools.paasta_cli.cmds.local_run import guess_cluster
-from paasta_tools.paasta_cli.cmds.local_run import guess_instance
 from paasta_tools.paasta_cli.cmds.local_run import paasta_local_run
 from paasta_tools.paasta_cli.cmds.local_run import perform_http_healthcheck
 from paasta_tools.paasta_cli.cmds.local_run import perform_tcp_healthcheck
@@ -38,7 +36,6 @@ from paasta_tools.paasta_cli.cmds.local_run import simulate_healthcheck_on_servi
 from paasta_tools.paasta_cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.paasta_cli.cmds.local_run import run_docker_container
 from paasta_tools.utils import InstanceConfig
-from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError
 
@@ -218,77 +215,6 @@ def test_get_container_name(mock_get_username, mock_randint):
         mock_get_username.return_value, mock_randint.return_value)
     actual = get_container_name()
     assert actual == expected
-
-
-def test_guess_cluster_uses_provided_cluster():
-    args = mock.MagicMock()
-    args.cluster = 'fake_cluster'
-    actual = guess_cluster(service='fake_service', args=args)
-    assert actual == 'fake_cluster'
-
-
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.get_default_cluster_for_service', autospec=True)
-def test_guess_cluster_when_missing_cluster_exception(
-    mock_get_default_cluster_for_service,
-):
-    mock_get_default_cluster_for_service.side_effect = NoConfigurationForServiceError()
-    fake_service = 'fake_service'
-    args = mock.MagicMock()
-    args.service = fake_service
-    args.instance = 'fake_instance'
-    args.cluster = None
-    with raises(SystemExit) as excinfo:
-        guess_cluster(
-            service=fake_service,
-            args=args,
-        )
-    assert excinfo.value.code == 2
-
-
-def test_guess_instance_uses_provided_cluster():
-    args = mock.MagicMock()
-    args.instance = 'fake_instance1'
-    actual = guess_instance(service='fake_service', cluster=None, args=args)
-    assert actual == 'fake_instance1'
-
-
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.list_all_instances_for_service', autospec=True)
-def test_guess_uses_main_if_available(
-    mock_list_all_instances_for_service,
-):
-    mock_list_all_instances_for_service.return_value = ['a', 'b', 'main', 'c']
-    args = mock.MagicMock()
-    args.instance = None
-    actual = guess_instance(service='fake_service', cluster=None, args=args)
-    assert actual == 'main'
-
-
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.list_all_instances_for_service', autospec=True)
-def test_guess_picks_something(
-    mock_list_all_instances_for_service,
-):
-    mock_list_all_instances_for_service.return_value = ['a', 'b', 'c']
-    args = mock.MagicMock()
-    args.instance = None
-    actual = guess_instance(service='fake_service', cluster=None, args=args)
-    assert actual in ['a', 'b', 'c']
-
-
-@mock.patch('paasta_tools.paasta_cli.cmds.local_run.list_all_instances_for_service', autospec=True)
-def test_guess_instance_fails(
-    mock_list_all_instances_for_service,
-):
-    mock_list_all_instances_for_service.side_effect = NoConfigurationForServiceError()
-    fake_service = 'fake_service'
-    args = mock.MagicMock()
-    args.service = fake_service
-    args.cluster = None
-    with raises(SystemExit) as excinfo:
-        guess_cluster(
-            service=fake_service,
-            args=args,
-        )
-    assert excinfo.value.code == 2
 
 
 @mock.patch('paasta_tools.paasta_cli.cmds.local_run.run_docker_container', autospec=True)
