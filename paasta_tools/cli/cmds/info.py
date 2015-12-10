@@ -17,11 +17,11 @@ from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
-from paasta_tools.paasta_cli.cmds.status import get_actual_deployments
-from paasta_tools.paasta_cli.utils import figure_out_service_name
-from paasta_tools.paasta_cli.utils import get_pipeline_url
-from paasta_tools.paasta_cli.utils import lazy_choices_completer
-from paasta_tools.paasta_cli.utils import list_services
+from paasta_tools.cli.cmds.status import get_actual_deployments
+from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import get_pipeline_url
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaColors

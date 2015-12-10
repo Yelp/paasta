@@ -15,7 +15,7 @@ import re
 
 import pytest
 
-from paasta_tools.paasta_cli.paasta_cli import main
+from paasta_tools.cli.cli import main
 
 
 def test_paasta_version(capsys):

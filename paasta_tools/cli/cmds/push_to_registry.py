@@ -19,8 +19,8 @@ image to a registry.
 
 import sys
 
-from paasta_tools.paasta_cli.utils import get_jenkins_build_output_url
-from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.cli.utils import get_jenkins_build_output_url
+from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import build_docker_tag

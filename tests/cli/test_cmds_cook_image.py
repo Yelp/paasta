@@ -15,12 +15,12 @@
 import mock
 
 from pytest import raises
-from paasta_tools.paasta_cli.cmds.cook_image import paasta_cook_image
+from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.cook_image.validate_service_name', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.cook_image.makefile_responds_to', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.cook_image._run', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.cook_image.validate_service_name', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.cook_image.makefile_responds_to', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.cook_image._run', autospec=True)
 def test_run_success(
     mock_run,
     mock_makefile_responds_to,
@@ -35,9 +35,9 @@ def test_run_success(
     assert paasta_cook_image(args) is None
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.cook_image.validate_service_name', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.cook_image.makefile_responds_to', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.cook_image._run', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.cook_image.validate_service_name', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.cook_image.makefile_responds_to', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.cook_image._run', autospec=True)
 def test_run_makefile_fail(
     mock_run,
     mock_makefile_responds_to,
@@ -60,9 +60,9 @@ class FakeKeyboardInterrupt(KeyboardInterrupt):
     pass
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.cook_image.validate_service_name', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.cook_image.makefile_responds_to', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.cook_image._run', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.cook_image.validate_service_name', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.cook_image.makefile_responds_to', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.cook_image._run', autospec=True)
 def test_run_keyboard_interrupt(
     mock_run,
     mock_makefile_responds_to,

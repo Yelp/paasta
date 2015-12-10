@@ -21,15 +21,15 @@ mkdir -p /nail/etc/services
 mkdir -p docs/man/
 . .tox/manpages/bin/activate
 
-VERSION=`./paasta_tools/paasta_cli/paasta_cli.py --version 2>&1 | cut -f 2 -d ' '`
+VERSION=`./paasta_tools/cli/cli.py --version 2>&1 | cut -f 2 -d ' '`
 
 function build_man() {
     COMMAND=$1
     echo "paasta $COMMAND --help"
-    help2man --name=$COMMAND --version-string=$VERSION "./paasta_tools/paasta_cli/paasta_cli.py $COMMAND" > docs/man/paasta-$COMMAND.1
+    help2man --name=$COMMAND --version-string=$VERSION "./paasta_tools/cli/cli.py $COMMAND" > docs/man/paasta-$COMMAND.1
 }
 
-for FILE in paasta_tools/paasta_cli/cmds/*.py
+for FILE in paasta_tools/cli/cmds/*.py
 do
     BASE=`basename $FILE`
     COMMAND=`echo "${BASE%.*}" | tr '_' '-'`
@@ -48,4 +48,4 @@ for COMMAND in start stop restart; do
 done
 
 # And then finally the "main" paasta command
-help2man --name='paasta' --version-string=$VERSION "./paasta_tools/paasta_cli/paasta_cli.py" > docs/man/paasta.1
+help2man --name='paasta' --version-string=$VERSION "./paasta_tools/cli/cli.py" > docs/man/paasta.1

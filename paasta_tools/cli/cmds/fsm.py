@@ -19,17 +19,17 @@ import sys
 
 from service_configuration_lib import DEFAULT_SOA_DIR
 
-from paasta_tools.paasta_cli.fsm.questions import _yamlize
-from paasta_tools.paasta_cli.fsm.questions import get_clusternames_from_deploy_stanza
-from paasta_tools.paasta_cli.fsm.questions import get_deploy_stanza
-from paasta_tools.paasta_cli.fsm.questions import get_marathon_stanza
-from paasta_tools.paasta_cli.fsm.questions import get_monitoring_stanza
-from paasta_tools.paasta_cli.fsm.questions import get_service_stanza
-from paasta_tools.paasta_cli.fsm.questions import get_smartstack_stanza
-from paasta_tools.paasta_cli.fsm.questions import get_srvname
-from paasta_tools.paasta_cli.fsm.service import Service
-from paasta_tools.paasta_cli.utils import list_teams
-from paasta_tools.paasta_cli.utils import lazy_choices_completer
+from paasta_tools.cli.fsm.questions import _yamlize
+from paasta_tools.cli.fsm.questions import get_clusternames_from_deploy_stanza
+from paasta_tools.cli.fsm.questions import get_deploy_stanza
+from paasta_tools.cli.fsm.questions import get_marathon_stanza
+from paasta_tools.cli.fsm.questions import get_monitoring_stanza
+from paasta_tools.cli.fsm.questions import get_service_stanza
+from paasta_tools.cli.fsm.questions import get_smartstack_stanza
+from paasta_tools.cli.fsm.questions import get_srvname
+from paasta_tools.cli.fsm.service import Service
+from paasta_tools.cli.utils import list_teams
+from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import PaastaColors
 
 

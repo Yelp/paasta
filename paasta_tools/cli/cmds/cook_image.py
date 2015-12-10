@@ -18,8 +18,8 @@
 import os
 import sys
 
-from paasta_tools.paasta_cli.cmds.check import makefile_responds_to
-from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.cli.cmds.check import makefile_responds_to
+from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_username

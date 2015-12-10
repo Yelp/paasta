@@ -19,7 +19,7 @@ deployment to a cluster.instance.
 
 import sys
 
-from paasta_tools.paasta_cli.utils import validate_service_name
+from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools import remote_git

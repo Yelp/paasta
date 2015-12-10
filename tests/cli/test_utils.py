@@ -17,11 +17,11 @@ from mock import patch
 from pytest import raises
 from socket import gaierror
 
-from paasta_tools.paasta_cli import utils
+from paasta_tools.cli import utils
 from paasta_tools.utils import NoConfigurationForServiceError
 
 
-@patch('paasta_tools.paasta_cli.utils.gethostbyname_ex')
+@patch('paasta_tools.cli.utils.gethostbyname_ex')
 def test_bad_calculate_remote_master(mock_get_by_hostname):
     mock_get_by_hostname.side_effect = gaierror('foo', 'bar')
     ips, output = utils.calculate_remote_masters('myhost')
@@ -29,7 +29,7 @@ def test_bad_calculate_remote_master(mock_get_by_hostname):
     assert 'ERROR while doing DNS lookup of paasta-myhost.yelp:\nbar\n' in output
 
 
-@patch('paasta_tools.paasta_cli.utils.gethostbyname_ex')
+@patch('paasta_tools.cli.utils.gethostbyname_ex')
 def test_ok_remote_masters(mock_get_by_hostname):
     mock_get_by_hostname.return_value = ('myhost', [], ['1.2.3.4', '1.2.3.5'])
     ips, output = utils.calculate_remote_masters('myhost')
@@ -37,7 +37,7 @@ def test_ok_remote_masters(mock_get_by_hostname):
     assert ips == ['1.2.3.4', '1.2.3.5']
 
 
-@patch('paasta_tools.paasta_cli.utils.check_ssh_and_sudo_on_master', autospec=True)
+@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
 def test_find_connectable_master_happy_path(mock_check_ssh_and_sudo_on_master):
     masters = [
         '192.0.2.1',
@@ -54,7 +54,7 @@ def test_find_connectable_master_happy_path(mock_check_ssh_and_sudo_on_master):
     assert actual == expected
 
 
-@patch('paasta_tools.paasta_cli.utils.check_ssh_and_sudo_on_master', autospec=True)
+@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
 def test_find_connectable_master_one_failure(mock_check_ssh_and_sudo_on_master):
     masters = [
         '192.0.2.1',
@@ -80,7 +80,7 @@ def test_find_connectable_master_one_failure(mock_check_ssh_and_sudo_on_master):
     assert actual == ('192.0.2.2', None)
 
 
-@patch('paasta_tools.paasta_cli.utils.check_ssh_and_sudo_on_master', autospec=True)
+@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
 def test_find_connectable_master_all_failures(mock_check_ssh_and_sudo_on_master):
     masters = [
         '192.0.2.1',
@@ -99,7 +99,7 @@ def test_find_connectable_master_all_failures(mock_check_ssh_and_sudo_on_master)
     assert 'timeout' in actual[1]
 
 
-@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+@patch('paasta_tools.cli.utils._run', autospec=True)
 def test_check_ssh_and_sudo_on_master_check_successful(mock_run):
     master = 'fake_master'
     mock_run.return_value = (0, 'fake_output')
@@ -110,7 +110,7 @@ def test_check_ssh_and_sudo_on_master_check_successful(mock_run):
     assert actual == (True, None)
 
 
-@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+@patch('paasta_tools.cli.utils._run', autospec=True)
 def test_check_ssh_and_sudo_on_master_check_ssh_failure(mock_run):
     master = 'fake_master'
     mock_run.return_value = (255, 'fake_output')
@@ -121,7 +121,7 @@ def test_check_ssh_and_sudo_on_master_check_ssh_failure(mock_run):
     assert '255' in actual[1]
 
 
-@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+@patch('paasta_tools.cli.utils._run', autospec=True)
 def test_check_ssh_and_sudo_on_master_check_sudo_failure(mock_run):
     master = 'fake_master'
     mock_run.return_value = (1, 'fake_output')
@@ -132,7 +132,7 @@ def test_check_ssh_and_sudo_on_master_check_sudo_failure(mock_run):
     assert 'fake_output' in actual[1]
 
 
-@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+@patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
     expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit fake_service.fake_instance status '
@@ -148,7 +148,7 @@ def test_run_paasta_serviceinit_status(mock_run):
     assert actual == mock_run.return_value[1]
 
 
-@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+@patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status_verbose(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
     expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v fake_service.fake_instance status '
@@ -165,7 +165,7 @@ def test_run_paasta_serviceinit_status_verbose(mock_run):
     assert actual == mock_run.return_value[1]
 
 
-@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+@patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_metastatus(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
     expected_command = 'ssh -A -n fake_master sudo paasta_metastatus'
@@ -174,7 +174,7 @@ def test_run_paasta_metastatus(mock_run):
     assert actual == mock_run.return_value[1]
 
 
-@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+@patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_metastatus_verbose(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
     expected_command = 'ssh -A -n fake_master sudo paasta_metastatus -v'
@@ -183,9 +183,9 @@ def test_run_paasta_metastatus_verbose(mock_run):
     assert actual == mock_run.return_value[1]
 
 
-@patch('paasta_tools.paasta_cli.utils.calculate_remote_masters', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.find_connectable_master', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.run_paasta_serviceinit', autospec=True)
+@patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True)
+@patch('paasta_tools.cli.utils.find_connectable_master', autospec=True)
+@patch('paasta_tools.cli.utils.run_paasta_serviceinit', autospec=True)
 def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
     mock_run_paasta_serviceinit,
     mock_find_connectable_master,
@@ -215,7 +215,7 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
     assert actual == mock_run_paasta_serviceinit.return_value
 
 
-@patch('paasta_tools.paasta_cli.utils._run', autospec=True)
+@patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_scaling(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
     expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v fake_service.fake_instance status --delta 1'
@@ -233,10 +233,10 @@ def test_run_paasta_serviceinit_scaling(mock_run):
     assert actual == mock_run.return_value[1]
 
 
-@patch('paasta_tools.paasta_cli.utils.calculate_remote_masters', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.find_connectable_master', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.check_ssh_and_sudo_on_master', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.run_paasta_serviceinit', autospec=True)
+@patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True)
+@patch('paasta_tools.cli.utils.find_connectable_master', autospec=True)
+@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
+@patch('paasta_tools.cli.utils.run_paasta_serviceinit', autospec=True)
 def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
     mock_run_paasta_serviceinit,
     mock_check_ssh_and_sudo_on_master,
@@ -255,9 +255,9 @@ def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
     assert "fake_err_msg" in actual
 
 
-@patch('paasta_tools.paasta_cli.utils.calculate_remote_masters', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.find_connectable_master', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.run_paasta_metastatus', autospec=True)
+@patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True)
+@patch('paasta_tools.cli.utils.find_connectable_master', autospec=True)
+@patch('paasta_tools.cli.utils.run_paasta_metastatus', autospec=True)
 def test_execute_paasta_metastatus_on_remote_master(
     mock_run_paasta_metastatus,
     mock_find_connectable_master,
@@ -279,10 +279,10 @@ def test_execute_paasta_metastatus_on_remote_master(
     assert actual == mock_run_paasta_metastatus.return_value
 
 
-@patch('paasta_tools.paasta_cli.utils.calculate_remote_masters', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.find_connectable_master', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.check_ssh_and_sudo_on_master', autospec=True)
-@patch('paasta_tools.paasta_cli.utils.run_paasta_metastatus', autospec=True)
+@patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True)
+@patch('paasta_tools.cli.utils.find_connectable_master', autospec=True)
+@patch('paasta_tools.cli.utils.check_ssh_and_sudo_on_master', autospec=True)
+@patch('paasta_tools.cli.utils.run_paasta_metastatus', autospec=True)
 def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     mock_run_paasta_metastatus,
     mock_check_ssh_and_sudo_on_master,
@@ -299,8 +299,8 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     assert "fake_err_msg" in actual
 
 
-@patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service')
-@patch('paasta_tools.paasta_cli.utils.list_services')
+@patch('paasta_tools.cli.utils.list_all_instances_for_service')
+@patch('paasta_tools.cli.utils.list_services')
 def test_list_service_instances(
     mock_list_services,
     mock_list_instances,
@@ -312,8 +312,8 @@ def test_list_service_instances(
     assert actual == expected
 
 
-@patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service')
-@patch('paasta_tools.paasta_cli.utils.list_services')
+@patch('paasta_tools.cli.utils.list_all_instances_for_service')
+@patch('paasta_tools.cli.utils.list_services')
 def test_list_paasta_services(
     mock_list_services,
     mock_list_instances,
@@ -325,9 +325,9 @@ def test_list_paasta_services(
     assert actual == expected
 
 
-@patch('paasta_tools.paasta_cli.utils.guess_service_name')
-@patch('paasta_tools.paasta_cli.utils.validate_service_name')
-@patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service')
+@patch('paasta_tools.cli.utils.guess_service_name')
+@patch('paasta_tools.cli.utils.validate_service_name')
+@patch('paasta_tools.cli.utils.list_all_instances_for_service')
 def test_list_instances_with_autodetect(
     mock_list_instance_for_service,
     mock_validate_service_name,
@@ -343,10 +343,10 @@ def test_list_instances_with_autodetect(
     mock_list_instance_for_service.assert_called_once_with('fake_service')
 
 
-@patch('paasta_tools.paasta_cli.utils.guess_service_name')
-@patch('paasta_tools.paasta_cli.utils.validate_service_name')
-@patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service')
-@patch('paasta_tools.paasta_cli.utils.list_services')
+@patch('paasta_tools.cli.utils.guess_service_name')
+@patch('paasta_tools.cli.utils.validate_service_name')
+@patch('paasta_tools.cli.utils.list_all_instances_for_service')
+@patch('paasta_tools.cli.utils.list_services')
 def test_list_instances_no_service(
     mock_list_services,
     mock_list_instance_for_service,
@@ -385,7 +385,7 @@ def test_list_teams():
         'blue_barracudas',
     ])
     with mock.patch(
-        'paasta_tools.paasta_cli.utils._load_sensu_team_data',
+        'paasta_tools.cli.utils._load_sensu_team_data',
         autospec=True,
         return_value=fake_team_data,
     ):
@@ -405,7 +405,7 @@ def test_guess_cluster_uses_provided_cluster():
     assert actual == 'fake_cluster'
 
 
-@mock.patch('paasta_tools.paasta_cli.utils.get_default_cluster_for_service', autospec=True)
+@mock.patch('paasta_tools.cli.utils.get_default_cluster_for_service', autospec=True)
 def test_guess_cluster_when_missing_cluster_exception(
     mock_get_default_cluster_for_service,
 ):
@@ -430,7 +430,7 @@ def test_guess_instance_uses_provided_cluster():
     assert actual == 'fake_instance1'
 
 
-@mock.patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service', autospec=True)
+@mock.patch('paasta_tools.cli.utils.list_all_instances_for_service', autospec=True)
 def test_guess_instances_uses_main_if_available(
     mock_list_all_instances_for_service,
 ):
@@ -441,7 +441,7 @@ def test_guess_instances_uses_main_if_available(
     assert actual == 'main'
 
 
-@mock.patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service', autospec=True)
+@mock.patch('paasta_tools.cli.utils.list_all_instances_for_service', autospec=True)
 def test_guess_instances_picks_something(
     mock_list_all_instances_for_service,
 ):
@@ -452,7 +452,7 @@ def test_guess_instances_picks_something(
     assert actual in ['a', 'b', 'c']
 
 
-@mock.patch('paasta_tools.paasta_cli.utils.list_all_instances_for_service', autospec=True)
+@mock.patch('paasta_tools.cli.utils.list_all_instances_for_service', autospec=True)
 def test_guess_instance_fails(
     mock_list_all_instances_for_service,
 ):
@@ -470,7 +470,7 @@ def test_guess_instance_fails(
 
 
 def test_modules_in_pkg():
-    from paasta_tools.paasta_cli import cmds
+    from paasta_tools.cli import cmds
     ret = tuple(utils.modules_in_pkg(cmds))
     assert '__init__' not in ret
     assert 'cook_image' in ret

@@ -71,8 +71,8 @@ setup(
         'paasta_tools/list_marathon_service_instances.py',
         'paasta_tools/monitoring/check_classic_service_replication.py',
         'paasta_tools/monitoring/check_synapse_replication.py',
-        'paasta_tools/paasta_cli/paasta_cli.py',
-        'paasta_tools/paasta_cli/paasta_tabcomplete.sh',
+        'paasta_tools/cli/cli.py',
+        'paasta_tools/cli/paasta_tabcomplete.sh',
         'paasta_tools/paasta_execute_docker_command.py',
         'paasta_tools/paasta_metastatus.py',
         'paasta_tools/paasta_serviceinit.py',
@@ -80,6 +80,6 @@ setup(
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
     ],
-    package_data = {'': ['paasta_cli/fsm/templates/*.tmpl']},
+    package_data = {'': ['cli/fsm/templates/*.tmpl']},
 )
 

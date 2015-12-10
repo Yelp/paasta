@@ -15,7 +15,7 @@
 import contextlib
 import mock
 
-from paasta_tools.paasta_cli.cmds import start_stop_restart
+from paasta_tools.cli.cmds import start_stop_restart
 
 
 def test_format_tag():
@@ -30,7 +30,7 @@ def test_format_tag():
 
 @mock.patch('paasta_tools.utils.get_git_url', autospec=True)
 @mock.patch('dulwich.client.get_transport_and_path', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.start_stop_restart.log_event', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.log_event', autospec=True)
 def test_issue_state_change_for_branches(mock_log_event, get_transport_and_path, get_git_url):
     fake_git_url = 'BLOORGRGRGRGR'
     fake_path = 'somepath'

@@ -125,14 +125,14 @@ class PaastaCheckMessages:
         "No 'security-check' entry was found in your deploy.yaml.\n"
         "Please add a security-check entry *AFTER* the itest entry in deploy.yaml\n"
         "so your docker image can be checked against known security vulnerabilities.\n"
-        "More info:", "http://servicedocs.yelpcorp.com/docs/paasta_tools/paasta_cli/security_check.html")
+        "More info:", "http://servicedocs.yelpcorp.com/docs/paasta_tools/cli/security_check.html")
 
     DEPLOY_PERFORMANCE_FOUND = success("Found a performance-check entry in your deploy pipeline")
     DEPLOY_PERFORMANCE_MISSING = failure(
         "No 'performance-check' entry was found in your deploy.yaml.\n"
         "Please add a performance-check entry *AFTER* the security-check entry in deploy.yaml\n"
         "so your docker image can be checked for performance regressions.\n"
-        "More info:", "http://servicedocs.yelpcorp.com/docs/paasta_tools/paasta_cli/performance_check.html")
+        "More info:", "http://servicedocs.yelpcorp.com/docs/paasta_tools/cli/performance_check.html")
 
     DOCKERFILE_FOUND = success("Found Dockerfile")
 

@@ -13,11 +13,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
-from paasta_tools.paasta_cli.utils import figure_out_service_name
-from paasta_tools.paasta_cli.utils import lazy_choices_completer
-from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.paasta_cli.utils import list_instances
+from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
+from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import list_instances
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import list_clusters
 
@@ -51,8 +51,8 @@ def paasta_emergency_restart(args):
     It should not be needed in normal circumstances.
 
     See the service-docs for paasta emergency-stop and emergency-start for details of what exactly this does:
-    http://servicedocs.yelpcorp.com/docs/paasta_tools/generated/paasta_tools.paasta_cli.cmds.emergency_stop.html
-    http://servicedocs.yelpcorp.com/docs/paasta_tools/generated/paasta_tools.paasta_cli.cmds.emergency_start.html
+    http://servicedocs.yelpcorp.com/docs/paasta_tools/generated/paasta_tools.cli.cmds.emergency_stop.html
+    http://servicedocs.yelpcorp.com/docs/paasta_tools/generated/paasta_tools.cli.cmds.emergency_start.html
     """
     service = figure_out_service_name(args)
     print "Performing an emergency restart on %s...\n" % compose_job_id(service, args.instance)

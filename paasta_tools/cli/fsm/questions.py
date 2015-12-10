@@ -21,9 +21,9 @@ import sys
 
 import yaml
 
-from paasta_tools.paasta_cli.fsm.prompt import ask
-from paasta_tools.paasta_cli.fsm.autosuggest import suggest_smartstack_proxy_port
-from paasta_tools.paasta_cli.utils import list_teams
+from paasta_tools.cli.fsm.prompt import ask
+from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
+from paasta_tools.cli.utils import list_teams
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 
 

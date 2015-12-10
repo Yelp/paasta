@@ -16,15 +16,15 @@ import mock
 from pytest import raises
 from pytest import yield_fixture
 
-import paasta_tools.paasta_cli.cmds.fsm as fsm
-from paasta_tools.paasta_cli.fsm.questions import _yamlize
-from paasta_tools.paasta_cli.fsm.service import SrvReaderWriter
+import paasta_tools.cli.cmds.fsm as fsm
+from paasta_tools.cli.fsm.questions import _yamlize
+from paasta_tools.cli.fsm.service import SrvReaderWriter
 
 
 class ValidateOptionsTest:
     @yield_fixture
     def mock_exists(self):
-        with mock.patch("paasta_tools.paasta_cli.cmds.fsm.exists") as mock_exists:
+        with mock.patch("paasta_tools.cli.cmds.fsm.exists") as mock_exists:
             # Happpy path by default
             mock_exists.return_value = True
             yield mock_exists
@@ -45,42 +45,42 @@ class TestGetPaastaConfig:
     @yield_fixture
     def mock_get_srvname(self):
         with (
-            mock.patch("paasta_tools.paasta_cli.cmds.fsm.get_srvname", autospec=True)
+            mock.patch("paasta_tools.cli.cmds.fsm.get_srvname", autospec=True)
         ) as mock_get_srvname:
             yield mock_get_srvname
 
     @yield_fixture
     def mock_get_service_stanza(self):
         with (
-            mock.patch("paasta_tools.paasta_cli.cmds.fsm.get_service_stanza", autospec=True)
+            mock.patch("paasta_tools.cli.cmds.fsm.get_service_stanza", autospec=True)
         ) as mock_get_service_stanza:
             yield mock_get_service_stanza
 
     @yield_fixture
     def mock_get_smartstack_stanza(self):
         with (
-            mock.patch("paasta_tools.paasta_cli.cmds.fsm.get_smartstack_stanza", autospec=True)
+            mock.patch("paasta_tools.cli.cmds.fsm.get_smartstack_stanza", autospec=True)
         ) as mock_get_smartstack_stanza:
             yield mock_get_smartstack_stanza
 
     @yield_fixture
     def mock_get_marathon_stanza(self):
         with (
-            mock.patch("paasta_tools.paasta_cli.cmds.fsm.get_marathon_stanza", autospec=True)
+            mock.patch("paasta_tools.cli.cmds.fsm.get_marathon_stanza", autospec=True)
         )as mock_get_marathon_stanza:
             yield mock_get_marathon_stanza
 
     @yield_fixture
     def mock_get_monitoring_stanza(self):
         with (
-            mock.patch("paasta_tools.paasta_cli.cmds.fsm.get_monitoring_stanza", autospec=True)
+            mock.patch("paasta_tools.cli.cmds.fsm.get_monitoring_stanza", autospec=True)
         ) as mock_get_monitoring_stanza:
             yield mock_get_monitoring_stanza
 
     @yield_fixture
     def mock_get_deploy_stanza(self):
         with (
-            mock.patch("paasta_tools.paasta_cli.cmds.fsm.get_deploy_stanza", autospec=True)
+            mock.patch("paasta_tools.cli.cmds.fsm.get_deploy_stanza", autospec=True)
         ) as mock_get_deploy_stanza:
             yield mock_get_deploy_stanza
 
@@ -124,7 +124,7 @@ class TestWritePaastaConfig:
     @yield_fixture
     def mock_get_clusternames_from_deploy_stanza(self):
         with mock.patch(
-            "paasta_tools.paasta_cli.cmds.fsm.get_clusternames_from_deploy_stanza", autospec=True,
+            "paasta_tools.cli.cmds.fsm.get_clusternames_from_deploy_stanza", autospec=True,
         ) as mock_get_clusternames_from_deploy_stanza:
             yield mock_get_clusternames_from_deploy_stanza
 

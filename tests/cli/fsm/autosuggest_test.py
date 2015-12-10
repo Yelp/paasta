@@ -16,14 +16,14 @@ from contextlib import nested
 
 import mock
 
-from paasta_tools.paasta_cli.fsm import autosuggest
+from paasta_tools.cli.fsm import autosuggest
 
 
 class TestGetSmartstackProxyPortFromFile:
     def test_multiple_stanzas_per_file(self):
         with nested(
             mock.patch("__builtin__.open", autospec=True),
-            mock.patch("paasta_tools.paasta_cli.fsm.autosuggest.yaml", autospec=True),
+            mock.patch("paasta_tools.cli.fsm.autosuggest.yaml", autospec=True),
         ) as (
             mock_open,
             mock_yaml,
@@ -66,7 +66,7 @@ class TestSuggestSmartstackProxyPort:
         mock_get_smartstack_proxy_port_from_file = mock.Mock(side_effect=get_smarstack_proxy_port_from_file_side_effect)
         with nested(
             mock.patch("os.walk", mock_walk),
-            mock.patch("paasta_tools.paasta_cli.fsm.autosuggest._get_smartstack_proxy_port_from_file",
+            mock.patch("paasta_tools.cli.fsm.autosuggest._get_smartstack_proxy_port_from_file",
                        mock_get_smartstack_proxy_port_from_file),
         ):
             actual = autosuggest.suggest_smartstack_proxy_port(yelpsoa_config_root)

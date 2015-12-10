@@ -21,13 +21,13 @@ import urllib2
 
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_team
-from paasta_tools.paasta_cli.utils import guess_service_name
-from paasta_tools.paasta_cli.utils import is_file_in_dir
-from paasta_tools.paasta_cli.utils import NoSuchService
-from paasta_tools.paasta_cli.utils import PaastaCheckMessages
-from paasta_tools.paasta_cli.utils import success
-from paasta_tools.paasta_cli.utils import validate_service_name
-from paasta_tools.paasta_cli.utils import x_mark
+from paasta_tools.cli.utils import guess_service_name
+from paasta_tools.cli.utils import is_file_in_dir
+from paasta_tools.cli.utils import NoSuchService
+from paasta_tools.cli.utils import PaastaCheckMessages
+from paasta_tools.cli.utils import success
+from paasta_tools.cli.utils import validate_service_name
+from paasta_tools.cli.utils import x_mark
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_git_url
@@ -283,7 +283,7 @@ def smartstack_check(service, service_path):
 
 def paasta_check(args):
     """Analyze the service in the PWD to determine if it is paasta ready
-    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
+    :param args: argparse.Namespace obj created from sys.args by cli"""
     service = guess_service_name()
     service_path = os.path.join('/nail/etc/services', service)
 

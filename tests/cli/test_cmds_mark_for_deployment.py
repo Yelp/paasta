@@ -16,7 +16,7 @@ from mock import patch
 from mock import ANY
 from pytest import raises
 
-from paasta_tools.paasta_cli.cmds import mark_for_deployment
+from paasta_tools.cli.cmds import mark_for_deployment
 
 
 class fake_args:
@@ -26,8 +26,8 @@ class fake_args:
     commit = 'fake-hash'
 
 
-@patch('paasta_tools.paasta_cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.mark_for_deployment.mark_for_deployment', autospec=True)
 def test_paasta_mark_for_deployment_acts_like_main(
     mock_mark_for_deployment,
     mock_validate_service_name,

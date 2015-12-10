@@ -15,14 +15,14 @@
 import mock
 from StringIO import StringIO
 
-from paasta_tools.paasta_cli.cmds import metastatus
+from paasta_tools.cli.cmds import metastatus
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 
 
 @mock.patch('sys.stdout', new_callable=StringIO)
 def test_report_cluster_status(mock_stdout):
     cluster = 'fake_cluster'
-    thing_to_patch = 'paasta_tools.paasta_cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master'
+    thing_to_patch = 'paasta_tools.cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master'
     with mock.patch(thing_to_patch) as mock_execute_paasta_metastatus_on_remote_master:
         mock_execute_paasta_metastatus_on_remote_master.return_value = 'mock_status'
         metastatus.print_cluster_status(cluster)

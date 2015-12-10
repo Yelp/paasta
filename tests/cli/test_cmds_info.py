@@ -16,19 +16,19 @@ import contextlib
 import mock
 
 from paasta_tools.marathon_tools import ServiceNamespaceConfig
-from paasta_tools.paasta_cli.utils import PaastaColors
-from paasta_tools.paasta_cli.cmds import info
+from paasta_tools.cli.utils import PaastaColors
+from paasta_tools.cli.cmds import info
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
 def test_get_service_info():
     with contextlib.nested(
-        mock.patch('paasta_tools.paasta_cli.cmds.info.get_team', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.info.get_runbook', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.info.read_service_configuration', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_team', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_runbook', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.read_service_configuration', autospec=True),
         mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.info.get_smartstack_endpoints', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_smartstack_endpoints', autospec=True),
     ) as (
         mock_get_team,
         mock_get_runbook,
@@ -122,7 +122,7 @@ def test_get_smartstack_endpoints_tcp():
 
 def test_get_deployments_strings_default_case_with_smartstack():
     with contextlib.nested(
-        mock.patch('paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True),
         mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
     ) as (
         mock_get_actual_deployments,
@@ -143,8 +143,8 @@ def test_get_deployments_strings_default_case_with_smartstack():
 
 def test_get_deployments_strings_protocol_tcp_case():
     with contextlib.nested(
-        mock.patch('paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.info.load_service_namespace_config', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.load_service_namespace_config', autospec=True),
     ) as (mock_get_actual_deployments, mock_load_service_namespace_config):
         mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_load_service_namespace_config.return_value = ServiceNamespaceConfig({'mode': 'tcp', 'proxy_port': 8080})
@@ -155,8 +155,8 @@ def test_get_deployments_strings_protocol_tcp_case():
 
 def test_get_deployments_strings_non_listening_service():
     with contextlib.nested(
-        mock.patch('paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.info.load_service_namespace_config', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.info.load_service_namespace_config', autospec=True),
     ) as (mock_get_actual_deployments, mock_load_service_namespace_config):
         mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_load_service_namespace_config.return_value = ServiceNamespaceConfig()
@@ -167,7 +167,7 @@ def test_get_deployments_strings_non_listening_service():
 
 def test_get_deployments_strings_no_deployments():
     with mock.patch(
-        'paasta_tools.paasta_cli.cmds.info.get_actual_deployments', autospec=True
+        'paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True
     ) as mock_get_actual_deployments:
         mock_get_actual_deployments.side_effect = NoDeploymentsAvailable
         actual = info.get_deployments_strings('unused')

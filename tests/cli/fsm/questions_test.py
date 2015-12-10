@@ -16,8 +16,8 @@ import mock
 from pytest import raises
 from pytest import yield_fixture
 
-import paasta_tools.paasta_cli.cmds.fsm as fsm
-from paasta_tools.paasta_cli.fsm.questions import get_clusternames_from_deploy_stanza
+import paasta_tools.cli.cmds.fsm as fsm
+from paasta_tools.cli.fsm.questions import get_clusternames_from_deploy_stanza
 
 
 class TestQuestions:
@@ -27,7 +27,7 @@ class TestQuestions:
         mock it out even for those situations where we don't care about it and
         "shouldn't" call raw_input().
         """
-        with mock.patch("paasta_tools.paasta_cli.fsm.questions.ask", autospec=True) as (
+        with mock.patch("paasta_tools.cli.fsm.questions.ask", autospec=True) as (
             mock_ask
         ):
             yield mock_ask
@@ -106,7 +106,7 @@ class TestGetSmartstackStanzaTestCase(TestQuestions):
         auto = True
 
         with mock.patch(
-            "paasta_tools.paasta_cli.fsm.questions.suggest_smartstack_proxy_port",
+            "paasta_tools.cli.fsm.questions.suggest_smartstack_proxy_port",
             autospec=True,
             return_value=fake_suggested_port,
         ) as (
@@ -130,7 +130,7 @@ class TestGetSmartstackStanzaTestCase(TestQuestions):
 
         mock_ask.return_value = suggested_port
         with mock.patch(
-            "paasta_tools.paasta_cli.fsm.questions.suggest_smartstack_proxy_port",
+            "paasta_tools.cli.fsm.questions.suggest_smartstack_proxy_port",
             autospec=True,
             return_value=suggested_port,
         ) as (
@@ -150,7 +150,7 @@ class TestGetSmartstackStanzaTestCase(TestQuestions):
 class TestGetMonitoringStanzaTestCase(TestQuestions):
     @yield_fixture
     def mock_list_teams(self):
-        with mock.patch("paasta_tools.paasta_cli.fsm.questions.list_teams", autospec=True) as (
+        with mock.patch("paasta_tools.cli.fsm.questions.list_teams", autospec=True) as (
             mock_list_teams
         ):
             mock_list_teams.return_value = set([

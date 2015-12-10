@@ -15,11 +15,11 @@
 from mock import MagicMock
 from mock import patch
 
-from paasta_tools.paasta_cli.cmds.push_to_registry import build_command
-from paasta_tools.paasta_cli.cmds.push_to_registry import paasta_push_to_registry
+from paasta_tools.cli.cmds.push_to_registry import build_command
+from paasta_tools.cli.cmds.push_to_registry import paasta_push_to_registry
 
 
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry.build_docker_tag')
+@patch('paasta_tools.cli.cmds.push_to_registry.build_docker_tag')
 def test_build_command(mock_build_docker_tag):
     mock_build_docker_tag.return_value = 'my-docker-registry/services-foo:paasta-asdf'
     expected = 'docker push my-docker-registry/services-foo:paasta-asdf'
@@ -27,10 +27,10 @@ def test_build_command(mock_build_docker_tag):
     assert actual == expected
 
 
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry.build_command')
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry.validate_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry._run', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry._log', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry.build_command')
+@patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
 @patch('sys.exit', autospec=True)
 def test_push_to_registry_run_fail(
     mock_exit,
@@ -46,10 +46,10 @@ def test_push_to_registry_run_fail(
     mock_exit.assert_called_once_with(1)
 
 
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry.build_command')
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry.validate_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry._run', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry._log', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry.build_command')
+@patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
 @patch('sys.exit', autospec=True)
 def test_push_to_registry_success(
     mock_exit,
@@ -64,10 +64,10 @@ def test_push_to_registry_success(
     assert paasta_push_to_registry(args) is None
 
 
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry.validate_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry._run', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry._log', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.push_to_registry.build_command', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._run', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry._log', autospec=True)
+@patch('paasta_tools.cli.cmds.push_to_registry.build_command', autospec=True)
 @patch('sys.exit', autospec=True)
 def test_push_to_registry_works_when_service_name_starts_with_services_dash(
     mock_exit,

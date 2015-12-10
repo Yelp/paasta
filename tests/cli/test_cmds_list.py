@@ -15,11 +15,11 @@
 import mock
 from StringIO import StringIO
 
-from paasta_tools.paasta_cli.cmds.list import paasta_list
+from paasta_tools.cli.cmds.list import paasta_list
 
 
 @mock.patch('sys.stdout', new_callable=StringIO)
-@mock.patch('paasta_tools.paasta_cli.cmds.list.list_services', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.list.list_services', autospec=True)
 def test_list_paasta_list(mock_list_services, mock_stdout):
     """ paasta_list print each service returned by get_services """
 
@@ -35,7 +35,7 @@ def test_list_paasta_list(mock_list_services, mock_stdout):
 
 
 @mock.patch('sys.stdout', new_callable=StringIO)
-@mock.patch('paasta_tools.paasta_cli.cmds.list.list_service_instances', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.list.list_service_instances', autospec=True)
 def test_list_paasta_list_instances(mock_list_service_instances, mock_stdout):
     """ paasta_list print each service.instance """
 

@@ -6,9 +6,9 @@ A command line utility for interacting with the Yelp PaaSTA stack
 
 Adding a new PaaSTA command:
 
-1)  Create a file in src/paasta_tools/paasta_cli/cmds.  Name it
+1)  Create a file in src/paasta_tools/cli/cmds.  Name it
     after the command you wish to write.  If you wish to create 'paasta foo',
-    create a file called 'foo.py'.  Line 48 in paasta_cli.py will discover
+    create a file called 'foo.py'.  Line 48 in cli.py will discover
     command plugins every time "paasta" is called and execute them.
 
 2)  Your new paasta command *MUST* implement: add_subparser(subparsers)
@@ -40,5 +40,5 @@ Adding a new PaaSTA command:
 
     That is all :)
 
-4)  Don't forget to add unit tests to src/tests/paasta_cli for any new commands
+4)  Don't forget to add unit tests to src/tests/cli for any new commands
     you write.

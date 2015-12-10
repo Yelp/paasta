@@ -15,16 +15,16 @@
 
 from pytest import raises
 from mock import patch, call, Mock
-from paasta_tools.paasta_cli.cmds.rollback import paasta_rollback
-from paasta_tools.paasta_cli.cmds.rollback import validate_given_instances
+from paasta_tools.cli.cmds.rollback import paasta_rollback
+from paasta_tools.cli.cmds.rollback import validate_given_instances
 
 
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.get_git_url', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.validate_given_instances', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.figure_out_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.get_git_url', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.mark_for_deployment', autospec=True)
 def test_paasta_rollback_mark_for_deployment_simple_invocation(
     mock_mark_for_deployment,
     mock_get_git_url,
@@ -61,12 +61,12 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
     assert mock_mark_for_deployment.call_count == 1
 
 
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.get_git_url', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.validate_given_instances', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.figure_out_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.get_git_url', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.mark_for_deployment', autospec=True)
 def test_paasta_rollback_mark_for_deployment_wrong_cluster(
     mock_mark_for_deployment,
     mock_get_git_url,
@@ -95,12 +95,12 @@ def test_paasta_rollback_mark_for_deployment_wrong_cluster(
     assert mock_mark_for_deployment.call_count == 0
 
 
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.get_git_url', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.validate_given_instances', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.figure_out_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.get_git_url', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.mark_for_deployment', autospec=True)
 def test_paasta_rollback_mark_for_deployment_no_instance_arg(
     mock_mark_for_deployment,
     mock_get_git_url,
@@ -147,12 +147,12 @@ def test_paasta_rollback_mark_for_deployment_no_instance_arg(
     assert mock_mark_for_deployment.call_count == 2
 
 
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.get_git_url', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.validate_given_instances', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.figure_out_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.get_git_url', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.mark_for_deployment', autospec=True)
 def test_paasta_rollback_mark_for_deployment_wrong_instance_args(
     mock_mark_for_deployment,
     mock_get_git_url,
@@ -181,12 +181,12 @@ def test_paasta_rollback_mark_for_deployment_wrong_instance_args(
     assert mock_mark_for_deployment.call_count == 0
 
 
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_all_instances_for_service', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.validate_given_instances', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.figure_out_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.list_clusters', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.get_git_url', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.rollback.mark_for_deployment', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_all_instances_for_service', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.validate_given_instances', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.figure_out_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.list_clusters', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.get_git_url', autospec=True)
+@patch('paasta_tools.cli.cmds.rollback.mark_for_deployment', autospec=True)
 def test_paasta_rollback_mark_for_deployment_multiple_instance_args(
     mock_mark_for_deployment,
     mock_get_git_url,

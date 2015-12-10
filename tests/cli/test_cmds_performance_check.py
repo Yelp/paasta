@@ -15,12 +15,12 @@
 import mock
 from pytest import raises
 
-from paasta_tools.paasta_cli.cmds import performance_check
+from paasta_tools.cli.cmds import performance_check
 
 
 @mock.patch('requests.post', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.performance_check.load_performance_check_config', autospec=True)
-@mock.patch('paasta_tools.paasta_cli.cmds.performance_check.get_username', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.performance_check.load_performance_check_config', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.performance_check.get_username', autospec=True)
 def test_submit_performance_check_job_happy(
     mock_get_username,
     mock_load_performance_check_config,
@@ -39,7 +39,7 @@ def test_submit_performance_check_job_happy(
     )
 
 
-@mock.patch('paasta_tools.paasta_cli.cmds.performance_check.submit_performance_check_job', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.performance_check.submit_performance_check_job', autospec=True)
 def test_main_safely_returns_when_exceptions(
     mock_submit_performance_check_job,
 ):

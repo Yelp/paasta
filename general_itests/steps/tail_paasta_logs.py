@@ -18,7 +18,7 @@ import time
 from behave import when, then
 import mock
 
-from paasta_tools.paasta_cli.cmds import logs
+from paasta_tools.cli.cmds import logs
 
 
 @when(u'we tail paasta logs and let threads run')
@@ -31,10 +31,10 @@ def tail_paasta_logs_let_threads_be_threads(context):
     context.components = ['deploy', 'monitoring']
     context.clusters = ['fake_cluster1', 'fake_cluster2']
     with contextlib.nested(
-        mock.patch('paasta_tools.paasta_cli.cmds.logs.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.logs.scribe_tail', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.logs.log', autospec=True),
-        mock.patch('paasta_tools.paasta_cli.cmds.logs.print_log', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
     ) as (
         context.determine_scribereader_envs_patch,
         scribe_tail_patch,

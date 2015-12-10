@@ -21,13 +21,13 @@ import sys
 
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import load_deployments_json
-from paasta_tools.paasta_cli.utils import execute_paasta_serviceinit_on_remote_master
-from paasta_tools.paasta_cli.utils import figure_out_service_name
-from paasta_tools.paasta_cli.utils import get_pipeline_url
-from paasta_tools.paasta_cli.utils import lazy_choices_completer
-from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.paasta_cli.utils import PaastaCheckMessages
-from paasta_tools.paasta_cli.utils import x_mark
+from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
+from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import get_pipeline_url
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import PaastaCheckMessages
+from paasta_tools.cli.utils import x_mark
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
@@ -205,7 +205,7 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
 
 def paasta_status(args):
     """Print the status of a Yelp service running on PaaSTA.
-    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
+    :param args: argparse.Namespace obj created from sys.args by cli"""
     service = figure_out_service_name(args)
     actual_deployments = get_actual_deployments(service)
     deploy_info = get_deploy_info(service)

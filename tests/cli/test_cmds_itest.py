@@ -15,15 +15,15 @@
 from mock import MagicMock
 from mock import patch
 
-from paasta_tools.paasta_cli.cmds.itest import paasta_itest
+from paasta_tools.cli.cmds.itest import paasta_itest
 
 
-@patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest._run', autospec=True)
+@patch('paasta_tools.cli.cmds.itest.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.itest._run', autospec=True)
 @patch('sys.exit')
-@patch('paasta_tools.paasta_cli.cmds.itest._log', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest.check_docker_image', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest.build_docker_tag', autospec=True)
+@patch('paasta_tools.cli.cmds.itest._log', autospec=True)
+@patch('paasta_tools.cli.cmds.itest.check_docker_image', autospec=True)
+@patch('paasta_tools.cli.cmds.itest.build_docker_tag', autospec=True)
 def test_itest_run_fail(
     mock_build_docker_tag,
     mock_docker_image,
@@ -40,12 +40,12 @@ def test_itest_run_fail(
     mock_exit.assert_called_once_with(1)
 
 
-@patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest._run', autospec=True)
+@patch('paasta_tools.cli.cmds.itest.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.itest._run', autospec=True)
 @patch('sys.exit')
-@patch('paasta_tools.paasta_cli.cmds.itest._log', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest.check_docker_image', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest.build_docker_tag', autospec=True)
+@patch('paasta_tools.cli.cmds.itest._log', autospec=True)
+@patch('paasta_tools.cli.cmds.itest.check_docker_image', autospec=True)
+@patch('paasta_tools.cli.cmds.itest.build_docker_tag', autospec=True)
 def test_itest_success(
     mock_build_docker_tag,
     mock_docker_image,
@@ -62,12 +62,12 @@ def test_itest_success(
     assert paasta_itest(args) is None
 
 
-@patch('paasta_tools.paasta_cli.cmds.itest.validate_service_name', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest._run', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest.build_docker_tag', autospec=True)
-@patch('paasta_tools.paasta_cli.cmds.itest._log', autospec=True)
+@patch('paasta_tools.cli.cmds.itest.validate_service_name', autospec=True)
+@patch('paasta_tools.cli.cmds.itest._run', autospec=True)
+@patch('paasta_tools.cli.cmds.itest.build_docker_tag', autospec=True)
+@patch('paasta_tools.cli.cmds.itest._log', autospec=True)
 @patch('sys.exit')
-@patch('paasta_tools.paasta_cli.cmds.itest.check_docker_image', autospec=True)
+@patch('paasta_tools.cli.cmds.itest.check_docker_image', autospec=True)
 def test_itest_works_when_service_name_starts_with_services_dash(
     mock_docker_image,
     mock_exit,

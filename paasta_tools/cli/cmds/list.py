@@ -15,9 +15,9 @@
 
 """Contains methods used by the paasta client to list Yelp services"""
 from paasta_tools.utils import SPACER
-from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.paasta_cli.utils import list_paasta_services
-from paasta_tools.paasta_cli.utils import list_service_instances
+from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import list_paasta_services
+from paasta_tools.cli.utils import list_service_instances
 
 
 def add_subparser(subparsers):
@@ -38,7 +38,7 @@ def add_subparser(subparsers):
 
 def paasta_list(args):
     """Print a list of Yelp services currently running
-    :param args: argparse.Namespace obj created from sys.args by paasta_cli"""
+    :param args: argparse.Namespace obj created from sys.args by cli"""
     if args.print_instances:
         services = list_service_instances()
     elif args.all:
