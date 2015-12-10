@@ -18,8 +18,12 @@ import os
 from mock import patch
 from StringIO import StringIO
 
+from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
+from paasta_tools.cli.cmds.validate import invalid_chronos_instance
+from paasta_tools.cli.cmds.validate import valid_chronos_instance
+from paasta_tools.cli.cmds.validate import validate_chronos
 from paasta_tools.cli.cmds.validate import validate_schema
 from paasta_tools.cli.cmds.validate import paasta_validate
 from paasta_tools.cli.cmds.validate import SCHEMA_VALID
@@ -28,9 +32,11 @@ from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 
 
 @patch('paasta_tools.cli.cmds.validate.validate_all_schemas')
+@patch('paasta_tools.cli.cmds.validate.validate_chronos')
 @patch('paasta_tools.cli.cmds.validate.get_service_path')
 def test_paasta_validate_calls_everything(
     mock_get_service_path,
+    mock_validate_chronos,
     mock_validate_all_schemas
 ):
     # Ensure each check in 'paasta_validate' is called
@@ -44,6 +50,7 @@ def test_paasta_validate_calls_everything(
     paasta_validate(args)
 
     assert mock_validate_all_schemas.called
+    assert mock_validate_chronos.called
 
 
 @patch('sys.stdout', new_callable=StringIO)
@@ -197,3 +204,155 @@ def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
     output = mock_stdout.getvalue()
 
     assert SCHEMA_INVALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.list_clusters')
+@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
+@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
+@patch('sys.stdout', new_callable=StringIO)
+def test_validate_chronos_missing_schedule(
+    mock_stdout,
+    mock_path_to_soa_dir_service,
+    mock_load_chronos_job_config,
+    mock_list_all_instances_for_service,
+    mock_list_clusters
+):
+    fake_service = 'test-service'
+    fake_instance = 'fake-instance'
+    fake_job_name = 'test'
+    fake_cluster = 'penguin'
+    fake_monitoring_info = {'fake_monitoring_info': 'fake_monitoring_value'}
+    fake_config_dict = {
+        'bounce_method': 'graceful',
+        'cmd': '/bin/sleep 40',
+        'epsilon': 'PT30M',
+        'retries': 5,
+        'cpus': 5.5,
+        'mem': 1024.4,
+        'disabled': True,
+        'schedule_time_zone': 'Zulu',
+        'monitoring': fake_monitoring_info,
+    }
+    fake_branch_dict = {
+        'desired_state': 'start',
+        'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
+    }
+    fake_chronos_job_config = ChronosJobConfig(fake_service,
+                                               fake_job_name,
+                                               fake_config_dict,
+                                               fake_branch_dict)
+
+    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', 'fake_service')
+    mock_list_clusters.return_value = [fake_cluster]
+    mock_list_all_instances_for_service.return_value = [fake_instance]
+    mock_load_chronos_job_config.return_value = fake_chronos_job_config
+
+    validate_chronos('fake_service_path')
+
+    output = mock_stdout.getvalue()
+
+    expected_output = 'You must specify a "schedule" in your configuration'
+    assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
+
+
+@patch('paasta_tools.cli.cmds.validate.list_clusters')
+@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
+@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
+@patch('sys.stdout', new_callable=StringIO)
+def test_validate_chronos_invalid_instance(
+    mock_stdout,
+    mock_path_to_soa_dir_service,
+    mock_load_chronos_job_config,
+    mock_list_all_instances_for_service,
+    mock_list_clusters
+):
+    fake_service = 'test-service'
+    fake_instance = 'fake-instance'
+    fake_job_name = 'test'
+    fake_cluster = 'penguin'
+    fake_monitoring_info = {'fake_monitoring_info': 'fake_monitoring_value'}
+    fake_config_dict = {
+        'bounce_method': 'graceful',
+        'cmd': '/bin/sleep 40',
+        'epsilon': 'PT30M',
+        'retries': 5,
+        'cpus': 5.5,
+        'mem': 1024.4,
+        'disabled': True,
+        'schedule': 'P1DT09:00:00',
+        'schedule_time_zone': 'Zulu',
+        'monitoring': fake_monitoring_info,
+    }
+    fake_branch_dict = {
+        'desired_state': 'start',
+        'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
+    }
+    fake_chronos_job_config = ChronosJobConfig(fake_service,
+                                               fake_job_name,
+                                               fake_config_dict,
+                                               fake_branch_dict)
+
+    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', 'fake_service')
+    mock_list_clusters.return_value = [fake_cluster]
+    mock_list_all_instances_for_service.return_value = [fake_instance]
+    mock_load_chronos_job_config.return_value = fake_chronos_job_config
+
+    validate_chronos('fake_service_path')
+
+    output = mock_stdout.getvalue()
+
+    expected_output = 'The specified schedule "%s" is invalid' % \
+        fake_config_dict['schedule']
+    assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
+
+
+@patch('paasta_tools.cli.cmds.validate.list_clusters')
+@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
+@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
+@patch('sys.stdout', new_callable=StringIO)
+def test_validate_chronos_valid_instance(
+    mock_stdout,
+    mock_path_to_soa_dir_service,
+    mock_load_chronos_job_config,
+    mock_list_all_instances_for_service,
+    mock_list_clusters
+):
+    fake_service = 'test-service'
+    fake_instance = 'fake-instance'
+    fake_job_name = 'test'
+    fake_cluster = 'penguin'
+    fake_monitoring_info = {'fake_monitoring_info': 'fake_monitoring_value'}
+    fake_config_dict = {
+        'bounce_method': 'graceful',
+        'cmd': '/bin/sleep 40',
+        'epsilon': 'PT30M',
+        'retries': 5,
+        'cpus': 5.5,
+        'mem': 1024.4,
+        'disabled': True,
+        'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
+        'schedule_time_zone': 'Zulu',
+        'monitoring': fake_monitoring_info,
+    }
+    fake_branch_dict = {
+        'desired_state': 'start',
+        'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
+    }
+    fake_chronos_job_config = ChronosJobConfig(fake_service,
+                                               fake_job_name,
+                                               fake_config_dict,
+                                               fake_branch_dict)
+
+    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', 'fake_service')
+    mock_list_clusters.return_value = [fake_cluster]
+    mock_list_all_instances_for_service.return_value = [fake_instance]
+    mock_load_chronos_job_config.return_value = fake_chronos_job_config
+
+    validate_chronos('fake_service_path')
+
+    output = mock_stdout.getvalue()
+
+    assert valid_chronos_instance(fake_cluster, fake_instance) in output
