@@ -477,8 +477,8 @@ paasta-tools (0.12.60-yelp1) lucid; urgency=low
   * 0.12.60 tagged with 'make release'
     Commit: Merge branch PAASTA-843b  Conflicts:
     general_itests/steps/paasta_execute_docker_command.py
-    paasta_tools/paasta_cli/cmds/local_run.py
-    paasta_tools/paasta_cli/utils.py
+    paasta_tools/cli/cmds/local_run.py
+    paasta_tools/cli/utils.py
 
  -- Kyle Anderson <kwa@yelp.com>  Fri, 28 Aug 2015 10:26:58 -0700
 
@@ -2114,7 +2114,7 @@ paasta-tools (0.7.21-yelp1) lucid; urgency=low
 
 paasta-tools (0.7.20-yelp1) lucid; urgency=low
 
-  * Update paasta_cli documentation and integration tests
+  * Update cli documentation and integration tests
 
  -- Karthig Balendran <karthig@yelp.com>  Tue, 16 Dec 2014 11:51:30 -0800
 
@@ -2126,7 +2126,7 @@ paasta-tools (0.7.19-yelp1) lucid; urgency=low
 
 paasta-tools (0.7.18-yelp1) lucid; urgency=low
 
-  * Create servicedocs stubs for paasta_cli
+  * Create servicedocs stubs for cli
 
  -- Karthig Balendran <karthig@yelp.com>  Fri, 12 Dec 2014 17:23:56 -0800
 

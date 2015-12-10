@@ -48,7 +48,7 @@ def _load_yelpsoa_configs(context, service):
 def step_impl_when_fsm_auto(context):
     service = "new_paasta_service"
     cmd = (
-        "../paasta_tools/paasta_cli/paasta_cli.py fsm "
+        "../paasta_tools/cli/cli.py fsm "
         "--yelpsoa-config-root %s "
         "--auto "
         "--service-name %s "
