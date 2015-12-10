@@ -6,8 +6,8 @@ Subpackages
 
 .. toctree::
 
+    paasta_tools.cli
     paasta_tools.monitoring
-    paasta_tools.paasta_cli
 
 Submodules
 ----------

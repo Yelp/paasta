@@ -1,3 +1,10 @@
+paasta-tools (0.16.10-yelp1) lucid; urgency=low
+
+  * 0.16.10 tagged with 'make release'
+    Commit: Fix InvalidJobNameError in marathon_services_running_here
+
+ -- Evan Krall <krall@yelp.com>  Thu, 10 Dec 2015 11:09:55 -0800
+
 paasta-tools (0.16.9-yelp1) lucid; urgency=low
 
   * 0.16.9 tagged with 'make release'
