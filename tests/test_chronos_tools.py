@@ -372,6 +372,16 @@ class TestChronosTools:
         actual = fake_conf.get_schedule_time_zone()
         assert actual == fake_schedule_time_zone
 
+    def test_get_parents(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['my-parent']}, {})
+        assert fake_conf.get_parents() == ['my-parent']
+
+    def test_check_parents(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['my-parent']}, {})
+        okay, msg = fake_conf.check_parents()
+        assert okay is False
+        assert msg == 'Parents are not yet supported'
+
     def test_check_bounce_method_valid(self):
         okay, msg = self.fake_chronos_job_config.check_bounce_method()
         assert okay is True

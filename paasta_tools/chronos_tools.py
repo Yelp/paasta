@@ -225,6 +225,9 @@ class ChronosJobConfig(InstanceConfig):
     def get_schedule_time_zone(self):
         return self.config_dict.get('schedule_time_zone')
 
+    def get_parents(self):
+        return self.config_dict.get('parents')
+
     def get_shell(self):
         """Per https://mesos.github.io/chronos/docs/api.html, ``shell`` defaults
         to true, but if arguments are set, they will be ignored. If arguments are
@@ -246,6 +249,12 @@ class ChronosJobConfig(InstanceConfig):
         if retries is not None:
             if not isinstance(retries, int):
                 return False, 'The specified retries value "%s" is not a valid int.' % retries
+        return True, ''
+
+    def check_parents(self):
+        parents = self.get_parents()
+        if parents is not None:
+            return False, 'Parents are not yet supported'
         return True, ''
 
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
