@@ -336,6 +336,7 @@ class ChronosJobConfig(InstanceConfig):
             'mem': self.check_mem,
             'schedule': self.check_schedule,
             'scheduleTimeZone': self.check_schedule_time_zone,
+            'parents': self.check_parents,
         }
         supported_params_without_checks = ['description', 'command', 'owner', 'disabled']
         if param in check_methods:
@@ -373,6 +374,7 @@ class ChronosJobConfig(InstanceConfig):
             'schedule': self.get_schedule(),
             'scheduleTimeZone': self.get_schedule_time_zone(),
             'shell': self.get_shell(),
+            'parents': self.get_parents(),
         }
         return complete_config
 
