@@ -463,10 +463,10 @@ def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, *
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if 'verbose' in kwargs and kwargs['verbose']:
         verbose_flag = "-v "
-        timeout = 120
+        timeout = 240
     else:
         verbose_flag = ''
-        timeout = 20
+        timeout = 60
     if 'app_id' in kwargs and kwargs['app_id']:
         app_id_flag = "--appid %s " % kwargs['app_id']
     else:
