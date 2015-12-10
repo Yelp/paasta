@@ -75,6 +75,15 @@ def is_file_in_dir(file_name, path):
     return False
 
 
+def get_file_contents(path):
+    """Open a file for reading
+
+    :param path: path of file to read
+    """
+    with open(path) as p:
+        return p.read()
+
+
 def check_mark():
     """
     :return: string that can print a checkmark
