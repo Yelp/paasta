@@ -226,7 +226,7 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('schedule_time_zone')
 
     def get_parents(self):
-        return self.config_dict.get('parents')
+        return self.config_dict.get('parents', None)
 
     def get_shell(self):
         """Per https://mesos.github.io/chronos/docs/api.html, ``shell`` defaults
@@ -374,7 +374,6 @@ class ChronosJobConfig(InstanceConfig):
             'schedule': self.get_schedule(),
             'scheduleTimeZone': self.get_schedule_time_zone(),
             'shell': self.get_shell(),
-            'parents': self.get_parents(),
         }
         return complete_config
 

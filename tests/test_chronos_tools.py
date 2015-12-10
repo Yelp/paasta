@@ -372,7 +372,11 @@ class TestChronosTools:
         actual = fake_conf.get_schedule_time_zone()
         assert actual == fake_schedule_time_zone
 
-    def test_get_parents(self):
+    def test_get_parents_ok(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': None}, {})
+        assert fake_conf.get_parents() is None
+
+    def test_get_parents_bad(self):
         fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['my-parent']}, {})
         assert fake_conf.get_parents() == ['my-parent']
 
