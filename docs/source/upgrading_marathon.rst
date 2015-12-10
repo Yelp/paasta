@@ -30,7 +30,7 @@ changes. This usually drives the orchestration sequence as follows:
    #. Run the tests (``tox -e paasta_itests``).
 
 #. If passing, deploy the new version of paasta_tools with the new client library.
-   (follow the `standard release cycle stuff <contributing.html#making-new-versions>_`)
+   (follow the `standard release cycle stuff <contributing.html#making-new-versions>`_)
 
 #. Once deployed everywhere, pull in the new version of the Marathon container.
 

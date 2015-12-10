@@ -24,7 +24,7 @@ Scheduled Jobs
 Scheduled tasks are those tasks that are periodically run, and are not expected
 to run continously. Due to their ephemeral nature, they often do not expose a TCP port.
 
-PaaSTA uses `Chronos <yelpsoa_configs.html#chronos-clustername-yaml>_` to define
+PaaSTA uses `Chronos <yelpsoa_configs.html#chronos-clustername-yaml>`_ to define
 the command these scheduled jobs should execute, as well as their RAM, CPU, environment
 variables, etc.
 
@@ -40,19 +40,6 @@ building images locally, as well as using the same image as a "live" deployment.
 
 Alternative names: Adhoc batches, interactive batches, one-off dynos, one-off tasks
 
-Build and deploy workflow
--------------------------
-`These slides
-<https://docs.google.com/a/yelp.com/presentation/d/1mtWoJUVevBrI7I2iCvZRiqKcLZudYLtrLV8kTkdP0jI/edit#>`_
-provide a high level overview of the ingredients involved.
-
-Cluster configuration
----------------------
-Puppet does the server configuration work: installing packages, configuring
-Mesos, scheduling crons to run the deployment scripts, etc. See the
-`profile_mesos module
-<https://opengrok.yelpcorp.com/xref/sysgit/puppet/modules/profile_mesos/>`_.
-
 Service configuration
 ---------------------
 ``soa-configs`` are used to centrally configure services. See the documentation for
@@ -60,7 +47,7 @@ Service configuration
 
 Contract with services
 ----------------------
-The `Paasta Contract <../about/contract.html>`_ describes the
+The `Paasta Contract <about/contract.html>`_ describes the
 responsibilities of services that wish to work with PaaSTA.
 
 paasta_tools contains the implementation of several of these rules.
@@ -73,11 +60,11 @@ Deployment
 A yelpsoa-configs master runs `generate_deployments_for_service <generated/paasta_tools.generate_deployments_for_service.html>`_
 frequently. The generated ``deployments.json`` appears in ``/nail/etc/services/service_name`` throughout the cluster.
 
-Marathon masters run `deploy_marathon_services
-<deploy_marathon_services.html>`_, a thin wrapper around `setup_marathon_job
-<setup_marathon_job.html>`_. These scripts parse ``deployments.json`` and the
-current cluster state, then issue comands to Marathon to put the cluster into
-the right state -- cluster X should be running version Y of service Z.
+Marathon masters run `deploy_marathon_services <deploy_marathon_services.html>`_,
+a thin wrapper around `setup_marathon_job <setup_marathon_job.html>`_.
+These scripts parse ``deployments.json`` and the current cluster state,
+then issue comands to Marathon to put the cluster into the right state
+-- cluster X should be running version Y of service Z.
 
 How PaaSTA Runs Docker Containers
 ---------------------------------
@@ -113,23 +100,9 @@ configuration for the running image:
 * ``--tty``: Mesos containers are *not* given a tty.
 
 * ``--volume``: Volume mapping is controlled via the paasta_tools
-  configuration. This is not user-controlled for security reasons.
-  The default mappings include:
-
-  * ``/nail/srv/`` (including `/nail/srv/configs <https://trac.yelpcorp.com/wiki/HowToService/Configuration>`_)
-
-  * ``/nail/etc/services`` (`yelpsoa-configs <https://docs.google.com/a/yelp.com/document/d/1ZBg5ykniRU30UXj4YcsKfmmnuegQbtR2VuqCAIGi-50/edit#bookmark=id.nn2fb0z24rjh>`_)
-
-  * ``/nail/etc/[habitat,datacenter,ecosystem,superregion,etc]`` (Common `location discovery files <https://trac.yelpcorp.com/wiki/Habitat_Datacenter_Ecosystem_Runtimeenv_Region_Superregion>`_)
-
-  * ``/etc/boto_cfg`` (`rotated aws credentials <https://trac.yelpcorp.com/wiki/ztmPage/AutoReloadAWSCreds>`_)
-
-  * ``/var/run/synapse/services`` (`raw service discovery files <https://jira.yelpcorp.com/browse/PAASTA-618>`_)
-
-  * ``/nail/etc/zookeeper_discovery`` (`Zookeeper discovery files <https://docs.google.com/document/d/1Iongm7TSlnd0Zahsa2BoyyR6o2dxNh5AvOetVtJcXho/edit>`_)
-
-  * ``/nail/etc/kafka_discovery`` (`Kafka discovery files <http://servicedocs.yelpcorp.com/docs/yelp_kafka/index.html>`_)
-
+  configuration. PaaSTA uses the volumes declared in ``/etc/paasta/volumes.json``
+  as well as per-service volumes declared in ``extra_volumes`` declared
+  in the `soa-configs <yelpsoa_configs.html#marathon-clustername-yaml>`_.
 
 * ``--workdir``: Mesos containers are launched in a temporary "workspace"
   directory on disk. Use the workdir sparingly and try not to output files.
@@ -170,20 +143,20 @@ on how to handle the transition between new and old versions of as service.
 
 There are four bounce methods available:
 
-* `brutal <bounce_lib.html#bounce_lib.brutal_bounce>`_ - Stops old versions and
+* `brutal <generated/paasta_tools.bounce_lib.html#bounce_lib.brutal_bounce>`_ - Stops old versions and
   starts the new version, without regard to safety. Not recommended for most
   use cases; it's mostly for debugging, but this is probably the fastest bounce
   method.
-* `upthendown <bounce_lib.html#bounce_lib.upthendown_bounce>`_ - Brings up the
+* `upthendown <generated/paasta_tools.bounce_lib.html#bounce_lib.upthendown_bounce>`_ - Brings up the
   new version of the service and waits until all instances are healthy before
   stopping the old versions. May be useful for services that need a quorum of
   the new version. During a bounce, your service will have up to twice as many
   instances running, so it will up to twice as many cluster resources as usual.
-* `downthenup <bounce_lib.html#bounce_lib.downthenup_bounce>`_ - Stops any old
+* `downthenup <generated/paasta_tools.bounce_lib.html#bounce_lib.downthenup_bounce>`_ - Stops any old
   versions and waits for them to die before starting the new version. May be
   useful for services without strict uptime requirements (log tailers, queue
   workers) that do not want more than one version running at a time.
-* `crossover <bounce_lib.html#bounce_lib.crossover_bounce>`_ - Starts the new
+* `crossover <generated/paasta_tools.bounce_lib.html#bounce_lib.crossover_bounce>`_ - Starts the new
   version, and gradually kills instances of the old versions as new instances
   become healthy. The code behind this is more complex than the other methods,
   but this is recommended for most use cases. It provides good safety (will not
@@ -220,11 +193,3 @@ monitoring checks for free:
   instances are deployed on a cluster. If the service is registered in Smartstack
   it will look in Smartstack to count the available instances. Otherwise it
   counts the number of healthy tasks in Mesos.
-
-
-Cleanup
--------
-`cleanup_marathon_jobs <cleanup_marathon_jobs.html>`_ gets rid of Marathon jobs
-that don't need to be running anymore. This should be rare, like if you change
-a service's name or manually delete a ``paasta-[clustername]`` git branch, but
-is a useful safety net in case a task escapes.
