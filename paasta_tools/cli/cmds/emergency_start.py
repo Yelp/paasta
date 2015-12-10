@@ -25,9 +25,15 @@ from paasta_tools.utils import list_clusters
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'emergency-start',
-        description="Resumes normal operation of a PaaSTA service instance",
-        help=("Starts a PaaSTA service instance up by setting instance count to its configured value"
-              " (for Marathon apps) or by running the latest version of the job (for Chronos jobs)."))
+        help="Resumes normal operation of a PaaSTA service instance by scaling to the configured instance count",
+        description=(
+            "'emergency-start' scales a PaaSTA service instance up to the configured instance count for a "
+            "Marathon service. It does nothing to an existing Marathon service that already has the desired "
+            "instance count.\n\n"
+            "On a Chronos job, 'emergency-start' has the effect of forcing a job to run outside of its normal "
+            "schedule."
+        ),
+    )
     status_parser.add_argument(
         '-s', '--service',
         help="Service that you want to start. Like 'example_service'.",

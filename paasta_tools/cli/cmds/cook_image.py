@@ -28,15 +28,24 @@ from paasta_tools.utils import get_username
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'cook-image',
-        description='Builds a docker image',
-        help='Builds a docker image')
-
-    list_parser.add_argument('-s', '--service',
-                             help='Build docker image for this service. Leading '
-                                  '"services-", as included in a Jenkins job name, '
-                                  'will be stripped.',
-                             required=True,
-                             )
+        description="Called 'make cook-image' as part of the PaaSTA contract",
+        help=(
+            "'paasta cook-image' calls the 'make cook-image' as part of the PaaSTA contract.\n\n"
+            "The PaaSTA contract specifies that a service MUST respond to 'cook-image' and produce "
+            "a docker image as a result. This command is often run as part of the normal build pipeline "
+            "('paasta itest'), or via a 'paasta local-run --build'."
+        ),
+        epilog="This command assumes that the Makefile is in the current working directory.",
+    )
+    list_parser.add_argument(
+        '-s', '--service',
+        help=(
+            'Build docker image for this service. Leading '
+            '"services-", as included in a Jenkins job name, '
+            'will be stripped.'
+        ),
+        required=True,
+    )
     list_parser.set_defaults(command=paasta_cook_image)
 
 

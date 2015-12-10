@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Contains methods used by the paasta client to build and test a docker image."""
-
 import os
 import sys
 
@@ -29,20 +27,25 @@ from paasta_tools.utils import check_docker_image
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'itest',
-        description='Builds and tests a docker image',
-        help='Builds and tests a docker image')
-
-    list_parser.add_argument('-s', '--service',
-                             help='Test and build docker image for this service. Leading '
-                                  '"services-", as included in a Jenkins job name, '
-                                  'will be stripped.',
-                             required=True,
-                             )
-    list_parser.add_argument('-c', '--commit',
-                             help='Git sha used to construct tag for built image',
-                             required=True,
-                             )
-
+        help="Runs 'make itest' as part of the PaaSTA contract.",
+        description=(
+            "'paasta itest' runs 'make itest' in the root of a service directory. "
+            "It is designed to be used in conjection with the 'Jenkins' workflow: "
+            "http://paasta.readthedocs.org/en/latest/about/contract.html#jenkins-pipeline-recommended"
+        )
+    )
+    list_parser.add_argument(
+        '-s', '--service',
+        help='Test and build docker image for this service. Leading '
+             '"services-", as included in a Jenkins job name, '
+             'will be stripped.',
+        required=True,
+    )
+    list_parser.add_argument(
+        '-c', '--commit',
+        help='Git sha used to construct tag for built image',
+        required=True,
+    )
     list_parser.set_defaults(command=paasta_itest)
 
 

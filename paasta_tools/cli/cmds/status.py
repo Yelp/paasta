@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Contains methods used by the PaaSTA client to check the status of a service
-on the PaaSTA stack"""
 from ordereddict import OrderedDict
 from os.path import join
 import sys
@@ -37,9 +35,17 @@ from service_configuration_lib import read_deploy
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'status',
-        description=("PaaSTA client will attempt to deduce the SERVICE option if"
-                     " none is provided."),
-        help="Display the status of a PaaSTA service.")
+        help="Display the status of a PaaSTA service.",
+        description=(
+            "'paasta status' works by SSH'ing to remote PaaSTA masters and "
+            "inspecting the local APIs, and reports on the overal health "
+            "of a service."
+        ),
+        epilog=(
+            "Note: This command requires SSH and sudo privileges on the remote PaaSTA "
+            "masters."
+        ),
+    )
     status_parser.add_argument(
         '-v', '--verbose',
         action='store_true',

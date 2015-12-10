@@ -27,9 +27,23 @@ from paasta_tools.utils import list_clusters
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'emergency-stop',
-        description="Stop a PaaSTA service instance",
-        help=("Stops a PaaSTA service instance by scaling it down to 0 instances (for Marathon apps)"
-              " or by killing the tasks for any version of it and disabling it (for Chronos jobs)."))
+        help="Stop a PaaSTA service instance in an emergency",
+        description=(
+            "'emergency-stop' stops a Marathon service instance by scaling it down to 0. If the "
+            "provided 'instance' name refers to a Chronos job, 'emergency-stop' will cancel the "
+            "chronos job if it is currently running."
+        ),
+        epilog=(
+            "Warning: 'emergency-stop' does not interact with load balancers, so any in-flight "
+            "traffic will be dropped after stopping. Additionally the 'desired state' of a service "
+            "is not changed after an 'emergency-stop', therefor alerts will fire for the service "
+            "after an emergency stop.\n\n"
+            "'emergency-stop' is not a permanant declaration of state. If the operator wishes to "
+            "stop a service permanatly, they should run 'paasta stop', or configure the service to "
+            "have '0' instances. Otherwise, subsequent changes or bounces to a service will start "
+            "it right back up."
+        ),
+    )
     status_parser.add_argument(
         '-s', '--service',
         help="Service that you want to stop. Like 'example_service'.",

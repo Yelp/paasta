@@ -43,10 +43,16 @@ def get_pipeline_config(service):
 
 
 def add_subparser(subparsers):
+    help_text = (
+        "Determine whether service in pwd is 'paasta ready', checking for common "
+        "mistakes in the soa-configs directory and the local service directory. This "
+        "command is designed to be run from the 'root' of a service directory."
+    )
     check_parser = subparsers.add_parser(
         'check',
-        description="Execute 'paasta check' from service repo root",
-        help="Determine whether service in pwd is paasta ready")
+        description=help_text,
+        help=help_text,
+    )
     check_parser.set_defaults(command=paasta_check)
 
 
