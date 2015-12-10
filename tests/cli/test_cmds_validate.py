@@ -18,17 +18,17 @@ import os
 from mock import patch
 from StringIO import StringIO
 
-from paasta_tools.paasta_cli.cmds.validate import get_schema
-from paasta_tools.paasta_cli.cmds.validate import get_service_path
-from paasta_tools.paasta_cli.cmds.validate import validate_schema
-from paasta_tools.paasta_cli.cmds.validate import paasta_validate
-from paasta_tools.paasta_cli.cmds.validate import SCHEMA_VALID
-from paasta_tools.paasta_cli.cmds.validate import SCHEMA_INVALID
-from paasta_tools.paasta_cli.cmds.validate import UNKNOWN_SERVICE
+from paasta_tools.cli.cmds.validate import get_schema
+from paasta_tools.cli.cmds.validate import get_service_path
+from paasta_tools.cli.cmds.validate import validate_schema
+from paasta_tools.cli.cmds.validate import paasta_validate
+from paasta_tools.cli.cmds.validate import SCHEMA_VALID
+from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
+from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 
 
-@patch('paasta_tools.paasta_cli.cmds.validate.validate_all_schemas')
-@patch('paasta_tools.paasta_cli.cmds.validate.get_service_path')
+@patch('paasta_tools.cli.cmds.validate.validate_all_schemas')
+@patch('paasta_tools.cli.cmds.validate.get_service_path')
 def test_paasta_validate_calls_everything(
     mock_get_service_path,
     mock_validate_all_schemas
@@ -58,6 +58,14 @@ def test_get_service_path_unknown(
     output = mock_stdout.getvalue()
 
     assert UNKNOWN_SERVICE in output
+
+
+def test_validate_unknown_service():
+    args = mock.MagicMock()
+    args.service = None
+    args.yelpsoa_config_root = 'unused'
+
+    assert paasta_validate(args) == 1
 
 
 def test_get_service_path_cwd():
@@ -98,7 +106,7 @@ def test_get_schema_missing():
     assert get_schema('fake_schema') is None
 
 
-@patch('paasta_tools.paasta_cli.cmds.validate.get_file_contents')
+@patch('paasta_tools.cli.cmds.validate.get_file_contents')
 @patch('sys.stdout', new_callable=StringIO)
 def test_marathon_validate_schema_list_hashes_good(
     mock_stdout,
@@ -126,7 +134,7 @@ main_http:
     assert SCHEMA_VALID in output
 
 
-@patch('paasta_tools.paasta_cli.cmds.validate.get_file_contents')
+@patch('paasta_tools.cli.cmds.validate.get_file_contents')
 @patch('sys.stdout', new_callable=StringIO)
 def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
     mock_stdout,
@@ -147,7 +155,7 @@ def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
     assert SCHEMA_INVALID in output
 
 
-@patch('paasta_tools.paasta_cli.cmds.validate.get_file_contents')
+@patch('paasta_tools.cli.cmds.validate.get_file_contents')
 @patch('sys.stdout', new_callable=StringIO)
 def test_chronos_validate_schema_list_hashes_good(
     mock_stdout,
@@ -170,7 +178,7 @@ def test_chronos_validate_schema_list_hashes_good(
     assert SCHEMA_VALID in output
 
 
-@patch('paasta_tools.paasta_cli.cmds.validate.get_file_contents')
+@patch('paasta_tools.cli.cmds.validate.get_file_contents')
 @patch('sys.stdout', new_callable=StringIO)
 def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
     mock_stdout,

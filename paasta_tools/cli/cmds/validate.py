@@ -22,12 +22,12 @@ from glob import glob
 from jsonschema import Draft4Validator
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
-from paasta_tools.paasta_cli.utils import failure
-from paasta_tools.paasta_cli.utils import get_file_contents
-from paasta_tools.paasta_cli.utils import lazy_choices_completer
-from paasta_tools.paasta_cli.utils import list_services
-from paasta_tools.paasta_cli.utils import PaastaColors
-from paasta_tools.paasta_cli.utils import success
+from paasta_tools.cli.utils import failure
+from paasta_tools.cli.utils import get_file_contents
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_services
+from paasta_tools.cli.utils import PaastaColors
+from paasta_tools.cli.utils import success
 
 
 SCHEMA_VALID = success("Successfully validated schema")
@@ -57,7 +57,7 @@ def get_schema(file_type):
     """
     schema_path = 'schemas/%s_schema.json' % file_type
     try:
-        schema = pkgutil.get_data('paasta_tools.paasta_cli', schema_path)
+        schema = pkgutil.get_data('paasta_tools.cli', schema_path)
     except IOError:
         return None
     return json.loads(schema)
@@ -137,7 +137,7 @@ def add_subparser(subparsers):
 def get_service_path(service, soa_dir):
     """Determine the path of the directory containing the conf files
 
-    :param args: argparse.Namespace obj created from sys.args by paasta_cli
+    :param args: argparse.Namespace obj created from sys.args by cli
     """
     if service:
         return os.path.join(soa_dir, service)
@@ -152,7 +152,7 @@ def get_service_path(service, soa_dir):
 def paasta_validate(args):
     """Analyze the service in the PWD to determine if conf files are all valid
 
-    :param args: argparse.Namespace obj created from sys.args by paasta_cli
+    :param args: argparse.Namespace obj created from sys.args by cli
     """
 
     service = args.service
