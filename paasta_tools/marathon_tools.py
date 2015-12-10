@@ -657,6 +657,11 @@ def get_all_namespaces(soa_dir=DEFAULT_SOA_DIR):
     return namespace_list
 
 
+def get_app_id_and_task_uuid_from_executor_id(executor_id):
+    """Parse the marathon executor ID and return the (app id, task uuid)"""
+    return executor_id.rsplit('.', 1)
+
+
 def marathon_services_running_here():
     """See what marathon services are being run by a mesos-slave on this host.
     :returns: A list of triples of (service, instance, port)"""
@@ -666,7 +671,8 @@ def marathon_services_running_here():
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
     srv_list = []
     for executor in executors:
-        (srv_name, srv_instance, _, __) = deformat_job_id(executor['id'])
+        app_id, task_uuid = get_app_id_and_task_uuid_from_executor_id(executor['id'])
+        (srv_name, srv_instance, _, __) = deformat_job_id(app_id)
         srv_port = int(re.findall('[0-9]+', executor['resources']['ports'])[0])
         srv_list.append((srv_name, srv_instance, srv_port))
     return srv_list

@@ -485,11 +485,11 @@ class TestMarathonTools:
 
     @mock.patch('marathon_tools.get_local_slave_state', autospec=True)
     def test_marathon_services_running_here(self, mock_get_local_slave_state):
-        id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr'
-        id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94'
-        id_3 = 'dota.axe.cleave.482u9jyoi4wed'
-        id_4 = 'mesos.deployment.is.hard'
-        id_5 = 'how.to.fake.data'
+        id_1 = 'klingon.ships.detected.249qwiomelht4jioewglkemr.someuuid'
+        id_2 = 'fire.photon.torpedos.jtgriemot5yhtwe94.someuuid'
+        id_3 = 'dota.axe.cleave.482u9jyoi4wed.someuuid'
+        id_4 = 'mesos.deployment.is.hard.someuuid'
+        id_5 = 'how.to.fake.data.someuuid'
         ports_1 = '[111-111]'
         ports_2 = '[222-222]'
         ports_3 = '[333-333]'
