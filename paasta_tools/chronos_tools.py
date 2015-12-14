@@ -34,6 +34,7 @@ from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
@@ -411,21 +412,13 @@ def list_job_names(service, cluster=None, soa_dir=DEFAULT_SOA_DIR):
     return get_service_instance_list(service, cluster, 'chronos', soa_dir)
 
 
-# TODO just use utils.get_services_for_cluster(cluster, instance_type='chronos', soa_dir)
 def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Retrieve all Chronos jobs defined to run on a cluster.
+    """A chronos-specific wrapper around utils.get_services_for_cluster
 
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service, job_name)"""
-    if not cluster:
-        cluster = load_system_paasta_config().get_cluster()
-    rootdir = os.path.abspath(soa_dir)
-    log.info("Retrieving all Chronos job names from %s for cluster %s" % (rootdir, cluster))
-    job_list = []
-    for service in os.listdir(rootdir):
-        job_list.extend(list_job_names(service, cluster, soa_dir))
-    return job_list
+    return get_services_for_cluster(cluster, 'chronos', soa_dir)
 
 
 def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):

@@ -688,27 +688,9 @@ class TestChronosTools:
             assert sorted(expected) == sorted(actual)
 
     def test_get_chronos_jobs_for_cluster(self):
-        cluster = 'mainframe_42'
-        soa_dir = 'my_computer'
-        jobs = [['boop', 'beep'], ['bop']]
-        expected = ['beep', 'bop', 'boop']
-        with contextlib.nested(
-            mock.patch('os.path.abspath', autospec=True, return_value='windows_explorer'),
-            mock.patch('os.listdir', autospec=True, return_value=['dir1', 'dir2']),
-            mock.patch('chronos_tools.list_job_names',
-                       side_effect=lambda a, b, c: jobs.pop())
-        ) as (
-            abspath_patch,
-            listdir_patch,
-            list_jobs_patch,
-        ):
-            actual = chronos_tools.get_chronos_jobs_for_cluster(cluster, soa_dir)
-            assert sorted(expected) == sorted(actual)
-            abspath_patch.assert_called_once_with(soa_dir)
-            listdir_patch.assert_called_once_with('windows_explorer')
-            list_jobs_patch.assert_any_call('dir1', cluster, soa_dir)
-            list_jobs_patch.assert_any_call('dir2', cluster, soa_dir)
-            assert list_jobs_patch.call_count == 2
+        with mock.patch('chronos_tools.get_services_for_cluster', autospec=True, return_value=[]) as get_services_for_cluster_patch:
+            assert chronos_tools.get_chronos_jobs_for_cluster('mycluster', soa_dir='my_soa_dir') == []
+            get_services_for_cluster_patch.assert_called_once_with('mycluster', 'chronos', 'my_soa_dir')
 
     def test_lookup_chronos_jobs_with_service_and_instance(self):
         fake_client = mock.Mock()
