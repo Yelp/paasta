@@ -45,7 +45,6 @@ PAASTA_COMMANDS="list
 list-clusters
 check
 generate-pipeline
-help
 emergency-stop
 emergency-start
 emergency-restart

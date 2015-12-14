@@ -39,8 +39,13 @@ NO_EXTERNAL_LINK_MESSAGE = (
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'info',
-        description="Prints the general information about a service.",
-        help="Prints general service information")
+        help="Prints the general information about a service.",
+        description=(
+            "'paasta info' gathers information about a service from soa-configs "
+            "and prints it in a human-friendly way. It does no API calls, it "
+            "just analyzes the config files."
+        ),
+    )
     list_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect'

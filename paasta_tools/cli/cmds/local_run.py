@@ -225,8 +225,20 @@ def read_local_dockerfile_lines():
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'local-run',
-        description="Build and run a service's Docker container locally",
-        help='Test run service Docker container',
+        help="Run service's Docker image locally",
+        description=(
+            "'paasta local-run' is useful for simulating how a PaaSTA service would be "
+            "executed on a real cluster. It analyzes the local soa-configs and constructs "
+            "a 'docker run' invocation to match. This is useful as a type of end-to-end "
+            "test, ensuring that a service will work inside the docker container as expected. "
+            "Additionally, 'local-run' can healthcheck a service per the configured healthcheck.\n\n"
+            "Alternatively, 'local-run' can be used with --pull, which will pull the currently "
+            "deployed docker image and use it, instead of building one."
+        ),
+        epilog=(
+            "Note: 'paasta local-run' uses docker commands, which may require elevated privileges "
+            "to run (sudo)."
+        ),
     )
     list_parser.add_argument(
         '-s', '--service',

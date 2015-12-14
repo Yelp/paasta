@@ -28,19 +28,22 @@ def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'performance-check',
         description='Performs a performance check (not implemented)',
-        help='Performs a performance check (not implemented)')
-
-    list_parser.add_argument('-s', '--service',
-                             help='Name of service for which you wish to check. Leading "services-", as included in a '
-                                  'Jenkins job name, will be stripped.',
-                             )
-    list_parser.add_argument('-c', '--commit',
-                             help='Git sha of the image to check',
-                             )
-    list_parser.add_argument('-i', '--image',
-                             help='Optional docker image to performance check. Must be available on a registry for '
-                                  'use, like http://docker-dev.yelpcorp.com/example_service-kwa-test1',
-                             )
+        help='Performs a performance check (not implemented)',
+    )
+    list_parser.add_argument(
+        '-s', '--service',
+        help='Name of service for which you wish to check. Leading "services-", as included in a '
+             'Jenkins job name, will be stripped.',
+    )
+    list_parser.add_argument(
+        '-c', '--commit',
+        help='Git sha of the image to check',
+    )
+    list_parser.add_argument(
+        '-i', '--image',
+        help='Optional docker image to performance check. Must be available on a registry for '
+             'use, like http://docker-dev.yelpcorp.com/example_service-kwa-test1',
+    )
     list_parser.set_defaults(command=perform_performance_check)
 
 

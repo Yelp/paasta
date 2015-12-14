@@ -23,10 +23,26 @@ from paasta_tools.utils import list_clusters
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'metastatus',
-        help="Display the status for an entire PaaSTA cluster")
-    status_parser.add_argument('-v', '--verbose', action='store_true',
-                               dest="verbose", default=False,
-                               help="Print out more output regarding the state of the cluster")
+        help="Display the status for an entire PaaSTA cluster",
+        description=(
+            "'paasta metastatus' is used to get the vital statistics about a PaaaSTA "
+            "cluster as a whole. This tool is helpful when answering the question: 'Is "
+            "it just my service or the whole cluster that is broken?'\n\n"
+            "metastatus operates by ssh'ing to a Mesos master of a remote cluster, and "
+            "querying the local APIs."
+        ),
+        epilog=(
+            "The metastatus command may time out during heavy load. When that happens "
+            "users may execute the ssh command directly, in order to bypass the timeout."
+        ),
+    )
+    status_parser.add_argument(
+        '-v', '--verbose',
+        action='store_true',
+        dest="verbose",
+        default=False,
+        help="Print out more output regarding the state of the cluster",
+    )
     clusters_help = (
         'A comma separated list of clusters to view. Defaults to view all clusters. '
         'Try: --clusters norcal-prod,nova-prod'

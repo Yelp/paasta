@@ -45,8 +45,14 @@ def add_subparser(subparsers):
     ]:
         status_parser = subparsers.add_parser(
             command,
-            description="%ss a PaaSTA service in a graceful way." % upper,
-            help="%ss a PaaSTA service" % upper,
+            help="%ss a PaaSTA service in a graceful way." % upper,
+            description=(
+                "%ss a PaaSTA service in a graceful way. This uses the Git control plane." % upper
+            ),
+            epilog=(
+                "This command uses Git, and assumes access and authorization to the Git repo "
+                "for the service is available."
+            ),
         )
         status_parser.add_argument(
             '-s', '--service',

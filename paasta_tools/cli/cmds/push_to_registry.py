@@ -29,19 +29,30 @@ from paasta_tools.utils import build_docker_tag
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'push-to-registry',
-        description='Uploads a docker image to a registry',
-        help='Uploads a docker image to a registry')
-
-    list_parser.add_argument('-s', '--service',
-                             help='Name of service for which you wish to upload a docker image. Leading "services-", '
-                                  'as included in a Jenkins job name, will be stripped.',
-                             required=True,
-                             )
-    list_parser.add_argument('-c', '--commit',
-                             help='Git sha after which to name the remote image',
-                             required=True,
-                             )
-
+        help='Uploads a docker image to a registry',
+        description=(
+            "'paasta push-to-registry' is a tool to upload a local docker image "
+            "to the configured PaaSTA docker registry with a predictable and "
+            "well-constructed image name. The image name must be predictable because "
+            "the other PaaSTA components are expecting a particular format for the docker "
+            "image name."
+        ),
+        epilog=(
+            "Note: Uploading to a docker registry often requires access to the local "
+            "docker socket as well as credentials to the remote registry"
+        ),
+    )
+    list_parser.add_argument(
+        '-s', '--service',
+        help='Name of service for which you wish to upload a docker image. Leading "services-", '
+             'as included in a Jenkins job name, will be stripped.',
+        required=True,
+    )
+    list_parser.add_argument(
+        '-c', '--commit',
+        help='Git sha after which to name the remote image',
+        required=True,
+    )
     list_parser.set_defaults(command=paasta_push_to_registry)
 
 

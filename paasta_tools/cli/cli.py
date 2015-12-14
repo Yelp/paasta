@@ -43,7 +43,19 @@ def add_subparser(command, subparsers):
 
 
 def get_argparser():
-    parser = argparse.ArgumentParser(description="Yelp PaaSTA client")
+    parser = argparse.ArgumentParser(
+        description=(
+            "The PaaSTA command line tool. The 'paasta' command is the entry point "
+            "to multiple subcommands, see below.\n\n"
+            "You can see more help for individual commands by appending them with '--help', "
+            "for example, 'paasta status --help' or see the man page with 'man paasta status'."
+        ),
+        epilog=(
+            "The 'paasta' command line tool is designed to be used by humans, and therefore has "
+            "command line completion for almost all options and uses pretty formatting when "
+            "possible."
+        ),
+    )
 
     # http://stackoverflow.com/a/8521644/812183
     parser.add_argument(
