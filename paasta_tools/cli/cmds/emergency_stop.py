@@ -36,7 +36,7 @@ def add_subparser(subparsers):
         epilog=(
             "Warning: 'emergency-stop' does not interact with load balancers, so any in-flight "
             "traffic will be dropped after stopping. Additionally the 'desired state' of a service "
-            "is not changed after an 'emergency-stop', therefor alerts will fire for the service "
+            "is not changed after an 'emergency-stop', therefore alerts will fire for the service "
             "after an emergency stop.\n\n"
             "'emergency-stop' is not a permanant declaration of state. If the operator wishes to "
             "stop a service permanatly, they should run 'paasta stop', or configure the service to "

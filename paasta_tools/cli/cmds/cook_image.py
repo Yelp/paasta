@@ -28,9 +28,9 @@ from paasta_tools.utils import get_username
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'cook-image',
-        description="Called 'make cook-image' as part of the PaaSTA contract",
+        description="Calls 'make cook-image' as part of the PaaSTA contract",
         help=(
-            "'paasta cook-image' calls the 'make cook-image' as part of the PaaSTA contract.\n\n"
+            "'paasta cook-image' calls 'make cook-image' as part of the PaaSTA contract.\n\n"
             "The PaaSTA contract specifies that a service MUST respond to 'cook-image' and produce "
             "a docker image as a result. This command is often run as part of the normal build pipeline "
             "('paasta itest'), or via a 'paasta local-run --build'."

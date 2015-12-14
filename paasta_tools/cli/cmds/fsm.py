@@ -39,7 +39,7 @@ def add_subparser(subparsers):
         help="Generate boilerplate configs for a new PaaSTA Service",
         description=(
             "'paasta fsm' is used to generate example soa-configs, which is useful during initial "
-            "service creation. Currently 'fsm' generate 'yelp-specific' configuration, but can still "
+            "service creation. Currently 'fsm' generates 'yelp-specific' configuration, but can still "
             "be used as an example of a fully working PaaSTA service.\n\n"
             "After 'paasta fsm' is run, the operator should inspect the generated boilerplate configuration "
             "and adjust it to meet the particular needs of the new service."
