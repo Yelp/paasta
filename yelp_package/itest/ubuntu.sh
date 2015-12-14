@@ -57,7 +57,8 @@ metastatus
 performance-check
 push-to-registry
 security-check
-status"
+status
+validate"
 
 mkdir -p /nail/etc
 [ -L /nail/etc/services ] || ln -s /work/yelp_package/itest/fake_services /nail/etc/services

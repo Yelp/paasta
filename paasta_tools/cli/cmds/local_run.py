@@ -368,7 +368,7 @@ def docker_pull_image(docker_url):
     DEVNULL = open(os.devnull, 'wb')
     ret, output = _run('docker pull %s' % docker_url, stream=True, stdin=DEVNULL)
     if ret != 0:
-        sys.stderr.write("\nPull failed. Are you authorized to run docker commands?")
+        sys.stderr.write("\nPull failed. Are you authorized to run docker commands?\n")
         sys.exit(ret)
 
 

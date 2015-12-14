@@ -9,7 +9,7 @@ Directions (For PaaSTA Users)
 -----------------------------
 
 .. toctree::
-   :maxdepth: 2
+   :maxdepth: 3
 
    yelpsoa_configs
    workflow

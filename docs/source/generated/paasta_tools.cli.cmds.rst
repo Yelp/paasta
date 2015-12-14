@@ -29,6 +29,7 @@ Submodules
    paasta_tools.cli.cmds.security_check
    paasta_tools.cli.cmds.start_stop_restart
    paasta_tools.cli.cmds.status
+   paasta_tools.cli.cmds.validate
 
 Module contents
 ---------------
