@@ -75,7 +75,15 @@ def test_validate_unknown_service():
     assert paasta_validate(args) == 1
 
 
-def test_get_service_path_cwd():
+@patch('paasta_tools.cli.cmds.validate.os.path.isdir')
+@patch('paasta_tools.cli.cmds.validate.glob')
+def test_get_service_path_cwd(
+    mock_glob,
+    mock_isdir
+):
+    mock_isdir.return_value = True
+    mock_glob.return_value = ['something.yaml']
+
     service = None
     soa_dir = os.getcwd()
 
@@ -84,7 +92,15 @@ def test_get_service_path_cwd():
     assert service_path == os.getcwd()
 
 
-def test_get_service_path_soa_dir():
+@patch('paasta_tools.cli.cmds.validate.os.path.isdir')
+@patch('paasta_tools.cli.cmds.validate.glob')
+def test_get_service_path_soa_dir(
+    mock_glob,
+    mock_isdir
+):
+    mock_isdir.return_value = True
+    mock_glob.return_value = ['something.yaml']
+
     service = 'some_service'
     soa_dir = 'some/path'
 
@@ -134,7 +150,7 @@ main_http:
 """
     mock_get_file_contents.return_value = marathon_content
 
-    validate_schema('unused_service_path.yaml', 'marathon')
+    assert validate_schema('unused_service_path.yaml', 'marathon') == 0
 
     output = mock_stdout.getvalue()
 
@@ -155,7 +171,7 @@ def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
     "page": false
 }
 """
-    validate_schema('unused_service_path.json', 'marathon')
+    assert validate_schema('unused_service_path.json', 'marathon') == 1
 
     output = mock_stdout.getvalue()
 
@@ -178,7 +194,7 @@ def test_chronos_validate_schema_list_hashes_good(
     }
 }
 """
-    validate_schema('unused_service_path.json', 'chronos')
+    assert validate_schema('unused_service_path.json', 'chronos') == 0
 
     output = mock_stdout.getvalue()
 
@@ -199,7 +215,7 @@ def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
     "page": false
 }
 """
-    validate_schema('unused_service_path.json', 'chronos')
+    assert validate_schema('unused_service_path.json', 'chronos') == 1
 
     output = mock_stdout.getvalue()
 
@@ -248,7 +264,7 @@ def test_validate_chronos_missing_schedule(
     mock_list_all_instances_for_service.return_value = [fake_instance]
     mock_load_chronos_job_config.return_value = fake_chronos_job_config
 
-    validate_chronos('fake_service_path')
+    assert validate_chronos('fake_service_path') == 1
 
     output = mock_stdout.getvalue()
 
@@ -299,7 +315,7 @@ def test_validate_chronos_invalid_instance(
     mock_list_all_instances_for_service.return_value = [fake_instance]
     mock_load_chronos_job_config.return_value = fake_chronos_job_config
 
-    validate_chronos('fake_service_path')
+    assert validate_chronos('fake_service_path') == 1
 
     output = mock_stdout.getvalue()
 
@@ -351,7 +367,7 @@ def test_validate_chronos_valid_instance(
     mock_list_all_instances_for_service.return_value = [fake_instance]
     mock_load_chronos_job_config.return_value = fake_chronos_job_config
 
-    validate_chronos('fake_service_path')
+    assert validate_chronos('fake_service_path') == 0
 
     output = mock_stdout.getvalue()
 
