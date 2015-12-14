@@ -33,6 +33,7 @@ from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_docker_url
+from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
@@ -399,24 +400,15 @@ class ChronosJobConfig(InstanceConfig):
         return None
 
 
-# TODO just use utils.get_service_instance_list(cluster, instance_type='chronos', soa_dir)
 def list_job_names(service, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Enumerate the Chronos jobs defined for a service as a list of tuples.
+    """A chronos-specific wrapper around utils.get_service_instance_list.
 
     :param name: The service name
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of (name, job) for each job defined for the service name"""
-    job_list = []
-    if not cluster:
-        cluster = load_system_paasta_config().get_cluster()
-    chronos_conf_file = "chronos-%s" % cluster
-    log.info("Enumerating all jobs from config file: %s/*/%s.yaml" % (soa_dir, chronos_conf_file))
-
-    for job in read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir):
-        job_list.append((service, job))
-    log.debug("Enumerated the following jobs: %s" % job_list)
-    return job_list
+    :returns: A list of tuples of (name, job) for each job defined for the service name
+    """
+    return get_service_instance_list(service, cluster, 'chronos', soa_dir)
 
 
 # TODO just use utils.get_services_for_cluster(cluster, instance_type='chronos', soa_dir)
