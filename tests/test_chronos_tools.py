@@ -226,26 +226,21 @@ class TestChronosTools:
             assert dict(actual) == dict(self.fake_chronos_job_config)
 
     def test_load_chronos_job_config_unknown_job(self):
-        fake_soa_dir = '/tmp/'
-        fake_job_name = 'polar bear'
         with contextlib.nested(
-            mock.patch('chronos_tools.load_deployments_json', autospec=True,),
             mock.patch('chronos_tools.read_chronos_jobs_for_service', autospec=True),
         ) as (
-            mock_load_deployments_json,
             mock_read_chronos_jobs_for_service,
         ):
-            mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
-            mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
-            with raises(chronos_tools.InvalidChronosConfigError) as exc:
-                chronos_tools.load_chronos_job_config(service=self.fake_service,
-                                                      instance=fake_job_name,
-                                                      cluster=self.fake_cluster,
-                                                      soa_dir=fake_soa_dir)
-            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service,
-                                                                       self.fake_cluster,
-                                                                       soa_dir=fake_soa_dir)
-            assert str(exc.value) == 'No job named "polar bear" in config file chronos-penguin.yaml'
+            mock_read_chronos_jobs_for_service.return_value = []
+            with raises(chronos_tools.UnknownChronosJobError) as exc:
+                chronos_tools.load_chronos_job_config(service='fake_service',
+                                                      instance='fake_job',
+                                                      cluster='fake_cluster',
+                                                      soa_dir='fake_dir')
+            mock_read_chronos_jobs_for_service.assert_called_once_with('fake_service',
+                                                                       'fake_cluster',
+                                                                       soa_dir='fake_dir')
+            assert str(exc.value) == 'No job named "fake_job" in config file chronos-fake_cluster.yaml'
 
     def test_get_bounce_method_in_config(self):
         expected = self.fake_config_dict['bounce_method']
