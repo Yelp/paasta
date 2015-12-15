@@ -69,7 +69,6 @@ def create_complete_job(context):
     return_tuple = setup_chronos_job.setup_job(
         fake_service_name,
         fake_instance_name,
-        fake_service_job_config,
         fake_service_config,
         context.chronos_client,
         "fake_cluster",
@@ -82,7 +81,6 @@ def setup_the_chronos_job(context):
     exit_code, output = setup_chronos_job.setup_job(
         service=fake_service_name,
         instance=fake_instance_name,
-        chronos_job_config=context.chronos_job_config_obj,
         complete_job_config=context.chronos_job_config,
         client=context.chronos_client,
         cluster=context.cluster

@@ -141,7 +141,7 @@ def bounce_chronos_job(
     return (0, "All chronos bouncing tasks finished.")
 
 
-def setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster):
+def setup_job(service, instance, complete_job_config, client, cluster):
     job_id = complete_job_config['name']
     # Sort this initial list since other lists of jobs will come from it (with
     # their orders preserved by list comprehensions) and since we'll care about
@@ -190,10 +190,9 @@ def main():
     cluster = load_system_paasta_config().get_cluster()
 
     try:
-        chronos_job_config = chronos_tools.load_chronos_job_config(
+        complete_job_config = chronos_tools.create_complete_config(
             service=service,
-            instance=instance,
-            cluster=cluster,
+            job_name=instance,
             soa_dir=soa_dir,
         )
     except (NoDeploymentsAvailable, NoDockerImageError):
@@ -222,16 +221,10 @@ def main():
         log.error(error_msg)
         sys.exit(0)
 
-    complete_job_config = chronos_tools.create_complete_config(
-        service=service,
-        job_name=instance,
-        soa_dir=soa_dir,
-    )
     status, output = setup_job(
         service=service,
         instance=instance,
         cluster=cluster,
-        chronos_job_config=chronos_job_config,
         complete_job_config=complete_job_config,
         client=client,
     )
