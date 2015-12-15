@@ -17,6 +17,13 @@ RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF
 RUN apt-get update && apt-get -y install mesos=0.22.1-1.0.ubuntu1404
 
-RUN apt-get -y install marathon=0.8.2-1.0.306.ubuntu1404
+# Install Java 8 PPA
+RUN apt-get install -y software-properties-common
+RUN add-apt-repository ppa:webupd8team/java
+RUN echo "debconf shared/accepted-oracle-license-v1-1 select true" | debconf-set-selections
+RUN echo "debconf shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
+RUN apt-get update && apt-get -y install lsb-release oracle-java8-installer
+
+RUN apt-get -y install marathon=0.11.1-1.0.432.ubuntu1404
 
 EXPOSE 8080
