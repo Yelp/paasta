@@ -18,7 +18,6 @@ import os
 import pkgutil
 import yaml
 
-from collections import OrderedDict
 from glob import glob
 from jsonschema import Draft4Validator
 from jsonschema import FormatChecker
@@ -182,7 +181,7 @@ def validate_chronos(service_path):
             checks_passed, check_msgs = cjc.validate()
 
             # Remove duplicate check_msgs
-            unique_check_msgs = list(OrderedDict.fromkeys(check_msgs))
+            unique_check_msgs = list(set(check_msgs))
 
             if not checks_passed:
                 print invalid_chronos_instance(cluster, instance, "\n  ".join(unique_check_msgs))
