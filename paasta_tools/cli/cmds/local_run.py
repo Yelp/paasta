@@ -626,7 +626,7 @@ def paasta_local_run(args):
 
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     cluster = guess_cluster(service=service, args=args)
-    instance = guess_instance(service=service, cluster=cluster, args=args)
+    instance = guess_instance(service=service, args=args)
     base_docker_url = get_docker_host()
     docker_client = Client(base_url=base_docker_url)
 

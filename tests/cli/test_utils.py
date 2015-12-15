@@ -426,7 +426,7 @@ def test_guess_cluster_when_missing_cluster_exception(
 def test_guess_instance_uses_provided_cluster():
     args = mock.MagicMock()
     args.instance = 'fake_instance1'
-    actual = utils.guess_instance(service='fake_service', cluster=None, args=args)
+    actual = utils.guess_instance(service='fake_service', args=args)
     assert actual == 'fake_instance1'
 
 
@@ -437,7 +437,7 @@ def test_guess_instances_uses_main_if_available(
     mock_list_all_instances_for_service.return_value = ['a', 'b', 'main', 'c']
     args = mock.MagicMock()
     args.instance = None
-    actual = utils.guess_instance(service='fake_service', cluster=None, args=args)
+    actual = utils.guess_instance(service='fake_service', args=args)
     assert actual == 'main'
 
 
@@ -448,7 +448,7 @@ def test_guess_instances_picks_something(
     mock_list_all_instances_for_service.return_value = ['a', 'b', 'c']
     args = mock.MagicMock()
     args.instance = None
-    actual = utils.guess_instance(service='fake_service', cluster=None, args=args)
+    actual = utils.guess_instance(service='fake_service', args=args)
     assert actual in ['a', 'b', 'c']
 
 

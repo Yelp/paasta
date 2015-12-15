@@ -297,7 +297,7 @@ def guess_service_name():
     return os.path.basename(os.getcwd())
 
 
-def guess_instance(service, cluster, args):
+def guess_instance(service, args):
     """Returns instance from args if available, otherwise uses 'main' if it is a valid instance,
     otherwise takes a good guess and returns the first instance available"""
     if args.instance:
