@@ -179,7 +179,7 @@ def validate_chronos(service_path):
     for cluster in list_clusters(service, soa_dir, instance_type):
         for instance in list_all_instances_for_service(service, instance_type, soa_dir):
             cjc = load_chronos_job_config(service, instance, cluster, False, soa_dir)
-            (checks_passed, check_msgs) = cjc.validate()
+            checks_passed, check_msgs = cjc.validate()
 
             # Remove duplicate check_msgs
             unique_check_msgs = list(OrderedDict.fromkeys(check_msgs))
