@@ -16,6 +16,7 @@ import mock
 import os
 
 from mock import patch
+from pytest import raises
 from StringIO import StringIO
 
 from paasta_tools.chronos_tools import ChronosJobConfig
@@ -42,6 +43,8 @@ def test_paasta_validate_calls_everything(
     # Ensure each check in 'paasta_validate' is called
 
     mock_get_service_path.return_value = 'unused_path'
+    mock_validate_all_schemas.return_value = 0
+    mock_validate_chronos.return_value = 0
 
     args = mock.MagicMock()
     args.service = None
@@ -72,7 +75,10 @@ def test_validate_unknown_service():
     args.service = None
     args.yelpsoa_config_root = 'unused'
 
-    assert paasta_validate(args) == 1
+    with raises(SystemExit) as excinfo:
+        paasta_validate(args)
+
+    assert excinfo.value.code == 1
 
 
 @patch('paasta_tools.cli.cmds.validate.os.path.isdir')

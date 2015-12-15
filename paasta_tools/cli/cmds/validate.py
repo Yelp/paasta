@@ -223,10 +223,14 @@ def paasta_validate(args):
         sys.exit(1)
 
     returncode = 0
+
     tmp_returncode = validate_all_schemas(service_path)
     if tmp_returncode != 0:
         returncode = tmp_returncode
+
     tmp_returncode = validate_chronos(service_path)
     if tmp_returncode != 0:
         returncode = tmp_returncode
-    sys.exit(returncode)
+
+    if returncode != 0:
+        sys.exit(returncode)
