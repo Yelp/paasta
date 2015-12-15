@@ -688,7 +688,10 @@ class TestChronosTools:
             assert sorted(expected) == sorted(actual)
 
     def test_get_chronos_jobs_for_cluster(self):
-        with mock.patch('chronos_tools.get_services_for_cluster', autospec=True, return_value=[]) as get_services_for_cluster_patch:
+        with mock.patch('chronos_tools.get_services_for_cluster',
+                        autospec=True,
+                        return_value=[],
+                        ) as get_services_for_cluster_patch:
             assert chronos_tools.get_chronos_jobs_for_cluster('mycluster', soa_dir='my_soa_dir') == []
             get_services_for_cluster_patch.assert_called_once_with('mycluster', 'chronos', 'my_soa_dir')
 

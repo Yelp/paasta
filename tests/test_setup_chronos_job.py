@@ -172,7 +172,7 @@ class TestSetupChronosJob:
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        return_value=self.fake_chronos_job_config,
                        autospec=True,
-                       side_effect=chronos_tools.InvalidChronosConfigError('test bad configuration')),
+                       side_effect=chronos_tools.UnknownChronosJobError('test bad configuration')),
             mock.patch('setup_chronos_job.setup_job',
                        return_value=(0, 'it_is_finished'),
                        autospec=True),

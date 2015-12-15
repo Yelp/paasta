@@ -207,13 +207,11 @@ def main():
             output=error_msg,
         )
         log.error(error_msg)
-        # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
-    except chronos_tools.InvalidChronosConfigError as e:
+    except chronos_tools.UnknownChronosJobError as e:
         error_msg = (
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
             "Error was: %s" % str(e))
-        log.error(error_msg)
         send_event(
             service=service,
             instance=instance,
@@ -221,7 +219,7 @@ def main():
             status=pysensu_yelp.Status.CRITICAL,
             output=error_msg,
         )
-        # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
+        log.error(error_msg)
         sys.exit(0)
 
     complete_job_config = chronos_tools.create_complete_config(
