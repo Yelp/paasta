@@ -1,0 +1,4 @@
+---
+chronos_job:
+  cpus: .1
+  mem: 100

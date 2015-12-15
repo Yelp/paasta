@@ -305,7 +305,7 @@ def guess_instance(service, cluster, args):
     else:
         try:
             instances = list_all_instances_for_service(
-                service=service, cluster=cluster, instance_type=None, soa_dir=args.yelpsoa_config_root)
+                service=service, instance_type=None, soa_dir=args.yelpsoa_config_root)
             if 'main' in instances:
                 instance = 'main'
             else:
