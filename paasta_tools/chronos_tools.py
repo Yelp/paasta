@@ -400,7 +400,7 @@ class ChronosJobConfig(InstanceConfig):
         if desired_state == 'start':
             return PaastaColors.bold('Scheduled')
         elif desired_state == 'stop':
-            return PaastaColors.red('Disabled')
+            return PaastaColors.bold('Disabled')
         else:
             return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
 
