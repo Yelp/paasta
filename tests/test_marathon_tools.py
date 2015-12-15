@@ -1547,6 +1547,20 @@ class TestMarathonServiceConfig(object):
             "service", "instance", {'instances': 0}, {})
         assert marathon_config.get_backoff_seconds() == 1
 
+    def test_get_desired_state_human(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('service', 'instance', {}, {'desired_state': 'stop'})
+        assert 'Stopped' in fake_conf.get_desired_state_human()
+
+    def test_get_desired_state_human_started_with_instances(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'service', 'instance', {'instances': 42}, {'desired_state': 'start'})
+        assert 'Started' in fake_conf.get_desired_state_human()
+
+    def test_get_desired_state_human_with_0_instances(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'service', 'instance', {'instances': 0}, {'desired_state': 'start'})
+        assert 'Stopped' in fake_conf.get_desired_state_human()
+
 
 class TestServiceNamespaceConfig(object):
 

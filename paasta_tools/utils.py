@@ -156,15 +156,6 @@ class InstanceConfig(dict):
         branch from a generated deployments.json file."""
         return self.branch_dict.get('desired_state', 'start')
 
-    def get_desired_state_human(self):
-        desired_state = self.get_desired_state()
-        if desired_state == 'start':
-            return PaastaColors.bold('Started')
-        elif desired_state == 'stop':
-            return PaastaColors.red('Stopped')
-        else:
-            return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
-
     def get_force_bounce(self):
         """Get the force_bounce token for a given service branch from a generated
         deployments.json file. This is a token that, when changed, indicates that

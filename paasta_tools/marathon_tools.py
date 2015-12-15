@@ -45,6 +45,7 @@ from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
@@ -429,6 +430,17 @@ class MarathonServiceConfig(InstanceConfig):
         if service_namespace_config.is_in_smartstack():
             default = {'check_haproxy': True}
         return self.config_dict.get('bounce_health_params', default)
+
+    def get_desired_state_human(self):
+        desired_state = self.get_desired_state()
+        if desired_state == 'start' and self.get_instances() != 0:
+            return PaastaColors.bold('Started')
+        elif desired_state == 'start' and self.get_instances() == 0:
+            return PaastaColors.bold('Stopped')
+        elif desired_state == 'stop':
+            return PaastaColors.red('Stopped')
+        else:
+            return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
 
 
 def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
