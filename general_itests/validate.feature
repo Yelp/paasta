@@ -10,4 +10,4 @@ Feature: paasta validate can be used
     Given an "invalid" service
     When we run paasta validate
     Then it should have a return code of "1"
-     And something should fail
+     And it should report an error in the output

@@ -47,6 +47,6 @@ def validate_status_all_pass(context):
     assert not context.validate_output or x_mark().decode('utf-8') not in context.validate_output
 
 
-@then(u'something should fail')
+@then(u'it should report an error in the output')
 def validate_status_something_fail(context):
     assert x_mark().decode('utf-8') in context.validate_output

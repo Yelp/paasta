@@ -1,3 +1,4 @@
+# Invalid with validation error: You must specify a "schedule" in your configuration
 ---
 chronos_job:
   cpus: .1
