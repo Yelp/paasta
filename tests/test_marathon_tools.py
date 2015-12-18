@@ -1335,6 +1335,35 @@ class TestMarathonTools:
                 fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
             assert expected == actual
 
+    def test_get_healthcheck_for_instance_custom_soadir(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+        fake_soadir = '/fake/soadir'
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
+            'healthcheck_mode': None,
+        }, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = (None, None)
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port, soa_dir=fake_soadir)
+            assert expected == actual
+            load_service_namespace_config_patch.assert_called_once_with(fake_service, fake_namespace, fake_soadir)
+
 
 class TestMarathonServiceConfig(object):
 
