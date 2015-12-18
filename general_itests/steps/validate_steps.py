@@ -50,3 +50,8 @@ def validate_status_all_pass(context):
 @then(u'it should report an error in the output')
 def validate_status_something_fail(context):
     assert x_mark().decode('utf-8') in context.validate_output
+
+
+@then(u'the output should contain \'{output_string}\'')
+def output_contains(context, output_string):
+    assert output_string in context.validate_output
