@@ -375,11 +375,30 @@ class TestChronosTools:
         fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['my-parent']}, {})
         assert fake_conf.get_parents() == ['my-parent']
 
-    def test_check_parents(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['my-parent']}, {})
+    def test_check_parents_none(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': None}, {})
+        okay, msg = fake_conf.check_parents()
+        assert okay is True
+        assert msg == ''
+
+    def test_check_parents_all_ok(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['service1.instance1', 'service1.instance2']}, {})
+        okay, msg = fake_conf.check_parents()
+        assert okay is True
+        assert msg == ''
+
+    def test_check_parents_one_bad(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['service1.instance1', 'service1-instance1']}, {})
         okay, msg = fake_conf.check_parents()
         assert okay is False
-        assert msg == 'Parents are not yet supported'
+        assert msg == 'The job name(s) service1-instance1 is not formatted correctly: expected service.instance'
+
+    def test_check_parents_all_bad(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['service1-instance1', 'service1-instance2']}, {})
+        okay, msg = fake_conf.check_parents()
+        assert okay is False
+        assert msg == 'The job name(s) service1-instance1, service1-instance2 is not formatted correctly: expected service.instance'
+
 
     def test_check_bounce_method_valid(self):
         okay, msg = self.fake_chronos_job_config.check_bounce_method()
@@ -1277,3 +1296,12 @@ class TestChronosTools:
         fake_client = fake_client_class(servers=[])
         chronos_tools.create_job(job=self.fake_config_dict, client=fake_client)
         fake_client.add.assert_called_once_with(self.fake_config_dict)
+
+    def test_check_format_job_short(self):
+        assert chronos_tools.check_parent_format("foo") is False
+
+    def test_check_format_job_long(self):
+        assert chronos_tools.check_parent_format("foo.bar.baz") is False
+
+    def test_check_format_job_ok(self):
+        assert chronos_tools.check_parent_format("foo.bar") is True

@@ -260,7 +260,10 @@ class ChronosJobConfig(InstanceConfig):
     def check_parents(self):
         parents = self.get_parents()
         if parents is not None:
-            return False, 'Parents are not yet supported'
+            results = [(parent, check_parent_format(parent)) for parent in parents]
+            badly_formatted = [res[0] for res in results if res[1] is False]
+            if len(badly_formatted) > 0:
+                return  False, 'The job name(s) %s is not formatted correctly: expected service.instance' % ", ".join(badly_formatted)
         return True, ''
 
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
@@ -645,6 +648,10 @@ def parse_time_variables(input_string, parse_time=None):
     job_context.job_run.run_time = parse_time
     # The job_context object works like a normal dictionary for string replacement
     return input_string % job_context
+
+def check_parent_format(parent):
+    """ A predicate defining if the parent field string is formatted correctly """
+    return len(parent.split(".")) is 2
 
 
 def disable_job(client, job):
