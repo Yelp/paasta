@@ -646,31 +646,6 @@ class TestChronosTools:
             invalid_config.format_chronos_job_dict('', [])
         assert 'The specified schedule "%s" is invalid' % fake_schedule in exc.value
 
-    def test_format_chronos_job_dict_incomplete(self):
-        fake_service = 'test_service'
-        fake_job_name = 'test_job'
-        incomplete_config = chronos_tools.ChronosJobConfig(
-            fake_service,
-            fake_job_name,
-            {},
-            {}
-        )
-        with raises(chronos_tools.InvalidChronosConfigError) as exc:
-            incomplete_config.format_chronos_job_dict('', [])
-        assert 'You must specify a "schedule" in your configuration' in exc.value
-
-    def test_validate(self):
-        fake_service = 'test_service'
-        fake_job_name = 'test_job'
-        incomplete_config = chronos_tools.ChronosJobConfig(
-            fake_service,
-            fake_job_name,
-            {},
-            {}
-        )
-        valid, error_msgs = incomplete_config.validate()
-        assert 'You must specify a "schedule" in your configuration' in error_msgs
-        assert not valid
 
     def test_list_job_names(self):
         fake_name = 'vegetables'

@@ -309,8 +309,6 @@ class ChronosJobConfig(InstanceConfig):
             if not self._check_schedule_repeat_helper(repeat):
                 msgs.append('The specified repeat "%s" in schedule "%s" '
                             'does not conform to the ISO 8601 format.' % (repeat, schedule))
-        else:
-            msgs.append('You must specify a "schedule" in your configuration')
 
         return len(msgs) == 0, '\n'.join(msgs)
 
