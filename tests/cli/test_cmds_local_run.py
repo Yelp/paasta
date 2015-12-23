@@ -256,7 +256,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
-        soa_dir=args.yelpsoa_config_root
+        soa_dir=args.yelpsoa_config_root,
     )
 
 
@@ -300,7 +300,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
-        soa_dir=args.yelpsoa_config_root
+        soa_dir=args.yelpsoa_config_root,
     )
 
 
@@ -350,7 +350,7 @@ def test_configure_and_run_pulls_image_when_asked(
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
-        soa_dir=args.yelpsoa_config_root
+        soa_dir=args.yelpsoa_config_root,
     )
 
 
@@ -706,7 +706,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
             False,  # healthcheck
             True,  # terminate after healthcheck
             mock_service_manifest,
-            soa_dir='fake_soa_dir'
+            soa_dir='fake_soa_dir',
         )
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
@@ -716,7 +716,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
         'fake_instance',
         mock_service_manifest,
         mock_pick_random_port.return_value,
-        soa_dir='fake_soa_dir'
+        soa_dir='fake_soa_dir',
     )
 
 

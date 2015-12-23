@@ -401,7 +401,7 @@ def run_docker_container(
     healthcheck,
     healthcheck_only,
     instance_config,
-    soa_dir=service_configuration_lib.DEFAULT_SOA_DIR
+    soa_dir=service_configuration_lib.DEFAULT_SOA_DIR,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
