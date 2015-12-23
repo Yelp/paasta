@@ -23,15 +23,15 @@ not be taken lightly.
 
 On the plus side, building your own PaaS can give your organization more value
 than adopting an existing commercial or third-party PaaS. The value comes from
-the fact that you can build your PaaS to meet your specific needs like a glove.
-Additionally, the much of the existing engineering effort towards your current
+the fact that you can build your PaaS to meet your specific needs.
+Additionally, much of the existing engineering effort towards your current
 infrastructure can often be re-used. For example if you have an existing
 service-discovery mechanism, you can build a PaaS that integrates tightly
-with it, as opposed to replacing it with a difference service-discovery mechanism
+with it, as opposed to replacing it with a different service-discovery mechanism
 from a third-party.
 
 There are of course downsides to building your own PaaS. There is certainly
-some engineering effort in involved, but that must be weight against the
+engineering effort involved, but that must be weighed against the
 engineering effort involved in *not* building your own PaaS (integration,
 training, and migration costs). You also lose the support of the community,
 or in the case of a commercial PaaS, the support of a vendor. Problems with
@@ -39,7 +39,7 @@ your own PaaS are not "googleable". No new employees will know how your PaaS
 works, you cannot hire existing experts on it.
 
 PaaSTA was built because we believed we could provide business value by
-building our own PaaS to seamlessly meld with Yelps existing infrastructure. At
+building our own PaaS to seamlessly meld with Yelp's existing infrastructure. At
 the same time PaaSTA strives to avoid the downsides of building your own PaaS
 by heavily reusing existing open source components.
 
