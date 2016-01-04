@@ -656,7 +656,7 @@ def parse_time_variables(input_string, parse_time=None):
 
 def check_parent_format(parent):
     """ A predicate defining if the parent field string is formatted correctly """
-    return len(parent.split(".")) is 2
+    return len(parent.split(".")) == 2
 
 
 def disable_job(client, job):
