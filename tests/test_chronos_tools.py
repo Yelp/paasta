@@ -1305,3 +1305,30 @@ class TestChronosTools:
 
     def test_check_format_job_ok(self):
         assert chronos_tools.check_parent_format("foo.bar") is True
+
+    @mock.patch('chronos_tools.lookup_chronos_jobs', autospect=True)
+    @mock.patch('chronos_tools.get_chronos_client', autospect=True)
+    @mock.patch('chronos_tools.load_chronos_config', autospect=True)
+    def test_find_matching_parent_jobs_none_matching(
+        self,
+        mock_lookup_chronos_jobs,
+        mock_get_chronos_client,
+        mock_load_chronos_config,
+    ):
+        mock_lookup_chronos_jobs.return_value = []
+        matching = chronos_tools.find_matching_parent_jobs(['service.instance'])
+        assert len(matching) == 0
+
+    @mock.patch('chronos_tools.lookup_chronos_jobs', autospec=True)
+    @mock.patch('chronos_tools.get_chronos_client', autospec=True)
+    @mock.patch('chronos_tools.load_chronos_config', autospec=True)
+    def test_find_matching_parent_jobs_correct_number(
+        self,
+        mock_load_chronos_config,
+        mock_get_chronos_client,
+        mock_lookup_chronos_jobs,
+    ):
+        mock_lookup_chronos_jobs.return_value = [{'name': 'service.instance'}, {'name': 'service.instance2'}]
+        mock_load_chronos_config.return_value = {}
+        matching = chronos_tools.find_matching_parent_jobs(['service.instance', 'service.instance2'])
+        assert len(matching) == 2
