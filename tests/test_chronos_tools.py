@@ -382,23 +382,26 @@ class TestChronosTools:
         assert msg == ''
 
     def test_check_parents_all_ok(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['service1.instance1', 'service1.instance2']}, {})
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance',
+                                                   {'parents': ['service1.instance1', 'service1.instance2']}, {})
         okay, msg = fake_conf.check_parents()
         assert okay is True
         assert msg == ''
 
     def test_check_parents_one_bad(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['service1.instance1', 'service1-instance1']}, {})
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance',
+                                                   {'parents': ['service1.instance1', 'service1-instance1']}, {})
         okay, msg = fake_conf.check_parents()
         assert okay is False
         assert msg == 'The job name(s) service1-instance1 is not formatted correctly: expected service.instance'
 
     def test_check_parents_all_bad(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['service1-instance1', 'service1-instance2']}, {})
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance',
+                                                   {'parents': ['service1-instance1', 'service1-instance2']}, {})
         okay, msg = fake_conf.check_parents()
         assert okay is False
-        assert msg == 'The job name(s) service1-instance1, service1-instance2 is not formatted correctly: expected service.instance'
-
+        assert msg == ('The job name(s) service1-instance1, service1-instance2'
+                       ' is not formatted correctly: expected service.instance')
 
     def test_check_bounce_method_valid(self):
         okay, msg = self.fake_chronos_job_config.check_bounce_method()
@@ -664,7 +667,6 @@ class TestChronosTools:
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
             invalid_config.format_chronos_job_dict('', [])
         assert 'The specified schedule "%s" is invalid' % fake_schedule in exc.value
-
 
     def test_list_job_names(self):
         fake_name = 'vegetables'

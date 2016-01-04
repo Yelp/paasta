@@ -263,7 +263,8 @@ class ChronosJobConfig(InstanceConfig):
             results = [(parent, check_parent_format(parent)) for parent in parents]
             badly_formatted = [res[0] for res in results if res[1] is False]
             if len(badly_formatted) > 0:
-                return  False, 'The job name(s) %s is not formatted correctly: expected service.instance' % ", ".join(badly_formatted)
+                return False, ('The job name(s) %s is not formatted correctly: expected service.instance'
+                               % ", ".join(badly_formatted))
         return True, ''
 
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
@@ -378,11 +379,13 @@ class ChronosJobConfig(InstanceConfig):
             'async': False,  # we don't support async jobs
             'disabled': self.get_disabled(),
             'owner': self.get_owner(),
-            'parents': None if self.get_parents() is None else find_matching_parent_jobs(self.get_parents()),
-            'schedule': self.get_schedule(),
             'scheduleTimeZone': self.get_schedule_time_zone(),
             'shell': self.get_shell(),
         }
+        if self.get_schedule() is not None:
+            complete_config['schedule'] = self.get_schedule()
+        else:
+            complete_config['parents'] = self.get_parents()
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -649,6 +652,7 @@ def parse_time_variables(input_string, parse_time=None):
     job_context.job_run.run_time = parse_time
     # The job_context object works like a normal dictionary for string replacement
     return input_string % job_context
+
 
 def check_parent_format(parent):
     """ A predicate defining if the parent field string is formatted correctly """
