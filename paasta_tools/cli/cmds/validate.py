@@ -176,7 +176,9 @@ def validate_chronos(service_path):
     instance_type = 'chronos'
 
     for cluster in list_clusters(service, soa_dir, instance_type):
-        for instance in list_all_instances_for_service(service, instance_type, soa_dir):
+        for instance in list_all_instances_for_service(
+                service=service, clusters=[cluster], instance_type=instance_type,
+                soa_dir=soa_dir):
             cjc = load_chronos_job_config(service, instance, cluster, False, soa_dir)
             checks_passed, check_msgs = cjc.validate()
 

@@ -832,9 +832,11 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     return sorted(clusters)
 
 
-def list_all_instances_for_service(service, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
     instances = set()
-    for cluster in list_clusters(service, soa_dir=soa_dir):
+    if not clusters:
+        clusters = list_clusters(service, soa_dir=soa_dir)
+    for cluster in clusters:
         for service_instance in get_service_instance_list(service, cluster, instance_type, soa_dir=soa_dir):
             instances.add(service_instance[1])
     return instances
