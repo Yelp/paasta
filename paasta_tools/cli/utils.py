@@ -297,7 +297,7 @@ def guess_service_name():
     return os.path.basename(os.getcwd())
 
 
-def guess_instance(service, args):
+def guess_instance(service, cluster, args):
     """Returns instance from args if available, otherwise uses 'main' if it is a valid instance,
     otherwise takes a good guess and returns the first instance available"""
     if args.instance:
@@ -305,7 +305,7 @@ def guess_instance(service, args):
     else:
         try:
             instances = list_all_instances_for_service(
-                service=service, clusters=None, instance_type=None, soa_dir=args.yelpsoa_config_root)
+                service=service, clusters=[cluster], instance_type=None, soa_dir=args.yelpsoa_config_root)
             if 'main' in instances:
                 instance = 'main'
             else:
