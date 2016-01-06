@@ -167,7 +167,6 @@ def get_service_path(service, soa_dir):
 def path_to_soa_dir_service(service_path):
     soa_dir = os.path.dirname(service_path)
     service = os.path.basename(service_path)
-
     return soa_dir, service
 
 
