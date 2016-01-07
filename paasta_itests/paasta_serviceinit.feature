@@ -18,7 +18,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run status on chronos jobs
     Given a working paasta cluster
-      And I have yelpsoa-configs for the service "test-service" with disabled chronos instance "job"
+      And I have yelpsoa-configs for the service "test-service" with disabled scheduled chronos instance "job"
       And I have a deployments.json for the service "test-service" with disabled instance "job"
      When we create a chronos job dict from the configs for instance "job" of service "test-service"
       And we send the job to chronos
@@ -27,7 +27,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run status --verbose on chronos jobs
     Given a working paasta cluster
-      And I have yelpsoa-configs for the service "test-service" with disabled chronos instance "job"
+      And I have yelpsoa-configs for the service "test-service" with disabled scheduled chronos instance "job"
       And I have a deployments.json for the service "test-service" with disabled instance "job"
      When we create a chronos job dict from the configs for instance "job" of service "test-service"
       And we send the job to chronos
@@ -36,7 +36,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-stop on an enabled chronos job
     Given a working paasta cluster
-      And I have yelpsoa-configs for the service "test-service" with enabled chronos instance "job"
+      And I have yelpsoa-configs for the service "test-service" with enabled scheduled chronos instance "job"
       And I have a deployments.json for the service "test-service" with enabled instance "job"
      When we create a chronos job dict from the configs for instance "job" of service "test-service"
       And we send the job to chronos
@@ -47,7 +47,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-start on an enabled chronos job
     Given a working paasta cluster
-      And I have yelpsoa-configs for the service "test-service" with enabled chronos instance "job"
+      And I have yelpsoa-configs for the service "test-service" with enabled scheduled chronos instance "job"
       And I have a deployments.json for the service "test-service" with enabled instance "job"
      When we create a chronos job dict from the configs for instance "job" of service "test-service"
       And we paasta_serviceinit emergency-start the chronos job
@@ -57,7 +57,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-start on a disabled chronos job
     Given a working paasta cluster
-      And I have yelpsoa-configs for the service "test-service" with disabled chronos instance "job"
+      And I have yelpsoa-configs for the service "test-service" with disabled scheduled chronos instance "job"
       And I have a deployments.json for the service "test-service" with disabled instance "job"
      When we create a chronos job dict from the configs for instance "job" of service "test-service"
       And we paasta_serviceinit emergency-start the chronos job
@@ -67,12 +67,12 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-restart on an enabled chronos job
     Given a working paasta cluster
-      And I have yelpsoa-configs for the service "test-service" with enabled chronos instance "job"
+      And I have yelpsoa-configs for the service "test-service" with enabled scheduled chronos instance "job"
       And I have a deployments.json for the service "test-service" with enabled instance "job"
      When we create a chronos job dict from the configs for instance "job" of service "test-service"
       And we send the job to chronos
       And we wait for the chronos job to appear in the job list
-      And we update the tag for the service "test-service" with enabled chronos instance "job"
+      And we update the tag for the service "test-service" with enabled scheduled chronos instance "job"
       And we create a chronos job dict from the configs for instance "job" of service "test-service"
       And we paasta_serviceinit emergency-restart the chronos job
      Then the old job is disabled in chronos
