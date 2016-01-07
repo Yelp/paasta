@@ -43,7 +43,6 @@ def create_chronos_job_config_object_from_configs(context, service, instance, jo
     # s_c_l caches reads from the fs and doesn't offer a way to ignore the cache, so doesn't return
     # the most recent version on the file. I *hate* this, but need to move on.
     chronos_tools.service_configuration_lib._yaml_cache = {}
-    logging.info("storing job_config name %s as job_name %s" % (job_config['name'], job_name))
     context.jobs[job_name] = job_config
 
 

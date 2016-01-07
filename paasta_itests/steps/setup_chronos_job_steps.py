@@ -35,11 +35,7 @@ def job_exists(context, service, instance):
 @when(u'we run setup_chronos_job for service_instance "{service_instance}"')
 def run_setup_chronos_job(context, service_instance):
     cmd = "../paasta_tools/setup_chronos_job.py %s -d %s" % (service_instance, context.soa_dir)
-    logging.info("Running cmd")
-    logging.info(cmd)
     exit_code, output = _run(cmd)
-    logging.info(exit_code)
-    logging.info(output)
     context.exit_code, context.output = exit_code, output
 
 
@@ -54,7 +50,6 @@ def old_jobs_leftover(context, job_count, job_name):
         job_definition['name'] = modified_name
         job_definition['disabled'] = True
         context.chronos_client.add(job_definition)
-    logging.info(len(context.chronos_client.list()))
 @then(u'there should be {job_count} {disabled} jobs for the service "{service}" and instance "{instance}"')
 def should_be_disabled_jobs(context, disabled, job_count, service, instance):
     is_disabled = True if disabled == "disabled" else False
@@ -64,9 +59,5 @@ def should_be_disabled_jobs(context, disabled, job_count, service, instance):
         client=context.chronos_client,
         include_disabled=True,
     )
-    logging.info("all jobs")
-    logging.info(len(all_jobs))
     filtered_jobs = [job for job in all_jobs if job["disabled"] is is_disabled]
-    logging.info("%s jobs" % disabled)
-    logging.info(len(filtered_jobs))
     assert len(filtered_jobs) == int(job_count)
