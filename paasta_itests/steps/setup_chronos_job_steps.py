@@ -20,6 +20,7 @@ from behave import when, then
 sys.path.append('../')
 from paasta_tools import setup_chronos_job
 from paasta_tools import chronos_tools
+from paasta_tools.utils import _run
 
 fake_service_name = 'test-service'
 fake_instance_name = 'test-instance'
@@ -82,8 +83,12 @@ def setup_the_chronos_job(context):
         service=fake_service_name,
         instance=fake_instance_name,
         complete_job_config=context.chronos_job_config,
+@then(u'we should see a job for the service "{service}" and instance "{instance}" in the job list')
+def job_exists(context, service, instance):
+    matching_jobs = chronos_tools.lookup_chronos_jobs(
         client=context.chronos_client,
-        cluster=context.cluster
+        service=service,
+        instance=instance,
     )
     print 'setup_chronos_job returned exitcode %s with output:\n%s\n' % (exit_code, output)
 
@@ -125,6 +130,24 @@ def should_be_disabled_jobs(context, job_count):
     all_related_jobs = chronos_tools.lookup_chronos_jobs(
         service=fake_service_name,
         instance=fake_instance_name,
+
+@when(u'we run setup_chronos_job for service_instance "{service_instance}"')
+def run_setup_chronos_job(context, service_instance):
+    cmd = "../paasta_tools/setup_chronos_job.py %s -d %s" % (service_instance, context.soa_dir)
+    logging.info("Running cmd")
+    logging.info(cmd)
+    exit_code, output = _run(cmd)
+    logging.info(exit_code)
+    logging.info(output)
+    context.exit_code, context.output = exit_code, output
+
+
+@then(u'there should be {job_count} {disabled} jobs for the service "{service}" and instance "{instance}"')
+def should_be_disabled_jobs(context, disabled, job_count, service, instance):
+    is_disabled = True if disabled == "disabled" else False
+    all_jobs = chronos_tools.lookup_chronos_jobs(
+        service=service,
+        instance=instance,
         client=context.chronos_client,
         include_disabled=True,
     )
