@@ -113,6 +113,7 @@ def working_paasta_cluster(context):
     if not hasattr(context, 'chronos_client'):
         context.chronos_config = setup_chronos_config()
         context.chronos_client = setup_chronos_client()
+        context.jobs = {}
     else:
         print 'Chronos connection already established'
 
