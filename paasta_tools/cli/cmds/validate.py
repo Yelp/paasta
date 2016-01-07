@@ -22,12 +22,16 @@ from glob import glob
 from jsonschema import Draft4Validator
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
+
+from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
+from paasta_tools.utils import list_all_instances_for_service
+from paasta_tools.utils import list_clusters
 
 
 SCHEMA_VALID = success("Successfully validated schema")
@@ -48,6 +52,17 @@ UNKNOWN_SERVICE = "Unable to determine service to validate.\n" \
                   "Please supply the %s name you wish to " \
                   "validate with the %s option." \
                   % (PaastaColors.cyan('SERVICE'), PaastaColors.cyan('-s'))
+
+
+def invalid_chronos_instance(cluster, instance, output):
+    return failure(
+        'chronos-%s.yaml has an invalid instance: %s.\n  %s\n  '
+        'More info:' % (cluster, instance, output),
+        "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#chronos-clustername-yaml")
+
+
+def valid_chronos_instance(cluster, instance):
+    return success('chronos-%s.yaml has a valid instance: %s.' % (cluster, instance))
 
 
 def get_schema(file_type):
@@ -93,7 +108,7 @@ def validate_schema(file_path, file_type):
         print '%s: %s' % (SCHEMA_INVALID, file_path)
         print '  Validation Message: %s' % e.message
     else:
-        print '%s: %s' % (SCHEMA_VALID, file_path)
+        print '%s: %s' % (SCHEMA_VALID, basename)
 
 
 def validate_all_schemas(service_path):
@@ -149,6 +164,32 @@ def get_service_path(service, soa_dir):
             return None
 
 
+def path_to_soa_dir_service(service_path):
+    soa_dir = os.path.dirname(service_path)
+    service = os.path.basename(service_path)
+    return soa_dir, service
+
+
+def validate_chronos(service_path):
+    soa_dir, service = path_to_soa_dir_service(service_path)
+    instance_type = 'chronos'
+
+    for cluster in list_clusters(service, soa_dir, instance_type):
+        for instance in list_all_instances_for_service(
+                service=service, clusters=[cluster], instance_type=instance_type,
+                soa_dir=soa_dir):
+            cjc = load_chronos_job_config(service, instance, cluster, False, soa_dir)
+            checks_passed, check_msgs = cjc.validate()
+
+            # Remove duplicate check_msgs
+            unique_check_msgs = list(set(check_msgs))
+
+            if not checks_passed:
+                print invalid_chronos_instance(cluster, instance, "\n  ".join(unique_check_msgs))
+            else:
+                print valid_chronos_instance(cluster, instance)
+
+
 def paasta_validate(args):
     """Analyze the service in the PWD to determine if conf files are all valid
 
@@ -163,3 +204,4 @@ def paasta_validate(args):
         return 1
 
     validate_all_schemas(service_path)
+    validate_chronos(service_path)
