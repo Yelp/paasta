@@ -16,6 +16,7 @@
 import json
 import os
 import pkgutil
+import sys
 import yaml
 
 from glob import glob
@@ -95,7 +96,7 @@ def validate_schema(file_path, file_type):
         config_file = get_file_contents(file_path)
     except IOError:
         print '%s: %s' % (FAILED_READING_FILE, file_path)
-        return
+        return 1
     if extension == '.yaml':
         config_file_object = yaml.load(config_file)
     elif extension == '.json':
@@ -107,8 +108,10 @@ def validate_schema(file_path, file_type):
     except ValidationError as e:
         print '%s: %s' % (SCHEMA_INVALID, file_path)
         print '  Validation Message: %s' % e.message
+        return 1
     else:
         print '%s: %s' % (SCHEMA_VALID, basename)
+        return 0
 
 
 def validate_all_schemas(service_path):
@@ -124,9 +127,13 @@ def validate_all_schemas(service_path):
         if os.path.islink(file_name):
             continue
         basename = os.path.basename(file_name)
+        returncode = 0
         for file_type in ['chronos', 'marathon']:
             if basename.startswith(file_type):
-                validate_schema(file_name, file_type)
+                tmp_returncode = validate_schema(file_name, file_type)
+                if tmp_returncode != 0:
+                    returncode = tmp_returncode
+        return returncode
 
 
 def add_subparser(subparsers):
@@ -155,13 +162,22 @@ def get_service_path(service, soa_dir):
     :param args: argparse.Namespace obj created from sys.args by cli
     """
     if service:
-        return os.path.join(soa_dir, service)
+        service_path = os.path.join(soa_dir, service)
     else:
         if soa_dir == os.getcwd():
-            return os.getcwd()
+            service_path = os.getcwd()
         else:
             print UNKNOWN_SERVICE
             return None
+    if not os.path.isdir(service_path):
+        print failure("%s is not a directory" % service_path,
+                      "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+        return None
+    if not glob(os.path.join(service_path, "*.yaml")):
+        print failure("%s does not contain any .yaml files" % service_path,
+                      "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+        return None
+    return service_path
 
 
 def path_to_soa_dir_service(service_path):
@@ -174,6 +190,7 @@ def validate_chronos(service_path):
     soa_dir, service = path_to_soa_dir_service(service_path)
     instance_type = 'chronos'
 
+    returncode = 0
     for cluster in list_clusters(service, soa_dir, instance_type):
         for instance in list_all_instances_for_service(
                 service=service, clusters=[cluster], instance_type=instance_type,
@@ -186,8 +203,10 @@ def validate_chronos(service_path):
 
             if not checks_passed:
                 print invalid_chronos_instance(cluster, instance, "\n  ".join(unique_check_msgs))
+                returncode = 1
             else:
                 print valid_chronos_instance(cluster, instance)
+    return returncode
 
 
 def paasta_validate(args):
@@ -201,7 +220,17 @@ def paasta_validate(args):
     service_path = get_service_path(service, soa_dir)
 
     if service_path is None:
-        return 1
+        sys.exit(1)
 
-    validate_all_schemas(service_path)
-    validate_chronos(service_path)
+    returncode = 0
+
+    tmp_returncode = validate_all_schemas(service_path)
+    if tmp_returncode != 0:
+        returncode = tmp_returncode
+
+    tmp_returncode = validate_chronos(service_path)
+    if tmp_returncode != 0:
+        returncode = tmp_returncode
+
+    if returncode != 0:
+        sys.exit(returncode)
