@@ -58,11 +58,6 @@ def chronos_job_is_ready(context):
     chronos_tools.wait_for_job(context.chronos_client, context.chronos_job_name)
 
 
-@when(u'we manually start the job')
-def chronos_manually_run_job(context):
-    context.chronos_client.run(context.chronos_job_name)
-
-
 @then(u"we {should_or_not} be able to see it when we list jobs")
 def list_chronos_jobs_has_job(context, should_or_not):
     jobs = context.chronos_client.list()
