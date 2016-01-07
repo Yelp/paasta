@@ -686,7 +686,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
     mock_execlp,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
-    mock_simulate_healthcheck
+    mock_simulate_healthcheck,
 ):
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
