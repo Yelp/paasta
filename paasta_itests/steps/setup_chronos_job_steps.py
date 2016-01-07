@@ -50,6 +50,7 @@ def old_jobs_leftover(context, job_count, job_name):
         job_definition['name'] = modified_name
         job_definition['disabled'] = True
         context.chronos_client.add(job_definition)
+
 @then(u'there should be {job_count} {disabled} jobs for the service "{service}" and instance "{instance}"')
 def should_be_disabled_jobs(context, disabled, job_count, service, instance):
     is_disabled = True if disabled == "disabled" else False

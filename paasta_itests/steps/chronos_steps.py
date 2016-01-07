@@ -17,21 +17,20 @@ from behave import when, then
 from paasta_tools import chronos_tools
 
 
-# TODO this should be replaced by create_chronos_job_from_configs
-@when(u'we create a trivial chronos job')
-def create_trivial_chronos_job(context):
+@when(u'we create a trivial chronos job called "{job_name}"')
+def create_trivial_chronos_job(context, job_name):
     job_config = {
         'async': False,
         'command': 'echo 1',
         'epsilon': 'PT15M',
-        'name': 'fake-service fake-instance git12345678 config90abcdef',
+        'name': 'job_name',
         'owner': '',
         'disabled': False,
-        'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
+        'schedule': 'R/20140101T00:00:00Z/PT60M',
     }
+    context.jobs[job_name] = job_config
     context.chronos_client.add(job_config)
     context.chronos_job_name = job_config['name']
-
 
 @when(u'we store the name of the job for the service {service} and instance {instance} as {job_name}')
 def create_chronos_job_config_object_from_configs(context, service, instance, job_name):
@@ -51,10 +50,10 @@ def send_job_to_chronos(context):
     context.chronos_client.add(context.chronos_job_config)
 
 
-@when(u'we wait for the chronos job to appear in the job list')
-def chronos_job_is_ready(context):
+@when(u'we wait for the chronos job stored as "{job_name}" to appear in the job list')
+def chronos_job_is_ready(context, job_name):
     """Wait for a job with a matching job id to be ready."""
-    chronos_tools.wait_for_job(context.chronos_client, context.chronos_job_name)
+    chronos_tools.wait_for_job(context.chronos_client, context.jobs[job_name]['name'])
 
 
 @then(u"we {should_or_not} be able to see it when we list jobs")
@@ -93,3 +92,11 @@ def chronos_check_job_state(context, field, job_name, value):
     assert len(jobs) == 1
     # we cast to a string so you can correctly assert that a value is True/False
     assert str(jobs[0][field]) == value
+
+@then(u'the job stored as "{job_name}" is {disabled} in chronos')
+def job_is_disabled(context, job_name, disabled):
+    is_disabled = True if disabled == "disabled" else False
+    full_job_name = context.jobs[job_name]["name"]
+    all_jobs = context.chronos_client.list()
+    filtered_jobs = [job for job in all_jobs if job["name"] == full_job_name]
+    assert filtered_jobs[0]["disabled"] is is_disabled

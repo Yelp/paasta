@@ -2,9 +2,9 @@ Feature: cleanup_chronos_jobs removes chronos jobs no longer in the config
 
  Scenario: Cleanup chronos jobs removes jobs
    Given a working paasta cluster
-     And I have yelpsoa-configs for the service "myservice" with disabled scheduled chronos instance "UNUSED"
-    When I launch 3 configured jobs for the service "myservice" with scheduled chronos instance "UNUSED" and differing tags
-     And I launch 1 unconfigured jobs for the service "oldservice" with scheduled chronos instance "foo" and differing tags
+      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+    When I launch 3 configured jobs for the service "testservice" with scheduled chronos instance "testinstance" and differing tags
+     And I launch 1 unconfigured jobs for the service "oldservice" with scheduled chronos instance "othertestinstance" and differing tags
      And I launch 3 non-paasta jobs
     Then cleanup_chronos_jobs exits with return code "0" and the correct output
      And the non chronos jobs are still in the job list
