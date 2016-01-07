@@ -16,7 +16,7 @@ import os
 from tempfile import NamedTemporaryFile
 from tempfile import mkdtemp
 
-from behave import given
+from behave import given, when
 import chronos
 import json
 import yaml
@@ -205,3 +205,13 @@ def write_soa_dir_chronos_deployments(context, service, disabled, instance):
                 }
             }
         }))
+
+@when(u'we set the "{field}" field of the {framework} config for service "{service}" and instance "{instance}" to "{value}"')
+def modify_configs(context, field, framework, service, instance, value):
+    soa_dir = context.soa_dir
+    with open(os.path.join(soa_dir, service, "%s-%s.yaml" % (framework, context.cluster)), 'r+') as f:
+        data = yaml.load(f.read())
+        data[instance][field] = value
+        f.seek(0)
+        f.write(yaml.safe_dump(data))
+        f.truncate()
