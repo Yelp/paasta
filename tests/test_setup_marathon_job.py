@@ -891,15 +891,15 @@ class TestSetupMarathonJob:
         fake_drain_method_name = 'noop'
         fake_name = 'how_many_strings'
         fake_instance = 'will_i_need_to_think_of'
-        fake_id = marathon_tools.format_job_id(fake_name, fake_instance, 'gityourmom', 'configyourdad')
+        fake_id = marathon_tools.format_job_id(fake_name, fake_instance, 'git11111111', 'config11111111')
         fake_config = {'id': fake_id, 'instances': 2}
 
-        old_app_id = ('%s2' % fake_id)
+        old_app_id = marathon_tools.format_job_id(fake_name, fake_instance, 'git22222222', 'config22222222')
         old_task_to_drain = mock.Mock(id="old_task_to_drain", app_id=old_app_id)
         old_task_is_draining = mock.Mock(id="old_task_is_draining", app_id=old_app_id)
         old_task_dont_drain = mock.Mock(id="old_task_dont_drain", app_id=old_app_id)
 
-        old_app = mock.Mock(id=old_app_id, tasks=[old_task_to_drain, old_task_is_draining, old_task_dont_drain])
+        old_app = mock.Mock(id="/%s" % old_app_id, tasks=[old_task_to_drain, old_task_is_draining, old_task_dont_drain])
 
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=[old_app]),
@@ -966,8 +966,8 @@ class TestSetupMarathonJob:
             fake_drain_method.drain.assert_any_call(old_task_to_drain)
 
             assert fake_client.kill_task.call_count == 2
-            fake_client.kill_task.assert_any_call(old_app.id, old_task_is_draining.id, scale=True)
-            fake_client.kill_task.assert_any_call(old_app.id, old_task_to_drain.id, scale=True)
+            fake_client.kill_task.assert_any_call(old_app_id, old_task_is_draining.id, scale=True)
+            fake_client.kill_task.assert_any_call(old_app_id, old_task_to_drain.id, scale=True)
 
             create_marathon_app_patch.assert_called_once_with(fake_config['id'], fake_config, fake_client)
             assert kill_old_ids_patch.call_count == 0

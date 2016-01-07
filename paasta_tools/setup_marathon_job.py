@@ -339,8 +339,7 @@ def deploy_service(
     short_id = marathon_tools.format_job_id(service, instance)
 
     cluster = load_system_paasta_config().get_cluster()
-    app_list = client.list_apps(embed_failures=True)
-    existing_apps = [app for app in app_list if short_id in app.id]
+    existing_apps = marathon_tools.get_matching_apps(service, instance, client, embed_failures=True)
     new_app_list = [a for a in existing_apps if a.id == '/%s' % config['id']]
     other_apps = [a for a in existing_apps if a.id != '/%s' % config['id']]
     serviceinstance = "%s.%s" % (service, instance)
