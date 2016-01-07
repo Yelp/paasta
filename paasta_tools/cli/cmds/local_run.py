@@ -412,7 +412,8 @@ def run_docker_container(
     command,
     healthcheck,
     healthcheck_only,
-    instance_config
+    instance_config,
+    soa_dir=service_configuration_lib.DEFAULT_SOA_DIR,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -450,7 +451,8 @@ def run_docker_container(
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
-    healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(service, instance, instance_config, random_port)
+    healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
+        service, instance, instance_config, random_port, soa_dir=soa_dir)
 
     sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
     if interactive:
@@ -593,7 +595,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
     run_docker_container(
         docker_client=docker_client,
         service=service,
-        instance=args.instance,
+        instance=instance,
         docker_hash=docker_hash,
         volumes=volumes,
         interactive=args.interactive,
@@ -601,6 +603,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=instance_config,
+        soa_dir=args.yelpsoa_config_root,
     )
 
 
