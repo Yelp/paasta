@@ -165,9 +165,11 @@ def get_healthy_marathon_instances_for_short_app_id(client, app_id):
     tasks = client.list_tasks()
     tasks_for_app = [task for task in tasks if task.app_id.startswith('/%s' % app_id)]
 
+    one_minute_ago = datetime.now() - timedelta(minutes=1)
+
     healthy_tasks = []
     for task in tasks_for_app:
-        if all([health_check_result.alive for health_check_result in task.health_check_results]):
+        if all([health_check_result.alive for health_check_result in task.health_check_results]) and task.started_at > one_minute_ago:
             healthy_tasks.append(task)
     return len(healthy_tasks)
 
