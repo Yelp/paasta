@@ -18,7 +18,6 @@ import sys
 from behave import when, then
 
 sys.path.append('../')
-from paasta_tools import setup_chronos_job
 from paasta_tools import chronos_tools
 from paasta_tools.utils import _run
 
@@ -32,6 +31,7 @@ def job_exists(context, service, instance):
     )
     assert len(matching_jobs) == 1
 
+
 @when(u'we run setup_chronos_job for service_instance "{service_instance}"')
 def run_setup_chronos_job(context, service_instance):
     cmd = "../paasta_tools/setup_chronos_job.py %s -d %s" % (service_instance, context.soa_dir)
@@ -39,10 +39,8 @@ def run_setup_chronos_job(context, service_instance):
     context.exit_code, context.output = exit_code, output
 
 
-
 @when(u'we create {job_count:d} disabled jobs that look like the job stored as "{job_name}"')
 def old_jobs_leftover(context, job_count, job_name):
-    fake_jobs = []
     for i in xrange(job_count):
         job_definition = copy.deepcopy(context.jobs[job_name])
         # modify the name by replacing the last character in the config hash
@@ -50,6 +48,7 @@ def old_jobs_leftover(context, job_count, job_name):
         job_definition['name'] = modified_name
         job_definition['disabled'] = True
         context.chronos_client.add(job_definition)
+
 
 @then(u'there should be {job_count} {disabled} jobs for the service "{service}" and instance "{instance}"')
 def should_be_disabled_jobs(context, disabled, job_count, service, instance):

@@ -32,9 +32,10 @@ def create_trivial_chronos_job(context, job_name):
     context.chronos_client.add(job_config)
     context.chronos_job_name = job_config['name']
 
+
 @when(u'we store the name of the job for the service {service} and instance {instance} as {job_name}')
 def create_chronos_job_config_object_from_configs(context, service, instance, job_name):
-    job_config =  chronos_tools.create_complete_config(
+    job_config = chronos_tools.create_complete_config(
         service=service,
         job_name=instance,
         soa_dir=context.soa_dir,
@@ -92,6 +93,7 @@ def chronos_check_job_state(context, field, job_name, value):
     assert len(jobs) == 1
     # we cast to a string so you can correctly assert that a value is True/False
     assert str(jobs[0][field]) == value
+
 
 @then(u'the job stored as "{job_name}" is {disabled} in chronos')
 def job_is_disabled(context, job_name, disabled):

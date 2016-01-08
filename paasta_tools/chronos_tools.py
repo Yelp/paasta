@@ -69,6 +69,7 @@ class LastRunState:
 class ChronosNotConfigured(Exception):
     pass
 
+
 class InvalidParentError(Exception):
     pass
 

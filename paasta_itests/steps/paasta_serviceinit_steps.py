@@ -85,7 +85,8 @@ def marathon_restart_gets_new_task_ids(context, job_id):
     assert old_tasks != new_tasks
 
 
-@then(u'paasta_serviceinit status for the service_instance "{service_instance}" exits with return code 0 and the correct output')
+@then((u'paasta_serviceinit status for the service_instance "{service_instance}"'
+      'exits with return code 0 and the correct output'))
 def chronos_status_returns_healthy(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
@@ -98,7 +99,8 @@ def chronos_status_returns_healthy(context, service_instance):
     assert "New" in output
 
 
-@then(u'paasta_serviceinit status --verbose for the service_instance "{service_instance}" exits with return code 0 and the correct output')
+@then((u'paasta_serviceinit status --verbose for the service_instance "{service_instance}"'
+      'exits with return code 0 and the correct output'))
 def chronos_status_verbose_returns_healthy(context, service_instance):
     cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status --verbose" % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd

@@ -153,7 +153,9 @@ def write_soa_dir_chronos_instance(context, service, disabled, instance):
         }))
     context.soa_dir = soa_dir
 
-@given(u'we have yelpsoa-configs for the service "{service}" with {disabled} dependent chronos instance "{instance}" and parent "{parent}"')
+
+@given((u'we have yelpsoa-configs for the service "{service}" with {disabled} dependent chronos instance'
+       '"{instance}" and parent "{parent}"'))
 def write_soa_dir_dependent_chronos_instance(context, service, disabled, instance, parent):
     soa_dir = mkdtemp()
     desired_disabled = (disabled == 'disabled')
@@ -206,7 +208,9 @@ def write_soa_dir_chronos_deployments(context, service, disabled, instance):
             }
         }))
 
-@when(u'we set the "{field}" field of the {framework} config for service "{service}" and instance "{instance}" to "{value}"')
+
+@when((u'we set the "{field}" field of the {framework} config for service "{service}"'
+       'and instance "{instance}" to "{value}"'))
 def modify_configs(context, field, framework, service, instance, value):
     soa_dir = context.soa_dir
     with open(os.path.join(soa_dir, service, "%s-%s.yaml" % (framework, context.cluster)), 'r+') as f:
