@@ -162,7 +162,7 @@ def write_soa_dir_dependent_chronos_instance(context, service, disabled, instanc
     with open(os.path.join(soa_dir, service, 'chronos-%s.yaml' % context.cluster), 'w') as f:
         f.write(yaml.safe_dump({
             instance: {
-                'parent':  parent,
+                'parents':  parent,
                 'cmd': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
                 'disabled': desired_disabled,
