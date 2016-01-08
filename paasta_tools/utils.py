@@ -795,7 +795,7 @@ def get_default_cluster_for_service(service):
     return cluster
 
 
-def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
+def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     """Returns a sorted list of clusters a service is configured to deploy to,
     or all clusters if ``service`` is not specified.
 
@@ -809,16 +809,25 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR):
         service = '*'
     srv_path = os.path.join(soa_dir, service)
 
+    if instance_type == 'marathon' or instance_type == 'chronos':
+        instance_types = instance_type
+    else:
+        instance_types = 'marathon|chronos'
+
+    search_re = r'/.*/(' + instance_types + r')-([0-9a-z-]*).yaml$'
+
     for yaml_file in glob.glob('%s/*.yaml' % srv_path):
-        cluster_re_match = re.search('/.*/(marathon|chronos)-([0-9a-z-]*).yaml$', yaml_file)
+        cluster_re_match = re.search(search_re, yaml_file)
         if cluster_re_match is not None:
             clusters.add(cluster_re_match.group(2))
     return sorted(clusters)
 
 
-def list_all_instances_for_service(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def list_all_instances_for_service(service, clusters=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
     instances = set()
-    for cluster in list_clusters(service, soa_dir=soa_dir):
+    if not clusters:
+        clusters = list_clusters(service, soa_dir=soa_dir)
+    for cluster in clusters:
         for service_instance in get_service_instance_list(service, cluster, instance_type, soa_dir=soa_dir):
             instances.add(service_instance[1])
     return instances

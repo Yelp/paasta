@@ -912,16 +912,24 @@ def get_matching_appids(servicename, instance, client):
     """Returns a list of appids given a service and instance.
     Useful for fuzzy matching if you think there are marathon
     apps running but you don't know the full instance id"""
+    return [app.id for app in get_matching_apps(servicename, instance, client)]
+
+
+def get_matching_apps(servicename, instance, client, embed_failures=False):
+    """Returns a list of appids given a service and instance.
+    Useful for fuzzy matching if you think there are marathon
+    apps running but you don't know the full instance id"""
     jobid = format_job_id(servicename, instance)
-    return [app.id for app in client.list_apps() if app.id.startswith("/%s" % jobid)]
+    expected_prefix = "/%s%s" % (jobid, MESOS_TASK_SPACER)
+    return [app for app in client.list_apps(embed_failures=embed_failures) if app.id.startswith(expected_prefix)]
 
 
-def get_healthcheck_for_instance(service, instance, service_manifest, random_port):
+def get_healthcheck_for_instance(service, instance, service_manifest, random_port, soa_dir=DEFAULT_SOA_DIR):
     """
     Returns healthcheck for a given service instance in the form of a tuple (mode, healthcheck_command)
     or (None, None) if no healthcheck
     """
-    smartstack_config = load_service_namespace_config(service, instance)
+    smartstack_config = load_service_namespace_config(service, instance, soa_dir)
     mode = service_manifest.get_healthcheck_mode(smartstack_config)
     hostname = socket.getfqdn()
 

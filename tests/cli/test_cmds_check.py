@@ -41,7 +41,7 @@ from paasta_tools.cli.utils import PaastaCheckMessages
 @patch('paasta_tools.cli.cmds.check.pipeline_check')
 @patch('paasta_tools.cli.cmds.check.service_dir_check')
 @patch('paasta_tools.cli.cmds.check.validate_service_name')
-@patch('paasta_tools.cli.cmds.check.guess_service_name')
+@patch('paasta_tools.cli.cmds.check.figure_out_service_name')
 @patch('paasta_tools.cli.cmds.check.deploy_check')
 @patch('paasta_tools.cli.cmds.check.deploy_has_performance_check')
 @patch('paasta_tools.cli.cmds.check.deploy_has_security_check')
@@ -61,7 +61,7 @@ def test_check_paasta_check_calls_everything(
         mock_deploy_check,
         mock_deploy_security_check,
         mock_deploy_performance_check,
-        mock_guess_service_name,
+        mock_figure_out_service_name,
         mock_validate_service_name,
         mock_service_dir_check,
         mock_pipeline_check,
@@ -69,7 +69,7 @@ def test_check_paasta_check_calls_everything(
 ):
     # Ensure each check in 'paasta_check' is called
 
-    mock_guess_service_name.return_value = 'servicedocs'
+    mock_figure_out_service_name.return_value = 'servicedocs'
     mock_validate_service_name.return_value = None
     paasta_check(None)
 
