@@ -15,7 +15,9 @@ from marathon.exceptions import MarathonHttpError
 
 def parse_args():
     parser = argparse.ArgumentParser(
-        description='',
+        description="""This script attempts to gracefully drain and kill a marathon app.
+        It is intended for use in emergencies when the regular bounce script can't proceed,
+        and needs to kill a specific app to get going.""",
     )
     parser.add_argument(
         'appname',
