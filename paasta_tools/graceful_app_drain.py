@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 
 import argparse
-import sys
 
 import service_configuration_lib
-from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools import marathon_tools
 from paasta_tools import drain_lib
 from paasta_tools import bounce_lib
@@ -21,7 +19,7 @@ def parse_args():
     parser.add_argument(
         'appname',
         help="the app that will be drained",
-    )#.completer = lazy_choices_completer()
+    )
     parser.add_argument(
         '-d', '--soa-dir',
         dest="soa_dir",
@@ -43,7 +41,7 @@ def main():
         marathon_config.get_password(),
     )
 
-    if not is_app_id_running(app_id=full_appid, client=client):
+    if not marathon_tools.is_app_id_running(app_id=full_appid, client=client):
         print("Couldn't find an app named {0}".format(full_appid))
         quit()
 
@@ -69,7 +67,7 @@ def main():
 
     bounce_func = bounce_lib.get_bounce_method_func('down')
 
-    while is_app_id_running(app_id=full_appid, client=client):
+    while marathon_tools.is_app_id_running(app_id=full_appid, client=client):
         app_to_kill = client.get_app(full_appid)
         try:
             old_app_live_tasks, old_app_draining_tasks = get_old_live_draining_tasks([app_to_kill], drain_method)
