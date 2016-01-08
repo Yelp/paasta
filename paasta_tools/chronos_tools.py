@@ -385,7 +385,8 @@ class ChronosJobConfig(InstanceConfig):
         if self.get_schedule() is not None:
             complete_config['schedule'] = self.get_schedule()
         else:
-            complete_config['parents'] = self.get_parents()
+            full_parent_ids = find_matching_parent_jobs(self.get_parents())
+            complete_config['parents'] = full_parent_ids
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
