@@ -699,5 +699,5 @@ def find_matching_parent_jobs(job_names):
         # job to use as the parent
         ordered = sort_jobs(matching_jobs)
         if len(ordered) > 0:
-            formatted.append(ordered[0])
+            formatted.append(ordered[0]['name'])
     return formatted
