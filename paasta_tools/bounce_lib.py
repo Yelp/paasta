@@ -378,6 +378,10 @@ def down_bounce(
     happy_new_tasks,
     old_app_live_tasks,
 ):
+    """
+    Stops old apps, doesn't start any new apps.
+    Used for the graceful_app_drain script.
+    """
     return {
         "create_app": False,
         "tasks_to_drain": set(*old_app_live_tasks.values()),

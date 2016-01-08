@@ -1,7 +1,4 @@
 #!/usr/bin/env python
-"""
-Docstring
-"""
 
 import argparse
 import sys
