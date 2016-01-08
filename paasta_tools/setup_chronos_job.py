@@ -150,6 +150,7 @@ def setup_job(service, instance, complete_job_config, client, cluster):
         service=service,
         instance=instance,
         client=client,
+        include_disabled=True,
     ))
     old_jobs = [job for job in all_existing_jobs if job["name"] != job_id]
     enabled_old_jobs = [job for job in old_jobs if not job["disabled"]]
