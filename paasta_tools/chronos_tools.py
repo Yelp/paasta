@@ -69,6 +69,9 @@ class LastRunState:
 class ChronosNotConfigured(Exception):
     pass
 
+class InvalidParentError(Exception):
+    pass
+
 
 class ChronosConfig(dict):
 
@@ -385,8 +388,11 @@ class ChronosJobConfig(InstanceConfig):
         if self.get_schedule() is not None:
             complete_config['schedule'] = self.get_schedule()
         else:
-            full_parent_ids = find_matching_parent_jobs(self.get_parents())
-            complete_config['parents'] = full_parent_ids
+            matching_parent_pairs = [(parent, find_matching_parent_jobs(parent)) for parent in self.get_parents()]
+            for parent_pair in matching_parent_pairs:
+                if parent_pair[1] is None:
+                    raise InvalidParentError("%s has no matching jobs in Chronos" % parent_pair[0])
+            complete_config['parents'] = [parent_pair[1] for parent_pair in matching_parent_pairs]
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -676,28 +682,21 @@ def create_job(client, job):
     client.add(job)
 
 
-def find_matching_parent_jobs(job_names):
-    """ Given a list of service.instance job names,
-    convert them to the 'real' job names', where the 'real'
-    job name is the id of the most recent job matching that
-    the service and instance.
+def find_matching_parent_jobs(job_name):
+    """ Given a service.instance, convert it to a 'real' job name,
+    where the 'real' job name is the id of the most recent job
+    matching that service and instance.
     """
-    formatted = []
-    print 'len jobs %d' % len(job_names)
     chronos_config = load_chronos_config()
-    for job_name in job_names:
-        service, instance = job_name.split(".")
-        print "service %s, instance %s" % (service, instance)
-        matching_jobs = lookup_chronos_jobs(
-            client=get_chronos_client(chronos_config),
-            service=service,
-            instance=instance,
-            include_disabled=True
-        )
-        print 'matching jobs %s' % matching_jobs
-        # sort all the jobs, and use the most recent as the
-        # job to use as the parent
-        ordered = sort_jobs(matching_jobs)
-        if len(ordered) > 0:
-            formatted.append(ordered[0]['name'])
-    return formatted
+    service, instance = job_name.split(".")
+    matching_jobs = lookup_chronos_jobs(
+        client=get_chronos_client(chronos_config),
+        service=service,
+        instance=instance,
+        include_disabled=True
+    )
+    sorted_jobs = sort_jobs(matching_jobs)
+    if len(sorted_jobs) > 0:
+        return sorted_jobs[0]['name']
+    else:
+        return None
