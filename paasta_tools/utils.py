@@ -836,7 +836,7 @@ def list_all_instances_for_service(service, cluster=None, instance_type=None, so
 def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the instances defined for a service as a list of tuples.
 
-    :param name: The service name
+    :param service: The service name
     :param cluster: The cluster to read the configuration for
     :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
     :param soa_dir: The SOA config directory to read from
