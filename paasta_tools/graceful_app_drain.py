@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 
 import argparse
+import sys
 
 import service_configuration_lib
 from paasta_tools import marathon_tools
@@ -32,18 +33,18 @@ def parse_args():
 
 def main():
     args = parse_args()
-    full_appid = args.appname
+    full_appid = args.appname.lstrip('/')
     soa_dir = args.soa_dir
     marathon_config = marathon_tools.load_marathon_config()
     client = marathon_tools.get_marathon_client(
-        marathon_config.get_url(),
-        marathon_config.get_username(),
-        marathon_config.get_password(),
+        url=marathon_config.get_url(),
+        user=marathon_config.get_username(),
+        password=marathon_config.get_password(),
     )
 
     if not marathon_tools.is_app_id_running(app_id=full_appid, client=client):
         print("Couldn't find an app named {0}".format(full_appid))
-        quit()
+        sys.exit(1)
 
     service, instance, _, __ = (s.replace('--', '_') for s in decompose_job_id(full_appid))
     short_appid = marathon_tools.format_job_id(service, instance)
