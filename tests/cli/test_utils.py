@@ -453,7 +453,7 @@ def test_guess_instances_picks_something(
 
 
 @mock.patch('paasta_tools.cli.utils.list_all_instances_for_service', autospec=True)
-def test_guess_instance_fails(
+def test_guess_instance_fails_when_instance_is_not_provided(
     mock_list_all_instances_for_service,
 ):
     mock_list_all_instances_for_service.side_effect = NoConfigurationForServiceError()
@@ -461,9 +461,11 @@ def test_guess_instance_fails(
     args = mock.MagicMock()
     args.service = fake_service
     args.cluster = None
+    args.instance = None
     with raises(SystemExit) as excinfo:
-        utils.guess_cluster(
+        utils.guess_instance(
             service=fake_service,
+            cluster=None,
             args=args,
         )
     assert excinfo.value.code == 2
