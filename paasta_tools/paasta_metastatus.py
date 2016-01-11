@@ -39,7 +39,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='',
     )
-    parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
+    parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
                         help="Print out more output regarding the state of the cluster")
     return parser.parse_args()
 
@@ -277,13 +277,31 @@ def status_for_results(results):
 
 def print_results_for_healthchecks(summary, ok, results, verbose):
     print summary
-    if verbose:
+    if verbose >= 1:
         for line in [res[0] for res in results]:
             print_with_indent(line, 2)
     elif not ok:
         critical_results = critical_events_in_outputs(results)
         for line in [res[0] for res in critical_results]:
             print_with_indent(line, 2)
+
+
+def print_extra_mesos_data():
+    mesos_state = get_mesos_state_from_leader()
+    slaves = dict((slave['id'], slave) for slave in mesos_state['slaves'])
+
+    for slave in slaves.values():
+        slave['free_resources'] = dict(slave['resources'].items())
+
+    for framework in mesos_state['frameworks']:
+        for task in framework['tasks']:
+            resource_dict = slaves[task['slave_id']]['free_resources']
+            for resource_type, value in task['resources'].items():
+                if resource_type in ['cpus', 'disk', 'mem']:
+                    resource_dict[resource_type] -= value
+
+    for slave in slaves.values():
+        print '%45s %8.2f %9.2f' % (slave['hostname'], slave['free_resources']['cpus'], slave['free_resources']['mem'])
 
 
 def main():
@@ -330,6 +348,9 @@ def main():
     print_results_for_healthchecks(mesos_summary, mesos_ok, mesos_results, args.verbose)
     print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
     print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
+
+    if args.verbose >= 2:
+        print_extra_mesos_data()
 
     if not all([mesos_ok, marathon_ok, chronos_ok]):
         sys.exit(2)
