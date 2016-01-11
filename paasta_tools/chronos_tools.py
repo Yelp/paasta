@@ -389,7 +389,7 @@ class ChronosJobConfig(InstanceConfig):
         if self.get_schedule() is not None:
             complete_config['schedule'] = self.get_schedule()
         else:
-            matching_parent_pairs = [(parent, find_matching_parent_jobs(parent)) for parent in self.get_parents()]
+            matching_parent_pairs = [(parent, find_matching_parent_job(parent)) for parent in self.get_parents()]
             for parent_pair in matching_parent_pairs:
                 if parent_pair[1] is None:
                     raise InvalidParentError("%s has no matching jobs in Chronos" % parent_pair[0])
@@ -683,7 +683,7 @@ def create_job(client, job):
     client.add(job)
 
 
-def find_matching_parent_jobs(job_name):
+def find_matching_parent_job(job_name):
     """ Given a service.instance, convert it to a 'real' job name,
     where the 'real' job name is the id of the most recent job
     matching that service and instance.

@@ -1311,20 +1311,20 @@ class TestChronosTools:
     @mock.patch('chronos_tools.lookup_chronos_jobs', autospect=True)
     @mock.patch('chronos_tools.get_chronos_client', autospect=True)
     @mock.patch('chronos_tools.load_chronos_config', autospect=True)
-    def test_find_matching_parent_jobs_none_matching(
+    def test_find_matching_parent_job_none_matching(
         self,
         mock_lookup_chronos_jobs,
         mock_get_chronos_client,
         mock_load_chronos_config,
     ):
         mock_lookup_chronos_jobs.return_value = []
-        matching = chronos_tools.find_matching_parent_jobs('service.instance')
+        matching = chronos_tools.find_matching_parent_job('service.instance')
         assert matching is None
 
     @mock.patch('chronos_tools.lookup_chronos_jobs', autospec=True)
     @mock.patch('chronos_tools.get_chronos_client', autospec=True)
     @mock.patch('chronos_tools.load_chronos_config', autospec=True)
-    def test_find_matching_parent_jobs_returns_names(
+    def test_find_matching_parent_job_returns_names(
         self,
         mock_load_chronos_config,
         mock_get_chronos_client, mock_lookup_chronos_jobs,
@@ -1332,5 +1332,5 @@ class TestChronosTools:
         mock_matching_jobs = [{'name': 'service.myinstance.gitabc.config1'}]
         mock_lookup_chronos_jobs.return_value = mock_matching_jobs
         mock_load_chronos_config.return_value = {}
-        matching = chronos_tools.find_matching_parent_jobs('service.myinstance')
+        matching = chronos_tools.find_matching_parent_job('service.myinstance')
         assert matching == 'service.myinstance.gitabc.config1'
