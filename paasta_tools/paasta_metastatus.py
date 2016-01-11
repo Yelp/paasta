@@ -174,8 +174,8 @@ def get_mesos_status():
     metrics_results = run_healthchecks_with_param(metrics, [
         assert_cpu_health,
         assert_memory_health,
-        assert_slave_health,
-        assert_tasks_running])
+        aassert_tasks_running,
+        assert_slave_health])
 
     return cluster_results + metrics_results
 
@@ -300,7 +300,7 @@ def print_extra_mesos_data():
                 if resource_type in ['cpus', 'disk', 'mem']:
                     resource_dict[resource_type] -= value
 
-    for slave in slaves.values():
+    for slave in sorted(slaves.values()):
         print '%45s %8.2f %9.2f' % (slave['hostname'], slave['free_resources']['cpus'], slave['free_resources']['mem'])
 
 
@@ -346,6 +346,8 @@ def main():
     chronos_summary = generate_summary_for_check("Chronos", chronos_ok)
 
     print_results_for_healthchecks(mesos_summary, mesos_ok, mesos_results, args.verbose)
+    if args.verbose >= 2:
+        print_extra_mesos_data()
     print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
     print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
 
