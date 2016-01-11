@@ -95,7 +95,7 @@ def chronos_status_returns_healthy(context, service_instance):
     print  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
-    assert "Stopped" in output
+    assert "Disabled" in output
     assert "New" in output
 
 

@@ -575,6 +575,14 @@ class TestChronosTools:
         # assert okay is False
         # assert msg == 'The specified time zone "+0200" does not conform to the tz database format.'
 
+    def test_get_desired_state_human_when_stopped(self):
+        fake_conf = chronos_tools.ChronosJobConfig('', '', {}, {'desired_state': 'stop'})
+        assert 'Disabled' in fake_conf.get_desired_state_human()
+
+    def test_get_desired_state_human_with_started(self):
+        fake_conf = chronos_tools.ChronosJobConfig('', '', {}, {'desired_state': 'start'})
+        assert 'Scheduled' in fake_conf.get_desired_state_human()
+
     def test_check_param_with_check(self):
         with contextlib.nested(
             mock.patch('chronos_tools.ChronosJobConfig.check_cpus', autospec=True),

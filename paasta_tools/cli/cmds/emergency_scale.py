@@ -27,8 +27,18 @@ from paasta_tools.utils import list_clusters
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'emergency-scale',
-        description="Scale a PaaSTA service instance",
-        help=("Scale a PaaSTA service instance by scaling it up or down to n instances (for Marathon apps)"))
+        help="Scale a PaaSTA service instance in Marathon without bouncing it",
+        description=(
+            "'emergency-scale' is used to scale a PaaSTA service instance by scaling it up or down "
+            "in Marathon by N instances, where N is provided by the --delta argument.\n\n"
+            "This command works by using SSH to execute commands directly on the Marathon servers, "
+            "where API access and credentials are guaranteed to be available."
+        ),
+        epilog=(
+            "Warning: Using emergency-scale to scale *down* a service will not interact with "
+            "load balancers, and therefore will drop traffic."
+        ),
+    )
     status_parser.add_argument(
         '-s', '--service',
         help="Service that you want to scale. Like 'example_service'.",

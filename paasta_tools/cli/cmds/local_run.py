@@ -225,8 +225,20 @@ def read_local_dockerfile_lines():
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'local-run',
-        description="Build and run a service's Docker container locally",
-        help='Test run service Docker container',
+        help="Run service's Docker image locally",
+        description=(
+            "'paasta local-run' is useful for simulating how a PaaSTA service would be "
+            "executed on a real cluster. It analyzes the local soa-configs and constructs "
+            "a 'docker run' invocation to match. This is useful as a type of end-to-end "
+            "test, ensuring that a service will work inside the docker container as expected. "
+            "Additionally, 'local-run' can healthcheck a service per the configured healthcheck.\n\n"
+            "Alternatively, 'local-run' can be used with --pull, which will pull the currently "
+            "deployed docker image and use it, instead of building one."
+        ),
+        epilog=(
+            "Note: 'paasta local-run' uses docker commands, which may require elevated privileges "
+            "to run (sudo)."
+        ),
     )
     list_parser.add_argument(
         '-s', '--service',
@@ -400,7 +412,8 @@ def run_docker_container(
     command,
     healthcheck,
     healthcheck_only,
-    instance_config
+    instance_config,
+    soa_dir=service_configuration_lib.DEFAULT_SOA_DIR,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -438,7 +451,8 @@ def run_docker_container(
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
-    healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(service, instance, instance_config, random_port)
+    healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
+        service, instance, instance_config, random_port, soa_dir=soa_dir)
 
     sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
     if interactive:
@@ -581,7 +595,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
     run_docker_container(
         docker_client=docker_client,
         service=service,
-        instance=args.instance,
+        instance=instance,
         docker_hash=docker_hash,
         volumes=volumes,
         interactive=args.interactive,
@@ -589,6 +603,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=instance_config,
+        soa_dir=args.yelpsoa_config_root,
     )
 
 

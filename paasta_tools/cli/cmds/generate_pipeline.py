@@ -32,15 +32,18 @@ from paasta_tools.utils import _run
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'generate-pipeline',
-        description='Run `paasta generate-pipeline` in root of your service or '
-                    'with -s $SERVICENAME. Uses a deploy.yaml in '
-                    '/nail/etc/services/$SERVICENAME/deploy.yaml',
-        help='Configure a Jenkins build pipeline.')
-
-    list_parser.add_argument('-s', '--service',
-                             help='Name of service for which you wish to generate a Jenkins pipeline',
-                             ).completer = lazy_choices_completer(list_services)
-
+        help="Configures a Yelp-specific Jenkins build pipeline to match the 'deploy.yaml'",
+        description=(
+            "'paasta generate-pipeline' is a Yelp-specific tool to interact with Jenkins "
+            "to build a build pipeline that matches what is declared in the 'deploy.yaml' "
+            "for a service."
+        ),
+        epilog="Warning: Due to the Yelpisms in this tool, it is not currently useful to other organizations."
+    )
+    list_parser.add_argument(
+        '-s', '--service',
+        help='Name of service for which you wish to generate a Jenkins pipeline',
+    ).completer = lazy_choices_completer(list_services)
     list_parser.set_defaults(command=paasta_generate_pipeline)
 
 

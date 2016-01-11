@@ -1,10 +1,53 @@
 # Change Log
 
-## [0.16.8](https://github.com/Yelp/paasta/tree/0.16.8) (2015-12-09)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.7...0.16.8)
+## [0.16.12](https://github.com/Yelp/paasta/tree/0.16.12) (2016-01-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.11...0.16.12)
+
+**Closed issues:**
+
+- support a 'parents' field in Chronos job configuration. [\#94](https://github.com/Yelp/paasta/issues/94)
 
 **Merged pull requests:**
 
+- Added 0 principle [\#137](https://github.com/Yelp/paasta/pull/137) ([solarkennedy](https://github.com/solarkennedy))
+- Added a --service argument to paasta check. Closes \#130 [\#132](https://github.com/Yelp/paasta/pull/132) ([solarkennedy](https://github.com/solarkennedy))
+- Begin testing against marathon 11 [\#120](https://github.com/Yelp/paasta/pull/120) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.11](https://github.com/Yelp/paasta/tree/v0.16.11) (2015-12-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.10...v0.16.11)
+
+**Closed issues:**
+
+- paasta local-run --pull fails without --interactive [\#131](https://github.com/Yelp/paasta/issues/131)
+- paasta check doesn't allow overriding of service name [\#130](https://github.com/Yelp/paasta/issues/130)
+
+**Merged pull requests:**
+
+- Lots of updates to help sections and therefore man pages [\#125](https://github.com/Yelp/paasta/pull/125) ([solarkennedy](https://github.com/solarkennedy))
+- Fix some sys.stderr.writes that don't have their newlines [\#123](https://github.com/Yelp/paasta/pull/123) ([asottile](https://github.com/asottile))
+- Add 'paasta validate' command [\#107](https://github.com/Yelp/paasta/pull/107) ([nhandler](https://github.com/nhandler))
+
+## [v0.16.10](https://github.com/Yelp/paasta/tree/v0.16.10) (2015-12-10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.9...v0.16.10)
+
+**Merged pull requests:**
+
+- Dependent jobs field [\#122](https://github.com/Yelp/paasta/pull/122) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Nix paasta\_cli =\> to just cli [\#121](https://github.com/Yelp/paasta/pull/121) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.9](https://github.com/Yelp/paasta/tree/v0.16.9) (2015-12-10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.8...v0.16.9)
+
+**Merged pull requests:**
+
+- Remove extra context from replication check output for performance reasons [\#117](https://github.com/Yelp/paasta/pull/117) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.8](https://github.com/Yelp/paasta/tree/v0.16.8) (2015-12-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.7...v0.16.8)
+
+**Merged pull requests:**
+
+- Fix InvalidJobNameError in marathon\_services\_running\_here [\#119](https://github.com/Yelp/paasta/pull/119) ([EvanKrall](https://github.com/EvanKrall))
 - Use https internal pypi [\#118](https://github.com/Yelp/paasta/pull/118) ([asottile](https://github.com/asottile))
 - Autodetect the instance in local-run [\#105](https://github.com/Yelp/paasta/pull/105) ([solarkennedy](https://github.com/solarkennedy))
 - Make local-run stream the docker-pull with /dev/null as stdin [\#104](https://github.com/Yelp/paasta/pull/104) ([solarkennedy](https://github.com/solarkennedy))

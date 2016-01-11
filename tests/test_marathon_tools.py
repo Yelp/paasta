@@ -1186,16 +1186,20 @@ class TestMarathonTools:
             read_config_patch.assert_any_call(service, 'green', 'fake_cluster', soa_dir=soa_dir)
 
     def test_get_matching_appids(self):
-        fakeapp1 = mock.Mock(id='/fake--service.fake--instance---bouncingold')
-        fakeapp2 = mock.Mock(id='/fake--service.fake--instance---bouncingnew')
-        fakeapp3 = mock.Mock(id='/fake--service.other--instance--bla')
-        fakeapp4 = mock.Mock(id='/other--service')
-        apps = [fakeapp1, fakeapp2, fakeapp3, fakeapp4]
+        apps = [
+            mock.Mock(id='/fake--service.fake--instance.bouncingold'),
+            mock.Mock(id='/fake--service.fake--instance.bouncingnew'),
+            mock.Mock(id='/fake--service.other--instance.bla'),
+            mock.Mock(id='/other--service'),
+            mock.Mock(id='/fake--service.fake--instance--with--suffix.something'),
+            mock.Mock(id='/prefixed--fake--service.fake--instance.something'),
+        ]
+
         list_apps_mock = mock.Mock(return_value=apps)
         fake_client = mock.Mock(list_apps=list_apps_mock)
         expected = [
-            '/fake--service.fake--instance---bouncingold',
-            '/fake--service.fake--instance---bouncingnew',
+            '/fake--service.fake--instance.bouncingold',
+            '/fake--service.fake--instance.bouncingnew',
         ]
         actual = marathon_tools.get_matching_appids('fake_service', 'fake_instance', fake_client)
         assert actual == expected
@@ -1334,6 +1338,35 @@ class TestMarathonTools:
             actual = marathon_tools.get_healthcheck_for_instance(
                 fake_service, fake_namespace, fake_marathon_service_config, fake_random_port)
             assert expected == actual
+
+    def test_get_healthcheck_for_instance_custom_soadir(self):
+        fake_service = 'fake_service'
+        fake_namespace = 'fake_namespace'
+        fake_hostname = 'fake_hostname'
+        fake_random_port = 666
+        fake_soadir = '/fake/soadir'
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
+            'healthcheck_mode': None,
+        }, {})
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
+        with contextlib.nested(
+            mock.patch('marathon_tools.load_marathon_service_config',
+                       autospec=True,
+                       return_value=fake_marathon_service_config),
+            mock.patch('marathon_tools.load_service_namespace_config',
+                       autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('socket.getfqdn', autospec=True, return_value=fake_hostname),
+        ) as (
+            read_config_patch,
+            load_service_namespace_config_patch,
+            hostname_patch
+        ):
+            expected = (None, None)
+            actual = marathon_tools.get_healthcheck_for_instance(
+                fake_service, fake_namespace, fake_marathon_service_config, fake_random_port, soa_dir=fake_soadir)
+            assert expected == actual
+            load_service_namespace_config_patch.assert_called_once_with(fake_service, fake_namespace, fake_soadir)
 
 
 class TestMarathonServiceConfig(object):
@@ -1546,6 +1579,20 @@ class TestMarathonServiceConfig(object):
         marathon_config = marathon_tools.MarathonServiceConfig(
             "service", "instance", {'instances': 0}, {})
         assert marathon_config.get_backoff_seconds() == 1
+
+    def test_get_desired_state_human(self):
+        fake_conf = marathon_tools.MarathonServiceConfig('service', 'instance', {}, {'desired_state': 'stop'})
+        assert 'Stopped' in fake_conf.get_desired_state_human()
+
+    def test_get_desired_state_human_started_with_instances(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'service', 'instance', {'instances': 42}, {'desired_state': 'start'})
+        assert 'Started' in fake_conf.get_desired_state_human()
+
+    def test_get_desired_state_human_with_0_instances(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            'service', 'instance', {'instances': 0}, {'desired_state': 'start'})
+        assert 'Stopped' in fake_conf.get_desired_state_human()
 
 
 class TestServiceNamespaceConfig(object):

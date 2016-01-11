@@ -13,8 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Mechanism to rollback to a previous deployed version.
-"""
 import sys
 
 from paasta_tools.utils import get_git_url
@@ -31,30 +29,40 @@ from paasta_tools.utils import PaastaColors
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'rollback',
-        description='Rollback a docker image to a previous deploy',
-        help='Rollback a docker image to a previous deploy')
-
-    list_parser.add_argument('-k', '--commit',
-                             help='Git SHA to mark for rollback',
-                             required=True,
-                             )
-    list_parser.add_argument('-i', '--instances',
-                             help='Mark one or more instances to roll back (e.g. '
-                             '"canary", "canary,main"). If no instances specified,'
-                             ' all instances for that service are rolled back',
-                             default='',
-                             required=False,
-                             ).completer = lazy_choices_completer(list_instances)
-    list_parser.add_argument('-c', '--cluster',
-                             help='Mark the cluster to rollback (e.g. '
-                             'cluster1)',
-                             required=True,
-                             ).completer = lazy_choices_completer(list_clusters)
-    list_parser.add_argument('-s', '--service',
-                             help='Name of the service to rollback (e.g. '
-                             'service1)'
-                             ).completer = lazy_choices_completer(list_services)
-
+        help='Rollback a docker image to a previous deploy',
+        description=(
+            "'paasta rollback' is a human-friendly tool for marking a particular "
+            "docker image for deployment, which invokes a bounce. While the command "
+            "is called 'rollback', it can be used to roll forward or back, as long "
+            "as there is a docker image available for the input git SHA."
+        ),
+        epilog=(
+            "This rollback command uses the Git control plane, which requires network "
+            "connectivity as well as authorization to the git repo."
+        ),
+    )
+    list_parser.add_argument(
+        '-k', '--commit',
+        help='Git SHA to mark for rollback',
+        required=True,
+    )
+    list_parser.add_argument(
+        '-i', '--instances',
+        help='Mark one or more instances to roll back (e.g. '
+        '"canary", "canary,main"). If no instances specified,'
+        ' all instances for that service are rolled back',
+        default='',
+        required=False,
+    ).completer = lazy_choices_completer(list_instances)
+    list_parser.add_argument(
+        '-c', '--cluster',
+        help='Mark the cluster to rollback (e.g. "cluster1")',
+        required=True,
+    ).completer = lazy_choices_completer(list_clusters)
+    list_parser.add_argument(
+        '-s', '--service',
+        help='Name of the service to rollback (e.g. "service1")',
+    ).completer = lazy_choices_completer(list_services)
     list_parser.set_defaults(command=paasta_rollback)
 
 

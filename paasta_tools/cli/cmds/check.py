@@ -19,19 +19,21 @@ import os
 import re
 import urllib2
 
-from paasta_tools.marathon_tools import get_all_namespaces_for_service
-from paasta_tools.monitoring_tools import get_team
+from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_file_contents
-from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import is_file_in_dir
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import NoSuchService
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.cli.utils import success
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import x_mark
+from paasta_tools.marathon_tools import get_all_namespaces_for_service
+from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
-from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_git_url
+from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import _run
@@ -44,10 +46,20 @@ def get_pipeline_config(service):
 
 
 def add_subparser(subparsers):
+    help_text = (
+        "Determine whether service in pwd is 'paasta ready', checking for common "
+        "mistakes in the soa-configs directory and the local service directory. This "
+        "command is designed to be run from the 'root' of a service directory."
+    )
     check_parser = subparsers.add_parser(
         'check',
-        description="Execute 'paasta check' from service repo root",
-        help="Determine whether service in pwd is paasta ready")
+        description=help_text,
+        help=help_text,
+    )
+    check_parser.add_argument(
+        '-s', '--service',
+        help='The name of the service you wish to inspect. Defaults to autodetect.'
+    ).completer = lazy_choices_completer(list_services)
     check_parser.set_defaults(command=paasta_check)
 
 
@@ -281,7 +293,7 @@ def smartstack_check(service, service_path):
 def paasta_check(args):
     """Analyze the service in the PWD to determine if it is paasta ready
     :param args: argparse.Namespace obj created from sys.args by cli"""
-    service = guess_service_name()
+    service = figure_out_service_name(args)
     service_path = os.path.join('/nail/etc/services', service)
 
     service_dir_check(service)

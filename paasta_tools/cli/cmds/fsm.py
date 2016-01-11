@@ -36,8 +36,14 @@ from paasta_tools.utils import PaastaColors
 def add_subparser(subparsers):
     fsm_parser = subparsers.add_parser(
         "fsm",
-        description="Configure A New PaaSTA Service -- http://y/paasta-deploy For Details",
-        help="Start A New Service From Scratch",
+        help="Generate boilerplate configs for a new PaaSTA Service",
+        description=(
+            "'paasta fsm' is used to generate example soa-configs, which is useful during initial "
+            "service creation. Currently 'fsm' generates 'yelp-specific' configuration, but can still "
+            "be used as an example of a fully working PaaSTA service.\n\n"
+            "After 'paasta fsm' is run, the operator should inspect the generated boilerplate configuration "
+            "and adjust it to meet the particular needs of the new service."
+        ),
     )
     fsm_parser.add_argument(
         "-y", "--yelpsoa-config-root",

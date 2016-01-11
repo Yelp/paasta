@@ -231,6 +231,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     args = mock.MagicMock()
     args.cmd = ''
     args.service = fake_service
+    args.instance = 'fake_instance'
     args.healthcheck = False
     args.healthcheck_only = False
     args.interactive = False
@@ -254,7 +255,8 @@ def test_configure_and_run_command_uses_cmd_from_config(
         command=shlex.split(mock_get_instance_config.return_value.get_cmd.return_value),
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
-        instance_config=mock_get_instance_config.return_value
+        instance_config=mock_get_instance_config.return_value,
+        soa_dir=args.yelpsoa_config_root,
     )
 
 
@@ -276,6 +278,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     args.service = fake_service
     args.healthcheck = False
     args.healthcheck_only = False
+    args.instance = 'fake_instance'
     args.interactive = True
 
     assert configure_and_run_docker_container(
@@ -296,7 +299,8 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         command=['bash'],
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
-        instance_config=mock_get_instance_config.return_value
+        instance_config=mock_get_instance_config.return_value,
+        soa_dir=args.yelpsoa_config_root,
     )
 
 
@@ -320,6 +324,7 @@ def test_configure_and_run_pulls_image_when_asked(
     args = mock.MagicMock()
     args.cmd = None
     args.service = fake_service
+    args.instance = 'fake_instance'
     args.healthcheck = False
     args.healthcheck_only = False
     args.interactive = True
@@ -344,7 +349,8 @@ def test_configure_and_run_pulls_image_when_asked(
         command=['bash'],
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
-        instance_config=mock_get_instance_config.return_value
+        instance_config=mock_get_instance_config.return_value,
+        soa_dir=args.yelpsoa_config_root,
     )
 
 
@@ -661,6 +667,57 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
         assert mock_docker_client.stop.call_count == 0
         assert mock_docker_client.remove_container.call_count == 0
         assert excinfo.value.code == 99
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
+@mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance',
+            autospec=True,
+            return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
+            )
+def test_run_docker_container_with_custom_soadir_uses_healthcheck(
+    mock_get_healthcheck_for_instance,
+    mock_get_container_id,
+    mock_run,
+    mock_execlp,
+    mock_get_docker_run_cmd,
+    mock_pick_random_port,
+    mock_simulate_healthcheck,
+):
+    mock_pick_random_port.return_value = 666
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
+    mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
+    mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
+    with raises(SystemExit) as excinfo:
+        run_docker_container(
+            mock_docker_client,
+            'fake_service',
+            'fake_instance',
+            'fake_hash',
+            [],
+            False,  # interactive
+            'fake_command',
+            False,  # healthcheck
+            True,  # terminate after healthcheck
+            mock_service_manifest,
+            soa_dir='fake_soa_dir',
+        )
+    assert mock_docker_client.stop.call_count == 1
+    assert mock_docker_client.remove_container.call_count == 1
+    assert excinfo.value.code == 0
+    mock_get_healthcheck_for_instance.assert_called_with(
+        'fake_service',
+        'fake_instance',
+        mock_service_manifest,
+        mock_pick_random_port.return_value,
+        soa_dir='fake_soa_dir',
+    )
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)

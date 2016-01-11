@@ -39,6 +39,7 @@ from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
 
@@ -412,6 +413,15 @@ class ChronosJobConfig(InstanceConfig):
     def get_healthcheck_mode(self, _):
         # Healthchecks are not supported yet in chronos
         return None
+
+    def get_desired_state_human(self):
+        desired_state = self.get_desired_state()
+        if desired_state == 'start':
+            return PaastaColors.bold('Scheduled')
+        elif desired_state == 'stop':
+            return PaastaColors.bold('Disabled')
+        else:
+            return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
 
 
 def list_job_names(service, cluster=None, soa_dir=DEFAULT_SOA_DIR):

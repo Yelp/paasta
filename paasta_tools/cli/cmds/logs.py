@@ -60,9 +60,13 @@ logging.basicConfig()
 def add_subparser(subparsers):
     status_parser = subparsers.add_parser(
         'logs',
-        description="Gets logs relevant to a service across the PaaSTA components",
+        help="Streams logs relevant to a service across the PaaSTA components",
+        description=(
+            "'paasta logs' works by streaming PaaSTA-related event messages "
+            "in a human-readable way."
+        ),
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        help="Gets logs relevant to a service across the PaaSTA components.")
+    )
     status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect. Defaults to autodetect.'

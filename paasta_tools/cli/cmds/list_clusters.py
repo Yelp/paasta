@@ -19,8 +19,13 @@ from paasta_tools.utils import list_clusters
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'list-clusters',
-        description="Display a list of PaaSTA clusters.",
-        help="List PaaSTA clusters.")
+        help="Display a list of all PaaSTA clusters",
+        description=(
+            "'paasta list' inspects all of the PaaSTA services declared in the soa-configs "
+            "directory, and prints the set of unique clusters that are used.\n\n"
+            "The command can only report those clusters that are actually used by some services."
+        ),
+    )
     list_parser.set_defaults(command=paasta_list_clusters)
 
 

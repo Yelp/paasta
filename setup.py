@@ -21,7 +21,7 @@ from setuptools import setup, find_packages
 setup(
     name           = 'paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version        = '0.16.10',
+    version        = '0.16.13',
     provides       = ["paasta_tools"],
     author         = 'Kyle Anderson',
     author_email   = 'kwa@yelp.com',
@@ -40,7 +40,7 @@ setup(
         'httplib2 >= 0.9, <= 1.0',
         'isodate >= 0.5.0',
         'kazoo >= 2.0.0',
-        'marathon >= 0.7.4',
+        'marathon >= 0.7.5',
         'mesos.cli == 0.1.3',
         'ordereddict >= 1.1',
         'path.py >= 8.1',

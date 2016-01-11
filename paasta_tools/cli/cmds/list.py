@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-"""Contains methods used by the paasta client to list Yelp services"""
 from paasta_tools.utils import SPACER
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import list_paasta_services
@@ -23,8 +22,12 @@ from paasta_tools.cli.utils import list_service_instances
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'list',
-        description="Display a list of PaaSTA services.",
-        help="List Yelp services.")
+        help="Display a list of PaaSTA services",
+        description=(
+            "'paasta list' inspects the soa-configs directory and lists all of the "
+            "PaaSTA services that are declared."
+        ),
+    )
     list_parser.add_argument(
         '-a', '--all',
         action='store_true',

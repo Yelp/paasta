@@ -28,27 +28,39 @@ from paasta_tools import remote_git
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
         'mark-for-deployment',
-        description='Mark a docker image for deployment',
-        help='Mark a docker image for deployment')
-
-    list_parser.add_argument('-u', '--git-url',
-                             help='Git url for service -- where magic mark-for-deployment branches are pushed',
-                             required=True,
-                             )
-    list_parser.add_argument('-c', '--commit',
-                             help='Git sha to mark for deployment',
-                             required=True,
-                             )
-    list_parser.add_argument('-l', '--clusterinstance',
-                             help='Mark the service ready for deployment in this clusterinstance (e.g. '
-                                  'cluster1.canary, cluster2.main)',
-                             required=True,
-                             )
-    list_parser.add_argument('-s', '--service',
-                             help='Name of the service which you wish to mark for deployment. Leading '
-                             '"services-" will be stripped.',
-                             required=True,
-                             )
+        help='Mark a docker image for deployment in git',
+        description=(
+            "'paasta mark-for-deployment' uses Git as the control-plane, to "
+            "signal to other PaaSTA components that a particular docker image "
+            "is ready to be deployed."
+        ),
+        epilog=(
+            "Note: Access and credentials to the Git repo of a service are required "
+            "for this command to work."
+        )
+    )
+    list_parser.add_argument(
+        '-u', '--git-url',
+        help='Git url for service -- where magic mark-for-deployment branches are pushed',
+        required=True,
+    )
+    list_parser.add_argument(
+        '-c', '--commit',
+        help='Git sha to mark for deployment',
+        required=True,
+    )
+    list_parser.add_argument(
+        '-l', '--clusterinstance',
+        help='Mark the service ready for deployment in this clusterinstance (e.g. '
+             'cluster1.canary, cluster2.main)',
+        required=True,
+    )
+    list_parser.add_argument(
+        '-s', '--service',
+        help='Name of the service which you wish to mark for deployment. Leading '
+        '"services-" will be stripped.',
+        required=True,
+    )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 

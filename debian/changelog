@@ -1,3 +1,24 @@
+paasta-tools (0.16.13-yelp1) lucid; urgency=low
+
+  * 0.16.13 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Thu, 07 Jan 2016 14:46:00 -0800
+
+paasta-tools (0.16.12-yelp1) UNRELEASED; urgency=medium
+
+  * 0.16.12 tagged with 'make release'
+    Commit:
+
+ -- kwa <kwa@kwa-MacBookPro>  Tue, 05 Jan 2016 14:50:38 -0800
+
+paasta-tools (0.16.11-yelp1) lucid; urgency=low
+
+  * 0.16.11 tagged with 'make release'
+    Commit:
+
+ -- Kyle Anderson <kwa@yelp.com>  Mon, 14 Dec 2015 14:59:28 -0800
+
 paasta-tools (0.16.10-yelp1) lucid; urgency=low
 
   * 0.16.10 tagged with 'make release'
