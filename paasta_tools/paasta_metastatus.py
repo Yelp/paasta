@@ -300,12 +300,8 @@ def print_extra_mesos_data():
                 if resource_type in ['cpus', 'disk', 'mem']:
                     resource_dict[resource_type] -= value
 
-<<<<<<< HEAD
     for slave in sorted(slaves.values()):
-=======
-    for slave in slaves.values():
->>>>>>> faa8d51a8dd8a90a4742a38ed261c69b5be63d8f
-        print '%45s %8.2f %9.2f' % (slave['hostname'], slave['free_resources']['cpus'], slave['free_resources']['mem'])
+        print '%40s %8.2f %9.2f' % (slave['hostname'], slave['free_resources']['cpus'], slave['free_resources']['mem'])
 
 
 def main():
@@ -354,9 +350,6 @@ def main():
         print_extra_mesos_data()
     print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
     print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
-
-    if args.verbose >= 2:
-        print_extra_mesos_data()
 
     if not all([mesos_ok, marathon_ok, chronos_ok]):
         sys.exit(2)
