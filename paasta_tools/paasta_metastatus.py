@@ -174,7 +174,7 @@ def get_mesos_status():
     metrics_results = run_healthchecks_with_param(metrics, [
         assert_cpu_health,
         assert_memory_health,
-        aassert_tasks_running,
+        assert_tasks_running,
         assert_slave_health])
 
     return cluster_results + metrics_results
