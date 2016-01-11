@@ -512,9 +512,9 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
     return run_paasta_serviceinit(subcommand, master, service, instancename, cluster, **kwargs)
 
 
-def run_paasta_metastatus(master, verbose=False):
-    if verbose:
-        verbose_flag = " -v"
+def run_paasta_metastatus(master, verbose=0):
+    if verbose is not 0:
+        verbose_flag = " -" + 'v'*verbose
         timeout = 120
     else:
         verbose_flag = ''
@@ -527,7 +527,7 @@ def run_paasta_metastatus(master, verbose=False):
     return output
 
 
-def execute_paasta_metastatus_on_remote_master(cluster, verbose=False):
+def execute_paasta_metastatus_on_remote_master(cluster, verbose=0):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
