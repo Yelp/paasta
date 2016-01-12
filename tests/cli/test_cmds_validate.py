@@ -185,6 +185,26 @@ def test_marathon_validate_schema_keys_outside_instance_blocks_bad(
 
 @patch('paasta_tools.cli.cmds.validate.get_file_contents')
 @patch('sys.stdout', new_callable=StringIO)
+def test_marathon_validate_invalid_key_bad(
+    mock_stdout,
+    mock_get_file_contents
+):
+    mock_get_file_contents.return_value = """
+{
+    "main": {
+        "fake_key": 5
+    }
+}
+"""
+    assert validate_schema('unused_service_path.json', 'marathon') == 1
+
+    output = mock_stdout.getvalue()
+
+    assert SCHEMA_INVALID in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_file_contents')
+@patch('sys.stdout', new_callable=StringIO)
 def test_chronos_validate_schema_list_hashes_good(
     mock_stdout,
     mock_get_file_contents

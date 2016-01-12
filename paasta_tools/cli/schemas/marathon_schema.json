@@ -23,7 +23,7 @@
             "instances": {
                 "type": "integer",
                 "minimum": 0,
-                "exclusiveMinimum": true
+                "exclusiveMinimum": false
             },
             "nerve_ns": {
                 "type": "string"
@@ -40,6 +40,15 @@
                     },
                     "min_task_uptime": {
                         "type": "number"
+                    }
+                }
+            },
+            "bounce_health_params": {
+                "type": "object",
+                "properties": {
+                    "check_haproxy": {
+                        "type": "boolean",
+                        "default": true
                     }
                 }
             },
