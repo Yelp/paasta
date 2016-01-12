@@ -22,7 +22,6 @@ from pytest import raises
 
 from chronos_tools import ChronosNotConfigured
 from paasta_tools import paasta_metastatus
-from paasta_tools import mesos_tools
 from paasta_tools.utils import PaastaColors
 from paasta_tools.marathon_tools import MarathonConfig
 from paasta_tools.marathon_tools import MarathonNotConfigured
@@ -135,14 +134,6 @@ def test_duplicate_frameworks():
     assert not ok
 
 
-@patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader')
-def test_missing_master_exception(mock_fetch_from_leader):
-    mock_fetch_from_leader.side_effect = mesos_tools.MasterNotAvailableException('Missing')
-    with raises(mesos_tools.MasterNotAvailableException) as exception_info:
-        paasta_metastatus.get_mesos_status()
-    assert 'Missing' in str(exception_info.value)
-
-
 @patch('paasta_tools.marathon_tools.get_marathon_client')
 def test_ok_marathon_apps(mock_get_marathon_client):
     client = mock_get_marathon_client.return_value
@@ -227,9 +218,7 @@ def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
 @patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
 @patch('paasta_tools.paasta_metastatus.get_num_masters')
 @patch('paasta_tools.paasta_metastatus.get_mesos_stats')
-@patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader')
 def test_get_mesos_status(
-    mock_get_mesos_state_from_leader,
     mock_get_mesos_stats,
     mock_get_num_masters,
     mock_get_configured_quorum_size,
@@ -247,7 +236,7 @@ def test_get_mesos_status(
         'master/slaves_active': 4,
         'master/slaves_inactive': 0,
     }
-    mock_get_mesos_state_from_leader.return_value = {
+    mesos_state = {
         'flags': {
             'zk': 'zk://1.1.1.1:2222/fake_cluster',
             'quorum': 2,
@@ -276,10 +265,9 @@ def test_get_mesos_status(
     expected_masters_quorum_output = \
         "quorum: masters: 5 configured quorum: 3 "
 
-    results = paasta_metastatus.get_mesos_status()
+    results = paasta_metastatus.get_mesos_status(mesos_state)
 
     assert mock_get_mesos_stats.called_once()
-    assert mock_get_mesos_state_from_leader.called_once()
     assert (expected_masters_quorum_output, True) in results
     assert (expected_cpus_output, True) in results
     assert (expected_mem_output, True) in results
@@ -372,6 +360,7 @@ def test_main_no_marathon_config():
     with contextlib.nested(
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
         patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
@@ -380,12 +369,13 @@ def test_main_no_marathon_config():
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
+        load_get_mesos_state_from_leader_patch,
         load_get_mesos_status_patch,
         load_get_marathon_status_patch,
         parse_args_patch,
     ):
         fake_args = Mock(
-            verbose=False,
+            verbose=0,
         )
         parse_args_patch.return_value = fake_args
         load_marathon_config_patch.side_effect = MarathonNotConfigured
@@ -398,6 +388,7 @@ def test_main_no_chronos_config():
     with contextlib.nested(
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
         patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_status', autospec=True,
               return_value=([('fake_output', True)])),
         patch('paasta_tools.paasta_metastatus.get_marathon_status', autospec=True,
@@ -406,13 +397,14 @@ def test_main_no_chronos_config():
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
+        load_get_mesos_state_from_leader_patch,
         load_get_mesos_status_patch,
         load_get_marathon_status_patch,
         parse_args_patch,
     ):
 
         fake_args = Mock(
-            verbose=False,
+            verbose=0,
         )
         parse_args_patch.return_value = fake_args
         load_chronos_config_patch.side_effect = ChronosNotConfigured
@@ -438,3 +430,44 @@ def test_generate_summary_for_results_critical():
 def test_critical_events_in_outputs():
     assert (paasta_metastatus.critical_events_in_outputs([('myservice', True), ('myservice_false', False)]) ==
             [('myservice_false', False)])
+
+
+def test_get_mesos_slave_data():
+    mesos_state = {
+        'slaves': [
+            {
+                'id': 'test-instance',
+                'hostname': 'test.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+            },
+        ],
+        'frameworks': [
+            {
+                'tasks': [
+                    {
+                        'slave_id': 'test-instance',
+                        'resources': {
+                            'cpus': 50,
+                            'disk': 100,
+                            'mem': 0,
+                            'something-bogus': 25,
+                        },
+                    },
+                ],
+            },
+        ],
+    }
+    expected_free_resources = [
+        {
+            'cpus': 0,
+            'disk': 100,
+            'mem': 1000,
+        },
+    ]
+    extra_mesos_slave_data = paasta_metastatus.get_extra_mesos_slave_data(mesos_state)
+    assert (len(extra_mesos_slave_data) == len(mesos_state['slaves']))
+    assert ([slave['free_resources'] for slave in extra_mesos_slave_data] == expected_free_resources)

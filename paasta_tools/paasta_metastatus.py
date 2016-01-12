@@ -162,13 +162,12 @@ def assert_quorum_size(state):
                 False)
 
 
-def get_mesos_status():
+def get_mesos_status(mesos_state):
     """Gathers information about the mesos cluster.
        :return: tuple of a string containing the status and a bool representing if it is ok or not
     """
 
-    state = get_mesos_state_from_leader()
-    cluster_results = run_healthchecks_with_param(state, [assert_quorum_size, assert_no_duplicate_frameworks])
+    cluster_results = run_healthchecks_with_param(mesos_state, [assert_quorum_size, assert_no_duplicate_frameworks])
 
     metrics = get_mesos_stats()
     metrics_results = run_healthchecks_with_param(metrics, [
@@ -286,8 +285,7 @@ def print_results_for_healthchecks(summary, ok, results, verbose):
             print_with_indent(line, 2)
 
 
-def print_extra_mesos_data():
-    mesos_state = get_mesos_state_from_leader()
+def get_extra_mesos_slave_data(mesos_state):
     slaves = dict((slave['id'], slave) for slave in mesos_state['slaves'])
 
     for slave in slaves.values():
@@ -300,16 +298,22 @@ def print_extra_mesos_data():
                 if resource_type in ['cpus', 'disk', 'mem']:
                     resource_dict[resource_type] -= value
 
-    print '%12s %36s %9s' % ('Hostname', 'CPU free', 'RAM free')
-
-    for slave in sorted(slaves.values()):
-        print '%40s %8.2f %9.2f' % (slave['hostname'], slave['free_resources']['cpus'], slave['free_resources']['mem'])
+    return sorted(slaves.values())
 
 
 def main():
     marathon_config = None
     chronos_config = None
     args = parse_args()
+
+    try:
+        mesos_state = get_mesos_state_from_leader()
+    except MasterNotAvailableException as e:
+        # if we can't connect to master at all,
+        # then bomb out early
+        print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        sys.exit(2)
+    mesos_results = get_mesos_status(mesos_state)
 
     # Check to see if Marathon should be running here by checking for config
     try:
@@ -322,14 +326,6 @@ def main():
         chronos_config = load_chronos_config()
     except ChronosNotConfigured:
         chronos_results = [('chronos is not configured to run here', True)]
-
-    try:
-        mesos_results = get_mesos_status()
-    except MasterNotAvailableException as e:
-        # if we can't connect to master at all,
-        # then bomb out early
-        print(PaastaColors.red("CRITICAL:  %s" % e.message))
-        sys.exit(2)
 
     if marathon_config:
         marathon_client = get_marathon_client(marathon_config)
@@ -349,7 +345,13 @@ def main():
 
     print_results_for_healthchecks(mesos_summary, mesos_ok, mesos_results, args.verbose)
     if args.verbose >= 2:
-        print_extra_mesos_data()
+        print '%12s %36s %9s' % ('Hostname', 'CPU free', 'RAM free')
+        for slave in get_extra_mesos_slave_data(mesos_state):
+            print '%40s %8.2f %9.2f' % (
+                slave['hostname'],
+                slave['free_resources']['cpus'],
+                slave['free_resources']['mem'],
+            )
     print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
     print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
 
