@@ -513,8 +513,8 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
 
 
 def run_paasta_metastatus(master, verbose=0):
-    if verbose is not 0:
-        verbose_flag = " -" + 'v'*verbose
+    if verbose > 0:
+        verbose_flag = " -%s" % 'v'*verbose
         timeout = 120
     else:
         verbose_flag = ''
