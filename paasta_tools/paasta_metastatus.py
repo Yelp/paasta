@@ -300,6 +300,8 @@ def print_extra_mesos_data():
                 if resource_type in ['cpus', 'disk', 'mem']:
                     resource_dict[resource_type] -= value
 
+    print '%40s %8s %9s' % ('Hostname', 'CPU free', 'RAM free')
+
     for slave in sorted(slaves.values()):
         print '%40s %8.2f %9.2f' % (slave['hostname'], slave['free_resources']['cpus'], slave['free_resources']['mem'])
 
