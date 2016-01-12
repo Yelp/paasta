@@ -5,7 +5,69 @@
     "minProperties": 1,
     "additionalProperties": {
         "type": "object",
-        "properties": {},
-        "additionalProperties": true
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+            "schedule": {
+                "type": "string"
+            },
+            "cmd": {
+                "type": "string"
+            },
+            "args": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "epsilon": {
+                "type": "string"
+            },
+            "retries": {
+                "type": "integer",
+                "default": 2
+            },
+            "disabled": {
+                "type": "boolean",
+                "default": false
+            },
+            "cpus": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "default": 0.25
+            },
+            "mem": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "default": 1024
+            },
+            "bounce_method": {
+                "enum": [ "graceful" ],
+                "default": "graceful"
+            },
+            "monitoring": {
+                "type": "object"
+            },
+            "env": {
+                "type": "object"
+            },
+            "extra_volumes": {
+                "type": "array",
+                "items": {
+                    "type": "object"
+                },
+                "uniqueItems": true
+            },
+            "constraints": {
+                "type": "array",
+                "items": {
+                    "type": "array"
+                },
+                "uniqueItems": true
+            }
+        },
+        "required": ["schedule"]
     }
 }

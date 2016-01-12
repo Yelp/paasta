@@ -5,7 +5,118 @@
     "minProperties": 1,
     "additionalProperties": {
         "type": "object",
-        "properties": {},
-        "additionalProperties": true
+        "additionalProperties": false,
+        "minProperties": 1,
+        "properties": {
+            "cpus": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "default": 0.25
+            },
+            "mem": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "default": 1024
+            },
+            "instances": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+            },
+            "nerve_ns": {
+                "type": "string"
+            },
+            "bounce_method": {
+                "type": "string"
+            },
+            "bounce_method_params": {
+                "type": "object",
+                "properties": {
+                    "check_haproxy": {
+                        "type": "boolean",
+                        "default": true
+                    },
+                    "min_task_uptime": {
+                        "type": "number"
+                    }
+                }
+            },
+            "bounce_health_params": {
+                "type": "object",
+                "properties": {
+                    "check_haproxy": {
+                        "type": "boolean",
+                        "default": true
+                    }
+                }
+            },
+            "drain_method": {
+                "enum": [ "noop", "hacheck", "test" ],
+                "default": "noop"
+            },
+            "drain_method_params": {
+                "type": "object"
+            },
+            "constraints": {
+                "type": "array",
+                "items": {
+                    "type": "array"
+                },
+                "uniqueItems": true
+            },
+            "cmd": {
+                "type": "string"
+            },
+            "args": {
+                "type": "array",
+                "items": {
+                    "type": "string"
+                }
+            },
+            "env": {
+                "type": "object"
+            },
+            "extra_volumes": {
+                "type": "array",
+                "items": {
+                    "type": "object"
+                },
+                "uniqueItems": true
+            },
+            "monitoring": {
+                "type": "object"
+            },
+            "deploy_blacklist": {
+                "type": "array"
+            },
+            "monitoring_blacklist": {
+                "type": "array"
+            },
+            "healthcheck_mode": {
+                "enum": [ "cmd", "tcp", "http" ]
+            },
+            "healthcheck_cmd": {
+                "type": "string",
+                "default": "/bin/true"
+            },
+            "healthcheck_grace_period_seconds": {
+                "type": "number",
+                "default": 60
+            },
+            "healthcheck_interval_seconds": {
+                "type": "number",
+                "default": 10
+            },
+            "healthcheck_timeout_seconds": {
+                "type": "number",
+                "default": 10
+            },
+            "healthcheck_max_consecutive_failures": {
+                "type": "integer",
+                "default": 6
+            }
+        }
     }
 }
