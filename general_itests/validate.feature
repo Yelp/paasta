@@ -12,4 +12,4 @@ Feature: paasta validate can be used
     When we run paasta validate
     Then it should have a return code of "1"
      And it should report an error in the output
-     And the output should contain 'You must specify a "schedule" in your configuration'
+     And the output should contain 'The specified epsilon value "foo" does not conform to the ISO8601 format'
