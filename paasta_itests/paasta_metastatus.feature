@@ -15,7 +15,7 @@ Feature: paasta_metastatus describes the state of the paasta cluster
     Given a working paasta cluster
      When an app with id "memtest" using high memory is launched
       And a task belonging to the app with id "memtest" is in the task list
-     Then paasta_metastatus exits with return code "2" and output "CRITICAL: Less than 10% memory available."
+     Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% memory available."
 
   # paasta_metastatus defines 'high' cpu usage as > 90% of the total cluster
   # capacity. in docker-compose.yml, we set cpus at 10 for the 1 mesos slave in use;
@@ -30,18 +30,22 @@ Feature: paasta_metastatus describes the state of the paasta cluster
     Given a working paasta cluster
      When an app with id "cputest" using high cpu is launched
       And a task belonging to the app with id "cputest" is in the task list
-     Then paasta_metastatus exits with return code "2" and output "CRITICAL: Less than 10% CPUs available."
+     Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% CPUs available."
 
   Scenario: With a launched chronos job
     Given a working paasta cluster
      When we create a trivial marathon app
       And we create a trivial chronos job called "testjob"
       And we wait for the chronos job stored as "testjob" to appear in the job list
-     Then paasta_metastatus exits with return code "0" and output "Enabled chronos jobs: 1"
+     Then paasta_metastatus -v exits with return code "0" and output "Enabled chronos jobs: 1"
 
 #  Scenario: Mesos master unreachable
 #    Given a working paasta cluster
 #     When all masters are unavailable
 #     Then metastatus returns 2
 
+  Scenario:
+    Given a working paasta cluster
+     When we create a trivial marathon app
+     Then paasta_metastatus -vv exits with return code "0" and outputs the slave's hostname
 # vim: set ts=2 sw=2
