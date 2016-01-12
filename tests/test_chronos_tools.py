@@ -226,26 +226,21 @@ class TestChronosTools:
             assert dict(actual) == dict(self.fake_chronos_job_config)
 
     def test_load_chronos_job_config_unknown_job(self):
-        fake_soa_dir = '/tmp/'
-        fake_job_name = 'polar bear'
         with contextlib.nested(
-            mock.patch('chronos_tools.load_deployments_json', autospec=True,),
             mock.patch('chronos_tools.read_chronos_jobs_for_service', autospec=True),
         ) as (
-            mock_load_deployments_json,
             mock_read_chronos_jobs_for_service,
         ):
-            mock_load_deployments_json.return_value.get_branch_dict.return_value = self.fake_branch_dict
-            mock_read_chronos_jobs_for_service.return_value = self.fake_config_file
-            with raises(chronos_tools.InvalidChronosConfigError) as exc:
-                chronos_tools.load_chronos_job_config(service=self.fake_service,
-                                                      instance=fake_job_name,
-                                                      cluster=self.fake_cluster,
-                                                      soa_dir=fake_soa_dir)
-            mock_read_chronos_jobs_for_service.assert_called_once_with(self.fake_service,
-                                                                       self.fake_cluster,
-                                                                       soa_dir=fake_soa_dir)
-            assert str(exc.value) == 'No job named "polar bear" in config file chronos-penguin.yaml'
+            mock_read_chronos_jobs_for_service.return_value = []
+            with raises(chronos_tools.UnknownChronosJobError) as exc:
+                chronos_tools.load_chronos_job_config(service='fake_service',
+                                                      instance='fake_job',
+                                                      cluster='fake_cluster',
+                                                      soa_dir='fake_dir')
+            mock_read_chronos_jobs_for_service.assert_called_once_with('fake_service',
+                                                                       'fake_cluster',
+                                                                       soa_dir='fake_dir')
+            assert str(exc.value) == 'No job named "fake_job" in config file chronos-fake_cluster.yaml'
 
     def test_get_bounce_method_in_config(self):
         expected = self.fake_config_dict['bounce_method']
@@ -380,11 +375,33 @@ class TestChronosTools:
         fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['my-parent']}, {})
         assert fake_conf.get_parents() == ['my-parent']
 
-    def test_check_parents(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['my-parent']}, {})
+    def test_check_parents_none(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': None}, {})
+        okay, msg = fake_conf.check_parents()
+        assert okay is True
+        assert msg == ''
+
+    def test_check_parents_all_ok(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance',
+                                                   {'parents': ['service1.instance1', 'service1.instance2']}, {})
+        okay, msg = fake_conf.check_parents()
+        assert okay is True
+        assert msg == ''
+
+    def test_check_parents_one_bad(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance',
+                                                   {'parents': ['service1.instance1', 'service1-instance1']}, {})
         okay, msg = fake_conf.check_parents()
         assert okay is False
-        assert msg == 'Parents are not yet supported'
+        assert msg == 'The job name(s) service1-instance1 is not formatted correctly: expected service.instance'
+
+    def test_check_parents_all_bad(self):
+        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance',
+                                                   {'parents': ['service1-instance1', 'service1-instance2']}, {})
+        okay, msg = fake_conf.check_parents()
+        assert okay is False
+        assert msg == ('The job name(s) service1-instance1, service1-instance2'
+                       ' is not formatted correctly: expected service.instance')
 
     def test_check_bounce_method_valid(self):
         okay, msg = self.fake_chronos_job_config.check_bounce_method()
@@ -659,32 +676,6 @@ class TestChronosTools:
             invalid_config.format_chronos_job_dict('', [])
         assert 'The specified schedule "%s" is invalid' % fake_schedule in exc.value
 
-    def test_format_chronos_job_dict_incomplete(self):
-        fake_service = 'test_service'
-        fake_job_name = 'test_job'
-        incomplete_config = chronos_tools.ChronosJobConfig(
-            fake_service,
-            fake_job_name,
-            {},
-            {}
-        )
-        with raises(chronos_tools.InvalidChronosConfigError) as exc:
-            incomplete_config.format_chronos_job_dict('', [])
-        assert 'You must specify a "schedule" in your configuration' in exc.value
-
-    def test_validate(self):
-        fake_service = 'test_service'
-        fake_job_name = 'test_job'
-        incomplete_config = chronos_tools.ChronosJobConfig(
-            fake_service,
-            fake_job_name,
-            {},
-            {}
-        )
-        valid, error_msgs = incomplete_config.validate()
-        assert 'You must specify a "schedule" in your configuration' in error_msgs
-        assert not valid
-
     def test_list_job_names(self):
         fake_name = 'vegetables'
         fake_job_1 = 'carrot'
@@ -701,27 +692,12 @@ class TestChronosTools:
             assert sorted(expected) == sorted(actual)
 
     def test_get_chronos_jobs_for_cluster(self):
-        cluster = 'mainframe_42'
-        soa_dir = 'my_computer'
-        jobs = [['boop', 'beep'], ['bop']]
-        expected = ['beep', 'bop', 'boop']
-        with contextlib.nested(
-            mock.patch('os.path.abspath', autospec=True, return_value='windows_explorer'),
-            mock.patch('os.listdir', autospec=True, return_value=['dir1', 'dir2']),
-            mock.patch('chronos_tools.list_job_names',
-                       side_effect=lambda a, b, c: jobs.pop())
-        ) as (
-            abspath_patch,
-            listdir_patch,
-            list_jobs_patch,
-        ):
-            actual = chronos_tools.get_chronos_jobs_for_cluster(cluster, soa_dir)
-            assert sorted(expected) == sorted(actual)
-            abspath_patch.assert_called_once_with(soa_dir)
-            listdir_patch.assert_called_once_with('windows_explorer')
-            list_jobs_patch.assert_any_call('dir1', cluster, soa_dir)
-            list_jobs_patch.assert_any_call('dir2', cluster, soa_dir)
-            assert list_jobs_patch.call_count == 2
+        with mock.patch('chronos_tools.get_services_for_cluster',
+                        autospec=True,
+                        return_value=[],
+                        ) as get_services_for_cluster_patch:
+            assert chronos_tools.get_chronos_jobs_for_cluster('mycluster', soa_dir='my_soa_dir') == []
+            get_services_for_cluster_patch.assert_called_once_with('mycluster', 'chronos', 'my_soa_dir')
 
     def test_lookup_chronos_jobs_with_service_and_instance(self):
         fake_client = mock.Mock()
@@ -1330,3 +1306,39 @@ class TestChronosTools:
         fake_client = fake_client_class(servers=[])
         chronos_tools.create_job(job=self.fake_config_dict, client=fake_client)
         fake_client.add.assert_called_once_with(self.fake_config_dict)
+
+    def test_check_format_job_short(self):
+        assert chronos_tools.check_parent_format("foo") is False
+
+    def test_check_format_job_long(self):
+        assert chronos_tools.check_parent_format("foo.bar.baz") is False
+
+    def test_check_format_job_ok(self):
+        assert chronos_tools.check_parent_format("foo.bar") is True
+
+    @mock.patch('chronos_tools.lookup_chronos_jobs', autospect=True)
+    @mock.patch('chronos_tools.get_chronos_client', autospect=True)
+    @mock.patch('chronos_tools.load_chronos_config', autospect=True)
+    def test_find_matching_parent_job_none_matching(
+        self,
+        mock_lookup_chronos_jobs,
+        mock_get_chronos_client,
+        mock_load_chronos_config,
+    ):
+        mock_lookup_chronos_jobs.return_value = []
+        matching = chronos_tools.find_matching_parent_job('service.instance')
+        assert matching is None
+
+    @mock.patch('chronos_tools.lookup_chronos_jobs', autospec=True)
+    @mock.patch('chronos_tools.get_chronos_client', autospec=True)
+    @mock.patch('chronos_tools.load_chronos_config', autospec=True)
+    def test_find_matching_parent_job_returns_names(
+        self,
+        mock_load_chronos_config,
+        mock_get_chronos_client, mock_lookup_chronos_jobs,
+    ):
+        mock_matching_jobs = [{'name': 'service.myinstance.gitabc.config1'}]
+        mock_lookup_chronos_jobs.return_value = mock_matching_jobs
+        mock_load_chronos_config.return_value = {}
+        matching = chronos_tools.find_matching_parent_job('service.myinstance')
+        assert matching == 'service.myinstance.gitabc.config1'

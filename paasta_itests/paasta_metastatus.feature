@@ -35,8 +35,8 @@ Feature: paasta_metastatus describes the state of the paasta cluster
   Scenario: With a launched chronos job
     Given a working paasta cluster
      When we create a trivial marathon app
-      And we create a trivial chronos job
-      And we wait for the chronos job to appear in the job list
+      And we create a trivial chronos job called "testjob"
+      And we wait for the chronos job stored as "testjob" to appear in the job list
      Then paasta_metastatus exits with return code "0" and output "Enabled chronos jobs: 1"
 
 #  Scenario: Mesos master unreachable

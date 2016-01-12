@@ -77,9 +77,6 @@ class TestSetupChronosJob:
             mock.patch('paasta_tools.chronos_tools.get_chronos_client',
                        return_value=self.fake_client,
                        autospec=True),
-            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
-                       return_value=self.fake_chronos_job_config,
-                       autospec=True),
             mock.patch('paasta_tools.chronos_tools.create_complete_config',
                        return_value=fake_complete_job_config,
                        autospec=True),
@@ -93,7 +90,6 @@ class TestSetupChronosJob:
             parse_args_patch,
             load_chronos_config_patch,
             get_client_patch,
-            load_chronos_job_config_patch,
             create_complete_config_patch,
             setup_job_patch,
             send_event_patch,
@@ -105,16 +101,9 @@ class TestSetupChronosJob:
 
             parse_args_patch.assert_called_once_with()
             get_client_patch.assert_called_once_with(load_chronos_config_patch.return_value)
-            load_chronos_job_config_patch.assert_called_once_with(
-                service=self.fake_service,
-                instance=self.fake_instance,
-                cluster=self.fake_cluster,
-                soa_dir=self.fake_args.soa_dir,
-            )
             setup_job_patch.assert_called_once_with(
                 service=self.fake_service,
                 instance=self.fake_instance,
-                chronos_job_config=self.fake_chronos_job_config,
                 complete_job_config=fake_complete_job_config,
                 client=self.fake_client,
                 cluster=self.fake_cluster,
@@ -137,8 +126,8 @@ class TestSetupChronosJob:
             mock.patch('paasta_tools.chronos_tools.get_chronos_client',
                        return_value=self.fake_client,
                        autospec=True),
-            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
-                       return_value=self.fake_chronos_job_config,
+            mock.patch('paasta_tools.chronos_tools.create_complete_config',
+                       return_value={},
                        autospec=True,
                        side_effect=NoDeploymentsAvailable),
             mock.patch('setup_chronos_job.setup_job',
@@ -169,10 +158,9 @@ class TestSetupChronosJob:
             mock.patch('paasta_tools.chronos_tools.get_chronos_client',
                        return_value=self.fake_client,
                        autospec=True),
-            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
-                       return_value=self.fake_chronos_job_config,
+            mock.patch('paasta_tools.chronos_tools.create_complete_config',
                        autospec=True,
-                       side_effect=chronos_tools.InvalidChronosConfigError('test bad configuration')),
+                       side_effect=chronos_tools.UnknownChronosJobError('test bad configuration')),
             mock.patch('setup_chronos_job.setup_job',
                        return_value=(0, 'it_is_finished'),
                        autospec=True),
@@ -232,7 +220,6 @@ class TestSetupChronosJob:
             actual = setup_chronos_job.setup_job(
                 service=self.fake_service,
                 instance=self.fake_instance,
-                chronos_job_config=self.fake_chronos_job_config,
                 complete_job_config=complete_config,
                 client=self.fake_client,
                 cluster=self.fake_cluster,
@@ -279,7 +266,6 @@ class TestSetupChronosJob:
             actual = setup_chronos_job.setup_job(
                 service=self.fake_service,
                 instance=self.fake_instance,
-                chronos_job_config=self.fake_chronos_job_config,
                 complete_job_config=complete_config,
                 client=self.fake_client,
                 cluster=self.fake_cluster,
@@ -327,7 +313,6 @@ class TestSetupChronosJob:
             actual = setup_chronos_job.setup_job(
                 service=self.fake_service,
                 instance=self.fake_instance,
-                chronos_job_config=self.fake_chronos_job_config,
                 complete_job_config=complete_config,
                 client=self.fake_client,
                 cluster=self.fake_cluster,

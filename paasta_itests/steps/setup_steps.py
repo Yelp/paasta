@@ -16,7 +16,7 @@ import os
 from tempfile import NamedTemporaryFile
 from tempfile import mkdtemp
 
-from behave import given
+from behave import given, when
 import chronos
 import json
 import yaml
@@ -113,6 +113,7 @@ def working_paasta_cluster(context):
     if not hasattr(context, 'chronos_client'):
         context.chronos_config = setup_chronos_config()
         context.chronos_client = setup_chronos_client()
+        context.jobs = {}
     else:
         print 'Chronos connection already established'
 
@@ -135,17 +136,36 @@ def working_paasta_cluster(context):
     }, 'volumes.json')
 
 
-@given(u'I have yelpsoa-configs for the service "{service}" with {disabled} chronos instance "{instance}"')
+@given(u'we have yelpsoa-configs for the service "{service}" with {disabled} scheduled chronos instance "{instance}"')
 def write_soa_dir_chronos_instance(context, service, disabled, instance):
     soa_dir = mkdtemp()
     desired_disabled = (disabled == 'disabled')
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
     with open(os.path.join(soa_dir, service, 'chronos-%s.yaml' % context.cluster), 'w') as f:
-        f.write(yaml.dump({
-            "%s" % instance: {
+        f.write(yaml.safe_dump({
+            instance: {
                 'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
-                'command': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
+                'cmd': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
+                'monitoring': {'team': 'fake_team'},
+                'disabled': desired_disabled,
+            }
+        }))
+    context.soa_dir = soa_dir
+
+
+@given((u'we have yelpsoa-configs for the service "{service}" with {disabled} dependent chronos instance'
+       ' "{instance}" and parent "{parent}"'))
+def write_soa_dir_dependent_chronos_instance(context, service, disabled, instance, parent):
+    soa_dir = mkdtemp()
+    desired_disabled = (disabled == 'disabled')
+    if not os.path.exists(os.path.join(soa_dir, service)):
+        os.makedirs(os.path.join(soa_dir, service))
+    with open(os.path.join(soa_dir, service, 'chronos-%s.yaml' % context.cluster), 'w') as f:
+        f.write(yaml.safe_dump({
+            instance: {
+                'parents': [parent],
+                'cmd': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
                 'disabled': desired_disabled,
             }
@@ -169,7 +189,7 @@ def write_soa_dir_marathon_job(context, job_id):
     context.soa_dir = soa_dir
 
 
-@given(u'I have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
+@given(u'we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
 def write_soa_dir_chronos_deployments(context, service, disabled, instance):
     if disabled == 'disabled':
         desired_state = 'stop'
@@ -187,3 +207,15 @@ def write_soa_dir_chronos_deployments(context, service, disabled, instance):
                 }
             }
         }))
+
+
+@when((u'we set the "{field}" field of the {framework} config for service "{service}"'
+       ' and instance "{instance}" to "{value}"'))
+def modify_configs(context, field, framework, service, instance, value):
+    soa_dir = context.soa_dir
+    with open(os.path.join(soa_dir, service, "%s-%s.yaml" % (framework, context.cluster)), 'r+') as f:
+        data = yaml.load(f.read())
+        data[instance][field] = value
+        f.seek(0)
+        f.write(yaml.safe_dump(data))
+        f.truncate()

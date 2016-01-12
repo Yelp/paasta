@@ -33,6 +33,8 @@ from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_docker_url
+from paasta_tools.utils import get_service_instance_list
+from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
@@ -66,6 +68,10 @@ class LastRunState:
 
 
 class ChronosNotConfigured(Exception):
+    pass
+
+
+class InvalidParentError(Exception):
     pass
 
 
@@ -129,6 +135,10 @@ class InvalidChronosConfigError(Exception):
     pass
 
 
+class UnknownChronosJobError(Exception):
+    pass
+
+
 def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
     chronos_conf_file = 'chronos-%s' % cluster
     log.info("Reading Chronos configuration file: %s/%s/chronos-%s.yaml" % (soa_dir, service, cluster))
@@ -143,7 +153,7 @@ def read_chronos_jobs_for_service(service, cluster, soa_dir=DEFAULT_SOA_DIR):
 def load_chronos_job_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):
     service_chronos_jobs = read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir)
     if instance not in service_chronos_jobs:
-        raise InvalidChronosConfigError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
+        raise UnknownChronosJobError('No job named "%s" in config file chronos-%s.yaml' % (instance, cluster))
     branch_dict = {}
     if load_deployments:
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
@@ -255,7 +265,11 @@ class ChronosJobConfig(InstanceConfig):
     def check_parents(self):
         parents = self.get_parents()
         if parents is not None:
-            return False, 'Parents are not yet supported'
+            results = [(parent, check_parent_format(parent)) for parent in parents]
+            badly_formatted = [res[0] for res in results if res[1] is False]
+            if len(badly_formatted) > 0:
+                return False, ('The job name(s) %s is not formatted correctly: expected service.instance'
+                               % ", ".join(badly_formatted))
         return True, ''
 
     # a valid 'repeat_string' is 'R' or 'Rn', where n is a positive integer representing the number of times to repeat
@@ -304,8 +318,6 @@ class ChronosJobConfig(InstanceConfig):
             if not self._check_schedule_repeat_helper(repeat):
                 msgs.append('The specified repeat "%s" in schedule "%s" '
                             'does not conform to the ISO 8601 format.' % (repeat, schedule))
-        else:
-            msgs.append('You must specify a "schedule" in your configuration')
 
         return len(msgs) == 0, '\n'.join(msgs)
 
@@ -372,10 +384,17 @@ class ChronosJobConfig(InstanceConfig):
             'async': False,  # we don't support async jobs
             'disabled': self.get_disabled(),
             'owner': self.get_owner(),
-            'schedule': self.get_schedule(),
             'scheduleTimeZone': self.get_schedule_time_zone(),
             'shell': self.get_shell(),
         }
+        if self.get_schedule() is not None:
+            complete_config['schedule'] = self.get_schedule()
+        else:
+            matching_parent_pairs = [(parent, find_matching_parent_job(parent)) for parent in self.get_parents()]
+            for parent_pair in matching_parent_pairs:
+                if parent_pair[1] is None:
+                    raise InvalidParentError("%s has no matching jobs in Chronos" % parent_pair[0])
+            complete_config['parents'] = [parent_pair[1] for parent_pair in matching_parent_pairs]
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -405,41 +424,24 @@ class ChronosJobConfig(InstanceConfig):
             return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
 
 
-# TODO just use utils.get_service_instance_list(cluster, instance_type='chronos', soa_dir)
 def list_job_names(service, cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Enumerate the Chronos jobs defined for a service as a list of tuples.
+    """A chronos-specific wrapper around utils.get_service_instance_list.
 
     :param name: The service name
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
-    :returns: A list of tuples of (name, job) for each job defined for the service name"""
-    job_list = []
-    if not cluster:
-        cluster = load_system_paasta_config().get_cluster()
-    chronos_conf_file = "chronos-%s" % cluster
-    log.info("Enumerating all jobs from config file: %s/*/%s.yaml" % (soa_dir, chronos_conf_file))
-
-    for job in read_chronos_jobs_for_service(service, cluster, soa_dir=soa_dir):
-        job_list.append((service, job))
-    log.debug("Enumerated the following jobs: %s" % job_list)
-    return job_list
+    :returns: A list of tuples of (name, job) for each job defined for the service name
+    """
+    return get_service_instance_list(service, cluster, 'chronos', soa_dir)
 
 
-# TODO just use utils.get_services_for_cluster(cluster, instance_type='chronos', soa_dir)
 def get_chronos_jobs_for_cluster(cluster=None, soa_dir=DEFAULT_SOA_DIR):
-    """Retrieve all Chronos jobs defined to run on a cluster.
+    """A chronos-specific wrapper around utils.get_services_for_cluster
 
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
     :returns: A list of tuples of (service, job_name)"""
-    if not cluster:
-        cluster = load_system_paasta_config().get_cluster()
-    rootdir = os.path.abspath(soa_dir)
-    log.info("Retrieving all Chronos job names from %s for cluster %s" % (rootdir, cluster))
-    job_list = []
-    for service in os.listdir(rootdir):
-        job_list.extend(list_job_names(service, cluster, soa_dir))
-    return job_list
+    return get_services_for_cluster(cluster, 'chronos', soa_dir)
 
 
 def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
@@ -670,6 +672,11 @@ def parse_time_variables(input_string, parse_time=None):
     return input_string % job_context
 
 
+def check_parent_format(parent):
+    """ A predicate defining if the parent field string is formatted correctly """
+    return len(parent.split(".")) == 2
+
+
 def disable_job(client, job):
     job["disabled"] = True
     log.debug("Disabling job: %s" % job)
@@ -684,3 +691,23 @@ def delete_job(client, job):
 def create_job(client, job):
     log.debug("Creating job: %s" % job)
     client.add(job)
+
+
+def find_matching_parent_job(job_name):
+    """ Given a service.instance, convert it to a 'real' job name,
+    where the 'real' job name is the id of the most recent job
+    matching that service and instance.
+    """
+    chronos_config = load_chronos_config()
+    service, instance = job_name.split(".")
+    matching_jobs = lookup_chronos_jobs(
+        client=get_chronos_client(chronos_config),
+        service=service,
+        instance=instance,
+        include_disabled=True
+    )
+    sorted_jobs = sort_jobs(matching_jobs)
+    if len(sorted_jobs) > 0:
+        return sorted_jobs[0]['name']
+    else:
+        return None

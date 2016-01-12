@@ -141,7 +141,7 @@ def bounce_chronos_job(
     return (0, "All chronos bouncing tasks finished.")
 
 
-def setup_job(service, instance, chronos_job_config, complete_job_config, client, cluster):
+def setup_job(service, instance, complete_job_config, client, cluster):
     job_id = complete_job_config['name']
     # Sort this initial list since other lists of jobs will come from it (with
     # their orders preserved by list comprehensions) and since we'll care about
@@ -150,6 +150,7 @@ def setup_job(service, instance, chronos_job_config, complete_job_config, client
         service=service,
         instance=instance,
         client=client,
+        include_disabled=True,
     ))
     old_jobs = [job for job in all_existing_jobs if job["name"] != job_id]
     enabled_old_jobs = [job for job in old_jobs if not job["disabled"]]
@@ -190,10 +191,9 @@ def main():
     cluster = load_system_paasta_config().get_cluster()
 
     try:
-        chronos_job_config = chronos_tools.load_chronos_job_config(
+        complete_job_config = chronos_tools.create_complete_config(
             service=service,
-            instance=instance,
-            cluster=cluster,
+            job_name=instance,
             soa_dir=soa_dir,
         )
     except (NoDeploymentsAvailable, NoDockerImageError):
@@ -207,13 +207,11 @@ def main():
             output=error_msg,
         )
         log.error(error_msg)
-        # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
         sys.exit(0)
-    except chronos_tools.InvalidChronosConfigError as e:
+    except chronos_tools.UnknownChronosJobError as e:
         error_msg = (
             "Could not read chronos configuration file for %s in cluster %s\n" % (args.service_instance, cluster) +
             "Error was: %s" % str(e))
-        log.error(error_msg)
         send_event(
             service=service,
             instance=instance,
@@ -221,19 +219,13 @@ def main():
             status=pysensu_yelp.Status.CRITICAL,
             output=error_msg,
         )
-        # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
+        log.error(error_msg)
         sys.exit(0)
 
-    complete_job_config = chronos_tools.create_complete_config(
-        service=service,
-        job_name=instance,
-        soa_dir=soa_dir,
-    )
     status, output = setup_job(
         service=service,
         instance=instance,
         cluster=cluster,
-        chronos_job_config=chronos_job_config,
         complete_job_config=complete_job_config,
         client=client,
     )
