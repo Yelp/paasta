@@ -35,6 +35,7 @@ import argparse
 import logging
 import pysensu_yelp
 import service_configuration_lib
+from datetime import datetime, timedelta
 
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
@@ -169,7 +170,8 @@ def get_healthy_marathon_instances_for_short_app_id(client, app_id):
 
     healthy_tasks = []
     for task in tasks_for_app:
-        if all([health_check_result.alive for health_check_result in task.health_check_results]) and task.started_at > one_minute_ago:
+        if all([health_check_result.alive for health_check_result in task.health_check_results]) \
+                and task.started_at > one_minute_ago:
             healthy_tasks.append(task)
     return len(healthy_tasks)
 

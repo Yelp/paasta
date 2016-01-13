@@ -577,7 +577,10 @@ def test_get_healthy_marathon_instances_for_short_app_id_considers_new_tasks_not
     for i in range(0, 4):
         fake_task = mock.Mock()
         fake_task.app_id = '/service.instance.foo%s.bar%s' % (i, i)
-        fake_task.started_at = datetime.now() - one_minute*i
+
+        # when i == 0, produces a task that has just started (not healthy yet)
+        # otherwise produces a task that was started over a minute ago (healthy)
+        fake_task.started_at = datetime.now() - one_minute * i
         mock_result = mock.Mock()
         mock_result.alive = True
         fake_task.health_check_results = [mock_result]
