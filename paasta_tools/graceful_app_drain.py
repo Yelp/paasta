@@ -2,6 +2,7 @@
 
 import argparse
 import sys
+import time
 
 import service_configuration_lib
 from paasta_tools import marathon_tools
@@ -10,7 +11,6 @@ from paasta_tools import bounce_lib
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.setup_marathon_job import do_bounce, get_old_live_draining_tasks
 from paasta_tools.utils import load_system_paasta_config
-from marathon.exceptions import MarathonHttpError
 
 
 def parse_args():
@@ -41,7 +41,7 @@ def main():
     client = marathon_tools.get_marathon_client(
         url=marathon_config.get_url(),
         user=marathon_config.get_username(),
-        password=marathon_config.get_password(),
+        passwd=marathon_config.get_password(),
     )
 
     if not marathon_tools.is_app_id_running(app_id=full_appid, client=client):
@@ -49,13 +49,12 @@ def main():
         sys.exit(1)
 
     service, instance, _, __ = (s.replace('--', '_') for s in decompose_job_id(full_appid))
-    short_appid = marathon_tools.format_job_id(service, instance)
     complete_config = marathon_tools.create_complete_config(service, instance, marathon_config)
     cluster = load_system_paasta_config().get_cluster()
     service_instance_config = marathon_tools.load_marathon_service_config(
-        service,
-        instance,
-        cluster,
+        service=service,
+        instance=instance,
+        cluster=cluster,
         soa_dir=soa_dir,
     )
     nerve_ns = service_instance_config.get_nerve_namespace()
@@ -72,28 +71,27 @@ def main():
 
     while marathon_tools.is_app_id_running(app_id=full_appid, client=client):
         app_to_kill = client.get_app(full_appid)
-        try:
-            old_app_live_tasks, old_app_draining_tasks = get_old_live_draining_tasks([app_to_kill], drain_method)
-            with bounce_lib.bounce_lock_zookeeper(short_appid):
-                do_bounce(
-                    bounce_func=bounce_func,
-                    drain_method=drain_method,
-                    config=complete_config,
-                    new_app_running='',
-                    happy_new_tasks=[],
-                    old_app_live_tasks=old_app_live_tasks,
-                    old_app_draining_tasks=old_app_draining_tasks,
-                    serviceinstance="{0}.{1}".format(service, instance),
-                    bounce_method='down',
-                    service=service,
-                    cluster=cluster,
-                    instance=instance,
-                    marathon_jobid=full_appid,
-                    client=client,
-                    soa_dir=soa_dir,
-                )
-        except MarathonHttpError:
-            break
+        old_app_live_tasks, old_app_draining_tasks = get_old_live_draining_tasks([app_to_kill], drain_method)
+        do_bounce(
+            bounce_func=bounce_func,
+            drain_method=drain_method,
+            config=complete_config,
+            new_app_running='',
+            happy_new_tasks=[],
+            old_app_live_tasks=old_app_live_tasks,
+            old_app_draining_tasks=old_app_draining_tasks,
+            serviceinstance="{0}.{1}".format(service, instance),
+            bounce_method='down',
+            service=service,
+            cluster=cluster,
+            instance=instance,
+            marathon_jobid=full_appid,
+            client=client,
+            soa_dir=soa_dir,
+        )
+
+        print "Sleeping for 10 seconds to give the tasks time to drain"
+        time.sleep(10)
 
     print("Sucessfully killed {0}".format(full_appid))
 
