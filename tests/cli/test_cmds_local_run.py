@@ -16,6 +16,7 @@ import shlex
 
 import docker
 import mock
+import pipes
 from pytest import raises
 
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -433,7 +434,7 @@ def test_get_docker_run_cmd_interactive_false():
     assert '--interactive=true' not in actual
     assert '--tty=true' not in actual
     assert docker_hash in actual
-    assert all([arg in actual for arg in command])
+    assert ' '.join(pipes.quote(part) for part in command) in actual
 
 
 def test_get_docker_run_cmd_interactive_true():
