@@ -17,19 +17,8 @@ import os
 import time
 
 import requests
-from compose.cli import command
 
 from paasta_tools.utils import timeout
-
-
-def get_docker_compose_id_from_name(container_name):
-    cmd = command.Command()
-    project = cmd.get_project(cmd.get_config_path())
-    containers = project.containers(service_names=container_name)
-    if containers is []:
-        raise Exception("Could not find a container with that name")
-    else:
-        return containers[0].id
 
 
 def get_service_connection_string(service):

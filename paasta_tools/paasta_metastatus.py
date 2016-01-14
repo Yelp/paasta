@@ -61,6 +61,22 @@ def get_mesos_cpu_status(metrics):
     return total, used, available
 
 
+def get_extra_mesos_slave_data(mesos_state):
+    slaves = dict((slave['id'], {
+        'free_resources': slave['resources'],
+        'hostname': slave['hostname'],
+    }) for slave in mesos_state['slaves'])
+
+    for framework in mesos_state['frameworks']:
+        for task in framework['tasks']:
+            resource_dict = slaves[task['slave_id']]['free_resources']
+            for resource_type, value in task['resources'].items():
+                if resource_type in ['cpus', 'disk', 'mem']:
+                    resource_dict[resource_type] -= value
+
+    return sorted(slaves.values())
+
+
 def quorum_ok(masters, quorum):
     return masters >= quorum
 
@@ -162,7 +178,18 @@ def assert_quorum_size(state):
                 False)
 
 
-def get_mesos_status(mesos_state):
+def assert_extra_slave_data(mesos_state):
+    header_string = '%12s %36s %9s' % ('Hostname', 'CPU free', 'RAM free')
+    slave_outputs = ['%40s %8.2f %9.2f' % (
+        slave['hostname'],
+        slave['free_resources']['cpus'],
+        slave['free_resources']['mem'],
+    ) for slave in get_extra_mesos_slave_data(mesos_state)]
+    check_output = [header_string] + slave_outputs
+    return ('\n'.join(check_output), True)
+
+
+def get_mesos_status(mesos_state, verbosity):
     """Gathers information about the mesos cluster.
        :return: tuple of a string containing the status and a bool representing if it is ok or not
     """
@@ -174,7 +201,11 @@ def get_mesos_status(mesos_state):
         assert_cpu_health,
         assert_memory_health,
         assert_tasks_running,
-        assert_slave_health])
+        assert_slave_health,
+    ])
+
+    if verbosity >= 2:
+        metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_slave_data]))
 
     return cluster_results + metrics_results
 
@@ -285,22 +316,6 @@ def print_results_for_healthchecks(summary, ok, results, verbose):
             print_with_indent(line, 2)
 
 
-def get_extra_mesos_slave_data(mesos_state):
-    slaves = dict((slave['id'], slave) for slave in mesos_state['slaves'])
-
-    for slave in slaves.values():
-        slave['free_resources'] = dict(slave['resources'].items())
-
-    for framework in mesos_state['frameworks']:
-        for task in framework['tasks']:
-            resource_dict = slaves[task['slave_id']]['free_resources']
-            for resource_type, value in task['resources'].items():
-                if resource_type in ['cpus', 'disk', 'mem']:
-                    resource_dict[resource_type] -= value
-
-    return sorted(slaves.values())
-
-
 def main():
     marathon_config = None
     chronos_config = None
@@ -313,7 +328,7 @@ def main():
         # then bomb out early
         print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
-    mesos_results = get_mesos_status(mesos_state)
+    mesos_results = get_mesos_status(mesos_state, verbosity=args.verbose)
 
     # Check to see if Marathon should be running here by checking for config
     try:
@@ -344,14 +359,6 @@ def main():
     chronos_summary = generate_summary_for_check("Chronos", chronos_ok)
 
     print_results_for_healthchecks(mesos_summary, mesos_ok, mesos_results, args.verbose)
-    if args.verbose >= 2:
-        print '%12s %36s %9s' % ('Hostname', 'CPU free', 'RAM free')
-        for slave in get_extra_mesos_slave_data(mesos_state):
-            print '%40s %8.2f %9.2f' % (
-                slave['hostname'],
-                slave['free_resources']['cpus'],
-                slave['free_resources']['mem'],
-            )
     print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
     print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
 

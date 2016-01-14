@@ -20,7 +20,6 @@ from behave import when, then
 sys.path.append('../')
 from paasta_tools.utils import _run
 from paasta_tools.utils import remove_ansi_escape_sequences
-from paasta_itests.itest_utils import get_docker_compose_id_from_name
 from paasta_tools import marathon_tools
 from marathon import MarathonApp
 
@@ -84,5 +83,5 @@ def check_metastatus_contains_hostname(context, flags, expected_return_code):
         context,
         flags,
         expected_return_code,
-        get_docker_compose_id_from_name('mesosslave')
+        'mesosslave.test_hostname',
     )
