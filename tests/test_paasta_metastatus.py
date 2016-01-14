@@ -265,7 +265,7 @@ def test_get_mesos_status(
     expected_masters_quorum_output = \
         "quorum: masters: 5 configured quorum: 3 "
 
-    results = paasta_metastatus.get_mesos_status(mesos_state)
+    results = paasta_metastatus.get_mesos_status(mesos_state, verbosity=0)
 
     assert mock_get_mesos_stats.called_once()
     assert (expected_masters_quorum_output, True) in results
