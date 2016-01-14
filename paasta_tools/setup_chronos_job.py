@@ -97,7 +97,7 @@ def send_event(service, instance, soa_dir, status, output):
     # we need to set the ``check_every`` to the frequency of our cron job, which
     # is 10s.
     monitoring_overrides['check_every'] = '10s'
-    # Most deploy_chrono_jobs failures are transient and represent issues
+    # Most deploy_chronos_jobs failures are transient and represent issues
     # that will probably be fixed eventually, so we set an alert_after
     # to suppress extra noise
     monitoring_overrides['alert_after'] = '10m'
