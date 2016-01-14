@@ -21,6 +21,7 @@ import urllib2
 from service_configuration_lib import DEFAULT_SOA_DIR
 from service_configuration_lib import read_service_configuration
 
+from paasta_tools.cli.cmds.validate import paasta_validate
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import is_file_in_dir
@@ -349,6 +350,7 @@ def paasta_check(args):
     deployments_check(service, soa_dir)
     sensu_check(service, service_path)
     smartstack_check(service, service_path)
+    paasta_validate(None, service_path)
 
 
 def read_dockerfile_lines(path):

@@ -53,7 +53,9 @@ from paasta_tools.cli.utils import PaastaCheckMessages
 @patch('paasta_tools.cli.cmds.check.deployments_check')
 @patch('paasta_tools.cli.cmds.check.sensu_check')
 @patch('paasta_tools.cli.cmds.check.smartstack_check')
+@patch('paasta_tools.cli.cmds.check.paasta_validate')
 def test_check_paasta_check_calls_everything(
+        mock_paasta_validate,
         mock_smartstart_check,
         mock_sensu_check,
         mock_deployments_check,
@@ -88,6 +90,7 @@ def test_check_paasta_check_calls_everything(
     assert mock_yaml_check.called
     assert mock_sensu_check.called
     assert mock_smartstart_check.called
+    assert mock_paasta_validate.called
 
     service_path = os.path.join(args.yelpsoa_config_root,
                                 mock_figure_out_service_name.return_value)

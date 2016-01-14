@@ -79,6 +79,15 @@ def test_validate_unknown_service():
     assert excinfo.value.code == 1
 
 
+def test_validate_unknown_service_service_path():
+    service_path = 'unused/path'
+
+    with raises(SystemExit) as excinfo:
+        paasta_validate(None, service_path=service_path)
+
+    assert excinfo.value.code == 1
+
+
 @patch('paasta_tools.cli.cmds.validate.os.path.isdir')
 @patch('paasta_tools.cli.cmds.validate.glob')
 def test_get_service_path_cwd(

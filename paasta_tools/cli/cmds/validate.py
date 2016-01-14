@@ -208,14 +208,17 @@ def validate_chronos(service_path):
     return returncode
 
 
-def paasta_validate(args):
+def paasta_validate(args, service_path=None):
     """Analyze the service in the PWD to determine if conf files are all valid
 
     :param args: argparse.Namespace obj created from sys.args by cli
     """
 
-    service = args.service
-    soa_dir = args.yelpsoa_config_root
+    if service_path:
+        soa_dir, service = path_to_soa_dir_service(service_path)
+    else:
+        service = args.service
+        soa_dir = args.yelpsoa_config_root
     service_path = get_service_path(service, soa_dir)
 
     if service_path is None:
