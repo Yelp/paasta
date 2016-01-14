@@ -48,4 +48,5 @@ Feature: paasta_metastatus describes the state of the paasta cluster
     Given a working paasta cluster
      When we create a trivial marathon app
      Then paasta_metastatus -vv exits with return code "0" and outputs the slave's hostname
+
 # vim: set ts=2 sw=2
