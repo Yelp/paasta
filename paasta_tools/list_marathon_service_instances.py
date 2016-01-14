@@ -18,7 +18,7 @@
 Enumerates all marathon instances for services in the soa directory that
 are for the current cluster (defined by the marathon configuration file).
 
-Outputs (to stdout) a space separated list of service.instance
+Outputs (to stdout) a list of service.instance (one per line)
 for each instance found in marathon-<CLUSTER>.yaml for every folder
 in the SOA Configuration directory.
 
@@ -53,7 +53,7 @@ def main():
     composed = []
     for name, instance in instances:
         composed.append(compose_job_id(name, instance))
-    print ' '.join(composed)
+    print '\n'.join(composed)
     sys.exit(0)
 
 
