@@ -351,7 +351,10 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
         cmd.append('--detach=true')
     cmd.append('%s' % docker_hash)
     if command:
-        cmd.extend("sh -c '%s'" % command)
+        cmd.extend((
+            'sh', '-c',
+            ' '.join(pipes.quote(part) for part in command)
+        ))
     return cmd
 
 
