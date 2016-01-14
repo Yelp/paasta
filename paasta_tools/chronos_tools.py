@@ -27,10 +27,7 @@ from tron import command_context
 
 import monitoring_tools
 import service_configuration_lib
-from paasta_tools.utils import compose_job_id as utils_compose_job_id
 from paasta_tools.utils import decompose_job_id as utils_decompose_job_id
-from paasta_tools.utils import get_code_sha_from_dockerurl
-from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_service_instance_list
@@ -121,9 +118,9 @@ def get_chronos_client(config):
                            password=config.get_password())
 
 
-def compose_job_id(service, instance, git_hash=None, config_hash=None):
-    """Thin wrapper around generic compose_job_id to use our local SPACER."""
-    return utils_compose_job_id(service, instance, git_hash, config_hash, spacer=SPACER)
+def compose_job_id(service, instance):
+    """In chronos, a job is just service{SPACER}instance """
+    return "%s%s%s" % (service, SPACER, instance)
 
 
 def decompose_job_id(job_id):
@@ -457,13 +454,8 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
         docker_url,
         docker_volumes,
     )
-    code_sha = get_code_sha_from_dockerurl(docker_url)
-    config_hash = get_config_hash(complete_config)
 
-    # Chronos clears the history for a job whenever it is updated, so we use a new job name for each revision
-    # so that we can keep history of old job revisions rather than just the latest version
-    full_id = compose_job_id(service, job_name, code_sha, config_hash)
-    complete_config['name'] = full_id
+    complete_config['name'] = compose_job_id(service, job_name)
     desired_state = chronos_job_config.get_desired_state()
 
     # If the job was previously stopped, we should stop the new job as well

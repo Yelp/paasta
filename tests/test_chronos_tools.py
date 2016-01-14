@@ -142,26 +142,13 @@ class TestChronosTools:
             chronos_tools.get_chronos_client(fake_config)
             assert mock_connect.call_count == 1
 
-    def test_compose_job_id_without_hashes(self):
+    def test_compose_job_id(self):
         actual = chronos_tools.compose_job_id('service', 'instance')
         assert actual == 'service instance'
-
-    def test_compose_job_id_with_hashes(self):
-        actual = chronos_tools.compose_job_id(
-            'service',
-            'instance',
-            'gityourmom',
-            'configyourdad',
-        )
-        assert actual == 'service instance gityourmom configyourdad'
 
     def test_decompose_job_id_without_hashes(self):
         actual = chronos_tools.decompose_job_id('service instance')
         assert actual == ('service', 'instance', None, None)
-
-    def test_decompose_job_id_with_hashes(self):
-        actual = chronos_tools.decompose_job_id('service instance gityourmom configyourdad')
-        assert actual == ('service', 'instance', 'gityourmom', 'configyourdad')
 
     def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'
@@ -719,42 +706,18 @@ class TestChronosTools:
             )
 
     def test_filter_chronos_jobs_with_no_filters(self):
-        fake_service = 'fake_service'
-        fake_instance = 'fake_instance'
         fake_jobs = [
             {
                 'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'git1111',
-                    'config1111',
+                    'fake_service',
+                    'fake_instance',
                 ),
                 'disabled': False,
             },
             {
                 'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'git2222',
-                    'config2222',
-                ),
-                'disabled': False,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'gitdisabled',
-                    'configdisabled',
-                ),
-                'disabled': True,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    'some_other_service',
-                    'some_other_instance',
-                    'gitother',
-                    'configother',
+                    'other_fake_service',
+                    'other_fake_instance',
                 ),
                 'disabled': False,
             },
@@ -764,8 +727,8 @@ class TestChronosTools:
             jobs=fake_jobs,
             service=None,
             instance=None,
-            git_hash=None,
             config_hash=None,
+            git_hash=None,
             include_disabled=True,
         )
         assert sorted(actual) == sorted(expected)
@@ -776,42 +739,20 @@ class TestChronosTools:
         fake_jobs = [
             {
                 'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'git1111',
-                    'config1111',
+                    'fake_service',
+                    'fake_instance',
                 ),
                 'disabled': False,
             },
             {
                 'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'git2222',
-                    'config2222',
-                ),
-                'disabled': False,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'gitdisabled',
-                    'configdisabled',
-                ),
-                'disabled': True,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    'some_other_service',
-                    'some_other_instance',
-                    'git3333',
-                    'config3333',
+                    'other_fake_service',
+                    'other_fake_instance',
                 ),
                 'disabled': False,
             },
         ]
-        expected = [fake_jobs[0], fake_jobs[1]]
+        expected = [fake_jobs[0]]
         actual = chronos_tools.filter_chronos_jobs(
             jobs=fake_jobs,
             service=fake_service,
@@ -830,8 +771,6 @@ class TestChronosTools:
                 'name': chronos_tools.compose_job_id(
                     fake_service,
                     fake_instance,
-                    'git1111',
-                    'config1111',
                 ),
                 'disabled': False,
             },
@@ -839,8 +778,6 @@ class TestChronosTools:
                 'name': chronos_tools.compose_job_id(
                     fake_service,
                     fake_instance,
-                    'git2222',
-                    'config2222',
                 ),
                 'disabled': False,
             },
@@ -848,8 +785,6 @@ class TestChronosTools:
                 'name': chronos_tools.compose_job_id(
                     fake_service,
                     fake_instance,
-                    'gitdisabled',
-                    'configdisabled',
                 ),
                 'disabled': True,
             },
@@ -857,8 +792,6 @@ class TestChronosTools:
                 'name': chronos_tools.compose_job_id(
                     'some_other_service',
                     'some_other_instance',
-                    'git3333',
-                    'config3333',
                 ),
                 'disabled': False,
             },
@@ -871,60 +804,6 @@ class TestChronosTools:
             git_hash=None,
             config_hash=None,
             include_disabled=True,
-        )
-        assert sorted(actual) == sorted(expected)
-
-    def test_filter_chronos_jobs_with_everything_specified(self):
-        fake_service = 'fake_service'
-        fake_instance = 'fake_instance'
-        fake_git_hash = 'fake_git_hash'
-        fake_config_hash = 'fake_config_hash'
-        fake_jobs = [
-            {
-                'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    fake_git_hash,
-                    fake_config_hash,
-                ),
-                'disabled': False,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'git2222',
-                    'config2222',
-                ),
-                'disabled': False,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    fake_service,
-                    fake_instance,
-                    'gitdisabled',
-                    'configdisabled',
-                ),
-                'disabled': True,
-            },
-            {
-                'name': chronos_tools.compose_job_id(
-                    'some_other_service',
-                    'some_other_instance',
-                    'git3333',
-                    'config3333',
-                ),
-                'disabled': False,
-            },
-        ]
-        expected = [fake_jobs[0]]
-        actual = chronos_tools.filter_chronos_jobs(
-            jobs=fake_jobs,
-            service=fake_service,
-            instance=fake_instance,
-            git_hash=fake_git_hash,
-            config_hash=fake_config_hash,
-            include_disabled=False,
         )
         assert sorted(actual) == sorted(expected)
 
@@ -952,14 +831,10 @@ class TestChronosTools:
             mock.patch('chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=self.fake_chronos_job_config),
-            mock.patch('chronos_tools.get_code_sha_from_dockerurl', autospec=True, return_value="sha"),
-            mock.patch('chronos_tools.get_config_hash', autospec=True, return_value="hash"),
             mock.patch('monitoring_tools.get_team', return_value=fake_owner)
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
-            code_sha_patch,
-            config_hash_patch,
             mock_get_team,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
@@ -975,7 +850,7 @@ class TestChronosTools:
                 'environmentVariables': [],
                 'retries': 5,
                 'disabled': False,
-                'name': 'fake-service fake-job sha hash',
+                'name': 'fake-service fake-job',
                 'command': '/bin/sleep 40',
                 'epsilon': 'PT30M',
                 'container': {
@@ -1006,14 +881,10 @@ class TestChronosTools:
             mock.patch('chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('chronos_tools.get_code_sha_from_dockerurl', autospec=True, return_value="sha"),
-            mock.patch('chronos_tools.get_config_hash', autospec=True, return_value="hash"),
             mock.patch('monitoring_tools.get_team', return_value=fake_owner)
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
-            code_sha_patch,
-            config_hash_patch,
             mock_get_team,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
@@ -1029,7 +900,7 @@ class TestChronosTools:
                 'environmentVariables': [],
                 'retries': 5,
                 'disabled': False,
-                'name': 'fake_service fake_job sha hash',
+                'name': 'fake_service fake_job',
                 'command': '/bin/sleep 40',
                 'epsilon': 'PT30M',
                 'container': {
@@ -1060,14 +931,10 @@ class TestChronosTools:
             mock.patch('chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('chronos_tools.get_code_sha_from_dockerurl', autospec=True, return_value="sha"),
-            mock.patch('chronos_tools.get_config_hash', autospec=True, return_value="hash"),
             mock.patch('monitoring_tools.get_team', return_value=fake_owner)
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
-            code_sha_patch,
-            config_hash_patch,
             mock_get_team,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
@@ -1083,7 +950,7 @@ class TestChronosTools:
                 'environmentVariables': [],
                 'retries': 5,
                 'disabled': True,
-                'name': 'fake_service fake_job sha hash',
+                'name': 'fake_service fake_job',
                 'command': '/bin/sleep 40',
                 'epsilon': 'PT30M',
                 'container': {
@@ -1130,14 +997,10 @@ class TestChronosTools:
             mock.patch('chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('chronos_tools.get_code_sha_from_dockerurl', autospec=True, return_value="sha"),
-            mock.patch('chronos_tools.get_config_hash', autospec=True, return_value="hash"),
             mock.patch('monitoring_tools.get_team', return_value=fake_owner)
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
-            code_sha_patch,
-            config_hash_patch,
             mock_get_team,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=fake_system_volumes)
@@ -1153,7 +1016,7 @@ class TestChronosTools:
                 'environmentVariables': [],
                 'retries': 5,
                 'disabled': True,
-                'name': 'fake_service fake_job sha hash',
+                'name': 'fake_service fake_job',
                 'command': '/bin/sleep 40',
                 'epsilon': 'PT30M',
                 'container': {
