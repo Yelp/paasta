@@ -83,8 +83,11 @@ class InstanceConfig(dict):
     def get_service(self):
         return self.service
 
+    def get_branch(self):
+        return 'paasta-%s' % SPACER.join((self.get_cluster(), self.get_instance()))
+
     def get_deploy_group(self):
-        return self.config_dict.get('deploy_group', '.'.join((self.get_cluster(), self.get_instance())))
+        return self.config_dict.get('deploy_group', self.get_branch())
 
     def get_mem(self):
         """Gets the memory required from the service's configuration.
@@ -809,6 +812,25 @@ def get_default_cluster_for_service(service):
     return cluster
 
 
+def get_soa_cluster_deploy_files(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
+    if service is None:
+        service = '*'
+    service_path = os.path.join(DEFAULT_SOA_DIR, service)
+
+    if instance_type == 'marathon' or instance_type == 'chronos':
+        instance_types = instance_type
+    else:
+        instance_types = 'marathon|chronos'
+
+    search_re = r'/.*/(' + instance_types + r')-([0-9a-z-_]*)\.yaml$'
+
+    for yaml_file in glob.glob('%s/*.yaml' % service_path):
+        cluster_re_match = re.search(search_re, yaml_file)
+        if cluster_re_match is not None:
+            cluster = cluster_re_match.group(2)
+            yield (cluster, yaml_file)
+
+
 def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     """Returns a sorted list of clusters a service is configured to deploy to,
     or all clusters if ``service`` is not specified.
@@ -819,21 +841,12 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     :returns: A sorted list of cluster names
     """
     clusters = set()
-    if service is None:
-        service = '*'
-    srv_path = os.path.join(soa_dir, service)
-
-    if instance_type == 'marathon' or instance_type == 'chronos':
-        instance_types = instance_type
-    else:
-        instance_types = 'marathon|chronos'
-
-    search_re = r'/.*/(' + instance_types + r')-([0-9a-z-_]*)\.yaml$'
-
-    for yaml_file in glob.glob('%s/*.yaml' % srv_path):
-        cluster_re_match = re.search(search_re, yaml_file)
-        if cluster_re_match is not None:
-            clusters.add(cluster_re_match.group(2))
+    for cluster, _ in get_soa_cluster_deploy_files(
+        service=service,
+        soa_dir=soa_dir,
+        instance_type=instance_type,
+    ):
+        clusters.add(cluster)
     return sorted(clusters)
 
 
@@ -971,8 +984,12 @@ class DeploymentsJson(dict):
         return self.get(full_branch, {})
 
 
+def get_paasta_branch_from_identifier(identifier):
+    return 'paasta-%s' % (identifier)
+
+
 def get_paasta_branch(cluster, instance):
-    return 'paasta-%s.%s' % (cluster, instance)
+    return get_paasta_branch_from_identifier('%s.%s' % (cluster, instance))
 
 
 class NoDockerImageError(Exception):

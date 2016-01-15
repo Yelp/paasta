@@ -23,6 +23,8 @@ from paasta_tools.utils import get_git_url
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
+from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
+from service_configuration_lib import DEFAULT_SOA_DIR
 
 
 def add_subparser(subparsers):
@@ -46,18 +48,13 @@ def add_subparser(subparsers):
         required=True,
     )
     list_parser.add_argument(
-        '-i', '--instances',
-        help='Mark one or more instances to roll back (e.g. '
-        '"canary", "canary,main"). If no instances specified,'
-        ' all instances for that service are rolled back',
+        '-d', '--deploy-groups',
+        help='Mark one or more deploy groups to roll back (e.g. '
+        '"all.main", "all.main,all.canary"). If no deploy groups specified,'
+        ' all deploy groups for that service are rolled back',
         default='',
         required=False,
-    ).completer = lazy_choices_completer(list_instances)
-    list_parser.add_argument(
-        '-c', '--cluster',
-        help='Mark the cluster to rollback (e.g. "cluster1")',
-        required=True,
-    ).completer = lazy_choices_completer(list_clusters)
+    )
     list_parser.add_argument(
         '-s', '--service',
         help='Name of the service to rollback (e.g. "service1")',
@@ -65,57 +62,53 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_rollback)
 
 
-def validate_given_instances(service_instances, args_instances):
-    """Given two lists of instances, return the intersection and difference between them.
+def validate_given_deploy_groups(service_deploy_groups, args_deploy_groups):
+    """Given two lists of deploy groups, return the intersection and difference between them.
 
-    :param service_instances: instances actually belonging to a service
-    :param args_instances: the desired instances
-    :returns: a tuple with (common, difference) indicating instances common in both
-    lists and those only in args_instances
+    :param service_deploy_groups: instances actually belonging to a service
+    :param args_deploy_groups: the desired instances
+    :returns: a tuple with (common, difference) indicating deploy groups common in both
+    lists and those only in args_deploy_groups
     """
-    if len(args_instances) is 0:
-        valid_instances = set(service_instances)
-        invalid_instances = set([])
+    if len(args_deploy_groups) is 0:
+        valid_deploy_groups = set(service_deploy_groups)
+        invalid_deploy_groups = set([])
     else:
-        valid_instances = set(args_instances).intersection(service_instances)
-        invalid_instances = set(args_instances).difference(service_instances)
+        valid_deploy_groups = set(args_deploy_groups).intersection(service_deploy_groups)
+        invalid_deploy_groups = set(args_deploy_groups).difference(service_deploy_groups)
 
-    return valid_instances, invalid_instances
+    return valid_deploy_groups, invalid_deploy_groups
 
 
 def paasta_rollback(args):
     """Call mark_for_deployment with rollback parameters
     :param args: contains all the arguments passed onto the script: service,
-    cluster, instance and sha. These arguments will be verified and passed onto
+    deploy groups and sha. These arguments will be verified and passed onto
     mark_for_deployment.
     """
     service = figure_out_service_name(args)
-    cluster = args.cluster
     git_url = get_git_url(service)
     commit = args.commit
-    given_instances = args.instances.split(",")
+    given_deploy_groups = filter(bool, args.deploy_groups.split(","))
 
-    if cluster in list_clusters(service):
-        service_instances = list_all_instances_for_service(service)
-        instances, invalid = validate_given_instances(service_instances, given_instances)
+    service_deploy_groups = set(config.get_deploy_group() for config in get_instance_config_for_service(
+        soa_dir=DEFAULT_SOA_DIR,
+        service=service,
+    ))
+    deploy_groups, invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
+    if len(invalid) > 0:
+        print PaastaColors.yellow("These deploy groups are not valid and will be skipped: %s.\n" % (",").join(invalid))
 
-        if len(invalid) > 0:
-            print PaastaColors.yellow("These instances are not valid and will be skipped: %s.\n" % (",").join(invalid))
-
-        if len(instances) is 0:
-            print PaastaColors.red("ERROR: No valid instances specified for %s.\n" % (service))
-            returncode = 1
-
-        for instance in instances:
-            returncode = mark_for_deployment(
-                git_url=git_url,
-                cluster=cluster,
-                instance=instance,
-                service=service,
-                commit=commit,
-            )
-    else:
-        print PaastaColors.red("ERROR: The service %s is not deployed into cluster %s.\n" % (service, cluster))
+    if len(deploy_groups) is 0:
+        print PaastaColors.red("ERROR: No valid deploy groups specified for %s.\n" % (service))
         returncode = 1
+
+    for deploy_group in deploy_groups:
+        returncode = mark_for_deployment(
+            git_url=git_url,
+            service=service,
+            deploy_group=deploy_group,
+            commit=commit,
+        )
 
     sys.exit(returncode)

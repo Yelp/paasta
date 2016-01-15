@@ -376,19 +376,17 @@ def test_get_actual_deployments(mock_get_deployments,):
     assert expected == actual
 
 
-@patch('paasta_tools.cli.cmds.status.join', autospec=True)
 @patch('paasta_tools.cli.cmds.status.read_deploy', autospec=True)
-def test_get_deploy_info_exists(mock_read_deploy, mock_join):
+def test_get_deploy_info_exists(mock_read_deploy):
     expected = 'fake deploy yaml'
     mock_read_deploy.return_value = expected
     actual = status.get_deploy_info('fake_service')
     assert expected == actual
 
 
-@patch('paasta_tools.cli.cmds.status.join', autospec=True)
 @patch('paasta_tools.cli.cmds.status.read_deploy', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
-def test_get_deploy_info_does_not_exist(mock_stdout, mock_read_deploy, mock_join):
+def test_get_deploy_info_does_not_exist(mock_stdout, mock_read_deploy):
     mock_read_deploy.return_value = False
     expected_output = '%s\n' % PaastaCheckMessages.DEPLOY_YAML_MISSING
     with raises(SystemExit) as sys_exit:
