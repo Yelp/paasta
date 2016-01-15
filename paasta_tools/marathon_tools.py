@@ -312,6 +312,11 @@ class MarathonServiceConfig(InstanceConfig):
             'cmd': self.get_cmd(),
             'args': self.get_args(),
         }
+
+        accepted_resource_roles = self.get_accepted_resource_roles()
+        if accepted_resource_roles is not None:
+            complete_config['accepted_resource_roles'] = accepted_resource_roles
+
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
 
@@ -429,6 +434,9 @@ class MarathonServiceConfig(InstanceConfig):
         if service_namespace_config.is_in_smartstack():
             default = {'check_haproxy': True}
         return self.config_dict.get('bounce_health_params', default)
+
+    def get_accepted_resource_roles(self):
+        return self.config_dict.get('accepted_resource_roles', None)
 
 
 def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):

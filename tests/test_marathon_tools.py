@@ -820,6 +820,7 @@ class TestMarathonTools:
             'health_checks': fake_healthchecks,
             'backoff_factor': 2,
             'backoff_seconds': mock.ANY,
+            'accepted_resource_roles': ['ads'],
         }
         config = marathon_tools.MarathonServiceConfig(
             'can_you_dig_it',
@@ -835,6 +836,7 @@ class TestMarathonTools:
                 'healthcheck_interval_seconds':  10,
                 'healthcheck_timeout_seconds':  10,
                 'healthcheck_max_consecutive_failures': 3,
+                'accepted_resource_roles': ['ads'],
             },
             {'desired_state': 'start'}
         )
@@ -1579,6 +1581,16 @@ class TestMarathonServiceConfig(object):
         marathon_config = marathon_tools.MarathonServiceConfig(
             "service", "instance", {'instances': 0}, {})
         assert marathon_config.get_backoff_seconds() == 1
+
+    def test_get_accepted_resource_roles_default(self):
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            "service", "instance", {}, {})
+        assert marathon_config.get_accepted_resource_roles() is None
+
+    def test_get_accepted_resource_roles(self):
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            "service", "instance", {"accepted_resource_roles": ["ads"]}, {})
+        assert marathon_config.get_accepted_resource_roles() == ["ads"]
 
 
 class TestServiceNamespaceConfig(object):
