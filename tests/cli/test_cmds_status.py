@@ -399,7 +399,6 @@ def test_get_deploy_info_does_not_exist(mock_stdout, mock_read_deploy, mock_join
 
 
 @patch('paasta_tools.cli.cmds.status.figure_out_service_name', autospec=True)
-@patch('paasta_tools.cli.cmds.status.get_deploy_info', autospec=True)
 @patch('paasta_tools.cli.cmds.status.get_actual_deployments', autospec=True)
 @patch('paasta_tools.cli.cmds.status.get_planned_deployments', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_status', autospec=True)
@@ -409,17 +408,13 @@ def test_status_calls_sergeants(
     mock_report_status,
     mock_get_planned_deployments,
     mock_get_actual_deployments,
-    mock_get_deploy_info,
     mock_figure_out_service_name,
 ):
     service = 'fake_service'
     mock_figure_out_service_name.return_value = service
 
-    pipeline = [{'instancename': 'cluster.instance'}]
-    deploy_info = {'pipeline': pipeline}
     planned_deployments = [
         'cluster1.instance1', 'cluster1.instance2', 'cluster2.instance1']
-    mock_get_deploy_info.return_value = deploy_info
     mock_get_planned_deployments.return_value = planned_deployments
 
     actual_deployments = {
@@ -436,7 +431,6 @@ def test_status_calls_sergeants(
 
     mock_figure_out_service_name.assert_called_once_with(args)
     mock_get_actual_deployments.assert_called_once_with(service)
-    mock_get_deploy_info.assert_called_once_with(service)
     mock_report_status.assert_called_once_with(
         service=service,
         deploy_pipeline=planned_deployments,
