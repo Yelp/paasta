@@ -275,6 +275,20 @@ Each job configuration MAY specify the following options:
     <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more
     information.
 
+  * ``schedule_time_zone``: The time zone name to use when scheduling the job.
+    Unlike schedule, this is specified in the tz database format, not the ISO 8601 format.
+
+    * This field takes precedence over any time zone specified in schedule.
+    * See list of `tz database time zones <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>`_.
+    * For example, the effective time zone for the following is Pacific Standard Time::
+
+
+        ---
+        main:
+          schedule: R/2014-10-10T18:32:00Z/PT60M
+          schedule_time_zone: PST
+
+
 smartstack.yaml
 ---------------
 
