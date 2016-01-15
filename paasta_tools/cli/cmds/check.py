@@ -37,6 +37,7 @@ from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import _run
+from service_configuration_lib import DEFAULT_SOA_DIR
 from service_configuration_lib import read_service_configuration
 
 
@@ -60,6 +61,12 @@ def add_subparser(subparsers):
         '-s', '--service',
         help='The name of the service you wish to inspect. Defaults to autodetect.'
     ).completer = lazy_choices_completer(list_services)
+    check_parser.add_argument(
+        '-y', '--yelpsoa-config-root',
+        dest='yelpsoa_config_root',
+        help='A directory from which yelpsoa-configs should be read from',
+        default=DEFAULT_SOA_DIR
+    )
     check_parser.set_defaults(command=paasta_check)
 
 
@@ -288,15 +295,15 @@ def sensu_check(service, service_path):
         print PaastaCheckMessages.SENSU_MONITORING_MISSING
 
 
-def service_dir_check(service):
+def service_dir_check(service_name, service_root=DEFAULT_SOA_DIR):
     """Check whether directory service exists in /nail/etc/services
     :param service: string of service name we wish to inspect
     """
     try:
-        validate_service_name(service)
-        print PaastaCheckMessages.service_dir_found(service)
+        validate_service_name(service=service_name, soa_dir=service_root)
+        print PaastaCheckMessages.service_dir_found(service_name)
     except NoSuchService:
-        print PaastaCheckMessages.service_dir_missing(service)
+        print PaastaCheckMessages.service_dir_missing(service_name)
 
 
 def smartstack_check(service, service_path):
@@ -322,21 +329,22 @@ def smartstack_check(service, service_path):
 def paasta_check(args):
     """Analyze the service in the PWD to determine if it is paasta ready
     :param args: argparse.Namespace obj created from sys.args by cli"""
-    service = figure_out_service_name(args)
-    service_path = os.path.join('/nail/etc/services', service)
+    service_name = figure_out_service_name(args)
+    service_root = args.yelpsoa_config_root
+    service_path = os.path.join(service_root, service_name)
 
-    service_dir_check(service)
+    service_dir_check(service_name, service_root)
     deploy_check(service_path)
-    deploy_has_security_check(service)
-    deploy_has_performance_check(service)
-    pipeline_check(service)
-    git_repo_check(service)
+    deploy_has_security_check(service_name)
+    deploy_has_performance_check(service_name)
+    pipeline_check(service_name)
+    git_repo_check(service_name)
     docker_check()
     makefile_check()
     yaml_check(service_path)
     deployments_check(service_path)
-    sensu_check(service, service_path)
-    smartstack_check(service, service_path)
+    sensu_check(service_name, service_path)
+    smartstack_check(service_name, service_path)
 
 
 def read_dockerfile_lines(path):

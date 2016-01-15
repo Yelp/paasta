@@ -13,9 +13,10 @@
 # limitations under the License.
 
 import contextlib
-from StringIO import StringIO
+import os
 
 from mock import patch, MagicMock, call
+from StringIO import StringIO
 
 from paasta_tools.cli.cmds.check import deploy_check
 from paasta_tools.cli.cmds.check import deploy_has_performance_check
@@ -42,9 +43,9 @@ from paasta_tools.cli.utils import PaastaCheckMessages
 @patch('paasta_tools.cli.cmds.check.service_dir_check')
 @patch('paasta_tools.cli.cmds.check.validate_service_name')
 @patch('paasta_tools.cli.cmds.check.figure_out_service_name')
-@patch('paasta_tools.cli.cmds.check.deploy_check')
 @patch('paasta_tools.cli.cmds.check.deploy_has_performance_check')
 @patch('paasta_tools.cli.cmds.check.deploy_has_security_check')
+@patch('paasta_tools.cli.cmds.check.deploy_check')
 @patch('paasta_tools.cli.cmds.check.docker_check')
 @patch('paasta_tools.cli.cmds.check.makefile_check')
 @patch('paasta_tools.cli.cmds.check.yaml_check')
@@ -71,7 +72,9 @@ def test_check_paasta_check_calls_everything(
 
     mock_figure_out_service_name.return_value = 'servicedocs'
     mock_validate_service_name.return_value = None
-    paasta_check(None)
+    args = MagicMock()
+    args.yelpsoa_config_root = '/fake/path'
+    paasta_check(args)
 
     assert mock_git_repo_check.called
     assert mock_pipeline_check.called
@@ -85,28 +88,34 @@ def test_check_paasta_check_calls_everything(
     assert mock_sensu_check.called
     assert mock_smartstart_check.called
 
+    service_path = os.path.join(args.yelpsoa_config_root,
+                                mock_figure_out_service_name.return_value)
+    mock_deploy_check.assert_called_once_with(service_path)
 
-@patch('paasta_tools.cli.cmds.check.validate_service_name')
+
+@patch('paasta_tools.cli.cmds.check.validate_service_name', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_service_dir_check_pass(mock_stdout, mock_validate_service_name):
     mock_validate_service_name.return_value = None
-    service = 'fake_service'
+    service_name = 'fake_service'
+    service_root = '/fake_yelpsoa_configs'
     expected_output = \
-        "%s\n" % PaastaCheckMessages.service_dir_found(service)
-    service_dir_check(service)
+        "%s\n" % PaastaCheckMessages.service_dir_found(service_name)
+    service_dir_check(service_name, service_root)
     output = mock_stdout.getvalue()
 
     assert output == expected_output
 
 
-@patch('paasta_tools.cli.cmds.check.validate_service_name')
+@patch('paasta_tools.cli.cmds.check.validate_service_name', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_service_dir_check_fail(mock_stdout, mock_validate_service_name):
-    service = 'fake_service'
-    mock_validate_service_name.side_effect = NoSuchService(service)
+    service_name = 'fake_service'
+    service_root = '/fake_yelpsoa_configs'
+    mock_validate_service_name.side_effect = NoSuchService(service_name)
     expected_output = "%s\n" \
-                      % PaastaCheckMessages.service_dir_missing(service)
-    service_dir_check(service)
+                      % PaastaCheckMessages.service_dir_missing(service_name)
+    service_dir_check(service_name, service_root)
     output = mock_stdout.getvalue()
 
     assert output == expected_output
