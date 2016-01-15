@@ -162,9 +162,12 @@ class PaastaCheckMessages:
 
     MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
 
-    MARATHON_YAML_MISSING = failure(
-        "No marathon.yaml exists, so your service cannot be deployed.\n  "
-        "Push a marathon-[superregion].yaml and run `paasta generate-pipeline`.\n  "
+    CHRONOS_YAML_FOUND = success("Found chronos.yaml file.")
+
+    YAML_MISSING = failure(
+        "No marathon.yaml or chronos.yaml exists, so your service cannot be deployed.\n  "
+        "Push a marathon-[superregion].yaml or chronos-[superregion].yaml "
+        "and run `paasta generate-pipeline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
     MAKEFILE_FOUND = success("A Makefile is present")

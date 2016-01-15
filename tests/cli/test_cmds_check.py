@@ -26,8 +26,8 @@ from paasta_tools.cli.cmds.check import makefile_check
 from paasta_tools.cli.cmds.check import makefile_has_a_tab
 from paasta_tools.cli.cmds.check import makefile_has_docker_tag
 from paasta_tools.cli.cmds.check import makefile_responds_to
-from paasta_tools.cli.cmds.check import marathon_check
-from paasta_tools.cli.cmds.check import marathon_deployments_check
+from paasta_tools.cli.cmds.check import yaml_check
+from paasta_tools.cli.cmds.check import deployments_check
 from paasta_tools.cli.cmds.check import NoSuchService
 from paasta_tools.cli.cmds.check import paasta_check
 from paasta_tools.cli.cmds.check import pipeline_check
@@ -47,15 +47,15 @@ from paasta_tools.cli.utils import PaastaCheckMessages
 @patch('paasta_tools.cli.cmds.check.deploy_has_security_check')
 @patch('paasta_tools.cli.cmds.check.docker_check')
 @patch('paasta_tools.cli.cmds.check.makefile_check')
-@patch('paasta_tools.cli.cmds.check.marathon_check')
-@patch('paasta_tools.cli.cmds.check.marathon_deployments_check')
+@patch('paasta_tools.cli.cmds.check.yaml_check')
+@patch('paasta_tools.cli.cmds.check.deployments_check')
 @patch('paasta_tools.cli.cmds.check.sensu_check')
 @patch('paasta_tools.cli.cmds.check.smartstack_check')
 def test_check_paasta_check_calls_everything(
         mock_smartstart_check,
         mock_sensu_check,
-        mock_marathon_deployments_check,
-        mock_marathon_check,
+        mock_deployments_check,
+        mock_yaml_check,
         mock_makefile_check,
         mock_docker_check,
         mock_deploy_check,
@@ -81,7 +81,7 @@ def test_check_paasta_check_calls_everything(
     assert mock_deploy_performance_check.called
     assert mock_docker_check.called
     assert mock_makefile_check.called
-    assert mock_marathon_check.called
+    assert mock_yaml_check.called
     assert mock_sensu_check.called
     assert mock_smartstart_check.called
 
@@ -170,13 +170,14 @@ def test_check_docker_check_file_not_found(
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_marathon_check_pass(mock_stdout, mock_is_file_in_dir):
+def test_check_yaml_check_pass(mock_stdout, mock_is_file_in_dir):
     # marathon.yaml exists and is valid
 
     mock_is_file_in_dir.return_value = "/fake/path"
-    expected_output = "%s\n" % PaastaCheckMessages.MARATHON_YAML_FOUND
+    expected_output = "%s\n%s\n" % (PaastaCheckMessages.MARATHON_YAML_FOUND,
+                                    PaastaCheckMessages.CHRONOS_YAML_FOUND)
 
-    marathon_check('path')
+    yaml_check('path')
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -184,13 +185,13 @@ def test_check_marathon_check_pass(mock_stdout, mock_is_file_in_dir):
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir')
 @patch('sys.stdout', new_callable=StringIO)
-def test_check_marathon_check_fail(mock_stdout, mock_is_file_in_dir):
+def test_check_yaml_check_fail(mock_stdout, mock_is_file_in_dir):
     # marathon.yaml exists and is valid
 
     mock_is_file_in_dir.return_value = False
-    expected_output = "%s\n" % PaastaCheckMessages.MARATHON_YAML_MISSING
+    expected_output = "%s\n" % PaastaCheckMessages.YAML_MISSING
 
-    marathon_check('path')
+    yaml_check('path')
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -536,7 +537,7 @@ def test_marathon_deployments_check_good(
         'hab.canary',
         'hab.main',
     ]
-    actual = marathon_deployments_check('fake_service')
+    actual = deployments_check('fake_service')
     assert actual is True
 
 
@@ -560,7 +561,7 @@ def test_marathon_deployments_deploy_but_not_marathon(
         'hab.canary',
         'hab.main',
     ]
-    actual = marathon_deployments_check('fake_service')
+    actual = deployments_check('fake_service')
     assert actual is False
     assert 'EXTRA' in mock_stdout.getvalue()
 
@@ -585,7 +586,7 @@ def test_marathon_deployments_marathon_but_not_deploy(
         'hab.main',
         'hab.BOGUS',
     ]
-    actual = marathon_deployments_check('fake_service')
+    actual = deployments_check('fake_service')
     assert actual is False
     assert 'BOGUS' in mock_stdout.getvalue()
 
