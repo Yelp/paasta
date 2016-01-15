@@ -41,8 +41,8 @@ from service_configuration_lib import DEFAULT_SOA_DIR
 from service_configuration_lib import read_service_configuration
 
 
-def get_pipeline_config(service):
-    service_configuration = read_service_configuration(service)
+def get_pipeline_config(service_name, service_root):
+    service_configuration = read_service_configuration(service_name, soa_dir=service_root)
     return service_configuration.get('deploy', {}).get('pipeline', [])
 
 
@@ -81,8 +81,8 @@ def deploy_check(service_path):
         print PaastaCheckMessages.DEPLOY_YAML_MISSING
 
 
-def deploy_has_security_check(service):
-    pipeline = get_pipeline_config(service)
+def deploy_has_security_check(service_name, service_root):
+    pipeline = get_pipeline_config(service_name, service_root)
     steps = [step['instancename'] for step in pipeline]
     if 'security-check' in steps:
         print PaastaCheckMessages.DEPLOY_SECURITY_FOUND
@@ -92,8 +92,8 @@ def deploy_has_security_check(service):
         return False
 
 
-def deploy_has_performance_check(service):
-    pipeline = get_pipeline_config(service)
+def deploy_has_performance_check(service_name, service_root):
+    pipeline = get_pipeline_config(service_name, service_root)
     steps = [step['instancename'] for step in pipeline]
     if 'performance-check' in steps:
         print PaastaCheckMessages.DEPLOY_PERFORMANCE_FOUND
@@ -202,38 +202,42 @@ def yaml_check(service_path):
         print PaastaCheckMessages.YAML_MISSING
 
 
-def get_chronos_steps(service):
+def get_chronos_steps(service_name, service_root):
     """This is a kind of funny function that gets all the chronos instances
     for a service and massages it into a form that matches up with what
     deploy.yaml's steps look like. This is only so we can compare it 1-1
     with what deploy.yaml has for linting."""
     steps = []
-    for cluster in list_clusters(service):
-        for instance in get_service_instance_list(service, cluster=cluster, instance_type='chronos'):
+    for cluster in list_clusters(service=service_name, soa_dir=service_root):
+        for instance in get_service_instance_list(service_name, cluster=cluster,
+                                                  instance_type='chronos',
+                                                  soa_dir=service_root):
             steps.append("%s.%s" % (cluster, instance[1]))
     return steps
 
 
-def get_marathon_steps(service):
+def get_marathon_steps(service_name, service_root):
     """This is a kind of funny function that gets all the marathon instances
     for a service and massages it into a form that matches up with what
     deploy.yaml's steps look like. This is only so we can compare it 1-1
     with what deploy.yaml has for linting."""
     steps = []
-    for cluster in list_clusters(service):
-        for instance in get_service_instance_list(service, cluster=cluster, instance_type='marathon'):
+    for cluster in list_clusters(service=service_name, soa_dir=service_root):
+        for instance in get_service_instance_list(service_name, cluster=cluster,
+                                                  instance_type='marathon',
+                                                  soa_dir=service_root):
             steps.append("%s.%s" % (cluster, instance[1]))
     return steps
 
 
-def deployments_check(service):
+def deployments_check(service_name, service_root):
     """Checks for consistency between deploy.yaml and the marathon/chronos yamls"""
     the_return = True
-    pipeline_deployments = get_pipeline_config(service)
+    pipeline_deployments = get_pipeline_config(service_name, service_root)
     pipeline_steps = [step['instancename'] for step in pipeline_deployments]
     pipeline_steps = [step for step in pipeline_steps if step not in DEPLOY_PIPELINE_NON_DEPLOY_STEPS]
-    marathon_steps = get_marathon_steps(service)
-    chronos_steps = get_chronos_steps(service)
+    marathon_steps = get_marathon_steps(service_name, service_root)
+    chronos_steps = get_chronos_steps(service_name, service_root)
     in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
     in_chronos_not_deploy = set(chronos_steps) - set(pipeline_steps)
     if len(in_marathon_not_deploy) > 0:
@@ -301,9 +305,9 @@ def service_dir_check(service_name, service_root=DEFAULT_SOA_DIR):
     """
     try:
         validate_service_name(service=service_name, soa_dir=service_root)
-        print PaastaCheckMessages.service_dir_found(service_name)
+        print PaastaCheckMessages.service_dir_found(service_name, service_root)
     except NoSuchService:
-        print PaastaCheckMessages.service_dir_missing(service_name)
+        print PaastaCheckMessages.service_dir_missing(service_name, service_root)
 
 
 def smartstack_check(service, service_path):
@@ -329,20 +333,20 @@ def smartstack_check(service, service_path):
 def paasta_check(args):
     """Analyze the service in the PWD to determine if it is paasta ready
     :param args: argparse.Namespace obj created from sys.args by cli"""
-    service_name = figure_out_service_name(args)
     service_root = args.yelpsoa_config_root
+    service_name = figure_out_service_name(args, service_root)
     service_path = os.path.join(service_root, service_name)
 
     service_dir_check(service_name, service_root)
     deploy_check(service_path)
-    deploy_has_security_check(service_name)
-    deploy_has_performance_check(service_name)
+    deploy_has_security_check(service_name, service_root)
+    deploy_has_performance_check(service_name, service_root)
     pipeline_check(service_name)
     git_repo_check(service_name)
     docker_check()
     makefile_check()
     yaml_check(service_path)
-    deployments_check(service_path)
+    deployments_check(service_name, service_root)
     sensu_check(service_name, service_path)
     smartstack_check(service_name, service_path)
 
