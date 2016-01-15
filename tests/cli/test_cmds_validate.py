@@ -19,9 +19,11 @@ from mock import patch
 from pytest import raises
 
 from paasta_tools.cli.cmds.validate import get_schema
+from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_service_path
 from paasta_tools.cli.cmds.validate import invalid_chronos_instance
 from paasta_tools.cli.cmds.validate import paasta_validate
+from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
 from paasta_tools.cli.cmds.validate import SCHEMA_VALID
 from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
@@ -33,13 +35,16 @@ from paasta_tools.cli.cmds.validate import validate_schema
 @patch('paasta_tools.cli.cmds.validate.validate_all_schemas')
 @patch('paasta_tools.cli.cmds.validate.validate_chronos')
 @patch('paasta_tools.cli.cmds.validate.get_service_path')
+@patch('paasta_tools.cli.cmds.validate.check_service_path')
 def test_paasta_validate_calls_everything(
+    mock_check_service_path,
     mock_get_service_path,
     mock_validate_chronos,
     mock_validate_all_schemas
 ):
     # Ensure each check in 'paasta_validate' is called
 
+    mock_check_service_path.return_value = 0
     mock_get_service_path.return_value = 'unused_path'
     mock_validate_all_schemas.return_value = 0
     mock_validate_chronos.return_value = 0
@@ -82,10 +87,7 @@ def test_validate_unknown_service():
 def test_validate_unknown_service_service_path():
     service_path = 'unused/path'
 
-    with raises(SystemExit) as excinfo:
-        paasta_validate(None, service_path=service_path)
-
-    assert excinfo.value.code == 1
+    assert paasta_validate_soa_configs(service_path) == 1
 
 
 @patch('paasta_tools.cli.cmds.validate.os.path.isdir')
@@ -314,3 +316,40 @@ def test_validate_chronos_valid_instance(
     output = mock_stdout.getvalue()
 
     assert valid_chronos_instance(fake_cluster, fake_instance) in output
+
+
+@patch('sys.stdout', new_callable=StringIO)
+def test_check_service_path_none(
+    mock_stdout
+):
+    service_path = None
+    assert check_service_path(service_path) == 1
+
+    output = mock_stdout.getvalue()
+    assert "%s is not a directory" % service_path in output
+
+
+@patch('sys.stdout', new_callable=StringIO)
+@patch('paasta_tools.cli.cmds.validate.os.path.isdir')
+def test_check_service_path_empty(
+    mock_isdir,
+    mock_stdout
+):
+    mock_isdir.return_value = True
+    service_path = 'fake/path'
+    assert check_service_path(service_path) == 1
+
+    output = mock_stdout.getvalue()
+    assert "%s does not contain any .yaml files" % service_path in output
+
+
+@patch('paasta_tools.cli.cmds.validate.os.path.isdir')
+@patch('paasta_tools.cli.cmds.validate.glob')
+def test_check_service_path_good(
+    mock_glob,
+    mock_isdir
+):
+    mock_isdir.return_value = True
+    mock_glob.return_value = True
+    service_path = 'fake/path'
+    assert check_service_path(service_path) == 0

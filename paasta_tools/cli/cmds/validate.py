@@ -155,10 +155,27 @@ def add_subparser(subparsers):
     validate_parser.set_defaults(command=paasta_validate)
 
 
+def check_service_path(service_path):
+    """Check that the specified path exists and has yaml files
+
+    :param service_path: Path to directory that should contain yaml files
+    """
+    if not service_path or not os.path.isdir(service_path):
+        print failure("%s is not a directory" % service_path,
+                      "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+        return 1
+    if not glob(os.path.join(service_path, "*.yaml")):
+        print failure("%s does not contain any .yaml files" % service_path,
+                      "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+        return 1
+    return 0
+
+
 def get_service_path(service, soa_dir):
     """Determine the path of the directory containing the conf files
 
-    :param args: argparse.Namespace obj created from sys.args by cli
+    :param service: Name of service
+    :param soa_dir: Directory containing soa configs for all services
     """
     if service:
         service_path = os.path.join(soa_dir, service)
@@ -168,24 +185,18 @@ def get_service_path(service, soa_dir):
         else:
             print UNKNOWN_SERVICE
             return None
-    if not os.path.isdir(service_path):
-        print failure("%s is not a directory" % service_path,
-                      "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
-        return None
-    if not glob(os.path.join(service_path, "*.yaml")):
-        print failure("%s does not contain any .yaml files" % service_path,
-                      "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
-        return None
     return service_path
 
 
 def path_to_soa_dir_service(service_path):
+    """Split a service_path into its soa_dir and service name components"""
     soa_dir = os.path.dirname(service_path)
     service = os.path.basename(service_path)
     return soa_dir, service
 
 
 def validate_chronos(service_path):
+    """Check that any chronos configurations are valid"""
     soa_dir, service = path_to_soa_dir_service(service_path)
     instance_type = 'chronos'
 
@@ -208,21 +219,13 @@ def validate_chronos(service_path):
     return returncode
 
 
-def paasta_validate(args, service_path=None):
-    """Analyze the service in the PWD to determine if conf files are all valid
+def paasta_validate_soa_configs(service_path):
+    """Analyze the service in serivce_path to determine if the conf files are valid
 
-    :param args: argparse.Namespace obj created from sys.args by cli
+    :param service_path: Path to directory containing soa conf yaml files for service
     """
-
-    if service_path:
-        soa_dir, service = path_to_soa_dir_service(service_path)
-    else:
-        service = args.service
-        soa_dir = args.yelpsoa_config_root
-    service_path = get_service_path(service, soa_dir)
-
-    if service_path is None:
-        sys.exit(1)
+    if check_service_path(service_path) != 0:
+        return 1
 
     returncode = 0
 
@@ -234,5 +237,18 @@ def paasta_validate(args, service_path=None):
     if tmp_returncode != 0:
         returncode = tmp_returncode
 
+    return returncode
+
+
+def paasta_validate(args):
+    """Generate a service_path from the provided args and call paasta_validate_soa_configs
+
+    :param args: argparse.Namespace obj created from sys.args by cli
+    """
+    service = args.service
+    soa_dir = args.yelpsoa_config_root
+    service_path = get_service_path(service, soa_dir)
+
+    returncode = paasta_validate_soa_configs(service_path)
     if returncode != 0:
         sys.exit(returncode)
