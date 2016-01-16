@@ -159,21 +159,29 @@ def load_chronos_job_config(service, instance, cluster, load_deployments=True, s
         deployments_json = load_deployments_json(service, soa_dir=soa_dir)
         branch = get_paasta_branch(cluster=cluster, instance=instance)
         branch_dict = deployments_json.get_branch_dict(service, branch)
-    return ChronosJobConfig(service, instance, service_chronos_jobs[instance], branch_dict)
+    return ChronosJobConfig(
+        service=service,
+        cluster=cluster,
+        instance=instance,
+        config_dict=service_chronos_jobs[instance],
+        branch_dict=branch_dict,
+    )
 
 
 class ChronosJobConfig(InstanceConfig):
 
-    def __init__(self, service, job_name, config_dict, branch_dict):
-        super(ChronosJobConfig, self).__init__(config_dict, branch_dict)
-        self.service = service
-        self.job_name = job_name
-        self.config_dict = config_dict
-        self.branch_dict = branch_dict
+    def __init__(self, service, instance, cluster, config_dict, branch_dict):
+        super(ChronosJobConfig, self).__init__(
+            cluster=cluster,
+            instance=instance,
+            service=service,
+            config_dict=config_dict,
+            branch_dict=branch_dict,
+        )
 
     def __eq__(self, other):
         return ((self.service == other.service)
-                and (self.job_name == other.job_name)
+                and (self.get_job_name() == other.get_job_name())
                 and (self.config_dict == other.config_dict)
                 and (self.branch_dict == other.branch_dict))
 
@@ -181,7 +189,7 @@ class ChronosJobConfig(InstanceConfig):
         return self.service
 
     def get_job_name(self):
-        return self.job_name
+        return self.instance
 
     def get_cmd(self):
         original_cmd = super(ChronosJobConfig, self).get_cmd()

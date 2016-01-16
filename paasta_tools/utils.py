@@ -68,9 +68,21 @@ class InvalidInstanceConfig(Exception):
 
 class InstanceConfig(dict):
 
-    def __init__(self, config_dict, branch_dict):
+    def __init__(self, cluster, instance, service, config_dict, branch_dict):
         self.config_dict = config_dict
         self.branch_dict = branch_dict
+        self.cluster = cluster
+        self.instance = instance
+        self.service = service
+
+    def get_cluster(self):
+        return self.cluster
+
+    def get_instance(self):
+        return self.instance
+
+    def get_service(self):
+        return self.service
 
     def get_mem(self):
         """Gets the memory required from the service's configuration.

@@ -35,9 +35,10 @@ class TestSetupMarathonJob:
     fake_docker_image = 'test_docker:1.0'
     fake_cluster = 'fake_test_cluster'
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        'servicename',
-        'instancename',
-        {
+        service='servicename',
+        cluster='clustername',
+        instance='instancename',
+        config_dict={
             'instances': 3,
             'cpus': 1,
             'mem': 100,
@@ -45,7 +46,7 @@ class TestSetupMarathonJob:
             'nerve_ns': 'aaaaugh',
             'bounce_method': 'brutal'
         },
-        {},
+        branch_dict={},
     )
     fake_docker_registry = 'remote_registry.com'
     fake_marathon_config = marathon_tools.MarathonConfig({

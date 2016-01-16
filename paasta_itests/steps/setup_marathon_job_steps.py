@@ -23,13 +23,15 @@ from paasta_tools import setup_marathon_job
 from paasta_tools import marathon_tools
 
 fake_service_name = 'fake_complete_service'
+fake_cluster_name = 'fake_cluster'
 fake_instance_name = 'fake_instance'
 fake_appid = 'fake--complete--service.fake--instance.gitdeadbeef.configdeadbeef2'
 fake_service_marathon_config = marathon_tools.MarathonServiceConfig(
-    fake_service_name,
-    fake_instance_name,
-    {},
-    {'docker_image': 'test-image'},
+    service=fake_service_name,
+    cluster=fake_cluster_name,
+    instance=fake_instance_name,
+    config_dict={},
+    branch_dict={'docker_image': 'test-image'},
 )
 fake_service_config = {
     'id': fake_appid,

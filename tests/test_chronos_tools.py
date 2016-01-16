@@ -46,10 +46,12 @@ class TestChronosTools:
         'desired_state': 'start',
         'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
     }
-    fake_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service,
-                                                             fake_job_name,
-                                                             fake_config_dict,
-                                                             fake_branch_dict)
+    fake_chronos_job_config = chronos_tools.ChronosJobConfig(service=fake_service,
+                                                             cluster=fake_cluster,
+                                                             instance=fake_job_name,
+                                                             config_dict=fake_config_dict,
+                                                             branch_dict=fake_branch_dict,
+                                                             )
 
     fake_invalid_config_dict = {
         'bounce_method': 'crossover',
@@ -62,10 +64,12 @@ class TestChronosTools:
         'schedule': 'forever/now/5 min',
         'schedule_time_zone': '+0200',
     }
-    fake_invalid_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service,
-                                                                     fake_job_name,
-                                                                     fake_invalid_config_dict,
-                                                                     fake_branch_dict)
+    fake_invalid_chronos_job_config = chronos_tools.ChronosJobConfig(service=fake_service,
+                                                                     cluster=fake_cluster,
+                                                                     instance=fake_job_name,
+                                                                     config_dict=fake_invalid_config_dict,
+                                                                     branch_dict=fake_branch_dict,
+                                                                     )
     fake_config_file = {
         fake_job_name: fake_config_dict,
         'bad_job': fake_invalid_config_dict,
@@ -248,7 +252,13 @@ class TestChronosTools:
         assert actual == expected
 
     def test_get_bounce_method_default(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         actual = fake_conf.get_bounce_method()
         assert actual == 'graceful'
 
@@ -258,13 +268,27 @@ class TestChronosTools:
         assert actual == expected
 
     def test_get_epsilon_default(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         actual = fake_conf.get_epsilon()
         assert actual == 'PT60S'
 
     def test_get_epsilon(self):
         fake_epsilon = 'fake_epsilon'
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'epsilon': fake_epsilon}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={
+                'epsilon': fake_epsilon,
+            },
+            branch_dict={},
+        )
         actual = fake_conf.get_epsilon()
         assert actual == fake_epsilon
 
@@ -297,7 +321,12 @@ class TestChronosTools:
             'chronos_tools.parse_time_variables', autospec=True, return_value=expected
                 ) as mock_parse_time_variables:
             fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-                'fake_service', 'fake_job', fake_config_dict, {})
+                service='fake_service',
+                cluster='fake_cluster',
+                instance='fake_job',
+                config_dict=fake_config_dict,
+                branch_dict={},
+            )
             actual = fake_chronos_job_config.get_cmd()
             mock_parse_time_variables.assert_called_once_with(fake_cmd)
         assert actual == expected
@@ -310,12 +339,24 @@ class TestChronosTools:
             assert actual == fake_owner
 
     def test_get_shell_without_args_specified(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'args': ['a', 'b']}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'args': ['a', 'b']},
+            branch_dict={},
+        )
         actual = fake_conf.get_shell()
         assert actual is False
 
     def test_get_shell_when_args_present(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_shell() is True
 
     def test_get_env(self):
@@ -324,80 +365,160 @@ class TestChronosTools:
             {"name": "foo", "value": "bar"},
             {"name": "biz", "value": "baz"},
         ]
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'env': input_env}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'env': input_env},
+            branch_dict={},
+        )
         assert sorted(fake_conf.get_env()) == sorted(expected_env)
 
     def test_get_constraints(self):
         fake_constraints = 'fake_constraints'
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'constraints': fake_constraints}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'constraints': fake_constraints},
+            branch_dict={},
+        )
         actual = fake_conf.get_constraints()
         assert actual == fake_constraints
 
     def test_get_retries_default(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         actual = fake_conf.get_retries()
         assert actual == 2
 
     def test_get_retries(self):
         fake_retries = 'fake_retries'
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'retries': fake_retries}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'retries': fake_retries},
+            branch_dict={},
+        )
         actual = fake_conf.get_retries()
         assert actual == fake_retries
 
     def test_get_disabled_default(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         actual = fake_conf.get_disabled()
         assert not actual
 
     def test_get_disabled(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'disabled': True}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'disabled': True},
+            branch_dict={},
+        )
         actual = fake_conf.get_disabled()
         assert actual
 
     def test_get_schedule(self):
         fake_schedule = 'fake_schedule'
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'schedule': fake_schedule}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         actual = fake_conf.get_schedule()
         assert actual == fake_schedule
 
     def test_get_schedule_time_zone(self):
         fake_schedule_time_zone = 'fake_schedule_time_zone'
         fake_conf = chronos_tools.ChronosJobConfig(
-            'fake_name', 'fake_instance', {'schedule_time_zone': fake_schedule_time_zone}, {})
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'schedule_time_zone': fake_schedule_time_zone},
+            branch_dict={},
+        )
         actual = fake_conf.get_schedule_time_zone()
         assert actual == fake_schedule_time_zone
 
     def test_get_parents_ok(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': None}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'parents': None},
+            branch_dict={},
+        )
         assert fake_conf.get_parents() is None
 
     def test_get_parents_bad(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': ['my-parent']}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'parents': ['my-parent']},
+            branch_dict={},
+        )
         assert fake_conf.get_parents() == ['my-parent']
 
     def test_check_parents_none(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance', {'parents': None}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'parents': None},
+            branch_dict={},
+        )
         okay, msg = fake_conf.check_parents()
         assert okay is True
         assert msg == ''
 
     def test_check_parents_all_ok(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance',
-                                                   {'parents': ['service1.instance1', 'service1.instance2']}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'parents': ['service1.instance1', 'service1.instance2']},
+            branch_dict={},
+        )
         okay, msg = fake_conf.check_parents()
         assert okay is True
         assert msg == ''
 
     def test_check_parents_one_bad(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance',
-                                                   {'parents': ['service1.instance1', 'service1-instance1']}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'parents': ['service1.instance1', 'service1-instance1']},
+            branch_dict={},
+        )
         okay, msg = fake_conf.check_parents()
         assert okay is False
         assert msg == 'The job name(s) service1-instance1 is not formatted correctly: expected service.instance'
 
     def test_check_parents_all_bad(self):
-        fake_conf = chronos_tools.ChronosJobConfig('fake_name', 'fake_instance',
-                                                   {'parents': ['service1-instance1', 'service1-instance2']}, {})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'parents': ['service1-instance1', 'service1-instance2']},
+            branch_dict={},
+        )
         okay, msg = fake_conf.check_parents()
         assert okay is False
         assert msg == ('The job name(s) service1-instance1, service1-instance2'
@@ -483,7 +604,13 @@ class TestChronosTools:
 
     def test_check_schedule_invalid_empty_start_time(self):
         fake_schedule = 'R10//PT70S'
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == 'The specified schedule "%s" does not contain a start time' % fake_schedule
@@ -491,7 +618,13 @@ class TestChronosTools:
     def test_check_schedule_invalid_start_time_no_t_designator(self):
         fake_start_time = 'now'
         fake_schedule = 'R10/%s/PT70S' % fake_start_time
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         fake_isodate_exception = 'ISO 8601 time designator \'T\' missing. Unable to parse datetime string \'now\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -501,7 +634,13 @@ class TestChronosTools:
     def test_check_schedule_invalid_start_time_bad_date(self):
         fake_start_time = 'todayT19:20:30Z'
         fake_schedule = 'R10/%s/PT70S' % fake_start_time
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         fake_isodate_exception = 'Unrecognised ISO 8601 date format: \'today\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -511,7 +650,13 @@ class TestChronosTools:
     def test_check_schedule_invalid_start_time_bad_time(self):
         fake_start_time = '1994-02-18Tmorning'
         fake_schedule = 'R10/%s/PT70S' % fake_start_time
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         fake_isodate_exception = 'Unrecognised ISO 8601 time format: \'morning\''
         okay, msg = chronos_config.check_schedule()
         assert okay is False
@@ -520,7 +665,13 @@ class TestChronosTools:
 
     def test_check_schedule_invalid_empty_interval(self):
         fake_schedule = 'R10/2015-03-25T19:36:35Z/'
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified interval "" in schedule "%s" does not conform to the ISO 8601 format.'
@@ -528,7 +679,13 @@ class TestChronosTools:
 
     def test_check_schedule_invalid_interval(self):
         fake_schedule = 'R10/2015-03-25T19:36:35Z/Mondays'
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified interval "Mondays" in schedule "%s" does not conform to the ISO 8601 format.'
@@ -536,14 +693,26 @@ class TestChronosTools:
 
     def test_check_schedule_low_interval(self):
         fake_schedule = 'R10/2015-03-25T19:36:35Z/PT10S'
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == 'Unsupported interval "PT10S": jobs must be run at an interval of > 60 seconds'
 
     def test_check_schedule_invalid_empty_repeat(self):
         fake_schedule = '/2015-03-25T19:36:35Z/PT70S'
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified repeat "" in schedule "%s" does not conform to the ISO 8601 format.'
@@ -551,7 +720,13 @@ class TestChronosTools:
 
     def test_check_schedule_invalid_repeat(self):
         fake_schedule = 'forever/2015-03-25T19:36:35Z/PT70S'
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule': fake_schedule}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule': fake_schedule},
+            branch_dict={},
+        )
         okay, msg = chronos_config.check_schedule()
         assert okay is False
         assert msg == ('The specified repeat "forever" in schedule "%s" does not conform to the ISO 8601 format.'
@@ -563,7 +738,13 @@ class TestChronosTools:
         assert msg == ''
 
     def test_check_schedule_time_zone_valid_empty(self):
-        chronos_config = chronos_tools.ChronosJobConfig('', '', {'schedule_time_zone': ''}, {})
+        chronos_config = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'schedule_time_zone': ''},
+            branch_dict={},
+        )
         okay, msg = chronos_config.check_schedule_time_zone()
         assert okay is True
         assert msg == ''
@@ -576,11 +757,23 @@ class TestChronosTools:
         # assert msg == 'The specified time zone "+0200" does not conform to the tz database format.'
 
     def test_get_desired_state_human_when_stopped(self):
-        fake_conf = chronos_tools.ChronosJobConfig('', '', {}, {'desired_state': 'stop'})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={'desired_state': 'stop'},
+        )
         assert 'Disabled' in fake_conf.get_desired_state_human()
 
     def test_get_desired_state_human_with_started(self):
-        fake_conf = chronos_tools.ChronosJobConfig('', '', {}, {'desired_state': 'start'})
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={'desired_state': 'start'},
+        )
         assert 'Scheduled' in fake_conf.get_desired_state_human()
 
     def test_check_param_with_check(self):
@@ -619,14 +812,15 @@ class TestChronosTools:
         fake_docker_volumes = ['fake_docker_volume']
 
         chronos_job_config = chronos_tools.ChronosJobConfig(
-            fake_service,
-            fake_job_name,
-            {
+            service=fake_service,
+            cluster='',
+            instance=fake_job_name,
+            config_dict={
                 'cmd': fake_command,
                 'schedule': fake_schedule,
                 'epsilon': 'PT60S',
             },
-            {}
+            branch_dict={},
         )
         expected = {
             'name': fake_job_name,
@@ -663,14 +857,15 @@ class TestChronosTools:
         fake_command = 'echo foo >> /tmp/test_service_log'
         fake_schedule = 'fake_bad_schedule'
         invalid_config = chronos_tools.ChronosJobConfig(
-            fake_service,
-            fake_job_name,
-            {
+            service=fake_service,
+            cluster='',
+            instance=fake_job_name,
+            config_dict={
                 'cmd': fake_command,
                 'schedule': fake_schedule,
                 'epsilon': 'PT60S',
             },
-            {}
+            branch_dict={},
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
             invalid_config.format_chronos_job_dict('', [])
@@ -994,13 +1189,14 @@ class TestChronosTools:
     def test_create_complete_config_desired_state_start(self):
         fake_owner = 'test_team'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service,
-            self.fake_job_name,
-            self.fake_config_dict,
-            {
+            service=self.fake_service,
+            cluster='',
+            instance=self.fake_job_name,
+            config_dict=self.fake_config_dict,
+            branch_dict={
                 'desired_state': 'start',
                 'docker_image': 'fake_image'
-            }
+            },
         )
         with contextlib.nested(
             mock.patch('chronos_tools.load_system_paasta_config', autospec=True),
@@ -1048,13 +1244,14 @@ class TestChronosTools:
     def test_create_complete_config_desired_state_stop(self):
         fake_owner = 'test@test.com'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service,
-            self.fake_job_name,
-            self.fake_config_dict,
-            {
+            service=self.fake_service,
+            cluster='',
+            instance=self.fake_job_name,
+            config_dict=self.fake_config_dict,
+            branch_dict={
                 'desired_state': 'stop',
                 'docker_image': 'fake_image'
-            }
+            },
         )
         with contextlib.nested(
             mock.patch('chronos_tools.load_system_paasta_config', autospec=True),
@@ -1118,13 +1315,14 @@ class TestChronosTools:
         fake_instance_config = self.fake_config_dict
         fake_instance_config['extra_volumes'] = fake_extra_volumes
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            self.fake_service,
-            self.fake_job_name,
-            fake_instance_config,
-            {
+            service=self.fake_service,
+            cluster='',
+            instance=self.fake_job_name,
+            config_dict=fake_instance_config,
+            branch_dict={
                 'desired_state': 'stop',
                 'docker_image': 'fake_image'
-            }
+            },
         )
         with contextlib.nested(
             mock.patch('chronos_tools.load_system_paasta_config', autospec=True),
