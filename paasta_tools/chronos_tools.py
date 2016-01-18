@@ -125,7 +125,8 @@ def compose_job_id(service, instance):
 
 def decompose_job_id(job_id):
     """Thin wrapper around generic decompose_job_id to use our local SPACER."""
-    return utils_decompose_job_id(job_id, spacer=SPACER)
+    service, job, _, __ = utils_decompose_job_id(job_id, spacer=SPACER)
+    return (service, job)
 
 
 class InvalidChronosConfigError(Exception):
@@ -568,14 +569,12 @@ def sort_jobs(jobs):
     )
 
 
-def lookup_chronos_jobs(client, service=None, instance=None, git_hash=None, config_hash=None, include_disabled=False):
+def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=False):
     """Discovers Chronos jobs and filters them with ``filter_chronos_jobs()``.
 
     :param client: Chronos client object
     :param service: passed on to ``filter_chronos_jobs()``
     :param instance: passed on to ``filter_chronos_jobs()``
-    :param git_hash: passed on to ``filter_chronos_jobs()``
-    :param config_hash: passed on to ``filter_chronos_jobs()``
     :param include_disabled: passed on to ``filter_chronos_jobs()``
     :returns: list of job dicts discovered by ``client`` and filtered by
     ``filter_chronos_jobs()`` using the other parameters
@@ -585,22 +584,16 @@ def lookup_chronos_jobs(client, service=None, instance=None, git_hash=None, conf
         jobs=jobs,
         service=service,
         instance=instance,
-        git_hash=git_hash,
-        config_hash=config_hash,
         include_disabled=include_disabled,
     )
 
 
-def filter_chronos_jobs(jobs, service, instance, git_hash, config_hash, include_disabled):
+def filter_chronos_jobs(jobs, service, instance, include_disabled):
     """Filters a list of Chronos jobs based on several criteria.
 
     :param jobs: a list of jobs, as calculated in ``lookup_chronos_jobs()``
     :param service: service we're looking for. If None, don't filter based on this key.
     :param instance: instance we're looking for. If None, don't filter based on this key.
-    :param git_hash: git_hash we're looking for. If None, don't filter based on
-    this key.
-    :param config_hash: config_hash we're looking for. If None, don't filter
-    based on this key.
     :param include_disabled: boolean indicating if disabled jobs should be
     included in the returned list
     :returns: list of job dicts whose name matches the arguments (if any)
@@ -609,14 +602,12 @@ def filter_chronos_jobs(jobs, service, instance, git_hash, config_hash, include_
     matching_jobs = []
     for job in jobs:
         try:
-            (job_service, job_instance, job_git_hash, job_config_hash) = decompose_job_id(job['name'])
+            job_service, job_instance = decompose_job_id(job['name'])
         except InvalidJobNameError:
             continue
         if (
             (service is None or job_service == service)
             and (instance is None or job_instance == instance)
-            and (git_hash is None or job_git_hash == git_hash)
-            and (config_hash is None or job_config_hash == config_hash)
         ):
             if job['disabled'] and not include_disabled:
                 continue

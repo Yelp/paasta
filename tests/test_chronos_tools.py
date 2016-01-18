@@ -148,7 +148,7 @@ class TestChronosTools:
 
     def test_decompose_job_id_without_hashes(self):
         actual = chronos_tools.decompose_job_id('service instance')
-        assert actual == ('service', 'instance', None, None)
+        assert actual == ('service', 'instance')
 
     def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'
@@ -700,8 +700,6 @@ class TestChronosTools:
                 jobs=fake_client.list.return_value,
                 service=fake_service,
                 instance=fake_instance,
-                git_hash=None,
-                config_hash=None,
                 include_disabled=False,
             )
 
@@ -727,8 +725,6 @@ class TestChronosTools:
             jobs=fake_jobs,
             service=None,
             instance=None,
-            config_hash=None,
-            git_hash=None,
             include_disabled=True,
         )
         assert sorted(actual) == sorted(expected)
@@ -757,8 +753,6 @@ class TestChronosTools:
             jobs=fake_jobs,
             service=fake_service,
             instance=fake_instance,
-            git_hash=None,
-            config_hash=None,
             include_disabled=False,
         )
         assert sorted(actual) == sorted(expected)
@@ -801,8 +795,6 @@ class TestChronosTools:
             jobs=fake_jobs,
             service=fake_service,
             instance=fake_instance,
-            git_hash=None,
-            config_hash=None,
             include_disabled=True,
         )
         assert sorted(actual) == sorted(expected)
@@ -818,8 +810,6 @@ class TestChronosTools:
             jobs=fake_jobs,
             service='whatever',
             instance='whatever',
-            git_hash='whatever',
-            config_hash='whatever',
             include_disabled=False,
         )
         # The main thing here is that InvalidJobNameError is not raised.
