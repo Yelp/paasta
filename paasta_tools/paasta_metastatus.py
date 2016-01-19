@@ -39,7 +39,7 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='',
     )
-    parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
+    parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
                         help="Print out more output regarding the state of the cluster")
     return parser.parse_args()
 
@@ -59,6 +59,22 @@ def get_mesos_cpu_status(metrics):
     used = metrics['master/cpus_used']
     available = total - used
     return total, used, available
+
+
+def get_extra_mesos_slave_data(mesos_state):
+    slaves = dict((slave['id'], {
+        'free_resources': slave['resources'],
+        'hostname': slave['hostname'],
+    }) for slave in mesos_state['slaves'])
+
+    for framework in mesos_state['frameworks']:
+        for task in framework['tasks']:
+            resource_dict = slaves[task['slave_id']]['free_resources']
+            for resource_type, value in task['resources'].items():
+                if resource_type in ['cpus', 'disk', 'mem']:
+                    resource_dict[resource_type] -= value
+
+    return sorted(slaves.values())
 
 
 def quorum_ok(masters, quorum):
@@ -162,20 +178,34 @@ def assert_quorum_size(state):
                 False)
 
 
-def get_mesos_status():
+def assert_extra_slave_data(mesos_state):
+    header_string = '%10s %36s %9s' % ('Hostname', 'CPU free', 'RAM free')
+    slave_outputs = ['%40s %8.2f %9.2f' % (
+        slave['hostname'],
+        slave['free_resources']['cpus'],
+        slave['free_resources']['mem'],
+    ) for slave in get_extra_mesos_slave_data(mesos_state)]
+    check_output = [header_string] + slave_outputs
+    return ('\n'.join(check_output), True)
+
+
+def get_mesos_status(mesos_state, verbosity):
     """Gathers information about the mesos cluster.
        :return: tuple of a string containing the status and a bool representing if it is ok or not
     """
 
-    state = get_mesos_state_from_leader()
-    cluster_results = run_healthchecks_with_param(state, [assert_quorum_size, assert_no_duplicate_frameworks])
+    cluster_results = run_healthchecks_with_param(mesos_state, [assert_quorum_size, assert_no_duplicate_frameworks])
 
     metrics = get_mesos_stats()
     metrics_results = run_healthchecks_with_param(metrics, [
         assert_cpu_health,
         assert_memory_health,
+        assert_tasks_running,
         assert_slave_health,
-        assert_tasks_running])
+    ])
+
+    if verbosity >= 2:
+        metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_slave_data]))
 
     return cluster_results + metrics_results
 
@@ -277,7 +307,7 @@ def status_for_results(results):
 
 def print_results_for_healthchecks(summary, ok, results, verbose):
     print summary
-    if verbose:
+    if verbose >= 1:
         for line in [res[0] for res in results]:
             print_with_indent(line, 2)
     elif not ok:
@@ -291,6 +321,15 @@ def main():
     chronos_config = None
     args = parse_args()
 
+    try:
+        mesos_state = get_mesos_state_from_leader()
+    except MasterNotAvailableException as e:
+        # if we can't connect to master at all,
+        # then bomb out early
+        print(PaastaColors.red("CRITICAL:  %s" % e.message))
+        sys.exit(2)
+    mesos_results = get_mesos_status(mesos_state, verbosity=args.verbose)
+
     # Check to see if Marathon should be running here by checking for config
     try:
         marathon_config = marathon_tools.load_marathon_config()
@@ -302,14 +341,6 @@ def main():
         chronos_config = load_chronos_config()
     except ChronosNotConfigured:
         chronos_results = [('chronos is not configured to run here', True)]
-
-    try:
-        mesos_results = get_mesos_status()
-    except MasterNotAvailableException as e:
-        # if we can't connect to master at all,
-        # then bomb out early
-        print(PaastaColors.red("CRITICAL:  %s" % e.message))
-        sys.exit(2)
 
     if marathon_config:
         marathon_client = get_marathon_client(marathon_config)

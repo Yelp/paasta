@@ -123,17 +123,17 @@ def validate_all_schemas(service_path):
 
     path = os.path.join(service_path, '*.yaml')
 
+    returncode = 0
     for file_name in glob(path):
         if os.path.islink(file_name):
             continue
         basename = os.path.basename(file_name)
-        returncode = 0
         for file_type in ['chronos', 'marathon']:
             if basename.startswith(file_type):
                 tmp_returncode = validate_schema(file_name, file_type)
                 if tmp_returncode != 0:
                     returncode = tmp_returncode
-        return returncode
+    return returncode
 
 
 def add_subparser(subparsers):

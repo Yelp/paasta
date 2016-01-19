@@ -54,4 +54,5 @@ def validate_status_something_fail(context):
 
 @then(u'the output should contain \'{output_string}\'')
 def output_contains(context, output_string):
+    print output_string
     assert output_string in context.validate_output

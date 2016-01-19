@@ -156,15 +156,6 @@ class InstanceConfig(dict):
         branch from a generated deployments.json file."""
         return self.branch_dict.get('desired_state', 'start')
 
-    def get_desired_state_human(self):
-        desired_state = self.get_desired_state()
-        if desired_state == 'start':
-            return PaastaColors.bold('Started')
-        elif desired_state == 'stop':
-            return PaastaColors.red('Stopped')
-        else:
-            return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
-
     def get_force_bounce(self):
         """Get the force_bounce token for a given service branch from a generated
         deployments.json file. This is a token that, when changed, indicates that
@@ -842,10 +833,10 @@ def list_all_instances_for_service(service, clusters=None, instance_type=None, s
     return instances
 
 
-def get_service_instance_list(name, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
+def get_service_instance_list(service, cluster=None, instance_type=None, soa_dir=DEFAULT_SOA_DIR):
     """Enumerate the instances defined for a service as a list of tuples.
 
-    :param name: The service name
+    :param service: The service name
     :param cluster: The cluster to read the configuration for
     :param instance_type: The type of instances to examine: 'marathon', 'chronos', or None (default) for both
     :param soa_dir: The SOA config directory to read from
@@ -863,12 +854,12 @@ def get_service_instance_list(name, cluster=None, instance_type=None, soa_dir=DE
         conf_file = "%s-%s" % (srv_instance_type, cluster)
         log.info("Enumerating all instances for config file: %s/*/%s.yaml" % (soa_dir, conf_file))
         instances = service_configuration_lib.read_extra_service_information(
-            name,
+            service,
             conf_file,
             soa_dir=soa_dir
         )
         for instance in instances:
-            instance_list.append((name, instance))
+            instance_list.append((service, instance))
 
     log.debug("Enumerated the following instances: %s", instance_list)
     return instance_list

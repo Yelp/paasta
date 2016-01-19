@@ -177,17 +177,34 @@ def git_repo_check(service):
         print PaastaCheckMessages.git_repo_missing(git_url)
 
 
-def marathon_check(service_path):
-    """Check whether a marathon yaml file exists in service directory, and
-    print success/failure message.
+def yaml_check(service_path):
+    """Check whether a marathon/chronos yaml file exists in service directory, and
+    print success/failure message(s).
 
-    :param service_path: path to a directory containing the marathon yaml
+    :param service_path: path to a directory containing the marathon/chronos yaml
                          files
     """
+    found_yaml = False
     if is_file_in_dir('marathon*.yaml', service_path):
         print PaastaCheckMessages.MARATHON_YAML_FOUND
-    else:
-        print PaastaCheckMessages.MARATHON_YAML_MISSING
+        found_yaml = True
+    if is_file_in_dir('chronos*.yaml', service_path):
+        print PaastaCheckMessages.CHRONOS_YAML_FOUND
+        found_yaml = True
+    if not found_yaml:
+        print PaastaCheckMessages.YAML_MISSING
+
+
+def get_chronos_steps(service):
+    """This is a kind of funny function that gets all the chronos instances
+    for a service and massages it into a form that matches up with what
+    deploy.yaml's steps look like. This is only so we can compare it 1-1
+    with what deploy.yaml has for linting."""
+    steps = []
+    for cluster in list_clusters(service):
+        for instance in get_service_instance_list(service, cluster=cluster, instance_type='chronos'):
+            steps.append("%s.%s" % (cluster, instance[1]))
+    return steps
 
 
 def get_marathon_steps(service):
@@ -202,14 +219,16 @@ def get_marathon_steps(service):
     return steps
 
 
-def marathon_deployments_check(service):
-    """Checks for consistency between deploy.yaml and the marathon yamls"""
+def deployments_check(service):
+    """Checks for consistency between deploy.yaml and the marathon/chronos yamls"""
     the_return = True
     pipeline_deployments = get_pipeline_config(service)
     pipeline_steps = [step['instancename'] for step in pipeline_deployments]
     pipeline_steps = [step for step in pipeline_steps if step not in DEPLOY_PIPELINE_NON_DEPLOY_STEPS]
     marathon_steps = get_marathon_steps(service)
+    chronos_steps = get_chronos_steps(service)
     in_marathon_not_deploy = set(marathon_steps) - set(pipeline_steps)
+    in_chronos_not_deploy = set(chronos_steps) - set(pipeline_steps)
     if len(in_marathon_not_deploy) > 0:
         print "%s There are some instance(s) you have asked to run in marathon that" % x_mark()
         print "  do not have a corresponding entry in deploy.yaml:"
@@ -217,16 +236,26 @@ def marathon_deployments_check(service):
         print "  You should probably add entries to deploy.yaml for them so they"
         print "  are deployed to those clusters."
         the_return = False
-    in_deploy_not_marathon = set(pipeline_steps) - set(marathon_steps)
-    if len(in_deploy_not_marathon) > 0:
+    if len(in_chronos_not_deploy) > 0:
+        print "%s There are some instance(s) you have asked to run in chronos that" % x_mark()
+        print "  do not have a corresponding entry in deploy.yaml:"
+        print "  %s" % PaastaColors.bold(", ".join(in_marathon_not_deploy))
+        print "  You should probably add entries to deploy.yaml for them so they"
+        print "  are deployed to those clusters."
+        the_return = False
+    in_deploy_not_marathon_chronos = set(pipeline_steps) - set(marathon_steps) - set(chronos_steps)
+    if len(in_deploy_not_marathon_chronos) > 0:
         print "%s There are some instance(s) in deploy.yaml that are not referenced" % x_mark()
-        print "  by any marathon instance:"
-        print "  %s" % PaastaColors.bold((", ".join(in_deploy_not_marathon)))
+        print "  by any marathon or chronos instance:"
+        print "  %s" % PaastaColors.bold((", ".join(in_deploy_not_marathon_chronos)))
         print "  You should probably delete these deploy.yaml entries if they are unused."
         the_return = False
     if the_return is True:
-        print success("All entries in deploy.yaml correspond to a marathon entry")
-        print success("All marathon instances have a corresponding deploy.yaml entry")
+        print success("All entries in deploy.yaml correspond to a marathon or chronos entry")
+        if len(marathon_steps) > 0:
+            print success("All marathon instances have a corresponding deploy.yaml entry")
+        if len(chronos_steps) > 0:
+            print success("All chronos instances have a corresponding deploy.yaml entry")
     return the_return
 
 
@@ -304,8 +333,8 @@ def paasta_check(args):
     git_repo_check(service)
     docker_check()
     makefile_check()
-    marathon_check(service_path)
-    marathon_deployments_check(service_path)
+    yaml_check(service_path)
+    deployments_check(service_path)
     sensu_check(service, service_path)
     smartstack_check(service, service_path)
 

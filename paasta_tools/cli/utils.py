@@ -162,9 +162,12 @@ class PaastaCheckMessages:
 
     MARATHON_YAML_FOUND = success("Found marathon.yaml file.")
 
-    MARATHON_YAML_MISSING = failure(
-        "No marathon.yaml exists, so your service cannot be deployed.\n  "
-        "Push a marathon-[superregion].yaml and run `paasta generate-pipeline`.\n  "
+    CHRONOS_YAML_FOUND = success("Found chronos.yaml file.")
+
+    YAML_MISSING = failure(
+        "No marathon.yaml or chronos.yaml exists, so your service cannot be deployed.\n  "
+        "Push a marathon-[superregion].yaml or chronos-[superregion].yaml "
+        "and run `paasta generate-pipeline`.\n  "
         "More info:", "http://y/yelpsoa-configs")
 
     MAKEFILE_FOUND = success("A Makefile is present")
@@ -512,9 +515,9 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
     return run_paasta_serviceinit(subcommand, master, service, instancename, cluster, **kwargs)
 
 
-def run_paasta_metastatus(master, verbose=False):
-    if verbose:
-        verbose_flag = " -v"
+def run_paasta_metastatus(master, verbose=0):
+    if verbose > 0:
+        verbose_flag = " -%s" % 'v'*verbose
         timeout = 120
     else:
         verbose_flag = ''
@@ -527,7 +530,7 @@ def run_paasta_metastatus(master, verbose=False):
     return output
 
 
-def execute_paasta_metastatus_on_remote_master(cluster, verbose=False):
+def execute_paasta_metastatus_on_remote_master(cluster, verbose=0):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """

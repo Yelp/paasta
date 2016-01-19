@@ -19,7 +19,8 @@ from paasta_tools import utils
 
 
 def parse_args():
-    parser = argparse.ArgumentParser(description='balh')
+    parser = argparse.ArgumentParser(description=('Check the status of Chronos jobs, and report'
+                                                  'their status to Sensu.'))
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")

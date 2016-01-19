@@ -18,117 +18,46 @@ import sys
 from behave import when, then
 
 sys.path.append('../')
-from paasta_tools import setup_chronos_job
 from paasta_tools import chronos_tools
-
-fake_service_name = 'test-service'
-fake_instance_name = 'test-instance'
-fake_job_id = 'fake_job_id'
-fake_service_job_config = chronos_tools.ChronosJobConfig(
-    fake_service_name,
-    fake_instance_name,
-    {},
-    {'docker_image': 'test-image', 'desired_state': 'start'},
-)
-
-# TODO DRY out in PAASTA-1174
-fake_service_config = {
-    "retries": 1,
-    "container": {
-        "image": "localhost/fake_docker_url",
-        "type": "DOCKER",
-        "network": "BRIDGE",
-        "volumes": [
-            {'hostPath': u'/nail/etc/habitat', 'containerPath': '/nail/etc/habitat', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/datacenter', 'containerPath': '/nail/etc/datacenter', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/ecosystem', 'containerPath': '/nail/etc/ecosystem', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/rntimeenv', 'containerPath': '/nail/etc/rntimeenv', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/region', 'containerPath': '/nail/etc/region', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/sperregion', 'containerPath': '/nail/etc/sperregion', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/topology_env', 'containerPath': '/nail/etc/topology_env', 'mode': 'RO'},
-            {'hostPath': u'/nail/srv', 'containerPath': '/nail/srv', 'mode': 'RO'},
-            {'hostPath': u'/etc/boto_cfg', 'containerPath': '/etc/boto_cfg', 'mode': 'RO'},
-        ],
-    },
-    "name": fake_job_id,
-    "schedule": "R//PT10M",
-    "mem": 128,
-    "epsilon": "PT30S",
-    "cpus": 0.1,
-    "disabled": False,
-    "command": "fake command",
-    "owner": "fake_team",
-    "async": True,
-    "disk": 256,
-}
+from paasta_tools.utils import _run
 
 
-# TODO DRY out in PAASTA-1174 and rename so it doesn't sound like the funcs in chronos_steps
-@when(u'we create a complete chronos job')
-def create_complete_job(context):
-    return_tuple = setup_chronos_job.setup_job(
-        fake_service_name,
-        fake_instance_name,
-        fake_service_job_config,
-        fake_service_config,
-        context.chronos_client,
-        "fake_cluster",
-    )
-    assert return_tuple[0] == 0
-
-
-@when(u'we run setup_chronos_job')
-def setup_the_chronos_job(context):
-    exit_code, output = setup_chronos_job.setup_job(
-        service=fake_service_name,
-        instance=fake_instance_name,
-        chronos_job_config=context.chronos_job_config_obj,
-        complete_job_config=context.chronos_job_config,
+@then(u'we should see a job for the service "{service}" and instance "{instance}" in the job list')
+def job_exists(context, service, instance):
+    matching_jobs = chronos_tools.lookup_chronos_jobs(
         client=context.chronos_client,
-        cluster=context.cluster
+        service=service,
+        instance=instance,
     )
-    print 'setup_chronos_job returned exitcode %s with output:\n%s\n' % (exit_code, output)
+    assert len(matching_jobs) == 1
 
 
-# TODO DRY out in PAASTA-1174
-@then(u'we should see it in the list of jobs')
-def see_it_in_list_of_jobs(context):
-    jobs_with_our_name = [job for job in context.chronos_client.list() if job['name'] == fake_job_id]
-    assert len(jobs_with_our_name) == 1
-    assert jobs_with_our_name[0]["disabled"] is False
+@when(u'we run setup_chronos_job for service_instance "{service_instance}"')
+def run_setup_chronos_job(context, service_instance):
+    cmd = "../paasta_tools/setup_chronos_job.py %s -d %s" % (service_instance, context.soa_dir)
+    exit_code, output = _run(cmd)
+    context.exit_code, context.output = exit_code, output
 
 
-@when(u'{job_count} old jobs are left over from previous bounces')
-def old_jobs_leftover(context, job_count):
-    old_job = copy.deepcopy(fake_service_config)
-    for n in xrange(0, int(job_count)):
-        old_job["name"] = chronos_tools.compose_job_id(
-            service=fake_service_name,
-            instance=fake_instance_name,
-            git_hash="git%d" % n,
-            config_hash="config",
-        )
-        context.chronos_client.add(old_job)
+@when(u'we create {job_count:d} disabled jobs that look like the job stored as "{job_name}"')
+def old_jobs_leftover(context, job_count, job_name):
+    for i in xrange(job_count):
+        job_definition = copy.deepcopy(context.jobs[job_name])
+        # modify the name by replacing the last character in the config hash
+        modified_name = "%s%s" % (job_definition['name'][:-1], i)
+        job_definition['name'] = modified_name
+        job_definition['disabled'] = True
+        context.chronos_client.add(job_definition)
 
 
-@then(u'there should be {job_count} enabled jobs')
-def should_be_enabled_jobs(context, job_count):
-    enabled_jobs = chronos_tools.lookup_chronos_jobs(
-        service=fake_service_name,
-        instance=fake_instance_name,
-        client=context.chronos_client,
-        include_disabled=False,
-    )
-    assert len(enabled_jobs) == int(job_count)
-
-
-@then(u'there should be {job_count} disabled jobs')
-def should_be_disabled_jobs(context, job_count):
-    all_related_jobs = chronos_tools.lookup_chronos_jobs(
-        service=fake_service_name,
-        instance=fake_instance_name,
+@then(u'there should be {job_count} {disabled} jobs for the service "{service}" and instance "{instance}"')
+def should_be_disabled_jobs(context, disabled, job_count, service, instance):
+    is_disabled = True if disabled == "disabled" else False
+    all_jobs = chronos_tools.lookup_chronos_jobs(
+        service=service,
+        instance=instance,
         client=context.chronos_client,
         include_disabled=True,
     )
-    disabled_jobs = [job for job in all_related_jobs if job["disabled"] is True]
-    assert len(disabled_jobs) == int(job_count)
+    filtered_jobs = [job for job in all_jobs if job["disabled"] is is_disabled]
+    assert len(filtered_jobs) == int(job_count)

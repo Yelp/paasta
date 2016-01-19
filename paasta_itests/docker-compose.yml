@@ -19,6 +19,7 @@ mesosslave:
   environment:
     -CLUSTER: testcluster
   command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512"'
+  hostname: mesosslave.test_hostname
 
 marathon:
   build: ../yelp_package/dockerfiles/itest/marathon/

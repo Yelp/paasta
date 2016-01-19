@@ -17,50 +17,33 @@ from behave import when, then
 from paasta_tools import chronos_tools
 
 
-# TODO this should be replaced by create_chronos_job_from_configs
-@when(u'we create a trivial chronos job')
-def create_trivial_chronos_job(context):
+@when(u'we create a trivial chronos job called "{job_name}"')
+def create_trivial_chronos_job(context, job_name):
     job_config = {
         'async': False,
         'command': 'echo 1',
         'epsilon': 'PT15M',
-        'name': 'fake-service fake-instance git12345678 config90abcdef',
+        'name': 'job_name',
         'owner': '',
         'disabled': False,
-        'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
+        'schedule': 'R/20140101T00:00:00Z/PT60M',
     }
+    context.jobs[job_name] = job_config
     context.chronos_client.add(job_config)
     context.chronos_job_name = job_config['name']
 
 
-@when(u'we load the configs for instance "{instance}" of service "{service}" into a ChronosJobConfig')
-def create_chronos_job_config_object_from_configs(context, instance, service):
-    context.chronos_job_config_obj = chronos_tools.load_chronos_job_config(
+@when(u'we store the name of the job for the service {service} and instance {instance} as {job_name}')
+def create_chronos_job_config_object_from_configs(context, service, instance, job_name):
+    job_config = chronos_tools.create_complete_config(
         service=service,
-        instance=instance,
-        cluster=context.cluster,
+        job_name=instance,
         soa_dir=context.soa_dir,
     )
-
-
-@when(u'we create a chronos job dict from the configs for instance "{instance}" of service "{service}"')
-def create_chronos_job_from_configs(context, instance, service):
-    chronos_job_config = chronos_tools.create_complete_config(service, instance, context.soa_dir)
-    context.chronos_job_config = chronos_job_config
-    context.chronos_job_name = chronos_job_config['name']
-
-
-@when(u'we set the bounce_method of the ChronosJobConfig to "{bounce_method}"')
-def set_bounce_method_chronos_job_config(context, bounce_method):
-    context.chronos_job_config_obj.config_dict['bounce_method'] = bounce_method
-
-
-@when(u'we update the tag for the service "{service}" with {disabled} chronos instance "{instance}"')
-def update_job_tag(context, service, disabled, instance):
-    context.old_chronos_job_name = context.chronos_job_name
-    context.tag_version = context.tag_version + 1
-    context.execute_steps('Given I have a deployments.json for the service "%s" with %s chronos instance "%s"'
-                          % (service, disabled, instance))
+    # s_c_l caches reads from the fs and doesn't offer a way to ignore the cache, so doesn't return
+    # the most recent version on the file. I *hate* this, but need to move on.
+    chronos_tools.service_configuration_lib._yaml_cache = {}
+    context.jobs[job_name] = job_config
 
 
 @when(u'we send the job to chronos')
@@ -68,15 +51,10 @@ def send_job_to_chronos(context):
     context.chronos_client.add(context.chronos_job_config)
 
 
-@when(u'we wait for the chronos job to appear in the job list')
-def chronos_job_is_ready(context):
+@when(u'we wait for the chronos job stored as "{job_name}" to appear in the job list')
+def chronos_job_is_ready(context, job_name):
     """Wait for a job with a matching job id to be ready."""
-    chronos_tools.wait_for_job(context.chronos_client, context.chronos_job_name)
-
-
-@when(u'we manually start the job')
-def chronos_manually_run_job(context):
-    context.chronos_client.run(context.chronos_job_name)
+    chronos_tools.wait_for_job(context.chronos_client, context.jobs[job_name]['name'])
 
 
 @then(u"we {should_or_not} be able to see it when we list jobs")
@@ -100,13 +78,9 @@ def chronos_check_running_tasks(context, old_or_new_job, has_or_not):
     assert True
 
 
-@then(u"the {old_or_new_job} is {disabled} in chronos")
-def chronos_check_job_state(context, old_or_new_job, disabled):
-    desired_disabled = (disabled == 'disabled')
-    if old_or_new_job == 'old job':
-        job_id = context.old_chronos_job_name
-    else:
-        job_id = context.chronos_job_name
+@then(u'the field "{field}" for the job stored as "{job_name}" is set to "{value}"')
+def chronos_check_job_state(context, field, job_name, value):
+    job_id = context.jobs[job_name]['name']
     (service, instance, git_hash, config_hash) = chronos_tools.decompose_job_id(job_id)
     jobs = chronos_tools.lookup_chronos_jobs(
         service=service,
@@ -114,8 +88,17 @@ def chronos_check_job_state(context, old_or_new_job, disabled):
         git_hash=git_hash,
         config_hash=config_hash,
         client=context.chronos_client,
-        include_disabled=desired_disabled,
+        include_disabled=True
     )
     assert len(jobs) == 1
-    for job in jobs:
-        assert job['disabled'] == desired_disabled
+    # we cast to a string so you can correctly assert that a value is True/False
+    assert str(jobs[0][field]) == value
+
+
+@then(u'the job stored as "{job_name}" is {disabled} in chronos')
+def job_is_disabled(context, job_name, disabled):
+    is_disabled = True if disabled == "disabled" else False
+    full_job_name = context.jobs[job_name]["name"]
+    all_jobs = context.chronos_client.list()
+    filtered_jobs = [job for job in all_jobs if job["name"] == full_job_name]
+    assert filtered_jobs[0]["disabled"] is is_disabled

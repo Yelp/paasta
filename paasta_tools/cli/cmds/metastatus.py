@@ -38,10 +38,11 @@ def add_subparser(subparsers):
     )
     status_parser.add_argument(
         '-v', '--verbose',
-        action='store_true',
+        action='count',
         dest="verbose",
-        default=False,
-        help="Print out more output regarding the state of the cluster",
+        default=0,
+        help="""Print out more output regarding the state of the cluster.
+        Multiple v options increase verbosity. Maximum is 2.""",
     )
     clusters_help = (
         'A comma separated list of clusters to view. Defaults to view all clusters. '
@@ -54,7 +55,7 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_metastatus)
 
 
-def print_cluster_status(cluster, verbose=False):
+def print_cluster_status(cluster, verbose=0):
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashbaords even if the cluster is unavailable"""
     print "Cluster: %s" % cluster

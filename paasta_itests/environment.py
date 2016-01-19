@@ -64,6 +64,8 @@ def _clean_up_chronos_jobs(context):
                 print "after_scenario: Job %s is present in chronos. Deleting." % job['name']
                 context.chronos_client.delete(job['name'])
             time.sleep(1)
+    if hasattr(context, 'jobs'):
+        context.jobs = {}
 
 
 def _clean_up_mesos_cli_config(context):

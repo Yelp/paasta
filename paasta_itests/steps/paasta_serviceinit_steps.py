@@ -85,22 +85,24 @@ def marathon_restart_gets_new_task_ids(context, job_id):
     assert old_tasks != new_tasks
 
 
-@then(u"paasta_serviceinit status exits with return code 0 and the correct output")
-def chronos_status_returns_healthy(context):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job status' % context.soa_dir
+@then((u'paasta_serviceinit status for the service_instance "{service_instance}"'
+      ' exits with return code 0 and the correct output'))
+def chronos_status_returns_healthy(context, service_instance):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
     assert exit_code == 0
-    assert "Stopped" in output
+    assert "Disabled" in output
     assert "New" in output
 
 
-@then(u"paasta_serviceinit status --verbose exits with return code 0 and the correct output")
-def chronos_status_verbose_returns_healthy(context):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job status --verbose' % context.soa_dir
+@then((u'paasta_serviceinit status --verbose for the service_instance "{service_instance}"'
+      ' exits with return code 0 and the correct output'))
+def chronos_status_verbose_returns_healthy(context, service_instance):
+    cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status --verbose" % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
@@ -110,9 +112,9 @@ def chronos_status_verbose_returns_healthy(context):
     assert "Running Tasks:" in output
 
 
-@when(u"we paasta_serviceinit emergency-stop the chronos job")
-def chronos_emergency_stop_job(context):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job stop' % context.soa_dir
+@when(u'we paasta_serviceinit emergency-stop the service_instance "{service_instance}"')
+def chronos_emergency_stop_job(context, service_instance):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s stop' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
@@ -121,9 +123,9 @@ def chronos_emergency_stop_job(context):
     assert exit_code == 0
 
 
-@when(u"we paasta_serviceinit emergency-start the chronos job")
-def chronos_emergency_start_job(context):
-    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job start' % context.soa_dir
+@when(u'we paasta_serviceinit emergency-start the service_instance "{service_instance}"')
+def chronos_emergency_start_job(context, service_instance):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s start' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
     (exit_code, output) = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)

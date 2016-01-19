@@ -57,12 +57,12 @@ def marathon_task_is_ready(context, app_id):
     marathon_tools.wait_for_app_to_launch_tasks(context.marathon_client, app_id, 1)
 
 
-@then(u'paasta_metastatus exits with return code "{expected_return_code}" and output "{expected_output}"')
-def check_metastatus_return_code(context, expected_return_code, expected_output):
+@then(u'paasta_metastatus{flags} exits with return code "{expected_return_code}" and output "{expected_output}"')
+def check_metastatus_return_code_with_flags(context, flags, expected_return_code, expected_output):
     # We don't want to invoke the "paasta metastatus" wrapper because by
     # default it will check every cluster. This is also the way sensu invokes
     # this check.
-    cmd = '../paasta_tools/paasta_metastatus.py --v'
+    cmd = '../paasta_tools/paasta_metastatus.py%s' % flags
     env = dict(os.environ)
     env['MESOS_CLI_CONFIG'] = context.mesos_cli_config_filename
     print 'Running cmd %s with MESOS_CLI_CONFIG=%s' % (cmd, env['MESOS_CLI_CONFIG'])
@@ -75,3 +75,23 @@ def check_metastatus_return_code(context, expected_return_code, expected_output)
 
     assert exit_code == int(expected_return_code)
     assert expected_output in escaped_output
+
+
+@then(u'paasta_metastatus exits with return code "{expected_return_code}" and output "{expected_output}"')
+def check_metastatus_return_code_no_flags(context, expected_return_code, expected_output):
+    check_metastatus_return_code_with_flags(
+        context=context,
+        flags='',
+        expected_return_code=expected_return_code,
+        expected_output=expected_output,
+    )
+
+
+@then(u'paasta_metastatus -vv exits with return code "{expected_return_code}" and outputs the slave\'s hostname')
+def check_metastatus_contains_hostname(context, expected_return_code):
+    check_metastatus_return_code_with_flags(
+        context=context,
+        flags=' -vv',
+        expected_return_code=expected_return_code,
+        expected_output='mesosslave.test_hostname',
+    )
