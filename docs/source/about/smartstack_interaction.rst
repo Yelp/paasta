@@ -5,6 +5,9 @@ PaaSTA uses SmartStack configuration to influence the **deployment** and
 **monitoring** of services. This document assumes some prior knowledge
 about SmartStack; see http://nerds.airbnb.com/smartstack-service-discovery-cloud/.
 
+.. contents:: Table of Contents
+   :depth: 2
+
 How SmartStack Settings Influence Deployment
 --------------------------------------------
 

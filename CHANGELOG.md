@@ -1,7 +1,196 @@
 # Change Log
 
-## [0.15.9](https://github.com/Yelp/paasta/tree/0.15.9) (2015-11-20)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.8...0.15.9)
+## [Unreleased](https://github.com/Yelp/paasta/tree/HEAD)
+
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.14...HEAD)
+
+**Closed issues:**
+
+- deploy\_chronos\_services isn't shuffling [\#154](https://github.com/Yelp/paasta/issues/154)
+- `paasta check` doesn't consider chronos-\*.yaml for deploy.yaml checks [\#110](https://github.com/Yelp/paasta/issues/110)
+- Update paasta help [\#3](https://github.com/Yelp/paasta/issues/3)
+
+**Merged pull requests:**
+
+- Added contrib location and purge\_chronos\_jobs [\#166](https://github.com/Yelp/paasta/pull/166) ([solarkennedy](https://github.com/solarkennedy))
+- Allow users to set accepted\_resource\_roles in marathon yamls. [\#164](https://github.com/Yelp/paasta/pull/164) ([EvanKrall](https://github.com/EvanKrall))
+- add docs for schedule time zone field [\#163](https://github.com/Yelp/paasta/pull/163) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Consider chronos\*.yaml for deploy checks \(Closes: \#110\) [\#162](https://github.com/Yelp/paasta/pull/162) ([nhandler](https://github.com/nhandler))
+- Make deploy\_chronos\_services shuffle [\#160](https://github.com/Yelp/paasta/pull/160) ([nhandler](https://github.com/nhandler))
+
+## [v0.16.14](https://github.com/Yelp/paasta/tree/v0.16.14) (2016-01-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.13...v0.16.14)
+
+**Closed issues:**
+
+- setup\_chronos\_job does not clean up old jobs [\#146](https://github.com/Yelp/paasta/issues/146)
+- write integration tests for launching a dependent job [\#141](https://github.com/Yelp/paasta/issues/141)
+- lookup the latest full job for a 'service.instance' parent [\#140](https://github.com/Yelp/paasta/issues/140)
+- theres a bogus help message in `check\_chronos\_jobs -h` [\#139](https://github.com/Yelp/paasta/issues/139)
+- Update 'paasta validate' schemas to be more complete/accurate [\#129](https://github.com/Yelp/paasta/issues/129)
+- paasta local-run doesn't handle chronos jobs correctly [\#124](https://github.com/Yelp/paasta/issues/124)
+
+**Merged pull requests:**
+
+- Run command inside sh c local run [\#159](https://github.com/Yelp/paasta/pull/159) ([nhandler](https://github.com/nhandler))
+- Update itest to use chronos 2.4.0-0.1.20151007110204.ubuntu1404 [\#157](https://github.com/Yelp/paasta/pull/157) ([nhandler](https://github.com/nhandler))
+- Extend schemas [\#156](https://github.com/Yelp/paasta/pull/156) ([nhandler](https://github.com/nhandler))
+- remove assumptions from paasta validate tests [\#153](https://github.com/Yelp/paasta/pull/153) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- update the description of check\_chronos\_jobs [\#151](https://github.com/Yelp/paasta/pull/151) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- First support for creating dependent jobs - Fixes \#140, \#141, \#146 [\#150](https://github.com/Yelp/paasta/pull/150) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- fixed a testcase for utils.guess\_instance [\#144](https://github.com/Yelp/paasta/pull/144) ([mjksmith](https://github.com/mjksmith))
+- Improve the human readable state of services depending on their type [\#133](https://github.com/Yelp/paasta/pull/133) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.13](https://github.com/Yelp/paasta/tree/v0.16.13) (2016-01-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.12...v0.16.13)
+
+**Closed issues:**
+
+- Make 'paasta validate' validate chronos files [\#127](https://github.com/Yelp/paasta/issues/127)
+- Add 'paasta validate' itests [\#126](https://github.com/Yelp/paasta/issues/126)
+
+**Merged pull requests:**
+
+- Consolidate/tighten up filtering of marathon apps so status and bounc… [\#142](https://github.com/Yelp/paasta/pull/142) ([EvanKrall](https://github.com/EvanKrall))
+- Fix local-run healthchecks when using custom soadir argument [\#138](https://github.com/Yelp/paasta/pull/138) ([keshavdv](https://github.com/keshavdv))
+- Paasta validate itests [\#136](https://github.com/Yelp/paasta/pull/136) ([nhandler](https://github.com/nhandler))
+- Validate chronos [\#134](https://github.com/Yelp/paasta/pull/134) ([nhandler](https://github.com/nhandler))
+
+## [v0.16.12](https://github.com/Yelp/paasta/tree/v0.16.12) (2016-01-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.11...v0.16.12)
+
+**Closed issues:**
+
+- support a 'parents' field in Chronos job configuration. [\#94](https://github.com/Yelp/paasta/issues/94)
+
+**Merged pull requests:**
+
+- Added 0 principle [\#137](https://github.com/Yelp/paasta/pull/137) ([solarkennedy](https://github.com/solarkennedy))
+- Added a --service argument to paasta check. Closes \#130 [\#132](https://github.com/Yelp/paasta/pull/132) ([solarkennedy](https://github.com/solarkennedy))
+- Begin testing against marathon 11 [\#120](https://github.com/Yelp/paasta/pull/120) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.11](https://github.com/Yelp/paasta/tree/v0.16.11) (2015-12-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.10...v0.16.11)
+
+**Closed issues:**
+
+- paasta local-run --pull fails without --interactive [\#131](https://github.com/Yelp/paasta/issues/131)
+- paasta check doesn't allow overriding of service name [\#130](https://github.com/Yelp/paasta/issues/130)
+
+**Merged pull requests:**
+
+- Lots of updates to help sections and therefore man pages [\#125](https://github.com/Yelp/paasta/pull/125) ([solarkennedy](https://github.com/solarkennedy))
+- Fix some sys.stderr.writes that don't have their newlines [\#123](https://github.com/Yelp/paasta/pull/123) ([asottile](https://github.com/asottile))
+- Add 'paasta validate' command [\#107](https://github.com/Yelp/paasta/pull/107) ([nhandler](https://github.com/nhandler))
+
+## [v0.16.10](https://github.com/Yelp/paasta/tree/v0.16.10) (2015-12-10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.9...v0.16.10)
+
+**Merged pull requests:**
+
+- Dependent jobs field [\#122](https://github.com/Yelp/paasta/pull/122) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Nix paasta\_cli =\> to just cli [\#121](https://github.com/Yelp/paasta/pull/121) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.9](https://github.com/Yelp/paasta/tree/v0.16.9) (2015-12-10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.8...v0.16.9)
+
+**Merged pull requests:**
+
+- Remove extra context from replication check output for performance reasons [\#117](https://github.com/Yelp/paasta/pull/117) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.8](https://github.com/Yelp/paasta/tree/v0.16.8) (2015-12-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.7...v0.16.8)
+
+**Merged pull requests:**
+
+- Fix InvalidJobNameError in marathon\_services\_running\_here [\#119](https://github.com/Yelp/paasta/pull/119) ([EvanKrall](https://github.com/EvanKrall))
+- Use https internal pypi [\#118](https://github.com/Yelp/paasta/pull/118) ([asottile](https://github.com/asottile))
+- Autodetect the instance in local-run [\#105](https://github.com/Yelp/paasta/pull/105) ([solarkennedy](https://github.com/solarkennedy))
+- Make local-run stream the docker-pull with /dev/null as stdin [\#104](https://github.com/Yelp/paasta/pull/104) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.7](https://github.com/Yelp/paasta/tree/v0.16.7) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.6...v0.16.7)
+
+## [v0.16.6](https://github.com/Yelp/paasta/tree/v0.16.6) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.5...v0.16.6)
+
+**Merged pull requests:**
+
+- Bump max\_consecutive\_failures to 30 \(5 minutes\) [\#101](https://github.com/Yelp/paasta/pull/101) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.5](https://github.com/Yelp/paasta/tree/v0.16.5) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.4...v0.16.5)
+
+**Merged pull requests:**
+
+- Make backoff\_seconds work as a function of the instance count. [\#102](https://github.com/Yelp/paasta/pull/102) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.4](https://github.com/Yelp/paasta/tree/v0.16.4) (2015-12-08)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.3...v0.16.4)
+
+**Closed issues:**
+
+- paasta local-run --interactive default cmd is "b a s h" [\#115](https://github.com/Yelp/paasta/issues/115)
+- paasta local-run --help crashes [\#114](https://github.com/Yelp/paasta/issues/114)
+- automate builds with pypi [\#35](https://github.com/Yelp/paasta/issues/35)
+
+**Merged pull requests:**
+
+- Added docs explaining the difference between difference service modes [\#113](https://github.com/Yelp/paasta/pull/113) ([solarkennedy](https://github.com/solarkennedy))
+- Documented the relationship between instance and nerve\_ns better [\#112](https://github.com/Yelp/paasta/pull/112) ([solarkennedy](https://github.com/solarkennedy))
+- Support --version instead of version [\#109](https://github.com/Yelp/paasta/pull/109) ([asottile](https://github.com/asottile))
+- Fix --help for local-run and add a test [\#108](https://github.com/Yelp/paasta/pull/108) ([asottile](https://github.com/asottile))
+
+## [v0.16.3](https://github.com/Yelp/paasta/tree/v0.16.3) (2015-12-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.2...v0.16.3)
+
+**Merged pull requests:**
+
+- Setup Travis autodeploy configs [\#103](https://github.com/Yelp/paasta/pull/103) ([tomelm](https://github.com/tomelm))
+- Paasta rollback now accepts none, one or a list of instances. [\#99](https://github.com/Yelp/paasta/pull/99) ([zeldinha](https://github.com/zeldinha))
+- Enabled local-run to work on docker images on registries instead of building locally [\#88](https://github.com/Yelp/paasta/pull/88) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.2](https://github.com/Yelp/paasta/tree/v0.16.2) (2015-11-30)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.1...v0.16.2)
+
+**Closed issues:**
+
+- 0.16.1 Release Broke 'paasta status' [\#91](https://github.com/Yelp/paasta/issues/91)
+- http://paasta.readthedocs.org/en/latest/ references y/paasta [\#57](https://github.com/Yelp/paasta/issues/57)
+
+**Merged pull requests:**
+
+- Fix scale condition poistion [\#100](https://github.com/Yelp/paasta/pull/100) ([dichiarafrancesco](https://github.com/dichiarafrancesco))
+- remove hardcoded docker registry location [\#93](https://github.com/Yelp/paasta/pull/93) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- bump scribereader version in line with aed1812b917daba17a5fd8f1a0fe9b… [\#92](https://github.com/Yelp/paasta/pull/92) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Only allow the itest\_% Makefile target to run at Yelp [\#90](https://github.com/Yelp/paasta/pull/90) ([nhandler](https://github.com/nhandler))
+- More smartstack.yaml docs: explanation of the top level, and moving a… [\#89](https://github.com/Yelp/paasta/pull/89) ([EvanKrall](https://github.com/EvanKrall))
+- Bump scribereader requirement [\#86](https://github.com/Yelp/paasta/pull/86) ([asottile](https://github.com/asottile))
+
+## [v0.16.1](https://github.com/Yelp/paasta/tree/v0.16.1) (2015-11-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.0...v0.16.1)
+
+**Merged pull requests:**
+
+- Minor fixups to setup.py [\#87](https://github.com/Yelp/paasta/pull/87) ([asottile](https://github.com/asottile))
+- Added paasta\_rollback command [\#79](https://github.com/Yelp/paasta/pull/79) ([zeldinha](https://github.com/zeldinha))
+- Add emergency scale feature [\#74](https://github.com/Yelp/paasta/pull/74) ([dichiarafrancesco](https://github.com/dichiarafrancesco))
+- Make local-run default to use bash if set to be interactive [\#73](https://github.com/Yelp/paasta/pull/73) ([solarkennedy](https://github.com/solarkennedy))
+- drain\_method\_params affect drain\_method, not bounce\_method. Also fix uwsgi typo. [\#58](https://github.com/Yelp/paasta/pull/58) ([EvanKrall](https://github.com/EvanKrall))
+- Flesh out docs for smartstack.yaml [\#47](https://github.com/Yelp/paasta/pull/47) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.16.0](https://github.com/Yelp/paasta/tree/v0.16.0) (2015-11-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.9...v0.16.0)
+
+**Merged pull requests:**
+
+- don't use vars\(\) to check for scribereader [\#80](https://github.com/Yelp/paasta/pull/80) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- update dh-virtualenv location [\#78](https://github.com/Yelp/paasta/pull/78) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Update Flynn comparison [\#76](https://github.com/Yelp/paasta/pull/76) ([titanous](https://github.com/titanous))
+- Added first pass at paasta-contract transplant [\#75](https://github.com/Yelp/paasta/pull/75) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.15.9](https://github.com/Yelp/paasta/tree/v0.15.9) (2015-11-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.15.8...v0.15.9)
 
 **Merged pull requests:**
 
