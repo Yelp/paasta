@@ -15,6 +15,7 @@
 # limitations under the License.
 
 
+import glob
 from setuptools import setup, find_packages
 
 
@@ -79,7 +80,6 @@ setup(
         'paasta_tools/setup_chronos_job.py',
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
-    ],
+    ] + glob.glob('paasta_tools/contrib/*'),
     package_data = {'': ['cli/fsm/templates/*.tmpl']},
 )
-
