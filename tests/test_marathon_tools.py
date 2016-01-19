@@ -1818,12 +1818,22 @@ class TestMarathonServiceConfig(object):
 
     def test_get_accepted_resource_roles_default(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {}, {})
+            service='service',
+            instance='instance',
+            cluster='cluster',
+            config_dict={},
+            branch_dict={},
+        )
         assert marathon_config.get_accepted_resource_roles() is None
 
     def test_get_accepted_resource_roles(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {"accepted_resource_roles": ["ads"]}, {})
+            service='service',
+            instance='instance',
+            cluster='cluster',
+            config_dict={"accepted_resource_roles": ["ads"]},
+            branch_dict={},
+        )
         assert marathon_config.get_accepted_resource_roles() == ["ads"]
 
     def test_get_desired_state_human(self):
