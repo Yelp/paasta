@@ -84,6 +84,9 @@ class InstanceConfig(dict):
     def get_service(self):
         return self.service
 
+    def get_deploy_group(self):
+        return self.config_dict.get('deploy_group', '.'.join((self.get_cluster(), self.get_instance())))
+
     def get_mem(self):
         """Gets the memory required from the service's configuration.
 
