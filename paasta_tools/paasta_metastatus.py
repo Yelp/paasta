@@ -179,8 +179,8 @@ def assert_quorum_size(state):
 
 
 def assert_extra_slave_data(mesos_state):
-    header_string = '%10s %36s %9s' % ('Hostname', 'CPU free', 'RAM free')
-    slave_outputs = ['%40s %8.2f %9.2f' % (
+    header_string = '%10s %46s %9s' % ('Hostname', 'CPU free', 'RAM free')
+    slave_outputs = ['%50s %8.2f %9.2f' % (
         slave['hostname'],
         slave['free_resources']['cpus'],
         slave['free_resources']['mem'],
