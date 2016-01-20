@@ -12,9 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import generate_deployments_for_service
 import mock
 import contextlib
+from paasta_tools import generate_deployments_for_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.chronos_tools import ChronosJobConfig
 
@@ -26,13 +26,13 @@ def test_get_branches_for_service():
     expected = set(['red', 'green', 'blue', 'orange', 'white', 'black', 'cluster_a.chronos_job',
                     'cluster_b.chronos_job', 'cluster_c.chronos_job'])
     with contextlib.nested(
-        mock.patch('generate_deployments_for_service.list_clusters',
+        mock.patch('paasta_tools.generate_deployments_for_service.list_clusters',
                    return_value=['cluster_a', 'cluster_b', 'cluster_c']),
-        mock.patch('generate_deployments_for_service.get_service_instance_list',
+        mock.patch('paasta_tools.generate_deployments_for_service.get_service_instance_list',
                    side_effect=lambda service, cluster, instance_type:
                        [('', 'main_example'), ('', 'canary_example')] if instance_type == 'marathon'
                        else [('', 'chronos_job')]),
-        mock.patch('generate_deployments_for_service.load_marathon_service_config',
+        mock.patch('paasta_tools.generate_deployments_for_service.load_marathon_service_config',
                    side_effect=lambda service, instance, cluster, soa_dir: MarathonServiceConfig(
                        service=service,
                        cluster=cluster,
@@ -40,7 +40,7 @@ def test_get_branches_for_service():
                        config_dict={'deploy_group': fake_branches.pop()},
                        branch_dict={},
                    )),
-        mock.patch('generate_deployments_for_service.load_chronos_job_config',
+        mock.patch('paasta_tools.generate_deployments_for_service.load_chronos_job_config',
                    side_effect=lambda service, instance, cluster, soa_dir: ChronosJobConfig(
                        service=service,
                        cluster=cluster,
@@ -89,7 +89,7 @@ def test_get_branch_mappings():
         },
     }
     with contextlib.nested(
-        mock.patch('generate_deployments_for_service.get_branches_for_service',
+        mock.patch('paasta_tools.generate_deployments_for_service.get_branches_for_service',
                    return_value=fake_branches),
         mock.patch('paasta_tools.remote_git.list_remote_refs',
                    return_value=fake_remote_refs),
@@ -117,20 +117,20 @@ def test_main():
     fake_soa_dir = '/etc/true/null'
     file_mock = mock.MagicMock(spec=file)
     with contextlib.nested(
-        mock.patch('generate_deployments_for_service.parse_args',
+        mock.patch('paasta_tools.generate_deployments_for_service.parse_args',
                    return_value=mock.Mock(verbose=False, soa_dir=fake_soa_dir, service='fake_service'),
                    autospec=True),
         mock.patch('os.path.abspath', return_value='ABSOLUTE', autospec=True),
         mock.patch(
-            'generate_deployments_for_service.get_branch_mappings',
+            'paasta_tools.generate_deployments_for_service.get_branch_mappings',
             return_value={'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}},
             autospec=True,
         ),
         mock.patch('os.path.join', return_value='JOIN', autospec=True),
-        mock.patch('generate_deployments_for_service.open', create=True, return_value=file_mock),
+        mock.patch('paasta_tools.generate_deployments_for_service.open', create=True, return_value=file_mock),
         mock.patch('json.dump', autospec=True),
         mock.patch('json.load', return_value={'OLD_MAP': 'PINGS'}, autospec=True),
-        mock.patch('generate_deployments_for_service.atomic_file_write', autospec=True),
+        mock.patch('paasta_tools.generate_deployments_for_service.atomic_file_write', autospec=True),
     ) as (
         parse_patch,
         abspath_patch,

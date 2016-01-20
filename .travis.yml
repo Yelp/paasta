@@ -1,20 +1,14 @@
 language: python
-python:
-  - '2.7'
 env:
-  - TOX_ENV=docs
-  - TOX_ENV=general_itests
-  - TOX_ENV=paasta_itests
+  - TOXENV=py27
+  - TOXENV=docs
+  - TOXENV=general_itests
+  - TOXENV=paasta_itests
 sudo: required
 services:
   - docker
-install:
-  - pip install coveralls
-  - pip install tox
-before_script:
-  - tox -e py
-script:
-  - tox -e $TOX_ENV
+install: pip install coveralls tox
+script: tox
 after_success:
   - coveralls
 deploy:

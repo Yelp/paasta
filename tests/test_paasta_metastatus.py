@@ -20,7 +20,7 @@ from mock import patch
 from httplib2 import ServerNotFoundError
 from pytest import raises
 
-from chronos_tools import ChronosNotConfigured
+from paasta_tools.chronos_tools import ChronosNotConfigured
 from paasta_tools import paasta_metastatus
 from paasta_tools.utils import PaastaColors
 from paasta_tools.marathon_tools import MarathonConfig

@@ -12,11 +12,9 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import json
 from behave import when, then
 
-sys.path.append('../')
 from paasta_tools.utils import _run
 from paasta_tools.chronos_tools import compose_job_id
 

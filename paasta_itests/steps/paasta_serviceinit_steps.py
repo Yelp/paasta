@@ -12,13 +12,11 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
 import time
 
 from behave import when, then
 import mock
 
-sys.path.append('../')
 import paasta_tools
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools

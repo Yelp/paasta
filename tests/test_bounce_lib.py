@@ -12,12 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import bounce_lib
 import contextlib
 import datetime
 import mock
 import marathon
 
+from paasta_tools import bounce_lib
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 
 
@@ -29,7 +29,7 @@ class TestBounceLib:
         lock_file = '/var/lock/%s.lock' % lock_name
         fake_fd = mock.MagicMock(spec=file)
         with contextlib.nested(
-            mock.patch('bounce_lib.open', create=True, return_value=fake_fd),
+            mock.patch('paasta_tools.bounce_lib.open', create=True, return_value=fake_fd),
             mock.patch('fcntl.lockf'),
             mock.patch('os.remove')
         ) as (
@@ -50,9 +50,9 @@ class TestBounceLib:
         fake_zk = mock.MagicMock(Lock=mock.Mock(return_value=fake_lock))
         fake_zk_hosts = 'awjti42ior'
         with contextlib.nested(
-            mock.patch('bounce_lib.KazooClient', return_value=fake_zk, autospec=True),
+            mock.patch('paasta_tools.bounce_lib.KazooClient', return_value=fake_zk, autospec=True),
             mock.patch(
-                'bounce_lib.load_system_paasta_config',
+                'paasta_tools.bounce_lib.load_system_paasta_config',
                 return_value=mock.Mock(
                     get_zk_hosts=lambda: fake_zk_hosts
                 ),
@@ -78,8 +78,8 @@ class TestBounceLib:
         fake_client = marathon_client_mock
         fake_config = {'id': 'fake_creation'}
         with contextlib.nested(
-            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.wait_for_create'),
+            mock.patch('paasta_tools.bounce_lib.create_app_lock', spec=contextlib.contextmanager),
+            mock.patch('paasta_tools.bounce_lib.wait_for_create'),
         ) as (
             lock_patch,
             wait_patch,
@@ -96,8 +96,8 @@ class TestBounceLib:
         fake_client = mock.Mock(delete_app=mock.Mock())
         fake_id = 'fake_deletion'
         with contextlib.nested(
-            mock.patch('bounce_lib.create_app_lock', spec=contextlib.contextmanager),
-            mock.patch('bounce_lib.wait_for_delete'),
+            mock.patch('paasta_tools.bounce_lib.create_app_lock', spec=contextlib.contextmanager),
+            mock.patch('paasta_tools.bounce_lib.wait_for_delete'),
             mock.patch('time.sleep')
         ) as (
             lock_patch,
@@ -114,7 +114,7 @@ class TestBounceLib:
     def test_kill_old_ids(self):
         old_ids = ['mmm.whatcha.say', 'that.you', 'only.meant.well']
         fake_client = mock.MagicMock()
-        with mock.patch('bounce_lib.delete_marathon_app') as delete_patch:
+        with mock.patch('paasta_tools.bounce_lib.delete_marathon_app') as delete_patch:
             bounce_lib.kill_old_ids(old_ids, fake_client)
             for old_id in old_ids:
                 delete_patch.assert_any_call(old_id, fake_client)
@@ -125,7 +125,7 @@ class TestBounceLib:
         fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [False, False, True]
         with contextlib.nested(
-            mock.patch('marathon_tools.is_app_id_running'),
+            mock.patch('paasta_tools.marathon_tools.is_app_id_running'),
             mock.patch('time.sleep'),
         ) as (
             is_app_id_running_patch,
@@ -141,7 +141,7 @@ class TestBounceLib:
         fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [True]
         with contextlib.nested(
-            mock.patch('marathon_tools.is_app_id_running'),
+            mock.patch('paasta_tools.marathon_tools.is_app_id_running'),
             mock.patch('time.sleep'),
         ) as (
             is_app_id_running_patch,
@@ -157,7 +157,7 @@ class TestBounceLib:
         fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [True, True, False]
         with contextlib.nested(
-            mock.patch('marathon_tools.is_app_id_running'),
+            mock.patch('paasta_tools.marathon_tools.is_app_id_running'),
             mock.patch('time.sleep'),
         ) as (
             is_app_id_running_patch,
@@ -173,7 +173,7 @@ class TestBounceLib:
         fake_client = mock.Mock(spec='paasta_tools.setup_marathon_job.MarathonClient')
         fake_is_app_running_values = [False]
         with contextlib.nested(
-            mock.patch('marathon_tools.is_app_id_running'),
+            mock.patch('paasta_tools.marathon_tools.is_app_id_running'),
             mock.patch('time.sleep'),
         ) as (
             is_app_id_running_patch,
@@ -260,8 +260,8 @@ class TestBounceLib:
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in xrange(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         with contextlib.nested(
-            mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
-            mock.patch('mesos_tools.get_mesos_slaves_grouped_by_attribute',
+            mock.patch('paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
+            mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute',
                        return_value={'fake_region': ['fake_host']}, autospec=True),
         ) as (
             _,
@@ -275,8 +275,8 @@ class TestBounceLib:
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=False)]) for i in xrange(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         with contextlib.nested(
-            mock.patch('bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
-            mock.patch('mesos_tools.get_mesos_slaves_grouped_by_attribute',
+            mock.patch('paasta_tools.bounce_lib.get_registered_marathon_tasks', return_value=tasks[2:], autospec=True),
+            mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute',
                        return_value={'fake_region': ['fake_host']}, autospec=True),
         ) as (
             _,
@@ -290,8 +290,11 @@ class TestBounceLib:
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for i in xrange(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
         with contextlib.nested(
-            mock.patch('bounce_lib.get_registered_marathon_tasks', side_effect=[tasks[2:3], tasks[3:]], autospec=True),
-            mock.patch('mesos_tools.get_mesos_slaves_grouped_by_attribute', autospec=True),
+            mock.patch(
+                'paasta_tools.bounce_lib.get_registered_marathon_tasks',
+                side_effect=[tasks[2:3], tasks[3:]], autospec=True,
+            ),
+            mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute', autospec=True),
         ) as (
             get_registered_marathon_tasks_patch,
             get_mesos_slaves_grouped_by_attribute_patch,

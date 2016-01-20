@@ -12,13 +12,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-
 from behave import given, when, then
 from docker import Client
 from docker.errors import APIError
 
-sys.path.append('../')
 from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_host
 

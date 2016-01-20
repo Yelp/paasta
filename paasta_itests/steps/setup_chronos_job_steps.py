@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import copy
-import sys
 
 from behave import when, then
 
-sys.path.append('../')
 from paasta_tools import chronos_tools
 from paasta_tools.utils import _run
 
