@@ -676,6 +676,11 @@ def create_job(client, job):
     client.add(job)
 
 
+def update_job(client, job):
+    log.debug("Updating job: %s" % job)
+    client.update(job)
+
+
 def find_matching_parent_job(job_name):
     """ Given a service.instance, convert it to a 'real' job name,
     where the 'real' job name is the id of the most recent job
