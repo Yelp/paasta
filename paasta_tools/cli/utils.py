@@ -253,16 +253,16 @@ class PaastaCheckMessages:
             "and will be automatically load balanced" % (instance, port))
 
     @staticmethod
-    def service_dir_found(service):
-        message = "yelpsoa-config directory for %s found in /nail/etc/services" \
-                  % PaastaColors.cyan(service)
+    def service_dir_found(service, soa_dir):
+        message = "yelpsoa-config directory for %s found in %s" \
+                  % (PaastaColors.cyan(service), soa_dir)
         return success(message)
 
     @staticmethod
-    def service_dir_missing(service):
-        message = "Failed to locate yelpsoa-config directory for %s.\n" \
+    def service_dir_missing(service, soa_dir):
+        message = "Failed to locate yelpsoa-config directory for %s in %s.\n" \
                   "  Please follow the guide linked below to get boilerplate." \
-                  % service
+                  % (service, soa_dir)
         return failure(message, "http://y/paasta-deploy")
 
 
