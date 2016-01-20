@@ -182,8 +182,12 @@ def assert_quorum_size(state):
 def assert_extra_slave_data(mesos_state):
     rows = [('Hostname', 'CPU free', 'RAM free')]
     for slave in get_extra_mesos_slave_data(mesos_state):
-        rows.append((slave['hostname'], slave['free_resources']['cpus'], slave['free_resources']['mem']))
-    return format_table(rows)
+        rows.append((
+            slave['hostname'],
+            '%.2f' % slave['free_resources']['cpus'],
+            '%.2f' % slave['free_resources']['mem'],
+        ))
+    return ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
 
 
 def get_mesos_status(mesos_state, verbosity):
