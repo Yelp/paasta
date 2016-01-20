@@ -58,11 +58,33 @@ BAD_PORT_WARNING = 'This_service_is_listening_on_the_PORT_variable__You_must_use
 
 
 def pick_random_port():
-    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-    s.bind(('localhost', 0))
-    addr, port = s.getsockname()
-    s.close()
-    return port
+    """Bind to an ephemeral port, force it into the TIME_WAIT state, and
+    unbind it.
+
+    This means that further ephemeral port alloctions won't pick this
+    "reserved" port, but subprocesses can still bind to it explicitly, given
+    that they use SO_REUSEADDR.
+
+    By default on linux you have a grace period of 60 seconds to reuse this
+    port.
+
+    To check your own particular value:
+    $ cat /proc/sys/net/ipv4/tcp_fin_timeout
+    60
+    """
+    s = socket.socket()
+    s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+    s.bind(('127.0.0.1', 0))
+    s.listen(0)
+
+    sockname = s.getsockname()
+
+    # these three are necessary just to get the port into a TIME_WAIT state
+    s2 = socket.socket()
+    s2.connect(sockname)
+    s.accept()
+
+    return sockname[1]
 
 
 def perform_http_healthcheck(url, timeout):
