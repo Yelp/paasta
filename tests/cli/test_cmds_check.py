@@ -97,12 +97,11 @@ def test_check_paasta_check_calls_everything(
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_service_dir_check_pass(mock_stdout, mock_validate_service_name):
     mock_validate_service_name.return_value = None
-    service_name = 'fake_service'
-    service_root = '/fake_yelpsoa_configs'
+    service = 'fake_service'
+    soa_dir = '/fake_yelpsoa_configs'
     expected_output = \
-        "%s\n" % PaastaCheckMessages.service_dir_found(service_name,
-                                                       service_root)
-    service_dir_check(service_name, service_root)
+        "%s\n" % PaastaCheckMessages.service_dir_found(service, soa_dir)
+    service_dir_check(service, soa_dir)
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -111,13 +110,12 @@ def test_check_service_dir_check_pass(mock_stdout, mock_validate_service_name):
 @patch('paasta_tools.cli.cmds.check.validate_service_name', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_service_dir_check_fail(mock_stdout, mock_validate_service_name):
-    service_name = 'fake_service'
-    service_root = '/fake_yelpsoa_configs'
-    mock_validate_service_name.side_effect = NoSuchService(service_name)
+    service = 'fake_service'
+    soa_dir = '/fake_yelpsoa_configs'
+    mock_validate_service_name.side_effect = NoSuchService(service)
     expected_output = "%s\n" \
-                      % PaastaCheckMessages.service_dir_missing(service_name,
-                                                                service_root)
-    service_dir_check(service_name, service_root)
+                      % PaastaCheckMessages.service_dir_missing(service, soa_dir)
+    service_dir_check(service, soa_dir)
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -471,8 +469,7 @@ def test_deploy_has_security_check_false(mock_pipeline_config, mock_stdout):
         {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'hab.main', },
     ]
-    actual = deploy_has_security_check(service_name='fake_service',
-                                       service_root='/fake/path')
+    actual = deploy_has_security_check(service='fake_service', soa_dir='/fake/path')
     assert actual is False
 
 
@@ -486,8 +483,7 @@ def test_deploy_has_security_check_true(mock_pipeline_config, mock_stdout):
         {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'hab.main', },
     ]
-    actual = deploy_has_security_check(service_name='fake_service',
-                                       service_root='/fake/path')
+    actual = deploy_has_security_check(service='fake_service', soa_dir='/fake/path')
     assert actual is True
 
 
@@ -500,8 +496,7 @@ def test_deploy_has_performance_check_false(mock_pipeline_config, mock_stdout):
         {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'hab.main', },
     ]
-    actual = deploy_has_performance_check(service_name='fake_service',
-                                          service_root='/fake/path')
+    actual = deploy_has_performance_check(service='fake_service', soa_dir='/fake/path')
     assert actual is False
 
 
@@ -515,8 +510,7 @@ def test_deploy_has_performance_check_true(mock_pipeline_config, mock_stdout):
         {'instancename': 'hab.canary', 'trigger_next_step_manually': True, },
         {'instancename': 'hab.main', },
     ]
-    actual = deploy_has_performance_check(service_name='fake_service',
-                                          service_root='/fake/path')
+    actual = deploy_has_performance_check(service='fake_service', soa_dir='/fake/path')
     assert actual is True
 
 
@@ -529,7 +523,7 @@ def test_get_marathon_steps(
     mock_list_clusters.return_value = ['cluster1']
     mock_get_service_instance_list.return_value = [('unused', 'instance1'), ('unused', 'instance2')]
     expected = ['cluster1.instance1', 'cluster1.instance2']
-    actual = get_marathon_steps(service_name='unused', service_root='/fake/path')
+    actual = get_marathon_steps(service='unused', soa_dir='/fake/path')
     assert actual == expected
 
 
@@ -552,8 +546,7 @@ def test_marathon_deployments_check_good(
         'hab.canary',
         'hab.main',
     ]
-    actual = deployments_check(service_name='fake_service',
-                               service_root='/fake/path')
+    actual = deployments_check(service='fake_service', soa_dir='/fake/path')
     assert actual is True
 
 
@@ -577,8 +570,7 @@ def test_marathon_deployments_deploy_but_not_marathon(
         'hab.canary',
         'hab.main',
     ]
-    actual = deployments_check(service_name='fake_service',
-                               service_root='/fake/service')
+    actual = deployments_check(service='fake_service', soa_dir='/fake/service')
     assert actual is False
     assert 'EXTRA' in mock_stdout.getvalue()
 
@@ -603,8 +595,7 @@ def test_marathon_deployments_marathon_but_not_deploy(
         'hab.main',
         'hab.BOGUS',
     ]
-    actual = deployments_check(service_name='fake_service',
-                               service_root='/fake/path')
+    actual = deployments_check(service='fake_service', soa_dir='/fake/path')
     assert actual is False
     assert 'BOGUS' in mock_stdout.getvalue()
 
