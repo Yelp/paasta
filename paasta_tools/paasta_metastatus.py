@@ -66,10 +66,10 @@ def get_extra_mesos_slave_data(mesos_state):
     slaves = dict((slave['id'], {
         'free_resources': slave['resources'],
         'hostname': slave['hostname'],
-    }) for slave in mesos_state['slaves'])
+    }) for slave in mesos_state.get('slaves', []))
 
-    for framework in mesos_state['frameworks']:
-        for task in framework['tasks']:
+    for framework in mesos_state.get('frameworks', []):
+        for task in framework.get('tasks', []):
             resource_dict = slaves[task['slave_id']]['free_resources']
             for resource_type, value in task['resources'].items():
                 if resource_type in ['cpus', 'disk', 'mem']:
@@ -180,14 +180,19 @@ def assert_quorum_size(state):
 
 
 def assert_extra_slave_data(mesos_state):
-    rows = [('Hostname', 'CPU free', 'RAM free')]
-    for slave in get_extra_mesos_slave_data(mesos_state):
-        rows.append((
-            slave['hostname'],
-            '%.2f' % slave['free_resources']['cpus'],
-            '%.2f' % slave['free_resources']['mem'],
-        ))
-    return ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
+    extra_slave_data = get_extra_mesos_slave_data(mesos_state)
+    if extra_slave_data:
+        rows = [('Hostname', 'CPU free', 'RAM free')]
+        for slave in extra_slave_data:
+            rows.append((
+                slave['hostname'],
+                '%.2f' % slave['free_resources']['cpus'],
+                '%.2f' % slave['free_resources']['mem'],
+            ))
+        output = '\n'.join(('    %s' % row for row in format_table(rows)))[2:]
+    else:
+        output = '  No mesos slaves on this cluster'
+    return (output, True)
 
 
 def get_mesos_status(mesos_state, verbosity):

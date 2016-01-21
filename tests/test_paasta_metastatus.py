@@ -413,6 +413,13 @@ def test_main_no_chronos_config():
         assert excinfo.value.code == 0
 
 
+def test_assert_extra_slave_data_no_slaves():
+    fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
+    expected = 'No mesos slaves on this cluster'
+    actual = paasta_metastatus.assert_extra_slave_data(fake_mesos_state)[0]
+    assert expected == actual.strip()
+
+
 def test_status_for_results():
     assert paasta_metastatus.status_for_results([('message', True), ('message', False)]) == [True, False]
 
