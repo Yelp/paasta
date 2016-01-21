@@ -66,7 +66,7 @@ def get_extra_mesos_slave_data(mesos_state):
     slaves = dict((slave['id'], {
         'free_resources': slave['resources'],
         'hostname': slave['hostname'],
-    }) for slave in mesos_state.get('slaves', []))
+    }) for slave in mesos_state['slaves'])
 
     for framework in mesos_state.get('frameworks', []):
         for task in framework.get('tasks', []):
@@ -189,10 +189,10 @@ def assert_extra_slave_data(mesos_state):
                 '%.2f' % slave['free_resources']['cpus'],
                 '%.2f' % slave['free_resources']['mem'],
             ))
-        output = '\n'.join(('    %s' % row for row in format_table(rows)))[2:]
+        result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     else:
-        output = '  No mesos slaves on this cluster'
-    return (output, True)
+        result = ('  No mesos slaves registered on this cluster!', False)
+    return result
 
 
 def get_mesos_status(mesos_state, verbosity):
