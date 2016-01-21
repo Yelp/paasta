@@ -415,7 +415,7 @@ def test_main_no_chronos_config():
 
 def test_assert_extra_slave_data_no_slaves():
     fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
-    expected = 'No mesos slaves on this cluster'
+    expected = 'No mesos slaves registered on this cluster!'
     actual = paasta_metastatus.assert_extra_slave_data(fake_mesos_state)[0]
     assert expected == actual.strip()
 
