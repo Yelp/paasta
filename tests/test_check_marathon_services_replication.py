@@ -17,6 +17,8 @@ import contextlib
 
 import pysensu_yelp
 
+from datetime import datetime, timedelta
+
 import check_marathon_services_replication
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
@@ -550,7 +552,7 @@ def test_check_service_replication_for_non_smartstack():
             expected_count=100)
 
 
-def test_get_healthy_marathon_instances_for_short_app_id():
+def test_get_healthy_marathon_instances_for_short_app_id_correctly_counts_alive_tasks():
     fake_client = mock.Mock()
     fakes = []
     for i in range(0, 4):
@@ -566,6 +568,29 @@ def test_get_healthy_marathon_instances_for_short_app_id():
         'service.instance',
     )
     assert actual == 2
+
+
+def test_get_healthy_marathon_instances_for_short_app_id_considers_new_tasks_not_healthy_yet():
+    fake_client = mock.Mock()
+    fakes = []
+    one_minute = timedelta(minutes=1)
+    for i in range(0, 4):
+        fake_task = mock.Mock()
+        fake_task.app_id = '/service.instance.foo%s.bar%s' % (i, i)
+
+        # when i == 0, produces a task that has just started (not healthy yet)
+        # otherwise produces a task that was started over a minute ago (healthy)
+        fake_task.started_at = datetime.now() - one_minute * i
+        mock_result = mock.Mock()
+        mock_result.alive = True
+        fake_task.health_check_results = [mock_result]
+        fakes.append(fake_task)
+    fake_client.list_tasks.return_value = fakes
+    actual = check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id(
+        fake_client,
+        'service.instance',
+    )
+    assert actual == 3
 
 
 @mock.patch('check_marathon_services_replication.send_event_if_under_replication')
