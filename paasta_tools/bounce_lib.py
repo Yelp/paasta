@@ -370,4 +370,21 @@ def downthenup_bounce(
         "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
     }
 
+
+@register_bounce_method('down')
+def down_bounce(
+    new_config,
+    new_app_running,
+    happy_new_tasks,
+    old_app_live_tasks,
+):
+    """
+    Stops old apps, doesn't start any new apps.
+    Used for the graceful_app_drain script.
+    """
+    return {
+        "create_app": False,
+        "tasks_to_drain": set(*old_app_live_tasks.values()),
+    }
+
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
