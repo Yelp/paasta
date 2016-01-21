@@ -12,11 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from paasta_tools.utils import SPACER
-from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import list_paasta_services
 from paasta_tools.cli.utils import list_service_instances
+from paasta_tools.cli.utils import list_services
+from paasta_tools.utils import SPACER
 
 
 def add_subparser(subparsers):

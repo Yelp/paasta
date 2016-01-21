@@ -12,35 +12,35 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
-from os import execlp
 import pipes
-from random import randint
 import shlex
 import socket
 import sys
 import time
-
-from docker import Client
-from docker import errors
-import requests
+from os import execlp
+from random import randint
 from urlparse import urlparse
 
+import requests
 import service_configuration_lib
+from docker import Client
+from docker import errors
+
 from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.cli.cmds.check import makefile_responds_to
+from paasta_tools.cli.cmds.cook_image import paasta_cook_image
+from paasta_tools.cli.utils import figure_out_service_name
+from paasta_tools.cli.utils import guess_cluster
+from paasta_tools.cli.utils import guess_instance
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_instances
+from paasta_tools.cli.utils import list_services
 from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.paasta_execute_docker_command import execute_in_container
-from paasta_tools.cli.cmds.cook_image import paasta_cook_image
-from paasta_tools.cli.cmds.check import makefile_responds_to
-from paasta_tools.cli.utils import figure_out_service_name
-from paasta_tools.cli.utils import guess_instance
-from paasta_tools.cli.utils import guess_cluster
-from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.cli.utils import list_instances
-from paasta_tools.cli.utils import list_services
+from paasta_tools.utils import _run
 from paasta_tools.utils import get_docker_host
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
@@ -48,7 +48,6 @@ from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import _run
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError

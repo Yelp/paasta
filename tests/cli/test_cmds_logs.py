@@ -11,14 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
 import json
-import mock
 from multiprocessing import Queue
 from Queue import Empty
 
 import isodate
+import mock
 import pytest
 from pytest import raises
 
@@ -261,7 +260,7 @@ def test_scribe_tail_log_everything():
     clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     queue = Queue()
-    filter_fn = lambda *_: True
+    filter_fn = mock.Mock(return_value=True)
 
     tailer = iter([
         format_log_line(
@@ -326,7 +325,7 @@ def test_scribe_tail_log_nothing():
     clusters = ['fake_cluster1', 'fake_cluster2']
     instance = 'fake_instance'
     queue = Queue()
-    filter_fn = lambda *_: False
+    filter_fn = mock.Mock(return_value=False)
 
     tailer = iter([
         format_log_line(
@@ -382,7 +381,7 @@ def test_scribe_tail_ctrl_c():
     components = ['build', 'deploy']
     clusters = ['fake_cluster1', 'fake_cluster2']
     queue = Queue()
-    filter_fn = lambda *_: True
+    filter_fn = mock.Mock(return_value=True)
 
     with contextlib.nested(
         mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),
@@ -420,7 +419,7 @@ def test_scribe_tail_handles_StreamTailerSetupError():
     components = ['build']
     clusters = ['fake_cluster1']
     queue = Queue()
-    filter_fn = lambda *_: True
+    filter_fn = mock.Mock(return_value=True)
 
     with contextlib.nested(
         mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True),

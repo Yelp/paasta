@@ -12,22 +12,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import contextlib
-import mock
 
 import marathon
+import mock
 from pysensu_yelp import Status
-
 from pytest import raises
-from paasta_tools import marathon_tools, bounce_lib
+
+from paasta_tools import bounce_lib
+from paasta_tools import marathon_tools
+from paasta_tools import setup_marathon_job
 from paasta_tools.bounce_lib import list_bounce_methods
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools import setup_marathon_job
 
 
 class TestSetupMarathonJob:

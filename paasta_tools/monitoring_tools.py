@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Getters for deriving monitoring parameters for mesos-deployed stuff.
 This leaves a place for sane defaults that might change depending
@@ -25,9 +24,8 @@ import json
 import logging
 import os
 
-import service_configuration_lib
 import pysensu_yelp
-
+import service_configuration_lib
 from utils import load_system_paasta_config
 
 

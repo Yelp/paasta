@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
+
 import docker
 import mock
 import pytest
 
-from paasta_tools.paasta_execute_docker_command import get_container_id_for_mesos_id
 from paasta_tools.paasta_execute_docker_command import execute_in_container
+from paasta_tools.paasta_execute_docker_command import get_container_id_for_mesos_id
 from paasta_tools.paasta_execute_docker_command import main
 from paasta_tools.paasta_execute_docker_command import TimeoutException
 

@@ -12,28 +12,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import argparse
 import sys
+from collections import Counter
+from collections import OrderedDict
 
-from collections import Counter, OrderedDict
 from httplib2 import ServerNotFoundError
 
-from paasta_tools import marathon_tools
 from paasta_tools import chronos_tools
+from paasta_tools import marathon_tools
 from paasta_tools.chronos_tools import ChronosNotConfigured
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.marathon_tools import MarathonNotConfigured
-from paasta_tools.mesos_tools import get_mesos_stats
-from paasta_tools.mesos_tools import get_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_quorum
-from paasta_tools.mesos_tools import get_zookeeper_config
+from paasta_tools.mesos_tools import get_mesos_state_from_leader
+from paasta_tools.mesos_tools import get_mesos_stats
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
+from paasta_tools.mesos_tools import get_zookeeper_config
+from paasta_tools.mesos_tools import MasterNotAvailableException
+from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
-from paasta_tools.utils import format_table
-from paasta_tools.mesos_tools import MasterNotAvailableException
 
 
 def parse_args():

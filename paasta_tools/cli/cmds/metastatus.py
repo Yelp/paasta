@@ -12,12 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):

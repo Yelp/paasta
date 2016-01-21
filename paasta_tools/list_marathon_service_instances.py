@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Usage: ./list_marathon_service_instances.py [options]
 
 Enumerates all marathon instances for services in the soa directory that
@@ -31,6 +30,7 @@ import argparse
 import sys
 
 import service_configuration_lib
+
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 

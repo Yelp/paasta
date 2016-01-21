@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 from paasta_tools import chronos_tools
 
 if __name__ == '__main__':

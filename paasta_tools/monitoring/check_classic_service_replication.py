@@ -12,27 +12,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import sys
-import requests
 import logging
+import sys
 
+import pysensu_yelp
+import requests
+from sensu_plugin import SensuPluginCheck
 from service_configuration_lib import read_services_configuration
-from paasta_tools.monitoring.replication_utils import (
-    get_replication_for_services
-)
+
 from paasta_tools.monitoring.check_synapse_replication import (
     check_replication,
 )
 from paasta_tools.monitoring.config_providers import (
     extract_monitoring_info
 )
+from paasta_tools.monitoring.replication_utils import (
+    get_replication_for_services
+)
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_HOST
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
-
-
-from sensu_plugin import SensuPluginCheck
-import pysensu_yelp
 
 
 def read_key(key):

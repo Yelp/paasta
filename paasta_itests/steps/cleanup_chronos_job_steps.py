@@ -11,16 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import json
-from behave import when, then
 
-from paasta_tools.utils import _run
+from behave import then
+from behave import when
+
 from paasta_tools.chronos_tools import compose_job_id
+from paasta_tools.utils import _run
 
 
 @when(('I launch {num_jobs} {state} jobs for the service "{service}"'
-      ' with scheduled chronos instance "{job}"'))
+       ' with scheduled chronos instance "{job}"'))
 def launch_jobs(context, num_jobs, state, service, job):
     client = context.chronos_client
     jobs = [{

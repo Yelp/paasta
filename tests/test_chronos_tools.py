@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
 import copy
 import datetime
@@ -308,7 +307,7 @@ class TestChronosTools:
         expected = 'parsed_time'
         with mock.patch(
             'paasta_tools.chronos_tools.parse_time_variables', autospec=True, return_value=expected
-                ) as mock_parse_time_variables:
+        ) as mock_parse_time_variables:
             fake_chronos_job_config = chronos_tools.ChronosJobConfig(
                 service='fake_service',
                 cluster='fake_cluster',

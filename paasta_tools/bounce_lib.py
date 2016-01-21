@@ -12,26 +12,26 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from contextlib import contextmanager, nested
 import datetime
 import fcntl
 import logging
 import os
 import signal
 import time
-
-from kazoo.client import KazooClient
-from kazoo.exceptions import LockTimeout
-from marathon.models import MarathonApp
+from contextlib import contextmanager
+from contextlib import nested
 
 import marathon_tools
 import mesos_tools
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
-from paasta_tools.monitoring.replication_utils import \
-    get_registered_marathon_tasks
+from kazoo.client import KazooClient
+from kazoo.exceptions import LockTimeout
+from marathon.models import MarathonApp
 from utils import compose_job_id
 from utils import load_system_paasta_config
+
+from paasta_tools.monitoring.replication_utils import \
+    get_registered_marathon_tasks
+from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 
 log = logging.getLogger('__main__')
 logging.getLogger("requests").setLevel(logging.WARNING)

@@ -1,0 +1,23 @@
+-   repo: https://github.com/pre-commit/pre-commit-hooks.git
+    sha: cf550fcab3f12015f8676b8278b30e1a5bc10e70
+    hooks:
+    -   id: trailing-whitespace
+    -   id: end-of-file-fixer
+    -   id: autopep8-wrapper
+        language_version: python2.7
+    -   id: check-docstring-first
+    -   id: check-json
+    -   id: check-yaml
+    -   id: debug-statements
+    -   id: name-tests-test
+        args: [--django]
+        files: ^tests/.*\.py$
+    -   id: requirements-txt-fixer
+    -   id: flake8
+        exclude: ^docs/source/conf.py$
+        language_version: python2.7
+-   repo: https://github.com/asottile/reorder_python_imports.git
+    sha: 3d86483455ab5bd06cc1069fdd5ac57be5463f10
+    hooks:
+    -   id: reorder-python-imports
+        language_version: python2.7

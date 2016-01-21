@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Usage: ./setup_chronos_job.py <service.instance> [options]
 
@@ -41,9 +40,9 @@ Command line options:
 """
 import argparse
 import logging
-import pysensu_yelp
 import sys
 
+import pysensu_yelp
 import service_configuration_lib
 
 from paasta_tools import chronos_tools

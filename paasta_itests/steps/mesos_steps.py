@@ -11,12 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
-import mock
-from behave import when, then
-import mesos.cli.master
 
+import mesos.cli.master
+import mock
+from behave import then
+from behave import when
 from itest_utils import get_service_connection_string
 
 from paasta_tools import check_mesos_resource_utilization

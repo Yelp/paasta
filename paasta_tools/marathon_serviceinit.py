@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import datetime
 import logging
 
@@ -21,17 +20,18 @@ import isodate
 import requests_cache
 
 from paasta_tools import marathon_tools
-from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
+from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
-from paasta_tools.monitoring.replication_utils import match_backends_and_tasks, backend_is_up
+from paasta_tools.monitoring.replication_utils import backend_is_up
+from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.smartstack_tools import get_backends
+from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import format_table
 from paasta_tools.utils import is_under_replicated
-from paasta_tools.utils import _log
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences

@@ -63,5 +63,3 @@ if [ "${TEST_JOB_2_FAILED}" ]; then
 else
     echo "generated test_job_2 matched running job_2: OK"
 fi
-
-

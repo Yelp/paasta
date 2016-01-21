@@ -11,18 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
 from contextlib import nested
 
 import mock
 import pytest
 
-from paasta_tools.monitoring.check_synapse_replication import (
-    check_replication,
-    parse_range,
-    run_synapse_check
-)
+from paasta_tools.monitoring.check_synapse_replication import check_replication
+from paasta_tools.monitoring.check_synapse_replication import parse_range
+from paasta_tools.monitoring.check_synapse_replication import run_synapse_check
 
 
 def test_check_replication():

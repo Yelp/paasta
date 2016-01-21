@@ -11,29 +11,28 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import pipes
 import shlex
 
 import docker
 import mock
-import pipes
 from pytest import raises
 
-from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.cli.cmds.local_run import LostContainerException
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.local_run import docker_pull_image
 from paasta_tools.cli.cmds.local_run import get_container_id
 from paasta_tools.cli.cmds.local_run import get_container_name
 from paasta_tools.cli.cmds.local_run import get_docker_run_cmd
 from paasta_tools.cli.cmds.local_run import get_instance_config
+from paasta_tools.cli.cmds.local_run import LostContainerException
 from paasta_tools.cli.cmds.local_run import paasta_local_run
+from paasta_tools.cli.cmds.local_run import perform_cmd_healthcheck
 from paasta_tools.cli.cmds.local_run import perform_http_healthcheck
 from paasta_tools.cli.cmds.local_run import perform_tcp_healthcheck
-from paasta_tools.cli.cmds.local_run import perform_cmd_healthcheck
-from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
-from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
 from paasta_tools.cli.cmds.local_run import run_docker_container
+from paasta_tools.cli.cmds.local_run import run_healthcheck_on_container
+from paasta_tools.cli.cmds.local_run import simulate_healthcheck_on_service
+from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import TimeoutError

@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-
 """Usage: ./check_chronos_jobs.py [options]
 
 Check the status of chronos jobs. If the last run of the job was a failure, then
@@ -7,14 +6,13 @@ a CRITICAL event to sensu.
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
-
 import argparse
 
-import service_configuration_lib
 import pysensu_yelp
+import service_configuration_lib
 
-from paasta_tools import monitoring_tools
 from paasta_tools import chronos_tools
+from paasta_tools import monitoring_tools
 from paasta_tools import utils
 
 

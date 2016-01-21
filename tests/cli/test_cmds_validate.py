@@ -11,24 +11,23 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import os
+from StringIO import StringIO
 
 import mock
-import os
-
 from mock import patch
 from pytest import raises
-from StringIO import StringIO
 
 from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
 from paasta_tools.cli.cmds.validate import invalid_chronos_instance
+from paasta_tools.cli.cmds.validate import paasta_validate
+from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
+from paasta_tools.cli.cmds.validate import SCHEMA_VALID
+from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 from paasta_tools.cli.cmds.validate import valid_chronos_instance
 from paasta_tools.cli.cmds.validate import validate_chronos
 from paasta_tools.cli.cmds.validate import validate_schema
-from paasta_tools.cli.cmds.validate import paasta_validate
-from paasta_tools.cli.cmds.validate import SCHEMA_VALID
-from paasta_tools.cli.cmds.validate import SCHEMA_INVALID
-from paasta_tools.cli.cmds.validate import UNKNOWN_SERVICE
 
 
 @patch('paasta_tools.cli.cmds.validate.validate_all_schemas')

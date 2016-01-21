@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Usage: ./synapse_srv_namespaces_fact.py
 
 A simple script to enumerate all namespaces as a sorted comma separated
@@ -25,6 +24,7 @@ Example output: mumble.canary:5019,mumble.main:111,zookeeper.hab:4921
 This is nice to use as a facter fact for Synapse stuff!
 """
 import sys
+
 from paasta_tools import marathon_tools
 
 

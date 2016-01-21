@@ -13,28 +13,30 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import glob
-from setuptools import setup, find_packages
+
+from setuptools import find_packages
+from setuptools import setup
 
 
 setup(
-    name           = 'paasta-tools',
+    name='paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version        = '0.16.16',
-    provides       = ["paasta_tools"],
-    author         = 'Kyle Anderson',
-    author_email   = 'kwa@yelp.com',
-    description    = 'Tools for Yelps SOA infrastructure',
-    packages       = find_packages(exclude=("tests*", "scripts*")),
+    version='0.16.16',
+    provides=["paasta_tools"],
+    author='Kyle Anderson',
+    author_email='kwa@yelp.com',
+    description='Tools for Yelps SOA infrastructure',
+    packages=find_packages(exclude=("tests*", "scripts*")),
     include_package_data=True,
-    install_requires = [
+    install_requires=[
         'argcomplete >= 0.8.1',
-        # argparse is pinned to 1.2.1 since it comes in the core python2.7 libs and pip can't seem to override it
+        # argparse is pinned to 1.2.1 since it comes in the core python2.7
+        # libs and pip can't seem to override it
         'argparse == 1.2.1',
         'chronos-python == 0.34.0',
-        # Don't update this unless you have confirmed the client works with the Docker version deployed on PaaSTA servers
+        # Don't update this unless you have confirmed the client works with
+        # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
         'dulwich == 0.10.0',
         'humanize >= 0.5.1',
@@ -55,7 +57,7 @@ setup(
         'tron == 0.6.1.1',
         'yelp_clog >= 2.2.0',
     ],
-    scripts = [
+    scripts=[
         'paasta_tools/am_i_mesos_leader.py',
         'paasta_tools/check_marathon_services_replication.py',
         'paasta_tools/check_mesos_resource_utilization.py',
@@ -81,5 +83,5 @@ setup(
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
     ] + glob.glob('paasta_tools/contrib/*'),
-    package_data = {'': ['cli/fsm/templates/*.tmpl']},
+    package_data={'': ['cli/fsm/templates/*.tmpl']},
 )

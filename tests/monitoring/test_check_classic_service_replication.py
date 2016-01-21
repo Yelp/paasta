@@ -11,21 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+import sys
 from contextlib import nested
 
 import mock
 import pytest
 import requests
-import sys
 
-from paasta_tools.monitoring.check_classic_service_replication\
-    import (
-        report_event,
-        do_replication_check,
-        extract_replication_info,
-        ClassicServiceReplicationCheck
-    )
+from paasta_tools.monitoring.check_classic_service_replication import ClassicServiceReplicationCheck
+from paasta_tools.monitoring.check_classic_service_replication import do_replication_check
+from paasta_tools.monitoring.check_classic_service_replication import extract_replication_info
+from paasta_tools.monitoring.check_classic_service_replication import report_event
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 
 

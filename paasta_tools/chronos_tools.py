@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import datetime
 import json
 import logging
@@ -23,13 +22,13 @@ from time import sleep
 import chronos
 import dateutil
 import isodate
-from tron import command_context
-
 import monitoring_tools
 import service_configuration_lib
+from tron import command_context
+
 from paasta_tools.utils import decompose_job_id as utils_decompose_job_id
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_docker_url
+from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InstanceConfig
@@ -178,10 +177,12 @@ class ChronosJobConfig(InstanceConfig):
         )
 
     def __eq__(self, other):
-        return ((self.service == other.service)
-                and (self.get_job_name() == other.get_job_name())
-                and (self.config_dict == other.config_dict)
-                and (self.branch_dict == other.branch_dict))
+        return (
+            (self.service == other.service) and
+            (self.get_job_name() == other.get_job_name()) and
+            (self.config_dict == other.config_dict) and
+            (self.branch_dict == other.branch_dict)
+        )
 
     def get_service(self):
         return self.service
@@ -614,8 +615,8 @@ def filter_chronos_jobs(jobs, service, instance, include_disabled):
         except InvalidJobNameError:
             continue
         if (
-            (service is None or job_service == service)
-            and (instance is None or job_instance == instance)
+            (service is None or job_service == service) and
+            (instance is None or job_instance == instance)
         ):
             if job['disabled'] and not include_disabled:
                 continue

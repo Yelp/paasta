@@ -12,9 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
+from mock import call
+from mock import Mock
+from mock import patch
 from pytest import raises
-from mock import patch, call, Mock
+
 from paasta_tools.cli.cmds.rollback import paasta_rollback
 from paasta_tools.cli.cmds.rollback import validate_given_instances
 

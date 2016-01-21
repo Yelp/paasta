@@ -12,20 +12,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from service_configuration_lib import read_service_configuration
 
-from paasta_tools.marathon_tools import load_service_namespace_config
-from paasta_tools.marathon_tools import get_all_namespaces_for_service
-from paasta_tools.monitoring_tools import get_runbook
-from paasta_tools.monitoring_tools import get_team
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_pipeline_url
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
+from paasta_tools.marathon_tools import get_all_namespaces_for_service
+from paasta_tools.marathon_tools import load_service_namespace_config
+from paasta_tools.monitoring_tools import get_runbook
+from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaColors
-from service_configuration_lib import read_service_configuration
 
 NO_DESCRIPTION_MESSAGE = (
     "No 'description' entry in service.yaml. Please a one line sentance that describes this service"

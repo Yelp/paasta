@@ -12,19 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import contextlib
 import copy
-import mock
 
+import mock
 from pysensu_yelp import Status
 from pytest import raises
 
-from paasta_tools import setup_chronos_job
 from paasta_tools import chronos_tools
-from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools import setup_chronos_job
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import NoDeploymentsAvailable
 
 
 class TestSetupChronosJob:

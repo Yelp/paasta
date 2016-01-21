@@ -11,15 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import datetime
 import json
 import os
 import re
-import requests
 import socket
 
 import humanize
+import requests
 from kazoo.client import KazooClient
 from mesos.cli.exceptions import SlaveDoesNotExist
 
@@ -51,14 +50,14 @@ def raise_cli_exception(msg):
         raise Exception(msg)
 
 # monkey patch the log.fatal method to raise an exception rather than a sys.exit
-import mesos.cli.log
+import mesos.cli.log  # noqa
 mesos.cli.log.fatal = lambda msg, code = 1: raise_cli_exception(msg)
 
 
 MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = '5051'
-from mesos.cli import master
+from mesos.cli import master  # noqa
 
 
 class MesosMasterConnectionError(Exception):

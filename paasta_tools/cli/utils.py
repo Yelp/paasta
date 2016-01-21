@@ -11,26 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import fnmatch
 import logging
-import pkgutil
 import os
+import pkgutil
 import sys
 from socket import gaierror
 from socket import gethostbyname_ex
 
-from service_configuration_lib import read_services_configuration
 from service_configuration_lib import DEFAULT_SOA_DIR
+from service_configuration_lib import read_services_configuration
 
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
-from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import PaastaColors
 
 
 log = logging.getLogger('__main__')
@@ -517,7 +516,7 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
 
 def run_paasta_metastatus(master, verbose=0):
     if verbose > 0:
-        verbose_flag = " -%s" % 'v'*verbose
+        verbose_flag = " -%s" % 'v' * verbose
         timeout = 120
     else:
         verbose_flag = ''

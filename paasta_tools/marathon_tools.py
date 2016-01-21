@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 This module contains the meat of the logic for most of the scripts
 that interact with marathon. There's config parsers, url composers,
 and a number of other things used by other components in order to
 make the PaaSTA stack work.
 """
+import json
 import logging
 import os
 import pipes
@@ -25,20 +25,19 @@ import re
 import socket
 from time import sleep
 
+import service_configuration_lib
 from marathon import MarathonClient
 from marathon import NotFoundError
-import json
-import service_configuration_lib
 
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
-from paasta_tools.utils import deploy_blacklist_to_constraints
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import deploy_blacklist_to_constraints
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_docker_url
+from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import InstanceConfig
 from paasta_tools.utils import InvalidInstanceConfig
@@ -211,7 +210,7 @@ class MarathonServiceConfig(InstanceConfig):
         if instances == 0:
             return 1
         else:
-            return float(10.0/instances)
+            return float(10.0 / instances)
 
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.

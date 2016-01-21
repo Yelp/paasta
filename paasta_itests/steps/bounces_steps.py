@@ -11,17 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
-import mock
 import time
 
-from behave import given, when, then
+import mock
+from behave import given
+from behave import then
+from behave import when
+
 from paasta_tools import bounce_lib
-from paasta_tools.bounce_lib import get_happy_tasks
 from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
+from paasta_tools.bounce_lib import get_happy_tasks
 
 
 def which_id(context, which):

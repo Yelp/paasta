@@ -11,13 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 from __future__ import print_function
+
 import contextlib
 import datetime
 import errno
 import glob
 import hashlib
+import json
 import logging
 import os
 import pwd
@@ -35,10 +36,8 @@ from subprocess import STDOUT
 import clog
 import dateutil.tz
 import docker
-import json
-import yaml
-
 import service_configuration_lib
+import yaml
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).

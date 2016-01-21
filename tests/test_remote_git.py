@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import mock
 
 from paasta_tools import remote_git
@@ -71,11 +70,15 @@ def test_make_force_push_mutate_refs_func_overwrites_shas():
     assert actual == expected
 
 
+def identity(x):
+    return x
+
+
 @mock.patch('dulwich.client', autospec=True)
 @mock.patch('paasta_tools.remote_git._make_determine_wants_func', autospec=True)
 def test_create_remote_refs_is_safe_by_default(mock_make_determine_wants_func, mock_dulwich_client):
     git_url = 'fake_git_url'
-    ref_mutator = lambda x: x
+    ref_mutator = identity
     fake_git_client = mock.Mock()
     mock_dulwich_client.get_transport_and_path.return_value = fake_git_client, 'fake_path'
     remote_git.create_remote_refs(
@@ -89,7 +92,7 @@ def test_create_remote_refs_is_safe_by_default(mock_make_determine_wants_func, m
 @mock.patch('dulwich.client', autospec=True)
 def test_create_remote_refs_allows_force_and_uses_the_provided_mutator(mock_dulwich_client):
     git_url = 'fake_git_url'
-    ref_mutator = lambda x: x
+    ref_mutator = identity
     fake_git_client = mock.Mock()
     mock_dulwich_client.get_transport_and_path.return_value = fake_git_client, 'fake_path'
     remote_git.create_remote_refs(

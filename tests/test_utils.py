@@ -11,18 +11,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
+import json
 import os
 import shutil
 import stat
 import tempfile
 
-import json
 import mock
+from pytest import raises
 
 from paasta_tools import utils
-from pytest import raises
 
 
 def test_get_git_url_provided_by_serviceyaml():
