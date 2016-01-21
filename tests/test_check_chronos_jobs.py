@@ -7,8 +7,8 @@ from mock import Mock
 from pytest import raises
 
 
-@patch('check_chronos_jobs.chronos_tools.load_chronos_job_config')
-@patch('check_chronos_jobs.monitoring_tools.get_runbook')
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.load_chronos_job_config')
+@patch('paasta_tools.check_chronos_jobs.monitoring_tools.get_runbook')
 def test_compose_monitoring_overrides_for_service(mock_get_runbook, mock_load_chronos_job_config):
     mymock = Mock()
     mymock.get_monitoring.return_value = {}
@@ -31,7 +31,7 @@ def test_compose_check_name_for_job():
     assert check_chronos_jobs.compose_check_name_for_job('myservice', 'myinstance') == expected_check
 
 
-@patch('check_chronos_jobs.monitoring_tools.send_event')
+@patch('paasta_tools.check_chronos_jobs.monitoring_tools.send_event')
 def test_send_event_to_sensu(mock_send_event):
     check_chronos_jobs.send_event_to_sensu(
         service='myservice',
@@ -51,7 +51,7 @@ def test_send_event_to_sensu(mock_send_event):
     )
 
 
-@patch('check_chronos_jobs.chronos_tools.get_status_last_run')
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.get_status_last_run')
 def test_last_run_state_for_jobs(mock_status_last_run):
     mock_status_last_run.side_effect = [
         ('faketimestamp', chronos_tools.LastRunState.Success),
@@ -85,9 +85,9 @@ def test_sensu_event_for_last_run_state_invalid():
         check_chronos_jobs.sensu_event_for_last_run_state(100)
 
 
-@patch('check_chronos_jobs.chronos_tools.lookup_chronos_jobs', autospec=True)
-@patch('check_chronos_jobs.chronos_tools.filter_enabled_jobs', autospec=True)
-@patch('check_chronos_jobs.chronos_tools.get_status_last_run', autospec=True)
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.lookup_chronos_jobs', autospec=True)
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.filter_enabled_jobs', autospec=True)
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.get_status_last_run', autospec=True)
 def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs, mock_lookup_chronos_jobs):
     # iter() is a workaround
     # (http://lists.idyll.org/pipermail/testing-in-python/2013-April/005527.html)

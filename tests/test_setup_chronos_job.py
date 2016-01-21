@@ -20,7 +20,7 @@ import mock
 from pysensu_yelp import Status
 from pytest import raises
 
-import setup_chronos_job
+from paasta_tools import setup_chronos_job
 from paasta_tools import chronos_tools
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import compose_job_id
@@ -72,7 +72,7 @@ class TestSetupChronosJob:
         expected_output = 'it_is_finished'
         fake_complete_job_config = {'foo': 'bar'}
         with contextlib.nested(
-            mock.patch('setup_chronos_job.parse_args',
+            mock.patch('paasta_tools.setup_chronos_job.parse_args',
                        return_value=self.fake_args,
                        autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
@@ -82,11 +82,11 @@ class TestSetupChronosJob:
             mock.patch('paasta_tools.chronos_tools.create_complete_config',
                        return_value=fake_complete_job_config,
                        autospec=True),
-            mock.patch('setup_chronos_job.setup_job',
+            mock.patch('paasta_tools.setup_chronos_job.setup_job',
                        return_value=(expected_status, expected_output),
                        autospec=True),
-            mock.patch('setup_chronos_job.send_event', autospec=True),
-            mock.patch('setup_chronos_job.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.setup_chronos_job.send_event', autospec=True),
+            mock.patch('paasta_tools.setup_chronos_job.load_system_paasta_config', autospec=True),
             mock.patch('sys.exit', autospec=True),
         ) as (
             parse_args_patch,
@@ -121,7 +121,7 @@ class TestSetupChronosJob:
 
     def test_main_no_deployments(self):
         with contextlib.nested(
-            mock.patch('setup_chronos_job.parse_args',
+            mock.patch('paasta_tools.setup_chronos_job.parse_args',
                        return_value=self.fake_args,
                        autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
@@ -132,11 +132,11 @@ class TestSetupChronosJob:
                        return_value={},
                        autospec=True,
                        side_effect=NoDeploymentsAvailable),
-            mock.patch('setup_chronos_job.setup_job',
+            mock.patch('paasta_tools.setup_chronos_job.setup_job',
                        return_value=(0, 'it_is_finished'),
                        autospec=True),
-            mock.patch('setup_chronos_job.load_system_paasta_config', autospec=True),
-            mock.patch('setup_chronos_job.send_event', autospec=True),
+            mock.patch('paasta_tools.setup_chronos_job.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.setup_chronos_job.send_event', autospec=True),
         ) as (
             parse_args_patch,
             load_chronos_config_patch,
@@ -153,7 +153,7 @@ class TestSetupChronosJob:
 
     def test_main_bad_chronos_job_config_notifies_user(self):
         with contextlib.nested(
-            mock.patch('setup_chronos_job.parse_args',
+            mock.patch('paasta_tools.setup_chronos_job.parse_args',
                        return_value=self.fake_args,
                        autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
@@ -163,11 +163,11 @@ class TestSetupChronosJob:
             mock.patch('paasta_tools.chronos_tools.create_complete_config',
                        autospec=True,
                        side_effect=chronos_tools.UnknownChronosJobError('test bad configuration')),
-            mock.patch('setup_chronos_job.setup_job',
+            mock.patch('paasta_tools.setup_chronos_job.setup_job',
                        return_value=(0, 'it_is_finished'),
                        autospec=True),
-            mock.patch('setup_chronos_job.load_system_paasta_config', autospec=True),
-            mock.patch('setup_chronos_job.send_event', autospec=True),
+            mock.patch('paasta_tools.setup_chronos_job.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.setup_chronos_job.send_event', autospec=True),
         ) as (
             parse_args_patch,
             load_chronos_config_patch,
@@ -196,7 +196,7 @@ class TestSetupChronosJob:
     def test_setup_job_new_app_with_no_previous_jobs(self):
         fake_existing_jobs = []
         with contextlib.nested(
-            mock.patch('setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
+            mock.patch('paasta_tools.setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
             mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
                        autospec=True),
             mock.patch('paasta_tools.chronos_tools.sort_jobs',
@@ -243,7 +243,7 @@ class TestSetupChronosJob:
             'disabled': False,
         }
         with contextlib.nested(
-            mock.patch('setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
+            mock.patch('paasta_tools.setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
             mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
                        autospec=True),
             mock.patch('paasta_tools.chronos_tools.sort_jobs',
@@ -287,7 +287,7 @@ class TestSetupChronosJob:
     def test_setup_job_does_nothing_with_only_existing_app(self):
         fake_existing_job = self.fake_config_dict
         with contextlib.nested(
-            mock.patch('setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
+            mock.patch('paasta_tools.setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
             mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
                        autospec=True),
             mock.patch('paasta_tools.chronos_tools.sort_jobs',
@@ -339,7 +339,7 @@ class TestSetupChronosJob:
         with contextlib.nested(
             mock.patch("paasta_tools.monitoring_tools.send_event", autospec=True),
             mock.patch("paasta_tools.chronos_tools.load_chronos_job_config", autospec=True),
-            mock.patch("setup_chronos_job.load_system_paasta_config", autospec=True),
+            mock.patch("paasta_tools.setup_chronos_job.load_system_paasta_config", autospec=True),
         ) as (
             mock_send_event,
             mock_load_chronos_job_config,
@@ -375,7 +375,7 @@ class TestSetupChronosJob:
         fake_jobs_to_delete = [{'name': 'job_to_delete'}]
         fake_job_to_create = {'name': 'job_to_create'}
         with contextlib.nested(
-            mock.patch("setup_chronos_job._log", autospec=True),
+            mock.patch("paasta_tools.setup_chronos_job._log", autospec=True),
             mock.patch("paasta_tools.chronos_tools.disable_job", autospec=True),
             mock.patch("paasta_tools.chronos_tools.delete_job", autospec=True),
             mock.patch("paasta_tools.chronos_tools.create_job", autospec=True),
@@ -419,7 +419,7 @@ class TestSetupChronosJob:
         fake_jobs_to_delete = []
         fake_job_to_create = []
         with contextlib.nested(
-            mock.patch("setup_chronos_job._log", autospec=True),
+            mock.patch("paasta_tools.setup_chronos_job._log", autospec=True),
             mock.patch("paasta_tools.chronos_tools.disable_job", autospec=True),
             mock.patch("paasta_tools.chronos_tools.delete_job", autospec=True),
             mock.patch("paasta_tools.chronos_tools.create_job", autospec=True),

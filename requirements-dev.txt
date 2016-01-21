@@ -1,0 +1,6 @@
+pep8==1.5.7
+flake8==2.5.0
+pytest==2.7.3
+pytest-cov==2.2.0
+mock==1.0.1
+

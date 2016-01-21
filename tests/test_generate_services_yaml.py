@@ -14,7 +14,7 @@
 
 import mock
 
-import generate_services_yaml
+from paasta_tools import generate_services_yaml
 
 
 MOCK_NAMESPACES = [
@@ -35,7 +35,7 @@ def test_generate_configuration():
         }
     }
 
-    with mock.patch('generate_services_yaml.get_all_namespaces',
+    with mock.patch('paasta_tools.generate_services_yaml.get_all_namespaces',
                     return_value=MOCK_NAMESPACES):
         actual = generate_services_yaml.generate_configuration()
 

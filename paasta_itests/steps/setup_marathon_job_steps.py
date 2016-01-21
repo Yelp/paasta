@@ -13,12 +13,10 @@
 # limitations under the License.
 
 import contextlib
-import sys
 
 from behave import when, then
 import mock
 
-sys.path.append('../')
 from paasta_tools import setup_marathon_job
 from paasta_tools import marathon_tools
 

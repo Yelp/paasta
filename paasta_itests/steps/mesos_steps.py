@@ -12,8 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import sys
-
 import contextlib
 import mock
 from behave import when, then
@@ -21,7 +19,6 @@ import mesos.cli.master
 
 from itest_utils import get_service_connection_string
 
-sys.path.append('../')
 from paasta_tools import check_mesos_resource_utilization
 
 

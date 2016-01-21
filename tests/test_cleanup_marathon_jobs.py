@@ -13,12 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import cleanup_marathon_jobs
 import mock
 import contextlib
 
 from pytest import raises
 
+from paasta_tools import cleanup_marathon_jobs
 from paasta_tools import marathon_tools
 
 
@@ -38,8 +38,8 @@ class TestCleanupMarathonJobs:
         soa_dir = 'paasta_maaaachine'
         fake_args = mock.Mock(verbose=False, soa_dir=soa_dir)
         with contextlib.nested(
-            mock.patch('cleanup_marathon_jobs.parse_args', return_value=fake_args),
-            mock.patch('cleanup_marathon_jobs.cleanup_apps')
+            mock.patch('paasta_tools.cleanup_marathon_jobs.parse_args', return_value=fake_args),
+            mock.patch('paasta_tools.cleanup_marathon_jobs.cleanup_apps')
         ) as (
             args_patch,
             cleanup_patch
@@ -55,14 +55,14 @@ class TestCleanupMarathonJobs:
                         mock.Mock(id='not-here.oh.no.weirdo')]
         self.fake_marathon_client.list_apps = mock.Mock(return_value=fake_app_ids)
         with contextlib.nested(
-            mock.patch('cleanup_marathon_jobs.get_services_for_cluster',
+            mock.patch('paasta_tools.cleanup_marathon_jobs.get_services_for_cluster',
                        return_value=expected_apps, autospec=True),
             mock.patch('paasta_tools.marathon_tools.load_marathon_config',
                        autospec=True,
                        return_value=self.fake_marathon_config),
             mock.patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True,
                        return_value=self.fake_marathon_client),
-            mock.patch('cleanup_marathon_jobs.delete_app', autospec=True),
+            mock.patch('paasta_tools.cleanup_marathon_jobs.delete_app', autospec=True),
         ) as (
             get_services_for_cluster_patch,
             config_patch,
@@ -83,14 +83,14 @@ class TestCleanupMarathonJobs:
         fake_app_ids = [mock.Mock(id='non_conforming_app')]
         self.fake_marathon_client.list_apps = mock.Mock(return_value=fake_app_ids)
         with contextlib.nested(
-            mock.patch('cleanup_marathon_jobs.get_services_for_cluster',
+            mock.patch('paasta_tools.cleanup_marathon_jobs.get_services_for_cluster',
                        return_value=expected_apps, autospec=True),
             mock.patch('paasta_tools.marathon_tools.load_marathon_config',
                        autospec=True,
                        return_value=self.fake_marathon_config),
             mock.patch('paasta_tools.marathon_tools.get_marathon_client', autospec=True,
                        return_value=self.fake_marathon_client),
-            mock.patch('cleanup_marathon_jobs.delete_app', autospec=True),
+            mock.patch('paasta_tools.cleanup_marathon_jobs.delete_app', autospec=True),
         ) as (
             get_services_for_cluster_patch,
             config_patch,
@@ -104,10 +104,10 @@ class TestCleanupMarathonJobs:
         app_id = 'example--service.main.git93340779.configddb38a65'
         client = self.fake_marathon_client
         with contextlib.nested(
-            mock.patch('cleanup_marathon_jobs.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.cleanup_marathon_jobs.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
             mock.patch('paasta_tools.bounce_lib.delete_marathon_app', autospec=True),
-            mock.patch('cleanup_marathon_jobs._log', autospec=True),
+            mock.patch('paasta_tools.cleanup_marathon_jobs._log', autospec=True),
         ) as (
             mock_load_system_paasta_config,
             mock_bounce_lock_zookeeper,
@@ -136,10 +136,10 @@ class TestCleanupMarathonJobs:
         client = self.fake_marathon_client
 
         with contextlib.nested(
-            mock.patch('cleanup_marathon_jobs.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.cleanup_marathon_jobs.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
             mock.patch('paasta_tools.bounce_lib.delete_marathon_app', side_effect=ValueError('foo')),
-            mock.patch('cleanup_marathon_jobs._log', autospec=True),
+            mock.patch('paasta_tools.cleanup_marathon_jobs._log', autospec=True),
         ) as (
             mock_load_system_paasta_config,
             mock_bounce_lock_zookeeper,

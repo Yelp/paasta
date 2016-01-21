@@ -17,7 +17,7 @@
 import contextlib
 import mock
 
-import chronos_serviceinit
+from paasta_tools import chronos_serviceinit
 from paasta_tools.utils import PaastaColors
 
 
@@ -29,7 +29,7 @@ def test_start_chronos_job():
     old_schedule = 'R/2015-03-25T19:36:35Z/PT5M'
     job_config = {'beep': 'boop', 'disabled': False, 'schedule': old_schedule}
     with contextlib.nested(
-        mock.patch('chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
+        mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
     ) as (
         mock_client,
     ):
@@ -52,7 +52,7 @@ def test_start_chronos_job_does_not_run_disabled_job():
     old_schedule = 'R/2015-03-25T19:36:35Z/PT5M'
     job_config = {'beep': 'boop', 'disabled': True, 'schedule': old_schedule}
     with contextlib.nested(
-        mock.patch('chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
+        mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
     ) as (
         mock_client,
     ):
@@ -75,7 +75,7 @@ def test_stop_chronos_job():
                      {'name': 'job_v2', 'disabled': False},
                      {'name': 'job_v3', 'disabled': True}]
     with contextlib.nested(
-        mock.patch('chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
+        mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
     ) as (
         mock_client,
     ):
@@ -248,7 +248,7 @@ def test_format_chronos_job_mesos_verbose():
     running_tasks = ['slay the nemean lion']
     verbose = True
     with mock.patch(
-        'chronos_serviceinit.status_mesos_tasks_verbose',
+        'paasta_tools.chronos_serviceinit.status_mesos_tasks_verbose',
         autospec=True,
         return_value='status_mesos_tasks_verbose output',
     ) as mock_status_mesos_tasks_verbose:
@@ -264,12 +264,12 @@ def test_status_chronos_jobs_is_deployed():
     verbose = False
     with contextlib.nested(
         mock.patch(
-            'chronos_serviceinit.format_chronos_job_status',
+            'paasta_tools.chronos_serviceinit.format_chronos_job_status',
             autospec=True,
             return_value='job_status_output',
         ),
         mock.patch(
-            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
             autospec=True,
             return_value=[],
         ),
@@ -289,12 +289,12 @@ def test_status_chronos_jobs_is_not_deployed():
     verbose = False
     with contextlib.nested(
         mock.patch(
-            'chronos_serviceinit.format_chronos_job_status',
+            'paasta_tools.chronos_serviceinit.format_chronos_job_status',
             autospec=True,
             return_value='job_status_output',
         ),
         mock.patch(
-            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
             autospec=True,
             return_value=[],
         ),
@@ -314,12 +314,12 @@ def test_status_chronos_jobs_get_desired_state_human():
     verbose = False
     with contextlib.nested(
         mock.patch(
-            'chronos_serviceinit.format_chronos_job_status',
+            'paasta_tools.chronos_serviceinit.format_chronos_job_status',
             autospec=True,
             return_value='job_status_output',
         ),
         mock.patch(
-            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
             autospec=True,
             return_value=[],
         ),
@@ -343,12 +343,12 @@ def test_status_chronos_jobs_multiple_jobs():
     verbose = False
     with contextlib.nested(
         mock.patch(
-            'chronos_serviceinit.format_chronos_job_status',
+            'paasta_tools.chronos_serviceinit.format_chronos_job_status',
             autospec=True,
             return_value='job_status_output',
         ),
         mock.patch(
-            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
             autospec=True,
             return_value=[],
         ),
@@ -368,12 +368,12 @@ def test_status_chronos_jobs_get_running_tasks():
     verbose = False
     with contextlib.nested(
         mock.patch(
-            'chronos_serviceinit.format_chronos_job_status',
+            'paasta_tools.chronos_serviceinit.format_chronos_job_status',
             autospec=True,
             return_value='job_status_output',
         ),
         mock.patch(
-            'chronos_serviceinit.get_running_tasks_from_active_frameworks',
+            'paasta_tools.chronos_serviceinit.get_running_tasks_from_active_frameworks',
             autospec=True,
             return_value=[],
         ),

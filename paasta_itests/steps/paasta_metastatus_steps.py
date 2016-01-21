@@ -13,11 +13,9 @@
 # limitations under the License.
 
 import os
-import sys
 
 from behave import when, then
 
-sys.path.append('../')
 from paasta_tools.utils import _run
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools import marathon_tools
