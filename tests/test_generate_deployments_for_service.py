@@ -41,11 +41,11 @@ def test_get_deploy_group_mappings():
     ]
 
     fake_remote_refs = {
-        'refs/heads/try_me': '123456',
+        'refs/heads/paasta-try_me': '123456',
         'refs/tags/paasta-clusterB.main-123-stop': '123456',
-        'refs/heads/okay': 'ijowarg',
-        'refs/heads/no_thanks': '789009',
-        'refs/heads/nah': 'j8yiomwer',
+        'refs/heads/paasta-okay': 'ijowarg',
+        'refs/heads/paasta-no_thanks': '789009',
+        'refs/heads/paasta-nah': 'j8yiomwer',
     }
 
     fake_old_mappings = ['']

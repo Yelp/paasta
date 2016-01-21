@@ -235,7 +235,7 @@ def main():
             old_mappings = get_deploy_group_mappings_from_deployments_dict(old_deployments_dict)
     except (IOError, ValueError):
         old_mappings = {}
-    mappings = get_branch_mappings(
+    mappings = get_deploy_group_mappings(
         soa_dir=soa_dir,
         service=service,
         old_mappings=old_mappings,

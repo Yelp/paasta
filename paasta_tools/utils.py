@@ -84,7 +84,7 @@ class InstanceConfig(dict):
         return self.service
 
     def get_branch(self):
-        return 'paasta-%s' % SPACER.join((self.get_cluster(), self.get_instance()))
+        return SPACER.join((self.get_cluster(), self.get_instance()))
 
     def get_deploy_group(self):
         return self.config_dict.get('deploy_group', self.get_branch())
@@ -815,7 +815,7 @@ def get_default_cluster_for_service(service):
 def get_soa_cluster_deploy_files(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     if service is None:
         service = '*'
-    service_path = os.path.join(DEFAULT_SOA_DIR, service)
+    service_path = os.path.join(soa_dir, service)
 
     if instance_type == 'marathon' or instance_type == 'chronos':
         instance_types = instance_type
