@@ -112,11 +112,11 @@ def build_service_job_mapping(client, configured_jobs):
     return service_job_mapping
 
 
-def message_for_status(status, service, instance):
+def message_for_status(status, service, instance, full_job_id):
     if status not in (pysensu_yelp.Status.CRITICAL, pysensu_yelp.Status.OK, pysensu_yelp.Status.UNKNOWN):
         raise ValueError('unknown sensu status: %s' % status)
     if status == pysensu_yelp.Status.CRITICAL:
-        return 'Last run of job %s%s%s Failed' % (service, utils.SPACER, instance)
+        return 'Last run of job %s%s%s Failed - job id %s' % (service, utils.SPACER, instance, full_job_id)
     elif status == pysensu_yelp.Status.UNKNOWN:
         return 'Last run of job %s%s%s Unknown' % (service, utils.SPACER, instance)
     else:
@@ -137,9 +137,10 @@ def sensu_message_status_for_jobs(service, instance, job_state_pairs):
             "which means it may not be deployed yet" % (service, utils.SPACER, instance)
         )
     else:
+        full_job_id = job_state_pairs[0][0].get('name', '[Couldn\'t fetch job name]')
         state = job_state_pairs[0][1]
         sensu_status = sensu_event_for_last_run_state(state)
-        output = message_for_status(sensu_status, service, instance)
+        output = message_for_status(sensu_status, service, instance, full_job_id)
     return output, sensu_status
 
 

@@ -118,17 +118,17 @@ def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs
 
 
 def test_message_for_status_fail():
-    assert check_chronos_jobs.message_for_status(pysensu_yelp.Status.CRITICAL, 'service', 'instance') == \
-        'Last run of job service%sinstance Failed' % utils.SPACER
+    assert check_chronos_jobs.message_for_status(pysensu_yelp.Status.CRITICAL, 'service', 'instance', 'full_job_id') == \
+        'Last run of job service%sinstance Failed - job id full_job_id' % utils.SPACER
 
 
 def test_message_for_status_success():
-    assert check_chronos_jobs.message_for_status(pysensu_yelp.Status.OK, 'service', 'instance') == \
+    assert check_chronos_jobs.message_for_status(pysensu_yelp.Status.OK, 'service', 'instance', 'full_job_id') == \
         'Last run of job service%sinstance Succeded' % utils.SPACER
 
 
 def test_message_for_status_unknown():
-    assert check_chronos_jobs.message_for_status(pysensu_yelp.Status.UNKNOWN, 'service', 'instance') == \
+    assert check_chronos_jobs.message_for_status(pysensu_yelp.Status.UNKNOWN, 'service', 'instance', 'full_job_id') == \
         'Last run of job service%sinstance Unknown' % utils.SPACER
 
 
@@ -152,9 +152,10 @@ def test_sensu_message_status_ok():
 
 
 def test_sensu_message_status_fail():
-    fake_job_state_pairs = [({}, chronos_tools.LastRunState.Fail)]
+    fake_job_id = 'full_job_id'
+    fake_job_state_pairs = [({'name': fake_job_id}, chronos_tools.LastRunState.Fail)]
     output, status = check_chronos_jobs.sensu_message_status_for_jobs('myservice', 'myinstance', fake_job_state_pairs)
-    expected_output = "Last run of job myservice.myinstance Failed"
+    expected_output = "Last run of job myservice.myinstance Failed - job id %s" % fake_job_id
     assert output == expected_output
     assert status == pysensu_yelp.Status.CRITICAL
 
