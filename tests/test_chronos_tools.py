@@ -1162,6 +1162,12 @@ class TestChronosTools:
         chronos_tools.create_job(job=self.fake_config_dict, client=fake_client)
         fake_client.add.assert_called_once_with(self.fake_config_dict)
 
+    def test_update_job(self):
+        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
+        fake_client = fake_client_class(servers=[])
+        chronos_tools.update_job(job=self.fake_config_dict, client=fake_client)
+        fake_client.update.assert_called_once_with(self.fake_config_dict)
+
     def test_check_format_job_short(self):
         assert chronos_tools.check_parent_format("foo") is False
 
