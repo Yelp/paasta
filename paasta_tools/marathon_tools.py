@@ -151,10 +151,11 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
         branch_dict = deployments_json.get_branch_dict(service, branch)
 
     return MarathonServiceConfig(
-        service,
-        instance,
-        general_config,
-        branch_dict,
+        service=service,
+        cluster=cluster,
+        instance=instance,
+        config_dict=general_config,
+        branch_dict=branch_dict,
     )
 
 
@@ -164,16 +165,19 @@ class InvalidMarathonConfig(Exception):
 
 class MarathonServiceConfig(InstanceConfig):
 
-    def __init__(self, service, instance, config_dict, branch_dict):
-        super(MarathonServiceConfig, self).__init__(config_dict, branch_dict)
-        self.service = service
-        self.instance = instance
-        self.config_dict = config_dict
-        self.branch_dict = branch_dict
+    def __init__(self, service, cluster, instance, config_dict, branch_dict):
+        super(MarathonServiceConfig, self).__init__(
+            cluster=cluster,
+            instance=instance,
+            service=service,
+            config_dict=config_dict,
+            branch_dict=branch_dict,
+        )
 
     def __repr__(self):
-        return "MarathonServiceConfig(%r, %r, %r, %r)" % (
+        return "MarathonServiceConfig(%r, %r, %r, %r, %r)" % (
             self.service,
+            self.cluster,
             self.instance,
             self.config_dict,
             self.branch_dict

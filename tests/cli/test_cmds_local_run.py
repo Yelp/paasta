@@ -822,9 +822,15 @@ def test_simulate_healthcheck_on_service_disabled(mock_sleep):
 @mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
 def test_simulate_healthcheck_on_service_enabled_success(mock_run_healthcheck_on_container, mock_sleep):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
-        'healthcheck_grace_period_seconds': 0,
-    }, {})
+    mock_service_manifest = MarathonServiceConfig(
+        service='fake_name',
+        cluster='fake_cluster',
+        instance='fake_instance',
+        config_dict={
+            'healthcheck_grace_period_seconds': 0,
+        },
+        branch_dict={},
+    )
     fake_container_id = 'fake_container_id'
     fake_mode = 'http'
     fake_url = 'http://fake_host/fake_status_path'
@@ -837,9 +843,15 @@ def test_simulate_healthcheck_on_service_enabled_success(mock_run_healthcheck_on
 @mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
 def test_simulate_healthcheck_on_service_enabled_failure(mock_run_healthcheck_on_container, mock_sleep):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
-        'healthcheck_grace_period_seconds': 0,
-    }, {})
+    mock_service_manifest = MarathonServiceConfig(
+        service='fake_name',
+        cluster='fake_cluster',
+        instance='fake_instance',
+        config_dict={
+            'healthcheck_grace_period_seconds': 0,
+        },
+        branch_dict={},
+    )
     mock_service_manifest
 
     fake_container_id = 'fake_container_id'
@@ -855,9 +867,15 @@ def test_simulate_healthcheck_on_service_enabled_failure(mock_run_healthcheck_on
             autospec=True, side_effect=[False, False, False, False, True])
 def test_simulate_healthcheck_on_service_enabled_partial_failure(mock_run_healthcheck_on_container, mock_sleep):
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
-        'healthcheck_grace_period_seconds': 0,
-    }, {})
+    mock_service_manifest = MarathonServiceConfig(
+        service='fake_name',
+        cluster='fake_cluster',
+        instance='fake_instance',
+        config_dict={
+            'healthcheck_grace_period_seconds': 0,
+        },
+        branch_dict={},
+    )
 
     fake_container_id = 'fake_container_id'
     fake_mode = 'http'
@@ -881,9 +899,15 @@ def test_simulate_healthcheck_on_service_enabled_during_grace_period(
     # prevent grace period from ending
     mock_time.side_effect = [0, 0]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
-        'healthcheck_grace_period_seconds': 1,
-    }, {})
+    mock_service_manifest = MarathonServiceConfig(
+        service='fake_name',
+        cluster='fake_cluster',
+        instance='fake_instance',
+        config_dict={
+            'healthcheck_grace_period_seconds': 1,
+        },
+        branch_dict={},
+    )
 
     fake_container_id = 'fake_container_id'
     fake_mode = 'http'
@@ -907,10 +931,16 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     # change time to make sure we are sufficiently past grace period
     mock_time.side_effect = [0, 2]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_service_manifest = MarathonServiceConfig('fake_name', 'fake_instance', {
-        # only one healthcheck will be performed silently
-        'healthcheck_grace_period_seconds': 1,
-    }, {})
+    mock_service_manifest = MarathonServiceConfig(
+        service='fake_name',
+        cluster='fake_cluster',
+        instance='fake_instance',
+        config_dict={
+            # only one healthcheck will be performed silently
+            'healthcheck_grace_period_seconds': 1,
+        },
+        branch_dict={},
+    )
 
     fake_container_id = 'fake_container_id'
     fake_mode = 'http'

@@ -28,19 +28,20 @@ from utils import SystemPaastaConfig
 class TestMarathonTools:
 
     fake_marathon_app_config = marathon_tools.MarathonServiceConfig(
-        'servicename',
-        'instancename',
-        {
+        service='servicename',
+        cluster='clustername',
+        instance='instancename',
+        config_dict={
             'instances': 3,
             'cpus': 1,
             'mem': 100,
             'nerve_ns': 'fake_nerve_ns',
         },
-        {
+        branch_dict={
             'docker_image': 'test_docker:1.0',
             'desired_state': 'start',
             'force_bounce': None,
-        }
+        },
     )
     fake_srv_config = {
         'data': {},
@@ -131,13 +132,14 @@ class TestMarathonTools:
         config_copy = self.fake_marathon_app_config.config_dict.copy()
 
         expected = marathon_tools.MarathonServiceConfig(
-            fake_name,
-            fake_instance,
-            dict(
+            service=fake_name,
+            cluster='',
+            instance=fake_instance,
+            config_dict=dict(
                 self.fake_srv_config.items() +
                 self.fake_marathon_app_config.config_dict.items()
             ),
-            {},
+            branch_dict={},
         )
 
         with contextlib.nested(
@@ -208,13 +210,14 @@ class TestMarathonTools:
             load_deployments_json_patch,
         ):
             expected = marathon_tools.MarathonServiceConfig(
-                fake_name,
-                fake_instance,
-                dict(
+                service=fake_name,
+                cluster='',
+                instance=fake_instance,
+                config_dict=dict(
                     self.fake_srv_config.items() +
                     self.fake_marathon_app_config.config_dict.items()
                 ),
-                fake_branch_dict,
+                branch_dict=fake_branch_dict,
             )
             actual = marathon_tools.load_marathon_service_config(
                 fake_name,
@@ -823,9 +826,10 @@ class TestMarathonTools:
             'accepted_resource_roles': ['ads'],
         }
         config = marathon_tools.MarathonServiceConfig(
-            'can_you_dig_it',
-            'yes_i_can',
-            {
+            service='can_you_dig_it',
+            cluster='',
+            instance='yes_i_can',
+            config_dict={
                 'env': fake_env,
                 'mem': fake_mem,
                 'cpus': fake_cpus,
@@ -838,7 +842,7 @@ class TestMarathonTools:
                 'healthcheck_max_consecutive_failures': 3,
                 'accepted_resource_roles': ['ads'],
             },
-            {'desired_state': 'start'}
+            branch_dict={'desired_state': 'start'}
         )
 
         with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
@@ -852,102 +856,184 @@ class TestMarathonTools:
 
     def test_instances_is_zero_when_desired_state_is_stop(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'fake_name',
-            'fake_instance',
-            {'instances': 10},
-            {'desired_state': 'stop'},
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={'instances': 10},
+            branch_dict={'desired_state': 'stop'},
         )
         assert fake_conf.get_instances() == 0
 
     def test_get_bounce_method_in_config(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'bounce_method': 'aaargh'}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={'bounce_method': 'aaargh'},
+            branch_dict={})
         assert fake_conf.get_bounce_method() == 'aaargh'
 
     def test_get_bounce_method_default(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_bounce_method() == 'crossover'
 
     def test_get_bounce_health_params_in_config(self):
         fake_param = 'fake_param'
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'fake_name', 'fake_instance', {'bounce_health_params': fake_param}, {})
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'bounce_health_params': fake_param},
+            branch_dict={},
+        )
         assert fake_conf.get_bounce_health_params(mock.Mock()) == fake_param
 
     def test_get_bounce_health_params_default_when_not_in_smartstack(self):
         fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=False))
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_bounce_health_params(fake_service_namespace_config) == {}
 
     def test_get_bounce_health_params_default_when_in_smartstack(self):
         fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=True))
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_bounce_health_params(fake_service_namespace_config) == {'check_haproxy': True}
 
     def test_get_drain_method_in_config(self):
         fake_param = 'fake_param'
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'fake_name', 'fake_instance', {'drain_method': fake_param}, {})
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'drain_method': fake_param},
+            branch_dict={},
+        )
         assert fake_conf.get_drain_method(mock.Mock()) == fake_param
 
     def test_get_drain_method_default_when_not_in_smartstack(self):
         fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=False))
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_drain_method(fake_service_namespace_config) == 'noop'
 
     def test_get_drain_method_default_when_in_smartstack(self):
         fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=True))
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_drain_method(fake_service_namespace_config) == 'hacheck'
 
     def test_get_drain_method_params_in_config(self):
         fake_param = 'fake_param'
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'fake_name', 'fake_instance', {'drain_method_params': fake_param}, {})
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'drain_method_params': fake_param},
+            branch_dict={},
+        )
         assert fake_conf.get_drain_method_params(mock.Mock()) == fake_param
 
     def test_get_drain_method_params_default_when_not_in_smartstack(self):
         fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=False))
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_drain_method_params(fake_service_namespace_config) == {}
 
     def test_get_drain_method_params_default_when_in_smartstack(self):
         fake_service_namespace_config = mock.Mock(is_in_smartstack=mock.Mock(return_value=True))
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_drain_method_params(fake_service_namespace_config) == {'delay': 30}
 
     def test_get_instances_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'fake_name',
-            'fake_instance',
-            {'instances': -10},
-            {'desired_state': 'start'},
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'instances': -10},
+            branch_dict={'desired_state': 'start'},
         )
         assert fake_conf.get_instances() == -10
 
     def test_get_instances_default(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_instances() == 1
 
     def test_get_instances_respects_false(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'fake_name',
-            'fake_instance',
-            {'instances': False},
-            {'desired_state': 'start'},
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'instances': False},
+            branch_dict={'desired_state': 'start'},
         )
         assert fake_conf.get_instances() == 0
 
     def test_get_constraints_in_config(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'constraints': 'so_many_walls'},
-                                                         {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'constraints': 'so_many_walls'},
+            branch_dict={},
+        )
         with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
             assert fake_conf.get_constraints(fake_service_namespace_config) == 'so_many_walls'
             assert get_slaves_patch.call_count == 0
 
     def test_get_constraints_default(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
             assert fake_conf.get_constraints(fake_service_namespace_config) == [["region", "GROUP_BY", "1"]]
@@ -958,7 +1044,13 @@ class TestMarathonTools:
             'healthcheck_uri': '/status',
             'discover': 'habitat',
         })
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
         with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}, 'fake_other_region': {}}
             assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY", "2"]]
@@ -967,8 +1059,13 @@ class TestMarathonTools:
     def test_get_constraints_respects_deploy_blacklist(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_deploy_blacklist = [["region", "fake_blacklisted_region"]]
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance',
-                                                         {'deploy_blacklist': fake_deploy_blacklist}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'deploy_blacklist': fake_deploy_blacklist},
+            branch_dict={},
+        )
         expected_constraints = [["region", "GROUP_BY", "1"], ["region", "UNLIKE", "fake_blacklisted_region"]]
         with mock.patch('marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
@@ -976,7 +1073,13 @@ class TestMarathonTools:
             get_slaves_patch.assert_called_once_with(attribute='region', blacklist=fake_deploy_blacklist)
 
     def test_instance_config_getters_in_config(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('fake_name', 'fake_instance', {'monitoring': 'test'}, {})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'monitoring': 'test'},
+            branch_dict={},
+        )
         assert fake_conf.get_monitoring() == 'test'
 
     def test_get_marathon_client(self):
@@ -1076,33 +1179,36 @@ class TestMarathonTools:
         }, '/fake/dir/')
 
         fake_service_config_1 = marathon_tools.MarathonServiceConfig(
-            fake_name,
-            fake_instance,
-            self.fake_marathon_app_config.config_dict,
-            {
+            service=fake_name,
+            cluster='fake_cluster',
+            instance=fake_instance,
+            config_dict=self.fake_marathon_app_config.config_dict,
+            branch_dict={
                 'desired_state': 'start',
                 'force_bounce': '88888',
-            }
+            },
         )
 
         fake_service_config_2 = marathon_tools.MarathonServiceConfig(
-            fake_name,
-            fake_instance,
-            self.fake_marathon_app_config.config_dict,
-            {
+            service=fake_name,
+            cluster='fake_cluster',
+            instance=fake_instance,
+            config_dict=self.fake_marathon_app_config.config_dict,
+            branch_dict={
                 'desired_state': 'start',
                 'force_bounce': '99999',
-            }
+            },
         )
 
         fake_service_config_3 = marathon_tools.MarathonServiceConfig(
-            fake_name,
-            fake_instance,
-            self.fake_marathon_app_config.config_dict,
-            {
+            service=fake_name,
+            cluster='fake_cluster',
+            instance=fake_instance,
+            config_dict=self.fake_marathon_app_config.config_dict,
+            branch_dict={
                 'desired_state': 'stop',
                 'force_bounce': '99999',
-            }
+            },
         )
 
         with contextlib.nested(
@@ -1151,6 +1257,7 @@ class TestMarathonTools:
         fake_instances = [(service, 'blue'), (service, 'green')]
         fake_srv_config = marathon_tools.MarathonServiceConfig(
             service=service,
+            cluster='fake_cluster',
             instance='blue',
             config_dict={'nerve_ns': 'rojo', 'instances': 11},
             branch_dict={},
@@ -1160,7 +1267,13 @@ class TestMarathonTools:
             if inst == 'blue':
                 return fake_srv_config
             else:
-                return marathon_tools.MarathonServiceConfig(service, 'green', {'nerve_ns': 'amarillo'}, {})
+                return marathon_tools.MarathonServiceConfig(
+                    service=service,
+                    cluster='fake_cluster',
+                    instance='green',
+                    config_dict={'nerve_ns': 'amarillo'},
+                    branch_dict={},
+                )
 
         with contextlib.nested(
             mock.patch('marathon_tools.get_service_instance_list',
@@ -1208,20 +1321,22 @@ class TestMarathonTools:
 
     def test_get_healthcheck_cmd_happy(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'fake_name',
-            'fake_instance',
-            {'healthcheck_cmd': 'test_cmd'},
-            {},
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'healthcheck_cmd': 'test_cmd'},
+            branch_dict={},
         )
         actual = fake_conf.get_healthcheck_cmd()
         assert actual == 'test_cmd'
 
     def test_get_healthcheck_cmd_raises_when_unset(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'fake_name',
-            'fake_instance',
-            {},
-            {},
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
         )
         with raises(marathon_tools.InvalidInstanceConfig) as exc:
             fake_conf.get_healthcheck_cmd()
@@ -1234,7 +1349,13 @@ class TestMarathonTools:
         fake_random_port = 666
 
         fake_path = '/fake_path'
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {}, {})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service=fake_service,
+            cluster='fake_cluster',
+            instance=fake_namespace,
+            config_dict={},
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
             'mode': 'http',
             'healthcheck_uri': fake_path,
@@ -1263,7 +1384,13 @@ class TestMarathonTools:
         fake_hostname = 'fake_hostname'
         fake_random_port = 666
 
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {}, {})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service=fake_service,
+            cluster='fake_cluster',
+            instance=fake_namespace,
+            config_dict={},
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
             'mode': 'tcp',
         })
@@ -1291,10 +1418,16 @@ class TestMarathonTools:
         fake_hostname = 'fake_hostname'
         fake_random_port = 666
         fake_cmd = '/bin/fake_command'
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
-            'healthcheck_mode': 'cmd',
-            'healthcheck_cmd': fake_cmd
-        }, {})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service=fake_service,
+            cluster='fake_cluster',
+            instance=fake_namespace,
+            config_dict={
+                'healthcheck_mode': 'cmd',
+                'healthcheck_cmd': fake_cmd
+            },
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
         with contextlib.nested(
             mock.patch('marathon_tools.load_marathon_service_config',
@@ -1319,9 +1452,15 @@ class TestMarathonTools:
         fake_namespace = 'fake_namespace'
         fake_hostname = 'fake_hostname'
         fake_random_port = 666
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
-            'healthcheck_mode': None,
-        }, {})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service=fake_service,
+            cluster='fake_cluster',
+            instance=fake_namespace,
+            config_dict={
+                'healthcheck_mode': None,
+            },
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
         with contextlib.nested(
             mock.patch('marathon_tools.load_marathon_service_config',
@@ -1347,9 +1486,15 @@ class TestMarathonTools:
         fake_hostname = 'fake_hostname'
         fake_random_port = 666
         fake_soadir = '/fake/soadir'
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(fake_service, fake_namespace, {
-            'healthcheck_mode': None,
-        }, {})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service=fake_service,
+            cluster='fake_cluster',
+            instance=fake_namespace,
+            config_dict={
+                'healthcheck_mode': None,
+            },
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
         with contextlib.nested(
             mock.patch('marathon_tools.load_marathon_service_config',
@@ -1374,42 +1519,73 @@ class TestMarathonTools:
 class TestMarathonServiceConfig(object):
 
     def test_repr(self):
-        actual = repr(marathon_tools.MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'}))
-        expected = """MarathonServiceConfig('foo', 'bar', {'baz': 'baz'}, {'bubble': 'gum'})"""
+        actual = repr(marathon_tools.MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'}))
+        expected = """MarathonServiceConfig('foo', 'bar', '', {'baz': 'baz'}, {'bubble': 'gum'})"""
         assert actual == expected
 
     def test_get_healthcheck_mode_default(self):
         namespace_config = marathon_tools.ServiceNamespaceConfig({})
-        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert marathon_config.get_healthcheck_mode(namespace_config) is None
 
     def test_get_healthcheck_mode_default_from_namespace_config(self):
         namespace_config = marathon_tools.ServiceNamespaceConfig({'proxy_port': 1234})
-        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={},
+        )
         assert marathon_config.get_healthcheck_mode(namespace_config) == 'http'
 
     def test_get_healthcheck_mode_valid(self):
         namespace_config = marathon_tools.ServiceNamespaceConfig({})
-        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'tcp'}, {})
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'healthcheck_mode': 'tcp'},
+            branch_dict={},
+        )
         assert marathon_config.get_healthcheck_mode(namespace_config) == 'tcp'
 
     def test_get_healthcheck_mode_invalid(self):
         namespace_config = marathon_tools.ServiceNamespaceConfig({})
-        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'udp'}, {})
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'healthcheck_mode': 'udp'},
+            branch_dict={},
+        )
         with raises(marathon_tools.InvalidMarathonHealthcheckMode):
             marathon_config.get_healthcheck_mode(namespace_config)
 
     def test_get_healthcheck_mode_explicit_none(self):
         namespace_config = marathon_tools.ServiceNamespaceConfig({})
-        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': None}, {})
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'healthcheck_mode': None},
+            branch_dict={},
+        )
         assert marathon_config.get_healthcheck_mode(namespace_config) is None
 
     def test_get_healthchecks_http_overrides(self):
         fake_path = '/mycoolstatus'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-            "service",
-            "instance",
-            {
+            service='service',
+            instance='instance',
+            cluster='cluster',
+            config_dict={
                 "healthcheck_mode": "http",  # Actually the default here, but I want to be specific.
                 "healthcheck_uri": fake_path,
                 "healthcheck_grace_period_seconds": 70,
@@ -1417,7 +1593,7 @@ class TestMarathonServiceConfig(object):
                 "healthcheck_timeout_seconds": 13,
                 "healthcheck_max_consecutive_failures": 7,
             },
-            {},
+            branch_dict={},
         )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
             'mode': 'http',
@@ -1440,7 +1616,13 @@ class TestMarathonServiceConfig(object):
         assert actual == expected
 
     def test_get_healthchecks_http_defaults(self):
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'http'})
         expected = [
             {
@@ -1457,7 +1639,13 @@ class TestMarathonServiceConfig(object):
         assert actual == expected
 
     def test_get_healthchecks_tcp(self):
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'mode': 'tcp'})
         expected = [
             {
@@ -1475,7 +1663,12 @@ class TestMarathonServiceConfig(object):
     def test_get_healthchecks_cmd(self):
         fake_command = '/fake_cmd'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command},
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         expected_cmd = "paasta_execute_docker_command --mesos-id \"$MESOS_TASK_ID\" --cmd /fake_cmd --timeout '10'"
         expected = [
@@ -1494,7 +1687,12 @@ class TestMarathonServiceConfig(object):
     def test_get_healthchecks_cmd_quotes(self):
         fake_command = '/bin/fake_command with spaces'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command},
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         expected_cmd = "paasta_execute_docker_command " \
             "--mesos-id \"$MESOS_TASK_ID\" --cmd '%s' --timeout '10'" % fake_command
@@ -1514,7 +1712,12 @@ class TestMarathonServiceConfig(object):
     def test_get_healthchecks_cmd_overrides(self):
         fake_command = '/bin/fake_command'
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command}, {})
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'healthcheck_mode': 'cmd', 'healthcheck_cmd': fake_command},
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         expected_cmd = "paasta_execute_docker_command " \
             "--mesos-id \"$MESOS_TASK_ID\" --cmd %s --timeout '10'" % fake_command
@@ -1535,10 +1738,14 @@ class TestMarathonServiceConfig(object):
         fake_command = '/bin/fake_command'
         fake_timeout = 4
         fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-            "service",
-            "instance",
-            {'healthcheck_mode': 'cmd', 'healthcheck_timeout_seconds': fake_timeout, 'healthcheck_cmd': fake_command},
-            {}
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={
+                'healthcheck_mode': 'cmd',
+                'healthcheck_timeout_seconds': fake_timeout,
+                'healthcheck_cmd': fake_command},
+            branch_dict={},
         )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         expected_cmd = "paasta_execute_docker_command " \
@@ -1557,53 +1764,106 @@ class TestMarathonServiceConfig(object):
         assert actual == expected
 
     def test_get_healthchecks_empty(self):
-        fake_marathon_service_config = marathon_tools.MarathonServiceConfig("service", "instance", {}, {})
+        fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={},
+        )
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({})
         assert fake_marathon_service_config.get_healthchecks(fake_service_namespace_config) == []
 
     def test_get_healthchecks_invalid_mode(self):
-        marathon_config = marathon_tools.MarathonServiceConfig("service", "instance", {'healthcheck_mode': 'none'}, {})
+        marathon_config = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'healthcheck_mode': 'none'},
+            branch_dict={},
+        )
         namespace_config = marathon_tools.ServiceNamespaceConfig({})
         with raises(marathon_tools.InvalidMarathonHealthcheckMode):
             marathon_config.get_healthchecks(namespace_config)
 
     def test_get_backoff_seconds_scales_up(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {'instances': 100}, {})
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'instances': 100},
+            branch_dict={},
+        )
         assert marathon_config.get_backoff_seconds() == 0.1
 
     def test_get_backoff_seconds_scales_down(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {'instances': 1}, {})
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'instances': 1},
+            branch_dict={},
+        )
         assert marathon_config.get_backoff_seconds() == 10
 
     def test_get_backoff_doesnt_devide_by_zero(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {'instances': 0}, {})
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'instances': 0},
+            branch_dict={},
+        )
         assert marathon_config.get_backoff_seconds() == 1
 
     def test_get_accepted_resource_roles_default(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {}, {})
+            service='service',
+            instance='instance',
+            cluster='cluster',
+            config_dict={},
+            branch_dict={},
+        )
         assert marathon_config.get_accepted_resource_roles() is None
 
     def test_get_accepted_resource_roles(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
-            "service", "instance", {"accepted_resource_roles": ["ads"]}, {})
+            service='service',
+            instance='instance',
+            cluster='cluster',
+            config_dict={"accepted_resource_roles": ["ads"]},
+            branch_dict={},
+        )
         assert marathon_config.get_accepted_resource_roles() == ["ads"]
 
     def test_get_desired_state_human(self):
-        fake_conf = marathon_tools.MarathonServiceConfig('service', 'instance', {}, {'desired_state': 'stop'})
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={},
+            branch_dict={'desired_state': 'stop'},
+        )
         assert 'Stopped' in fake_conf.get_desired_state_human()
 
     def test_get_desired_state_human_started_with_instances(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'service', 'instance', {'instances': 42}, {'desired_state': 'start'})
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'instances': 42},
+            branch_dict={'desired_state': 'start'},
+        )
         assert 'Started' in fake_conf.get_desired_state_human()
 
     def test_get_desired_state_human_with_0_instances(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
-            'service', 'instance', {'instances': 0}, {'desired_state': 'start'})
+            service='service',
+            cluster='cluster',
+            instance='instance',
+            config_dict={'instances': 0},
+            branch_dict={'desired_state': 'start'},
+        )
         assert 'Stopped' in fake_conf.get_desired_state_human()
 
 
@@ -1643,10 +1903,11 @@ def test_create_complete_config_no_smartstack():
     fake_job_id = "service.instance.some.hash"
     fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service,
-        instance,
-        {},
-        {'docker_image': 'abcdef'},
+        service=service,
+        cluster='cluster',
+        instance=instance,
+        config_dict={},
+        branch_dict={'docker_image': 'abcdef'},
     )
     fake_system_paasta_config = SystemPaastaConfig({
         'volumes': [],
@@ -1706,10 +1967,11 @@ def test_create_complete_config_with_smartstack():
     fake_job_id = "service.instance.some.hash"
     fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service,
-        instance,
-        {},
-        {'docker_image': 'abcdef'},
+        service=service,
+        cluster='cluster',
+        instance=instance,
+        config_dict={},
+        branch_dict={'docker_image': 'abcdef'},
     )
     fake_system_paasta_config = SystemPaastaConfig({
         'volumes': [],
@@ -1793,10 +2055,11 @@ def test_create_complete_config_utilizes_extra_volumes():
     ]
     fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service_name,
-        instance_name,
-        {'extra_volumes': fake_extra_volumes},
-        {'docker_image': 'abcdef'},
+        service=service_name,
+        cluster='cluster',
+        instance=instance_name,
+        config_dict={'extra_volumes': fake_extra_volumes},
+        branch_dict={'docker_image': 'abcdef'},
     )
     fake_system_paasta_config = SystemPaastaConfig({
         'volumes': fake_system_volumes,

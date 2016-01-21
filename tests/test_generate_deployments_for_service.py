@@ -15,51 +15,51 @@
 import generate_deployments_for_service
 import mock
 import contextlib
-
-
-def test_get_branches_from_config_file():
-    fake_dir = '/nail/etc/soa/dir'
-    fake_fname = 'marathon-boston-hab-with-extra-dashes.yaml'
-    fake_config = {'test1': {'branch': 'ranch'}, 'test2': {}}
-    expected = set(['ranch', 'paasta-boston-hab-with-extra-dashes.test2'])
-    with contextlib.nested(
-        mock.patch('service_configuration_lib.read_service_information',
-                   return_value=fake_config),
-        mock.patch('os.path.join', return_value='internal_operations')
-    ) as (
-        read_info_patch,
-        join_patch
-    ):
-        actual = generate_deployments_for_service.get_branches_from_config_file(fake_dir, fake_fname)
-        assert expected == actual
-        join_patch.assert_called_once_with(fake_dir, fake_fname)
-        read_info_patch.assert_called_once_with('internal_operations')
+from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.chronos_tools import ChronosJobConfig
 
 
 def test_get_branches_for_service():
     fake_dir = '/mail/var/tea'
     fake_srv = 'boba'
-    fake_fnames = ['marathon-quail', 'marathon-trac', 'chronos-other', 'fake-file']
-    fake_branches = [set(['badboy']), set(['red', 'green']), set(['blue', 'orange']),  set(['white', 'black'])]
-    expected = set(['red', 'green', 'blue', 'orange', 'white', 'black'])
+    fake_branches = ['red', 'green', 'blue', 'orange', 'white', 'black']
+    expected = set(['red', 'green', 'blue', 'orange', 'white', 'black', 'cluster_a.chronos_job',
+                    'cluster_b.chronos_job', 'cluster_c.chronos_job'])
     with contextlib.nested(
-        mock.patch('os.path.join', return_value='no_sir'),
-        mock.patch('os.listdir', return_value=fake_fnames),
-        mock.patch('generate_deployments_for_service.get_branches_from_config_file',
-                   side_effect=lambda a, b: fake_branches.pop())
+        mock.patch('generate_deployments_for_service.list_clusters',
+                   return_value=['cluster_a', 'cluster_b', 'cluster_c']),
+        mock.patch('generate_deployments_for_service.get_service_instance_list',
+                   side_effect=lambda service, cluster, instance_type:
+                       [('', 'main_example'), ('', 'canary_example')] if instance_type == 'marathon'
+                       else [('', 'chronos_job')]),
+        mock.patch('generate_deployments_for_service.load_marathon_service_config',
+                   side_effect=lambda service, instance, cluster, soa_dir: MarathonServiceConfig(
+                       service=service,
+                       cluster=cluster,
+                       instance=instance,
+                       config_dict={'deploy_group': fake_branches.pop()},
+                       branch_dict={},
+                   )),
+        mock.patch('generate_deployments_for_service.load_chronos_job_config',
+                   side_effect=lambda service, instance, cluster, soa_dir: ChronosJobConfig(
+                       service=service,
+                       cluster=cluster,
+                       instance=instance,
+                       config_dict={},
+                       branch_dict={},
+                   )),
     ) as (
-        join_patch,
-        listdir_patch,
-        get_branches_patch
+        list_clusters_patch,
+        get_service_instance_list_patch,
+        load_marathon_config_patch,
+        load_chronos_config_patch,
     ):
         actual = generate_deployments_for_service.get_branches_for_service(fake_dir, fake_srv)
         assert expected == actual
-        join_patch.assert_called_once_with(fake_dir, fake_srv)
-        listdir_patch.assert_called_once_with('no_sir')
-        get_branches_patch.assert_any_call('no_sir', 'marathon-quail')
-        get_branches_patch.assert_any_call('no_sir', 'marathon-trac')
-        get_branches_patch.assert_any_call('no_sir', 'chronos-other')
-        assert get_branches_patch.call_count == 3
+        # three clusters each having a canary and main marathon instance equals six instances total
+        assert load_marathon_config_patch.call_count == 6
+        # three clusters each having one chronos job equals six instances total
+        assert load_chronos_config_patch.call_count == 3
 
 
 def test_get_branch_mappings():

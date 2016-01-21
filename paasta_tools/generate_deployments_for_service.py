@@ -48,9 +48,11 @@ import service_configuration_lib
 
 from paasta_tools import remote_git
 from paasta_tools.utils import atomic_file_write
-from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_git_url
-
+from paasta_tools.utils import list_clusters
+from paasta_tools.utils import get_service_instance_list
+from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.chronos_tools import load_chronos_job_config
 
 log = logging.getLogger('__main__')
 logging.basicConfig()
@@ -70,35 +72,33 @@ def parse_args():
     return args
 
 
-def get_branches_from_config_file(file_dir, filename):
-    """Get all branches defined in a single service configuration file.
-    A branch is defined for an instance if it has a 'branch' key, or
-    the branch name is paasta-{cluster}.{instance},
-    where cluster is the cluster the marathon or chronos file is defined for
-    (i.e. marathon-hab.yaml is for hab), and instance is the
-    instance name.
-
-    :param file_dir: The directory that the filename argument is in
-    :param filename: The name of the service configuration file to read from
-    :returns: A set of branch names listed in the configuration file
-    """
-    valid_branches = set([])
-    config = service_configuration_lib.read_service_information(os.path.join(file_dir, filename))
-    for instance in config:
-        target_branch = None
-        if 'branch' in config[instance]:
-            target_branch = config[instance]['branch']
-        else:
-            try:
-                # cluster may contain dashes (and frequently does) so
-                # reassemble the cluster after stripping the chronos/marathon prefix
-                cluster = '-'.join(filename.split('-')[1:]).split('.')[0]
-                target_branch = get_paasta_branch(cluster, instance)
-            except IndexError:
-                pass
-        if target_branch:
-            valid_branches.add(target_branch)
-    return valid_branches
+def get_instance_config_for_service(soa_dir, service):
+    for cluster in list_clusters(
+        service=service,
+        soa_dir=soa_dir,
+    ):
+        for _, instance in get_service_instance_list(
+            service=service,
+            cluster=cluster,
+            instance_type='marathon',
+        ):
+            yield load_marathon_service_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+        for _, instance in get_service_instance_list(
+            service=service,
+            cluster=cluster,
+            instance_type='chronos',
+        ):
+            yield load_chronos_job_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
 
 
 def get_branches_for_service(soa_dir, service):
@@ -108,11 +108,11 @@ def get_branches_for_service(soa_dir, service):
     :param service: The service name to get branches for
     :returns: A list of branches defined in instances for the service
     """
-    valid_branches = set([])
-    working_dir = os.path.join(soa_dir, service)
-    for fname in os.listdir(working_dir):
-        if fname.startswith('marathon-') or fname.startswith('chronos-'):
-            valid_branches = valid_branches.union(get_branches_from_config_file(working_dir, fname))
+    valid_branches = set([config.get_deploy_group() for config in get_instance_config_for_service(
+        soa_dir=soa_dir,
+        service=service,
+    )])
+
     return valid_branches
 
 

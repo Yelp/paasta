@@ -30,19 +30,20 @@ from paasta_tools.utils import PaastaColors
 
 
 fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
-    'servicename',
-    'instancename',
-    {
+    service='servicename',
+    cluster='clustername',
+    instance='instancename',
+    config_dict={
         'instances': 3,
         'cpus': 1,
         'mem': 100,
         'nerve_ns': 'fake_nerve_ns',
     },
-    {
+    branch_dict={
         'docker_image': 'test_docker:1.0',
         'desired_state': 'start',
         'force_bounce': None,
-    }
+    },
 )
 
 
@@ -86,10 +87,11 @@ def test_get_bouncing_status():
     ):
         mock_get_matching_appids.return_value = ['a', 'b']
         mock_config = marathon_tools.MarathonServiceConfig(
-            'fake_service',
-            'fake_instance',
-            {'bounce_method': 'fake_bounce'},
-            {},
+            service='fake_service',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'bounce_method': 'fake_bounce'},
+            branch_dict={},
         )
         actual = marathon_serviceinit.get_bouncing_status('fake_service', 'fake_instance', 'unused', mock_config)
         assert 'fake_bounce' in actual

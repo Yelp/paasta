@@ -53,10 +53,12 @@ class TestSetupChronosJob:
     fake_branch_dict = {
         'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
     }
-    fake_chronos_job_config = chronos_tools.ChronosJobConfig(fake_service,
-                                                             fake_instance,
-                                                             fake_config_dict,
-                                                             fake_branch_dict)
+    fake_chronos_job_config = chronos_tools.ChronosJobConfig(service=fake_service,
+                                                             cluster=fake_cluster,
+                                                             instance=fake_instance,
+                                                             config_dict=fake_config_dict,
+                                                             branch_dict=fake_branch_dict,
+                                                             )
 
     fake_docker_registry = 'remote_registry.com'
     fake_args = mock.MagicMock(

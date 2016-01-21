@@ -31,31 +31,39 @@ class TestMonitoring_Tools:
         'page': general_page
     }
 
-    empty_service_config = marathon_tools.MarathonServiceConfig('myservicename', 'myinstance', {}, {})
+    empty_service_config = marathon_tools.MarathonServiceConfig(
+        service='myservicename',
+        cluster='mycluster',
+        instance='myinstance',
+        config_dict={},
+        branch_dict={},
+    )
     job_page = False
     fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
-        'myservicename',
-        'myinstance',
-        {
+        service='myservicename',
+        cluster='myclustername',
+        instance='myinstance',
+        config_dict={
             'team': 'job_test_team',
             'runbook': 'y/job_test_runbook',
             'tip': 'job_test_tip',
             'notification_email': 'job_test_notification_email',
             'page': job_page
         },
-        {},
+        branch_dict={},
     )
     fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-        'myservicename',
-        'myinstance',
-        {
+        service='myservicename',
+        cluster='myclustername',
+        instance='myinstance',
+        config_dict={
             'team': 'job_test_team',
             'runbook': 'y/job_test_runbook',
             'tip': 'job_test_tip',
             'notification_email': 'job_test_notification_email',
             'page': job_page
         },
-        {},
+        branch_dict={},
     )
     empty_job_config = {}
     monitor_page = True

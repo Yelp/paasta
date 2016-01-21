@@ -699,90 +699,216 @@ class TestInstanceConfig:
 
     def test_get_monitoring(self):
         fake_info = 'fake_info'
-        assert utils.InstanceConfig({'monitoring': fake_info}, {}).get_monitoring() == fake_info
+        assert utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'monitoring': fake_info},
+            branch_dict={},
+        ).get_monitoring() == fake_info
 
     def test_get_cpus_in_config(self):
-        fake_conf = utils.InstanceConfig({'cpus': -5}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'cpus': -5},
+            branch_dict={},
+        )
         assert fake_conf.get_cpus() == -5
 
     def test_get_cpus_in_config_float(self):
-        fake_conf = utils.InstanceConfig({'cpus': .66}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'cpus': .66},
+            branch_dict={},
+        )
         assert fake_conf.get_cpus() == .66
 
     def test_get_cpus_default(self):
-        fake_conf = utils.InstanceConfig({}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_cpus() == .25
 
     def test_get_mem_in_config(self):
-        fake_conf = utils.InstanceConfig({'mem': -999}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={'mem': -999},
+            branch_dict={},
+        )
         assert fake_conf.get_mem() == -999
 
     def test_get_mem_default(self):
-        fake_conf = utils.InstanceConfig({}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_mem() == 1024
 
     def test_get_cmd_default(self):
-        fake_conf = utils.InstanceConfig({}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_cmd() is None
 
     def test_get_cmd_in_config(self):
-        fake_conf = utils.InstanceConfig({'cmd': 'FAKECMD'}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'cmd': 'FAKECMD'},
+            branch_dict={},
+        )
         assert fake_conf.get_cmd() == 'FAKECMD'
 
     def test_get_env_default(self):
-        fake_conf = utils.InstanceConfig({}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_env() == {}
 
     def test_get_env_with_config(self):
-        fake_conf = utils.InstanceConfig({'env': {'SPECIAL_ENV': 'TRUE'}}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'env': {'SPECIAL_ENV': 'TRUE'}},
+            branch_dict={},
+        )
         assert fake_conf.get_env() == {'SPECIAL_ENV': 'TRUE'}
 
     def test_get_args_default_no_cmd(self):
-        fake_conf = utils.InstanceConfig({}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_args() == []
 
     def test_get_args_default_with_cmd(self):
-        fake_conf = utils.InstanceConfig({'cmd': 'FAKECMD'}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'cmd': 'FAKECMD'},
+            branch_dict={},
+        )
         assert fake_conf.get_args() is None
 
     def test_get_args_in_config(self):
-        fake_conf = utils.InstanceConfig({'args': ['arg1', 'arg2']}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'args': ['arg1', 'arg2']},
+            branch_dict={},
+        )
         assert fake_conf.get_args() == ['arg1', 'arg2']
 
     def test_get_args_in_config_with_cmd(self):
-        fake_conf = utils.InstanceConfig({'args': ['A'], 'cmd': 'C'}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'args': ['A'], 'cmd': 'C'},
+            branch_dict={},
+        )
         fake_conf.get_cmd()
         with raises(utils.InvalidInstanceConfig):
             fake_conf.get_args()
 
     def test_get_force_bounce(self):
-        fake_conf = utils.InstanceConfig({}, {'force_bounce': 'blurp'})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={'force_bounce': 'blurp'},
+        )
         assert fake_conf.get_force_bounce() == 'blurp'
 
     def test_get_desired_state(self):
-        fake_conf = utils.InstanceConfig({}, {'desired_state': 'stop'})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={'desired_state': 'stop'},
+        )
         assert fake_conf.get_desired_state() == 'stop'
 
     def test_monitoring_blacklist_default(self):
-        fake_conf = utils.InstanceConfig({}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_monitoring_blacklist() == []
 
     def test_monitoring_blacklist_defaults_to_deploy_blacklist(self):
         fake_deploy_blacklist = [["region", "fake_region"]]
-        fake_conf = utils.InstanceConfig({'deploy_blacklist': fake_deploy_blacklist}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'deploy_blacklist': fake_deploy_blacklist},
+            branch_dict={},
+        )
         assert fake_conf.get_monitoring_blacklist() == fake_deploy_blacklist
 
     def test_deploy_blacklist_default(self):
-        fake_conf = utils.InstanceConfig({}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_deploy_blacklist() == []
 
     def test_deploy_blacklist_reads_blacklist(self):
         fake_deploy_blacklist = [["region", "fake_region"]]
-        fake_conf = utils.InstanceConfig({'deploy_blacklist': fake_deploy_blacklist}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'deploy_blacklist': fake_deploy_blacklist},
+            branch_dict={},
+        )
         assert fake_conf.get_deploy_blacklist() == fake_deploy_blacklist
 
     def test_extra_volumes_default(self):
-        fake_conf = utils.InstanceConfig({}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
         assert fake_conf.get_extra_volumes() == []
 
     def test_extra_volumes_normal(self):
@@ -793,7 +919,13 @@ class TestInstanceConfig:
                 "mode": "RO"
             },
         ]
-        fake_conf = utils.InstanceConfig({'extra_volumes': fake_extra_volumes}, {})
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'extra_volumes': fake_extra_volumes},
+            branch_dict={},
+        )
         assert fake_conf.get_extra_volumes() == fake_extra_volumes
 
 
