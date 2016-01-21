@@ -32,6 +32,7 @@ from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
+from paasta_tools.utils import format_table
 from paasta_tools.mesos_tools import MasterNotAvailableException
 
 
@@ -179,14 +180,14 @@ def assert_quorum_size(state):
 
 
 def assert_extra_slave_data(mesos_state):
-    header_string = '%10s %36s %9s' % ('Hostname', 'CPU free', 'RAM free')
-    slave_outputs = ['%40s %8.2f %9.2f' % (
-        slave['hostname'],
-        slave['free_resources']['cpus'],
-        slave['free_resources']['mem'],
-    ) for slave in get_extra_mesos_slave_data(mesos_state)]
-    check_output = [header_string] + slave_outputs
-    return ('\n'.join(check_output), True)
+    rows = [('Hostname', 'CPU free', 'RAM free')]
+    for slave in get_extra_mesos_slave_data(mesos_state):
+        rows.append((
+            slave['hostname'],
+            '%.2f' % slave['free_resources']['cpus'],
+            '%.2f' % slave['free_resources']['mem'],
+        ))
+    return ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
 
 
 def get_mesos_status(mesos_state, verbosity):
