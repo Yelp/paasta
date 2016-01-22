@@ -27,6 +27,7 @@ Submodules
    paasta_tools.generate_deployments_for_service
    paasta_tools.generate_services_file
    paasta_tools.generate_services_yaml
+   paasta_tools.graceful_app_drain
    paasta_tools.list_chronos_jobs
    paasta_tools.list_marathon_service_instances
    paasta_tools.marathon_serviceinit
