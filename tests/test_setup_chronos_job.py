@@ -15,6 +15,7 @@
 
 
 import contextlib
+import copy
 import mock
 
 from pysensu_yelp import Status
@@ -53,12 +54,13 @@ class TestSetupChronosJob:
     fake_branch_dict = {
         'docker_image': 'paasta-%s-%s' % (fake_service, fake_cluster),
     }
-    fake_chronos_job_config = chronos_tools.ChronosJobConfig(service=fake_service,
-                                                             cluster=fake_cluster,
-                                                             instance=fake_instance,
-                                                             config_dict=fake_config_dict,
-                                                             branch_dict=fake_branch_dict,
-                                                             )
+    fake_chronos_job_config = chronos_tools.ChronosJobConfig(
+        service=fake_service,
+        cluster=fake_cluster,
+        instance=fake_instance,
+        config_dict=fake_config_dict,
+        branch_dict=fake_branch_dict,
+    )
 
     fake_docker_registry = 'remote_registry.com'
     fake_args = mock.MagicMock(
@@ -230,9 +232,7 @@ class TestSetupChronosJob:
                 service=self.fake_service,
                 instance=self.fake_instance,
                 cluster=self.fake_cluster,
-                jobs_to_delete=[],
-                jobs_to_disable=[],
-                job_to_create=complete_config,
+                job_to_update=complete_config,
                 client=self.fake_client,
             )
             assert actual == mock_bounce_chronos_job.return_value
@@ -276,39 +276,29 @@ class TestSetupChronosJob:
                 service=self.fake_service,
                 instance=self.fake_instance,
                 cluster=self.fake_cluster,
-                jobs_to_delete=[],
-                jobs_to_disable=[fake_existing_job],
-                job_to_create=complete_config,
+                job_to_update=complete_config,
                 client=self.fake_client,
             )
             assert mock_lookup_chronos_jobs.called
             assert actual == mock_bounce_chronos_job.return_value
 
     def test_setup_job_does_nothing_with_only_existing_app(self):
-        fake_existing_job = self.fake_config_dict
+        fake_existing_job = copy.deepcopy(self.fake_config_dict)
         with contextlib.nested(
             mock.patch('paasta_tools.setup_chronos_job.bounce_chronos_job', autospec=True, return_value=(0, 'ok')),
             mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs',
-                       autospec=True),
-            mock.patch('paasta_tools.chronos_tools.sort_jobs',
-                       autospec=True,
-                       return_value=[fake_existing_job]),
+                       autospec=True, return_value=[fake_existing_job]),
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=self.fake_chronos_job_config),
         ) as (
             mock_bounce_chronos_job,
             mock_lookup_chronos_jobs,
-            mock_sort_jobs,
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
-            complete_config = chronos_tools.create_complete_config(
-                service=self.fake_service,
-                job_name=self.fake_instance,
-                soa_dir=self.fake_args.soa_dir
-            )
+            complete_config = copy.deepcopy(self.fake_config_dict)
             # Force the complete_config's name to match the return value of
             # lookup_chronos_jobs to simulate that they have the same name
             complete_config["name"] = fake_existing_job["name"]
@@ -323,9 +313,7 @@ class TestSetupChronosJob:
                 service=self.fake_service,
                 instance=self.fake_instance,
                 cluster=self.fake_cluster,
-                jobs_to_delete=[],
-                jobs_to_disable=[],
-                job_to_create=None,
+                job_to_update=None,
                 client=self.fake_client,
             )
             assert mock_lookup_chronos_jobs.called
@@ -371,27 +359,19 @@ class TestSetupChronosJob:
             )
 
     def test_bounce_chronos_job_takes_actions(self):
-        fake_jobs_to_disable = [{'name': 'job_to_disable'}]
-        fake_jobs_to_delete = [{'name': 'job_to_delete'}]
-        fake_job_to_create = {'name': 'job_to_create'}
+        fake_job_to_update = {'name': 'job_to_update'}
         with contextlib.nested(
             mock.patch("paasta_tools.setup_chronos_job._log", autospec=True),
-            mock.patch("paasta_tools.chronos_tools.disable_job", autospec=True),
-            mock.patch("paasta_tools.chronos_tools.delete_job", autospec=True),
-            mock.patch("paasta_tools.chronos_tools.create_job", autospec=True),
+            mock.patch("paasta_tools.chronos_tools.update_job", autospec=True),
         ) as (
             mock_log,
-            mock_disable_job,
-            mock_delete_job,
-            mock_create_job,
+            mock_update_job,
         ):
             setup_chronos_job.bounce_chronos_job(
                 service=self.fake_service,
                 instance=self.fake_instance,
                 cluster=self.fake_cluster,
-                jobs_to_disable=fake_jobs_to_disable,
-                jobs_to_delete=fake_jobs_to_delete,
-                job_to_create=fake_job_to_create,
+                job_to_update=fake_job_to_update,
                 client=self.fake_client,
             )
             mock_log.assert_any_call(
@@ -403,42 +383,29 @@ class TestSetupChronosJob:
                 service=self.fake_service,
             )
             mock_log.assert_any_call(
-                line="Created new Chronos job: job_to_create",
+                line="Updated Chronos job: job_to_update",
                 level='event',
                 instance=self.fake_instance,
                 cluster=self.fake_cluster,
                 component='deploy',
                 service=self.fake_service,
             )
-            mock_disable_job.assert_called_once_with(job=fake_jobs_to_disable[0], client=self.fake_client)
-            mock_delete_job.assert_called_once_with(job=fake_jobs_to_delete[0], client=self.fake_client)
-            mock_create_job.assert_called_once_with(job=fake_job_to_create, client=self.fake_client)
+            mock_update_job.assert_called_once_with(job=fake_job_to_update, client=self.fake_client)
 
     def test_bounce_chronos_job_doesnt_log_when_nothing_to_do(self):
-        fake_jobs_to_disable = []
-        fake_jobs_to_delete = []
-        fake_job_to_create = []
         with contextlib.nested(
             mock.patch("paasta_tools.setup_chronos_job._log", autospec=True),
-            mock.patch("paasta_tools.chronos_tools.disable_job", autospec=True),
-            mock.patch("paasta_tools.chronos_tools.delete_job", autospec=True),
-            mock.patch("paasta_tools.chronos_tools.create_job", autospec=True),
+            mock.patch("paasta_tools.chronos_tools.update_job", autospec=True),
         ) as (
             mock_log,
-            mock_disable_job,
-            mock_delete_job,
-            mock_create_job,
+            mock_update_job,
         ):
             setup_chronos_job.bounce_chronos_job(
                 service=self.fake_service,
                 instance=self.fake_instance,
                 cluster=self.fake_cluster,
-                jobs_to_disable=fake_jobs_to_disable,
-                jobs_to_delete=fake_jobs_to_delete,
-                job_to_create=fake_job_to_create,
+                job_to_update=None,
                 client=self.fake_client,
             )
             assert not mock_log.called
-            assert not mock_disable_job.called
-            assert not mock_delete_job.called
-            assert not mock_create_job.called
+            assert not mock_update_job.called

@@ -81,12 +81,10 @@ def chronos_check_running_tasks(context, old_or_new_job, has_or_not):
 @then(u'the field "{field}" for the job stored as "{job_name}" is set to "{value}"')
 def chronos_check_job_state(context, field, job_name, value):
     job_id = context.jobs[job_name]['name']
-    (service, instance, git_hash, config_hash) = chronos_tools.decompose_job_id(job_id)
+    service, instance = chronos_tools.decompose_job_id(job_id)
     jobs = chronos_tools.lookup_chronos_jobs(
         service=service,
         instance=instance,
-        git_hash=git_hash,
-        config_hash=config_hash,
         client=context.chronos_client,
         include_disabled=True
     )
