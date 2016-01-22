@@ -19,6 +19,10 @@ import re
 import urllib2
 
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
+from service_configuration_lib import DEFAULT_SOA_DIR
+from service_configuration_lib import read_service_configuration
+
+from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import is_file_in_dir
@@ -30,6 +34,7 @@ from paasta_tools.cli.utils import success
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
+from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import _run
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
@@ -37,11 +42,6 @@ from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import _run
-from service_configuration_lib import DEFAULT_SOA_DIR
-from service_configuration_lib import read_service_configuration
-from paasta_tools.marathon_tools import load_marathon_service_config
-from paasta_tools.chronos_tools import load_chronos_job_config
 
 
 def get_pipeline_config(service, soa_dir):

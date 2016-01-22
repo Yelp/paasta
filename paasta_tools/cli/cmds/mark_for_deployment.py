@@ -21,7 +21,6 @@ from paasta_tools import remote_git
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_paasta_branch_from_identifier
-from paasta_tools import remote_git
 
 
 def add_subparser(subparsers):

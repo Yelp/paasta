@@ -12,8 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
+
+from service_configuration_lib import read_deploy
 
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
 from paasta_tools.cli.utils import figure_out_service_name
@@ -24,11 +25,9 @@ from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import load_deployments_json
-from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
+from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import get_soa_cluster_deploy_files
-from service_configuration_lib import read_deploy
 
 
 def add_subparser(subparsers):
