@@ -9,7 +9,7 @@ This document is similar, but not exactly the same as the
 `12 factor <http://12factor.net/>`_ site for Heroku. The principles behind the
 infrastructure *do* influence how the apps are deployed. The technical document
 for the exact contract an app must meet to run on PaaSTA is documented in the
-`PaaSTA Contract <../paasta_contract.html>`_.
+`PaaSTA Contract <contract.html>`_.
 
 Principles
 ----------
