@@ -311,7 +311,7 @@ def test_validate_chronos_valid_instance(
     mock_list_all_instances_for_service.return_value = [fake_instance]
     mock_load_chronos_job_config.return_value = mock_chronos_job
 
-    assert validate_chronos('fake_service_path')
+    assert validate_chronos('fake_service_path') == 0
 
     output = mock_stdout.getvalue()
 

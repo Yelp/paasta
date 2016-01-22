@@ -37,6 +37,7 @@ from paasta_tools.cli.cmds.check import service_dir_check
 from paasta_tools.cli.cmds.check import smartstack_check
 from paasta_tools.cli.cmds.check import yaml_check
 from paasta_tools.cli.utils import PaastaCheckMessages
+from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
 @patch('paasta_tools.cli.cmds.check.git_repo_check')
@@ -518,14 +519,23 @@ def test_deploy_has_performance_check_true(mock_pipeline_config, mock_stdout):
     assert actual is True
 
 
+@patch('paasta_tools.cli.cmds.check.load_marathon_service_config')
 @patch('paasta_tools.cli.cmds.check.list_clusters')
 @patch('paasta_tools.cli.cmds.check.get_service_instance_list')
 def test_get_marathon_steps(
     mock_get_service_instance_list,
     mock_list_clusters,
+    mock_load_marathon_service_config,
 ):
     mock_list_clusters.return_value = ['cluster1']
     mock_get_service_instance_list.return_value = [('unused', 'instance1'), ('unused', 'instance2')]
+    mock_load_marathon_service_config.side_effect = lambda service, instance, cluster, soa_dir: MarathonServiceConfig(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        config_dict={},
+        branch_dict={},
+    )
     expected = ['cluster1.instance1', 'cluster1.instance2']
     actual = get_marathon_steps(service='unused', soa_dir='/fake/path')
     assert actual == expected

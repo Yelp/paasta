@@ -18,9 +18,6 @@ import os
 import re
 import urllib2
 
-from service_configuration_lib import DEFAULT_SOA_DIR
-from service_configuration_lib import read_service_configuration
-
 from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_file_contents
@@ -40,6 +37,11 @@ from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import _run
+from service_configuration_lib import DEFAULT_SOA_DIR
+from service_configuration_lib import read_service_configuration
+from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.chronos_tools import load_chronos_job_config
 
 
 def get_pipeline_config(service, soa_dir):
@@ -210,10 +212,16 @@ def get_chronos_steps(service, soa_dir):
     with what deploy.yaml has for linting."""
     steps = []
     for cluster in list_clusters(service, soa_dir):
-        for instance in get_service_instance_list(service=service, cluster=cluster,
-                                                  instance_type='chronos',
-                                                  soa_dir=soa_dir):
-            steps.append("%s.%s" % (cluster, instance[1]))
+        for _, instance in get_service_instance_list(service=service, cluster=cluster,
+                                                     instance_type='chronos',
+                                                     soa_dir=soa_dir):
+            config = load_chronos_job_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+            steps.append(config.get_deploy_group())
     return steps
 
 
@@ -224,10 +232,16 @@ def get_marathon_steps(service, soa_dir):
     with what deploy.yaml has for linting."""
     steps = []
     for cluster in list_clusters(service, soa_dir):
-        for instance in get_service_instance_list(service=service, cluster=cluster,
-                                                  instance_type='marathon',
-                                                  soa_dir=soa_dir):
-            steps.append("%s.%s" % (cluster, instance[1]))
+        for _, instance in get_service_instance_list(service=service, cluster=cluster,
+                                                     instance_type='marathon',
+                                                     soa_dir=soa_dir):
+            config = load_marathon_service_config(
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+            )
+            steps.append(config.get_deploy_group())
     return steps
 
 
