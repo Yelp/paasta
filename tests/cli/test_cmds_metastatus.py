@@ -11,9 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from StringIO import StringIO
 
 import mock
-from StringIO import StringIO
 
 from paasta_tools.cli.cmds import metastatus
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT

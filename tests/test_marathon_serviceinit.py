@@ -12,8 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-
 import contextlib
 import datetime
 import re
@@ -21,12 +19,13 @@ import re
 import marathon
 import mock
 
-from paasta_tools import marathon_tools, marathon_serviceinit
+from paasta_tools import marathon_serviceinit
+from paasta_tools import marathon_tools
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import NoDockerImageError
-from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import remove_ansi_escape_sequences
 
 
 fake_marathon_job_config = marathon_tools.MarathonServiceConfig(

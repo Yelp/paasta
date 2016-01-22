@@ -11,13 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
+
 import mock
 
-from paasta_tools.marathon_tools import ServiceNamespaceConfig
-from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.cmds import info
+from paasta_tools.cli.utils import PaastaColors
+from paasta_tools.marathon_tools import ServiceNamespaceConfig
 from paasta_tools.utils import NoDeploymentsAvailable
 
 

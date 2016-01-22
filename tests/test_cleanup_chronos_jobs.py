@@ -11,9 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import mock
-
 
 from paasta_tools import cleanup_chronos_jobs
 
@@ -40,7 +38,7 @@ def test_cleanup_jobs():
 
 def test_jobs_to_delete():
     configured_jobs = [('service1', 'job1'), ('service1', 'job2')]
-    deployed_jobs = [('service1', 'job1', 'config'),  ('service1', 'job2', 'config')]
+    deployed_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config')]
     assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, deployed_jobs) == []
 
 

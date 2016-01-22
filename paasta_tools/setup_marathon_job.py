@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Usage: ./setup_marathon_job.py <service.instance> [options]
 
@@ -43,10 +42,11 @@ Command line options:
 """
 import argparse
 import logging
-import pysensu_yelp
-import service_configuration_lib
 import sys
 import traceback
+
+import pysensu_yelp
+import service_configuration_lib
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
@@ -54,8 +54,8 @@ from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import configure_log
+from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config

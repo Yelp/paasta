@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Gets the cluster usage of a mesos cluster and alerts based
 on percentage thresholds.
@@ -20,12 +19,12 @@ on percentage thresholds.
 Can only be run on the current mesos-master leader- if this host
 isn't the leader, the script exits immediately.
 """
-
 import argparse
 import logging
 import sys
 
 import pysensu_yelp
+
 from paasta_tools.mesos_tools import get_mesos_stats
 from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config

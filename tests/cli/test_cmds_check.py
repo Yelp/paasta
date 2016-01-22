@@ -11,30 +11,31 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
 import os
-
-from mock import patch, MagicMock, call
 from StringIO import StringIO
+
+from mock import call
+from mock import MagicMock
+from mock import patch
 
 from paasta_tools.cli.cmds.check import deploy_check
 from paasta_tools.cli.cmds.check import deploy_has_performance_check
 from paasta_tools.cli.cmds.check import deploy_has_security_check
+from paasta_tools.cli.cmds.check import deployments_check
 from paasta_tools.cli.cmds.check import docker_check
 from paasta_tools.cli.cmds.check import get_marathon_steps
 from paasta_tools.cli.cmds.check import makefile_check
 from paasta_tools.cli.cmds.check import makefile_has_a_tab
 from paasta_tools.cli.cmds.check import makefile_has_docker_tag
 from paasta_tools.cli.cmds.check import makefile_responds_to
-from paasta_tools.cli.cmds.check import yaml_check
-from paasta_tools.cli.cmds.check import deployments_check
 from paasta_tools.cli.cmds.check import NoSuchService
 from paasta_tools.cli.cmds.check import paasta_check
 from paasta_tools.cli.cmds.check import pipeline_check
 from paasta_tools.cli.cmds.check import sensu_check
 from paasta_tools.cli.cmds.check import service_dir_check
 from paasta_tools.cli.cmds.check import smartstack_check
+from paasta_tools.cli.cmds.check import yaml_check
 from paasta_tools.cli.utils import PaastaCheckMessages
 
 

@@ -11,19 +11,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 
 import mock
 import requests
 
-from paasta_tools.monitoring.replication_utils import (
-    get_registered_marathon_tasks,
-    get_replication_for_services,
-    ip_port_hostname_from_svname,
-    match_backends_and_tasks,
-    backend_is_up,
-)
+from paasta_tools.monitoring.replication_utils import backend_is_up
+from paasta_tools.monitoring.replication_utils import get_registered_marathon_tasks
+from paasta_tools.monitoring.replication_utils import get_replication_for_services
+from paasta_tools.monitoring.replication_utils import ip_port_hostname_from_svname
+from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
 
 
 def test_get_replication_for_service():
@@ -99,11 +96,11 @@ def test_get_registered_marathon_tasks():
 
 
 def test_backend_is_up():
-    assert True == backend_is_up({"status": "UP"})
-    assert True == backend_is_up({"status": "UP 1/2"})
-    assert False == backend_is_up({"status": "DOWN"})
-    assert False == backend_is_up({"status": "DOWN 1/2"})
-    assert False == backend_is_up({"status": "MAINT"})
+    assert True is backend_is_up({"status": "UP"})
+    assert True is backend_is_up({"status": "UP 1/2"})
+    assert False is backend_is_up({"status": "DOWN"})
+    assert False is backend_is_up({"status": "DOWN 1/2"})
+    assert False is backend_is_up({"status": "MAINT"})
 
 
 def test_ip_port_hostname_from_svname():

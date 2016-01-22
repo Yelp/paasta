@@ -11,11 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
 
-from marathon.models import MarathonApp
 import mock
+from marathon.models import MarathonApp
 from mock import patch
 from pytest import raises
 
@@ -837,8 +836,8 @@ class TestMarathonTools:
                 'cmd': fake_cmd,
                 'args': fake_args,
                 'healthcheck_grace_period_seconds': 3,
-                'healthcheck_interval_seconds':  10,
-                'healthcheck_timeout_seconds':  10,
+                'healthcheck_interval_seconds': 10,
+                'healthcheck_timeout_seconds': 10,
                 'healthcheck_max_consecutive_failures': 3,
                 'accepted_resource_roles': ['ads'],
             },

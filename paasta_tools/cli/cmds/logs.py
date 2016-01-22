@@ -12,19 +12,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """PaaSTA log reader for humans"""
 import argparse
 import datetime
-import dateutil
 import json
 import logging
+import re
+import sys
 from multiprocessing import Process
 from multiprocessing import Queue
 from Queue import Empty
-import re
-import sys
 
+import dateutil
 import isodate
 
 try:
@@ -172,11 +171,10 @@ def paasta_log_line_passes_filter(line, levels, service, components, clusters):
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
     return (
-        parsed_line.get('level') in levels
-        and parsed_line.get('component') in components
-        and (
-            parsed_line.get('cluster') in clusters
-            or parsed_line.get('cluster') == ANY_CLUSTER
+        parsed_line.get('level') in levels and
+        parsed_line.get('component') in components and (
+            parsed_line.get('cluster') in clusters or
+            parsed_line.get('cluster') == ANY_CLUSTER
         )
     )
 

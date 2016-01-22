@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Usage: ./cleanup_chronos_jobs.py [options]
 
@@ -26,7 +25,6 @@ Any tasks associated with that job are also deleted.
 
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
-
 import argparse
 import sys
 

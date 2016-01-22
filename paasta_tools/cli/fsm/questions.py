@@ -11,18 +11,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """This is a home for functions that calculate arguments based on various user
 inputs.
 """
-
-
 import sys
 
 import yaml
 
-from paasta_tools.cli.fsm.prompt import ask
 from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
+from paasta_tools.cli.fsm.prompt import ask
 from paasta_tools.cli.utils import list_teams
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 

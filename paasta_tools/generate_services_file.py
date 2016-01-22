@@ -12,14 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 A simple script to enumerate all smartstack namespaces and output
 a /etc/services compatible file
 """
 import os
 import sys
+
 import service_configuration_lib
+
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.utils import compose_job_id
 

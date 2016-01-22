@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Creates a deployments.json file in the specified SOA configuration directory.
 This file contains a dictionary of k/v pairs representing a map between remote
@@ -47,12 +46,12 @@ import re
 import service_configuration_lib
 
 from paasta_tools import remote_git
+from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.utils import atomic_file_write
 from paasta_tools.utils import get_git_url
-from paasta_tools.utils import list_clusters
 from paasta_tools.utils import get_service_instance_list
-from paasta_tools.marathon_tools import load_marathon_service_config
-from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.utils import list_clusters
 
 log = logging.getLogger('__main__')
 logging.basicConfig()

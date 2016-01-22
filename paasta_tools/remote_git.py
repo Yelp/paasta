@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import dulwich.client
 import dulwich.errors
 
@@ -47,7 +46,9 @@ def create_remote_refs(git_url, ref_mutator, force=False):
     else:
         determine_wants = ref_mutator
     # We know we don't need to push any objects.
-    generate_pack_contents = lambda have, want: []
+
+    def generate_pack_contents(have, want):
+        return []
 
     return client.send_pack(path, determine_wants, generate_pack_contents)
 

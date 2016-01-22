@@ -10,8 +10,8 @@
 #
 # All configuration values have a default; values that are commented out
 # serve to show the default.
-
-import sys, os
+import os
+import sys
 
 # If extensions (or modules to document with autodoc) are in another directory,
 # add these directories to sys.path here. If the directory is relative to the
@@ -172,8 +172,8 @@ htmlhelp_basename = 'paasta_toolsdoc'
 # Grouping the document tree into LaTeX files. List of tuples
 # (source start file, target name, title, author, documentclass [howto/manual]).
 latex_documents = [
-  ('index', 'paasta_tools.tex', u'service\\_deployment\\_tools Documentation',
-   u'Yelp Inc', 'manual'),
+    ('index', 'paasta_tools.tex', u'service\\_deployment\\_tools Documentation',
+     u'Yelp Inc', 'manual'),
 ]
 
 # The name of an image file (relative to this directory) to place at the top of

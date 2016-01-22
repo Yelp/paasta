@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Usage: ./paasta_execute_docker_command.py [options]
 
@@ -27,9 +26,9 @@ Command line options:
 - -t <timeout>, --timeout <timeout>: Timeout for command
 """
 import argparse
-from contextlib import contextmanager
 import signal
 import sys
+from contextlib import contextmanager
 
 from docker import Client
 

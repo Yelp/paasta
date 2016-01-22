@@ -12,17 +12,15 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
-
 import sys
 
+from paasta_tools import remote_git
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_paasta_branch
-from paasta_tools import remote_git
 
 
 def add_subparser(subparsers):

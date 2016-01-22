@@ -11,20 +11,20 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import os
-from tempfile import NamedTemporaryFile
-from tempfile import mkdtemp
-
-from behave import given, when
-import chronos
 import json
-import yaml
+import os
+from tempfile import mkdtemp
+from tempfile import NamedTemporaryFile
 
+import chronos
+import yaml
+from behave import given
+from behave import when
 from itest_utils import get_service_connection_string
+
+from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
 from paasta_tools import utils
-from paasta_tools import chronos_tools
 from paasta_tools.utils import decompose_job_id
 
 
@@ -155,7 +155,7 @@ def write_soa_dir_chronos_instance(context, service, disabled, instance):
 
 
 @given((u'we have yelpsoa-configs for the service "{service}" with {disabled} dependent chronos instance'
-       ' "{instance}" and parent "{parent}"'))
+        ' "{instance}" and parent "{parent}"'))
 def write_soa_dir_dependent_chronos_instance(context, service, disabled, instance, parent):
     soa_dir = mkdtemp()
     desired_disabled = (disabled == 'disabled')

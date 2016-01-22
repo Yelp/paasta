@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Usage: ./paasta_servceinit.py [-v] <servicename> <stop|start|restart|status|scale>
 
 Interacts with the framework APIs to start/stop/restart/get status/scale for an

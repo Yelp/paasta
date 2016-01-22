@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import re
-import requests
 import time
+
+import requests
 
 
 _drain_methods = {}
@@ -76,6 +76,7 @@ class DrainMethod(object):
 @register_drain_method('noop')
 class NoopDrainMethod(DrainMethod):
     """This drain policy does nothing and assumes every task is safe to kill."""
+
     def drain(self, task):
         pass
 
@@ -119,6 +120,7 @@ class TestDrainMethod(DrainMethod):
 class HacheckDrainMethod(DrainMethod):
     """This drain policy issues a POST to hacheck's /spool/{service}/{port}/status endpoint to cause healthchecks to
     fail. It considers tasks safe to kill if they've been down in hacheck for more than a specified delay."""
+
     def __init__(self, service, instance, nerve_ns, delay=120, hacheck_port=6666, expiration=0, **kwargs):
         super(HacheckDrainMethod, self).__init__(service, instance, nerve_ns)
         self.delay = float(delay)

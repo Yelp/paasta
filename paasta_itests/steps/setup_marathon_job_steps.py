@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
 
-from behave import when, then
 import mock
+from behave import then
+from behave import when
 
-from paasta_tools import setup_marathon_job
 from paasta_tools import marathon_tools
+from paasta_tools import setup_marathon_job
 
 fake_service_name = 'fake_complete_service'
 fake_cluster_name = 'fake_cluster'

@@ -12,17 +12,16 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 # PYTHON_ARGCOMPLETE_OK
 """A command line tool for viewing information from the PaaSTA stack."""
-import argcomplete
 import argparse
 
+import argcomplete
 import pkg_resources
 
 from paasta_tools.cli import cmds
-from paasta_tools.cli.utils \
-    import modules_in_pkg as paasta_commands_dir, load_method
+from paasta_tools.cli.utils import load_method
+from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
 from paasta_tools.utils import configure_log
 
 

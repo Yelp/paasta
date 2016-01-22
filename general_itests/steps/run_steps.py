@@ -11,10 +11,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import signal
 
-from behave import when, then
+from behave import then
+from behave import when
 
 from paasta_tools.utils import _run
 

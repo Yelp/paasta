@@ -12,19 +12,18 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
 
+from httplib2 import ServerNotFoundError
 from mock import Mock
 from mock import patch
-from httplib2 import ServerNotFoundError
 from pytest import raises
 
-from paasta_tools.chronos_tools import ChronosNotConfigured
 from paasta_tools import paasta_metastatus
-from paasta_tools.utils import PaastaColors
+from paasta_tools.chronos_tools import ChronosNotConfigured
 from paasta_tools.marathon_tools import MarathonConfig
 from paasta_tools.marathon_tools import MarathonNotConfigured
+from paasta_tools.utils import PaastaColors
 
 
 def test_ok_check_threshold():
@@ -129,8 +128,9 @@ def test_duplicate_frameworks():
         ]
     }
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
-    assert PaastaColors.red("    CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1.") \
-        in output
+    assert PaastaColors.red(
+        "    CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1."
+    ) in output
     assert not ok
 
 

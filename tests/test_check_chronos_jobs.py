@@ -1,10 +1,11 @@
+import pysensu_yelp
+from mock import Mock
+from mock import patch
+from pytest import raises
+
 from paasta_tools import check_chronos_jobs
 from paasta_tools import chronos_tools
 from paasta_tools import utils
-import pysensu_yelp
-from mock import patch
-from mock import Mock
-from pytest import raises
 
 
 @patch('paasta_tools.check_chronos_jobs.chronos_tools.load_chronos_job_config')

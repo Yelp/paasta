@@ -11,8 +11,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from behave import given, when, then
+from behave import given
+from behave import then
+from behave import when
 from docker import Client
 from docker.errors import APIError
 

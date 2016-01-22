@@ -11,14 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
 import shutil
 import time
 
-from itest_utils import wait_for_marathon
 from itest_utils import cleanup_file
 from itest_utils import setup_mesos_cli_config
+from itest_utils import wait_for_marathon
+
 from paasta_tools import marathon_tools
 
 

@@ -11,15 +11,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-import copy
-
 """A generic way to extract monitoring information from various sources.
 
 This is abstracted so that the new marathon system can use the same
 interface with a different provider.
 
 """
+import copy
+
 
 monitoring_keys = ['team', 'notification_email', 'service_type',
                    'runbook', 'tip', 'page', 'alert_after', 'realert_every',

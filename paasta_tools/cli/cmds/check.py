@@ -12,12 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Contains methods used by the paasta client to check whether Yelp service
 passes all the markers required to be considered paasta ready."""
 import os
 import re
 import urllib2
+
+from service_configuration_lib import DEFAULT_SOA_DIR
+from service_configuration_lib import read_service_configuration
 
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_file_contents
@@ -31,14 +33,12 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.monitoring_tools import get_team
+from paasta_tools.utils import _run
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import _run
-from service_configuration_lib import DEFAULT_SOA_DIR
-from service_configuration_lib import read_service_configuration
 
 
 def get_pipeline_config(service, soa_dir):

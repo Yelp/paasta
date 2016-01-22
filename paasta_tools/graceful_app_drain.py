@@ -1,15 +1,16 @@
 #!/usr/bin/env python
-
 import argparse
 import sys
 import time
 
 import service_configuration_lib
-from paasta_tools import marathon_tools
-from paasta_tools import drain_lib
+
 from paasta_tools import bounce_lib
+from paasta_tools import drain_lib
+from paasta_tools import marathon_tools
+from paasta_tools.setup_marathon_job import do_bounce
+from paasta_tools.setup_marathon_job import get_old_live_draining_tasks
 from paasta_tools.utils import decompose_job_id
-from paasta_tools.setup_marathon_job import do_bounce, get_old_live_draining_tasks
 from paasta_tools.utils import load_system_paasta_config
 
 

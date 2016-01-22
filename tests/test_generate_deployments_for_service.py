@@ -11,12 +11,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 
 import mock
-import contextlib
+
 from paasta_tools import generate_deployments_for_service
-from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.chronos_tools import ChronosJobConfig
+from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
 def test_get_branches_for_service():

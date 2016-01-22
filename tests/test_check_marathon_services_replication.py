@@ -11,13 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
+from datetime import datetime
+from datetime import timedelta
 
 import mock
-import contextlib
-
 import pysensu_yelp
-
-from datetime import datetime, timedelta
 
 from paasta_tools import check_marathon_services_replication
 from paasta_tools.marathon_tools import MarathonServiceConfig

@@ -11,7 +11,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
 import datetime
 
@@ -20,8 +19,8 @@ import mock
 import requests
 from pytest import raises
 
-from paasta_tools.marathon_tools import format_job_id
 import paasta_tools.mesos_tools as mesos_tools
+from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.utils import PaastaColors
 
 
@@ -62,8 +61,11 @@ def test_status_mesos_tasks_verbose():
         format_running_mesos_task_row_patch.return_value = ['id', 'host', 'mem', 'cpu', 'time']
         format_non_running_mesos_task_row_patch.return_value = ['id', 'host', 'time', 'state']
         job_id = format_job_id('fake_service', 'fake_instance'),
-        get_short_task_id = lambda task_id: 'short_task_id'
-        actual = mesos_tools.status_mesos_tasks_verbose(job_id,  get_short_task_id)
+
+        def get_short_task_id(_):
+            return 'short_task_id'
+
+        actual = mesos_tools.status_mesos_tasks_verbose(job_id, get_short_task_id)
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
         format_running_mesos_task_row_patch.assert_called_once_with('doing a lap', get_short_task_id)

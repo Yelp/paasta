@@ -11,21 +11,22 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
-from mock import patch
-from mock import Mock
-from mock import MagicMock
-from pytest import raises
 from StringIO import StringIO
 
+from mock import MagicMock
+from mock import Mock
+from mock import patch
+from pytest import raises
+
 from paasta_tools import utils
-from paasta_tools.cli.utils import \
-    NoSuchService, PaastaColors, PaastaCheckMessages
-from paasta_tools.cli.cmds.status import paasta_status, \
-    missing_deployments_message
+from paasta_tools.cli.cmds import status
+from paasta_tools.cli.cmds.status import missing_deployments_message
+from paasta_tools.cli.cmds.status import paasta_status
 from paasta_tools.cli.cmds.status import report_invalid_whitelist_values
 from paasta_tools.cli.cmds.status import report_status
-from paasta_tools.cli.cmds import status
+from paasta_tools.cli.utils import NoSuchService
+from paasta_tools.cli.utils import PaastaCheckMessages
+from paasta_tools.cli.utils import PaastaColors
 
 
 @patch('paasta_tools.cli.utils.validate_service_name', autospec=True)

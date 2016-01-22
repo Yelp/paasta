@@ -11,20 +11,21 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import contextlib
 import os
 import shutil
 import tempfile
+from time import time
 
-from behave import when, then, given
-from dulwich.repo import Repo
+import mock
+from behave import given
+from behave import then
+from behave import when
 from dulwich.objects import Blob
-from dulwich.objects import Tree
 from dulwich.objects import Commit
 from dulwich.objects import parse_timezone
-import mock
-from time import time
+from dulwich.objects import Tree
+from dulwich.repo import Repo
 
 from paasta_tools import generate_deployments_for_service
 from paasta_tools import marathon_tools

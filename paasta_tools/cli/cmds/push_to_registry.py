@@ -12,11 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """Contains methods used by the paasta client to upload a docker
 image to a registry.
 """
-
 import sys
 
 from paasta_tools.cli.utils import get_jenkins_build_output_url

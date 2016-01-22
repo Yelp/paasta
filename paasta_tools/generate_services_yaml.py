@@ -12,10 +12,10 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import sys
 
 import yaml
+
 from paasta_tools.marathon_tools import get_all_namespaces
 from paasta_tools.utils import atomic_file_write
 

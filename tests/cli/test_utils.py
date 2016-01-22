@@ -11,11 +11,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from socket import gaierror
 
 import mock
 from mock import patch
 from pytest import raises
-from socket import gaierror
 
 from paasta_tools.cli import utils
 from paasta_tools.utils import NoConfigurationForServiceError

@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 """
 Usage: ./check_marathon_services_replication.py [options]
 
@@ -30,12 +29,13 @@ After retrieving that information, a fraction of available instances is calculat
 is .50, meaning if fewer than 50 of a service's backends are available, the script
 sends CRITICAL.
 """
-
 import argparse
 import logging
+from datetime import datetime
+from datetime import timedelta
+
 import pysensu_yelp
 import service_configuration_lib
-from datetime import datetime, timedelta
 
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
