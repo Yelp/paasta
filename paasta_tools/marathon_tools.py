@@ -27,6 +27,7 @@ from time import sleep
 
 import service_configuration_lib
 from marathon import MarathonClient
+from marathon import MarathonHttpError
 from marathon import NotFoundError
 
 from paasta_tools.mesos_tools import get_local_slave_state
@@ -955,3 +956,18 @@ def get_healthcheck_for_instance(service, instance, service_manifest, random_por
         mode = None
         healthcheck_command = None
     return (mode, healthcheck_command)
+
+
+def kill_task(client, app_id, task_id, scale):
+    """ Wrapper to the official kill_task method that is idempotent """
+    try:
+        return client.kill_task(app_id=app_id, task_id=task_id, scale=True)
+    except MarathonHttpError as e:
+        # Marathon's interface is always async, so it is possible for you to see a task
+        # in the interface and kill it, yet by the time it tries to kill it, it is already
+        # gone. This is not really a failure condition, so we swallow this error.
+        if e.error_message == 'Bean is not valid' and e.status_code == 422:
+            log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
+            return []
+        else:
+            raise
