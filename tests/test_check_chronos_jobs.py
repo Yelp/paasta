@@ -119,7 +119,8 @@ def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs
 
 
 def test_message_for_status_fail():
-    assert check_chronos_jobs.message_for_status(pysensu_yelp.Status.CRITICAL, 'service', 'instance', 'full_job_id') == \
+    assert check_chronos_jobs.message_for_status(
+        pysensu_yelp.Status.CRITICAL, 'service', 'instance', 'full_job_id') == \
         'Last run of job service%sinstance Failed - job id full_job_id' % utils.SPACER
 
 
