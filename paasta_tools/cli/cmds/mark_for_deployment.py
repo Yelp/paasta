@@ -50,7 +50,8 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-l', '--deploy_group', '--clusterinstance',
         help='Mark the service ready for deployment in this deploy group (e.g. '
-             'cluster1.canary, cluster2.main)',
+             'cluster1.canary, cluster2.main). --clusterinstance is depricated and '
+             'should be replaced with --deploy_group',
         required=True,
     )
     list_parser.add_argument(
