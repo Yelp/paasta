@@ -43,10 +43,12 @@ def list_marathon_apps_has_trivial_app(context):
 @then(u'it should show up in marathon_services_running_here')
 def marathon_services_running_here_works(context):
     with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value='mesosslave'):
-        (discovered,) = paasta_tools.marathon_tools.marathon_services_running_here()
+        discovered = paasta_tools.marathon_tools.marathon_services_running_here()
+        assert len(discovered) == 1, repr(discovered)
 
-    assert discovered[0] == u'test_marathon_app', repr(discovered)
-    assert discovered[1] == 'instance'
+    discovered_service = discovered[1]
+    assert discovered_service[0] == u'test_marathon_app', repr(discovered)
+    assert discovered_service[1] == 'instance'
 
 
 @when(u'the task has started')
