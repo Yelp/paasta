@@ -352,13 +352,14 @@ def get_container_name():
     return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
-def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command):
+def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command, hostname):
     cmd = ['docker', 'run']
     for k, v in env.iteritems():
         cmd.append('--env=\"%s=%s\"' % (k, v))
     # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
     # be using this variable in surprising ways. See PAASTA-267 for more context.
+    cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=PORT=%s' % BAD_PORT_WARNING)
     cmd.append('--memory=%dm' % memory)
     cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
@@ -434,6 +435,7 @@ def run_docker_container(
     volumes,
     interactive,
     command,
+    hostname,
     healthcheck,
     healthcheck_only,
     instance_config,
@@ -472,6 +474,7 @@ def run_docker_container(
         interactive=interactive,
         docker_hash=docker_hash,
         command=command,
+        hostname=hostname,
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
@@ -566,6 +569,11 @@ def get_instance_config(service, instance, cluster, soa_dir, load_deployments=Fa
     )
 
 
+def get_hostname():
+    (_, hostname) = _run('hostname')
+    return hostname
+
+
 def configure_and_run_docker_container(docker_client, docker_hash, service, instance, cluster, args, pull_image=False):
     """
     Run Docker container by image hash with args set in command line.
@@ -616,6 +624,8 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         else:
             command = instance_config.get_args()
 
+    hostname = get_hostname()
+
     run_docker_container(
         docker_client=docker_client,
         service=service,
@@ -624,6 +634,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         volumes=volumes,
         interactive=args.interactive,
         command=command,
+        hostname=hostname,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=instance_config,
