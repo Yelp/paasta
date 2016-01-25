@@ -2160,8 +2160,8 @@ def test_kill_tasks_passes_catches_fewer_than_error():
         "message": "Bean is not valid",
         "errors": [{"attribute": "instances", "error": "must be greater than or equal to 0"}],
     }
-    fake_client.kill_task = mock.Mock()
     fake_client.kill_task.side_effect = MarathonHttpError(response=bad_fake_response)
+
     actual = marathon_tools.kill_task(client=fake_client, app_id='app_id', task_id='task_id', scale=True)
     fake_client.kill_task.assert_called_once_with(scale=True, task_id='task_id', app_id='app_id')
     assert actual == []

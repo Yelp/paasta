@@ -959,13 +959,15 @@ def get_healthcheck_for_instance(service, instance, service_manifest, random_por
 
 
 def kill_task(client, app_id, task_id, scale):
-    """ Wrapper to the official kill_task method that is idempotent """
+    """Wrapper to the official kill_task method that is tolerant of errors"""
     try:
         return client.kill_task(app_id=app_id, task_id=task_id, scale=True)
     except MarathonHttpError as e:
-        # Marathon's interface is always async, so it is possible for you to see a task
-        # in the interface and kill it, yet by the time it tries to kill it, it is already
-        # gone. This is not really a failure condition, so we swallow this error.
+        # Marathon allows you to kill and scale in one action, but this is not
+        # idempotent. If you kill&scale the same task ID twice, the number of instances
+        # gets decremented twice. This can lead to a situation where kill&scaling the
+        # last task decrements the number of instances below zero, causing a "Bean is not
+        # valid" message.
         if e.error_message == 'Bean is not valid' and e.status_code == 422:
             log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
             return []
