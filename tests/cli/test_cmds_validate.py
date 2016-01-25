@@ -18,8 +18,8 @@ import mock
 from mock import patch
 from pytest import raises
 
-from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import check_service_path
+from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
 from paasta_tools.cli.cmds.validate import invalid_chronos_instance
 from paasta_tools.cli.cmds.validate import paasta_validate
