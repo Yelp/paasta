@@ -19,14 +19,20 @@
 mkdir -p /nail/etc/services
 
 mkdir -p docs/man/
-. .tox/manpages/bin/activate
 
+set -e
+source .tox/manpages/bin/activate
+
+set -vx
 VERSION=`./paasta_tools/cli/cli.py --version 2>&1 | cut -f 2 -d ' '`
+./paasta_tools/cli/cli.py --version 2>&1 | cut -f 2 -d ' '
+./paasta_tools/cli/cli.py --version
 
 function build_man() {
     COMMAND=$1
-    echo "paasta $COMMAND --help"
-    help2man --name=$COMMAND --version-string=$VERSION "./paasta_tools/cli/cli.py $COMMAND" > docs/man/paasta-$COMMAND.1
+    set -vx
+    help2man --name="$COMMAND" --version-string="$VERSION" "./paasta_tools/cli/cli.py $COMMAND" > docs/man/paasta-$COMMAND.1
+    set +vx
 }
 
 for FILE in paasta_tools/cli/cmds/*.py
