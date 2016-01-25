@@ -243,7 +243,7 @@ def do_bounce(
         if drain_method.is_safe_to_kill(task):
             killed_tasks.add(task)
             log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
-            client.kill_task(task.app_id, task.id, scale=True)
+            marathon_tools.kill_task(client=client, app_id=task.app_id, task_id=task.id, scale=True)
 
     apps_to_kill = []
     for app in old_app_live_tasks.keys():
