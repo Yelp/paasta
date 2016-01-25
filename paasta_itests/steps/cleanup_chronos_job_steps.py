@@ -21,14 +21,14 @@ from paasta_tools.utils import _run
 
 
 @when(('I launch {num_jobs} {state} jobs for the service "{service}"'
-       ' with scheduled chronos instance "{job}"'))
+       ' with scheduled chronos instance "{job}" and differing tags'))
 def launch_jobs(context, num_jobs, state, service, job):
     client = context.chronos_client
     jobs = [{
         'async': False,
         'command': 'echo 1',
         'epsilon': 'PT15M',
-        'name': compose_job_id(service, job),
+        'name': compose_job_id(service, job, 'githash', 'config%d' % x),
         'owner': 'paasta',
         'disabled': True,
         'schedule': 'R/2014-01-01T00:00:00Z/PT60M',
@@ -90,7 +90,7 @@ def check_cleanup_chronos_jobs_output(context, expected_return_code):
         assert '  %s' % job in output
 
 
-@then('the non-paasta jobs are still in the job list')
+@then('the non chronos jobs are still in the job list')
 def check_non_paasta_jobs(context):
     jobs = context.chronos_client.list()
     running_job_names = [job['name'] for job in jobs]

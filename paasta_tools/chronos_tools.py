@@ -26,7 +26,10 @@ import monitoring_tools
 import service_configuration_lib
 from tron import command_context
 
+from paasta_tools.utils import compose_job_id as utils_compose_job_id
 from paasta_tools.utils import decompose_job_id as utils_decompose_job_id
+from paasta_tools.utils import get_code_sha_from_dockerurl
+from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
@@ -117,15 +120,14 @@ def get_chronos_client(config):
                            password=config.get_password())
 
 
-def compose_job_id(service, instance):
-    """In chronos, a job is just service{SPACER}instance """
-    return "%s%s%s" % (service, SPACER, instance)
+def compose_job_id(service, instance, git_hash=None, config_hash=None):
+    """Thin wrapper around generic compose_job_id to use our local SPACER."""
+    return utils_compose_job_id(service, instance, git_hash, config_hash, spacer=SPACER)
 
 
 def decompose_job_id(job_id):
     """Thin wrapper around generic decompose_job_id to use our local SPACER."""
-    service, job, _, __ = utils_decompose_job_id(job_id, spacer=SPACER)
-    return (service, job)
+    return utils_decompose_job_id(job_id, spacer=SPACER)
 
 
 class InvalidChronosConfigError(Exception):
@@ -464,8 +466,13 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
         docker_url,
         docker_volumes,
     )
+    code_sha = get_code_sha_from_dockerurl(docker_url)
+    config_hash = get_config_hash(complete_config)
 
-    complete_config['name'] = compose_job_id(service, job_name)
+    # Chronos clears the history for a job whenever it is updated, so we use a new job name for each revision
+    # so that we can keep history of old job revisions rather than just the latest version
+    full_id = compose_job_id(service, job_name, code_sha, config_hash)
+    complete_config['name'] = full_id
     desired_state = chronos_job_config.get_desired_state()
 
     # If the job was previously stopped, we should stop the new job as well
@@ -578,12 +585,14 @@ def sort_jobs(jobs):
     )
 
 
-def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=False):
+def lookup_chronos_jobs(client, service=None, instance=None, git_hash=None, config_hash=None, include_disabled=False):
     """Discovers Chronos jobs and filters them with ``filter_chronos_jobs()``.
 
     :param client: Chronos client object
     :param service: passed on to ``filter_chronos_jobs()``
     :param instance: passed on to ``filter_chronos_jobs()``
+    :param git_hash: passed on to ``filter_chronos_jobs()``
+    :param config_hash: passed on to ``filter_chronos_jobs()``
     :param include_disabled: passed on to ``filter_chronos_jobs()``
     :returns: list of job dicts discovered by ``client`` and filtered by
     ``filter_chronos_jobs()`` using the other parameters
@@ -593,16 +602,22 @@ def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=Fa
         jobs=jobs,
         service=service,
         instance=instance,
+        git_hash=git_hash,
+        config_hash=config_hash,
         include_disabled=include_disabled,
     )
 
 
-def filter_chronos_jobs(jobs, service, instance, include_disabled):
+def filter_chronos_jobs(jobs, service, instance, git_hash, config_hash, include_disabled):
     """Filters a list of Chronos jobs based on several criteria.
 
     :param jobs: a list of jobs, as calculated in ``lookup_chronos_jobs()``
     :param service: service we're looking for. If None, don't filter based on this key.
     :param instance: instance we're looking for. If None, don't filter based on this key.
+    :param git_hash: git_hash we're looking for. If None, don't filter based on
+    this key.
+    :param config_hash: config_hash we're looking for. If None, don't filter
+    based on this key.
     :param include_disabled: boolean indicating if disabled jobs should be
     included in the returned list
     :returns: list of job dicts whose name matches the arguments (if any)
@@ -611,12 +626,14 @@ def filter_chronos_jobs(jobs, service, instance, include_disabled):
     matching_jobs = []
     for job in jobs:
         try:
-            job_service, job_instance = decompose_job_id(job['name'])
+            (job_service, job_instance, job_git_hash, job_config_hash) = decompose_job_id(job['name'])
         except InvalidJobNameError:
             continue
         if (
             (service is None or job_service == service) and
-            (instance is None or job_instance == instance)
+            (instance is None or job_instance == instance) and
+            (git_hash is None or job_git_hash == git_hash) and
+            (config_hash is None or job_config_hash == config_hash)
         ):
             if job['disabled'] and not include_disabled:
                 continue
@@ -683,11 +700,6 @@ def delete_job(client, job):
 def create_job(client, job):
     log.debug("Creating job: %s" % job)
     client.add(job)
-
-
-def update_job(client, job):
-    log.debug("Updating job: %s" % job)
-    client.update(job)
 
 
 def find_matching_parent_job(job_name):
