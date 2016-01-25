@@ -247,9 +247,18 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
         # Setting up transparent cache for http API calls
         requests_cache.install_cache("paasta_serviceinit", backend="memory")
         # Verbose mode shows previous versions.
+        if verbose:
+            git_hash = None
+            config_hash = None
+        # Non-verbose shows only the version specified via
+        # create_complete_config.
+        else:
+            (_, __, git_hash, config_hash) = chronos_tools.decompose_job_id(job_id)
         matching_jobs = chronos_tools.lookup_chronos_jobs(
             service=service,
             instance=instance,
+            git_hash=git_hash,
+            config_hash=config_hash,
             client=client,
             include_disabled=True,
         )

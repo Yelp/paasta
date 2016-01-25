@@ -96,7 +96,7 @@ def send_event(service, instance, soa_dir, status, output):
     # we need to set the ``check_every`` to the frequency of our cron job, which
     # is 10s.
     monitoring_overrides['check_every'] = '10s'
-    # Most deploy_chronos_jobs failures are transient and represent issues
+    # Most deploy_chrono_jobs failures are transient and represent issues
     # that will probably be fixed eventually, so we set an alert_after
     # to suppress extra noise
     monitoring_overrides['alert_after'] = '10m'
@@ -115,42 +115,58 @@ def bounce_chronos_job(
     service,
     instance,
     cluster,
-    job_to_update,
+    jobs_to_disable,
+    jobs_to_delete,
+    job_to_create,
     client
 ):
-    if job_to_update:
-        log_line = 'Job to update: %s' % job_to_update
+    if any([jobs_to_disable, jobs_to_delete, job_to_create]):
+        log_line = "Chronos bouncing. Jobs to disable: %s, jobs to delete: %s, job_to_create: %s" % (
+            jobs_to_disable, jobs_to_delete, job_to_create)
         _log(service=service, instance=instance, component='deploy',
              cluster=cluster, level='debug', line=log_line)
-        chronos_tools.update_job(client=client, job=job_to_update)
-        log_line = 'Updated Chronos job: %s' % job_to_update['name']
+    else:
+        log.debug("Not doing any chronos bounce action for %s" % chronos_tools.compose_job_id(
+            service, instance))
+    for job in jobs_to_disable:
+        chronos_tools.disable_job(client=client, job=job)
+    for job in jobs_to_delete:
+        chronos_tools.delete_job(client=client, job=job)
+    if job_to_create:
+        chronos_tools.create_job(client=client, job=job_to_create)
+        log_line = 'Created new Chronos job: %s' % job_to_create['name']
         _log(service=service, instance=instance, component='deploy',
              cluster=cluster, level='event', line=log_line)
-
     return (0, "All chronos bouncing tasks finished.")
 
 
 def setup_job(service, instance, complete_job_config, client, cluster):
-    # There should only ever be *one* job for a given service_instance
-    all_existing_jobs = chronos_tools.lookup_chronos_jobs(
+    job_id = complete_job_config['name']
+    # Sort this initial list since other lists of jobs will come from it (with
+    # their orders preserved by list comprehensions) and since we'll care about
+    # ordering by recency when we go calculate jobs_to_delete.
+    all_existing_jobs = chronos_tools.sort_jobs(chronos_tools.lookup_chronos_jobs(
         service=service,
         instance=instance,
         client=client,
         include_disabled=True,
-    )
+    ))
+    old_jobs = [job for job in all_existing_jobs if job["name"] != job_id]
+    enabled_old_jobs = [job for job in old_jobs if not job["disabled"]]
 
-    job_to_update = None
-    if len(all_existing_jobs) > 0:
-        if all_existing_jobs[0] != complete_job_config:
-            job_to_update = complete_job_config
+    if all_existing_jobs == old_jobs:
+        job_to_create = complete_job_config
     else:
-        job_to_update = complete_job_config
+        job_to_create = None
 
+    number_of_old_jobs_to_keep = 5
     return bounce_chronos_job(
         service=service,
         instance=instance,
         cluster=cluster,
-        job_to_update=job_to_update,
+        jobs_to_disable=enabled_old_jobs,
+        jobs_to_delete=old_jobs[number_of_old_jobs_to_keep:],
+        job_to_create=job_to_create,
         client=client,
     )
 
@@ -164,9 +180,7 @@ def main():
     else:
         log.setLevel(logging.WARNING)
     try:
-        service, instance, _, __ = decompose_job_id(args.service_instance, spacer=chronos_tools.INTERNAL_SPACER)
-        print 'service, instance'
-        print service, instance
+        service, instance, _, __ = decompose_job_id(args.service_instance)
     except InvalidJobNameError:
         log.error("Invalid service instance '%s' specified. Format is service%sinstance."
                   % (args.service_instance, SPACER))
