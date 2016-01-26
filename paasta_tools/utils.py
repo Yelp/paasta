@@ -218,6 +218,18 @@ class InstanceConfig(dict):
         <https://mesosphere.github.io/marathon/docs/native-docker.html>`_"""
         return self.config_dict.get('extra_volumes', [])
 
+    def get_pool(self):
+        """Which pool of nodes this job should run on. This can be used to mitigate noisy neighbors, by putting
+        particularly noisy or noise-sensitive jobs into different pools.
+
+        This is implemented with an attribute "pool" on each mesos slave and by adding a constraint to Marathon/Chronos
+        application defined by this instance config.
+
+        Eventually this may be implemented with Mesos roles, once a framework can register under multiple roles.
+
+        :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
+        return self.config_dict.get('pool', 'default')
+
 
 def validate_service_instance(service, instance, cluster, soa_dir):
     marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon', soa_dir=soa_dir)

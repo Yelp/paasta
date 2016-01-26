@@ -221,7 +221,7 @@ class ChronosJobConfig(InstanceConfig):
         return [{"name": key, "value": value} for key, value in original_env.iteritems()]
 
     def get_constraints(self):
-        return self.config_dict.get('constraints')
+        return self.config_dict.get('constraints', [['pool', 'EQUALS', self.get_pool()]])
 
     def check_bounce_method(self):
         bounce_method = self.get_bounce_method()
