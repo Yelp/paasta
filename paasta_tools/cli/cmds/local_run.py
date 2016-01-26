@@ -361,6 +361,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     # be using this variable in surprising ways. See PAASTA-267 for more context.
     cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=PORT=%s' % BAD_PORT_WARNING)
+    cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
     cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     cmd.append('--name=%s' % container_name)
