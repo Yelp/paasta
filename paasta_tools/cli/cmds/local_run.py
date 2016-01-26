@@ -356,10 +356,10 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     cmd = ['docker', 'run']
     for k, v in env.iteritems():
         cmd.append('--env=\"%s=%s\"' % (k, v))
+    cmd.append('--env=HOST=%s' % hostname)
     # We inject an invalid port as the PORT variable, as marathon injects the externally
     # assigned port like this. That allows this test run to catch services that might
     # be using this variable in surprising ways. See PAASTA-267 for more context.
-    cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=PORT=%s' % BAD_PORT_WARNING)
     cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
@@ -416,7 +416,7 @@ def get_container_id(docker_client, container_name):
 
 
 def _cleanup_container(docker_client, container_id):
-    if docker_client.inspect_container(container_id)['State']['OOMKilled']:
+    if docker_client.inspect_container(container_id)['State'].get('OOMKilled', False):
         sys.stderr.write(PaastaColors.red("Your service was killed by the OOM Killer!\n"))
         sys.stderr.write(PaastaColors.red(
             "You've exceeded the memory limit, try increasing the mem parameter in your soa_configs\n"))

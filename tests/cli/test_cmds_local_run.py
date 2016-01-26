@@ -215,7 +215,7 @@ def test_get_container_name(mock_get_username, mock_randint):
     assert actual == expected
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.get_hostname', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
@@ -223,13 +223,13 @@ def test_configure_and_run_command_uses_cmd_from_config(
     mock_get_instance_config,
     mock_load_system_paasta_config,
     mock_run_docker_container,
-    mock_get_hostname,
+    mock_socket_getfqdn,
 ):
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_get_instance_config.return_value.get_cmd.return_value = 'fake_command'
-    mock_get_hostname.return_value = 'fake_hostname'
+    mock_socket_getfqdn.return_value = 'fake_hostname'
 
     fake_service = 'fake_service'
     docker_hash = '8' * 40
@@ -257,7 +257,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
         volumes=[],
         interactive=args.interactive,
         command=shlex.split(mock_get_instance_config.return_value.get_cmd.return_value),
-        hostname=mock_get_hostname.return_value,
+        hostname=mock_socket_getfqdn.return_value,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -265,7 +265,7 @@ def test_configure_and_run_command_uses_cmd_from_config(
     )
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.get_hostname', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_instance_config', autospec=True)
@@ -273,12 +273,12 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     mock_get_instance_config,
     mock_load_system_paasta_config,
     mock_run_docker_container,
-    mock_get_hostname,
+    mock_socket_getfqdn,
 ):
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_get_hostname.return_value = 'fake_hostname'
+    mock_socket_getfqdn.return_value = 'fake_hostname'
 
     fake_service = 'fake_service'
     docker_hash = '8' * 40
@@ -306,7 +306,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
         volumes=[],
         interactive=args.interactive,
         command=['bash'],
-        hostname=mock_get_hostname.return_value,
+        hostname=mock_socket_getfqdn.return_value,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
@@ -314,7 +314,7 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     )
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.get_hostname', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.docker_pull_image', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
@@ -324,12 +324,12 @@ def test_configure_and_run_pulls_image_when_asked(
     mock_load_system_paasta_config,
     mock_run_docker_container,
     mock_docker_pull_image,
-    mock_get_hostname,
+    mock_socket_getfqdn,
 ):
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_get_hostname.return_value = 'fake_hostname'
+    mock_socket_getfqdn.return_value = 'fake_hostname'
 
     fake_instance_config = mock.MagicMock(InstanceConfig)
     fake_instance_config.get_docker_image.return_value = 'fake_image'
@@ -361,7 +361,7 @@ def test_configure_and_run_pulls_image_when_asked(
         volumes=[],
         interactive=args.interactive,
         command=['bash'],
-        hostname=mock_get_hostname.return_value,
+        hostname=mock_socket_getfqdn.return_value,
         healthcheck=args.healthcheck,
         healthcheck_only=args.healthcheck_only,
         instance_config=mock_get_instance_config.return_value,
