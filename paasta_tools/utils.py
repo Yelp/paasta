@@ -992,6 +992,10 @@ def get_paasta_branch(cluster, instance):
     return get_paasta_branch_from_deploy_group('%s.%s' % (cluster, instance))
 
 
+def get_paasta_tag(cluster, instance):
+    return get_paasta_branch(cluster, instance)
+
+
 class NoDockerImageError(Exception):
     pass
 
