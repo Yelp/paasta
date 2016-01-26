@@ -87,6 +87,7 @@ def paasta_rollback(args):
     service = figure_out_service_name(args)
     git_url = get_git_url(service)
     commit = args.commit
+    # filter deploy_groups.split by the bool function to remove empty string literals
     given_deploy_groups = filter(bool, args.deploy_groups.split(","))
 
     service_deploy_groups = set(config.get_deploy_group() for config in get_instance_config_for_service(
@@ -97,7 +98,7 @@ def paasta_rollback(args):
     if len(invalid) > 0:
         print PaastaColors.yellow("These deploy groups are not valid and will be skipped: %s.\n" % (",").join(invalid))
 
-    if len(deploy_groups) is 0:
+    if len(deploy_groups) == 0:
         print PaastaColors.red("ERROR: No valid deploy groups specified for %s.\n" % (service))
         returncode = 1
 

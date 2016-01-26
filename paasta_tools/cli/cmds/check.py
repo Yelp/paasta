@@ -212,9 +212,12 @@ def get_chronos_steps(service, soa_dir):
     with what deploy.yaml has for linting."""
     steps = []
     for cluster in list_clusters(service, soa_dir):
-        for _, instance in get_service_instance_list(service=service, cluster=cluster,
-                                                     instance_type='chronos',
-                                                     soa_dir=soa_dir):
+        for _, instance in get_service_instance_list(
+                service=service,
+                cluster=cluster,
+                instance_type='chronos',
+                soa_dir=soa_dir,
+        ):
             config = load_chronos_job_config(
                 service=service,
                 instance=instance,
