@@ -74,12 +74,9 @@ def step_impl_when(context):
                    return_value=context.test_git_repo_dir),
         mock.patch('paasta_tools.generate_deployments_for_service.parse_args',
                    autospec=True, return_value=fake_args),
-        mock.patch('paasta_tools.generate_deployments_for_service.get_branches_for_service', autospec=True,
-                   return_value=['paasta-test_cluster.test_instance']),
     ) as (
         mock_get_git_url,
         mock_parse_args,
-        mock_get_branches_for_service,
     ):
         generate_deployments_for_service.main()
 
