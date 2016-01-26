@@ -1374,7 +1374,9 @@ class TestChronosTools:
         # only provide the right response on the third attempt
         client.list = Mock(side_effect=[[], [], [{'name': 'foo'}]])
 
-        assert chronos_tools.wait_for_job(client, 'foo')
+        with mock.patch('paasta_tools.chronos_tools.sleep') as mock_sleep:
+            assert chronos_tools.wait_for_job(client, 'foo')
+            assert mock_sleep.call_count == 2
 
     def test_parse_time_variables_parses_shortdate(self):
         input_time = datetime.datetime(2012, 3, 14)
