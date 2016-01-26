@@ -76,27 +76,33 @@ def get_instance_config_for_service(soa_dir, service):
         service=service,
         soa_dir=soa_dir,
     ):
+        print cluster
         for _, instance in get_service_instance_list(
             service=service,
             cluster=cluster,
             instance_type='marathon',
+            soa_dir=soa_dir,
         ):
+            print instance
             yield load_marathon_service_config(
                 service=service,
                 instance=instance,
                 cluster=cluster,
                 soa_dir=soa_dir,
+                load_deployments=False,
             )
         for _, instance in get_service_instance_list(
             service=service,
             cluster=cluster,
             instance_type='chronos',
+            soa_dir=soa_dir,
         ):
             yield load_chronos_job_config(
                 service=service,
                 instance=instance,
                 cluster=cluster,
                 soa_dir=soa_dir,
+                load_deployments=False,
             )
 
 
@@ -107,7 +113,7 @@ def get_branches_for_service(soa_dir, service):
     :param service: The service name to get branches for
     :returns: A list of branches defined in instances for the service
     """
-    valid_branches = set([config.get_deploy_group() for config in get_instance_config_for_service(
+    valid_branches = set(['paasta-%s' % config.get_deploy_group() for config in get_instance_config_for_service(
         soa_dir=soa_dir,
         service=service,
     )])
@@ -132,12 +138,15 @@ def get_branch_mappings(soa_dir, service, old_mappings):
       the other properties of this app have not changed.
     """
     mappings = {}
-    valid_branches = get_branches_for_service(soa_dir, service)
+    valid_branches = get_branches_for_service(
+        soa_dir=soa_dir,
+        service=service
+    )
     if not valid_branches:
         log.info('Service %s has no valid branches. Skipping.', service)
         return {}
 
-    git_url = get_git_url(service, soa_dir=soa_dir)
+    git_url = get_git_url(service=service, soa_dir=soa_dir)
     remote_refs = remote_git.list_remote_refs(git_url)
 
     for branch in valid_branches:
@@ -153,7 +162,7 @@ def get_branch_mappings(soa_dir, service, old_mappings):
             desired_state, force_bounce = get_desired_state(service, branch, remote_refs)
             mapping['desired_state'] = desired_state
             mapping['force_bounce'] = force_bounce
-
+    print mappings
     return mappings
 
 
