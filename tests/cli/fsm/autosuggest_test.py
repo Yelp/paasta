@@ -68,10 +68,10 @@ class TestSuggestSmartstackProxyPort:
             mock.patch("paasta_tools.cli.fsm.autosuggest._get_smartstack_proxy_port_from_file",
                        mock_get_smartstack_proxy_port_from_file),
         ):
-            actual = autosuggest.suggest_smartstack_proxy_port(yelpsoa_config_root)
+            actual = autosuggest.suggest_smartstack_proxy_port(yelpsoa_config_root, range_min=20001, range_max=20003)
         # Sanity check: our mock was called once for each legit port file in
         # walk_return
         assert mock_get_smartstack_proxy_port_from_file.call_count == 3
 
         # What we came here for: the actual output of the function under test
-        assert actual == 20002 + 1  # highest port + 1
+        assert actual == 20003  # The only available integer in [20001, 20003]
