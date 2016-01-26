@@ -18,11 +18,11 @@ import os
 import re
 import urllib2
 
-from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from service_configuration_lib import DEFAULT_SOA_DIR
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.cli.cmds.validate import paasta_validate_soa_configs
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import is_file_in_dir

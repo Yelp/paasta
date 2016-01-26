@@ -29,7 +29,6 @@ from dulwich.repo import Repo
 
 from paasta_tools import generate_deployments_for_service
 from paasta_tools import marathon_tools
-from paasta_tools.utils import InstanceConfig
 
 
 @given(u'a test git repo is setup with commits')

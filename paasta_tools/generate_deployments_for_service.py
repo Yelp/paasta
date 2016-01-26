@@ -76,14 +76,12 @@ def get_instance_config_for_service(soa_dir, service):
         service=service,
         soa_dir=soa_dir,
     ):
-        print cluster
         for _, instance in get_service_instance_list(
             service=service,
             cluster=cluster,
             instance_type='marathon',
             soa_dir=soa_dir,
         ):
-            print instance
             yield load_marathon_service_config(
                 service=service,
                 instance=instance,
@@ -144,7 +142,7 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
         deploy_ref_name = 'refs/heads/paasta-%s' % deploy_group
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
-            deploy_group_branch_alias = '%s:%s' % (service, deploy_group)
+            deploy_group_branch_alias = '%s:paasta-%s' % (service, deploy_group)
             docker_image = build_docker_image_name(service, commit_sha)
             log.info('Mapping deploy_group %s to docker image %s', deploy_group_branch_alias, docker_image)
             mapping = mappings.setdefault(deploy_group_branch_alias, {})

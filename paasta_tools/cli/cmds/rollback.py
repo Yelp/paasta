@@ -87,8 +87,7 @@ def paasta_rollback(args):
     service = figure_out_service_name(args)
     git_url = get_git_url(service)
     commit = args.commit
-    # filter deploy_groups.split by the bool function to remove empty string literals
-    given_deploy_groups = filter(bool, args.deploy_groups.split(","))
+    given_deploy_groups = [deploy_group for deploy_group in args.deploy_groups.split(",") if deploy_group]
 
     service_deploy_groups = set(config.get_deploy_group() for config in get_instance_config_for_service(
         soa_dir=DEFAULT_SOA_DIR,
