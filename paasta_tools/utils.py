@@ -984,12 +984,12 @@ class DeploymentsJson(dict):
         return self.get(full_branch, {})
 
 
-def get_paasta_branch_from_identifier(identifier):
+def get_paasta_branch_from_deploy_group(identifier):
     return 'paasta-%s' % (identifier)
 
 
 def get_paasta_branch(cluster, instance):
-    return get_paasta_branch_from_identifier('%s.%s' % (cluster, instance))
+    return get_paasta_branch_from_deploy_group('%s.%s' % (cluster, instance))
 
 
 class NoDockerImageError(Exception):
