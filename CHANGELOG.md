@@ -1,8 +1,44 @@
 # Change Log
 
-## [Unreleased](https://github.com/Yelp/paasta/tree/HEAD)
+## [v0.16.18](https://github.com/Yelp/paasta/tree/v0.16.18) (2016-01-26)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.17...v0.16.18)
 
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.14...HEAD)
+**Closed issues:**
+
+- Make 'paasta check' call 'paasta validate' [\#128](https://github.com/Yelp/paasta/issues/128)
+
+**Merged pull requests:**
+
+- Pick a smartstack port randomly, instead of always picking highest existing + 1. [\#189](https://github.com/Yelp/paasta/pull/189) ([EvanKrall](https://github.com/EvanKrall))
+- Fixed bugs introduced in the generate deployments rebase [\#188](https://github.com/Yelp/paasta/pull/188) ([mjksmith](https://github.com/mjksmith))
+- Make tox faster [\#186](https://github.com/Yelp/paasta/pull/186) ([EvanKrall](https://github.com/EvanKrall))
+- added a HOST variable to docker containers [\#185](https://github.com/Yelp/paasta/pull/185) ([mjksmith](https://github.com/mjksmith))
+- Make paasta check call validate \(Closes \#128\) [\#161](https://github.com/Yelp/paasta/pull/161) ([nhandler](https://github.com/nhandler))
+
+## [v0.16.17](https://github.com/Yelp/paasta/tree/v0.16.17) (2016-01-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.16...v0.16.17)
+
+**Closed issues:**
+
+- Marathon 'bean is not valid' errors during crossover bounce cause itest failures [\#172](https://github.com/Yelp/paasta/issues/172)
+- remove 'versioned' chronos jobs [\#158](https://github.com/Yelp/paasta/issues/158)
+
+**Merged pull requests:**
+
+- Install deps during manpages [\#183](https://github.com/Yelp/paasta/pull/183) ([asottile](https://github.com/asottile))
+- chronos now gives sensu the full job id of a failed task [\#181](https://github.com/Yelp/paasta/pull/181) ([mjksmith](https://github.com/mjksmith))
+- Catch the 'bean not found' error. Fixes \#172 [\#180](https://github.com/Yelp/paasta/pull/180) ([solarkennedy](https://github.com/solarkennedy))
+- Add http://pre-commit.com hooks [\#175](https://github.com/Yelp/paasta/pull/175) ([asottile](https://github.com/asottile))
+
+## [v0.16.16](https://github.com/Yelp/paasta/tree/v0.16.16) (2016-01-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.15...v0.16.16)
+
+**Merged pull requests:**
+
+- Fix the broken link [\#178](https://github.com/Yelp/paasta/pull/178) ([ronin13](https://github.com/ronin13))
+
+## [v0.16.15](https://github.com/Yelp/paasta/tree/v0.16.15) (2016-01-22)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.14...v0.16.15)
 
 **Closed issues:**
 
@@ -12,11 +48,21 @@
 
 **Merged pull requests:**
 
+- Force python2.7 in other tox environments [\#176](https://github.com/Yelp/paasta/pull/176) ([asottile](https://github.com/asottile))
+- fixed paasta\_metastatus -vv when there are no mesos slaves [\#174](https://github.com/Yelp/paasta/pull/174) ([mjksmith](https://github.com/mjksmith))
+- Fixed formatting for very verbose paasta metastatus [\#173](https://github.com/Yelp/paasta/pull/173) ([mjksmith](https://github.com/mjksmith))
+- Remove tags chronos jobs [\#171](https://github.com/Yelp/paasta/pull/171) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Remove PYTHONPATH hax when running tests [\#170](https://github.com/Yelp/paasta/pull/170) ([asottile](https://github.com/asottile))
+- Pick an ephemeral port better [\#169](https://github.com/Yelp/paasta/pull/169) ([asottile](https://github.com/asottile))
+- made InstanceConfig take service, cluster and instance as args [\#167](https://github.com/Yelp/paasta/pull/167) ([mjksmith](https://github.com/mjksmith))
 - Added contrib location and purge\_chronos\_jobs [\#166](https://github.com/Yelp/paasta/pull/166) ([solarkennedy](https://github.com/solarkennedy))
+- Add --yelpsoa-config-root argument to 'paasta check' [\#165](https://github.com/Yelp/paasta/pull/165) ([nhandler](https://github.com/nhandler))
 - Allow users to set accepted\_resource\_roles in marathon yamls. [\#164](https://github.com/Yelp/paasta/pull/164) ([EvanKrall](https://github.com/EvanKrall))
 - add docs for schedule time zone field [\#163](https://github.com/Yelp/paasta/pull/163) ([Rob-Johnson](https://github.com/Rob-Johnson))
 - Consider chronos\*.yaml for deploy checks \(Closes: \#110\) [\#162](https://github.com/Yelp/paasta/pull/162) ([nhandler](https://github.com/nhandler))
 - Make deploy\_chronos\_services shuffle [\#160](https://github.com/Yelp/paasta/pull/160) ([nhandler](https://github.com/nhandler))
+- Fixed a bug where non-smartstack services would fail to send alerts when they start failing [\#145](https://github.com/Yelp/paasta/pull/145) ([mjksmith](https://github.com/mjksmith))
+- Added a script to drain and kill a marathon app as gracefully as possible [\#143](https://github.com/Yelp/paasta/pull/143) ([mjksmith](https://github.com/mjksmith))
 
 ## [v0.16.14](https://github.com/Yelp/paasta/tree/v0.16.14) (2016-01-14)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.13...v0.16.14)
