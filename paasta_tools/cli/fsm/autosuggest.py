@@ -47,7 +47,10 @@ def suggest_smartstack_proxy_port(yelpsoa_config_root, range_min=20000, range_ma
                 proxy_port = _get_smartstack_proxy_port_from_file(root, f)
                 available_proxy_ports.discard(proxy_port)
 
-    return random.choice(list(available_proxy_ports))
+    try:
+        return random.choice(list(available_proxy_ports))
+    except IndexError:
+        raise Exception("There are no more ports available in the range [%s, %s]" % (range_min, range_max))
 
 
 # vim: expandtab tabstop=4 sts=4 shiftwidth=4:
