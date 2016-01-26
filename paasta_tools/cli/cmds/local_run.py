@@ -415,6 +415,10 @@ def get_container_id(docker_client, container_name):
 
 
 def _cleanup_container(docker_client, container_id):
+    if docker_client.inspect_container(container_id)['State']['OOMKilled']:
+        sys.stderr.write(PaastaColors.red("Your service was killed by the OOM Killer!\n"))
+        sys.stderr.write(PaastaColors.red(
+            "You've exceeded the memory limit, try increasing the mem parameter in your soa_configs\n"))
     sys.stdout.write("\nStopping and removing the old container %s...\n" % container_id)
     sys.stdout.write("(Please wait or you may leave an orphaned container.)\n")
     sys.stdout.flush()
@@ -569,11 +573,6 @@ def get_instance_config(service, instance, cluster, soa_dir, load_deployments=Fa
     )
 
 
-def get_hostname():
-    (_, hostname) = _run('hostname')
-    return hostname
-
-
 def configure_and_run_docker_container(docker_client, docker_hash, service, instance, cluster, args, pull_image=False):
     """
     Run Docker container by image hash with args set in command line.
@@ -624,7 +623,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         else:
             command = instance_config.get_args()
 
-    hostname = get_hostname()
+    hostname = socket.getfqdn()
 
     run_docker_container(
         docker_client=docker_client,
