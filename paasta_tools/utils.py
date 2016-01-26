@@ -828,7 +828,7 @@ def list_clusters(service=None, soa_dir=DEFAULT_SOA_DIR, instance_type=None):
     else:
         instance_types = 'marathon|chronos'
 
-    search_re = r'/.*/(' + instance_types + r')-([0-9a-z-]*).yaml$'
+    search_re = r'/.*/(' + instance_types + r')-([0-9a-z-_]*)\.yaml$'
 
     for yaml_file in glob.glob('%s/*.yaml' % srv_path):
         cluster_re_match = re.search(search_re, yaml_file)

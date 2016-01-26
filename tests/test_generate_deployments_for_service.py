@@ -24,17 +24,17 @@ def test_get_branches_for_service():
     fake_dir = '/mail/var/tea'
     fake_srv = 'boba'
     fake_branches = ['red', 'green', 'blue', 'orange', 'white', 'black']
-    expected = set(['red', 'green', 'blue', 'orange', 'white', 'black', 'cluster_a.chronos_job',
-                    'cluster_b.chronos_job', 'cluster_c.chronos_job'])
+    expected = ['red', 'green', 'blue', 'orange', 'white', 'black', 'cluster_a.chronos_job',
+                'cluster_b.chronos_job', 'cluster_c.chronos_job']
     with contextlib.nested(
         mock.patch('paasta_tools.generate_deployments_for_service.list_clusters',
                    return_value=['cluster_a', 'cluster_b', 'cluster_c']),
         mock.patch('paasta_tools.generate_deployments_for_service.get_service_instance_list',
-                   side_effect=lambda service, cluster, instance_type:
+                   side_effect=lambda service, cluster, instance_type, soa_dir:
                        [('', 'main_example'), ('', 'canary_example')] if instance_type == 'marathon'
                        else [('', 'chronos_job')]),
         mock.patch('paasta_tools.generate_deployments_for_service.load_marathon_service_config',
-                   side_effect=lambda service, instance, cluster, soa_dir: MarathonServiceConfig(
+                   side_effect=lambda service, instance, cluster, soa_dir, load_deployments: MarathonServiceConfig(
                        service=service,
                        cluster=cluster,
                        instance=instance,
@@ -42,7 +42,7 @@ def test_get_branches_for_service():
                        branch_dict={},
                    )),
         mock.patch('paasta_tools.generate_deployments_for_service.load_chronos_job_config',
-                   side_effect=lambda service, instance, cluster, soa_dir: ChronosJobConfig(
+                   side_effect=lambda service, instance, cluster, soa_dir, load_deployments: ChronosJobConfig(
                        service=service,
                        cluster=cluster,
                        instance=instance,
@@ -56,7 +56,7 @@ def test_get_branches_for_service():
         load_chronos_config_patch,
     ):
         actual = generate_deployments_for_service.get_branches_for_service(fake_dir, fake_srv)
-        assert expected == actual
+        assert set(['paasta-%s' % branch for branch in expected]) == actual
         # three clusters each having a canary and main marathon instance equals six instances total
         assert load_marathon_config_patch.call_count == 6
         # three clusters each having one chronos job equals six instances total
@@ -102,7 +102,10 @@ def test_get_branch_mappings():
         print actual
         print expected
         assert expected == actual
-        get_branches_patch.assert_any_call(fake_soa_dir, fake_service)
+        get_branches_patch.assert_any_call(
+            soa_dir=fake_soa_dir,
+            service=fake_service,
+        )
         assert get_branches_patch.call_count == 1
         assert list_remote_refs_patch.call_count == 1
 
@@ -146,9 +149,9 @@ def test_main():
         parse_patch.assert_called_once_with()
         abspath_patch.assert_called_once_with(fake_soa_dir)
         mappings_patch.assert_called_once_with(
-            'ABSOLUTE',
-            'fake_service',
-            {'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS', 'force_bounce': None}},
+            soa_dir='ABSOLUTE',
+            service='fake_service',
+            old_mappings={'OLD_MAP': {'desired_state': 'start', 'docker_image': 'PINGS', 'force_bounce': None}},
         ),
 
         join_patch.assert_any_call('ABSOLUTE', 'fake_service', generate_deployments_for_service.TARGET_FILE),

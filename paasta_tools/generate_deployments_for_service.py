@@ -139,14 +139,17 @@ def get_branch_mappings(soa_dir, service, old_mappings):
     """
     mappings = {}
     valid_branches = get_branches_for_service(
+        service=service,
         soa_dir=soa_dir,
-        service=service
     )
     if not valid_branches:
         log.info('Service %s has no valid branches. Skipping.', service)
         return {}
 
-    git_url = get_git_url(service=service, soa_dir=soa_dir)
+    git_url = get_git_url(
+        service=service,
+        soa_dir=soa_dir,
+    )
     remote_refs = remote_git.list_remote_refs(git_url)
 
     for branch in valid_branches:
@@ -240,7 +243,11 @@ def main():
             old_mappings = get_branch_mappings_from_deployments_dict(old_deployments_dict)
     except (IOError, ValueError):
         old_mappings = {}
-    mappings = get_branch_mappings(soa_dir, service, old_mappings)
+    mappings = get_branch_mappings(
+        soa_dir=soa_dir,
+        service=service,
+        old_mappings=old_mappings,
+    )
 
     deployments_dict = get_deployments_dict_from_branch_mappings(mappings)
 
