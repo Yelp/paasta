@@ -774,6 +774,12 @@ class TestMarathonTools:
         ]
         fake_mem = 1000000000000000000000
         fake_env = {'FAKEENV': 'FAKEVALUE'}
+        expected_env = {
+            'FAKEENV': 'FAKEVALUE',
+            'PAASTA_CLUSTER': '',
+            'PAASTA_INSTANCE': 'yes_i_can',
+            'PAASTA_SERVICE': 'can_you_dig_it',
+        }
         fake_cpus = .42
         fake_instances = 101
         fake_cmd = None
@@ -815,7 +821,7 @@ class TestMarathonTools:
             'constraints': [["habitat", "GROUP_BY", "1"]],
             'uris': ['file:///root/.dockercfg', ],
             'mem': fake_mem,
-            'env': fake_env,
+            'env': expected_env,
             'cpus': fake_cpus,
             'instances': fake_instances,
             'cmd': fake_cmd,
@@ -1972,7 +1978,7 @@ def test_create_complete_config_no_smartstack():
             'cpus': 0.25,
             'uris': ['file:///root/.dockercfg'],
             'health_checks': [],
-            'env': {},
+            'env': mock.ANY,
             'id': fake_job_id,
             'constraints': [["region", "GROUP_BY", "1"]],
         }
@@ -2052,7 +2058,7 @@ def test_create_complete_config_with_smartstack():
                     'path': '/status',
                 }
             ],
-            'env': {},
+            'env': mock.ANY,
             'id': fake_job_id,
             'constraints': [["region", "GROUP_BY", "1"]],
         }
@@ -2136,7 +2142,7 @@ def test_create_complete_config_utilizes_extra_volumes():
             'backoff_factor': 2,
             'backoff_seconds': mock.ANY,
             'health_checks': [],
-            'env': {},
+            'env': mock.ANY,
             'id': fake_job_id,
             'constraints': [["region", "GROUP_BY", "1"]],
         }

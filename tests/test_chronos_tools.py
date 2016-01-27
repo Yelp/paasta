@@ -360,10 +360,6 @@ class TestChronosTools:
 
     def test_get_env(self):
         input_env = {'foo': 'bar', 'biz': 'baz'}
-        expected_env = [
-            {"name": "foo", "value": "bar"},
-            {"name": "biz", "value": "baz"},
-        ]
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -371,6 +367,13 @@ class TestChronosTools:
             config_dict={'env': input_env},
             branch_dict={},
         )
+        expected_env = [
+            {"name": "PAASTA_CLUSTER", "value": "fake_cluster"},
+            {"name": "PAASTA_SERVICE", "value": "fake_name"},
+            {"name": "PAASTA_INSTANCE", "value": "fake_instance"},
+            {"name": "foo", "value": "bar"},
+            {"name": "biz", "value": "baz"},
+        ]
         assert sorted(fake_conf.get_env()) == sorted(expected_env)
 
     def test_get_constraints(self):
@@ -826,7 +829,7 @@ class TestChronosTools:
             'command': fake_command,
             'schedule': fake_schedule,
             'scheduleTimeZone': None,
-            'environmentVariables': [],
+            'environmentVariables': mock.ANY,
             'arguments': None,
             'constraints': None,
             'retries': 2,
@@ -1166,7 +1169,7 @@ class TestChronosTools:
                 'async': False,
                 'cpus': 5.5,
                 'scheduleTimeZone': 'Zulu',
-                'environmentVariables': [],
+                'environmentVariables': mock.ANY,
                 'retries': 5,
                 'disabled': False,
                 'name': 'fake-service fake-job sha hash',
@@ -1221,7 +1224,7 @@ class TestChronosTools:
                 'async': False,
                 'cpus': 5.5,
                 'scheduleTimeZone': 'Zulu',
-                'environmentVariables': [],
+                'environmentVariables': mock.ANY,
                 'retries': 5,
                 'disabled': False,
                 'name': 'fake_service fake_job sha hash',
@@ -1276,7 +1279,7 @@ class TestChronosTools:
                 'async': False,
                 'cpus': 5.5,
                 'scheduleTimeZone': 'Zulu',
-                'environmentVariables': [],
+                'environmentVariables': mock.ANY,
                 'retries': 5,
                 'disabled': True,
                 'name': 'fake_service fake_job sha hash',
@@ -1347,7 +1350,7 @@ class TestChronosTools:
                 'async': False,
                 'cpus': 5.5,
                 'scheduleTimeZone': 'Zulu',
-                'environmentVariables': [],
+                'environmentVariables': mock.ANY,
                 'retries': 5,
                 'disabled': True,
                 'name': 'fake_service fake_job sha hash',

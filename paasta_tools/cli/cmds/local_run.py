@@ -466,7 +466,7 @@ def run_docker_container(
             "Note that some programs behave differently when running with no\n"
             "tty attached (as your program is about to run).\n\n"
         ))
-    environment = instance_config.get_unformatted_env()
+    environment = instance_config.get_env_dictionary()
     memory = instance_config.get_mem()
     random_port = pick_random_port()
     container_name = get_container_name()

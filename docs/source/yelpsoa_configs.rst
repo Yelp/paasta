@@ -79,7 +79,11 @@ instance MAY have:
     specified [#note]_.
 
   * ``env``: A dictionary of environment variables that will be made available
-    to the container.
+    to the container. PaaSTA additionally will inject the following variables:
+
+    * ``PAASTA_SERVICE``: The service name
+    * ``PAASTA_INSTANCE``: The instance name
+    * ``PAASTA_CLUSTER``: The cluster name
 
     * **WARNING**: A PORT variable is provided to the docker image, but it
       represents the EXTERNAL port, not the internal one. The internal service
