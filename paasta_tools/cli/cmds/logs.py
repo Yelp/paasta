@@ -203,7 +203,7 @@ def extract_utc_timestamp_from_log_line(line):
     return utc_timestamp
 
 
-def parse_marathon_log_line(line, clusters):
+def parse_marathon_log_line(line, clusters, service):
     utc_timestamp = extract_utc_timestamp_from_log_line(line)
     if not utc_timestamp:
         return ''
@@ -211,6 +211,7 @@ def parse_marathon_log_line(line, clusters):
         return format_log_line(
             level='event',
             cluster=clusters[0],
+            service=service,
             instance='ALL',
             component='marathon',
             line=line.strip(),
@@ -218,7 +219,7 @@ def parse_marathon_log_line(line, clusters):
         )
 
 
-def parse_chronos_log_line(line, clusters):
+def parse_chronos_log_line(line, clusters, service):
     utc_timestamp = extract_utc_timestamp_from_log_line(line)
     if not utc_timestamp:
         return ''
@@ -226,6 +227,7 @@ def parse_chronos_log_line(line, clusters):
         return format_log_line(
             level='event',
             cluster=clusters[0],
+            service=service,
             instance='ALL',
             component='chronos',
             line=line.strip(),
@@ -273,7 +275,7 @@ def scribe_tail(scribe_env, stream_name, service, levels, components, clusters, 
         tailer = scribereader.get_stream_tailer(stream_name, host, port)
         for line in tailer:
             if parse_fn:
-                line = parse_fn(line, clusters)
+                line = parse_fn(line, clusters, service)
             if filter_fn(line, levels, service, components, clusters):
                 queue.put(line)
     except KeyboardInterrupt:

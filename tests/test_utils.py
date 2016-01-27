@@ -49,6 +49,7 @@ def test_get_git_url_default():
 def test_format_log_line():
     input_line = 'foo'
     fake_cluster = 'fake_cluster'
+    fake_service = 'fake_service'
     fake_instance = 'fake_instance'
     fake_component = 'build'
     fake_level = 'debug'
@@ -57,19 +58,28 @@ def test_format_log_line():
         'timestamp': fake_now,
         'level': fake_level,
         'cluster': fake_cluster,
+        'service': fake_service,
         'instance': fake_instance,
         'component': fake_component,
         'message': input_line,
     }, sort_keys=True)
     with mock.patch('paasta_tools.utils._now', autospec=True) as mock_now:
         mock_now.return_value = fake_now
-        actual = utils.format_log_line(fake_level, fake_cluster, fake_instance, fake_component, input_line)
+        actual = utils.format_log_line(
+            level=fake_level,
+            cluster=fake_cluster,
+            service=fake_service,
+            instance=fake_instance,
+            component=fake_component,
+            line=input_line,
+        )
         assert actual == expected
 
 
 def test_format_log_line_with_timestamp():
     input_line = 'foo'
     fake_cluster = 'fake_cluster'
+    fake_service = 'fake_service'
     fake_instance = 'fake_instance'
     fake_component = 'build'
     fake_level = 'debug'
@@ -78,6 +88,7 @@ def test_format_log_line_with_timestamp():
         'timestamp': fake_timestamp,
         'level': fake_level,
         'cluster': fake_cluster,
+        'service': fake_service,
         'instance': fake_instance,
         'component': fake_component,
         'message': input_line,
@@ -85,6 +96,7 @@ def test_format_log_line_with_timestamp():
     actual = utils.format_log_line(
         fake_level,
         fake_cluster,
+        fake_service,
         fake_instance,
         fake_component,
         input_line,
@@ -95,7 +107,14 @@ def test_format_log_line_with_timestamp():
 
 def test_format_log_line_rejects_invalid_components():
     with raises(utils.NoSuchLogComponent):
-        utils.format_log_line('fake_service', 'fake_line', 'BOGUS_COMPONENT', 'debug', 'fake_input')
+        utils.format_log_line(
+            level='debug',
+            cluster='fake_cluster',
+            service='fake_service',
+            instance='fake_instance',
+            line='fake_line',
+            component='BOGUS_COMPONENT',
+        )
 
 
 def test_log_raise_on_unknown_level():

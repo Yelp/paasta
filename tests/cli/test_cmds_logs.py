@@ -65,7 +65,7 @@ def test_paasta_log_line_passes_filter_true():
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
-    formatted_line = format_log_line(levels[0], clusters[0], instance, components[0], line)
+    formatted_line = format_log_line(levels[0], clusters[0], service, instance, components[0], line)
     assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is True
 
 
@@ -76,7 +76,7 @@ def test_paasta_log_line_passes_filter_true_when_default_cluster():
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
-    formatted_line = format_log_line(levels[0], ANY_CLUSTER, instance, components[0], line)
+    formatted_line = format_log_line(levels[0], ANY_CLUSTER, service, instance, components[0], line)
     assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is True
 
 
@@ -87,7 +87,7 @@ def test_paasta_log_line_passes_filter_false_when_wrong_level():
     instance = 'fake_instance'
     components = ['build', 'deploy']
     line = 'fake_line'
-    formatted_line = format_log_line('BOGUS_LEVEL', clusters[0], instance, components[0], line)
+    formatted_line = format_log_line('BOGUS_LEVEL', clusters[0], service, instance, components[0], line)
     assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is False
 
 
@@ -100,7 +100,7 @@ def test_paasta_log_line_passes_filter_false_when_wrong_component():
     line = 'fake_line'
     # component must be legit as well as not in the list of requested
     # components
-    formatted_line = format_log_line(levels[0], clusters[0], instance, 'monitoring', line)
+    formatted_line = format_log_line(levels[0], clusters[0], service, instance, 'monitoring', line)
     assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is False
 
 
@@ -113,7 +113,7 @@ def test_paasta_log_line_passes_filter_false_when_wrong_cluster():
     line = 'fake_line'
     # component must be legit as well as not in the list of requested
     # components
-    formatted_line = format_log_line(levels[0], 'BOGUS_CLUSTER', instance, components[0], line)
+    formatted_line = format_log_line(levels[0], 'BOGUS_CLUSTER', service, instance, components[0], line)
     assert logs.paasta_log_line_passes_filter(formatted_line, levels, service, components, clusters) is False
 
 
@@ -136,6 +136,7 @@ def test_marathon_log_line_passes_filter_true_when_service_name_in_string():
     line = format_log_line(
         'fake_level',
         clusters,
+        service,
         'fake_instance',
         'marathon',
         'fake message with service name %s' % service,
@@ -153,6 +154,7 @@ def test_marathon_log_line_passes_filter_false_when_service_name_missing():
     line = format_log_line(
         'fake_level',
         clusters,
+        service,
         'fake_instance',
         'marathon',
         'fake message without service name',
@@ -171,6 +173,7 @@ def test_chronos_log_line_passes_filter_true_when_service_name_in_string():
     line = format_log_line(
         'fake_level',
         clusters,
+        service,
         'fake_instance',
         'chronos',
         'fake message with service name %s' % service,
@@ -188,6 +191,7 @@ def test_chronos_log_line_passes_filter_false_when_service_name_missing():
     line = format_log_line(
         'fake_level',
         clusters,
+        service,
         'fake_instance',
         'chronos',
         'fake message without service name',
@@ -219,6 +223,7 @@ def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
 def test_parse_marathon_log_line_ok():
     fake_timestamp = '2015-07-22T10:38:46-07:00'
     fake_utc_timestamp = '2015-07-22T17:38:46.000000'
+    fake_service = 'fake_service'
 
     line = '%s this is a fake syslog test message' % fake_timestamp
     clusters = ['fake_cluster']
@@ -226,16 +231,18 @@ def test_parse_marathon_log_line_ok():
         'timestamp': fake_utc_timestamp,
         'component': 'marathon',
         'cluster': clusters[0],
+        'service': fake_service,
         'instance': 'ALL',
         'level': 'event',
         'message': line
     })
-    assert sorted(logs.parse_marathon_log_line(line, clusters)) == sorted(expected)
+    assert sorted(logs.parse_marathon_log_line(line, clusters, fake_service)) == sorted(expected)
 
 
 def test_parse_chronos_log_line_ok():
     fake_timestamp = '2015-07-22T10:38:46-07:00'
     fake_utc_timestamp = '2015-07-22T17:38:46.000000'
+    fake_service = 'fake_service'
 
     line = '%s this is a fake syslog test message' % fake_timestamp
     clusters = ['fake_cluster']
@@ -243,11 +250,12 @@ def test_parse_chronos_log_line_ok():
         'timestamp': fake_utc_timestamp,
         'component': 'chronos',
         'cluster': clusters[0],
+        'service': fake_service,
         'instance': 'ALL',
         'level': 'event',
         'message': line
     })
-    assert sorted(logs.parse_chronos_log_line(line, clusters)) == sorted(expected)
+    assert sorted(logs.parse_chronos_log_line(line, clusters, fake_service)) == sorted(expected)
 
 
 @pytest.mark.skipif(not scribereader_available, reason='scribereader not available')

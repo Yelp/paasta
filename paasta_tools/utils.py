@@ -479,7 +479,7 @@ def remove_ansi_escape_sequences(line):
     return no_escape.sub('', line)
 
 
-def format_log_line(level, cluster, instance, component, line, timestamp=None):
+def format_log_line(level, cluster, service, instance, component, line, timestamp=None):
     """Accepts a string 'line'.
 
     Returns an appropriately-formatted dictionary which can be serialized to
@@ -493,6 +493,7 @@ def format_log_line(level, cluster, instance, component, line, timestamp=None):
         'timestamp': timestamp,
         'level': level,
         'cluster': cluster,
+        'service': service,
         'instance': instance,
         'component': component,
         'message': line,
@@ -515,7 +516,7 @@ def _log(service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, 
     else:
         raise NoSuchLogLevel
     log_name = get_log_name_for_service(service)
-    formatted_line = format_log_line(level, cluster, instance, component, line)
+    formatted_line = format_log_line(level, cluster, service, instance, component, line)
     clog.log_line(log_name, formatted_line)
 
 
