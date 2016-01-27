@@ -32,7 +32,7 @@ import pysensu_yelp
 import service_configuration_lib
 
 from paasta_tools import chronos_tools
-from paasta_tools.check_chronos_jobs import send_event_to_sensu
+from paasta_tools.chronos_tools import send_event_to_sensu
 from paasta_tools.utils import InvalidJobNameError
 
 
