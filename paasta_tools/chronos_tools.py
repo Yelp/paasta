@@ -27,6 +27,7 @@ import service_configuration_lib
 from tron import command_context
 
 from paasta_tools.utils import decompose_job_id as utils_decompose_job_id
+from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
 from paasta_tools.utils import get_service_instance_list
@@ -467,6 +468,10 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
     complete_config['name'] = compose_job_id(service, job_name)
     desired_state = chronos_job_config.get_desired_state()
+
+    # we use the undocumented description field to store a hash of the chronos config.
+    # this makes it trivial to compare configs and know when to bounce.
+    complete_config['description'] = get_config_hash(complete_config)
 
     # If the job was previously stopped, we should stop the new job as well
     # NOTE this clobbers the 'disabled' param specified in the config file!

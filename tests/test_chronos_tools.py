@@ -835,7 +835,9 @@ class TestChronosTools:
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
         }
-        with mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner):
+        with contextlib.nested(
+            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
+        ):
             actual = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes)
             assert actual == expected
 
@@ -1013,21 +1015,25 @@ class TestChronosTools:
 
     def test_create_complete_config(self):
         fake_owner = 'test_team'
+        fake_config_hash = 'fake_config_hash'
         with contextlib.nested(
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=self.fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner)
+            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
+            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
             mock_get_team,
+            mock_get_config_hash,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
             actual = chronos_tools.create_complete_config('fake-service', 'fake-job')
             expected = {
                 'arguments': None,
+                'description': fake_config_hash,
                 'constraints': None,
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
@@ -1064,21 +1070,25 @@ class TestChronosTools:
                 'docker_image': 'fake_image'
             },
         )
+        fake_config_hash = 'fake_config_hash'
         with contextlib.nested(
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner)
+            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
+            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
             mock_get_team,
+            mock_fake_config_hash,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
                 'arguments': None,
+                'description': fake_config_hash,
                 'constraints': None,
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
@@ -1115,21 +1125,25 @@ class TestChronosTools:
                 'docker_image': 'fake_image'
             },
         )
+        fake_config_hash = 'fake_config_hash'
         with contextlib.nested(
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner)
+            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
+            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
             mock_get_team,
+            mock_fake_config_hash,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
                 'arguments': None,
+                'description': fake_config_hash,
                 'constraints': None,
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
@@ -1182,20 +1196,24 @@ class TestChronosTools:
                 'docker_image': 'fake_image'
             },
         )
+        fake_config_hash = 'fake_config_hash'
         with contextlib.nested(
             mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
                        autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner)
+            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
+            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
         ) as (
             load_system_paasta_config_patch,
             load_chronos_job_config_patch,
             mock_get_team,
+            mock_get_config_hash,
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=fake_system_volumes)
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
+                'description': fake_config_hash,
                 'arguments': None,
                 'constraints': None,
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',

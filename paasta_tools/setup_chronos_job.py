@@ -141,7 +141,8 @@ def setup_job(service, instance, complete_job_config, client, cluster):
 
     job_to_update = None
     if len(all_existing_jobs) > 0:
-        if all_existing_jobs[0] != complete_job_config:
+        # we store the md5 sum of the config in the description field.
+        if all_existing_jobs[0]['description'] != complete_job_config['description']:
             job_to_update = complete_job_config
     else:
         job_to_update = complete_job_config
