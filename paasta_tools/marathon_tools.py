@@ -461,6 +461,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     Retrevies the following keys:
 
     - proxy_port: the proxy port defined for the given namespace
+    - healthcheck_mode: the mode for the healthcheck (http or tcp)
     - healthcheck_port: An alternate port to use for health checking
     - healthcheck_uri: URI target for healthchecking
     - healthcheck_timeout_s: healthcheck timeout in seconds
@@ -495,6 +496,7 @@ def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
     # and there's other things that appear in the smartstack section in
     # several cases.
     key_whitelist = set([
+        'healthcheck_mode',
         'healthcheck_uri',
         'healthcheck_port',
         'healthcheck_timeout_s',

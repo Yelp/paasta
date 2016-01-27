@@ -394,9 +394,12 @@ Healthchecks
 
 You can control your healthchecks with the following keys.
 
+ * ``healthcheck_mode``: specifies the mode for the healthcheck (``http`` or
+   ``tcp``). Defaults to the ``mode`` of the service.
+
  * ``healthcheck_uri``: string specifying the URI which SmartStack should use to
-   healthcheck the service. Defaults to ``/status``. This is ignored for TCP
-   services.
+   healthcheck the service. Defaults to ``/status``. This is ignored if
+   ``healthcheck_mode`` is ``tcp``.
 
  * ``healthcheck_port``: an alternative port to use for healthchecking your
    service. This is not required; it defaults to the port your service instance
