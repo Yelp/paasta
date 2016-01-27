@@ -33,7 +33,7 @@ def get_branches(service):
     remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
 
     for branch in paasta_control_branches:
-        if 'refs/heads/%s' % branch in remote_refs:
+        if 'refs/heads/paasta-%s' % branch in remote_refs:
             yield branch
 
 
