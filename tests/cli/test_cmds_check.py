@@ -529,13 +529,14 @@ def test_get_marathon_steps(
 ):
     mock_list_clusters.return_value = ['cluster1']
     mock_get_service_instance_list.return_value = [('unused', 'instance1'), ('unused', 'instance2')]
-    mock_load_marathon_service_config.side_effect = lambda service, instance, cluster, soa_dir: MarathonServiceConfig(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        config_dict={},
-        branch_dict={},
-    )
+    mock_load_marathon_service_config.side_effect = \
+        lambda service, instance, cluster, soa_dir, load_deployments: MarathonServiceConfig(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            config_dict={},
+            branch_dict={},
+        )
     expected = ['cluster1.instance1', 'cluster1.instance2']
     actual = get_marathon_steps(service='unused', soa_dir='/fake/path')
     assert actual == expected

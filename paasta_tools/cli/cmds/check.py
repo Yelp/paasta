@@ -223,6 +223,7 @@ def get_chronos_steps(service, soa_dir):
                 instance=instance,
                 cluster=cluster,
                 soa_dir=soa_dir,
+                load_deployments=False,
             )
             steps.append(config.get_deploy_group())
     return steps
@@ -243,6 +244,7 @@ def get_marathon_steps(service, soa_dir):
                 instance=instance,
                 cluster=cluster,
                 soa_dir=soa_dir,
+                load_deployments=False,
             )
             steps.append(config.get_deploy_group())
     return steps
