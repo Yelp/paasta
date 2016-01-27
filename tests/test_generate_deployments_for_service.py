@@ -50,12 +50,12 @@ def test_get_deploy_group_mappings():
 
     fake_old_mappings = ['']
     expected = {
-        'fake_service:paasta-no_thanks': {
+        'fake_service:paasta-clusterA.main': {
             'docker_image': 'services-fake_service:paasta-789009',
             'desired_state': 'start',
             'force_bounce': None,
         },
-        'fake_service:paasta-try_me': {
+        'fake_service:paasta-clusterB.main': {
             'docker_image': 'services-fake_service:paasta-123456',
             'desired_state': 'stop',
             'force_bounce': '123',
