@@ -36,19 +36,6 @@ def test_cleanup_jobs():
     assert isinstance(result[2][1], Exception)
 
 
-def test_jobs_to_delete():
-    configured_jobs = [('service1', 'job1'), ('service1', 'job2')]
-    deployed_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config')]
-    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, deployed_jobs) == []
-
-
-def test_jobs_to_delete_unknown_job():
-    configured_jobs = [('service1', 'job1'), ('service1', 'job2'), ('service1', 'job3')]
-    deployed_jobs = [('service1', 'job1', 'config'), ('service1', 'job2', 'config'),
-                     ('service1', 'job3', 'config'), ('service1', 'job5', 'config')]
-    assert cleanup_chronos_jobs.jobs_to_delete(configured_jobs, deployed_jobs) == [('service1', 'job5', 'config')]
-
-
 def test_format_list_output():
     assert cleanup_chronos_jobs.format_list_output("Successfully Removed:", ['foo', 'bar', 'baz']) \
         == "Successfully Removed:\n  foo\n  bar\n  baz"
