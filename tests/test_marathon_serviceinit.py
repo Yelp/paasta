@@ -54,7 +54,8 @@ def test_start_marathon_job():
     instance = 'my_instance'
     app_id = 'mock_app_id'
     normal_instance_count = 5
-    marathon_serviceinit.start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
+    with mock.patch('paasta_tools.marathon_serviceinit._log'):
+        marathon_serviceinit.start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     client.scale_app.assert_called_once_with(app_id, instances=normal_instance_count, force=True)
 
 
@@ -64,7 +65,8 @@ def test_stop_marathon_job():
     service = 'my_service'
     instance = 'my_instance'
     app_id = 'mock_app_id'
-    marathon_serviceinit.stop_marathon_job(service, instance, app_id, client, cluster)
+    with mock.patch('paasta_tools.marathon_serviceinit._log'):
+        marathon_serviceinit.stop_marathon_job(service, instance, app_id, client, cluster)
     client.scale_app.assert_called_once_with(app_id, instances=0, force=True)
 
 
@@ -75,7 +77,8 @@ def test_scale_marathon_job():
     instance = 'my_instance'
     app_id = 'mock_app_id'
     delta = -1
-    marathon_serviceinit.scale_marathon_job(service, instance, app_id, delta, client, cluster)
+    with mock.patch('paasta_tools.marathon_serviceinit._log'):
+        marathon_serviceinit.scale_marathon_job(service, instance, app_id, delta, client, cluster)
     client.scale_app.assert_called_once_with(app_id, delta=-1, force=True)
 
 

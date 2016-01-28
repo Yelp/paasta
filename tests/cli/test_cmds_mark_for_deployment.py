@@ -41,8 +41,9 @@ def test_paasta_mark_for_deployment_acts_like_main(
     assert mock_validate_service_name.called
 
 
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.remote_git.create_remote_refs', autospec=True)
-def test_mark_for_deployment_happy(mock_create_remote_refs):
+def test_mark_for_deployment_happy(mock_create_remote_refs, mock__log):
     actual = mark_for_deployment.mark_for_deployment(
         git_url='fake_git_url',
         deploy_group='fake_deploy_group',
@@ -57,8 +58,9 @@ def test_mark_for_deployment_happy(mock_create_remote_refs):
     )
 
 
+@patch('paasta_tools.cli.cmds.mark_for_deployment._log', autospec=True)
 @patch('paasta_tools.remote_git.create_remote_refs', autospec=True)
-def test_mark_for_deployment_sad(mock_create_remote_refs):
+def test_mark_for_deployment_sad(mock_create_remote_refs, mock__log):
     mock_create_remote_refs.side_effect = Exception('something bad')
     actual = mark_for_deployment.mark_for_deployment(
         git_url='fake_git_url',

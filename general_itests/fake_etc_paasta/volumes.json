@@ -1,0 +1,9 @@
+{
+    "volumes": [
+        {
+          "hostPath": "/nail/etc/services",
+          "containerPath": "/nail/etc/services",
+          "mode": "RO"
+        }
+    ]
+}

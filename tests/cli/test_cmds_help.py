@@ -13,6 +13,7 @@
 # limitations under the License.
 import argparse
 
+import mock
 import pytest
 
 from paasta_tools.cli.cli import get_argparser
@@ -36,7 +37,8 @@ def each_command():
 @pytest.mark.parametrize('cmd', each_command())
 def test_help(cmd, capsys):
     # Should pass and produce something
-    with pytest.raises(SystemExit) as excinfo:
-        main((cmd, '--help'))
+    with mock.patch('paasta_tools.cli.cli.configure_log'):
+        with pytest.raises(SystemExit) as excinfo:
+            main((cmd, '--help'))
     assert excinfo.value.code == 0
     assert cmd in capsys.readouterr()[0]

@@ -13,14 +13,16 @@
 # limitations under the License.
 import re
 
+import mock
 import pytest
 
 from paasta_tools.cli.cli import main
 
 
 def test_paasta_version(capsys):
-    with pytest.raises(SystemExit) as excinfo:
-        main(('-V',))
+    with mock.patch('paasta_tools.cli.cli.configure_log'):
+        with pytest.raises(SystemExit) as excinfo:
+            main(('-V',))
     assert excinfo.value.code == 0
     output = capsys.readouterr()[1]
     assert re.match('^paasta-tools \d+\.\d+\.\d+\n$', output)

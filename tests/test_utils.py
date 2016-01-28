@@ -117,9 +117,9 @@ def test_format_log_line_rejects_invalid_components():
         )
 
 
-def test_log_raise_on_unknown_level():
+def test_ScribeLogWriter_log_raise_on_unknown_level():
     with raises(utils.NoSuchLogLevel):
-        utils._log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
+        utils.ScribeLogWriter().log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
 
 
 def test_get_log_name_for_service():
@@ -370,7 +370,13 @@ def test_atomic_file_write_itest():
 
 
 def test_configure_log():
-    utils.configure_log()
+    fake_log_writer = {'driver': 'fake'}
+    with mock.patch('paasta_tools.utils.load_system_paasta_config') as mock_load_system_paasta_config:
+        mock_load_system_paasta_config().get_log_writer.return_value = fake_log_writer
+        with mock.patch('paasta_tools.utils.get_log_writer_class') as mock_get_log_writer_class:
+            utils.configure_log()
+            mock_get_log_writer_class.assert_called_once_with('fake')
+            mock_get_log_writer_class('fake').assert_called_once_with(**fake_log_writer)
 
 
 def test_compose_job_id_without_hashes():
@@ -1182,3 +1188,9 @@ def test_format_table_all_strings():
     actual = utils.format_table(['foo', 'bar', 'baz'])
     expected = ['foo', 'bar', 'baz']
     assert actual == expected
+
+
+def test_null_log_writer():
+    """Basic smoke test for NullLogWriter"""
+    lw = utils.NullLogWriter(driver='null')
+    lw.log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
