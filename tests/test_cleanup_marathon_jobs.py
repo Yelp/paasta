@@ -74,7 +74,11 @@ class TestCleanupMarathonJobs:
             client_patch.assert_called_once_with(self.fake_marathon_config.get_url(),
                                                  self.fake_marathon_config.get_username(),
                                                  self.fake_marathon_config.get_password())
-            delete_patch.assert_called_once_with('not-here.oh.no.weirdo', self.fake_marathon_client)
+            delete_patch.assert_called_once_with(
+                app_id='not-here.oh.no.weirdo',
+                client=self.fake_marathon_client,
+                soa_dir=soa_dir,
+            )
 
     def test_cleanup_apps_doesnt_delete_unknown_apps(self):
         soa_dir = 'not_really_a_dir'
@@ -107,14 +111,16 @@ class TestCleanupMarathonJobs:
             mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
             mock.patch('paasta_tools.bounce_lib.delete_marathon_app', autospec=True),
             mock.patch('paasta_tools.cleanup_marathon_jobs._log', autospec=True),
+            mock.patch('paasta_tools.cleanup_marathon_jobs.send_event', autospec=True)
         ) as (
             mock_load_system_paasta_config,
             mock_bounce_lock_zookeeper,
             mock_delete_marathon_app,
             mock_log,
+            mock_send_sensu_event,
         ):
             mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value='fake_cluster')
-            cleanup_marathon_jobs.delete_app(app_id, client)
+            cleanup_marathon_jobs.delete_app(app_id, client, 'fake_soa_dir')
             mock_delete_marathon_app.assert_called_once_with(app_id, client)
             mock_load_system_paasta_config.return_value.get_cluster.assert_called_once_with()
             expected_log_line = (
@@ -146,7 +152,7 @@ class TestCleanupMarathonJobs:
             mock_log,
         ):
             with raises(ValueError):
-                cleanup_marathon_jobs.delete_app(app_id, client)
+                cleanup_marathon_jobs.delete_app(app_id, client, 'fake_soa_dir')
             assert 'example_service' in mock_log.mock_calls[0][2]["line"]
             assert 'Traceback' in mock_log.mock_calls[1][2]["line"]
 

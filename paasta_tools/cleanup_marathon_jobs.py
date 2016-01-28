@@ -32,10 +32,12 @@ import argparse
 import logging
 import traceback
 
+import pysensu_yelp
 import service_configuration_lib
 
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
+from paasta_tools.check_marathon_services_replication import send_event
 from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_services_for_cluster
@@ -58,19 +60,28 @@ def parse_args():
     return args
 
 
-def delete_app(app_id, client):
+def delete_app(app_id, client, soa_dir):
     """Deletes a marathon app safely and logs to notify the user that it
     happened"""
     log.warn("%s appears to be old; attempting to delete" % app_id)
     service, instance, _, __ = marathon_tools.deformat_job_id(app_id)
+    cluster = load_system_paasta_config().get_cluster()
     try:
         with bounce_lib.bounce_lock_zookeeper(marathon_tools.compose_job_id(service, instance)):
             bounce_lib.delete_marathon_app(app_id, client)
+            send_event(
+                service=service,
+                namespace=instance,
+                cluster=cluster,
+                soa_dir=soa_dir,
+                status=pysensu_yelp.Status.OK,
+                output="This instance was removed and is no longer running",
+            )
             log_line = "Deleted stale marathon job that looks lost: %s" % app_id
             _log(service=service,
                  component='deploy',
                  level='event',
-                 cluster=load_system_paasta_config().get_cluster(),
+                 cluster=cluster,
                  instance=instance,
                  line=log_line)
     except IOError:
@@ -111,7 +122,11 @@ def cleanup_apps(soa_dir):
             log.warn("%s doesn't conform to paasta naming conventions? Skipping." % app_id)
             continue
         if (service, instance) not in valid_services:
-            delete_app(app_id, client)
+            delete_app(
+                app_id=app_id,
+                client=client,
+                soa_dir=soa_dir,
+            )
 
 
 def main():
