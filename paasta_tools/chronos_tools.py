@@ -715,19 +715,6 @@ def find_matching_parent_job(job_name):
         return None
 
 
-def compose_check_name_for_job(service, instance):
+def compose_check_name_for_service_instance(check_name, service, instance):
     """Compose a sensu check name for a given job"""
-    return 'check-chronos-jobs.%s%s%s' % (service, INTERNAL_SPACER, instance)
-
-
-def send_event_to_sensu(service, instance, monitoring_overrides, soa_dir, status_code, message):
-    check_name = compose_check_name_for_job(service, instance)
-
-    monitoring_tools.send_event(
-        service=service,
-        check_name=check_name,
-        overrides=monitoring_overrides,
-        status=status_code,
-        output=message,
-        soa_dir=soa_dir,
-    )
+    return '%s.%s%s%s' % (check_name, service, INTERNAL_SPACER, instance)

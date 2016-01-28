@@ -14,7 +14,7 @@ import service_configuration_lib
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import utils
-from paasta_tools.chronos_tools import send_event_to_sensu
+from paasta_tools.chronos_tools import compose_check_name_for_service_instance
 
 
 def parse_args():
@@ -39,6 +39,19 @@ def compose_monitoring_overrides_for_service(cluster, service, instance, soa_dir
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service, soa_dir=soa_dir)
     return monitoring_overrides
+
+
+def send_event(service, instance, monitoring_overrides, soa_dir, status_code, message):
+    check_name = compose_check_name_for_service_instance('check_chronos_jobs', service, instance)
+
+    monitoring_tools.send_event(
+        service=service,
+        check_name=check_name,
+        overrides=monitoring_overrides,
+        status=status_code,
+        output=message,
+        soa_dir=soa_dir,
+    )
 
 
 def compose_check_name_for_job(service, instance):
@@ -148,7 +161,7 @@ def main(args):
             instance=instance,
             soa_dir=args.soa_dir
         )
-        send_event_to_sensu(
+        send_event(
             service=service,
             instance=instance,
             monitoring_overrides=monitoring_overrides,

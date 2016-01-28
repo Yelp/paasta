@@ -29,12 +29,13 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook, mock_load_ch
 
 def test_compose_check_name_for_job():
     expected_check = 'check-chronos-jobs.myservice.myinstance'
-    assert chronos_tools.compose_check_name_for_job('myservice', 'myinstance') == expected_check
+    assert chronos_tools.compose_check_name_for_service_instance('check-chronos-jobs',
+                                                                 'myservice', 'myinstance') == expected_check
 
 
 @patch('paasta_tools.chronos_tools.monitoring_tools.send_event')
 def test_send_event_to_sensu(mock_send_event):
-    chronos_tools.send_event_to_sensu(
+    check_chronos_jobs.send_event(
         service='myservice',
         instance='myinstance',
         monitoring_overrides={},
