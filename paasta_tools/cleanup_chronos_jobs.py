@@ -135,15 +135,20 @@ def main():
             job_failures.append(response)
         else:
             job_successes.append(response)
-            (service, instance, _, __) = chronos_tools.decompose_job_id(response[0])
-            send_event(
-                service=service,
-                instance=instance,
-                monitoring_overrides={},
-                soa_dir=soa_dir,
-                status_code=pysensu_yelp.Status.OK,
-                message="This instance was removed and is no longer supposed to be scheduled.",
-            )
+            try:
+                (service, instance) = chronos_tools.decompose_job_id(response[0])
+                send_event(
+                    service=service,
+                    instance=instance,
+                    monitoring_overrides={},
+                    soa_dir=soa_dir,
+                    status_code=pysensu_yelp.Status.OK,
+                    message="This instance was removed and is no longer supposed to be scheduled.",
+                )
+            except InvalidJobNameError:
+                # If we deleted some bogus job with a bogus jobid that could not be parsed,
+                # Just move on, no need to send any kind of paasta event.
+                pass
 
     if len(to_delete) == 0:
         print 'No Chronos Jobs to remove'
