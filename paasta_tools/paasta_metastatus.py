@@ -18,6 +18,7 @@ from collections import Counter
 from collections import OrderedDict
 
 from httplib2 import ServerNotFoundError
+from marathon.exceptions import MarathonError
 
 from paasta_tools import chronos_tools
 from paasta_tools import marathon_tools
@@ -349,8 +350,12 @@ def main():
         chronos_results = [('chronos is not configured to run here', True)]
 
     if marathon_config:
-        marathon_client = get_marathon_client(marathon_config)
-        marathon_results = get_marathon_status(marathon_client)
+        try:
+            marathon_client = get_marathon_client(marathon_config)
+            marathon_results = get_marathon_status(marathon_client)
+        except MarathonError:
+            print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Is it running?"))
+            sys.exit(2)
 
     if chronos_config:
         chronos_client = get_chronos_client(chronos_config)
