@@ -18,6 +18,8 @@ from behave import then
 from behave import when
 
 import paasta_tools
+from paasta_tools.mesos_tools import get_local_slave_state
+
 
 APP_ID = 'test--marathon--app.instance.git01234567.configabcdef01'
 
@@ -43,10 +45,10 @@ def list_marathon_apps_has_trivial_app(context):
 @then(u'it should show up in marathon_services_running_here')
 def marathon_services_running_here_works(context):
     with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value='mesosslave'):
-        (discovered,) = paasta_tools.marathon_tools.marathon_services_running_here()
-
-    assert discovered[0] == u'test_marathon_app', repr(discovered)
-    assert discovered[1] == 'instance'
+        discovered = paasta_tools.marathon_tools.marathon_services_running_here()
+        print get_local_slave_state()
+        assert len(discovered) == 1, repr(discovered)
+        assert discovered == [(u'test_marathon_app', u'instance', mock.ANY)], repr(discovered)
 
 
 @when(u'the task has started')
