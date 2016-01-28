@@ -28,9 +28,11 @@ Any tasks associated with that job are also deleted.
 import argparse
 import sys
 
+import pysensu_yelp
 import service_configuration_lib
 
 from paasta_tools import chronos_tools
+from paasta_tools.check_chronos_jobs import send_event
 from paasta_tools.utils import InvalidJobNameError
 
 
@@ -103,6 +105,7 @@ def filter_paasta_jobs(jobs):
 def main():
 
     args = parse_args()
+    soa_dir = args.soa_dir
 
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
@@ -132,6 +135,15 @@ def main():
             job_failures.append(response)
         else:
             job_successes.append(response)
+            (service, instance, _, __) = chronos_tools.decompose_job_id(response[0])
+            send_event(
+                service=service,
+                instance=instance,
+                monitoring_overrides={},
+                soa_dir=soa_dir,
+                status_code=pysensu_yelp.Status.OK,
+                message="This instance was removed and is no longer supposed to be scheduled.",
+            )
 
     if len(to_delete) == 0:
         print 'No Chronos Jobs to remove'

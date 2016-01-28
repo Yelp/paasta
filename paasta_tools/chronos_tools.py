@@ -713,3 +713,8 @@ def find_matching_parent_job(job_name):
         return sorted_jobs[0]['name']
     else:
         return None
+
+
+def compose_check_name_for_service_instance(check_name, service, instance):
+    """Compose a sensu check name for a given job"""
+    return '%s.%s%s%s' % (check_name, service, INTERNAL_SPACER, instance)
