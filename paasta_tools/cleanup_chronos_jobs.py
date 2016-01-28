@@ -136,7 +136,7 @@ def main():
         else:
             job_successes.append(response)
             try:
-                (service, instance, _, __) = chronos_tools.decompose_job_id(response[0])
+                (service, instance) = chronos_tools.decompose_job_id(response[0])
                 send_event(
                     service=service,
                     instance=instance,
