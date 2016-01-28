@@ -7,6 +7,6 @@ Feature: cleanup_chronos_jobs removes chronos jobs no longer in the config
      And I launch 1 unconfigured jobs for the service "oldservice" with scheduled chronos instance "othertestinstance"
      And I launch 3 non-paasta jobs
     Then cleanup_chronos_jobs exits with return code "0" and the correct output
-     And the non-paasta jobs are still in the job list
+     And the non-paasta jobs are not in the job list
      And the configured chronos jobs are in the job list
      And the unconfigured chronos jobs are not in the job list

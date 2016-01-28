@@ -74,23 +74,6 @@ def cleanup_tasks(client, jobs):
     return [(job, execute_chronos_api_call_for_job(client.delete_tasks, job)) for job in jobs]
 
 
-def jobs_to_delete(expected_jobs, actual_jobs):
-    """
-    Decides on jobs that need to be deleted.
-    Compares lists of (service, instance) expected jobs to a list of (service, instance, tag) actual jobs
-    and decides which should be removed. The tag in the actual jobs is ignored, that is to say only the
-    (service, instance) in the actual job is looked for in the expected jobs. If it is only the tag that has
-    changed, then it shouldn't be removed.
-
-    :param expected_jobs: a list of (service, instance) tuples
-    :param actual_jobs: a list of (service, instance, config) tuples
-    :returns: a list of (service, instance, config) tuples to be removed
-    """
-
-    not_expected = [job for job in actual_jobs if (job[0], job[1]) not in expected_jobs]
-    return not_expected
-
-
 def format_list_output(title, job_names):
     return '%s\n  %s' % (title, '\n  '.join(job_names))
 
@@ -125,19 +108,14 @@ def main():
     client = chronos_tools.get_chronos_client(config)
 
     # get_chronos_jobs_for_cluster returns (service, job)
-    expected_service_jobs = chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)
+    expected_service_jobs = set([chronos_tools.compose_job_id(*job) for job in
+                                 chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)])
 
-    # filter jobs not related to paasta
-    # and decompose into (service, instance, tag) tuples
-    paasta_jobs = filter_paasta_jobs(deployed_job_names(client))
-    running_service_jobs = [chronos_tools.decompose_job_id(job) for job in paasta_jobs]
+    running_service_jobs = set(deployed_job_names(client))
 
-    to_delete = jobs_to_delete(expected_service_jobs, running_service_jobs)
+    to_delete = running_service_jobs - expected_service_jobs
 
-    # recompose the job ids again for deletion
-    to_delete_job_ids = [chronos_tools.compose_job_id(*job) for job in to_delete]
-
-    task_responses = cleanup_tasks(client, to_delete_job_ids)
+    task_responses = cleanup_tasks(client, to_delete)
     task_successes = []
     task_failures = []
     for response in task_responses:
@@ -146,7 +124,7 @@ def main():
         else:
             task_successes.append(response)
 
-    job_responses = cleanup_jobs(client, to_delete_job_ids)
+    job_responses = cleanup_jobs(client, to_delete)
     job_successes = []
     job_failures = []
     for response in job_responses:
