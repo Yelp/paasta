@@ -46,8 +46,7 @@ def list_marathon_apps_has_trivial_app(context):
 def marathon_services_running_here_works(context):
     with mock.patch('paasta_tools.mesos_tools.socket.getfqdn', return_value='mesosslave'):
         discovered = paasta_tools.marathon_tools.marathon_services_running_here()
-        print get_local_slave_state()
-        assert len(discovered) == 1, repr(discovered)
+        assert len(discovered) == 1, (repr(discovered), get_local_slave_state())
         assert discovered == [(u'test_marathon_app', u'instance', mock.ANY)], repr(discovered)
 
 
@@ -55,8 +54,8 @@ def marathon_services_running_here_works(context):
 def when_the_task_has_started(context):
     # 120 * 0.5 = 60 seconds
     for _ in xrange(120):
-        app = context.marathon_client.get_app(APP_ID, embed_tasks=True)
-        happy_count = len(app.tasks)
+        app = context.marathon_client.get_app(APP_ID)
+        happy_count = app.tasks_running
         if happy_count >= 1:
             return
         time.sleep(0.5)
