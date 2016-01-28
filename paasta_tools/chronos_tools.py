@@ -398,11 +398,12 @@ class ChronosJobConfig(InstanceConfig):
         if self.get_schedule() is not None:
             complete_config['schedule'] = self.get_schedule()
         else:
-            matching_parent_pairs = [(parent, find_matching_parent_job(parent)) for parent in self.get_parents()]
+            matching_parent_pairs = [(parent, get_job_for_service_instance(*parent.split(".")))
+                                     for parent in self.get_parents()]
             for parent_pair in matching_parent_pairs:
                 if parent_pair[1] is None:
                     raise InvalidParentError("%s has no matching jobs in Chronos" % parent_pair[0])
-            complete_config['parents'] = [parent_pair[1] for parent_pair in matching_parent_pairs]
+            complete_config['parents'] = [parent_pair[1]['name'] for parent_pair in matching_parent_pairs]
         return complete_config
 
     # 'docker job' requirements: https://mesos.github.io/chronos/docs/api.html#adding-a-docker-job
@@ -695,13 +696,15 @@ def update_job(client, job):
     client.update(job)
 
 
-def find_matching_parent_job(job_name):
-    """ Given a service.instance, convert it to a 'real' job name,
-    where the 'real' job name is the id of the most recent job
-    matching that service and instance.
+def get_job_for_service_instance(service, instance, include_disabled=True):
+    """A wrapper for lookup_chronos_jobs that includes building the necessary chronos client.
+    :param service: the service to be queried
+    :param instance: the instance to be queried
+    :param include_disabled: include disabled jobs in the search. default: True
+    :returns: the most 'current' job for a given service instance; that is the most recent
+    job according to the result of sorting all the matching jobs.
     """
     chronos_config = load_chronos_config()
-    service, instance = job_name.split(".")
     matching_jobs = lookup_chronos_jobs(
         client=get_chronos_client(chronos_config),
         service=service,
@@ -710,6 +713,6 @@ def find_matching_parent_job(job_name):
     )
     sorted_jobs = sort_jobs(matching_jobs)
     if len(sorted_jobs) > 0:
-        return sorted_jobs[0]['name']
+        return sorted_jobs[0]
     else:
         return None
