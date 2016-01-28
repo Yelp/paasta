@@ -64,7 +64,7 @@ LAST_COMMIT_MSG = $(shell git log -1 --pretty=%B | sed -e "s/'/"/g")
 # Follow the instructions to generate a github api token
 release:
 	dch -v $(RELEASE) --changelog ../debian/changelog $$'$(VERSION) tagged with \'make release\'\rCommit: $(LAST_COMMIT_MSG)'
-	sed -i -e "s/version.*=.*/version        = '$(VERSION)',/" ../setup.py
+	sed -i -e "s/version.*=.*/version='$(VERSION)',/" ../setup.py
 	@echo "$(RELEASE) has the changelog set."
 	github_changelog_generator --future-release $(VERSION) || echo github_changelog_generator not installed, not generating changelog!!
 	cd .. && make docs
