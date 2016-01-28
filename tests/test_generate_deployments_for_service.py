@@ -16,98 +16,65 @@ import contextlib
 import mock
 
 from paasta_tools import generate_deployments_for_service
-from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
-def test_get_branches_for_service():
-    fake_dir = '/mail/var/tea'
-    fake_srv = 'boba'
-    fake_branches = ['red', 'green', 'blue', 'orange', 'white', 'black']
-    expected = ['red', 'green', 'blue', 'orange', 'white', 'black', 'cluster_a.chronos_job',
-                'cluster_b.chronos_job', 'cluster_c.chronos_job']
-    with contextlib.nested(
-        mock.patch('paasta_tools.generate_deployments_for_service.list_clusters',
-                   return_value=['cluster_a', 'cluster_b', 'cluster_c']),
-        mock.patch('paasta_tools.generate_deployments_for_service.get_service_instance_list',
-                   side_effect=lambda service, cluster, instance_type, soa_dir:
-                       [('', 'main_example'), ('', 'canary_example')] if instance_type == 'marathon'
-                       else [('', 'chronos_job')]),
-        mock.patch('paasta_tools.generate_deployments_for_service.load_marathon_service_config',
-                   side_effect=lambda service, instance, cluster, soa_dir, load_deployments: MarathonServiceConfig(
-                       service=service,
-                       cluster=cluster,
-                       instance=instance,
-                       config_dict={'deploy_group': fake_branches.pop()},
-                       branch_dict={},
-                   )),
-        mock.patch('paasta_tools.generate_deployments_for_service.load_chronos_job_config',
-                   side_effect=lambda service, instance, cluster, soa_dir, load_deployments: ChronosJobConfig(
-                       service=service,
-                       cluster=cluster,
-                       instance=instance,
-                       config_dict={},
-                       branch_dict={},
-                   )),
-    ) as (
-        list_clusters_patch,
-        get_service_instance_list_patch,
-        load_marathon_config_patch,
-        load_chronos_config_patch,
-    ):
-        actual = generate_deployments_for_service.get_branches_for_service(fake_dir, fake_srv)
-        assert set(['paasta-%s' % branch for branch in expected]) == actual
-        # three clusters each having a canary and main marathon instance equals six instances total
-        assert load_marathon_config_patch.call_count == 6
-        # three clusters each having one chronos job equals six instances total
-        assert load_chronos_config_patch.call_count == 3
-
-
-def test_get_branch_mappings():
+def test_get_deploy_group_mappings():
     fake_service = 'fake_service'
     fake_soa_dir = '/no/yes/maybe'
-    fake_branches = ['try_me', 'no_thanks']
+
+    fake_service_configs = [
+        MarathonServiceConfig(
+            service=fake_service,
+            cluster='clusterA',
+            instance='main',
+            branch_dict={},
+            config_dict={'deploy_group': 'no_thanks'},
+        ),
+        MarathonServiceConfig(
+            service=fake_service,
+            cluster='clusterB',
+            instance='main',
+            branch_dict={},
+            config_dict={'deploy_group': 'try_me'},
+        ),
+    ]
 
     fake_remote_refs = {
-        'refs/heads/try_me': '123456',
-        'refs/tags/paasta-try_me-123-stop': '123456',
-        'refs/heads/okay': 'ijowarg',
-        'refs/heads/no_thanks': '789009',
-        'refs/heads/nah': 'j8yiomwer',
+        'refs/heads/paasta-try_me': '123456',
+        'refs/tags/paasta-clusterB.main-123-stop': '123456',
+        'refs/heads/paasta-okay': 'ijowarg',
+        'refs/heads/paasta-no_thanks': '789009',
+        'refs/heads/paasta-nah': 'j8yiomwer',
     }
 
     fake_old_mappings = ['']
     expected = {
-        'fake_service:no_thanks': {
+        'fake_service:paasta-clusterA.main': {
             'docker_image': 'services-fake_service:paasta-789009',
             'desired_state': 'start',
             'force_bounce': None,
         },
-        'fake_service:try_me': {
+        'fake_service:paasta-clusterB.main': {
             'docker_image': 'services-fake_service:paasta-123456',
             'desired_state': 'stop',
             'force_bounce': '123',
         },
     }
     with contextlib.nested(
-        mock.patch('paasta_tools.generate_deployments_for_service.get_branches_for_service',
-                   return_value=fake_branches),
+        mock.patch('paasta_tools.generate_deployments_for_service.get_instance_config_for_service',
+                   return_value=fake_service_configs),
         mock.patch('paasta_tools.remote_git.list_remote_refs',
                    return_value=fake_remote_refs),
     ) as (
-        get_branches_patch,
+        get_instance_config_for_service_patch,
         list_remote_refs_patch,
     ):
-        actual = generate_deployments_for_service.get_branch_mappings(fake_soa_dir, fake_service, fake_old_mappings)
-        print actual
-        print expected
-        assert expected == actual
-        get_branches_patch.assert_any_call(
-            soa_dir=fake_soa_dir,
-            service=fake_service,
-        )
-        assert get_branches_patch.call_count == 1
+        actual = generate_deployments_for_service.get_deploy_group_mappings(fake_soa_dir,
+                                                                            fake_service, fake_old_mappings)
+        get_instance_config_for_service_patch.assert_called_once_with(soa_dir=fake_soa_dir, service=fake_service)
         assert list_remote_refs_patch.call_count == 1
+        assert expected == actual
 
 
 def test_get_service_from_docker_image():
@@ -126,7 +93,7 @@ def test_main():
                    autospec=True),
         mock.patch('os.path.abspath', return_value='ABSOLUTE', autospec=True),
         mock.patch(
-            'paasta_tools.generate_deployments_for_service.get_branch_mappings',
+            'paasta_tools.generate_deployments_for_service.get_deploy_group_mappings',
             return_value={'MAP': {'docker_image': 'PINGS', 'desired_state': 'start'}},
             autospec=True,
         ),
@@ -184,6 +151,6 @@ def test_get_deployments_dict():
         },
     }
 
-    assert generate_deployments_for_service.get_deployments_dict_from_branch_mappings(branch_mappings) == {
+    assert generate_deployments_for_service.get_deployments_dict_from_deploy_group_mappings(branch_mappings) == {
         'v1': branch_mappings,
     }

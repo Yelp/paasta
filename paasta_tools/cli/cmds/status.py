@@ -13,9 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
-from os.path import join
 
-from ordereddict import OrderedDict
 from service_configuration_lib import read_deploy
 
 from paasta_tools.cli.utils import execute_paasta_serviceinit_on_remote_master
@@ -27,7 +25,7 @@ from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.cli.utils import x_mark
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import load_deployments_json
-from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
+from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
 
@@ -78,8 +76,7 @@ def missing_deployments_message(service):
     return message
 
 
-def get_deploy_info(service):
-    deploy_file_path = join(DEFAULT_SOA_DIR, service, "deploy.yaml")
+def get_deploy_info(deploy_file_path):
     deploy_info = read_deploy(deploy_file_path)
     if not deploy_info:
         print PaastaCheckMessages.DEPLOY_YAML_MISSING
@@ -87,32 +84,18 @@ def get_deploy_info(service):
     return deploy_info
 
 
-def get_planned_deployments(deploy_info):
-    """Yield deployment environments in the form 'cluster.instance' in the order
-    they appear in the deploy.yaml file for service.
-    :return : a series of strings of the form: 'cluster.instance', exits on
-    error if deploy.yaml is not found"""
-    cluster_dict = OrderedDict()
-
-    # Store cluster names in the order in which they are read
-    # Clusters map to an ordered list of instances
-    for entry in deploy_info['pipeline']:
-        namespace = entry['instancename']
-        if namespace not in DEPLOY_PIPELINE_NON_DEPLOY_STEPS:
-            cluster, instance = namespace.split('.')
-            cluster_dict.setdefault(cluster, []).append(instance)
-
-    # Yield deployment environments in the form of 'cluster.instance'
-    for cluster in cluster_dict:
-        for instance in cluster_dict[cluster]:
-            yield "%s.%s" % (cluster, instance)
+def get_planned_deployments(service):
+    for cluster, cluster_deploy_file in get_soa_cluster_deploy_files(
+        service=service,
+    ):
+        for instance in get_deploy_info(cluster_deploy_file):
+            yield '%s.%s' % (cluster, instance)
 
 
 def list_deployed_clusters(pipeline, actual_deployments):
     """Returns a list of clusters that a service is deployed to given
     an input deploy pipeline and the actual deployments"""
     deployed_clusters = []
-    # Get cluster.instance in the order in which they appear in deploy.yaml
     for namespace in pipeline:
         cluster, instance = namespace.split('.')
         if namespace in actual_deployments:
@@ -139,7 +122,6 @@ def get_actual_deployments(service):
 def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist, verbose=False):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
-    # Get cluster.instance in the order in which they appear in deploy.yaml
     print
     print "cluster: %s" % cluster
     seen_instances = []
@@ -214,7 +196,6 @@ def paasta_status(args):
     :param args: argparse.Namespace obj created from sys.args by cli"""
     service = figure_out_service_name(args)
     actual_deployments = get_actual_deployments(service)
-    deploy_info = get_deploy_info(service)
     if args.clusters is not None:
         cluster_whitelist = args.clusters.split(",")
     else:
@@ -225,7 +206,7 @@ def paasta_status(args):
         instance_whitelist = []
 
     if actual_deployments:
-        deploy_pipeline = list(get_planned_deployments(deploy_info))
+        deploy_pipeline = list(get_planned_deployments(service))
         report_status(
             service=service,
             deploy_pipeline=deploy_pipeline,

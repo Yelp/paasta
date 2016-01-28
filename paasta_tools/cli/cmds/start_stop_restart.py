@@ -22,18 +22,18 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
-from paasta_tools.generate_deployments_for_service import get_branches_for_service
+from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
 
 
 SOA_DIR = '/nail/etc/services'
 
 
 def get_branches(service):
-    paasta_branches = set(get_branches_for_service(SOA_DIR, service))
+    paasta_control_branches = set((config.get_branch() for config in get_instance_config_for_service(SOA_DIR, service)))
     remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
 
-    for branch in paasta_branches:
-        if 'refs/heads/%s' % branch in remote_refs:
+    for branch in paasta_control_branches:
+        if 'refs/heads/paasta-%s' % branch in remote_refs:
             yield branch
 
 
