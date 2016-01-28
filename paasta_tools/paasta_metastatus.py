@@ -260,10 +260,7 @@ def assert_chronos_scheduled_jobs(client):
     """
     :returns: a tuple of a string and a bool containing representing if it is ok or not
     """
-    try:
-        num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
-    except ServerNotFoundError:
-        num_jobs = 0
+    num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
     return ("Enabled chronos jobs: %d" % num_jobs, True)
 
 
@@ -350,16 +347,20 @@ def main():
         chronos_results = [('chronos is not configured to run here', True)]
 
     if marathon_config:
+        marathon_client = get_marathon_client(marathon_config)
         try:
-            marathon_client = get_marathon_client(marathon_config)
             marathon_results = get_marathon_status(marathon_client)
-        except MarathonError:
-            print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Is it running?"))
+        except MarathonError as e:
+            print(PaastaColors.red("CRITICAL: Unable to contact Marathon! Error: %s" % e))
             sys.exit(2)
 
     if chronos_config:
         chronos_client = get_chronos_client(chronos_config)
-        chronos_results = get_chronos_status(chronos_client)
+        try:
+            chronos_results = get_chronos_status(chronos_client)
+        except ServerNotFoundError as e:
+            print(PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
+            sys.exit(2)
 
     mesos_ok = all(status_for_results(mesos_results))
     marathon_ok = all(status_for_results(marathon_results))
