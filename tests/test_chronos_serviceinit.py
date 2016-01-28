@@ -17,6 +17,7 @@ import contextlib
 import mock
 
 from paasta_tools import chronos_serviceinit
+from paasta_tools import chronos_tools
 from paasta_tools.utils import PaastaColors
 
 
@@ -238,6 +239,32 @@ def test_format_chronos_job_two_mesos_tasks():
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
     assert 'Critical' in actual
+
+
+def test_format_parents():
+    example_job = {
+        'name': 'myexamplejob',
+        'parents': ['testservice testinstance']
+    }
+    example_status = ('2007-04-05T14:30', chronos_tools.LastRunState.Success)
+    with contextlib.nested(
+        mock.patch(
+            'paasta_tools.chronos_tools.get_job_for_service_instance',
+            autospec=True,
+            return_value={
+                'name': 'testservice testinstance'
+            }
+        ),
+        mock.patch(
+            'paasta_tools.chronos_tools.get_status_last_run',
+            autospec=True,
+            return_value=example_status
+        ),
+    ):
+        actual = chronos_serviceinit._format_parents(example_job)
+        assert "testservice testinstance" in actual
+        assert "  Last Run: %s (2007-04-05T14:30, 8 years ago)" % PaastaColors.green("OK") in actual
+        assert "OK" in actual
 
 
 def test_format_chronos_job_mesos_verbose():
