@@ -14,7 +14,6 @@
 # limitations under the License.
 import contextlib
 
-from httplib2 import ServerNotFoundError
 from mock import Mock
 from mock import patch
 from pytest import raises
@@ -330,18 +329,6 @@ def test_assert_chronos_scheduled_jobs():
     ]
     results = paasta_metastatus.assert_chronos_scheduled_jobs(mock_client)
     assert results == ('Enabled chronos jobs: 1', True)
-
-
-def test_get_chronos_status_no_chronos():
-    """ Asserts that chronos checks return ok, even when chronos
-        is not available. This needs to be removed and fixed when
-        we have chronos available everywhere, but worth verifying
-        it works as expected for now """
-    mock_client = Mock()
-    mock_client.list.side_effect = ServerNotFoundError
-
-    results = paasta_metastatus.get_chronos_status(mock_client)
-    assert results == [('Enabled chronos jobs: 0', True)]
 
 
 def test_get_chronos_status():
