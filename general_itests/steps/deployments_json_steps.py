@@ -116,7 +116,12 @@ def step_impl_then(context):
             'force_bounce': context.force_bounce_timestamp,
             'desired_state': 'stop',
             'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit
-        }
+        },
+        'fake_deployments_json_service:paasta-test_cluster.test_instance_2': {
+            'force_bounce': None,
+            'desired_state': 'start',
+            'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit,
+        },
     }
     assert expected_deployments == deployments, "actual: %s\nexpected:%s" % (deployments, expected_deployments)
     shutil.rmtree(context.test_git_repo_dir)
