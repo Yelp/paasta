@@ -729,6 +729,16 @@ class SystemPaastaConfig(dict):
         except KeyError:
             raise PaastaNotConfiguredError('Could not find log_writer in configuration directory: %s' % self.directory)
 
+    def get_log_reader(self):
+        """Get the log_reader configuration out of global paasta config
+
+        :returns: the log_reader dictionary.
+        """
+        try:
+            return self['log_reader']
+        except KeyError:
+            raise PaastaNotConfiguredError('Could not find log_reader in configuration directory: %s' % self.directory)
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any

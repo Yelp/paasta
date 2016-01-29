@@ -36,25 +36,17 @@ except ImportError:
 
 
 def test_cluster_to_scribe_env_good():
-    mock_system_paasta_config = mock.Mock(autospec='paasta_tools.utils.SystemPaastaConfig')
-    mock_system_paasta_config.get_scribe_map.return_value = {'mesosstage': 'env1'}
-    with mock.patch('paasta_tools.cli.cmds.logs.load_system_paasta_config', autospec=True) as (
-        mock_load_system_paasta_config
-    ):
-        mock_load_system_paasta_config.return_value = mock_system_paasta_config
-        actual = logs.cluster_to_scribe_env('mesosstage')
+    with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True):
+        scribe_log_reader = logs.ScribeLogReader(cluster_map={'mesosstage': 'env1'})
+        actual = scribe_log_reader.cluster_to_scribe_env('mesosstage')
         assert actual == 'env1'
 
 
 def test_cluster_to_scribe_env_bad():
-    mock_system_paasta_config = mock.Mock(autospec='paasta_tools.utils.SystemPaastaConfig')
-    mock_system_paasta_config.get_scribe_map.return_value = {}
-    with mock.patch('paasta_tools.cli.cmds.logs.load_system_paasta_config', autospec=True) as (
-        mock_load_system_paasta_config
-    ):
-        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+    with mock.patch('paasta_tools.cli.cmds.logs.scribereader', autospec=True):
+        scribe_log_reader = logs.ScribeLogReader(cluster_map={})
         with raises(SystemExit) as sys_exit:
-            logs.cluster_to_scribe_env('dne')
+            scribe_log_reader.cluster_to_scribe_env('dne')
             assert sys_exit.value.code == 1
 
 
@@ -546,12 +538,13 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
     components = ['deploy', 'monitoring']
     clusters = ['fake_cluster1', 'fake_cluster2']
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.scribereader'),
     ) as (
         determine_scribereader_envs_patch,
         scribe_tail_patch,
@@ -559,12 +552,13 @@ def test_tail_paasta_logs_ctrl_c_in_queue_get():
         print_log_patch,
         queue_patch,
         process_patch,
+        mock_scribereader,
     ):
         fake_queue = mock.MagicMock(spec_set=Queue())
         fake_queue.get.side_effect = FakeKeyboardInterrupt
         queue_patch.return_value = fake_queue
         try:
-            logs.tail_paasta_logs(service, levels, components, clusters)
+            logs.ScribeLogReader(cluster_map={}).tail_logs(service, levels, components, clusters)
         # We have to catch this ourselves otherwise it will fool pytest too!
         except FakeKeyboardInterrupt:
             raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
@@ -578,12 +572,13 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
     components = ['deploy', 'monitoring']
     clusters = ['fake_cluster1', 'fake_cluster2']
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.scribereader'),
     ) as (
         determine_scribereader_envs_patch,
         scribe_tail_patch,
@@ -591,6 +586,7 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
         print_log_patch,
         queue_patch,
         process_patch,
+        mock_scribereader,
     ):
         determine_scribereader_envs_patch.return_value = ['env1', 'env2']
         fake_queue = mock.MagicMock(spec_set=Queue())
@@ -599,8 +595,9 @@ def test_tail_paasta_logs_ctrl_c_in_is_alive():
         fake_process = mock.MagicMock()
         fake_process.is_alive.side_effect = FakeKeyboardInterrupt
         process_patch.return_value = fake_process
+        scribe_log_reader = logs.ScribeLogReader(cluster_map={'env1': 'env1', 'env2': 'env2'})
         try:
-            logs.tail_paasta_logs(service, levels, components, clusters)
+            scribe_log_reader.tail_logs(service, levels, components, clusters)
         # We have to catch this ourselves otherwise it will fool pytest too!
         except FakeKeyboardInterrupt:
             raise Exception('The code under test failed to catch a (fake) KeyboardInterrupt!')
@@ -614,12 +611,13 @@ def test_tail_paasta_logs_aliveness_check():
     components = ['deploy', 'monitoring']
     clusters = ['fake_cluster1', 'fake_cluster2']
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.scribereader'),
     ) as (
         determine_scribereader_envs_patch,
         scribe_tail_patch,
@@ -627,6 +625,7 @@ def test_tail_paasta_logs_aliveness_check():
         print_log_patch,
         queue_patch,
         process_patch,
+        mock_scribereader,
     ):
         determine_scribereader_envs_patch.return_value = ['env1', 'env2']
         fake_queue = mock.MagicMock(spec_set=Queue())
@@ -646,7 +645,8 @@ def test_tail_paasta_logs_aliveness_check():
         ]
         fake_process.is_alive.side_effect = is_alive_responses
         process_patch.return_value = fake_process
-        logs.tail_paasta_logs(service, levels, components, clusters)
+        scribe_log_reader = logs.ScribeLogReader(cluster_map={'env1': 'env1', 'env2': 'env2'})
+        scribe_log_reader.tail_logs(service, levels, components, clusters)
         # is_alive() should be called on all the values we painstakingly provided above.
         assert fake_process.is_alive.call_count == len(is_alive_responses)
         # We only terminate the first thread, which is still alive. We don't
@@ -660,12 +660,13 @@ def test_tail_paasta_logs_empty_clusters():
     components = ['deploy', 'monitoring']
     clusters = []
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.scribereader'),
     ) as (
         determine_scribereader_envs_patch,
         scribe_tail_patch,
@@ -673,12 +674,13 @@ def test_tail_paasta_logs_empty_clusters():
         print_log_patch,
         queue_patch,
         process_patch,
+        mock_scribereader,
     ):
         determine_scribereader_envs_patch.return_value = []
         fake_queue = mock.MagicMock(spec_set=Queue())
         fake_queue.get.side_effect = Empty
         queue_patch.return_value = fake_queue
-        logs.tail_paasta_logs(service, levels, components, clusters)
+        logs.ScribeLogReader(cluster_map={}).tail_logs(service, levels, components, clusters)
         assert process_patch.call_count == 0
         assert print_log_patch.call_count == 0
 
@@ -689,14 +691,15 @@ def test_tail_paasta_logs_marathon():
     levels = ['fake_level1', 'fake_level2']
     components = ['marathon']
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Queue', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.Process', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.parse_marathon_log_line', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.marathon_log_line_passes_filter', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.scribereader'),
     ) as (
         determine_scribereader_envs_patch,
         scribe_tail_patch,
@@ -706,6 +709,7 @@ def test_tail_paasta_logs_marathon():
         process_patch,
         parse_marathon_log_line_patch,
         marathon_log_line_passes_filter_patch,
+        mock_scribereader,
     ):
         determine_scribereader_envs_patch.return_value = ['env1']
         fake_queue = mock.MagicMock(spec_set=Queue())
@@ -713,23 +717,41 @@ def test_tail_paasta_logs_marathon():
         fake_queue.get.side_effect = KeyboardInterrupt
         queue_patch.return_value = fake_queue
 
-        logs.tail_paasta_logs(service, levels, components, clusters)
+        logs.ScribeLogReader(cluster_map={'env1': 'env1'}).tail_logs(service, levels, components, clusters)
         assert process_patch.call_count == 1
 
 
 def test_determine_scribereader_envs():
     cluster = 'fake_cluster'
     components = ['build', 'monitoring']
-    with mock.patch(
-        'paasta_tools.cli.cmds.logs.cluster_to_scribe_env',
-        autospec=True
-    ) as cluster_to_scribe_env_patch:
-        cluster_to_scribe_env_patch.return_value = 'fake_scribe_env'
-        actual = logs.determine_scribereader_envs(components, cluster)
-        cluster_to_scribe_env_patch.assert_called_with(cluster)
+    with contextlib.nested(
+        mock.patch('paasta_tools.cli.cmds.logs.scribereader'),
+    ) as (
+        mock_scribereader,
+    ):
+        cluster_map = {
+            cluster: 'fake_scribe_env',
+        }
+        actual = logs.ScribeLogReader(cluster_map=cluster_map).determine_scribereader_envs(components, cluster)
         assert actual == set(['devc', 'fake_scribe_env'])
 
 
 def test_prefix():
     actual = logs.prefix('TEST STRING', 'deploy')
     assert 'TEST STRING' in actual
+
+
+def test_get_log_reader():
+    mock_system_paasta_config = mock.Mock(autospec='paasta_tools.utils.SystemPaastaConfig')
+    mock_system_paasta_config.get_log_reader.return_value = {'driver': 'scribereader', 'cluster_map': {}}
+    with contextlib.nested(
+        mock.patch('paasta_tools.cli.cmds.logs.load_system_paasta_config', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.scribereader'),
+    ) as (
+        mock_load_system_paasta_config,
+        mock_scribereader,
+    ):
+        mock_load_system_paasta_config.return_value = mock_system_paasta_config
+
+        actual = logs.get_log_reader()
+        assert isinstance(actual, logs.ScribeLogReader)
