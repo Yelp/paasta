@@ -52,6 +52,9 @@
                     }
                 }
             },
+	    "deploy_group": {
+		"type": "string"
+	    },
             "drain_method": {
                 "enum": [ "noop", "hacheck", "test" ],
                 "default": "noop"
