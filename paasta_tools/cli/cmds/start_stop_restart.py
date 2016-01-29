@@ -137,10 +137,10 @@ def paasta_start_or_stop(args, desired_state):
     instance = args.instance
     cluster = args.cluster
     soa_dir = args.soa_dir
-    service = figure_out_service_name(args, soa_dir)
+    service = figure_out_service_name(args=args, soa_dir=soa_dir)
 
     branch = "paasta-%s.%s" % (cluster, instance)
-    all_branches = list(get_branches(service, soa_dir))
+    all_branches = list(get_branches(service=service, soa_dir=soa_dir))
 
     if branch not in all_branches:
         print "No branches found for %s in %s." % \
