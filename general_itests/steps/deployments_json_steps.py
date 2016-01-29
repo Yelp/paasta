@@ -61,7 +61,7 @@ def step_impl_given(context):
 
 
 @when(u'paasta stop is run against the repo')
-def step_paasta_start_given(context):
+def step_paasta_stop_when(context):
     fake_args = mock.MagicMock(
         cluster='test_cluster',
         instance='test_instance',
