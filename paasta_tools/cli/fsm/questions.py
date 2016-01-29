@@ -21,7 +21,6 @@ import yaml
 from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
 from paasta_tools.cli.fsm.prompt import ask
 from paasta_tools.cli.utils import list_teams
-from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 
 
 def _yamlize(contents):
@@ -121,37 +120,22 @@ def get_deploy_stanza():
         {"instancename": "security-check", },
         {"instancename": "push-to-registry", },
         {"instancename": "performance-check", },
-        {"instancename": "pnw-stagea.canary", },
-        {"instancename": "pnw-stagea.main", },
-        {"instancename": "norcal-stageb.canary", },
-        {"instancename": "norcal-stageb.main", },
-        {"instancename": "norcal-devb.canary", },
-        {"instancename": "norcal-devb.main", },
-        {"instancename": "norcal-devc.canary", },
-        {"instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
-        {"instancename": "norcal-prod.canary", },
-        {"instancename": "nova-prod.canary", "trigger_next_step_manually": True, },
-        {"instancename": "norcal-prod.main", },
-        {"instancename": "nova-prod.main", },
+        {"instancename": "dev.everything", "trigger_next_step_manually": True, },
+        {"instancename": "stage.everything", "trigger_next_step_manually": True, },
+        {"instancename": "prod.everything", },
     ]
     return stanza
 
 
-def get_clusternames_from_deploy_stanza(deploy_stanza):
-    """Given a dictionary deploy_stanza, as from get_deploy_stanza(), return a
-    set of the clusternames referenced in the pipeline.
-    """
-    clusternames = set()
-    for entry in deploy_stanza.get("pipeline", []):
-        instancename = entry["instancename"]
-        if instancename in DEPLOY_PIPELINE_NON_DEPLOY_STEPS:
-            continue
-        # Usually clustername will be instancename.namespace, so lop off
-        # namespace. (If there's no namespace, this just returns clustername,
-        # which is correct.)
-        clustername = instancename.split(".")[0]
-        clusternames.add(clustername)
-    return clusternames
+def get_default_clusternames():
+    return {
+        "pnw-stagea": "STAGE",
+        "norcal-stageb": "STAGE",
+        "norcal-devb": "DEV",
+        "norcal-devc": "DEV",
+        "norcal-prod": "PROD",
+        "nova-prod": "PROD",
+    }.items()
 
 
 def get_marathon_stanza():
@@ -178,16 +162,26 @@ def get_marathon_stanza():
         - krall: In production, there will be multiple main instances and a single
           canary. With 1+1, this is less obvious.
     """
-    stanza = {}
-    stanza["main"] = {
-        "cpus": .1,
-        "mem": 500,
-        "instances": 3,
+    def get_marathon_stanza_for_deploy_group(deploy_group):
+        stanza = {}
+        stanza["main"] = {
+            "cpus": .1,
+            "mem": 500,
+            "instances": 3,
+            "deploy_group": deploy_group,
+        }
+        stanza["canary"] = {
+            "cpus": .1,
+            "mem": 500,
+            "nerve_ns": "main",
+            "instances": 1,
+            "deploy_group": deploy_group,
+        }
+        return stanza
+    deploy_group_map = {
+        "DEV": 'dev.everything',
+        "STAGE": 'stage.everything',
+        "PROD": 'prod.everything',
     }
-    stanza["canary"] = {
-        "cpus": .1,
-        "mem": 500,
-        "nerve_ns": "main",
-        "instances": 1,
-    }
-    return stanza
+    return ((filename, get_marathon_stanza_for_deploy_group(deploy_group))
+            for (filename, deploy_group) in deploy_group_map.items())

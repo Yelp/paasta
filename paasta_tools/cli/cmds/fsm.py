@@ -19,7 +19,7 @@ from os.path import join
 from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.fsm.questions import _yamlize
-from paasta_tools.cli.fsm.questions import get_clusternames_from_deploy_stanza
+from paasta_tools.cli.fsm.questions import get_default_clusternames
 from paasta_tools.cli.fsm.questions import get_deploy_stanza
 from paasta_tools.cli.fsm.questions import get_marathon_stanza
 from paasta_tools.cli.fsm.questions import get_monitoring_stanza
@@ -125,10 +125,11 @@ def write_paasta_config(
     srv.io.write_file("smartstack.yaml", _yamlize(smartstack_stanza))
     srv.io.write_file("monitoring.yaml", _yamlize(monitoring_stanza))
     srv.io.write_file("deploy.yaml", _yamlize(deploy_stanza))
-    srv.io.write_file("marathon-SHARED.yaml", _yamlize(marathon_stanza))
+    for (filename, marathon_config_stanza) in marathon_stanza:
+        srv.io.write_file("marathon-%s.yaml" % filename, _yamlize(marathon_config_stanza))
 
-    for clustername in get_clusternames_from_deploy_stanza(deploy_stanza):
-        srv.io.symlink_file_relative("marathon-SHARED.yaml", "marathon-%s.yaml" % clustername)
+    for (clustername, filename) in get_default_clusternames():
+        srv.io.symlink_file_relative("marathon-%s.yaml" % filename, "marathon-%s.yaml" % clustername)
 
 
 def paasta_fsm(args):
