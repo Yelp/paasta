@@ -995,7 +995,7 @@ def get_paasta_branch(cluster, instance):
 def format_timestamp(dt=None):
     if dt is None:
         dt = datetime.datetime.utcnow()
-    return dt.strftime('%Ya%m%dT%H%M%S')
+    return dt.strftime('%Y%m%dT%H%M%S')
 
 
 def get_paasta_tag(cluster, instance, desired_state):
