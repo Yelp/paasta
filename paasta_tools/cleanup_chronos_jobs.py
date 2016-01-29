@@ -28,9 +28,11 @@ Any tasks associated with that job are also deleted.
 import argparse
 import sys
 
+import pysensu_yelp
 import service_configuration_lib
 
 from paasta_tools import chronos_tools
+from paasta_tools.check_chronos_jobs import send_event
 from paasta_tools.utils import InvalidJobNameError
 
 
@@ -74,23 +76,6 @@ def cleanup_tasks(client, jobs):
     return [(job, execute_chronos_api_call_for_job(client.delete_tasks, job)) for job in jobs]
 
 
-def jobs_to_delete(expected_jobs, actual_jobs):
-    """
-    Decides on jobs that need to be deleted.
-    Compares lists of (service, instance) expected jobs to a list of (service, instance, tag) actual jobs
-    and decides which should be removed. The tag in the actual jobs is ignored, that is to say only the
-    (service, instance) in the actual job is looked for in the expected jobs. If it is only the tag that has
-    changed, then it shouldn't be removed.
-
-    :param expected_jobs: a list of (service, instance) tuples
-    :param actual_jobs: a list of (service, instance, config) tuples
-    :returns: a list of (service, instance, config) tuples to be removed
-    """
-
-    not_expected = [job for job in actual_jobs if (job[0], job[1]) not in expected_jobs]
-    return not_expected
-
-
 def format_list_output(title, job_names):
     return '%s\n  %s' % (title, '\n  '.join(job_names))
 
@@ -120,24 +105,20 @@ def filter_paasta_jobs(jobs):
 def main():
 
     args = parse_args()
+    soa_dir = args.soa_dir
 
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 
     # get_chronos_jobs_for_cluster returns (service, job)
-    expected_service_jobs = chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)
+    expected_service_jobs = set([chronos_tools.compose_job_id(*job) for job in
+                                 chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)])
 
-    # filter jobs not related to paasta
-    # and decompose into (service, instance, tag) tuples
-    paasta_jobs = filter_paasta_jobs(deployed_job_names(client))
-    running_service_jobs = [chronos_tools.decompose_job_id(job) for job in paasta_jobs]
+    running_service_jobs = set(deployed_job_names(client))
 
-    to_delete = jobs_to_delete(expected_service_jobs, running_service_jobs)
+    to_delete = running_service_jobs - expected_service_jobs
 
-    # recompose the job ids again for deletion
-    to_delete_job_ids = [chronos_tools.compose_job_id(*job) for job in to_delete]
-
-    task_responses = cleanup_tasks(client, to_delete_job_ids)
+    task_responses = cleanup_tasks(client, to_delete)
     task_successes = []
     task_failures = []
     for response in task_responses:
@@ -146,7 +127,7 @@ def main():
         else:
             task_successes.append(response)
 
-    job_responses = cleanup_jobs(client, to_delete_job_ids)
+    job_responses = cleanup_jobs(client, to_delete)
     job_successes = []
     job_failures = []
     for response in job_responses:
@@ -154,6 +135,20 @@ def main():
             job_failures.append(response)
         else:
             job_successes.append(response)
+            try:
+                (service, instance) = chronos_tools.decompose_job_id(response[0])
+                send_event(
+                    service=service,
+                    instance=instance,
+                    monitoring_overrides={},
+                    soa_dir=soa_dir,
+                    status_code=pysensu_yelp.Status.OK,
+                    message="This instance was removed and is no longer supposed to be scheduled.",
+                )
+            except InvalidJobNameError:
+                # If we deleted some bogus job with a bogus jobid that could not be parsed,
+                # Just move on, no need to send any kind of paasta event.
+                pass
 
     if len(to_delete) == 0:
         print 'No Chronos Jobs to remove'

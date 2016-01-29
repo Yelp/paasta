@@ -22,7 +22,7 @@ from setuptools import setup
 setup(
     name='paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version='0.16.16',
+    version='0.16.24',
     provides=["paasta_tools"],
     author='Kyle Anderson',
     author_email='kwa@yelp.com',
@@ -83,5 +83,5 @@ setup(
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
     ] + glob.glob('paasta_tools/contrib/*'),
-    package_data={'': ['cli/fsm/templates/*.tmpl']},
+    package_data={'': ['cli/fsm/templates/*.tmpl', 'cli/schemas/*.json']},
 )

@@ -20,7 +20,7 @@ import sys
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
-from paasta_tools.utils import get_paasta_branch
+from paasta_tools.utils import get_paasta_branch_from_deploy_group
 
 
 def add_subparser(subparsers):
@@ -48,9 +48,10 @@ def add_subparser(subparsers):
         required=True,
     )
     list_parser.add_argument(
-        '-l', '--clusterinstance',
-        help='Mark the service ready for deployment in this clusterinstance (e.g. '
-             'cluster1.canary, cluster2.main)',
+        '-l', '--deploy_group', '--clusterinstance',
+        help='Mark the service ready for deployment in this deploy group (e.g. '
+             'cluster1.canary, cluster2.main). --clusterinstance is depricated and '
+             'should be replaced with --deploy_group',
         required=True,
     )
     list_parser.add_argument(
@@ -63,9 +64,9 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
 
-def mark_for_deployment(git_url, cluster, instance, service, commit):
+def mark_for_deployment(git_url, deploy_group, service, commit):
     """Mark a docker image for deployment"""
-    remote_branch = get_paasta_branch(cluster=cluster, instance=instance)
+    remote_branch = get_paasta_branch_from_deploy_group(identifier=deploy_group)
     ref_mutator = remote_git.make_force_push_mutate_refs_func(
         target_branches=[remote_branch],
         sha=commit,
@@ -73,12 +74,12 @@ def mark_for_deployment(git_url, cluster, instance, service, commit):
     try:
         remote_git.create_remote_refs(git_url=git_url, ref_mutator=ref_mutator, force=True)
     except Exception as e:
-        loglines = ["Failed to mark %s in for deployment on %s in the %s cluster!" % (commit, instance, cluster)]
+        loglines = ["Failed to mark %s in for deployment in deploy group %s!" % (commit, deploy_group)]
         for line in str(e).split('\n'):
             loglines.append(line)
         return_code = 1
     else:
-        loglines = ["Marked %s in for deployment on %s in the %s cluster" % (commit, instance, cluster)]
+        loglines = ["Marked %s in for deployment in deploy group %s" % (commit, deploy_group)]
         return_code = 0
 
     for logline in loglines:
@@ -87,23 +88,20 @@ def mark_for_deployment(git_url, cluster, instance, service, commit):
             line=logline,
             component='deploy',
             level='event',
-            cluster=cluster,
-            instance=instance,
         )
     return return_code
 
 
 def paasta_mark_for_deployment(args):
     """Wrapping mark_for_deployment"""
-    cluster, instance = args.clusterinstance.split('.')
+    deploy_group = args.deploy_group
     service = args.service
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
     validate_service_name(service)
     returncode = mark_for_deployment(
         git_url=args.git_url,
-        cluster=cluster,
-        instance=instance,
+        deploy_group=deploy_group,
         service=service,
         commit=args.commit
     )

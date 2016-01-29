@@ -19,7 +19,7 @@ from paasta_tools.cli.cmds import mark_for_deployment
 
 
 class fake_args:
-    clusterinstance = 'cluster.instance'
+    deploy_group = 'test_deploy_group'
     service = 'test_service'
     git_url = 'git://false.repo/services/test_services'
     commit = 'fake-hash'
@@ -36,8 +36,7 @@ def test_paasta_mark_for_deployment_acts_like_main(
         mark_for_deployment.paasta_mark_for_deployment(fake_args)
     mock_mark_for_deployment.assert_called_once_with(
         service='test_service',
-        instance='instance',
-        cluster='cluster',
+        deploy_group='test_deploy_group',
         commit='fake-hash',
         git_url='git://false.repo/services/test_services',
     )
@@ -50,8 +49,7 @@ def test_paasta_mark_for_deployment_acts_like_main(
 def test_mark_for_deployment_happy(mock_create_remote_refs):
     actual = mark_for_deployment.mark_for_deployment(
         git_url='fake_git_url',
-        cluster='fake_cluster',
-        instance='fake_instance',
+        deploy_group='fake_deploy_group',
         service='fake_service',
         commit='fake_commit',
     )
@@ -68,8 +66,7 @@ def test_mark_for_deployment_sad(mock_create_remote_refs):
     mock_create_remote_refs.side_effect = Exception('something bad')
     actual = mark_for_deployment.mark_for_deployment(
         git_url='fake_git_url',
-        cluster='fake_cluster',
-        instance='fake_instance',
+        deploy_group='fake_deploy_group',
         service='fake_service',
         commit='fake_commit',
     )

@@ -1,3 +1,59 @@
+paasta-tools (0.16.24-yelp1) lucid; urgency=low
+
+  * 0.16.24 tagged with 'make release'
+    Commit:
+
+ -- Matthew Smith <matts@yelp.com>  Thu, 28 Jan 2016 16:55:54 -0800
+
+paasta-tools (0.16.23-yelp1) lucid; urgency=low
+
+  * 0.16.23 tagged with 'make release'
+    Commit:
+
+ -- Matthew Smith <matts@yelp.com>  Thu, 28 Jan 2016 13:54:37 -0800
+
+paasta-tools (0.16.22-yelp1) lucid; urgency=low
+
+  * 0.16.22 tagged with 'make release'
+    Commit:
+
+ -- Matthew Smith <matts@yelp.com>  Thu, 28 Jan 2016 11:36:57 -0800
+
+paasta-tools (0.16.21-yelp1) lucid; urgency=low
+
+  * 0.16.21 tagged with 'make release'
+    Commit:
+
+ -- Robert Johnson <robj@yelp.com>  Thu, 28 Jan 2016 09:26:54 -0800
+
+paasta-tools (0.16.20-yelp1) lucid; urgency=low
+
+  * 0.16.20 tagged with 'make release'
+    Commit:
+
+ -- Matthew Smith <matts@yelp.com>  Wed, 27 Jan 2016 11:31:23 -0800
+
+paasta-tools (0.16.19-yelp1) lucid; urgency=low
+
+  * 0.16.19 tagged with 'make release'
+    Commit:
+
+ -- Matthew Smith <matts@yelp.com>  Tue, 26 Jan 2016 18:46:25 -0800
+
+paasta-tools (0.16.17-yelp1) lucid; urgency=low
+
+  * 0.16.17 tagged with 'make release'
+    Commit:
+
+ -- Matthew Smith <matts@yelp.com>  Mon, 25 Jan 2016 12:49:25 -0800
+
+paasta-tools (0.16.16-yelp1) lucid; urgency=low
+
+  * 0.16.16 tagged with 'make release'
+    Commit:
+
+ -- Matthew Smith <matts@yelp.com>  Mon, 25 Jan 2016 12:49:00 -0800
+
 paasta-tools (0.16.16-yelp1) lucid; urgency=low
 
   * 0.16.16 tagged with 'make release'

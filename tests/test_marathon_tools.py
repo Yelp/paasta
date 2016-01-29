@@ -14,6 +14,7 @@
 import contextlib
 
 import mock
+from marathon import MarathonHttpError
 from marathon.models import MarathonApp
 from mock import patch
 from pytest import raises
@@ -687,7 +688,7 @@ class TestMarathonTools:
             mock.patch(
                 'service_configuration_lib.services_that_run_here',
                 autospec=True,
-                return_value={'d', 'c'}
+                return_value={'d', 'c'},
             ),
             mock.patch(
                 'os.listdir',
@@ -2143,3 +2144,24 @@ def test_create_complete_config_utilizes_extra_volumes():
 
         # Assert that the complete config can be inserted into the MarathonApp model
         assert MarathonApp(**actual)
+
+
+def test_kill_tasks_passes_through():
+    fake_client = mock.Mock()
+    marathon_tools.kill_task(client=fake_client, app_id='app_id', task_id='task_id', scale=True)
+    fake_client.kill_task.assert_called_once_with(scale=True, task_id='task_id', app_id='app_id')
+
+
+def test_kill_tasks_passes_catches_fewer_than_error():
+    fake_client = mock.Mock()
+    bad_fake_response = mock.Mock()
+    bad_fake_response.status_code = 422
+    bad_fake_response.json.return_value = {
+        "message": "Bean is not valid",
+        "errors": [{"attribute": "instances", "error": "must be greater than or equal to 0"}],
+    }
+    fake_client.kill_task.side_effect = MarathonHttpError(response=bad_fake_response)
+
+    actual = marathon_tools.kill_task(client=fake_client, app_id='app_id', task_id='task_id', scale=True)
+    fake_client.kill_task.assert_called_once_with(scale=True, task_id='task_id', app_id='app_id')
+    assert actual == []

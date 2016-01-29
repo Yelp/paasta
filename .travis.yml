@@ -1,6 +1,7 @@
 language: python
 env:
   - TOXENV=py27
+  - TOXENV=coverage
   - TOXENV=docs
   - TOXENV=general_itests
   - TOXENV=paasta_itests

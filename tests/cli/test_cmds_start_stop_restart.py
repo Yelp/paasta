@@ -19,7 +19,7 @@ from paasta_tools.cli.cmds import start_stop_restart
 
 
 def test_format_tag():
-    expected = 'refs/tags/paasta-BRANCHNAME-TIMESTAMP-stop'
+    expected = 'refs/tags/BRANCHNAME-TIMESTAMP-stop'
     actual = start_stop_restart.format_tag(
         branch='BRANCHNAME',
         force_bounce='TIMESTAMP',
@@ -72,8 +72,8 @@ def test_make_mutate_refs_func():
 
     expected = dict(old_refs)
     expected.update({
-        'refs/tags/paasta-a-FORCEBOUNCE-stop': 'hash_for_a',
-        'refs/tags/paasta-b-FORCEBOUNCE-stop': 'hash_for_b',
+        'refs/tags/a-FORCEBOUNCE-stop': 'hash_for_a',
+        'refs/tags/b-FORCEBOUNCE-stop': 'hash_for_b',
     })
 
     actual = mutate_refs(old_refs)
