@@ -16,6 +16,8 @@ import datetime
 import socket
 import sys
 
+from service_configuration_lib import DEFAULT_SOA_DIR
+
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.cli.utils import figure_out_service_name
@@ -25,15 +27,13 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
 
 
-SOA_DIR = '/nail/etc/services'
-
-
-def get_branches(service):
-    paasta_control_branches = set((config.get_branch() for config in get_instance_config_for_service(SOA_DIR, service)))
+def get_branches(service, soa_dir):
+    paasta_control_branches = set(('paasta-%s' % config.get_branch()
+                                   for config in get_instance_config_for_service(soa_dir, service)))
     remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
 
     for branch in paasta_control_branches:
-        if 'refs/heads/paasta-%s' % branch in remote_refs:
+        if 'refs/heads/%s' % branch in remote_refs:
             yield branch
 
 
@@ -68,6 +68,13 @@ def add_subparser(subparsers):
             help='The PaaSTA cluster that has the service you want to %s. Like norcal-prod' % lower,
             required=True,
         ).completer = lazy_choices_completer(utils.list_clusters)
+        status_parser.add_argument(
+            '-d', '--soa-dir',
+            dest="soa_dir",
+            metavar="SOA_DIR",
+            default=DEFAULT_SOA_DIR,
+            help="define a different soa config directory",
+        )
         status_parser.set_defaults(command=cmd_func)
 
 
@@ -78,7 +85,7 @@ def format_timestamp(dt=None):
 
 
 def format_tag(branch, force_bounce, desired_state):
-    return 'refs/tags/paasta-%s-%s-%s' % (branch, force_bounce, desired_state)
+    return 'refs/tags/%s-%s-%s' % (branch, force_bounce, desired_state)
 
 
 def make_mutate_refs_func(branches, force_bounce, desired_state):
@@ -127,12 +134,13 @@ def issue_state_change_for_branches(service, instance, cluster, branches, force_
 
 def paasta_start_or_stop(args, desired_state):
     """Requests a change of state to start or stop given branches of a service."""
-    service = figure_out_service_name(args)
     instance = args.instance
     cluster = args.cluster
+    soa_dir = args.soa_dir
+    service = figure_out_service_name(args=args, soa_dir=soa_dir)
 
     branch = "paasta-%s.%s" % (cluster, instance)
-    all_branches = list(get_branches(service))
+    all_branches = list(get_branches(service=service, soa_dir=soa_dir))
 
     if branch not in all_branches:
         print "No branches found for %s in %s." % \

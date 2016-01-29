@@ -15,6 +15,7 @@ import contextlib
 import os
 import shutil
 import tempfile
+from datetime import datetime
 from time import time
 
 import mock
@@ -29,6 +30,8 @@ from dulwich.repo import Repo
 
 from paasta_tools import generate_deployments_for_service
 from paasta_tools import marathon_tools
+from paasta_tools.cli.cmds.start_stop_restart import format_timestamp
+from paasta_tools.cli.cmds.start_stop_restart import paasta_stop
 
 
 @given(u'a test git repo is setup with commits')
@@ -55,6 +58,30 @@ def step_impl_given(context):
 
     context.test_git_repo.refs['refs/heads/paasta-test_cluster.test_instance'] = commit.id
     context.expected_commit = commit.id
+
+
+@when(u'paasta stop is run against the repo')
+def step_paasta_stop_when(context):
+    fake_args = mock.MagicMock(
+        cluster='test_cluster',
+        instance='test_instance',
+        soa_dir='fake_soa_configs',
+        service='fake_deployments_json_service',
+    )
+    context.force_bounce_timestamp = format_timestamp(datetime.utcnow())
+    with contextlib.nested(
+        mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True,
+                   return_value=context.test_git_repo_dir),
+        mock.patch('paasta_tools.cli.cmds.start_stop_restart.format_timestamp', autospec=True,
+                   return_value=context.force_bounce_timestamp),
+    ) as (
+        mock_get_git_url,
+        mock_get_timestamp,
+    ):
+        try:
+            paasta_stop(fake_args)
+        except SystemExit:
+            pass
 
 
 @when(u'we generate deployments.json for that service')
@@ -86,8 +113,8 @@ def step_impl_then(context):
     deployments = marathon_tools.load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
     expected_deployments = {
         'fake_deployments_json_service:paasta-test_cluster.test_instance': {
-            'force_bounce': None,
-            'desired_state': 'start',
+            'force_bounce': context.force_bounce_timestamp,
+            'desired_state': 'stop',
             'docker_image': 'services-fake_deployments_json_service:paasta-%s' % context.expected_commit
         }
     }
