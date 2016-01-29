@@ -16,10 +16,11 @@ import contextlib
 import mock
 
 from paasta_tools.cli.cmds import start_stop_restart
+from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
 def test_format_tag():
-    expected = 'refs/tags/BRANCHNAME-TIMESTAMP-stop'
+    expected = 'refs/tags/paasta-BRANCHNAME-TIMESTAMP-stop'
     actual = start_stop_restart.format_tag(
         branch='BRANCHNAME',
         force_bounce='TIMESTAMP',
@@ -31,7 +32,7 @@ def test_format_tag():
 @mock.patch('paasta_tools.utils.get_git_url', autospec=True)
 @mock.patch('dulwich.client.get_transport_and_path', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.log_event', autospec=True)
-def test_issue_state_change_for_branches(mock_log_event, get_transport_and_path, get_git_url):
+def test_issue_state_change_for_service(mock_log_event, get_transport_and_path, get_git_url):
     fake_git_url = 'BLOORGRGRGRGR'
     fake_path = 'somepath'
 
@@ -40,11 +41,14 @@ def test_issue_state_change_for_branches(mock_log_event, get_transport_and_path,
     mock_git_client = mock.Mock()
     get_transport_and_path.return_value = (mock_git_client, fake_path)
 
-    start_stop_restart.issue_state_change_for_branches(
-        'fake_service',
-        'fake_cluster',
-        'fake_instance',
-        ['branch1', 'branch2'],
+    start_stop_restart.issue_state_change_for_service(
+        MarathonServiceConfig(
+            cluster='fake_cluster',
+            instance='fake_instance',
+            service='fake_service',
+            config_dict={},
+            branch_dict={},
+        ),
         '0',
         'stop'
     )
@@ -58,22 +62,27 @@ def test_issue_state_change_for_branches(mock_log_event, get_transport_and_path,
 def test_make_mutate_refs_func():
 
     mutate_refs = start_stop_restart.make_mutate_refs_func(
-        branches=['a', 'b'],
+        service_config=MarathonServiceConfig(
+            cluster='fake_cluster',
+            instance='fake_instance',
+            service='fake_service',
+            config_dict={'deploy_group': 'a'},
+            branch_dict={},
+        ),
         force_bounce='FORCEBOUNCE',
         desired_state='stop',
     )
 
     old_refs = {
-        'refs/heads/a': 'hash_for_a',
-        'refs/heads/b': 'hash_for_b',
-        'refs/heads/c': 'hash_for_c',
-        'refs/heads/d': 'hash_for_d',
+        'refs/heads/paasta-a': 'hash_for_a',
+        'refs/heads/paasta-b': 'hash_for_b',
+        'refs/heads/paasta-c': 'hash_for_c',
+        'refs/heads/paasta-d': 'hash_for_d',
     }
 
     expected = dict(old_refs)
     expected.update({
-        'refs/tags/a-FORCEBOUNCE-stop': 'hash_for_a',
-        'refs/tags/b-FORCEBOUNCE-stop': 'hash_for_b',
+        'refs/tags/paasta-fake_cluster.fake_instance-FORCEBOUNCE-stop': 'hash_for_a',
     })
 
     actual = mutate_refs(old_refs)
@@ -90,7 +99,14 @@ def test_log_event():
         mock_getfqdn,
         mock_log,
     ):
-        start_stop_restart.log_event('fake_service', 'fake_instance', 'fake_cluster', 'stopped')
+        service_config = MarathonServiceConfig(
+            cluster='fake_cluster',
+            instance='fake_instance',
+            service='fake_service',
+            config_dict={'deploy_group': 'fake_deploy_group'},
+            branch_dict={},
+        )
+        start_stop_restart.log_event(service_config, 'stopped')
         mock_log.assert_called_once_with(
             instance='fake_instance',
             service='fake_service',

@@ -139,6 +139,7 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
     remote_refs = remote_git.list_remote_refs(git_url)
 
     for control_branch, deploy_group in deploy_group_branch_mappings.items():
+        print control_branch, deploy_group
         deploy_ref_name = 'refs/heads/paasta-%s' % deploy_group
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]

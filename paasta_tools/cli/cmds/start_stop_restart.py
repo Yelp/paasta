@@ -20,21 +20,12 @@ from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools import remote_git
 from paasta_tools import utils
+from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
-from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
-
-
-def get_branches(service, soa_dir):
-    paasta_control_branches = set(('paasta-%s' % config.get_branch()
-                                   for config in get_instance_config_for_service(soa_dir, service)))
-    remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
-
-    for branch in paasta_control_branches:
-        if 'refs/heads/%s' % branch in remote_refs:
-            yield branch
+from paasta_tools.marathon_tools import load_marathon_service_config
 
 
 def add_subparser(subparsers):
@@ -79,10 +70,10 @@ def add_subparser(subparsers):
 
 
 def format_tag(branch, force_bounce, desired_state):
-    return 'refs/tags/%s-%s-%s' % (branch, force_bounce, desired_state)
+    return 'refs/tags/paasta-%s-%s-%s' % (branch, force_bounce, desired_state)
 
 
-def make_mutate_refs_func(branches, force_bounce, desired_state):
+def make_mutate_refs_func(service_config, force_bounce, desired_state):
     """Create a function that will inform send_pack that we want to create tags
     corresponding to the set of branches passed, with the given force_bounce
     and desired_state parameters. These tags will point at the current tip of
@@ -93,37 +84,38 @@ def make_mutate_refs_func(branches, force_bounce, desired_state):
     then diff what is returned versus what was passed in, and inform the remote
     git repo of our desires."""
     def mutate_refs(refs):
-        for branch in branches:
-            refs[format_tag(branch, force_bounce, desired_state)] = \
-                refs['refs/heads/%s' % branch]
+        refs[format_tag(service_config.get_branch(), force_bounce, desired_state)] = \
+            refs['refs/heads/paasta-%s' % service_config.get_deploy_group()]
         return refs
     return mutate_refs
 
 
-def log_event(service, instance, cluster, desired_state):
+def log_event(service_config, desired_state):
     user = utils.get_username()
     host = socket.getfqdn()
     line = "Issued request to change state of %s to '%s' by %s@%s" % (
-        instance, desired_state, user, host)
+        service_config.get_instance(), desired_state, user, host)
     utils._log(
-        service=service,
+        service=service_config.get_service(),
         level='event',
-        cluster=cluster,
-        instance=instance,
+        cluster=service_config.get_cluster(),
+        instance=service_config.get_instance(),
         component='deploy',
         line=line,
     )
 
 
-def issue_state_change_for_branches(service, instance, cluster, branches, force_bounce,
-                                    desired_state):
+def issue_state_change_for_service(service_config, force_bounce, desired_state):
     ref_mutator = make_mutate_refs_func(
-        branches=branches,
+        service_config=service_config,
         force_bounce=force_bounce,
-        desired_state=desired_state
+        desired_state=desired_state,
     )
-    remote_git.create_remote_refs(utils.get_git_url(service), ref_mutator)
-    log_event(service, instance, cluster, desired_state)
+    remote_git.create_remote_refs(utils.get_git_url(service_config.get_service()), ref_mutator)
+    log_event(
+        service_config=service_config,
+        desired_state=desired_state,
+    )
 
 
 def paasta_start_or_stop(args, desired_state):
@@ -133,19 +125,48 @@ def paasta_start_or_stop(args, desired_state):
     soa_dir = args.soa_dir
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
 
-    branch = "paasta-%s.%s" % (cluster, instance)
-    all_branches = list(get_branches(service=service, soa_dir=soa_dir))
+    instance_type = utils.validate_service_instance(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+    )
 
-    if branch not in all_branches:
+    if instance_type == 'marathon':
+        service_config = load_marathon_service_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            load_deployments=False,
+        )
+    elif instance_type == 'chronos':
+        service_config = load_chronos_job_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+            load_deployments=False,
+        )
+    else:
+        print "A service config other than type 'marathon' or 'chronos' was loaded!"
+        print "'%s' is not currently supported by paasta %s" % (instance_type, desired_state)
+        sys.exit(3)
+
+    remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
+
+    if 'refs/heads/paasta-%s' % service_config.get_deploy_group() not in remote_refs:
         print "No branches found for %s in %s." % \
-            (branch, all_branches)
+            (service_config.get_deploy_group(), remote_refs)
         print "Has it been deployed there yet?"
         sys.exit(1)
 
     force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
-    branches = [branch]
-    issue_state_change_for_branches(service, instance, cluster, branches, force_bounce,
-                                    desired_state)
+    issue_state_change_for_service(
+        service_config=service_config,
+        force_bounce=force_bounce,
+        desired_state=desired_state,
+    )
 
 
 def paasta_start(args):
