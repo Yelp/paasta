@@ -122,19 +122,20 @@ def get_deploy_stanza():
         {"instancename": "performance-check", },
         {"instancename": "dev.everything", "trigger_next_step_manually": True, },
         {"instancename": "stage.everything", "trigger_next_step_manually": True, },
-        {"instancename": "prod.everything", },
+        {"instancename": "prod.canary", "trigger_next_step_manually": True, },
+        {"instancename": "prod.non_canary", },
     ]
     return stanza
 
 
 def get_default_clusternames():
     return {
-        "pnw-stagea": "STAGE",
-        "norcal-stageb": "STAGE",
-        "norcal-devb": "DEV",
-        "norcal-devc": "DEV",
-        "norcal-prod": "PROD",
-        "nova-prod": "PROD",
+        'pnw-stagea': 'STAGE',
+        'norcal-stageb': 'STAGE',
+        'norcal-devb': 'DEV',
+        'norcal-devc': 'DEV',
+        'norcal-prod': 'PROD',
+        'nova-prod': 'PROD',
     }.items()
 
 
@@ -164,24 +165,26 @@ def get_marathon_stanza():
     """
     def get_marathon_stanza_for_deploy_group(deploy_group):
         stanza = {}
-        stanza["main"] = {
-            "cpus": .1,
-            "mem": 500,
-            "instances": 3,
-            "deploy_group": deploy_group,
+        stanza['main'] = {
+            'cpus': .1,
+            'mem': 500,
+            'instances': 3,
+            'deploy_group': deploy_group,
         }
-        stanza["canary"] = {
-            "cpus": .1,
-            "mem": 500,
-            "nerve_ns": "main",
-            "instances": 1,
-            "deploy_group": deploy_group,
+        stanza['canary'] = {
+            'cpus': .1,
+            'mem': 500,
+            'nerve_ns': 'main',
+            'instances': 1,
+            'deploy_group': deploy_group,
         }
+        if deploy_group == 'prod.non_canary':
+            stanza['canary']['deploy_group'] = 'prod.canary'
         return stanza
     deploy_group_map = {
-        "DEV": 'dev.everything',
-        "STAGE": 'stage.everything',
-        "PROD": 'prod.everything',
+        'DEV': 'dev.everything',
+        'STAGE': 'stage.everything',
+        'PROD': 'prod.non_canary',
     }
     return ((filename, get_marathon_stanza_for_deploy_group(deploy_group))
             for (filename, deploy_group) in deploy_group_map.items())
