@@ -169,11 +169,14 @@ def status_marathon_job_verbose(service, instance, client):
     # For verbose mode, we want to see *any* matching app. As it may
     # not be the one that we think should be deployed. For example
     # during a bounce we want to see the old and new ones.
-    for appid in marathon_tools.get_matching_appids(service, instance, client):
-        app = client.get_app(appid)
-        tasks, output = get_verbose_status_of_marathon_app(app)
-        all_tasks.extend(tasks)
-        all_output.append(output)
+    for app_id in marathon_tools.get_matching_appids(service, instance, client):
+        if marathon_tools.is_app_id_running(app_id, client):
+            app = client.get_app(app_id)
+            tasks, output = get_verbose_status_of_marathon_app(app)
+            all_tasks.extend(tasks)
+            all_output.append(output)
+        else:
+            all_output.append("Warning: App %s not running." % app_id)
     return all_tasks, "\n".join(all_output)
 
 

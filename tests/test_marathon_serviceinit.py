@@ -125,17 +125,43 @@ def test_status_marathon_job_verbose():
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids'),
         mock.patch('paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app'),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=True),
     ) as (
         mock_get_matching_appids,
         mock_get_verbose_app,
+        mock_is_app_id_running,
     ):
         mock_get_matching_appids.return_value = ['/app1']
         mock_get_verbose_app.return_value = ([task], 'fake_return')
         tasks, out = marathon_serviceinit.status_marathon_job_verbose(service, instance, client)
+        mock_is_app_id_running.assert_called_once_with('/app1', client)
         mock_get_matching_appids.assert_called_once_with(service, instance, client)
         mock_get_verbose_app.assert_called_once_with(app)
         assert tasks == [task]
         assert 'fake_return' in out
+
+
+def test_status_marathon_job_verbose_when_not_running():
+    client = mock.create_autospec(marathon.MarathonClient)
+    app = mock.create_autospec(marathon.models.app.MarathonApp)
+    client.get_app.return_value = app
+    service = 'my_service'
+    instance = 'my_instance'
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.get_matching_appids'),
+        mock.patch('paasta_tools.marathon_serviceinit.get_verbose_status_of_marathon_app'),
+        mock.patch('paasta_tools.marathon_tools.is_app_id_running', return_value=False),
+    ) as (
+        mock_get_matching_appids,
+        mock_get_verbose_app,
+        mock_is_app_id_running,
+    ):
+        mock_get_matching_appids.return_value = ['/app1']
+        tasks, out = marathon_serviceinit.status_marathon_job_verbose(service, instance, client)
+        mock_is_app_id_running.assert_called_once_with('/app1', client)
+        assert not mock_get_verbose_app.called
+        assert tasks == []
+        assert 'not running' in out
 
 
 def test_get_verbose_status_of_marathon_app():
