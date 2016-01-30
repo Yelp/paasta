@@ -125,7 +125,7 @@ def paasta_start_or_stop(args, desired_state):
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
 
     service_config = get_instance_config(
-        service - service,
+        service=service,
         cluster=cluster,
         instance=instance,
         soa_dir=soa_dir,

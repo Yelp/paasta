@@ -477,3 +477,56 @@ def test_modules_in_pkg():
     assert '__init__' not in ret
     assert 'cook_image' in ret
     assert 'list_clusters' in ret
+
+
+@mock.patch('paasta_tools.cli.utils.validate_service_instance', autospec=True)
+@mock.patch('paasta_tools.cli.utils.load_marathon_service_config', autospec=True)
+def test_get_instance_config_marathon(
+    mock_load_marathon_service_config,
+    mock_validate_service_instance,
+):
+    mock_validate_service_instance.return_value = 'marathon'
+    mock_load_marathon_service_config.return_value = 'fake_service_config'
+    actual = utils.get_instance_config(
+        service='fake_service',
+        instance='fake_instance',
+        cluster='fake_cluster',
+        soa_dir='fake_soa_dir',
+    )
+    assert mock_validate_service_instance.call_count == 1
+    assert mock_load_marathon_service_config.call_count == 1
+    assert actual == 'fake_service_config'
+
+
+@mock.patch('paasta_tools.cli.utils.validate_service_instance', autospec=True)
+@mock.patch('paasta_tools.cli.utils.load_chronos_job_config', autospec=True)
+def test_get_instance_Config_chronos(
+    mock_load_chronos_job_config,
+    mock_validate_service_instance,
+):
+    mock_validate_service_instance.return_value = 'chronos'
+    mock_load_chronos_job_config.return_value = 'fake_service_config'
+    actual = utils.get_instance_config(
+        service='fake_service',
+        instance='fake_instance',
+        cluster='fake_cluster',
+        soa_dir='fake_soa_dir',
+    )
+    assert mock_validate_service_instance.call_count == 1
+    assert mock_load_chronos_job_config.call_count == 1
+    assert actual == 'fake_service_config'
+
+
+@mock.patch('paasta_tools.cli.utils.validate_service_instance', autospec=True)
+def test_get_instance_config_unknown(
+    mock_validate_service_instance,
+):
+    with raises(NotImplementedError):
+        mock_validate_service_instance.return_value = 'some bogus unsupported framework'
+        utils.get_instance_config(
+            service='fake_service',
+            instance='fake_instance',
+            cluster='fake_cluster',
+            soa_dir='fake_soa_dir',
+        )
+        assert mock_validate_service_instance.call_count == 1
