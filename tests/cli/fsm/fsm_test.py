@@ -17,6 +17,7 @@ from pytest import yield_fixture
 
 import paasta_tools.cli.cmds.fsm as fsm
 from paasta_tools.cli.fsm.questions import _yamlize
+from paasta_tools.cli.fsm.questions import get_default_clusternames
 from paasta_tools.cli.fsm.service import SrvReaderWriter
 
 
@@ -120,26 +121,17 @@ class TestWritePaastaConfig:
         mock_srv.io = mock.Mock(spec_set=SrvReaderWriter)
         yield mock_srv
 
-    @yield_fixture
-    def mock_get_clusternames_from_deploy_stanza(self):
-        with mock.patch(
-            "paasta_tools.cli.cmds.fsm.get_clusternames_from_deploy_stanza", autospec=True,
-        ) as mock_get_clusternames_from_deploy_stanza:
-            yield mock_get_clusternames_from_deploy_stanza
-
-    def test(self, mock_srv, mock_get_clusternames_from_deploy_stanza):
+    def test(self, mock_srv):
         service_stanza = {"foo": "bar"}
         smartstack_stanza = {"stack": "smrt"}
         monitoring_stanza = {"team": "homer"}
         deploy_stanza = {"otto": "dude"}
-        marathon_stanza = {"springfield": "2015-04-20"}
-        clusternames = set([
-            "flanders",
-            "van-houten",
-            "wiggum",
-        ])
+        marathon_stanza = (
+            (("DEV", "2015-04-20")),
+            (("STAGE", "2015-04-20")),
+            (("PROD", "2015-04-20")),
+        )
 
-        mock_get_clusternames_from_deploy_stanza.return_value = clusternames
         fsm.write_paasta_config(
             mock_srv,
             service_stanza,
@@ -165,13 +157,14 @@ class TestWritePaastaConfig:
             "deploy.yaml",
             _yamlize(deploy_stanza),
         )
-        mock_srv.io.write_file.assert_any_call(
-            "marathon-SHARED.yaml",
-            _yamlize(marathon_stanza),
-        )
+        for (filename, stanza) in marathon_stanza:
+            mock_srv.io.write_file.assert_any_call(
+                "marathon-%s.yaml" % filename,
+                _yamlize(stanza),
+            )
 
-        for clustername in clusternames:
+        for (clustername, filename) in get_default_clusternames():
             mock_srv.io.symlink_file_relative.assert_any_call(
-                "marathon-SHARED.yaml",
+                "marathon-%s.yaml" % filename,
                 "marathon-%s.yaml" % clustername,
             )
