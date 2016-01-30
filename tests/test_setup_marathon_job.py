@@ -658,6 +658,70 @@ class TestSetupMarathonJob:
                 soa_dir='fake_soa_dir',
             )
 
+    def test_do_bounce_when_all_old_tasks_are_unhappy(self):
+        old_tasks = [mock.Mock(id=id, app_id='old_app') for id in ['old_one', 'old_two', 'old_three']]
+        fake_bounce_func_return = {
+            'create_app': False,
+            'tasks_to_drain': old_tasks,
+        }
+        fake_bounce_func = mock.create_autospec(
+            bounce_lib.brutal_bounce,
+            return_value=fake_bounce_func_return,
+        )
+
+        fake_config = {'instances': 3}
+        fake_new_app_running = True
+        fake_happy_new_tasks = ['fake_one', 'fake_two', 'fake_three']
+        fake_old_app_live_happy_tasks = {'old_app': set([])}
+        fake_old_app_live_unhappy_tasks = {'old_app': set(old_tasks)}
+        fake_old_app_draining_tasks = {'old_app': set([])}
+        fake_service = 'fake_service'
+        fake_serviceinstance = 'fake_service.fake_instance'
+        self.fake_cluster = 'fake_cluster'
+        fake_instance = 'fake_instance'
+        fake_bounce_method = 'fake_bounce_method'
+        fake_drain_method = mock.Mock()
+        fake_drain_method.is_safe_to_kill.return_value = False
+        fake_marathon_jobid = 'fake.marathon.jobid'
+        fake_client = mock.create_autospec(
+            marathon.MarathonClient
+        )
+
+        with contextlib.nested(
+            mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.create_marathon_app', autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True),
+            mock.patch('paasta_tools.setup_marathon_job.send_sensu_bounce_keepalive', autospec=True),
+        ) as (
+            mock_log,
+            mock_create_marathon_app,
+            mock_kill_old_ids,
+            mock_send_sensu_bounce_keepalive,
+        ):
+            setup_marathon_job.do_bounce(
+                bounce_func=fake_bounce_func,
+                drain_method=fake_drain_method,
+                config=fake_config,
+                new_app_running=fake_new_app_running,
+                happy_new_tasks=fake_happy_new_tasks,
+                old_app_live_happy_tasks=fake_old_app_live_happy_tasks,
+                old_app_live_unhappy_tasks=fake_old_app_live_unhappy_tasks,
+                old_app_draining_tasks=fake_old_app_draining_tasks,
+                service=fake_service,
+                bounce_method=fake_bounce_method,
+                serviceinstance=fake_serviceinstance,
+                cluster=self.fake_cluster,
+                instance=fake_instance,
+                marathon_jobid=fake_marathon_jobid,
+                client=fake_client,
+                soa_dir='fake_soa_dir',
+            )
+
+            # Since the old tasks are all unhappy, we should drain all of them
+            assert fake_drain_method.drain.call_count == 3
+            # But since they haven't drained yet, we should not kill the app.
+            assert mock_kill_old_ids.call_count == 0
+
     def test_setup_service_srv_already_exists(self):
         fake_name = 'if_trees_could_talk'
         fake_instance = 'would_they_scream'
