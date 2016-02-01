@@ -120,7 +120,7 @@ def get_deploy_stanza():
         {"instancename": "security-check", },
         {"instancename": "push-to-registry", },
         {"instancename": "performance-check", },
-        {"instancename": "dev.everything", "trigger_next_step_manually": True, },
+        {"instancename": "dev.everything", },
         {"instancename": "stage.everything", "trigger_next_step_manually": True, },
         {"instancename": "prod.canary", "trigger_next_step_manually": True, },
         {"instancename": "prod.non_canary", },
