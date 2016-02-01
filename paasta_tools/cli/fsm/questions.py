@@ -128,17 +128,6 @@ def get_deploy_stanza():
     return stanza
 
 
-def get_default_clusternames():
-    return {
-        'pnw-stagea': 'STAGE',
-        'norcal-stageb': 'STAGE',
-        'norcal-devb': 'DEV',
-        'norcal-devc': 'DEV',
-        'norcal-prod': 'PROD',
-        'nova-prod': 'PROD',
-    }.items()
-
-
 def get_marathon_stanza():
     """Produce a ``marathon-*.yaml`` a la
     `the docs <yelpsoa_configs.html#marathon-clustername-yaml>`_

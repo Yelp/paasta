@@ -19,7 +19,6 @@ from os.path import join
 from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.fsm.questions import _yamlize
-from paasta_tools.cli.fsm.questions import get_default_clusternames
 from paasta_tools.cli.fsm.questions import get_deploy_stanza
 from paasta_tools.cli.fsm.questions import get_marathon_stanza
 from paasta_tools.cli.fsm.questions import get_monitoring_stanza
@@ -29,6 +28,7 @@ from paasta_tools.cli.fsm.questions import get_srvname
 from paasta_tools.cli.fsm.service import Service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_teams
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 
 
@@ -128,7 +128,7 @@ def write_paasta_config(
     for (filename, marathon_config_stanza) in marathon_stanza:
         srv.io.write_file("marathon-%s.yaml" % filename, _yamlize(marathon_config_stanza))
 
-    for (clustername, filename) in get_default_clusternames():
+    for (clustername, filename) in load_system_paasta_config().get_fsm_cluster_map().items():
         srv.io.symlink_file_relative("marathon-%s.yaml" % filename, "marathon-%s.yaml" % clustername)
 
 
