@@ -14,7 +14,7 @@
 
 FROM ubuntu:trusty
 
-RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 88ADA4A042F8DD13 && \
+RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 2F6464D3394993A19970736C88ADA4A042F8DD13 && \
     echo 'deb http://ppa.launchpad.net/dh-virtualenv/daily/ubuntu trusty main\ndeb-src http://ppa.launchpad.net/dh-virtualenv/daily/ubuntu trusty main' >> /etc/apt/sources.list
 
 RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
