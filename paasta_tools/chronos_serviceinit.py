@@ -131,7 +131,10 @@ def _format_last_result(job):
 
 
 def _format_schedule(job):
-    schedule = job.get("schedule", PaastaColors.red("UNKNOWN"))
+    if job.get('parents') is not None:
+        schedule = PaastaColors.yellow("None (Dependent Job). Run with -v to see parent details.")
+    else:
+        schedule = job.get("schedule", PaastaColors.red("UNKNOWN"))
     epsilon = job.get("epsilon", PaastaColors.red("UNKNOWN"))
     formatted_schedule = "%s Epsilon: %s" % (schedule, epsilon)
     return formatted_schedule
@@ -189,8 +192,11 @@ def format_chronos_job_status(job, running_tasks, verbose):
     config_hash = _format_config_hash(job)
     disabled_state = _format_disabled_status(job)
     (last_result, formatted_time) = _format_last_result(job)
+
     schedule = _format_schedule(job)
     parents = _format_parents(job)
+
+
     command = _format_command(job)
     mesos_status = _format_mesos_status(job, running_tasks)
     if verbose:

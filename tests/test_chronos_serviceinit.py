@@ -267,6 +267,16 @@ def test_format_parents():
         assert "OK" in actual
 
 
+def test_format_schedule_dependent_job():
+    example_job = {
+        'epsilon': 'myepsilon',
+        'parents': ['testservice testinstance']
+    }
+    actual = chronos_serviceinit._format_schedule(example_job)
+    assert "None (Dependent Job). Run with -v to see parent details." in actual
+    assert "Epsilon: myepsilon" in actual
+
+
 def test_format_chronos_job_mesos_verbose():
     example_job = {
         'name': 'my_service my_instance gityourmom configyourdad',
