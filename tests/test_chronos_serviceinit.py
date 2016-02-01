@@ -241,7 +241,12 @@ def test_format_chronos_job_two_mesos_tasks():
     assert 'Critical' in actual
 
 
-def test_format_parents():
+def test_format_parents_summary():
+    parents = ['service instance', 'service otherinstance']
+    assert chronos_serviceinit._format_parents_summary(parents) == '2. Add --verbose for more information.'
+
+
+def test_format_parents_verbose():
     example_job = {
         'name': 'myexamplejob',
         'parents': ['testservice testinstance']
@@ -261,10 +266,9 @@ def test_format_parents():
             return_value=example_status
         ),
     ):
-        actual = chronos_serviceinit._format_parents(example_job)
+        actual = chronos_serviceinit._format_parents_verbose(example_job)
         assert "testservice testinstance" in actual
         assert "  Last Run: %s (2007-04-05T14:30, 8 years ago)" % PaastaColors.green("OK") in actual
-        assert "OK" in actual
 
 
 def test_format_schedule_dependent_job():
@@ -273,7 +277,7 @@ def test_format_schedule_dependent_job():
         'parents': ['testservice testinstance']
     }
     actual = chronos_serviceinit._format_schedule(example_job)
-    assert "None (Dependent Job). Run with -v to see parent details." in actual
+    assert "None (Dependent Job)." in actual
     assert "Epsilon: myepsilon" in actual
 
 

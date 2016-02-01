@@ -132,7 +132,7 @@ def _format_last_result(job):
 
 def _format_schedule(job):
     if job.get('parents') is not None:
-        schedule = PaastaColors.yellow("None (Dependent Job). Run with -v to see parent details.")
+        schedule = PaastaColors.yellow("None (Dependent Job).")
     else:
         schedule = job.get("schedule", PaastaColors.red("UNKNOWN"))
     epsilon = job.get("epsilon", PaastaColors.red("UNKNOWN"))
@@ -140,27 +140,49 @@ def _format_schedule(job):
     return formatted_schedule
 
 
-def _format_parents(job):
-    parents = job.get('parents')
-    formatted_parents = "None"
-    if parents:
-        # create (service,instance) pairs for the parent names
-        parent_service_instances = [tuple(chronos_tools.decompose_job_id(parent)) for parent in parents]
+def _format_parents_summary(parents):
+    num_parents = len(parents)
+    return "%d. Add --verbose for more information." % num_parents
 
-        # find matching parent jobs
-        parent_jobs = [chronos_tools.get_job_for_service_instance(*service_instance)
-                       for service_instance in parent_service_instances]
 
-        # get the status of the last run of each parent job
-        parent_statuses = [(parent, _format_last_result(job)) for parent in parent_jobs]
-        formatted_lines = [("    - %(job_name)s\n"
-                            "      Last Run: %(status)s (%(last_run)s)\n" % {
-                                "job_name": parent['name'],
-                                "last_run": status_parent[1],
-                                "status": status_parent[0],
-                            }) for (parent, status_parent) in parent_statuses]
-        formatted_parents = '\n'.join(formatted_lines)
-    return formatted_parents
+def _format_parents_verbose(job):
+    parents = job.get('parents', [])
+    # create (service,instance) pairs for the parent names
+    parent_service_instances = [tuple(chronos_tools.decompose_job_id(parent)) for parent in parents]
+
+    # find matching parent jobs
+    parent_jobs = [chronos_tools.get_job_for_service_instance(*service_instance)
+                   for service_instance in parent_service_instances]
+
+    # get the status of the last run of each parent job
+    parent_statuses = [(parent, _format_last_result(job)) for parent in parent_jobs]
+    formatted_lines = [("\n"
+                        "    - %(job_name)s\n"
+                        "      Last Run: %(status)s (%(last_run)s)\n" % {
+                            "job_name": parent['name'],
+                            "last_run": status_parent[1],
+                            "status": status_parent[0],
+                        }) for (parent, status_parent) in parent_statuses]
+    return '\n'.join(formatted_lines)
+
+
+def none_formatter():
+    return "None"
+
+
+def _get_parent_formatter(verbose):
+    """ Returns a formatting function dependent on
+    desired verbosity.
+    """
+    def dispatch_formatter(job):
+        parents = job.get('parents')
+        if not parents:
+            return none_formatter()
+        elif verbose:
+            return _format_parents_verbose(job)
+        else:
+            return _format_parents_summary(parents)
+    return dispatch_formatter
 
 
 def _format_command(job):
@@ -194,8 +216,9 @@ def format_chronos_job_status(job, running_tasks, verbose):
     (last_result, formatted_time) = _format_last_result(job)
 
     schedule = _format_schedule(job)
-    parents = _format_parents(job)
 
+    parent_format_fn = _get_parent_formatter(verbose)
+    parent_string = parent_format_fn(job)
 
     command = _format_command(job)
     mesos_status = _format_mesos_status(job, running_tasks)
@@ -207,14 +230,14 @@ def format_chronos_job_status(job, running_tasks, verbose):
         "  Status:   %(disabled_state)s\n"
         "  Last:     %(last_result)s (%(formatted_time)s)\n"
         "  Schedule: %(schedule)s\n"
-        "  Parents:  \n%(parents)s\n"
+        "  Parents:  %(parents)s\n"
         "  Command:  %(command)s\n"
         "  Mesos:    %(mesos_status)s" % {
             "config_hash": config_hash,
             "disabled_state": disabled_state,
             "last_result": last_result,
             "formatted_time": formatted_time,
-            "parents": parents,
+            "parents": parent_string,
             "schedule": schedule,
             "command": command,
             "mesos_status": mesos_status,
