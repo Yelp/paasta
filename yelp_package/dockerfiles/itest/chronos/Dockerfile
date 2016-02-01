@@ -15,7 +15,7 @@
 FROM ubuntu:trusty
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF
-RUN apt-get update && apt-get -y install mesos=0.22.1-1.0.ubuntu1404
+RUN apt-get update && apt-get -y install mesos=0.23.1-0.2.61.ubuntu1404
 
 RUN apt-get -y install chronos=2.4.0-0.1.20151007110204.ubuntu1404
 # Chronos will look in here for zk config, so we blow away the bogus defaults

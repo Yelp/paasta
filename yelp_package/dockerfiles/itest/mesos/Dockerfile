@@ -15,4 +15,4 @@
 FROM ubuntu:trusty
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv E56151BF
-RUN apt-get update && apt-get -y install mesos=0.22.1-1.0.ubuntu1404
+RUN apt-get update && apt-get -y install mesos=0.23.1-0.2.61.ubuntu1404
