@@ -13,6 +13,7 @@
 # limitations under the License.
 import os
 import os.path
+import random
 
 import yaml
 
@@ -37,17 +38,19 @@ def _get_smartstack_proxy_port_from_file(root, file):
     return int(port)
 
 
-def suggest_smartstack_proxy_port(yelpsoa_config_root):
-    """Pick the next highest smartstack proxy port from the 20000-21000 block"""
-    max_proxy_port = 0
+def suggest_smartstack_proxy_port(yelpsoa_config_root, range_min=20000, range_max=21000):
+    """Pick a random available port in the 20000-21000 block"""
+    available_proxy_ports = set(range(range_min, range_max + 1))
     for root, dirs, files in os.walk(yelpsoa_config_root):
         for f in files:
             if f.endswith('service.yaml') or f.endswith('smartstack.yaml'):
                 proxy_port = _get_smartstack_proxy_port_from_file(root, f)
-                if not 20000 < proxy_port < 21000:
-                    proxy_port = 0
-                max_proxy_port = max(proxy_port, max_proxy_port)
-    return max_proxy_port + 1
+                available_proxy_ports.discard(proxy_port)
+
+    try:
+        return random.choice(list(available_proxy_ports))
+    except IndexError:
+        raise Exception("There are no more ports available in the range [%s, %s]" % (range_min, range_max))
 
 
 # vim: expandtab tabstop=4 sts=4 shiftwidth=4:

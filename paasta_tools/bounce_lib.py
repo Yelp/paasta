@@ -270,12 +270,23 @@ def get_happy_tasks(app, service, nerve_ns, min_task_uptime=None, check_haproxy=
     return happy
 
 
+def flatten_tasks(tasks_by_app_id):
+    """Takes a dictionary of app_id -> set([task, task, ...]) and returns the union of all the task sets.
+
+    :param tasks_by_app_id: A dictionary of app_id -> set(Tasks), such as the old_app_live_happy_tasks or
+                            old_app_live_unhappy_tasks parameters passed to bounce methods.
+    :return: A set of Tasks which is the union of all the values of the dictionary.
+    """
+    return set.union(set(), *(tasks_by_app_id.values()))
+
+
 @register_bounce_method('brutal')
 def brutal_bounce(
     new_config,
     new_app_running,
     happy_new_tasks,
-    old_app_live_tasks,
+    old_app_live_happy_tasks,
+    old_app_live_unhappy_tasks,
 ):
     """Pays no regard to safety. Starts the new app if necessary, and kills any
     old ones. Mostly meant as an example of the simplest working bounce method,
@@ -293,7 +304,7 @@ def brutal_bounce(
     return {
         "create_app": not new_app_running,
         # set.union doesn't like getting zero arguments
-        "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
+        "tasks_to_drain": flatten_tasks(old_app_live_happy_tasks) | flatten_tasks(old_app_live_unhappy_tasks),
     }
 
 
@@ -302,7 +313,8 @@ def upthendown_bounce(
     new_config,
     new_app_running,
     happy_new_tasks,
-    old_app_live_tasks,
+    old_app_live_happy_tasks,
+    old_app_live_unhappy_tasks,
 ):
     """Starts a new app if necessary; only kills old apps once all the requested tasks for the new version are running.
 
@@ -312,7 +324,7 @@ def upthendown_bounce(
         return {
             "create_app": False,
             # set.union doesn't like getting zero arguments
-            "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
+            "tasks_to_drain": flatten_tasks(old_app_live_happy_tasks) | flatten_tasks(old_app_live_unhappy_tasks),
         }
     else:
         return {
@@ -326,7 +338,8 @@ def crossover_bounce(
     new_config,
     new_app_running,
     happy_new_tasks,
-    old_app_live_tasks,
+    old_app_live_happy_tasks,
+    old_app_live_unhappy_tasks,
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
@@ -343,7 +356,11 @@ def crossover_bounce(
         needed_count = max(new_config['instances'] - happy_count, 0)
 
         old_tasks = []
-        for app, tasks in old_app_live_tasks.items():
+        for app, tasks in old_app_live_happy_tasks.items():
+            for task in tasks:
+                old_tasks.append(task)
+
+        for app, tasks in old_app_live_unhappy_tasks.items():
             for task in tasks:
                 old_tasks.append(task)
 
@@ -358,16 +375,17 @@ def downthenup_bounce(
     new_config,
     new_app_running,
     happy_new_tasks,
-    old_app_live_tasks,
+    old_app_live_happy_tasks,
+    old_app_live_unhappy_tasks,
 ):
     """Stops any old apps and waits for them to die before starting a new one.
 
     See the docstring for brutal_bounce() for parameters and return value.
     """
     return {
-        "create_app": not old_app_live_tasks and not new_app_running,
+        "create_app": not old_app_live_happy_tasks and not new_app_running,
         # set.union doesn't like getting zero arguments,
-        "tasks_to_drain": set.union(set(), *old_app_live_tasks.values()),
+        "tasks_to_drain": flatten_tasks(old_app_live_happy_tasks) | flatten_tasks(old_app_live_unhappy_tasks),
     }
 
 

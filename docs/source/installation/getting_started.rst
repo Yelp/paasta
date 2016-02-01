@@ -180,7 +180,7 @@ This may be something as simple as a bash script::
   sha=$(git rev-parse HEAD)
   paasta itest --service $service --commit $sha
   paasta push-to-registry --service $service --commit $sha
-  paasta mark-for-deployment --git-url $(git config --get remote.origin.url) --commit $sha --clusterinstance prod.main --service $service
+  paasta mark-for-deployment --git-url $(git config --get remote.origin.url) --commit $sha --deploy_group prod.main --service $service
 
 PaaSTA can integrate with any existing orchestration tool that can execute
 commands like this.

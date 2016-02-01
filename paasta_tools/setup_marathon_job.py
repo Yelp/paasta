@@ -162,7 +162,8 @@ def do_bounce(
     config,
     new_app_running,
     happy_new_tasks,
-    old_app_live_tasks,
+    old_app_live_happy_tasks,
+    old_app_live_unhappy_tasks,
     old_app_draining_tasks,
     service,
     bounce_method,
@@ -186,16 +187,17 @@ def do_bounce(
     # log if we're not in a steady state.
     if any([
         (not new_app_running),
-        old_app_live_tasks.keys()
+        old_app_live_happy_tasks.keys()
     ]):
         log_bounce_action(
             line=' '.join([
                 '%s bounce in progress on %s.' % (bounce_method, serviceinstance),
                 'New marathon app %s %s.' % (marathon_jobid, ('exists' if new_app_running else 'not created yet')),
                 '%d new tasks to bring up.' % (config['instances'] - len(happy_new_tasks)),
-                '%d old tasks receiving traffic.' % sum(len(tasks) for tasks in old_app_live_tasks.values()),
-                '%d old tasks draining.' % sum(len(tasks) for tasks in old_app_draining_tasks.values()),
-                '%d old apps.' % len(old_app_live_tasks.keys()),
+                '%d old tasks receiving traffic and happy.' % len(bounce_lib.flatten_tasks(old_app_live_happy_tasks)),
+                '%d old tasks unhappy.' % len(bounce_lib.flatten_tasks(old_app_live_unhappy_tasks)),
+                '%d old tasks draining.' % len(bounce_lib.flatten_tasks(old_app_draining_tasks)),
+                '%d old apps.' % len(old_app_live_happy_tasks.keys()),
             ]),
             level='event',
         )
@@ -213,7 +215,8 @@ def do_bounce(
         new_config=config,
         new_app_running=new_app_running,
         happy_new_tasks=happy_new_tasks,
-        old_app_live_tasks=old_app_live_tasks,
+        old_app_live_happy_tasks=old_app_live_happy_tasks,
+        old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
     )
 
     if actions['create_app'] and not new_app_running:
@@ -246,11 +249,12 @@ def do_bounce(
             marathon_tools.kill_task(client=client, app_id=task.app_id, task_id=task.id, scale=True)
 
     apps_to_kill = []
-    for app in old_app_live_tasks.keys():
-        live_tasks = old_app_live_tasks[app]
+    for app in old_app_live_happy_tasks.keys():
+        live_happy_tasks = old_app_live_happy_tasks[app]
+        live_unhappy_tasks = old_app_live_unhappy_tasks[app]
         draining_tasks = old_app_draining_tasks[app]
 
-        if 0 == len((live_tasks | draining_tasks) - killed_tasks):
+        if 0 == len((live_happy_tasks | live_unhappy_tasks | draining_tasks) - killed_tasks):
             apps_to_kill.append(app)
 
     if apps_to_kill:
@@ -263,11 +267,15 @@ def do_bounce(
         )
         bounce_lib.kill_old_ids(apps_to_kill, client)
 
+    all_old_tasks = set.union(set(), *old_app_live_happy_tasks.values())
+    all_old_tasks = set.union(all_old_tasks, *old_app_live_unhappy_tasks.values())
+    all_old_tasks = set.union(all_old_tasks, *old_app_draining_tasks.values())
+
     # log if we appear to be finished
     if all([
         (apps_to_kill or killed_tasks),
-        apps_to_kill == old_app_live_tasks.keys(),
-        killed_tasks == set.union(set(), *(old_app_live_tasks.values() + old_app_draining_tasks.values())),
+        apps_to_kill == old_app_live_happy_tasks.keys(),
+        killed_tasks == all_old_tasks,
     ]):
         log_bounce_action(
             line='%s bounce on %s finishing. Now running %s' %
@@ -280,23 +288,39 @@ def do_bounce(
         )
 
 
-def get_old_live_draining_tasks(other_apps, drain_method):
-    old_app_live_tasks = {}
+def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerve_ns, bounce_health_params):
+    """Split tasks from old apps into 3 categories:
+      - live (not draining) and happy (according to get_happy_tasks)
+      - live (not draining) and unhappy
+      - draining
+    """
+
+    old_app_live_happy_tasks = {}
+    old_app_live_unhappy_tasks = {}
     old_app_draining_tasks = {}
 
     for app in other_apps:
         tasks_by_state = {
-            'live': set(),
+            'happy': set(),
+            'unhappy': set(),
             'draining': set(),
         }
+
+        happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, **bounce_health_params)
         for task in app.tasks:
-            state = 'draining' if drain_method.is_draining(task) else 'live'
+            if drain_method.is_draining(task):
+                state = 'draining'
+            elif task in happy_tasks:
+                state = 'happy'
+            else:
+                state = 'unhappy'
             tasks_by_state[state].add(task)
 
-        old_app_live_tasks[app.id] = tasks_by_state['live']
+        old_app_live_happy_tasks[app.id] = tasks_by_state['happy']
+        old_app_live_unhappy_tasks[app.id] = tasks_by_state['unhappy']
         old_app_draining_tasks[app.id] = tasks_by_state['draining']
 
-    return old_app_live_tasks, old_app_draining_tasks
+    return old_app_live_happy_tasks, old_app_live_unhappy_tasks, old_app_draining_tasks
 
 
 def deploy_service(
@@ -368,7 +392,13 @@ def deploy_service(
         log_deploy_error(errormsg)
         return (1, errormsg)
 
-    old_app_live_tasks, old_app_draining_tasks = get_old_live_draining_tasks(other_apps, drain_method)
+    old_app_live_happy_tasks, old_app_live_unhappy_tasks, old_app_draining_tasks = get_old_happy_unhappy_draining_tasks(
+        other_apps,
+        drain_method,
+        service,
+        nerve_ns,
+        bounce_health_params
+    )
 
     # Re-drain any already draining tasks on old apps
     for tasks in old_app_draining_tasks.values():
@@ -399,7 +429,8 @@ def deploy_service(
                     config=config,
                     new_app_running=new_app_running,
                     happy_new_tasks=happy_new_tasks,
-                    old_app_live_tasks=old_app_live_tasks,
+                    old_app_live_happy_tasks=old_app_live_happy_tasks,
+                    old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
                     old_app_draining_tasks=old_app_draining_tasks,
                     service=service,
                     bounce_method=bounce_method,

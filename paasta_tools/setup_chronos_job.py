@@ -207,6 +207,9 @@ def main():
         )
         log.error(error_msg)
         sys.exit(0)
+    except chronos_tools.InvalidParentError:
+        log.warn("Skipping %s.%s: Parent job could not be found" % (service, instance))
+        sys.exit(0)
 
     status, output = setup_job(
         service=service,

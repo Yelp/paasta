@@ -32,3 +32,10 @@ Feature: setup_chronos_job can create and bounce jobs
       And we have a deployments.json for the service "testservice" with enabled chronos instance "dependentjob"
      When we run setup_chronos_job for service_instance "testservice.dependentjob"
      Then there should be 1 enabled jobs for the service "testservice" and instance "dependentjob"
+
+  Scenario: dependent jobs created before their parent are skipped
+    Given a working paasta cluster
+      And we have yelpsoa-configs for the service "testservice" with enabled dependent chronos instance "dependentjob" and parent "testservice.testinstance"
+      And we have a deployments.json for the service "testservice" with enabled chronos instance "dependentjob"
+     When we run setup_chronos_job for service_instance "testservice.dependentjob"
+     Then setup_chronos_job exits with return code "0" and the output contains "Parent job could not be found"

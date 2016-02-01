@@ -27,6 +27,9 @@
                 "type": "integer",
                 "default": 2
             },
+	    "deploy_group": {
+	        "type": "string"
+	    },
             "disabled": {
                 "type": "boolean",
                 "default": false

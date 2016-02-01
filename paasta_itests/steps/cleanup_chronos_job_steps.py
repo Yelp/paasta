@@ -90,11 +90,11 @@ def check_cleanup_chronos_jobs_output(context, expected_return_code):
         assert '  %s' % job in output
 
 
-@then('the non-paasta jobs are still in the job list')
+@then('the non-paasta jobs are not in the job list')
 def check_non_paasta_jobs(context):
     jobs = context.chronos_client.list()
     running_job_names = [job['name'] for job in jobs]
-    assert all([job_name in running_job_names for job_name in context.non_paasta_jobs])
+    assert not any([job_name in running_job_names for job_name in context.non_paasta_jobs])
 
 
 @then('the {state} chronos jobs are not in the job list')
