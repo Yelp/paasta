@@ -2165,3 +2165,18 @@ def test_kill_tasks_passes_catches_fewer_than_error():
     actual = marathon_tools.kill_task(client=fake_client, app_id='app_id', task_id='task_id', scale=True)
     fake_client.kill_task.assert_called_once_with(scale=True, task_id='task_id', app_id='app_id')
     assert actual == []
+
+
+def test_kill_tasks_passes_catches_already_dead_task():
+    fake_client = mock.Mock()
+    bad_fake_response = mock.Mock()
+    bad_fake_response.status_code = 404
+    bad_fake_response.json.return_value = {
+        "message": "Task 'foo' does not exist",
+        "errors": [],
+    }
+    fake_client.kill_task.side_effect = MarathonHttpError(response=bad_fake_response)
+
+    actual = marathon_tools.kill_task(client=fake_client, app_id='app_id', task_id='task_id', scale=True)
+    fake_client.kill_task.assert_called_once_with(scale=True, task_id='task_id', app_id='app_id')
+    assert actual == []

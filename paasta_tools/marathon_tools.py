@@ -971,5 +971,8 @@ def kill_task(client, app_id, task_id, scale):
         if e.error_message == 'Bean is not valid' and e.status_code == 422:
             log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
             return []
+        elif 'does not exist' in e.error_message and e.status_code == 404:
+            log.debug("Probably tried to kill a task id that was already dead. Continuing.")
+            return []
         else:
             raise
