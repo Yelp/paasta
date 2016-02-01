@@ -158,7 +158,7 @@ def _format_parents_verbose(job):
     parent_statuses = [(parent, _format_last_result(job)) for parent in parent_jobs]
     formatted_lines = [("\n"
                         "    - %(job_name)s\n"
-                        "      Last Run: %(status)s (%(last_run)s)\n" % {
+                        "      Last Run: %(status)s (%(last_run)s)" % {
                             "job_name": parent['name'],
                             "last_run": status_parent[1],
                             "status": status_parent[0],
