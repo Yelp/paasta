@@ -603,7 +603,7 @@ class SystemPaastaConfig(dict):
             return self['fsm_cluster_map']
         except KeyError:
             raise PaastaNotConfiguredError(
-                'Could not find fsm_cluster_map in configuration directory: %s' % self.derectory)
+                'Could not find fsm_cluster_map in configuration directory: %s' % self.directory)
 
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):

@@ -17,8 +17,8 @@ from pytest import yield_fixture
 
 import paasta_tools.cli.cmds.fsm as fsm
 from paasta_tools.cli.fsm.questions import _yamlize
-from paasta_tools.cli.fsm.questions import get_default_clusternames
 from paasta_tools.cli.fsm.service import SrvReaderWriter
+from paasta_tools.utils import SystemPaastaConfig
 
 
 class ValidateOptionsTest:
@@ -121,15 +121,32 @@ class TestWritePaastaConfig:
         mock_srv.io = mock.Mock(spec_set=SrvReaderWriter)
         yield mock_srv
 
-    def test(self, mock_srv):
-        service_stanza = {"foo": "bar"}
-        smartstack_stanza = {"stack": "smrt"}
-        monitoring_stanza = {"team": "homer"}
-        deploy_stanza = {"otto": "dude"}
+    @yield_fixture
+    def test_paasta_config(self):
+        test_paasta_config = SystemPaastaConfig(
+            {
+                'fsm_cluster_map': {
+                    'pnw-stagea': 'STAGE',
+                    'norcal-stageb': 'STAGE',
+                    'norcal-devb': 'DEV',
+                    'norcal-devc': 'DEV',
+                    'norcal-prod': 'PROD',
+                    'nova-prod': 'PROD'
+                }
+            },
+            '/fake/dir',
+        )
+        yield test_paasta_config
+
+    def test(self, mock_srv, test_paasta_config):
+        service_stanza = {'foo': 'bar'}
+        smartstack_stanza = {'stack': 'smrt'}
+        monitoring_stanza = {'team': 'homer'}
+        deploy_stanza = {'otto': 'dude'}
         marathon_stanza = (
-            (("DEV", "2015-04-20")),
-            (("STAGE", "2015-04-20")),
-            (("PROD", "2015-04-20")),
+            (('DEV', '2015-04-20')),
+            (('STAGE', '2015-04-20')),
+            (('PROD', '2015-04-20')),
         )
 
         fsm.write_paasta_config(
@@ -139,32 +156,33 @@ class TestWritePaastaConfig:
             monitoring_stanza,
             deploy_stanza,
             marathon_stanza,
+            test_paasta_config.get_fsm_cluster_map(),
         )
 
         mock_srv.io.write_file.assert_any_call(
-            "smartstack.yaml",
+            'smartstack.yaml',
             _yamlize(smartstack_stanza),
         )
         mock_srv.io.write_file.assert_any_call(
-            "service.yaml",
+            'service.yaml',
             _yamlize(service_stanza),
         )
         mock_srv.io.write_file.assert_any_call(
-            "monitoring.yaml",
+            'monitoring.yaml',
             _yamlize(monitoring_stanza),
         )
         mock_srv.io.write_file.assert_any_call(
-            "deploy.yaml",
+            'deploy.yaml',
             _yamlize(deploy_stanza),
         )
         for (filename, stanza) in marathon_stanza:
             mock_srv.io.write_file.assert_any_call(
-                "marathon-%s.yaml" % filename,
+                'marathon-%s.yaml' % filename,
                 _yamlize(stanza),
             )
 
-        for (clustername, filename) in get_default_clusternames():
+        for (clustername, filename) in test_paasta_config.get_fsm_cluster_map().items():
             mock_srv.io.symlink_file_relative.assert_any_call(
-                "marathon-%s.yaml" % filename,
-                "marathon-%s.yaml" % clustername,
+                'marathon-%s.yaml' % filename,
+                'marathon-%s.yaml' % clustername,
             )

@@ -120,6 +120,7 @@ def write_paasta_config(
     monitoring_stanza,
     deploy_stanza,
     marathon_stanza,
+    cluster_map,
 ):
     srv.io.write_file("service.yaml", _yamlize(service_stanza))
     srv.io.write_file("smartstack.yaml", _yamlize(smartstack_stanza))
@@ -128,7 +129,7 @@ def write_paasta_config(
     for (filename, marathon_config_stanza) in marathon_stanza:
         srv.io.write_file("marathon-%s.yaml" % filename, _yamlize(marathon_config_stanza))
 
-    for (clustername, filename) in load_system_paasta_config().get_fsm_cluster_map().items():
+    for (clustername, filename) in cluster_map.items():
         srv.io.symlink_file_relative("marathon-%s.yaml" % filename, "marathon-%s.yaml" % clustername)
 
 
@@ -153,6 +154,7 @@ def paasta_fsm(args):
         monitoring_stanza,
         deploy_stanza,
         marathon_stanza,
+        load_system_paasta_config().get_fsm_cluster_map().items(),
     )
     print PaastaColors.yellow("               _  _(o)_(o)_  _")
     print PaastaColors.red("             ._\`:_ F S M _:' \_,")

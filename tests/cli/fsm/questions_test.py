@@ -210,7 +210,17 @@ class TestGetDeployStanzaTestCase(TestQuestions):
             {"instancename": "performance-check"},
             {
                 "instancename": "dev.everything",
+            },
+            {
+                "instancename": "stage.everything",
                 "trigger_next_step_manually": True,
+            },
+            {
+                "instancename": "prod.canary",
+                "trigger_next_step_manually": True,
+            },
+            {
+                "instancename": "prod.non_canary",
             },
         ):
             assert expected_entry in actual["pipeline"]
