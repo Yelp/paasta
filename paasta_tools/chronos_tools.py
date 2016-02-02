@@ -176,6 +176,7 @@ class ChronosJobConfig(InstanceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+        self.__normalize()
 
     def __eq__(self, other):
         return (
@@ -184,6 +185,13 @@ class ChronosJobConfig(InstanceConfig):
             (self.config_dict == other.config_dict) and
             (self.branch_dict == other.branch_dict)
         )
+
+    def __normalize(self):
+        """When the config supports alternative syntaxes, convert them
+        to a normal form."""
+        parents = self.get_parents()
+        if parents is not None and not isinstance(parents, list):
+            self.config_dict['parents'] = [parents]
 
     def get_service(self):
         return self.service
