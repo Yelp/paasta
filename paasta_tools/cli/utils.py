@@ -22,6 +22,8 @@ from socket import gethostbyname_ex
 from service_configuration_lib import DEFAULT_SOA_DIR
 from service_configuration_lib import read_services_configuration
 
+from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
@@ -30,6 +32,7 @@ from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import validate_service_instance
 
 
 log = logging.getLogger('__main__')
@@ -586,3 +589,30 @@ def get_jenkins_build_output_url():
     if build_output:
         build_output = build_output + 'console'
     return build_output
+
+
+def get_instance_config(service, instance, cluster, soa_dir, load_deployments=False):
+    """ Returns the InstanceConfig object for whatever type of instance
+    it is. (chronos or marathon) """
+    instance_type = validate_service_instance(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        soa_dir=soa_dir,
+    )
+    if instance_type == 'marathon':
+        instance_config_load_function = load_marathon_service_config
+    elif instance_type == 'chronos':
+        instance_config_load_function = load_chronos_job_config
+    else:
+        raise NotImplementedError(
+            "instance is %s of type %s which is not supported by paasta"
+            % (instance, instance_type)
+        )
+    return instance_config_load_function(
+        service=service,
+        instance=instance,
+        cluster=cluster,
+        load_deployments=load_deployments,
+        soa_dir=soa_dir
+    )

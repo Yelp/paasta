@@ -23,7 +23,6 @@ from paasta_tools.cli.cmds.local_run import docker_pull_image
 from paasta_tools.cli.cmds.local_run import get_container_id
 from paasta_tools.cli.cmds.local_run import get_container_name
 from paasta_tools.cli.cmds.local_run import get_docker_run_cmd
-from paasta_tools.cli.cmds.local_run import get_instance_config
 from paasta_tools.cli.cmds.local_run import LostContainerException
 from paasta_tools.cli.cmds.local_run import paasta_local_run
 from paasta_tools.cli.cmds.local_run import perform_cmd_healthcheck
@@ -978,59 +977,6 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
         mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
     assert mock_sleep.call_count == 0
     assert mock_run_healthcheck_on_container.call_count == 2
-
-
-@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.load_marathon_service_config', autospec=True)
-def test_get_instance_config_marathon(
-    mock_load_marathon_service_config,
-    mock_validate_service_instance,
-):
-    mock_validate_service_instance.return_value = 'marathon'
-    mock_load_marathon_service_config.return_value = 'fake_service_config'
-    actual = get_instance_config(
-        service='fake_service',
-        instance='fake_instance',
-        cluster='fake_cluster',
-        soa_dir='fake_soa_dir',
-    )
-    assert mock_validate_service_instance.call_count == 1
-    assert mock_load_marathon_service_config.call_count == 1
-    assert actual == 'fake_service_config'
-
-
-@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.load_chronos_job_config', autospec=True)
-def test_get_instance_Config_chronos(
-    mock_load_chronos_job_config,
-    mock_validate_service_instance,
-):
-    mock_validate_service_instance.return_value = 'chronos'
-    mock_load_chronos_job_config.return_value = 'fake_service_config'
-    actual = get_instance_config(
-        service='fake_service',
-        instance='fake_instance',
-        cluster='fake_cluster',
-        soa_dir='fake_soa_dir',
-    )
-    assert mock_validate_service_instance.call_count == 1
-    assert mock_load_chronos_job_config.call_count == 1
-    assert actual == 'fake_service_config'
-
-
-@mock.patch('paasta_tools.cli.cmds.local_run.validate_service_instance', autospec=True)
-def test_get_instance_config_unknown(
-    mock_validate_service_instance,
-):
-    with raises(NotImplementedError):
-        mock_validate_service_instance.return_value = 'some bogus unsupported framework'
-        get_instance_config(
-            service='fake_service',
-            instance='fake_instance',
-            cluster='fake_cluster',
-            soa_dir='fake_soa_dir',
-        )
-        assert mock_validate_service_instance.call_count == 1
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
