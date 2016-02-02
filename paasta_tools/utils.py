@@ -1044,7 +1044,7 @@ def get_config_hash(config, force_bounce=None):
     :returns: A MD5 hash of str(config)
     """
     hasher = hashlib.md5()
-    hasher.update(str(config) + (force_bounce or ''))
+    hasher.update(json.dumps(config, sort_keys=True) + (force_bounce or ''))
     return "config%s" % hasher.hexdigest()[:8]
 
 
