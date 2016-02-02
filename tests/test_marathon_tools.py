@@ -355,6 +355,7 @@ class TestMarathonTools:
         namespace = 'ecapseman'
         soa_dir = 'rid_aos'
         mode = 'http'
+        fake_healthcheck_mode = 'http'
         fake_uri = 'energy'
         fake_timeout = -10103
         fake_port = 777
@@ -362,6 +363,7 @@ class TestMarathonTools:
         fake_discover = 'myhabitat'
         fake_advertise = ['red', 'blue']
         fake_info = {
+            'healthcheck_mode': fake_healthcheck_mode,
             'healthcheck_uri': fake_uri,
             'healthcheck_timeout_s': fake_timeout,
             'proxy_port': fake_port,
@@ -396,6 +398,7 @@ class TestMarathonTools:
             },
         }
         expected = {
+            'healthcheck_mode': fake_healthcheck_mode,
             'healthcheck_uri': fake_uri,
             'healthcheck_timeout_s': fake_timeout,
             'proxy_port': fake_port,
