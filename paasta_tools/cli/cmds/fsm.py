@@ -154,7 +154,7 @@ def paasta_fsm(args):
         monitoring_stanza,
         deploy_stanza,
         marathon_stanza,
-        load_system_paasta_config().get_fsm_cluster_map().items(),
+        load_system_paasta_config().get_fsm_cluster_map(),
     )
     print PaastaColors.yellow("               _  _(o)_(o)_  _")
     print PaastaColors.red("             ._\`:_ F S M _:' \_,")

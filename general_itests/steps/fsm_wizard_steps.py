@@ -11,16 +11,19 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 import os
 import shutil
 import tempfile
 
+import mock
 from behave import given
 from behave import then
 from behave import when
 from service_configuration_lib import read_services_configuration
 
-from paasta_tools.utils import _run
+from paasta_tools.cli.cmds.fsm import paasta_fsm
+from paasta_tools.utils import SystemPaastaConfig
 
 
 @given(u'a fake yelpsoa-config-root')
@@ -48,18 +51,36 @@ def _load_yelpsoa_configs(context, service):
 @when(u'we fsm a new service with --auto')
 def step_impl_when_fsm_auto(context):
     service = "new_paasta_service"
-    cmd = (
-        "../paasta_tools/cli/cli.py fsm "
-        "--yelpsoa-config-root %s "
-        "--auto "
-        "--service-name %s "
-        "--team paasta"
-        % (context.fake_yelpsoa_configs, service)
+
+    fake_args = mock.Mock(
+        yelpsoa_config_root=context.fake_yelpsoa_configs,
+        srvname=service,
+        auto=True,
+        port=None,
+        team='paasta',
+        description=None,
+        external_link=None,
     )
-    print "Running cmd %s" % cmd
-    (returncode, output) = _run(cmd)
-    print "Got returncode %s with output:" % returncode
-    print output
+    with contextlib.nested(
+            mock.patch('paasta_tools.cli.cmds.fsm.load_system_paasta_config'),
+    ) as (
+        mock_load_system_paasta_config,
+    ):
+        mock_load_system_paasta_config.return_value = SystemPaastaConfig(
+            config={
+                'fsm_cluster_map': {
+                    'pnw-stagea': 'STAGE',
+                    'norcal-stageb': 'STAGE',
+                    'norcal-devb': 'DEV',
+                    'norcal-devc': 'DEV',
+                    'norcal-prod': 'PROD',
+                    'nova-prod': 'PROD'
+                },
+            },
+            directory=context.fake_yelpsoa_configs,
+        )
+        paasta_fsm(fake_args)
+
     _load_yelpsoa_configs(context, service)
 
 

@@ -124,7 +124,7 @@ class TestWritePaastaConfig:
     @yield_fixture
     def test_paasta_config(self):
         test_paasta_config = SystemPaastaConfig(
-            {
+            config={
                 'fsm_cluster_map': {
                     'pnw-stagea': 'STAGE',
                     'norcal-stageb': 'STAGE',
@@ -132,9 +132,9 @@ class TestWritePaastaConfig:
                     'norcal-devc': 'DEV',
                     'norcal-prod': 'PROD',
                     'nova-prod': 'PROD'
-                }
+                },
             },
-            '/fake/dir',
+            directory='/fake/dir',
         )
         yield test_paasta_config
 
