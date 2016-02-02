@@ -778,13 +778,17 @@ class TestInstanceConfig:
 
     def test_get_env_default(self):
         fake_conf = utils.InstanceConfig(
-            service='',
-            cluster='',
-            instance='',
+            service='fake_service',
+            cluster='fake_cluster',
+            instance='fake_instance',
             config_dict={},
             branch_dict={},
         )
-        assert fake_conf.get_env() == {}
+        assert fake_conf.get_env() == {
+            'PAASTA_SERVICE': 'fake_service',
+            'PAASTA_INSTANCE': 'fake_instance',
+            'PAASTA_CLUSTER': 'fake_cluster',
+        }
 
     def test_get_env_with_config(self):
         fake_conf = utils.InstanceConfig(
@@ -794,7 +798,12 @@ class TestInstanceConfig:
             config_dict={'env': {'SPECIAL_ENV': 'TRUE'}},
             branch_dict={},
         )
-        assert fake_conf.get_env() == {'SPECIAL_ENV': 'TRUE'}
+        assert fake_conf.get_env() == {
+            'SPECIAL_ENV': 'TRUE',
+            'PAASTA_SERVICE': '',
+            'PAASTA_INSTANCE': '',
+            'PAASTA_CLUSTER': '',
+        }
 
     def test_get_args_default_no_cmd(self):
         fake_conf = utils.InstanceConfig(

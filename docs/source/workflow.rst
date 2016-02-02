@@ -82,7 +82,9 @@ configuration for the running image:
 
 * ``--net``: PaaSTA uses bridge mode to enable random port allocation.
 
-* ``--env``: Any environment variables specified in the ``env`` section will be here.
+* ``--env``: Any environment variables specified in the ``env`` section will be here. Additional
+  ``PAASTA_`` environment variables will also be injected, see the `related docs <yelpsoa_configs.html#marathon-clustername-yaml>`_
+  for more information.
 
   * **WARNING**: A PORT variable is provided to the docker image, but it represents the EXTERNAL port, not the internal one. The internal service MUST listen on 8888, so this PORT variable confuses some service stacks that are listening for this variable. Such services MUST overwrite this environment variable to function. (``PORT=8888 ./uwisgi.py```)
 

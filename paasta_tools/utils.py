@@ -115,18 +115,23 @@ class InstanceConfig(dict):
         :returns: A string specified in the config, None if not specified"""
         return self.config_dict.get('cmd', None)
 
-    def get_env(self):
+    def get_env_dictionary(self):
         """A dictionary of key/value pairs that represent environment variables
         to be injected to the container environment"""
-        return self.config_dict.get('env', {})
+        env = {
+            "PAASTA_SERVICE": self.service,
+            "PAASTA_INSTANCE": self.instance,
+            "PAASTA_CLUSTER": self.cluster,
+        }
+        user_env = self.config_dict.get('env', {})
+        env.update(user_env)
+        return env
 
-    def get_unformatted_env(self):
-        """A dictionary of key/value pairs that represent environment variables
-        to be injected to the container environment.
-
-        This method always returns the raw ``env`` dictionary, and is not formatted in
-        any framework-specific way."""
-        return self.config_dict.get('env', {})
+    def get_env(self):
+        """Basic get_env that simply returns the basic env, other classes
+        might need to override this getter for more implementation-specific
+        env getting"""
+        return self.get_env_dictionary()
 
     def get_args(self):
         """Get the docker args specified in the service's configuration.
