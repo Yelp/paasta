@@ -16,7 +16,6 @@ from StringIO import StringIO
 import mock
 
 from paasta_tools.cli.cmds import metastatus
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 
 
 @mock.patch('sys.stdout', new_callable=StringIO)
@@ -39,14 +38,3 @@ def test_figure_out_clusters_to_inspect_respects_the_user():
     fake_args.clusters = 'a,b,c'
     fake_all_clusters = ['a', 'b', 'c', 'd']
     assert ['a', 'b', 'c'] == metastatus.figure_out_clusters_to_inspect(fake_args, fake_all_clusters)
-
-
-def test_get_cluster_dashboards():
-    output_text = metastatus.get_cluster_dashboards('fake-cluster')
-    assert 'http://paasta-fake-cluster.yelp:5050' in output_text
-    assert 'http://paasta-fake-cluster.yelp:5052' in output_text
-    assert 'http://paasta-fake-cluster.yelp:5053' in output_text
-    assert 'http://paasta-fake-cluster.yelp:%s' % DEFAULT_SYNAPSE_PORT in output_text
-    assert 'http://chronos.paasta-fake-cluster.yelp/' in output_text
-    assert 'http://mesos.paasta-fake-cluster.yelp/' in output_text
-    assert 'http://marathon.paasta-fake-cluster.yelp/' in output_text
