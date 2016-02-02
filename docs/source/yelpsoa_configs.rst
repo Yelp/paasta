@@ -138,10 +138,10 @@ instance MAY have:
    logic will assume that there are no instances in the blacklisted region,
    implying that we should expect all 10 in the non-blacklisted region.
 
- * ``deploy_group``: A string identifying what deploy group this instance belongs
-   to. The ``instancename`` parameter in ``deploy.yaml`` refererences this value
-   to determine the order in which to build & deploy deploy groups. Defaults to
-   ``clustername.instancename``.
+  * ``deploy_group``: A string identifying what deploy group this instance belongs
+    to. The ``instancename`` parameter in ``deploy.yaml`` refererences this value
+    to determine the order in which to build & deploy deploy groups. Defaults to
+    ``clustername.instancename``. See the deploy group doc for more information.
 
 In addition, each instancename MAY configure additional Marathon healthcheck
 options:
@@ -283,6 +283,11 @@ Each job configuration MAY specify the following options:
     Mesos attributes. See the `official documentation
     <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more
     information.
+
+  * ``deploy_group``: A string identifying what deploy group this instance belongs
+    to. The ``instancename`` parameter in ``deploy.yaml`` refererences this value
+    to determine the order in which to build & deploy deploy groups. Defaults to
+    ``clustername.instancename``. See the deploy group doc for more information.
 
   * ``schedule_time_zone``: The time zone name to use when scheduling the job.
     Unlike schedule, this is specified in the tz database format, not the ISO 8601 format.

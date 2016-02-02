@@ -72,7 +72,7 @@ Edit your ``deploy.yaml`` and your ``marathon-*.yaml`` and ``chronos-*.yaml`` fi
 What if I don’t want to use deploy groups on my existing service?
 -----------------------------------------------------------------
 
-No changes are required -- your service should work as-is.
+No changes are required -- your service should work as-is. Since the default deploy group for an instance is ``CLUSTER_NAME.INSTANCE_NAME``, all of your current configs will work with the new deploy group-aware tools.
 
 How to remove a specific instance from a deploy group
 -----------------------------------------------------
