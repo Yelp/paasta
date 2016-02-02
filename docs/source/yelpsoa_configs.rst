@@ -138,6 +138,11 @@ instance MAY have:
    logic will assume that there are no instances in the blacklisted region,
    implying that we should expect all 10 in the non-blacklisted region.
 
+ * ``deploy_group``: A string identifying what deploy group this instance belongs
+   to. The ``instancename`` parameter in ``deploy.yaml`` refererences this value
+   to determine the order in which to build & deploy deploy groups. Defaults to
+   ``clustername.instancename``.
+
 In addition, each instancename MAY configure additional Marathon healthcheck
 options:
 
