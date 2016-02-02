@@ -1187,7 +1187,7 @@ class TestMarathonTools:
     def test_get_config_hash(self):
         test_input = {'foo': 'bar'}
         actual = marathon_tools.get_config_hash(test_input)
-        expected = 'configdd63dafc'
+        expected = 'config94232c5b'
         assert actual == expected
         assert len(actual) == 14
 

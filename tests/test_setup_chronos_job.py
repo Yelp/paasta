@@ -214,10 +214,11 @@ class TestSetupChronosJob:
             load_chronos_job_config_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
+            load_system_paasta_config_patch.return_value.get_volumes.return_value = []
             complete_config = chronos_tools.create_complete_config(
                 service=self.fake_service,
                 job_name=self.fake_instance,
-                soa_dir=self.fake_args.soa_dir
+                soa_dir=self.fake_args.soa_dir,
             )
             actual = setup_chronos_job.setup_job(
                 service=self.fake_service,
@@ -258,6 +259,7 @@ class TestSetupChronosJob:
             load_chronos_job_config_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
+            load_system_paasta_config_patch.return_value.get_volumes.return_value = []
             complete_config = chronos_tools.create_complete_config(
                 service=self.fake_service,
                 job_name=self.fake_instance,
