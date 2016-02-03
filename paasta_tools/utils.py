@@ -997,26 +997,6 @@ def get_paasta_branch(cluster, instance):
     return get_paasta_branch_from_deploy_group('%s.%s' % (cluster, instance))
 
 
-def format_timestamp(dt=None):
-    if dt is None:
-        dt = datetime.datetime.utcnow()
-    return dt.strftime('%Y%m%dT%H%M%S')
-
-
-def get_paasta_tag_from_deploy_group(identifier, desired_state):
-    timestamp = format_timestamp(datetime.datetime.utcnow())
-    return 'paasta-%s-%s-%s' % (identifier, timestamp, desired_state)
-
-
-def get_paasta_tag(cluster, instance, desired_state):
-    timestamp = format_timestamp(datetime.datetime.utcnow())
-    return 'paasta-%s.%s-%s-%s' % (cluster, instance, timestamp, desired_state)
-
-
-def format_tag(tag):
-    return 'refs/tags/%s' % tag
-
-
 class NoDockerImageError(Exception):
     pass
 

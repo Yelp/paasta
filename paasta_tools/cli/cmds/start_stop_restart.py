@@ -68,6 +68,12 @@ def add_subparser(subparsers):
         status_parser.set_defaults(command=cmd_func)
 
 
+def format_timestamp(dt=None):
+    if dt is None:
+        dt = datetime.datetime.utcnow()
+    return dt.strftime('%Y%m%dT%H%M%S')
+
+
 def format_tag(branch, force_bounce, desired_state):
     return 'refs/tags/paasta-%s-%s-%s' % (branch, force_bounce, desired_state)
 
@@ -140,7 +146,7 @@ def paasta_start_or_stop(args, desired_state):
         print "Has it been deployed there yet?"
         sys.exit(1)
 
-    force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
+    force_bounce = format_timestamp(datetime.datetime.utcnow())
     issue_state_change_for_service(
         service_config=service_config,
         force_bounce=force_bounce,
