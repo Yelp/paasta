@@ -80,6 +80,20 @@ def get_git_repo_for_fab_repo(service):
     return repo
 
 
+def print_warning():
+    print "Warning: paasta generate-pipeline is a Yelp-specific tool and will"
+    print "not work outside Yelp."
+    print ""
+    print "paasta generate-pipeline is designed only to give a starting Jenkins"
+    print "configuration that can be customized later"
+    print ""
+    print "Warning: running this tool on an existing pipeline will remove any"
+    print "hand-made customizations and will leave behind orphaned Jenkins jobs"
+    print "that need to be manually cleaned up."
+    print ""
+    raw_input("Press any key to continue or ctrl-c to cancel")
+
+
 def generate_pipeline(service):
     email_address = get_team_email_address(service=service)
     repo = get_git_repo_for_fab_repo(service)
@@ -95,6 +109,7 @@ def generate_pipeline(service):
         'fab_repo setup_jenkins:services/%s,'
         'profile=paasta_boilerplate,owner=%s,repo=%s' % (service, owner, repo),
     ]
+    print_warning()
     for cmd in cmds:
         print "INFO: Executing %s" % cmd
         returncode, output = _run(cmd, timeout=90)
