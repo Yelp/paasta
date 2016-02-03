@@ -432,6 +432,13 @@ def test_assert_extra_slave_data_no_slaves():
     assert expected == actual.strip()
 
 
+def test_assert_extra_habitat_data_no_slaves():
+    fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
+    expected = 'No mesos slaves registered on this cluster!'
+    actual = paasta_metastatus.assert_extra_habitat_data(fake_mesos_state)[0]
+    assert expected == actual.strip()
+
+
 def test_status_for_results():
     assert paasta_metastatus.status_for_results([('message', True), ('message', False)]) == [True, False]
 
@@ -490,3 +497,46 @@ def test_get_mesos_slave_data():
     extra_mesos_slave_data = paasta_metastatus.get_extra_mesos_slave_data(mesos_state)
     assert (len(extra_mesos_slave_data) == len(mesos_state['slaves']))
     assert ([slave['free_resources'] for slave in extra_mesos_slave_data] == expected_free_resources)
+
+
+def test_get_mesos_habitat_data():
+    mesos_state = {
+        'slaves': [
+            {
+                'id': 'test-instance',
+                'hostname': 'test.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                    'habitat': 'test-habitat',
+                },
+            },
+        ],
+        'frameworks': [
+            {
+                'tasks': [
+                    {
+                        'slave_id': 'test-instance',
+                        'resources': {
+                            'cpus': 50,
+                            'disk': 100,
+                            'mem': 0,
+                            'something-bogus': 25,
+                        },
+                    },
+                ],
+            },
+        ],
+    }
+    expected_free_resources = {
+        'test-habitat': {
+            'cpus': 0,
+            'disk': 100,
+            'mem': 1000,
+        },
+    }
+    extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_habitat_data(mesos_state)
+    assert (list(extra_mesos_habitat_data) == list(expected_free_resources.items()))

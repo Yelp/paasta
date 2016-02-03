@@ -15,6 +15,7 @@
 import argparse
 import sys
 from collections import Counter
+from collections import defaultdict
 from collections import OrderedDict
 
 from httplib2 import ServerNotFoundError
@@ -89,6 +90,27 @@ def get_extra_mesos_slave_data(mesos_state):
                     resource_dict[resource_type] -= value
 
     return sorted(slaves.values())
+
+
+def get_extra_mesos_habitat_data(mesos_state):
+    valid_resources = ['cpus', 'disk', 'mem']
+    habitat_dict = {}
+    slave_habitat_mapping = {}
+    for slave in mesos_state['slaves']:
+        habitat = slave['attributes'].get('habitat', 'NO_HABITAT')
+        slave_habitat_mapping[slave['id']] = habitat
+        resource_dict = habitat_dict.setdefault(habitat, defaultdict(int))
+        for resource_type, value in slave['resources'].items():
+            if resource_type in valid_resources:
+                resource_dict[resource_type] += value
+
+    for framework in mesos_state.get('frameworks', []):
+        for task in framework.get('tasks', []):
+            resource_dict = habitat_dict[slave_habitat_mapping[task['slave_id']]]
+            for resource_type, value in task['resources'].items():
+                if resource_type in valid_resources:
+                    resource_dict[resource_type] -= value
+    return sorted(habitat_dict.items())
 
 
 def quorum_ok(masters, quorum):
@@ -225,6 +247,22 @@ def assert_extra_slave_data(mesos_state):
     return result
 
 
+def assert_extra_habitat_data(mesos_state):
+    extra_habitat_data = get_extra_mesos_habitat_data(mesos_state)
+    if extra_habitat_data:
+        rows = [('Habitat', 'CPU free', 'RAM free')]
+        for habitat, resource_dict in extra_habitat_data:
+            rows.append((
+                habitat,
+                '%.2f' % resource_dict['cpus'],
+                '%.2f' % resource_dict['mem'],
+            ))
+        result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
+    else:
+        result = ('  No mesos slaves registered on this cluster!', False)
+    return result
+
+
 def get_mesos_status(mesos_state, verbosity):
     """Gathers information about the mesos cluster.
        :return: tuple of a string containing the status and a bool representing if it is ok or not
@@ -241,7 +279,9 @@ def get_mesos_status(mesos_state, verbosity):
         assert_slave_health,
     ])
 
-    if verbosity >= 2:
+    if verbosity == 2:
+        metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_habitat_data]))
+    elif verbosity >= 3:
         metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_slave_data]))
 
     return cluster_results + metrics_results
