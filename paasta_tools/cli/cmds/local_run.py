@@ -634,7 +634,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
 
 def local_makefile_present():
     if makefile_responds_to('cook-image'):
-        sys.stderr.write("Local Makefile with 'cook-image' target deteced. Assuming --build\n")
+        sys.stderr.write("Local Makefile with 'cook-image' target detected. Assuming --build\n")
         return True
     else:
         sys.stderr.write("No Makefile with 'cook-image' target detected. Assuming --pull\n")
