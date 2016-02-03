@@ -1,6 +1,100 @@
 # Change Log
 
-## [v0.16.18](https://github.com/Yelp/paasta/tree/v0.16.18) (2016-01-26)
+## [v0.16.28](https://github.com/Yelp/paasta/tree/v0.16.28) (2016-02-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.27...v0.16.28)
+
+**Merged pull requests:**
+
+- Use json.dumps to get more consistent hash keys [\#221](https://github.com/Yelp/paasta/pull/221) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.27](https://github.com/Yelp/paasta/tree/v0.16.27) (2016-02-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.26...v0.16.27)
+
+**Closed issues:**
+
+- Stop Using Short GPG Key IDs [\#212](https://github.com/Yelp/paasta/issues/212)
+- Cannot fetch index base URL http://pypi.yelpcorp.com/ [\#77](https://github.com/Yelp/paasta/issues/77)
+
+**Merged pull requests:**
+
+- Use full GPG fingerprints [\#215](https://github.com/Yelp/paasta/pull/215) ([nhandler](https://github.com/nhandler))
+- Upgrade mesos to 0.23.1-0.2.61.ubuntu1404 [\#214](https://github.com/Yelp/paasta/pull/214) ([nhandler](https://github.com/nhandler))
+- Catch the race between inspecting a marathon app that isn't running during a bounce. PAASTA-1721 [\#210](https://github.com/Yelp/paasta/pull/210) ([solarkennedy](https://github.com/solarkennedy))
+- Gracefully handle killing a marathon task that is already dead. PAASTA-1219 [\#209](https://github.com/Yelp/paasta/pull/209) ([solarkennedy](https://github.com/solarkennedy))
+- made paasta start/stop deploy-group aware [\#206](https://github.com/Yelp/paasta/pull/206) ([mjksmith](https://github.com/mjksmith))
+- Inject PAASTA\_\* variables into every task [\#196](https://github.com/Yelp/paasta/pull/196) ([solarkennedy](https://github.com/solarkennedy))
+- Add healthcheck\_mode to service config [\#194](https://github.com/Yelp/paasta/pull/194) ([fede1024](https://github.com/fede1024))
+- Mark for deployment tags [\#190](https://github.com/Yelp/paasta/pull/190) ([nhandler](https://github.com/nhandler))
+
+## [v0.16.26](https://github.com/Yelp/paasta/tree/v0.16.26) (2016-01-30)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.25...v0.16.26)
+
+**Merged pull requests:**
+
+- Fix regression from https://github.com/Yelp/paasta/pull/179 where we … [\#211](https://github.com/Yelp/paasta/pull/211) ([EvanKrall](https://github.com/EvanKrall))
+- added deploy\_group to valid schemas for paasta check [\#207](https://github.com/Yelp/paasta/pull/207) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.16.25](https://github.com/Yelp/paasta/tree/v0.16.25) (2016-01-29)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.24...v0.16.25)
+
+**Closed issues:**
+
+- Figure out how to launch both a 'scheduled' job and 'dependent' job at the same time [\#147](https://github.com/Yelp/paasta/issues/147)
+
+**Merged pull requests:**
+
+- Have crossover bounce prefer killing unhealthy tasks. [\#179](https://github.com/Yelp/paasta/pull/179) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.16.24](https://github.com/Yelp/paasta/tree/v0.16.24) (2016-01-29)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.23...v0.16.24)
+
+**Merged pull requests:**
+
+- added support for old bugged refs/tags [\#205](https://github.com/Yelp/paasta/pull/205) ([mjksmith](https://github.com/mjksmith))
+- make release no longer breaks PEP8 [\#204](https://github.com/Yelp/paasta/pull/204) ([mjksmith](https://github.com/mjksmith))
+- Use acutal running tasks for marathon\_services\_running\_here\_works itest [\#203](https://github.com/Yelp/paasta/pull/203) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.16.23](https://github.com/Yelp/paasta/tree/v0.16.23) (2016-01-28)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.22...v0.16.23)
+
+**Merged pull requests:**
+
+- metastatus now prints an error when marathon is configured & unreachable [\#202](https://github.com/Yelp/paasta/pull/202) ([mjksmith](https://github.com/mjksmith))
+- made cleanup\_chronos\_jobs send OK on sensu [\#191](https://github.com/Yelp/paasta/pull/191) ([mjksmith](https://github.com/mjksmith))
+- Enabled deploy\_groups [\#177](https://github.com/Yelp/paasta/pull/177) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.16.22](https://github.com/Yelp/paasta/tree/v0.16.22) (2016-01-28)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.21...v0.16.22)
+
+**Merged pull requests:**
+
+- made cleanup\_chronos\_jobs remove all non-paasta jobs [\#201](https://github.com/Yelp/paasta/pull/201) ([mjksmith](https://github.com/mjksmith))
+- skip dependent jobs if they are created before their parent [\#199](https://github.com/Yelp/paasta/pull/199) ([giuliano108](https://github.com/giuliano108))
+- made cleanup\_marathon\_jobs send sensu OK events [\#198](https://github.com/Yelp/paasta/pull/198) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.16.21](https://github.com/Yelp/paasta/tree/v0.16.21) (2016-01-28)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.20...v0.16.21)
+
+**Merged pull requests:**
+
+- Actually install schemas [\#197](https://github.com/Yelp/paasta/pull/197) ([nhandler](https://github.com/nhandler))
+
+## [v0.16.20](https://github.com/Yelp/paasta/tree/v0.16.20) (2016-01-27)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.19...v0.16.20)
+
+**Merged pull requests:**
+
+- Converts marathon's `started\_at` to the local tz [\#195](https://github.com/Yelp/paasta/pull/195) ([mjksmith](https://github.com/mjksmith))
+- Remove tags chronos jobs [\#193](https://github.com/Yelp/paasta/pull/193) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.16.19](https://github.com/Yelp/paasta/tree/v0.16.19) (2016-01-27)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.18...v0.16.19)
+
+**Closed issues:**
+
+- Misleading error message with local-run -p [\#192](https://github.com/Yelp/paasta/issues/192)
+
+## [v0.16.18](https://github.com/Yelp/paasta/tree/v0.16.18) (2016-01-27)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.17...v0.16.18)
 
 **Closed issues:**
@@ -108,6 +202,7 @@
 **Closed issues:**
 
 - support a 'parents' field in Chronos job configuration. [\#94](https://github.com/Yelp/paasta/issues/94)
+- If multiple marathon apps exist \(e.g `paasta restart` during a bounce\), crossover bounce might kill your only registered instances [\#20](https://github.com/Yelp/paasta/issues/20)
 
 **Merged pull requests:**
 
@@ -417,3 +512,4 @@
 
 
 \* *This Change Log was automatically generated by [github_changelog_generator](https://github.com/skywinder/Github-Changelog-Generator)*
+
