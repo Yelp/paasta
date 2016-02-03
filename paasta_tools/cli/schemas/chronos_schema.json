@@ -69,8 +69,33 @@
                     "type": "array"
                 },
                 "uniqueItems": true
+            },
+            "parents": {
+                "oneOf": [
+                    {
+                        "type": "string",
+                        "pattern": "^[a-zA-Z0-9_]+\\.[a-zA-Z0-9_]+$"
+                    },
+                    {
+                        "type": "array",
+                        "items": {
+                            "type": "string",
+                            "pattern": "^[a-zA-Z0-9_]+\\.[a-zA-Z0-9_]+$"
+                        },
+                        "uniqueItems": true
+                    }
+                ]
             }
         },
-        "required": ["schedule"]
+        "oneOf": [
+            {"required": ["schedule"]},
+            {"required": ["parents"]}
+        ]
+    },
+    "definitions": {
+        "jobName": {
+            "type": "string",
+            "pattern": "blah"
+        }
     }
 }
