@@ -936,6 +936,27 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_extra_volumes() == fake_extra_volumes
 
+    def test_get_pool(self):
+        pool = "poolname"
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={'pool': pool},
+            branch_dict={},
+        )
+        assert fake_conf.get_pool() == pool
+
+    def test_get_pool_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            cluster='',
+            instance='',
+            config_dict={},
+            branch_dict={},
+        )
+        assert fake_conf.get_pool() == 'default'
+
 
 def test_is_under_replicated_ok():
     num_available = 1

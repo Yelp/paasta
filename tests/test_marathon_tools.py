@@ -821,7 +821,7 @@ class TestMarathonTools:
                 'type': 'DOCKER',
                 'volumes': fake_volumes,
             },
-            'constraints': [["habitat", "GROUP_BY", "1"]],
+            'constraints': [["habitat", "GROUP_BY", "1"], ["pool", "LIKE", "default"]],
             'uris': ['file:///root/.dockercfg', ],
             'mem': fake_mem,
             'env': expected_env,
@@ -1054,7 +1054,11 @@ class TestMarathonTools:
             autospec=True,
         ) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
-            assert fake_conf.get_constraints(fake_service_namespace_config) == [["region", "GROUP_BY", "1"]]
+            expected_constraints = [
+                ["region", "GROUP_BY", "1"],
+                ["pool", "LIKE", "default"],
+            ]
+            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
 
     def test_get_constraints_from_discover(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
@@ -1074,7 +1078,11 @@ class TestMarathonTools:
             autospec=True,
         ) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}, 'fake_other_region': {}}
-            assert fake_conf.get_constraints(fake_service_namespace_config) == [["habitat", "GROUP_BY", "2"]]
+            expected_constraints = [
+                ["habitat", "GROUP_BY", "2"],
+                ["pool", "LIKE", "default"],
+            ]
+            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
             get_slaves_patch.assert_called_once_with(attribute='habitat', blacklist=[])
 
     def test_get_constraints_respects_deploy_blacklist(self):
@@ -1087,7 +1095,11 @@ class TestMarathonTools:
             config_dict={'deploy_blacklist': fake_deploy_blacklist},
             branch_dict={},
         )
-        expected_constraints = [["region", "GROUP_BY", "1"], ["region", "UNLIKE", "fake_blacklisted_region"]]
+        expected_constraints = [
+            ["region", "GROUP_BY", "1"],
+            ["region", "UNLIKE", "fake_blacklisted_region"],
+            ["pool", "LIKE", "default"],
+        ]
         with mock.patch(
             'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
             autospec=True,
@@ -1983,7 +1995,7 @@ def test_create_complete_config_no_smartstack():
             'health_checks': [],
             'env': mock.ANY,
             'id': fake_job_id,
-            'constraints': [["region", "GROUP_BY", "1"]],
+            'constraints': [["region", "GROUP_BY", "1"], ["pool", "LIKE", "default"]],
         }
         assert actual == expected
 
@@ -2063,7 +2075,7 @@ def test_create_complete_config_with_smartstack():
             ],
             'env': mock.ANY,
             'id': fake_job_id,
-            'constraints': [["region", "GROUP_BY", "1"]],
+            'constraints': [["region", "GROUP_BY", "1"], ["pool", "LIKE", "default"]],
         }
         assert actual == expected
 
@@ -2147,7 +2159,7 @@ def test_create_complete_config_utilizes_extra_volumes():
             'health_checks': [],
             'env': mock.ANY,
             'id': fake_job_id,
-            'constraints': [["region", "GROUP_BY", "1"]],
+            'constraints': [["region", "GROUP_BY", "1"], ["pool", "LIKE", "default"]],
         }
         assert actual == expected
 

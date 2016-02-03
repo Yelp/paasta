@@ -377,6 +377,18 @@ class TestChronosTools:
         actual = fake_conf.get_constraints()
         assert actual == fake_constraints
 
+    def test_get_constraints_pool(self):
+        fake_pool = 'poolname'
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'pool': fake_pool},
+            branch_dict={},
+        )
+        actual = fake_conf.get_constraints()
+        assert actual == [['pool', 'EQUALS', 'poolname']]
+
     def test_get_retries_default(self):
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
@@ -820,7 +832,7 @@ class TestChronosTools:
             'scheduleTimeZone': None,
             'environmentVariables': mock.ANY,
             'arguments': None,
-            'constraints': None,
+            'constraints': [['pool', 'EQUALS', 'default']],
             'retries': 2,
             'epsilon': fake_epsilon,
             'name': 'test_job',
@@ -1037,7 +1049,7 @@ class TestChronosTools:
             expected = {
                 'arguments': None,
                 'description': fake_config_hash,
-                'constraints': None,
+                'constraints': [['pool', 'EQUALS', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
@@ -1092,7 +1104,7 @@ class TestChronosTools:
             expected = {
                 'arguments': None,
                 'description': fake_config_hash,
-                'constraints': None,
+                'constraints': [['pool', 'EQUALS', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
@@ -1147,7 +1159,7 @@ class TestChronosTools:
             expected = {
                 'arguments': None,
                 'description': fake_config_hash,
-                'constraints': None,
+                'constraints': [['pool', 'EQUALS', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
@@ -1218,7 +1230,7 @@ class TestChronosTools:
             expected = {
                 'description': fake_config_hash,
                 'arguments': None,
-                'constraints': None,
+                'constraints': [['pool', 'EQUALS', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
