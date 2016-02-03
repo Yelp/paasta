@@ -96,6 +96,7 @@ def test_get_short_task_id():
 def test_format_chronos_job_name_exists():
     example_job = {
         'name': 'my_service my_instance gityourmom configyourdad',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -104,7 +105,9 @@ def test_format_chronos_job_name_exists():
 
 
 def test_format_chronos_job_name_does_not_exist():
-    example_job = {}
+    example_job = {
+        'schedule': 'foo'
+    }
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
@@ -114,6 +117,7 @@ def test_format_chronos_job_name_does_not_exist():
 def test_format_chronos_job_status_disabled():
     example_job = {
         'disabled': True,
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -124,6 +128,7 @@ def test_format_chronos_job_status_disabled():
 def test_format_chronos_job_status_enabled():
     example_job = {
         'disabled': False,
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -135,6 +140,7 @@ def test_format_chronos_job_status_no_last_run():
     example_job = {
         'lastError': '',
         'lastSuccess': '',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -147,6 +153,7 @@ def test_format_chronos_job_status_failure_no_success():
     example_job = {
         'lastError': '2015-04-20T23:20:00.420Z',
         'lastSuccess': '',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -160,6 +167,7 @@ def test_format_chronos_job_status_success_no_failure():
     example_job = {
         'lastError': '',
         'lastSuccess': '2015-04-20T23:20:00.420Z',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -173,6 +181,7 @@ def test_format_chronos_job_status_failure_and_then_success():
     example_job = {
         'lastError': '2015-04-20T23:20:00.420Z',
         'lastSuccess': '2015-04-21T23:20:00.420Z',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -186,6 +195,7 @@ def test_format_chronos_job_status_success_and_then_failure():
     example_job = {
         'lastError': '2015-04-21T23:20:00.420Z',
         'lastSuccess': '2015-04-20T23:20:00.420Z',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -199,6 +209,7 @@ def test_format_chronos_job_schedule():
     example_job = {
         'schedule': 'R/2015-04-20T23:20:00+00:00/PT60M',
         'epsilon': 'PT42S',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -210,6 +221,7 @@ def test_format_chronos_job_schedule():
 def test_format_chronos_job_command():
     example_job = {
         'command': 'do the hokey pokey',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -218,7 +230,7 @@ def test_format_chronos_job_command():
 
 
 def test_format_chronos_job_zero_mesos_tasks():
-    example_job = {}
+    example_job = {'schedule': 'foo'}
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
@@ -226,7 +238,7 @@ def test_format_chronos_job_zero_mesos_tasks():
 
 
 def test_format_chronos_job_one_mesos_task():
-    example_job = {}
+    example_job = {'schedule': 'foo'}
     running_tasks = ['slay the nemean lion']
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
@@ -234,7 +246,7 @@ def test_format_chronos_job_one_mesos_task():
 
 
 def test_format_chronos_job_two_mesos_tasks():
-    example_job = {}
+    example_job = {'schedule': 'foo'}
     running_tasks = ['slay the nemean lion', 'slay the lernaean hydra']
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
@@ -243,7 +255,7 @@ def test_format_chronos_job_two_mesos_tasks():
 
 def test_format_parents_summary():
     parents = ['service instance', 'service otherinstance']
-    assert chronos_serviceinit._format_parents_summary(parents) == '2. Add --verbose for more information.'
+    assert chronos_serviceinit._format_parents_summary(parents) == ' service instance,service otherinstance'
 
 
 def test_format_parents_verbose():
@@ -284,6 +296,7 @@ def test_format_schedule_dependent_job():
 def test_format_chronos_job_mesos_verbose():
     example_job = {
         'name': 'my_service my_instance gityourmom configyourdad',
+        'schedule': 'foo',
     }
     running_tasks = ['slay the nemean lion']
     verbose = True

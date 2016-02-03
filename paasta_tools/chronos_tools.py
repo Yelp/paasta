@@ -64,6 +64,11 @@ class LastRunState:
     Success, Fail, NotRun = range(0, 3)
 
 
+class JobType:
+    """ An enum to represent job types """
+    Dependent, Scheduled = range(0, 2)
+
+
 class ChronosNotConfigured(Exception):
     pass
 
@@ -563,6 +568,16 @@ def get_status_last_run(job):
             return (last_success, LastRunState.Success)
         else:
             return (last_failure, LastRunState.Fail)
+
+
+def get_job_type(job):
+    """ Given a job, return a chronos_tools.JobType """
+    if job.get('schedule') is not None:
+        return JobType.Scheduled
+    elif job.get('parents') is not None:
+        return JobType.Dependent
+    else:
+        raise ValueError('Expected either schedule field or parents field')
 
 
 def sort_jobs(jobs):
