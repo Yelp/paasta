@@ -67,7 +67,9 @@ When you run ``paasta fsm`` to generate the boilerplate configs for your paasta 
 Existing service
 ----------------
 
-Edit your ``deploy.yaml`` and your ``marathon-*.yaml`` and ``chronos-*.yaml`` files to use deploy groups. For each instance in a deploy group, specify a ``deploy_group`` parameter in their config file. Then, remove their deployment steps from ``deploy.yaml`` and replace it with a single deploy step for the deploy group. Finally, update your jenkins workflow by deleting and re-creating it like normal.
+In a local copy of your soa configs, edit ``deploy.yaml`` and your ``marathon-*.yaml`` and ``chronos-*.yaml`` files to use deploy groups. For each instance in a deploy group, specify a ``deploy_group`` parameter in their config file. Then, remove their deployment steps from ``deploy.yaml`` and replace it with a single deploy step for the deploy group. Do not push your changes yet. Update your jenkins workflow by running the ``paasta generate-pipeline`` command, using the ``-d`` flag to specify your local soa configs. Make sure your jenkins pipeline marks every deploy group for deployment (i.e. your pipeline runs all the way through). Finally, push the changes to your soa configs repo.
+
+Alternatively to a jenkins pipeline, you can use ``paasta mark-for-deployment`` with the ``--deploy_group`` flag to manually mark each of your deploy groups.
 
 What if I don’t want to use deploy groups on my existing service?
 -----------------------------------------------------------------
