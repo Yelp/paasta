@@ -49,7 +49,9 @@ def test_paasta_generate_pipeline_service_not_found(
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline._run', autospec=True)
+@patch('paasta_tools.cli.cmds.generate_pipeline.print_warning', autospec=True)
 def test_generate_pipeline_run_fails(
+        mock_print_warning,
         mock_run,
         mock_get_team_email_address,
 ):
@@ -62,7 +64,9 @@ def test_generate_pipeline_run_fails(
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline._run', autospec=True)
+@patch('paasta_tools.cli.cmds.generate_pipeline.print_warning', autospec=True)
 def test_generate_pipeline_success(
+        mock_print_warning,
         mock_run,
         mock_get_team_email_address,
 ):
@@ -74,7 +78,9 @@ def test_generate_pipeline_success(
 @patch('paasta_tools.cli.cmds.generate_pipeline._run', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_git_repo_for_fab_repo', autospec=True)
+@patch('paasta_tools.cli.cmds.generate_pipeline.print_warning', autospec=True)
 def test_generate_pipeline_calls_the_right_commands_and_owner(
+        mock_print_warning,
         mock_get_git_repo_for_fab_repo,
         mock_get_team_email_address,
         mock_run,
@@ -96,7 +102,9 @@ def test_generate_pipeline_calls_the_right_commands_and_owner(
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_team', autospec=True)
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_git_repo_for_fab_repo', autospec=True)
+@patch('paasta_tools.cli.cmds.generate_pipeline.print_warning', autospec=True)
 def test_generate_pipeline_uses_team_name_as_fallback_for_owner(
+        mock_print_warning,
         mock_get_git_repo_for_fab_repo,
         mock_get_team,
         mock_get_team_email_address,
