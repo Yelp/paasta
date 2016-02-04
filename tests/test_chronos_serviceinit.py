@@ -15,6 +15,7 @@
 import contextlib
 
 import mock
+import pytest
 
 from paasta_tools import chronos_serviceinit
 from paasta_tools import chronos_tools
@@ -437,3 +438,16 @@ def test_status_chronos_jobs_get_running_tasks():
             verbose,
         )
         assert mock_get_running_tasks.call_count == 1
+
+
+def test_get_schedule_for_job_type_scheduled():
+    assert chronos_serviceinit._get_schedule_field_for_job_type(chronos_tools.JobType.Scheduled) == "Schedule"
+
+
+def test_get_schedule_for_job_type_dependent():
+    assert chronos_serviceinit._get_schedule_field_for_job_type(chronos_tools.JobType.Dependent) == "Parents"
+
+
+def test_get_schedule_for_job_type_invalid():
+    with pytest.raises(ValueError):
+        assert chronos_serviceinit._get_schedule_field_for_job_type(3)

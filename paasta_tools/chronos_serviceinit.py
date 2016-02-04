@@ -202,7 +202,7 @@ def _get_schedule_field_for_job_type(job_type):
     elif job_type == chronos_tools.JobType.Scheduled:
         return 'Schedule'
     else:
-        return 'Unknown'
+        raise ValueError("Expected a valid JobType")
 
 
 def _format_command(job):
