@@ -157,7 +157,7 @@ def step_impl_then_desired_state(context, expected_state):
     deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
     latest = sorted(deployments.iteritems(), key=lambda(key, value): value['force_bounce'], reverse=True)[0][1]
     desired_state = latest['desired_state']
-    assert desired_state == expected_state
+    assert desired_state == expected_state, "actual: %s\nexpected: %s" % (desired_state, expected_state)
 
 
 @then(u'the repository should be correctly tagged')
