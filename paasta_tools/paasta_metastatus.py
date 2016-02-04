@@ -143,8 +143,7 @@ def get_extra_mesos_attribute_data(mesos_state):
                         collision_operator=lambda a, b: a - b,
                         valid_keys=valid_resources,
                     )
-        if len(resource_dict.keys()) >= 2:
-            yield (attribute, resource_dict)
+        yield (attribute, resource_dict)
 
 
 def quorum_ok(masters, quorum):
@@ -286,16 +285,20 @@ def assert_extra_attribute_data(mesos_state):
     rows = []
     if extra_attribute_data:
         for attribute, resource_dict in extra_attribute_data:
-            rows.append((attribute.capitalize(), 'CPU free', 'RAM free'))
-            for attribute_location, resources_remaining in resource_dict.items():
-                rows.append((
-                    attribute_location,
-                    '%.2f' % resources_remaining['cpus'],
-                    '%.2f' % resources_remaining['mem'],
-                ))
-        result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
+            if len(resource_dict.keys()) >= 2:
+                rows.append((attribute.capitalize(), 'CPU free', 'RAM free'))
+                for attribute_location, resources_remaining in resource_dict.items():
+                    rows.append((
+                        attribute_location,
+                        '%.2f' % resources_remaining['cpus'],
+                        '%.2f' % resources_remaining['mem'],
+                    ))
+        if len(rows) == 0:
+            result = ('  No useful location groupings could be detected!', True)
+        else:
+            result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     else:
-        result = ('  No useful smartstack advertisements on this cluster!', False)
+        result = ('  No mesos slaves registered on this cluster!', False)
     return result
 
 
