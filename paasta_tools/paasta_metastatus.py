@@ -123,10 +123,10 @@ def get_extra_mesos_attribute_data(mesos_state):
 
     for attribute in attributes:
         resource_dict = defaultdict(dict)
-        slave_attribute_mapping = defaultdict(list)
+        slave_attribute_mapping = {}
         for slave in mesos_state['slaves']:
             slave_attribute_name = slave['attributes'].get(attribute, 'UNDEFINED')
-            slave_attribute_mapping[slave['id']].append(slave_attribute_name)
+            slave_attribute_mapping[slave['id']] = slave_attribute_name
             resource_dict[slave_attribute_name] = combine_key_value_pair_iterators(
                 resource_dict[slave_attribute_name].items(),
                 slave['resources'].items(),
@@ -136,13 +136,13 @@ def get_extra_mesos_attribute_data(mesos_state):
         for framework in mesos_state.get('frameworks', []):
             for task in framework.get('tasks', []):
                 task_resources = task['resources']
-                for attribute_value in slave_attribute_mapping[task['slave_id']]:
-                    resource_dict[attribute_value] = combine_key_value_pair_iterators(
-                        resource_dict[attribute_value].items(),
-                        task_resources.items(),
-                        collision_operator=lambda a, b: a - b,
-                        valid_keys=valid_resources,
-                    )
+                attribute_value = slave_attribute_mapping[task['slave_id']]
+                resource_dict[attribute_value] = combine_key_value_pair_iterators(
+                    resource_dict[attribute_value].items(),
+                    task_resources.items(),
+                    collision_operator=lambda a, b: a - b,
+                    valid_keys=valid_resources,
+                )
         yield (attribute, resource_dict)
 
 
