@@ -435,14 +435,8 @@ def test_assert_extra_slave_data_no_slaves():
 def test_assert_extra_attribute_data_no_slaves():
     fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
     expected = 'No useful smartstack advertisements on this cluster!'
-    with contextlib.nested(
-        patch('paasta_tools.paasta_metastatus.get_smartstack_advertise_attributes', autospec=True),
-    ) as (
-        mock_get_smartstack_advertise_attributes,
-    ):
-        mock_get_smartstack_advertise_attributes.return_value = tuple()
-        actual = paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[0]
-        assert expected == actual.strip()
+    actual = paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[0]
+    assert expected == actual.strip()
 
 
 def test_status_for_results():
@@ -567,14 +561,8 @@ def test_get_mesos_habitat_data():
             }
         ),
     )
-    with contextlib.nested(
-        patch('paasta_tools.paasta_metastatus.get_smartstack_advertise_attributes', autospec=True),
-    ) as (
-        mock_get_smartstack_advertise_attributes,
-    ):
-        mock_get_smartstack_advertise_attributes.return_value = ['habitat']
-        extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
-        assert (tuple(extra_mesos_habitat_data) == expected_free_resources)
+    extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
+    assert (tuple(extra_mesos_habitat_data) == expected_free_resources)
 
 
 def test_get_mesos_habitat_data_only_one_location_grouping():
@@ -607,11 +595,5 @@ def test_get_mesos_habitat_data_only_one_location_grouping():
         ],
         'cluster': 'fake_cluster',
     }
-    with contextlib.nested(
-        patch('paasta_tools.paasta_metastatus.get_smartstack_advertise_attributes', autospec=True),
-    ) as (
-        mock_get_smartstack_advertise_attributes,
-    ):
-        mock_get_smartstack_advertise_attributes.return_value = ['habitat']
-        extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
-        assert (tuple(extra_mesos_habitat_data) == tuple())
+    extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
+    assert (tuple(extra_mesos_habitat_data) == tuple())

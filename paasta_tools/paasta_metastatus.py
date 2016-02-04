@@ -18,7 +18,6 @@ from collections import Counter
 from collections import defaultdict
 from collections import OrderedDict
 
-import service_configuration_lib
 from httplib2 import ServerNotFoundError
 from marathon.exceptions import MarathonError
 
@@ -35,7 +34,6 @@ from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import MasterNotAvailableException
 from paasta_tools.utils import format_table
-from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
@@ -119,19 +117,9 @@ def get_extra_mesos_slave_data(mesos_state):
     return sorted(slaves.values())
 
 
-def get_smartstack_advertise_attributes(mesos_state):
-    attributes = set()
-    for service, _ in get_services_for_cluster(mesos_state['cluster']):
-        smartstack_cfg = service_configuration_lib.read_service_configuration(service)['smartstack']
-        for _, config in smartstack_cfg.items():
-            for location in config.get('advertise', []):
-                attributes.add(location)
-    return attributes
-
-
 def get_extra_mesos_attribute_data(mesos_state):
     valid_resources = ['cpus', 'disk', 'mem']
-    attributes = get_smartstack_advertise_attributes(mesos_state)
+    attributes = set().union(*(slave['attributes'].keys() for slave in mesos_state['slaves']))
 
     for attribute in attributes:
         resource_dict = defaultdict(dict)
