@@ -307,7 +307,7 @@ def assert_extra_attribute_data(mesos_state):
                 ))
         result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     else:
-        result = ('  No mesos slaves registered on this cluster!', False)
+        result = ('  No useful smartstack advertisements on this cluster!', False)
     return result
 
 

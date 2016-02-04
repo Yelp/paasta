@@ -434,7 +434,7 @@ def test_assert_extra_slave_data_no_slaves():
 
 def test_assert_extra_attribute_data_no_slaves():
     fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
-    expected = 'No mesos slaves registered on this cluster!'
+    expected = 'No useful smartstack advertisements on this cluster!'
     with contextlib.nested(
         patch('paasta_tools.paasta_metastatus.get_smartstack_advertise_attributes', autospec=True),
     ) as (
