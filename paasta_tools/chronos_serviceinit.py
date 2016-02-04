@@ -131,10 +131,78 @@ def _format_last_result(job):
 
 
 def _format_schedule(job):
-    schedule = job.get("schedule", PaastaColors.red("UNKNOWN"))
+    if job.get('parents') is not None:
+        schedule = PaastaColors.yellow("None (Dependent Job).")
+    else:
+        schedule = job.get("schedule", PaastaColors.red("UNKNOWN"))
     epsilon = job.get("epsilon", PaastaColors.red("UNKNOWN"))
     formatted_schedule = "%s Epsilon: %s" % (schedule, epsilon)
     return formatted_schedule
+
+
+def _format_parents_summary(parents):
+    return " %s" % ",".join(parents)
+
+
+def _format_parents_verbose(job):
+    parents = job.get('parents', [])
+    # create (service,instance) pairs for the parent names
+    parent_service_instances = [tuple(chronos_tools.decompose_job_id(parent)) for parent in parents]
+
+    # find matching parent jobs
+    parent_jobs = [chronos_tools.get_job_for_service_instance(*service_instance)
+                   for service_instance in parent_service_instances]
+
+    # get the status of the last run of each parent job
+    parent_statuses = [(parent, _format_last_result(job)) for parent in parent_jobs]
+    formatted_lines = [("\n"
+                        "    - %(job_name)s\n"
+                        "      Last Run: %(status)s (%(last_run)s)" % {
+                            "job_name": parent['name'],
+                            "last_run": status_parent[1],
+                            "status": status_parent[0],
+                        }) for (parent, status_parent) in parent_statuses]
+    return '\n'.join(formatted_lines)
+
+
+def none_formatter():
+    return "None"
+
+
+def get_schedule_formatter(job_type, verbose):
+    """ Given a job type and a verbosity level, return
+    a function suitable for formatting details of the job's
+    schedule. In the case of a Dependent Job, the fn will
+    format the parents of the job, and a schedule in the case
+    of a Scheduled Job"""
+    if job_type == chronos_tools.JobType.Dependent:
+        return _get_parent_formatter(verbose)
+    else:
+        return _format_schedule
+
+
+def _get_parent_formatter(verbose):
+    """ Returns a formatting function dependent on
+    desired verbosity.
+    """
+    def dispatch_formatter(job):
+        parents = job.get('parents')
+        if not parents:
+            return none_formatter()
+        elif verbose:
+            return _format_parents_verbose(job)
+        else:
+            return _format_parents_summary(parents)
+    return dispatch_formatter
+
+
+def _get_schedule_field_for_job_type(job_type):
+    if job_type == chronos_tools.JobType.Dependent:
+        return 'Parents'
+    elif job_type == chronos_tools.JobType.Scheduled:
+        return 'Schedule'
+    else:
+        raise ValueError("Expected a valid JobType")
 
 
 def _format_command(job):
@@ -166,7 +234,12 @@ def format_chronos_job_status(job, running_tasks, verbose):
     config_hash = _format_config_hash(job)
     disabled_state = _format_disabled_status(job)
     (last_result, formatted_time) = _format_last_result(job)
-    schedule = _format_schedule(job)
+
+    job_type = chronos_tools.get_job_type(job)
+    schedule_type = _get_schedule_field_for_job_type(job_type)
+    schedule_formatter = get_schedule_formatter(job_type, verbose)
+    schedule_value = schedule_formatter(job)
+
     command = _format_command(job)
     mesos_status = _format_mesos_status(job, running_tasks)
     if verbose:
@@ -176,14 +249,15 @@ def format_chronos_job_status(job, running_tasks, verbose):
         "Config:     %(config_hash)s\n"
         "  Status:   %(disabled_state)s\n"
         "  Last:     %(last_result)s (%(formatted_time)s)\n"
-        "  Schedule: %(schedule)s\n"
+        "  %(schedule_type)s: %(schedule_value)s\n"
         "  Command:  %(command)s\n"
         "  Mesos:    %(mesos_status)s" % {
             "config_hash": config_hash,
+            "schedule_type": schedule_type,
             "disabled_state": disabled_state,
             "last_result": last_result,
             "formatted_time": formatted_time,
-            "schedule": schedule,
+            "schedule_value": schedule_value,
             "command": command,
             "mesos_status": mesos_status,
         }

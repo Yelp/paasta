@@ -1419,19 +1419,19 @@ class TestChronosTools:
         mock_load_chronos_config,
     ):
         mock_lookup_chronos_jobs.return_value = []
-        matching = chronos_tools.find_matching_parent_job('service.instance')
+        matching = chronos_tools.get_job_for_service_instance('service', 'instance')
         assert matching is None
 
     @mock.patch('paasta_tools.chronos_tools.lookup_chronos_jobs', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.get_chronos_client', autospec=True)
     @mock.patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True)
-    def test_find_matching_parent_job_returns_names(
+    def test_find_matching_parent_job(
         self,
         mock_load_chronos_config,
         mock_get_chronos_client, mock_lookup_chronos_jobs,
     ):
-        mock_matching_jobs = [{'name': 'service.myinstance.gitabc.config1'}]
+        mock_matching_jobs = [{'name': 'service instance'}]
         mock_lookup_chronos_jobs.return_value = mock_matching_jobs
         mock_load_chronos_config.return_value = {}
-        matching = chronos_tools.find_matching_parent_job('service.myinstance')
-        assert matching == 'service.myinstance.gitabc.config1'
+        matching = chronos_tools.get_job_for_service_instance('service', 'instance')
+        assert matching == mock_matching_jobs[0]

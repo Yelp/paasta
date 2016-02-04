@@ -15,8 +15,10 @@
 import contextlib
 
 import mock
+import pytest
 
 from paasta_tools import chronos_serviceinit
+from paasta_tools import chronos_tools
 from paasta_tools.utils import PaastaColors
 
 
@@ -95,6 +97,7 @@ def test_get_short_task_id():
 def test_format_chronos_job_name_exists():
     example_job = {
         'name': 'my_service my_instance gityourmom configyourdad',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -103,7 +106,9 @@ def test_format_chronos_job_name_exists():
 
 
 def test_format_chronos_job_name_does_not_exist():
-    example_job = {}
+    example_job = {
+        'schedule': 'foo'
+    }
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
@@ -113,6 +118,7 @@ def test_format_chronos_job_name_does_not_exist():
 def test_format_chronos_job_status_disabled():
     example_job = {
         'disabled': True,
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -123,6 +129,7 @@ def test_format_chronos_job_status_disabled():
 def test_format_chronos_job_status_enabled():
     example_job = {
         'disabled': False,
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -134,6 +141,7 @@ def test_format_chronos_job_status_no_last_run():
     example_job = {
         'lastError': '',
         'lastSuccess': '',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -146,6 +154,7 @@ def test_format_chronos_job_status_failure_no_success():
     example_job = {
         'lastError': '2015-04-20T23:20:00.420Z',
         'lastSuccess': '',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -159,6 +168,7 @@ def test_format_chronos_job_status_success_no_failure():
     example_job = {
         'lastError': '',
         'lastSuccess': '2015-04-20T23:20:00.420Z',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -172,6 +182,7 @@ def test_format_chronos_job_status_failure_and_then_success():
     example_job = {
         'lastError': '2015-04-20T23:20:00.420Z',
         'lastSuccess': '2015-04-21T23:20:00.420Z',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -185,6 +196,7 @@ def test_format_chronos_job_status_success_and_then_failure():
     example_job = {
         'lastError': '2015-04-21T23:20:00.420Z',
         'lastSuccess': '2015-04-20T23:20:00.420Z',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -198,6 +210,7 @@ def test_format_chronos_job_schedule():
     example_job = {
         'schedule': 'R/2015-04-20T23:20:00+00:00/PT60M',
         'epsilon': 'PT42S',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -209,6 +222,7 @@ def test_format_chronos_job_schedule():
 def test_format_chronos_job_command():
     example_job = {
         'command': 'do the hokey pokey',
+        'schedule': 'foo'
     }
     running_tasks = []
     verbose = False
@@ -217,7 +231,7 @@ def test_format_chronos_job_command():
 
 
 def test_format_chronos_job_zero_mesos_tasks():
-    example_job = {}
+    example_job = {'schedule': 'foo'}
     running_tasks = []
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
@@ -225,7 +239,7 @@ def test_format_chronos_job_zero_mesos_tasks():
 
 
 def test_format_chronos_job_one_mesos_task():
-    example_job = {}
+    example_job = {'schedule': 'foo'}
     running_tasks = ['slay the nemean lion']
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
@@ -233,16 +247,57 @@ def test_format_chronos_job_one_mesos_task():
 
 
 def test_format_chronos_job_two_mesos_tasks():
-    example_job = {}
+    example_job = {'schedule': 'foo'}
     running_tasks = ['slay the nemean lion', 'slay the lernaean hydra']
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
     assert 'Critical' in actual
 
 
+def test_format_parents_summary():
+    parents = ['service instance', 'service otherinstance']
+    assert chronos_serviceinit._format_parents_summary(parents) == ' service instance,service otherinstance'
+
+
+def test_format_parents_verbose():
+    example_job = {
+        'name': 'myexamplejob',
+        'parents': ['testservice testinstance']
+    }
+    example_status = ('2007-04-05T14:30', chronos_tools.LastRunState.Success)
+    with contextlib.nested(
+        mock.patch(
+            'paasta_tools.chronos_tools.get_job_for_service_instance',
+            autospec=True,
+            return_value={
+                'name': 'testservice testinstance'
+            }
+        ),
+        mock.patch(
+            'paasta_tools.chronos_tools.get_status_last_run',
+            autospec=True,
+            return_value=example_status
+        ),
+    ):
+        actual = chronos_serviceinit._format_parents_verbose(example_job)
+        assert "testservice testinstance" in actual
+        assert "  Last Run: %s (2007-04-05T14:30, 8 years ago)" % PaastaColors.green("OK") in actual
+
+
+def test_format_schedule_dependent_job():
+    example_job = {
+        'epsilon': 'myepsilon',
+        'parents': ['testservice testinstance']
+    }
+    actual = chronos_serviceinit._format_schedule(example_job)
+    assert "None (Dependent Job)." in actual
+    assert "Epsilon: myepsilon" in actual
+
+
 def test_format_chronos_job_mesos_verbose():
     example_job = {
         'name': 'my_service my_instance gityourmom configyourdad',
+        'schedule': 'foo',
     }
     running_tasks = ['slay the nemean lion']
     verbose = True
@@ -383,3 +438,16 @@ def test_status_chronos_jobs_get_running_tasks():
             verbose,
         )
         assert mock_get_running_tasks.call_count == 1
+
+
+def test_get_schedule_for_job_type_scheduled():
+    assert chronos_serviceinit._get_schedule_field_for_job_type(chronos_tools.JobType.Scheduled) == "Schedule"
+
+
+def test_get_schedule_for_job_type_dependent():
+    assert chronos_serviceinit._get_schedule_field_for_job_type(chronos_tools.JobType.Dependent) == "Parents"
+
+
+def test_get_schedule_for_job_type_invalid():
+    with pytest.raises(ValueError):
+        assert chronos_serviceinit._get_schedule_field_for_job_type(3)
