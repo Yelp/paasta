@@ -66,16 +66,16 @@ def list_remote_refs(git_url):
         raise LSRemoteException("Unable to fetch remote refs: %s" % e)
 
 
-def make_force_push_mutate_refs_func(target_branches, sha):
+def make_force_push_mutate_refs_func(targets, sha):
     """Create a 'force push' function that will inform send_pack that we want
-    to mark a certain list of target branches to point to a particular
+    to mark a certain list of target branches/tags to point to a particular
     git_sha.
 
-    :param target_branches: List of branches to point at the input sha
-    :param sha: The git sha to point the branches at
+    :param targets: List of branches/tags to point at the input sha
+    :param sha: The git sha to point the branches/tags at
     :returns: A function to do the ref manipulation that a dulwich client can use"""
     def mutate_refs(refs):
-        for branch in target_branches:
-            refs['refs/heads/%s' % branch] = sha
+        for target in targets:
+            refs[target] = sha
         return refs
     return mutate_refs
