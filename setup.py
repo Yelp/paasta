@@ -42,6 +42,7 @@ setup(
         'humanize >= 0.5.1',
         'httplib2 >= 0.9, <= 1.0',
         'isodate >= 0.5.0',
+        'jsonschema',
         'kazoo >= 2.0.0',
         'marathon >= 0.7.5',
         'mesos.cli == 0.1.3',
