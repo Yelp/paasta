@@ -16,7 +16,6 @@ from pytest import raises
 from pytest import yield_fixture
 
 import paasta_tools.cli.cmds.fsm as fsm
-from paasta_tools.cli.fsm.questions import get_clusternames_from_deploy_stanza
 
 
 class TestQuestions:
@@ -209,44 +208,26 @@ class TestGetDeployStanzaTestCase(TestQuestions):
             {"instancename": "itest"},
             {"instancename": "security-check"},
             {"instancename": "performance-check"},
-            {"instancename": "pnw-stagea.main"},
             {
-                "instancename": "nova-prod.canary",
+                "instancename": "dev.everything",
+            },
+            {
+                "instancename": "stage.everything",
                 "trigger_next_step_manually": True,
+            },
+            {
+                "instancename": "prod.canary",
+                "trigger_next_step_manually": True,
+            },
+            {
+                "instancename": "prod.non_canary",
             },
         ):
             assert expected_entry in actual["pipeline"]
 
 
-class TestGetClusternamesFromDeployStanzaTestCase(TestQuestions):
-    def test_empty(self, mock_ask):
-        deploy_stanza = {}
-        expected = set()
-        actual = get_clusternames_from_deploy_stanza(deploy_stanza)
-        assert expected == actual
-
-    def test_non_empty(self, mock_ask):
-        deploy_stanza = {}
-        deploy_stanza["pipeline"] = [
-            {"instancename": "itest", },
-            {"instancename": "push-to-registry", },
-            {"instancename": "mesosstage.canary", },
-            {"instancename": "norcal-devc.main", "trigger_next_step_manually": True, },
-            {"instancename": "nova-prod.main.with.extra.dots", },
-            {"instancename": "clustername-without-namespace", },
-        ]
-        expected = set([
-            "mesosstage",
-            "norcal-devc",
-            "nova-prod",
-            "clustername-without-namespace",
-        ])
-        actual = get_clusternames_from_deploy_stanza(deploy_stanza)
-        assert expected == actual
-
-
 class TestGetMarathonStanzaTestCase(TestQuestions):
     def test(self, mock_ask):
-        actual = fsm.get_marathon_stanza()
-        assert "main" in actual.keys()
-        assert "canary" in actual.keys()
+        for _, stanza in fsm.get_marathon_stanza():
+            assert "main" in stanza.keys()
+            assert "canary" in stanza.keys()

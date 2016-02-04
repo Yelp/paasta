@@ -610,6 +610,13 @@ class SystemPaastaConfig(dict):
         except KeyError:
             raise PaastaNotConfiguredError('Could not find scribe_map in configuration directory: %s' % self.directory)
 
+    def get_fsm_cluster_map(self):
+        try:
+            return self['fsm_cluster_map']
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                'Could not find fsm_cluster_map in configuration directory: %s' % self.directory)
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
