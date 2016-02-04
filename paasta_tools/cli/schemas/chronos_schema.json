@@ -69,8 +69,29 @@
                     "type": "array"
                 },
                 "uniqueItems": true
+            },
+            "parents": {
+                "oneOf": [
+                    { "$ref": "#/definitions/jobName" },
+                    {
+                        "type": "array",
+                        "items": {
+                            "$ref": "#/definitions/jobName"
+                        },
+                        "uniqueItems": true
+                    }
+                ]
             }
         },
-        "required": ["schedule"]
+        "oneOf": [
+            {"required": ["schedule"]},
+            {"required": ["parents"]}
+        ]
+    },
+    "definitions": {
+        "jobName": {
+            "type": "string",
+            "pattern": "^[a-zA-Z0-9_]+\\.[a-zA-Z0-9_]+$"
+        }
     }
 }
