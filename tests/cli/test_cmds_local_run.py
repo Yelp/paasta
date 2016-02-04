@@ -526,7 +526,7 @@ def test_run_docker_container_non_interactive(
     mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
-    mock_docker_client.inspect_container.return_value = {"State": {"ExitCode": 666}}
+    mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 666, 'Running': True}}
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
     with raises(SystemExit) as excinfo:
         run_docker_container(
@@ -629,7 +629,7 @@ def test_run_docker_container_non_interactive_keyboard_interrupt(
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
-    mock_docker_client.inspect_container.return_value = {"State": {"ExitCode": 99}}
+    mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 99, 'Running': True}}
     with raises(SystemExit) as excinfo:
         run_docker_container(
             mock_docker_client,
@@ -674,7 +674,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
-    mock_docker_client.inspect_container.return_value = {"State": {"ExitCode": 99}}
+    mock_docker_client.inspect_container.return_value = {'State': {'ExitCode': 99, 'Running': True}}
     with raises(SystemExit) as excinfo:
         run_docker_container(
             mock_docker_client,
@@ -912,7 +912,7 @@ def test_simulate_healthcheck_on_service_enabled_partial_failure(mock_run_health
         mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
     # First run_healthcheck_on_container call happens silently
     assert mock_run_healthcheck_on_container.call_count == 5
-    assert mock_sleep.call_count == 3
+    assert mock_sleep.call_count == 4
 
 
 @mock.patch('time.sleep', autospec=True)
@@ -943,21 +943,21 @@ def test_simulate_healthcheck_on_service_enabled_during_grace_period(
     assert simulate_healthcheck_on_service(
         mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
     assert mock_sleep.call_count == 0
-    # First run_healthcheck_on_container call happens silently
-    assert mock_run_healthcheck_on_container.call_count == 2
+    assert mock_run_healthcheck_on_container.call_count == 1
 
 
 @mock.patch('time.sleep', autospec=True)
 @mock.patch('time.time', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container',
-            autospec=True, return_value=[False, True])
+            autospec=True, side_effect=[False, False, True])
 def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     mock_run_healthcheck_on_container,
     mock_time,
-    mock_sleep
+    mock_sleep,
+    capsys,
 ):
     # change time to make sure we are sufficiently past grace period
-    mock_time.side_effect = [0, 2]
+    mock_time.side_effect = [0, 1, 5]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_service_manifest = MarathonServiceConfig(
         service='fake_name',
@@ -965,7 +965,7 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
         instance='fake_instance',
         config_dict={
             # only one healthcheck will be performed silently
-            'healthcheck_grace_period_seconds': 1,
+            'healthcheck_grace_period_seconds': 2,
         },
         branch_dict={},
     )
@@ -975,8 +975,37 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     fake_url = 'http://fake_host/fake_status_path'
     assert simulate_healthcheck_on_service(
         mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
-    assert mock_sleep.call_count == 0
-    assert mock_run_healthcheck_on_container.call_count == 2
+    assert mock_sleep.call_count == 2
+    assert mock_run_healthcheck_on_container.call_count == 3
+    out, _ = capsys.readouterr()
+    assert out.count('Healthcheck failed! (disregarded due to grace period)') == 1
+    assert out.count('Healthcheck failed! (Attempt') == 1
+    assert out.count('Healthcheck succeeded!') == 1
+
+
+def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capsys):
+    with mock.patch(
+            'time.sleep',
+            side_effect=AssertionError('sleep should not have been called'),
+    ):
+        mock_client = mock.MagicMock(spec_set=docker.Client)
+        mock_client.inspect_container.return_value = {
+            'State': {'Running': False, 'ExitCode': 127},
+        }
+        fake_service_manifest = MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={},
+            branch_dict={},
+        )
+        ret = simulate_healthcheck_on_service(
+            fake_service_manifest, mock_client, mock.sentinel.container_id,
+            'http', 'http://fake_host/status', True,
+        )
+        assert ret is False
+        out, _ = capsys.readouterr()
+        assert out.count('Container exited with code 127') == 1
 
 
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
