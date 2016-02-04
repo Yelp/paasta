@@ -201,35 +201,54 @@ def simulate_healthcheck_on_service(
 
         # silenty start performing health checks until grace period ends or first check succeeds
         graceperiod_end_time = time.time() + grace_period
+        after_grace_period_attempts = 0
         while True:
-            healthcheck_succeeded = run_healthcheck_on_container(
-                docker_client, container_id, healthcheck_mode, healthcheck_data, timeout)
-            if healthcheck_succeeded or time.time() > graceperiod_end_time:
+            # First inspect the container for early exits
+            container_state = docker_client.inspect_container(container_id)
+            if not container_state['State']['Running']:
+                sys.stdout.write(
+                    PaastaColors.red('Container exited with code {}'.format(
+                        container_state['State']['ExitCode'],
+                    )) + '\n'
+                )
+                healthcheck_status = False
                 break
-            else:
-                sys.stdout.write("%s\n" % PaastaColors.grey("Healthcheck failed (disregarded due to grace period)"))
-            time.sleep(interval)
 
-        failure = False
-        for attempt in range(1, max_failures + 1):
-            healthcheck_succeeded = run_healthcheck_on_container(
-                docker_client, container_id, healthcheck_mode, healthcheck_data, timeout)
-            if healthcheck_succeeded:
-                sys.stdout.write("%s (via: %s)\n" %
-                                 (PaastaColors.green("Healthcheck succeeded!"), healthcheck_link))
-                failure = False
+            healthcheck_status = run_healthcheck_on_container(
+                docker_client, container_id, healthcheck_mode, healthcheck_data, timeout,
+            )
+
+            # Yay, we passed the healthcheck
+            if healthcheck_status:
+                sys.stdout.write('{} (via {})\n'.format(
+                    PaastaColors.green('Healthcheck succeeded!'),
+                    healthcheck_link,
+                ))
                 break
-            else:
-                sys.stdout.write("%s (via: %s)\n" %
-                                 (PaastaColors.red("Healthcheck failed! (Attempt %d of %d)" % (attempt, max_failures)),
-                                  healthcheck_link))
-                failure = True
-            time.sleep(interval)
 
-        if failure:
-            healthcheck_status = False
-        else:
-            healthcheck_status = True
+            # Otherwise, print why we failed
+            if time.time() < graceperiod_end_time:
+                color = PaastaColors.grey
+                msg = '(disregarded due to grace period)'
+                extra_msg = ''
+            else:
+                # If we've exceeded the grace period, we start incrementing attempts
+                after_grace_period_attempts += 1
+                color = PaastaColors.red
+                msg = '(Attempt {} of {})'.format(
+                    after_grace_period_attempts, max_failures,
+                )
+                extra_msg = ' (via: {})'.format(healthcheck_link)
+
+            sys.stdout.write('{}{}\n'.format(
+                color('Healthcheck failed! {}'.format(msg)),
+                extra_msg,
+            ))
+
+            if after_grace_period_attempts == max_failures:
+                break
+
+            time.sleep(interval)
     else:
         sys.stdout.write('\nMesos would have healthchecked your service via\n%s\n' % healthcheck_link)
         healthcheck_status = True
@@ -530,13 +549,20 @@ def run_docker_container(
             else:
                 sys.exit(1)
 
-        sys.stdout.write('Your service is now running! Tailing stdout and stderr:\n')
-        for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
-            sys.stdout.write(PaastaColors.grey(line))
+        running = docker_client.inspect_container(container_id)['State']['Running']
+        if running:
+            sys.stdout.write('Your service is now running! Tailing stdout and stderr:\n')
+            for line in docker_client.attach(container_id, stderr=True, stream=True, logs=True):
+                sys.stdout.write(PaastaColors.grey(line))
+        else:
+            sys.stdout.write('Your service failed to start, here is the stdout and stderr\n')
+            sys.stdout.write(PaastaColors.grey(
+                docker_client.attach(container_id, stderr=True, stream=False, logs=True)
+            ))
+            raise KeyboardInterrupt
 
     except KeyboardInterrupt:
         returncode = 3
-        pass
 
     # Cleanup if the container exits on its own or interrupted.
     if container_started:
