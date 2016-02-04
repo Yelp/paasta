@@ -502,6 +502,19 @@ class TestChronosTools:
         assert okay is True
         assert msg == ''
 
+    # 'parents' doesn't need to be an array, it can also be a string
+    def test_check_parents_scalar_to_array(self):
+        fake_conf = chronos_tools.ChronosJobConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'parents': 'service1.instance1'},
+            branch_dict={},
+        )
+        okay, msg = fake_conf.check_parents()
+        assert okay is True
+        assert msg == ''
+
     def test_check_parents_one_bad(self):
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',

@@ -182,14 +182,6 @@ class ChronosJobConfig(InstanceConfig):
             branch_dict=branch_dict,
         )
 
-    def __eq__(self, other):
-        return (
-            (self.service == other.service) and
-            (self.get_job_name() == other.get_job_name()) and
-            (self.config_dict == other.config_dict) and
-            (self.branch_dict == other.branch_dict)
-        )
-
     def get_service(self):
         return self.service
 
@@ -250,7 +242,11 @@ class ChronosJobConfig(InstanceConfig):
         return self.config_dict.get('schedule_time_zone')
 
     def get_parents(self):
-        return self.config_dict.get('parents', None)
+        parents = self.config_dict.get('parents', None)
+        if parents is not None and not isinstance(parents, list):
+            return [parents]
+        else:
+            return parents
 
     def get_shell(self):
         """Per https://mesos.github.io/chronos/docs/api.html, ``shell`` defaults
