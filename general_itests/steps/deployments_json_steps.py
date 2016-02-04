@@ -125,9 +125,9 @@ def step_impl_then(context):
     assert expected_deployments == deployments, "actual: %s\nexpected:%s" % (deployments, expected_deployments)
 
 
-@then(u'that deployments.json has a desired_state of "{state}"')
-def step_impl_then_desired_state(context, state):
+@then(u'that deployments.json has a desired_state of "{expected_state}"')
+def step_impl_then_desired_state(context, expected_state):
     deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
     latest = sorted(deployments.iteritems(), key=lambda(key, value): value['force_bounce'], reverse=True)[0][1]
     desired_state = latest['desired_state']
-    assert desired_state == state
+    assert desired_state == expected_state
