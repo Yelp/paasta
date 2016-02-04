@@ -18,6 +18,7 @@ from collections import Counter
 from collections import defaultdict
 from collections import OrderedDict
 
+import service_configuration_lib
 from httplib2 import ServerNotFoundError
 from marathon.exceptions import MarathonError
 
@@ -34,6 +35,7 @@ from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import MasterNotAvailableException
 from paasta_tools.utils import format_table
+from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
@@ -76,7 +78,30 @@ def get_mesos_disk_status(metrics):
     return total, used, available
 
 
+def combine_key_value_pair_iterators(iterator1, iterator2, collision_operator, valid_keys=None):
+    """Takes in two iterators of 2-tuples of the form (key, value) and combines them
+    into a dictionary.
+    :param iterator1: the first iterator to merge
+    :param iterator2: the second iterator to merge
+    :param collision_operator: a function that is applied iterator values to resolve key collisions
+    :param valid_keys" an iterator containing a list of keys to merge, or None to permit all keys
+    :returns: a dictionary containing the combined iterators
+    """
+    def validate_key(key):
+        return valid_keys is None or key in valid_keys
+
+    result = {key: value for (key, value) in iterator1 if validate_key(key)}
+    for key, value in iterator2:
+        if validate_key(key):
+            if key in result:
+                result[key] = collision_operator(result[key], value)
+            else:
+                result[key] = value
+    return result
+
+
 def get_extra_mesos_slave_data(mesos_state):
+    valid_resources = ['cpus', 'disk', 'mem']
     slaves = dict((slave['id'], {
         'free_resources': slave['resources'],
         'hostname': slave['hostname'],
@@ -84,33 +109,54 @@ def get_extra_mesos_slave_data(mesos_state):
 
     for framework in mesos_state.get('frameworks', []):
         for task in framework.get('tasks', []):
-            resource_dict = slaves[task['slave_id']]['free_resources']
-            for resource_type, value in task['resources'].items():
-                if resource_type in ['cpus', 'disk', 'mem']:
-                    resource_dict[resource_type] -= value
+            slaves[task['slave_id']]['free_resources'] = combine_key_value_pair_iterators(
+                slaves[task['slave_id']]['free_resources'].items(),
+                task['resources'].items(),
+                collision_operator=lambda a, b: a - b,
+                valid_keys=valid_resources,
+            )
 
     return sorted(slaves.values())
 
 
-def get_extra_mesos_habitat_data(mesos_state):
-    valid_resources = ['cpus', 'disk', 'mem']
-    habitat_dict = {}
-    slave_habitat_mapping = {}
-    for slave in mesos_state['slaves']:
-        habitat = slave['attributes'].get('habitat', 'NO_HABITAT')
-        slave_habitat_mapping[slave['id']] = habitat
-        resource_dict = habitat_dict.setdefault(habitat, defaultdict(int))
-        for resource_type, value in slave['resources'].items():
-            if resource_type in valid_resources:
-                resource_dict[resource_type] += value
+def get_smartstack_advertise_attributes(mesos_state):
+    attributes = set()
+    for service, _ in get_services_for_cluster(mesos_state['cluster']):
+        smartstack_cfg = service_configuration_lib.read_service_configuration(service)['smartstack']
+        for _, config in smartstack_cfg.items():
+            for location in config.get('advertise', []):
+                attributes.add(location)
+    return attributes
 
-    for framework in mesos_state.get('frameworks', []):
-        for task in framework.get('tasks', []):
-            resource_dict = habitat_dict[slave_habitat_mapping[task['slave_id']]]
-            for resource_type, value in task['resources'].items():
-                if resource_type in valid_resources:
-                    resource_dict[resource_type] -= value
-    return sorted(habitat_dict.items())
+
+def get_extra_mesos_attribute_data(mesos_state):
+    valid_resources = ['cpus', 'disk', 'mem']
+    attributes = get_smartstack_advertise_attributes(mesos_state)
+
+    for attribute in attributes:
+        resource_dict = defaultdict(dict)
+        slave_attribute_mapping = defaultdict(list)
+        for slave in mesos_state['slaves']:
+            slave_attribute_name = slave['attributes'].get(attribute, 'UNDEFINED')
+            slave_attribute_mapping[slave['id']].append(slave_attribute_name)
+            resource_dict[slave_attribute_name] = combine_key_value_pair_iterators(
+                resource_dict[slave_attribute_name].items(),
+                slave['resources'].items(),
+                collision_operator=lambda a, b: a + b,
+                valid_keys=valid_resources,
+            )
+        for framework in mesos_state.get('frameworks', []):
+            for task in framework.get('tasks', []):
+                task_resources = task['resources']
+                for attribute_value in slave_attribute_mapping[task['slave_id']]:
+                    resource_dict[attribute_value] = combine_key_value_pair_iterators(
+                        resource_dict[attribute_value].items(),
+                        task_resources.items(),
+                        collision_operator=lambda a, b: a - b,
+                        valid_keys=valid_resources,
+                    )
+        if len(resource_dict.keys()) >= 2:
+            yield (attribute, resource_dict)
 
 
 def quorum_ok(masters, quorum):
@@ -247,16 +293,18 @@ def assert_extra_slave_data(mesos_state):
     return result
 
 
-def assert_extra_habitat_data(mesos_state):
-    extra_habitat_data = get_extra_mesos_habitat_data(mesos_state)
-    if extra_habitat_data:
-        rows = [('Habitat', 'CPU free', 'RAM free')]
-        for habitat, resource_dict in extra_habitat_data:
-            rows.append((
-                habitat,
-                '%.2f' % resource_dict['cpus'],
-                '%.2f' % resource_dict['mem'],
-            ))
+def assert_extra_attribute_data(mesos_state):
+    extra_attribute_data = list(get_extra_mesos_attribute_data(mesos_state))
+    rows = []
+    if extra_attribute_data:
+        for attribute, resource_dict in extra_attribute_data:
+            rows.append((attribute.capitalize(), 'CPU free', 'RAM free'))
+            for attribute_location, resources_remaining in resource_dict.items():
+                rows.append((
+                    attribute_location,
+                    '%.2f' % resources_remaining['cpus'],
+                    '%.2f' % resources_remaining['mem'],
+                ))
         result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     else:
         result = ('  No mesos slaves registered on this cluster!', False)
@@ -280,7 +328,7 @@ def get_mesos_status(mesos_state, verbosity):
     ])
 
     if verbosity == 2:
-        metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_habitat_data]))
+        metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_attribute_data]))
     elif verbosity >= 3:
         metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_slave_data]))
 

@@ -432,11 +432,17 @@ def test_assert_extra_slave_data_no_slaves():
     assert expected == actual.strip()
 
 
-def test_assert_extra_habitat_data_no_slaves():
+def test_assert_extra_attribute_data_no_slaves():
     fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
     expected = 'No mesos slaves registered on this cluster!'
-    actual = paasta_metastatus.assert_extra_habitat_data(fake_mesos_state)[0]
-    assert expected == actual.strip()
+    with contextlib.nested(
+        patch('paasta_tools.paasta_metastatus.get_smartstack_advertise_attributes', autospec=True),
+    ) as (
+        mock_get_smartstack_advertise_attributes,
+    ):
+        mock_get_smartstack_advertise_attributes.return_value = tuple()
+        actual = paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[0]
+        assert expected == actual.strip()
 
 
 def test_status_for_results():
@@ -462,7 +468,7 @@ def test_get_mesos_slave_data():
     mesos_state = {
         'slaves': [
             {
-                'id': 'test-instance',
+                'id': 'test-slave',
                 'hostname': 'test.somewhere.www',
                 'resources': {
                     'cpus': 50,
@@ -514,12 +520,24 @@ def test_get_mesos_habitat_data():
                     'habitat': 'test-habitat',
                 },
             },
+            {
+                'id': 'test-slave2',
+                'hostname': 'test2.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                    'habitat': 'test-habitat-2',
+                },
+            },
         ],
         'frameworks': [
             {
                 'tasks': [
                     {
-                        'slave_id': 'test-instance',
+                        'slave_id': 'test-slave',
                         'resources': {
                             'cpus': 50,
                             'disk': 100,
@@ -530,13 +548,70 @@ def test_get_mesos_habitat_data():
                 ],
             },
         ],
+        'cluster': 'fake_cluster',
     }
-    expected_free_resources = {
-        'test-habitat': {
-            'cpus': 0,
-            'disk': 100,
-            'mem': 1000,
-        },
+    expected_free_resources = (
+        (
+            'habitat',
+            {
+                'test-habitat': {
+                    'cpus': 0,
+                    'disk': 100,
+                    'mem': 1000,
+                },
+                'test-habitat-2': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+            }
+        ),
+    )
+    with contextlib.nested(
+        patch('paasta_tools.paasta_metastatus.get_smartstack_advertise_attributes', autospec=True),
+    ) as (
+        mock_get_smartstack_advertise_attributes,
+    ):
+        mock_get_smartstack_advertise_attributes.return_value = ['habitat']
+        extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
+        assert (tuple(extra_mesos_habitat_data) == expected_free_resources)
+
+
+def test_get_mesos_habitat_data_only_one_location_grouping():
+    mesos_state = {
+        'slaves': [
+            {
+                'id': 'test-slave',
+                'hostname': 'test.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                    'habitat': 'test-habitat',
+                },
+            },
+            {
+                'id': 'test-slave2',
+                'hostname': 'test2.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                    'habitat': 'test-habitat',
+                },
+            },
+        ],
+        'cluster': 'fake_cluster',
     }
-    extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_habitat_data(mesos_state)
-    assert (list(extra_mesos_habitat_data) == list(expected_free_resources.items()))
+    with contextlib.nested(
+        patch('paasta_tools.paasta_metastatus.get_smartstack_advertise_attributes', autospec=True),
+    ) as (
+        mock_get_smartstack_advertise_attributes,
+    ):
+        mock_get_smartstack_advertise_attributes.return_value = ['habitat']
+        extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
+        assert (tuple(extra_mesos_habitat_data) == tuple())
