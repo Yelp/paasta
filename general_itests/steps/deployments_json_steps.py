@@ -13,7 +13,6 @@
 # limitations under the License.
 import contextlib
 import os
-import shutil
 import tempfile
 from datetime import datetime
 from time import time
@@ -29,9 +28,9 @@ from dulwich.objects import Tree
 from dulwich.repo import Repo
 
 from paasta_tools import generate_deployments_for_service
-from paasta_tools import marathon_tools
 from paasta_tools.cli.cmds.start_stop_restart import format_timestamp
 from paasta_tools.cli.cmds.start_stop_restart import paasta_stop
+from paasta_tools.utils import load_deployments_json
 
 
 @given(u'a test git repo is setup with commits')
@@ -110,7 +109,7 @@ def step_impl_when(context):
 
 @then(u'that deployments.json can be read back correctly')
 def step_impl_then(context):
-    deployments = marathon_tools.load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
+    deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
     expected_deployments = {
         'fake_deployments_json_service:paasta-test_cluster.test_instance': {
             'force_bounce': context.force_bounce_timestamp,
@@ -124,4 +123,11 @@ def step_impl_then(context):
         },
     }
     assert expected_deployments == deployments, "actual: %s\nexpected:%s" % (deployments, expected_deployments)
-    shutil.rmtree(context.test_git_repo_dir)
+
+
+@then(u'that deployments.json has a desired_state of "{state}"')
+def step_impl_then_desired_state(context, state):
+    deployments = load_deployments_json('fake_deployments_json_service', soa_dir='fake_soa_configs')
+    latest = sorted(deployments.iteritems(), key=lambda(key, value): value['force_bounce'], reverse=True)[0][1]
+    desired_state = latest['desired_state']
+    assert desired_state == state
