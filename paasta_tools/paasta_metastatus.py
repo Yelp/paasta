@@ -285,7 +285,7 @@ def assert_extra_attribute_data(mesos_state):
     rows = []
     if extra_attribute_data:
         for attribute, resource_dict in extra_attribute_data:
-            if len(resource_dict.keys()) >= 2:
+            if len(resource_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
                 rows.append((attribute.capitalize(), 'CPU free', 'RAM free'))
                 for attribute_location, resources_remaining in resource_dict.items():
                     rows.append((
@@ -294,11 +294,11 @@ def assert_extra_attribute_data(mesos_state):
                         '%.2f' % resources_remaining['mem'],
                     ))
         if len(rows) == 0:
-            result = ('  No useful location groupings could be detected!', True)
+            result = ("  No slave attributes that apply to more than one slave were detected.", True)
         else:
             result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     else:
-        result = ('  No mesos slaves registered on this cluster!', False)
+        result = ("  No mesos slaves registered on this cluster!", False)
     return result
 
 

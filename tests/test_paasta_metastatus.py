@@ -434,7 +434,7 @@ def test_assert_extra_slave_data_no_slaves():
 
 def test_assert_extra_attribute_data_no_slaves():
     fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
-    expected = 'No useful smartstack advertisements on this cluster!'
+    expected = 'No mesos slaves registered on this cluster!'
     actual = paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[0]
     assert expected == actual.strip()
 
@@ -563,37 +563,3 @@ def test_get_mesos_habitat_data():
     )
     extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
     assert (tuple(extra_mesos_habitat_data) == expected_free_resources)
-
-
-def test_get_mesos_habitat_data_only_one_location_grouping():
-    mesos_state = {
-        'slaves': [
-            {
-                'id': 'test-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                    'habitat': 'test-habitat',
-                },
-            },
-            {
-                'id': 'test-slave2',
-                'hostname': 'test2.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                    'habitat': 'test-habitat',
-                },
-            },
-        ],
-        'cluster': 'fake_cluster',
-    }
-    extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
-    assert (tuple(extra_mesos_habitat_data) == tuple())
