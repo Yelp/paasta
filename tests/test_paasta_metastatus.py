@@ -61,7 +61,7 @@ def test_bad_cpu_health():
     }
     failure_output, failure_health = paasta_metastatus.assert_cpu_health(failure_metrics)
     assert not failure_health
-    assert PaastaColors.red("CRITICAL: Less than 10% CPUs available. (Currently using 90.00%)") in failure_output
+    assert PaastaColors.red("CRITICAL: Less than 10% CPUs available. (Currently using 90.00% of 10)") in failure_output
 
 
 def test_assert_memory_health():
@@ -81,7 +81,8 @@ def test_failing_memory_health():
     }
     failure_output, failure_health = paasta_metastatus.assert_memory_health(failure_metrics)
     assert not failure_health
-    assert PaastaColors.red("CRITICAL: Less than 10% memory available. (Currently using 97.66%)") in failure_output
+    assert PaastaColors.red(
+        "CRITICAL: Less than 10% memory available. (Currently using 97.66% of 1.00GB)") in failure_output
 
 
 def test_assert_no_duplicate_frameworks():
