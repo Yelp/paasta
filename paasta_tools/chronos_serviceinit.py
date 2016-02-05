@@ -138,8 +138,8 @@ def _format_schedule(job):
     epsilon = job.get("epsilon", PaastaColors.red("UNKNOWN"))
     schedule_time_zone = job.get("scheduleTimeZone", "null")
     if schedule_time_zone == "null":  # This is what Chronos returns.
-        schedule_time_zone = PaastaColors.grey("unspecified")
-    formatted_schedule = "%s Epsilon: %s TZ: %s" % (schedule, epsilon, schedule_time_zone)
+        schedule_time_zone = "UTC"
+    formatted_schedule = "%s (%s) Epsilon: %s" % (schedule, schedule_time_zone, epsilon)
     return formatted_schedule
 
 
