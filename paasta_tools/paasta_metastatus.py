@@ -76,73 +76,34 @@ def get_mesos_disk_status(metrics):
     return total, used, available
 
 
-def combine_key_value_pair_iterators(iterator1, iterator2, collision_operator, valid_keys=None):
-    """Takes in two iterators of 2-tuples of the form (key, value) and combines them
-    into a dictionary.
-    :param iterator1: the first iterator to merge
-    :param iterator2: the second iterator to merge
-    :param collision_operator: a function that is applied iterator values to resolve key collisions
-    :param valid_keys: an iterator containing a list of keys to merge, or None to permit all keys
-    :returns: a dictionary containing the combined iterators
-    """
-    def validate_key(key):
-        return valid_keys is None or key in valid_keys
-
-    result = {key: value for (key, value) in iterator1 if validate_key(key)}
-    for key, value in iterator2:
-        if validate_key(key):
-            if key in result:
-                result[key] = collision_operator(result[key], value)
-            else:
-                result[key] = value
-    return result
-
-
 def get_extra_mesos_slave_data(mesos_state):
-    valid_resources = ['cpus', 'disk', 'mem']
     slaves = dict((slave['id'], {
-        'free_resources': slave['resources'],
+        'free_resources': Counter(slave['resources']),
         'hostname': slave['hostname'],
     }) for slave in mesos_state['slaves'])
 
     for framework in mesos_state.get('frameworks', []):
         for task in framework.get('tasks', []):
-            slaves[task['slave_id']]['free_resources'] = combine_key_value_pair_iterators(
-                slaves[task['slave_id']]['free_resources'].items(),
-                task['resources'].items(),
-                collision_operator=lambda a, b: a - b,
-                valid_keys=valid_resources,
-            )
+            slaves[task['slave_id']]['free_resources'].subtract(task['resources']),
 
     return sorted(slaves.values())
 
 
 def get_extra_mesos_attribute_data(mesos_state):
-    valid_resources = ['cpus', 'disk', 'mem']
     attributes = set().union(*(slave['attributes'].keys() for slave in mesos_state['slaves']))
 
     for attribute in attributes:
-        resource_dict = defaultdict(dict)
+        resource_dict = defaultdict(Counter)
         slave_attribute_mapping = {}
         for slave in mesos_state['slaves']:
             slave_attribute_name = slave['attributes'].get(attribute, 'UNDEFINED')
             slave_attribute_mapping[slave['id']] = slave_attribute_name
-            resource_dict[slave_attribute_name] = combine_key_value_pair_iterators(
-                resource_dict[slave_attribute_name].items(),
-                slave['resources'].items(),
-                collision_operator=lambda a, b: a + b,
-                valid_keys=valid_resources,
-            )
+            resource_dict[slave_attribute_name].update(slave['resources'])
         for framework in mesos_state.get('frameworks', []):
             for task in framework.get('tasks', []):
                 task_resources = task['resources']
                 attribute_value = slave_attribute_mapping[task['slave_id']]
-                resource_dict[attribute_value] = combine_key_value_pair_iterators(
-                    resource_dict[attribute_value].items(),
-                    task_resources.items(),
-                    collision_operator=lambda a, b: a - b,
-                    valid_keys=valid_resources,
-                )
+                resource_dict[attribute_value].subtract(task_resources)
         yield (attribute, resource_dict)
 
 
