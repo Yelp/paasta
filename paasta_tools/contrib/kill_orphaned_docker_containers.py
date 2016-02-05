@@ -24,7 +24,7 @@ def get_running_task_ids_from_mesos_slave():
     frameworks = state.get('frameworks')
     executors = [ex for fw in frameworks for ex in fw.get('executors', [])
                  if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
-    return [e["id"] for e in executors]
+    return set([e["id"] for e in executors])
 
 
 def get_running_mesos_docker_containers(client):
