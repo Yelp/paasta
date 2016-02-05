@@ -41,7 +41,7 @@ def add_subparser(subparsers):
         dest="verbose",
         default=0,
         help="""Print out more output regarding the state of the cluster.
-        Multiple v options increase verbosity. Maximum is 2.""",
+        Multiple v options increase verbosity. Maximum is 3.""",
     )
     clusters_help = (
         'A comma separated list of clusters to view. Defaults to view all clusters. '
