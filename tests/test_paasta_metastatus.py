@@ -458,6 +458,20 @@ def test_critical_events_in_outputs():
             [('myservice_false', False)])
 
 
+def test_filter_metastatus_valid_keys():
+    test_resource_dictionary = {
+        'cpus': 0,
+        'mem': 1,
+        'MEM': 2,
+        'garbage_data': 3,
+    }
+    expected = {
+        'cpus': 0,
+        'mem': 1,
+    }
+    assert paasta_metastatus.filter_metastatus_valid_keys(test_resource_dictionary) == expected
+
+
 def test_get_mesos_slave_data():
     mesos_state = {
         'slaves': [
