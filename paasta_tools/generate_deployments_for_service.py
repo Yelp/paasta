@@ -182,9 +182,7 @@ def get_desired_state(service, branch, remote_refs, deploy_group):
     """
     # (?:paasta-){1,2} supports a previous mistake where some tags would be called
     # paasta-paasta-cluster.instance
-    tag_pattern = r'^refs/tags/(?:paasta-){1,2}%s-(?P<force_bounce>[^-]+)-(?P<state>.*)$' % branch
-
-    valid_states = ['start', 'stop']
+    tag_pattern = r'^refs/tags/(?:paasta-){1,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$' % branch
 
     states = []
     head_sha = remote_refs['refs/heads/paasta-%s' % deploy_group]
@@ -194,8 +192,7 @@ def get_desired_state(service, branch, remote_refs, deploy_group):
             match = re.match(tag_pattern, ref_name)
             if match:
                 gd = match.groupdict()
-                if gd['state'] in valid_states:
-                    states.append((gd['state'], gd['force_bounce']))
+                states.append((gd['state'], gd['force_bounce']))
 
     if states:
         # there may be more than one that matches, so take the one that sorts
