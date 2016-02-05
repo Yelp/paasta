@@ -32,6 +32,7 @@ from contextlib import contextmanager
 
 from docker import Client
 
+from paasta_tools.mesos_tools import get_container_id_for_mesos_id
 from paasta_tools.utils import get_docker_host
 
 
@@ -42,21 +43,6 @@ def parse_args():
     parser.add_argument('-t', '--timeout', default=45, type=int, help="timeout for command")
     args = parser.parse_args()
     return args
-
-
-def get_container_id_for_mesos_id(client, mesos_task_id):
-    running_containers = client.containers()
-
-    container_id = None
-    for container in running_containers:
-        info = client.inspect_container(container)
-        if info['Config']['Env']:
-            for env_var in info['Config']['Env']:
-                if ('MESOS_TASK_ID=%s' % mesos_task_id) in env_var:
-                    container_id = info['Id']
-                    break
-
-    return container_id
 
 
 class TimeoutException(Exception):

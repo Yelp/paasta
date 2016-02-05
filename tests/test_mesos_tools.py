@@ -14,6 +14,7 @@
 import contextlib
 import datetime
 
+import docker
 import mesos
 import mock
 import requests
@@ -383,3 +384,41 @@ def test_get_mesos_state_from_leader_raises_on_non_elected_leader():
     mesos.cli.master.CURRENT.state = un_elected_fake_state
     with raises(mesos_tools.MasterNotAvailableException):
         assert mesos_tools.get_mesos_state_from_leader() == un_elected_fake_state
+
+
+def test_get_paasta_execute_docker_healthcheck():
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    fake_container_id = 'fake_container_id'
+    fake_mesos_id = 'fake_mesos_id'
+    fake_container_info = [
+        {'Config': {'Env': None}},
+        {'Config': {'Env': ['fake_key1=fake_value1', 'MESOS_TASK_ID=fake_other_mesos_id']}, 'Id': '11111'},
+        {'Config': {'Env': ['fake_key2=fake_value2', 'MESOS_TASK_ID=%s' % fake_mesos_id]}, 'Id': fake_container_id},
+    ]
+    mock_docker_client.containers = mock.MagicMock(
+        spec_set=docker.Client,
+        return_value=['fake_container_1', 'fake_container_2', 'fake_container_3'],
+    )
+    mock_docker_client.inspect_container = mock.MagicMock(
+        spec_set=docker.Client,
+        side_effect=fake_container_info,
+    )
+    assert mesos_tools.get_container_id_for_mesos_id(mock_docker_client, fake_mesos_id) == fake_container_id
+
+
+def test_get_paasta_execute_docker_healthcheck_when_not_found():
+    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
+    fake_mesos_id = 'fake_mesos_id'
+    fake_container_info = [
+        {'Config': {'Env': ['fake_key1=fake_value1', 'MESOS_TASK_ID=fake_other_mesos_id']}, 'Id': '11111'},
+        {'Config': {'Env': ['fake_key2=fake_value2', 'MESOS_TASK_ID=fake_other_mesos_id2']}, 'Id': '2222'},
+    ]
+    mock_docker_client.containers = mock.MagicMock(
+        spec_set=docker.Client,
+        return_value=['fake_container_1', 'fake_container_2'],
+    )
+    mock_docker_client.inspect_container = mock.MagicMock(
+        spec_set=docker.Client,
+        side_effect=fake_container_info,
+    )
+    assert mesos_tools.get_container_id_for_mesos_id(mock_docker_client, fake_mesos_id) is None
