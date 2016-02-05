@@ -150,7 +150,6 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
             mapping['docker_image'] = docker_image
 
             desired_state, force_bounce = get_desired_state(
-                service=service,
                 branch=control_branch,
                 remote_refs=remote_refs,
                 deploy_group=deploy_group,
@@ -175,7 +174,7 @@ def get_service_from_docker_image(image_name):
     return matches.group(1)
 
 
-def get_desired_state(service, branch, remote_refs, deploy_group):
+def get_desired_state(branch, remote_refs, deploy_group):
     """Gets the desired state (start or stop) from the given repo, as well as
     an arbitrary value (which may be None) that will change when a restart is
     desired.
