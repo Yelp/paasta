@@ -1024,13 +1024,13 @@ class TestMarathonTools:
         )
         assert fake_conf.get_instances() == 0
 
-    def test_get_constraints_in_config(self):
+    def test_get_constraints_in_config_override_all_others(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',
             instance='fake_instance',
-            config_dict={'constraints': 'so_many_walls'},
+            config_dict={'constraints': 'so_many_walls', 'extra_constraints': [['ignore', 'this']]},
             branch_dict={},
         )
         with mock.patch(
@@ -1055,6 +1055,27 @@ class TestMarathonTools:
         ) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
             expected_constraints = [
+                ["region", "GROUP_BY", "1"],
+                ["pool", "LIKE", "default"],
+            ]
+            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+
+    def test_get_constraints_extra_constraints(self):
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'extra_constraints': [['extra', 'constraint']]},
+            branch_dict={},
+        )
+        with mock.patch(
+            'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
+            autospec=True,
+        ) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}}
+            expected_constraints = [
+                ['extra', 'constraint'],
                 ["region", "GROUP_BY", "1"],
                 ["pool", "LIKE", "default"],
             ]

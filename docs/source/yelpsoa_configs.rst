@@ -59,13 +59,23 @@ instance MAY have:
     drain_method. Valid parameters are any of the kwargs defined for the
     specified bounce_method in `drain_lib <drain_lib.html>`_.
 
-  * ``constraints``: Specifies placement constraints for services. Should be
-    defined as an array within an array (E.g ``[["habitat", "GROUP_BY"]]``).
-    Defaults to ``[["<discover_location_type>, "GROUP_BY"]]`` where
-    ``<discover_location_type>`` is defined by the ``discover`` attribute in
-    ``smartstack.yaml``. For more details and other constraint types, see the
+  * ``constraints``: Overrides the default placement constraints for services.
+    Should be defined as an array of arrays (E.g ``[["habitat", "GROUP_BY"]]``
+    or ``[["habitat", "GROUP_BY"], ["hostname", "UNIQUE"]]``). Defaults to
+    ``[["<discover_location_type>, "GROUP_BY"], ["pool", "LIKE", <pool>],
+    [<deploy_blacklist_type>, "UNLIKE", <deploy_blacklist_value>], ...]``
+    where ``<discover_location_type>`` is defined by the ``discover`` attribute
+    in ``smartstack.yaml``, ``<pool>`` is defined by the ``pool`` attribute in
+    ``marathon.yaml``, and ``deploy_blacklist_type`` and
+    ``deploy_blacklist_value`` are defined in the ``deploy_blacklist`` attribute
+    in marathon.yaml. For more details and other constraint types, see the
     official `Marathon constraint documentation
     <https://mesosphere.github.io/marathon/docs/constraints.html>`_.
+
+  * ``extra_constraints``: Adds to the default placement constraints for
+    services. This acts the same as ``constraints``, but adds to the default
+    constraints instead of replacing them. See ``constraints`` for details on
+    format and the default constraints.
 
   * ``cmd``: The command that is executed. Can be used as an alternative to
     args for containers without an `entrypoint
