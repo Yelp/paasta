@@ -84,6 +84,26 @@ def test_failing_memory_health():
     assert PaastaColors.red("CRITICAL: Less than 10% memory available. (Currently using 97.66%)") in failure_output
 
 
+def test_assert_disk_health():
+    ok_metrics = {
+        'master/disk_total': 1024,
+        'master/disk_used': 512,
+    }
+    ok_output, ok_health = paasta_metastatus.assert_disk_health(ok_metrics)
+    assert ok_health
+    assert "Disk: 0.50 / 1.00GB in use (%s)" % PaastaColors.green("50.00%") in ok_output
+
+
+def test_failing_disk_health():
+    failure_metrics = {
+        'master/disk_total': 1024,
+        'master/disk_used': 1000,
+    }
+    failure_output, failure_health = paasta_metastatus.assert_disk_health(failure_metrics)
+    assert not failure_health
+    assert PaastaColors.red("CRITICAL: Less than 10% disk available. (Currently using 97.66%)") in failure_output
+
+
 def test_assert_no_duplicate_frameworks():
     state = {
         'frameworks': [
@@ -229,6 +249,8 @@ def test_get_mesos_status(
         'master/cpus_used': 8,
         'master/mem_total': 10240,
         'master/mem_used': 2048,
+        'master/disk_total': 10240,
+        'master/disk_used': 3072,
         'master/tasks_running': 3,
         'master/tasks_staging': 4,
         'master/tasks_starting': 0,
@@ -254,6 +276,7 @@ def test_get_mesos_status(
     expected_cpus_output = "CPUs: 8.00 / 10 in use (%s)" % PaastaColors.green("80.00%")
     expected_mem_output = \
         "Memory: 2.00 / 10.00GB in use (%s)" % PaastaColors.green("20.00%")
+    expected_disk_output = "Disk: 3.00 / 10.00GB in use (%s)" % PaastaColors.green("30.00%")
     expected_tasks_output = \
         "tasks: running: 3 staging: 4 starting: 0"
     expected_duplicate_frameworks_output = \
@@ -270,6 +293,7 @@ def test_get_mesos_status(
     assert (expected_masters_quorum_output, True) in results
     assert (expected_cpus_output, True) in results
     assert (expected_mem_output, True) in results
+    assert (expected_disk_output, True) in results
     assert (expected_tasks_output, True) in results
     assert (expected_duplicate_frameworks_output, False) in results
     assert (expected_slaves_output, True) in results

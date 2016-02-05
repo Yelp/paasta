@@ -356,6 +356,7 @@ class ChronosJobConfig(InstanceConfig):
             'retries': self.check_retries,
             'cpus': self.check_cpus,
             'mem': self.check_mem,
+            'disk': self.check_disk,
             'schedule': self.check_schedule,
             'scheduleTimeZone': self.check_schedule_time_zone,
             'parents': self.check_parents,
@@ -385,6 +386,7 @@ class ChronosJobConfig(InstanceConfig):
             'environmentVariables': self.get_env(),
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
+            'disk': self.get_disk(),
             'constraints': self.get_constraints(),
             'command': self.get_cmd(),
             'arguments': self.get_args(),
@@ -413,7 +415,7 @@ class ChronosJobConfig(InstanceConfig):
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs.extend(super(ChronosJobConfig, self).validate())
 
-        for param in ['epsilon', 'retries', 'cpus', 'mem', 'schedule', 'scheduleTimeZone']:
+        for param in ['epsilon', 'retries', 'cpus', 'mem', 'disk', 'schedule', 'scheduleTimeZone']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)

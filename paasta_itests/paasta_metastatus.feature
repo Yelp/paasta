@@ -17,6 +17,14 @@ Feature: paasta_metastatus describes the state of the paasta cluster
       And a task belonging to the app with id "memtest" is in the task list
      Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% memory available."
 
+  # paasta_metastatus defines "high" disk usage as > 90% of the total cluster
+  # capacity. In docker-compose.yml, we set disk at 10240MB for the 1 mesos slave in use.
+  Scenario: High disk usage
+    Given a working paasta cluster
+    When an app with id "disktest" using high disk is launched
+     And a task belonging to the app with id "disktest" is in the task list
+    Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% disk available."
+
   # paasta_metastatus defines 'high' cpu usage as > 90% of the total cluster
   # capacity. in docker-compose.yml, we set cpus at 10 for the 1 mesos slave in use;
   # mainly this is just to use a round number. It's important to note that this

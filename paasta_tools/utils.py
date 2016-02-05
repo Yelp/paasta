@@ -107,6 +107,15 @@ class InstanceConfig(dict):
         cpus = self.config_dict.get('cpus')
         return cpus if cpus else .25
 
+    def get_disk(self):
+        """Gets the  amount of disk space required from the service's configuration.
+
+        Defaults to 1024 (1G) if no value is specified in the config.
+
+        :returns: The amount of disk space specified by the config, 1024 if not specified"""
+        disk = self.config_dict.get('disk')
+        return disk if disk else 1024
+
     def get_cmd(self):
         """Get the docker cmd specified in the service's configuration.
 
@@ -199,6 +208,13 @@ class InstanceConfig(dict):
         if mem is not None:
             if not isinstance(mem, float) and not isinstance(mem, int):
                 return False, 'The specified mem value "%s" is not a valid float.' % mem
+        return True, ''
+
+    def check_disk(self):
+        disk = self.get_disk()
+        if disk is not None:
+            if not isinstance(disk, float) and not isinstance(disk, int):
+                return False, 'The specified disk value "%s" is not a valid float.' % disk
         return True, ''
 
     def check(self, param):

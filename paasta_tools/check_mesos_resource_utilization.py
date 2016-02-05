@@ -70,9 +70,11 @@ def check_thresholds(percent):
     output = ""
     current_mem = stats['master/mem_percent']
     current_cpu = stats['master/cpus_percent']
+    current_disk = stats['master/disk_percent']
     percent = int(percent)
     cpu_print_tuple = (percent, current_cpu)
     mem_print_tuple = (percent, current_mem)
+    disk_print_tuple = (percent, current_disk)
     if current_mem >= percent:
         output += "CRITICAL: Memory usage is over %d%%! Currently at %f%%!\n" % mem_print_tuple
         over_threshold = True
@@ -83,6 +85,11 @@ def check_thresholds(percent):
         over_threshold = True
     else:
         output += "OK: CPU usage is under %d%%. (Currently at %f%%)\n" % cpu_print_tuple
+    if current_disk >= percent:
+        output += "CRITICAL: Disk usage is over %d%%! Currently at %f%%!\n" % disk_print_tuple
+        over_threshold = True
+    else:
+        output += "OK: Disk usage is under %d%%. (Currently at %f%%)\n" % disk_print_tuple
     if over_threshold is True:
         status = 2
     else:

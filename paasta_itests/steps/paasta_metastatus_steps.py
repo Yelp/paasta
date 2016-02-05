@@ -37,6 +37,11 @@ def run_paasta_metastatus_high_mem(context, app_id):
     context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', mem=490, instances=1))
 
 
+@when(u'an app with id "{app_id}" using high disk is launched')
+def run_paasta_metastatus_high_disk(context, app_id):
+    context.marathon_client.create_app(app_id, MarathonApp(cmd='/bin/sleep infinity', disk=95, instances=1))
+
+
 @when(u'a chronos job with name "{job_name}" is launched')
 def chronos_job_launched(context, job_name):
     job = {'async': False, 'command': 'echo 1', 'epsilon': 'PT15M', 'name': job_name,

@@ -58,7 +58,7 @@ def test_status_mesos_tasks_verbose():
     ):
         get_running_mesos_tasks_patch.return_value = ['doing a lap']
         get_non_running_mesos_tasks_patch.return_value = ['eating a burrito']
-        format_running_mesos_task_row_patch.return_value = ['id', 'host', 'mem', 'cpu', 'time']
+        format_running_mesos_task_row_patch.return_value = ['id', 'host', 'mem', 'cpu', 'disk', 'time']
         format_non_running_mesos_task_row_patch.return_value = ['id', 'host', 'time', 'state']
         job_id = format_job_id('fake_service', 'fake_instance'),
 

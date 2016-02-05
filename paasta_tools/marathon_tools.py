@@ -278,6 +278,7 @@ class MarathonServiceConfig(InstanceConfig):
         - env: environment variables for the container.
         - mem: the amount of memory required.
         - cpus: the number of cpus required.
+        - disk: the amount of disk space required.
         - constraints: the constraints on the Marathon app.
         - instances: the number of instances required.
         - cmd: the command to be executed.
@@ -315,6 +316,7 @@ class MarathonServiceConfig(InstanceConfig):
             'env': self.get_env(),
             'mem': float(self.get_mem()),
             'cpus': float(self.get_cpus()),
+            'disk': float(self.get_disk()),
             'constraints': self.get_constraints(service_namespace_config),
             'instances': self.get_instances(),
             'cmd': self.get_cmd(),

@@ -36,6 +36,7 @@ class TestChronosTools:
         'retries': 5,
         'cpus': 5.5,
         'mem': 1024.4,
+        'disk': 1234.5,
         'disabled': True,
         'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
         'schedule_time_zone': 'Zulu',
@@ -299,6 +300,7 @@ class TestChronosTools:
             'retries': 5,
             'cpus': 5.5,
             'mem': 1024.4,
+            'disk': 1234.5,
             'disabled': True,
             'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
             'schedule_time_zone': 'Zulu',
@@ -592,6 +594,16 @@ class TestChronosTools:
         assert okay is False
         assert msg == 'The specified mem value "lots" is not a valid float.'
 
+    def test_check_disk_valid(self):
+        okay, msg = self.fake_chronos_job_config.check_disk()
+        assert okay is True
+        assert msg == ''
+
+    def test_check_disk_invalid(self):
+        okay, msg = self.fake_invalid_chronos_job_config.check_disk()
+        assert okay is False
+        assert msg == 'The specified disk value "all of it" is not a valid float.'
+
     def test_check_schedule_repeat_helper_valid(self):
         assert self.fake_invalid_chronos_job_config._check_schedule_repeat_helper('R32') is True
 
@@ -854,6 +866,7 @@ class TestChronosTools:
             'owner': fake_owner,
             'disabled': False,
             'mem': 1024,
+            'disk': 1024,
             'container': {
                 'network': 'BRIDGE',
                 'volumes': fake_docker_volumes,
@@ -1081,6 +1094,7 @@ class TestChronosTools:
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
+                'disk': 1234.5,
                 'owner': fake_owner,
                 'shell': True,
             }
@@ -1136,6 +1150,7 @@ class TestChronosTools:
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
+                'disk': 1234.5,
                 'owner': fake_owner,
                 'shell': True,
             }
@@ -1191,6 +1206,7 @@ class TestChronosTools:
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
+                'disk': 1234.5,
                 'owner': fake_owner,
                 'shell': True,
             }
@@ -1262,6 +1278,7 @@ class TestChronosTools:
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
+                'disk': 1234.5,
                 'owner': fake_owner,
                 'shell': True,
             }

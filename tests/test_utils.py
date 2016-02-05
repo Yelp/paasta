@@ -756,6 +756,26 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_mem() == 1024
 
+    def test_get_disk_in_config(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={'disk': -999},
+            branch_dict={},
+        )
+        assert fake_conf.get_disk() == -999
+
+    def test_get_disk_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={},
+            branch_dict={},
+        )
+        assert fake_conf.get_disk() == 1024
+
     def test_get_cmd_default(self):
         fake_conf = utils.InstanceConfig(
             service='',
