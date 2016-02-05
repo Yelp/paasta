@@ -391,3 +391,19 @@ def get_container_id_for_mesos_id(client, mesos_task_id):
                     break
 
     return container_id
+
+
+def get_mesos_id_from_container(container, client):
+    mesos_id = None
+    info = client.inspect_container(container)
+    if info['Config']['Env']:
+        for env_var in info['Config']['Env']:
+            # In marathon it is like this
+            if 'MESOS_TASK_ID=' in env_var:
+                mesos_id = re.match("MESOS_TASK_ID=(.*)", env_var).group(1)
+                break
+            # Chronos it is like this?
+            if 'mesos_task_id=' in env_var:
+                mesos_id = re.match("mesos_task_id=(.*)", env_var).group(1)
+                break
+    return mesos_id
