@@ -1024,7 +1024,7 @@ class TestMarathonTools:
         )
         assert fake_conf.get_instances() == 0
 
-    def test_get_constraints_in_config(self):
+    def test_get_constraints_in_config_override_all_others(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
