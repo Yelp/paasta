@@ -376,3 +376,34 @@ def slave_passes_blacklist(slave, blacklist):
         if attributes.get(location_type) == location:
             return False
     return True
+
+
+def get_container_id_for_mesos_id(client, mesos_task_id):
+    running_containers = client.containers()
+
+    container_id = None
+    for container in running_containers:
+        info = client.inspect_container(container)
+        if info['Config']['Env']:
+            for env_var in info['Config']['Env']:
+                if ('MESOS_TASK_ID=%s' % mesos_task_id) in env_var:
+                    container_id = info['Id']
+                    break
+
+    return container_id
+
+
+def get_mesos_id_from_container(container, client):
+    mesos_id = None
+    info = client.inspect_container(container)
+    if info['Config']['Env']:
+        for env_var in info['Config']['Env']:
+            # In marathon it is like this
+            if 'MESOS_TASK_ID=' in env_var:
+                mesos_id = re.match("MESOS_TASK_ID=(.*)", env_var).group(1)
+                break
+            # Chronos it is like this?
+            if 'mesos_task_id=' in env_var:
+                mesos_id = re.match("mesos_task_id=(.*)", env_var).group(1)
+                break
+    return mesos_id

@@ -18,47 +18,8 @@ import mock
 import pytest
 
 from paasta_tools.paasta_execute_docker_command import execute_in_container
-from paasta_tools.paasta_execute_docker_command import get_container_id_for_mesos_id
 from paasta_tools.paasta_execute_docker_command import main
 from paasta_tools.paasta_execute_docker_command import TimeoutException
-
-
-def test_get_paasta_execute_docker_healthcheck():
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    fake_container_id = 'fake_container_id'
-    fake_mesos_id = 'fake_mesos_id'
-    fake_container_info = [
-        {'Config': {'Env': None}},
-        {'Config': {'Env': ['fake_key1=fake_value1', 'MESOS_TASK_ID=fake_other_mesos_id']}, 'Id': '11111'},
-        {'Config': {'Env': ['fake_key2=fake_value2', 'MESOS_TASK_ID=%s' % fake_mesos_id]}, 'Id': fake_container_id},
-    ]
-    mock_docker_client.containers = mock.MagicMock(
-        spec_set=docker.Client,
-        return_value=['fake_container_1', 'fake_container_2', 'fake_container_3'],
-    )
-    mock_docker_client.inspect_container = mock.MagicMock(
-        spec_set=docker.Client,
-        side_effect=fake_container_info,
-    )
-    assert get_container_id_for_mesos_id(mock_docker_client, fake_mesos_id) == fake_container_id
-
-
-def test_get_paasta_execute_docker_healthcheck_when_not_found():
-    mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    fake_mesos_id = 'fake_mesos_id'
-    fake_container_info = [
-        {'Config': {'Env': ['fake_key1=fake_value1', 'MESOS_TASK_ID=fake_other_mesos_id']}, 'Id': '11111'},
-        {'Config': {'Env': ['fake_key2=fake_value2', 'MESOS_TASK_ID=fake_other_mesos_id2']}, 'Id': '2222'},
-    ]
-    mock_docker_client.containers = mock.MagicMock(
-        spec_set=docker.Client,
-        return_value=['fake_container_1', 'fake_container_2'],
-    )
-    mock_docker_client.inspect_container = mock.MagicMock(
-        spec_set=docker.Client,
-        side_effect=fake_container_info,
-    )
-    assert get_container_id_for_mesos_id(mock_docker_client, fake_mesos_id) is None
 
 
 def test_execute_in_container():
