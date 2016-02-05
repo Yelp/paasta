@@ -82,7 +82,7 @@ def combine_key_value_pair_iterators(iterator1, iterator2, collision_operator, v
     :param iterator1: the first iterator to merge
     :param iterator2: the second iterator to merge
     :param collision_operator: a function that is applied iterator values to resolve key collisions
-    :param valid_keys" an iterator containing a list of keys to merge, or None to permit all keys
+    :param valid_keys: an iterator containing a list of keys to merge, or None to permit all keys
     :returns: a dictionary containing the combined iterators
     """
     def validate_key(key):
