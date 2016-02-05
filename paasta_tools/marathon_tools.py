@@ -256,15 +256,26 @@ class MarathonServiceConfig(InstanceConfig):
         if 'constraints' in self.config_dict:
             return self.config_dict.get('constraints')
         else:
-            discover_level = service_namespace_config.get_discover()
-            locations = get_mesos_slaves_grouped_by_attribute(
-                attribute=discover_level, blacklist=self.get_deploy_blacklist())
-            pool = self.get_pool()
+            constraints = self.config_dict.get('extra_constraints', [])
+            constraints.extend(self.get_routing_constraints(service_namespace_config))
+            constraints.extend(self.get_deploy_constraints())
+            constraints.extend(self.get_pool_constraints())
+            return constraints
 
-            deploy_constraints = deploy_blacklist_to_constraints(self.get_deploy_blacklist())
-            routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
-            pool_constraints = [["pool", "LIKE", pool]]
-            return routing_constraints + deploy_constraints + pool_constraints
+    def get_routing_constraints(self, service_namespace_config):
+        discover_level = service_namespace_config.get_discover()
+        locations = get_mesos_slaves_grouped_by_attribute(
+            attribute=discover_level, blacklist=self.get_deploy_blacklist())
+
+        routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
+        return routing_constraints
+
+    def get_deploy_constraints(self):
+        return deploy_blacklist_to_constraints(self.get_deploy_blacklist())
+
+    def get_pool_constraints(self):
+        pool = self.get_pool()
+        return [["pool", "LIKE", pool]]
 
     def format_marathon_app_dict(self, app_id, docker_url, docker_volumes, service_namespace_config):
         """Create the configuration that will be passed to the Marathon REST API.
