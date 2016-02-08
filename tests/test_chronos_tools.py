@@ -582,7 +582,7 @@ class TestChronosTools:
     def test_check_cpus_invalid(self):
         okay, msg = self.fake_invalid_chronos_job_config.check_cpus()
         assert okay is False
-        assert msg == 'The specified cpus value "intel" is not a valid float.'
+        assert msg == 'The specified cpus value "intel" is not a valid float or int.'
 
     def test_check_mem_valid(self):
         okay, msg = self.fake_chronos_job_config.check_mem()
@@ -592,7 +592,7 @@ class TestChronosTools:
     def test_check_mem_invalid(self):
         okay, msg = self.fake_invalid_chronos_job_config.check_mem()
         assert okay is False
-        assert msg == 'The specified mem value "lots" is not a valid float.'
+        assert msg == 'The specified mem value "lots" is not a valid float or int.'
 
     def test_check_disk_valid(self):
         okay, msg = self.fake_chronos_job_config.check_disk()
@@ -602,7 +602,7 @@ class TestChronosTools:
     def test_check_disk_invalid(self):
         okay, msg = self.fake_invalid_chronos_job_config.check_disk()
         assert okay is False
-        assert msg == 'The specified disk value "all of it" is not a valid float.'
+        assert msg == 'The specified disk value "all of it" is not a valid float or int.'
 
     def test_check_schedule_repeat_helper_valid(self):
         assert self.fake_invalid_chronos_job_config._check_schedule_repeat_helper('R32') is True
