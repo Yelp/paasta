@@ -294,6 +294,22 @@ def test_format_schedule_dependent_job():
     assert "Epsilon: myepsilon" in actual
 
 
+def test_format_schedule_null_scheduletimezone():
+    example_job = {
+        'scheduleTimeZone': 'null'  # This is what Chronos returns.
+    }
+    actual = chronos_serviceinit._format_schedule(example_job)
+    assert "(UTC) Epsilon" in actual  # In the output, we default to UTC (Chronos should do the same)
+
+
+def test_format_schedule_scheduletimezone():
+    example_job = {
+        'scheduleTimeZone': 'Zulu'
+    }
+    actual = chronos_serviceinit._format_schedule(example_job)
+    assert "(Zulu) Epsilon" in actual
+
+
 def test_format_chronos_job_mesos_verbose():
     example_job = {
         'name': 'my_service my_instance gityourmom configyourdad',
