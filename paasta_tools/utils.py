@@ -640,6 +640,13 @@ class SystemPaastaConfig(dict):
             raise PaastaNotConfiguredError(
                 'Could not find dashboard_links in configuration directory: %s' % self.directory)
 
+    def get_fsm_deploy_pipeline(self):
+        try:
+            return self['fsm_deploy_pipeline']
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                'Could not find fsm_deploy_pipeline in configuration directory: %s' % self.directory)
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any

@@ -19,7 +19,6 @@ from os.path import join
 from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.fsm.questions import _yamlize
-from paasta_tools.cli.fsm.questions import get_deploy_stanza
 from paasta_tools.cli.fsm.questions import get_marathon_stanza
 from paasta_tools.cli.fsm.questions import get_monitoring_stanza
 from paasta_tools.cli.fsm.questions import get_service_stanza
@@ -104,13 +103,17 @@ def validate_args(args):
 
 
 def get_paasta_config(yelpsoa_config_root, srvname, auto, port, team, description, external_link):
+    paasta_config = load_system_paasta_config()
+
     srvname = get_srvname(srvname, auto)
     smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, auto, port)
     monitoring_stanza = get_monitoring_stanza(auto, team)
-    deploy_stanza = get_deploy_stanza()
     marathon_stanza = get_marathon_stanza()
+    deploy_stanza = paasta_config.get_fsm_deploy_pipeline(),
     service_stanza = get_service_stanza(description, external_link, auto)
-    return (srvname, service_stanza, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team)
+    cluster_stanza = paasta_config.get_fsm_cluster_map()
+    return (srvname, service_stanza, smartstack_stanza, monitoring_stanza,
+            deploy_stanza, marathon_stanza, cluster_stanza, team)
 
 
 def write_paasta_config(
@@ -135,7 +138,8 @@ def write_paasta_config(
 
 def paasta_fsm(args):
     validate_args(args)
-    (srvname, service_stanza, smartstack_stanza, monitoring_stanza, deploy_stanza, marathon_stanza, team) = (
+    (srvname, service_stanza, smartstack_stanza, monitoring_stanza,
+     deploy_stanza, marathon_stanza, cluster_stanza, team) = (
         get_paasta_config(
             args.yelpsoa_config_root,
             args.srvname,
@@ -154,7 +158,7 @@ def paasta_fsm(args):
         monitoring_stanza,
         deploy_stanza,
         marathon_stanza,
-        load_system_paasta_config().get_fsm_cluster_map(),
+        cluster_stanza,
     )
     print PaastaColors.yellow("               _  _(o)_(o)_  _")
     print PaastaColors.red("             ._\`:_ F S M _:' \_,")
