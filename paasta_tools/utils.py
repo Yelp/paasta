@@ -200,21 +200,21 @@ class InstanceConfig(dict):
         cpus = self.get_cpus()
         if cpus is not None:
             if not isinstance(cpus, float) and not isinstance(cpus, int):
-                return False, 'The specified cpus value "%s" is not a valid float.' % cpus
+                return False, 'The specified cpus value "%s" is not a valid float or int.' % cpus
         return True, ''
 
     def check_mem(self):
         mem = self.get_mem()
         if mem is not None:
             if not isinstance(mem, float) and not isinstance(mem, int):
-                return False, 'The specified mem value "%s" is not a valid float.' % mem
+                return False, 'The specified mem value "%s" is not a valid float or int.' % mem
         return True, ''
 
     def check_disk(self):
         disk = self.get_disk()
         if disk is not None:
             if not isinstance(disk, float) and not isinstance(disk, int):
-                return False, 'The specified disk value "%s" is not a valid float.' % disk
+                return False, 'The specified disk value "%s" is not a valid float or int.' % disk
         return True, ''
 
     def check(self, param):
