@@ -14,9 +14,7 @@
 # limitations under the License.
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import PaastaColors
 
 
 def add_subparser(subparsers):
@@ -55,10 +53,8 @@ def add_subparser(subparsers):
 
 
 def print_cluster_status(cluster, verbose=0):
-    """With a given cluster and verboseness, returns the status of the cluster
-    output is printed directly to provide dashbaords even if the cluster is unavailable"""
+    """With a given cluster and verboseness, returns the status of the cluster"""
     print "Cluster: %s" % cluster
-    print get_cluster_dashboards(cluster)
     print execute_paasta_metastatus_on_remote_master(cluster, verbose)
     print ""
 
@@ -69,23 +65,6 @@ def figure_out_clusters_to_inspect(args, all_clusters):
     else:
         clusters_to_inspect = all_clusters
     return clusters_to_inspect
-
-
-def get_cluster_dashboards(cluster):
-    """Returns the direct dashboards for humans to use for a given cluster"""
-    output = []
-    output.append("Warning: Dashboards in prod are not directly reachable. "
-                  "See http://y/paasta-troubleshooting for instructions. (search for 'prod dashboards')")
-    output.append("User Dashboards (Read Only):")
-    output.append("  Mesos:    %s" % PaastaColors.cyan("http://mesos.paasta-%s.yelp/" % cluster))
-    output.append("  Marathon: %s" % PaastaColors.cyan("http://marathon.paasta-%s.yelp/" % cluster))
-    output.append("  Chronos:  %s" % PaastaColors.cyan("http://chronos.paasta-%s.yelp/" % cluster))
-    output.append("  Synapse:  %s" % PaastaColors.cyan("http://paasta-%s.yelp:%s/" % (cluster, DEFAULT_SYNAPSE_PORT)))
-    output.append("Admin Dashboards (Read/write, requires secrets):")
-    output.append("  Mesos:    %s" % PaastaColors.cyan("http://paasta-%s.yelp:5050/" % cluster))
-    output.append("  Marathon: %s" % PaastaColors.cyan("http://paasta-%s.yelp:5052/" % cluster))
-    output.append("  Chronos:  %s" % PaastaColors.cyan("http://paasta-%s.yelp:5053/" % cluster))
-    return '\n'.join(output)
 
 
 def paasta_metastatus(args):
