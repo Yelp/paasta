@@ -28,6 +28,11 @@ instance MAY have:
     There is currently not way to detect if this condition is met, other than a
     ``TASK_FAILED`` message.
 
+  * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
+    disk is constrained to the specified limit, and tasks will recieve 'No space
+    left on device' errors if they attempt to exceed these limits, and then be
+    unable to write any more data to disk.
+
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
   * ``nerve_ns``: Specifies that this namespace should be routed to by another
