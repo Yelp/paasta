@@ -76,20 +76,20 @@ def get_mesos_disk_status(metrics):
     return total, used, available
 
 
-def filter_metastatus_valid_keys(dictionary):
+def filter_mesos_state_metrics(dictionary):
     valid_keys = ['cpus', 'mem', 'disk']
     return {key: value for (key, value) in dictionary.items() if key in valid_keys}
 
 
 def get_extra_mesos_slave_data(mesos_state):
     slaves = dict((slave['id'], {
-        'free_resources': Counter(filter_metastatus_valid_keys(slave['resources'])),
+        'free_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
         'hostname': slave['hostname'],
     }) for slave in mesos_state['slaves'])
 
     for framework in mesos_state.get('frameworks', []):
         for task in framework.get('tasks', []):
-            slaves[task['slave_id']]['free_resources'].subtract(filter_metastatus_valid_keys(task['resources'])),
+            slaves[task['slave_id']]['free_resources'].subtract(filter_mesos_state_metrics(task['resources'])),
 
     return sorted(slaves.values())
 
@@ -103,12 +103,12 @@ def get_extra_mesos_attribute_data(mesos_state):
         for slave in mesos_state['slaves']:
             slave_attribute_name = slave['attributes'].get(attribute, 'UNDEFINED')
             slave_attribute_mapping[slave['id']] = slave_attribute_name
-            resource_dict[slave_attribute_name].update(filter_metastatus_valid_keys(slave['resources']))
+            resource_dict[slave_attribute_name].update(filter_mesos_state_metrics(slave['resources']))
         for framework in mesos_state.get('frameworks', []):
             for task in framework.get('tasks', []):
                 task_resources = task['resources']
                 attribute_value = slave_attribute_mapping[task['slave_id']]
-                resource_dict[attribute_value].subtract(filter_metastatus_valid_keys(task_resources))
+                resource_dict[attribute_value].subtract(filter_mesos_state_metrics(task_resources))
         yield (attribute, resource_dict)
 
 

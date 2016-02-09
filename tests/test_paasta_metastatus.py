@@ -458,7 +458,7 @@ def test_critical_events_in_outputs():
             [('myservice_false', False)])
 
 
-def test_filter_metastatus_valid_keys():
+def test_filter_mesos_state_metrics():
     test_resource_dictionary = {
         'cpus': 0,
         'mem': 1,
@@ -469,7 +469,7 @@ def test_filter_metastatus_valid_keys():
         'cpus': 0,
         'mem': 1,
     }
-    assert paasta_metastatus.filter_metastatus_valid_keys(test_resource_dictionary) == expected
+    assert paasta_metastatus.filter_mesos_state_metrics(test_resource_dictionary) == expected
 
 
 def test_get_mesos_slave_data():
