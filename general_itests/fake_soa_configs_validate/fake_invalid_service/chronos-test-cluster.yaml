@@ -3,4 +3,5 @@
 chronos_job:
   cpus: .1
   mem: 100
+  disk: 200
   epsilon: foo

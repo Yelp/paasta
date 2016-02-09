@@ -20,6 +20,12 @@
                 "exclusiveMinimum": true,
                 "default": 1024
             },
+            "disk": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "default": 1024
+            },
             "instances": {
                 "type": "integer",
                 "minimum": 0,

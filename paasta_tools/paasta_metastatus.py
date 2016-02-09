@@ -63,6 +63,18 @@ def get_mesos_cpu_status(metrics):
     return total, used, available
 
 
+def get_mesos_disk_status(metrics):
+    """Takes in the mesos metrics and analyzes them, returning the status
+    :param metrics: mesos metrics dictionary
+    :returns: Tuple of the output array and is_ok bool
+    """
+
+    total = metrics['master/disk_total']
+    used = metrics['master/disk_used']
+    available = total - used
+    return total, used, available
+
+
 def get_extra_mesos_slave_data(mesos_state):
     slaves = dict((slave['id'], {
         'free_resources': slave['resources'],
@@ -119,6 +131,22 @@ def assert_memory_health(metrics, threshold=10):
                 "CRITICAL: Less than %d%% memory available. (Currently using %.2f%% of %.2fGB)"
                 % (threshold, perc_used, total)),
                 False)
+
+
+def assert_disk_health(metrics, threshold=10):
+    total = metrics['master/disk_total'] / float(1024)
+    used = metrics['master/disk_used'] / float(1024)
+    perc_used = percent_used(total, used)
+
+    if check_threshold(perc_used, threshold):
+        return ("Disk: %0.2f / %0.2fGB in use (%s)"
+                % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
+                True)
+    else:
+        return (PaastaColors.red(
+            "CRITICAL: Less than %d%% disk available. (Currently using %.2f%%)"
+            % (threshold, perc_used)),
+            False)
 
 
 def assert_tasks_running(metrics):
@@ -189,6 +217,7 @@ def assert_extra_slave_data(mesos_state):
                 slave['hostname'],
                 '%.2f' % slave['free_resources']['cpus'],
                 '%.2f' % slave['free_resources']['mem'],
+                '%.2f' % slave['free_resources']['disk'],
             ))
         result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     else:
@@ -207,6 +236,7 @@ def get_mesos_status(mesos_state, verbosity):
     metrics_results = run_healthchecks_with_param(metrics, [
         assert_cpu_health,
         assert_memory_health,
+        assert_disk_health,
         assert_tasks_running,
         assert_slave_health,
     ])

@@ -46,6 +46,12 @@
                 "exclusiveMinimum": true,
                 "default": 1024
             },
+            "disk": {
+                "type": "number",
+                "minimum": 0,
+                "exclusiveMinimum": true,
+                "default": 1024
+            },
             "bounce_method": {
                 "enum": [ "graceful" ],
                 "default": "graceful"

@@ -242,6 +242,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id):
         "Host deployed to",
         "Ram",
         "CPU",
+        "Disk",
         "Deployed at what localtime"
     ]]
     for task in running_and_active_tasks:

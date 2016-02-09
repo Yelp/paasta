@@ -784,6 +784,7 @@ class TestMarathonTools:
             'PAASTA_SERVICE': 'can_you_dig_it',
         }
         fake_cpus = .42
+        fake_disk = 1234.5
         fake_instances = 101
         fake_cmd = None
         fake_args = ['arg1', 'arg2']
@@ -826,6 +827,7 @@ class TestMarathonTools:
             'mem': fake_mem,
             'env': expected_env,
             'cpus': fake_cpus,
+            'disk': fake_disk,
             'instances': fake_instances,
             'cmd': fake_cmd,
             'args': fake_args,
@@ -842,6 +844,7 @@ class TestMarathonTools:
                 'env': fake_env,
                 'mem': fake_mem,
                 'cpus': fake_cpus,
+                'disk': fake_disk,
                 'instances': fake_instances,
                 'cmd': fake_cmd,
                 'args': fake_args,
@@ -2012,6 +2015,7 @@ def test_create_complete_config_no_smartstack():
             'backoff_factor': 2,
             'backoff_seconds': mock.ANY,
             'cpus': 0.25,
+            'disk': 1024.0,
             'uris': ['file:///root/.dockercfg'],
             'health_checks': [],
             'env': mock.ANY,
@@ -2082,6 +2086,7 @@ def test_create_complete_config_with_smartstack():
             'backoff_factor': 2,
             'backoff_seconds': mock.ANY,
             'cpus': 0.25,
+            'disk': 1024.0,
             'uris': ['file:///root/.dockercfg'],
             'health_checks': [
                 {
@@ -2174,6 +2179,7 @@ def test_create_complete_config_utilizes_extra_volumes():
             'cmd': None,
             'args': [],
             'cpus': 0.25,
+            'disk': 1024.0,
             'uris': ['file:///root/.dockercfg'],
             'backoff_factor': 2,
             'backoff_seconds': mock.ANY,

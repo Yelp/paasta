@@ -36,6 +36,7 @@ fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
         'instances': 3,
         'cpus': 1,
         'mem': 100,
+        'disk': 512,
         'nerve_ns': 'fake_nerve_ns',
     },
     branch_dict={
