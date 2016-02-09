@@ -84,12 +84,15 @@ def add_subparser(subparsers):
         '-f', '-F', '--tail', dest='tail', action='store_true', default=True,
         help='Stream the logs and follow it for more data',
     )
-    status_parser.add_argument('-d', '--debug', action='store_true',
-                               dest='debug', default=False,
-                               help='Enable debug logging')
-    status_parser.add_argument('-r', '--raw-mode', action='store_true',
-                               dest='raw_mode', default=False,
-                               help="Don't pretty-print logs; emit them exactly as they are in scribe.")
+    status_parser.add_argument(
+        '-v', '--verbose', action='store_true', dest='verbose', default=False,
+        help='Enable verbose logging',
+    )
+    status_parser.add_argument(
+        '-r', '--raw-mode', action='store_true',
+        dest='raw_mode', default=False,
+        help="Don't pretty-print logs; emit them exactly as they are in scribe."
+    )
     default_component_string = ','.join(DEFAULT_COMPONENTS)
     component_descriptions = build_component_descriptions(LOG_COMPONENTS)
     epilog = 'COMPONENTS\n' \
@@ -530,7 +533,7 @@ def paasta_logs(args):
     else:
         components = DEFAULT_COMPONENTS
 
-    if args.debug:
+    if args.verbose:
         log.setLevel(logging.DEBUG)
         levels = [DEFAULT_LOGLEVEL, 'debug']
     else:
