@@ -489,7 +489,7 @@ def test_get_mesos_slave_data():
             {
                 'tasks': [
                     {
-                        'slave_id': 'test-instance',
+                        'slave_id': 'test-slave',
                         'resources': {
                             'cpus': 50,
                             'disk': 100,
@@ -517,7 +517,7 @@ def test_get_mesos_habitat_data():
     mesos_state = {
         'slaves': [
             {
-                'id': 'test-instance',
+                'id': 'test-slave',
                 'hostname': 'test.somewhere.www',
                 'resources': {
                     'cpus': 50,
