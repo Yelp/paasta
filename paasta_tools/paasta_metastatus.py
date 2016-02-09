@@ -252,12 +252,13 @@ def assert_extra_attribute_data(mesos_state):
     if extra_attribute_data:
         for attribute, resource_dict in extra_attribute_data:
             if len(resource_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
-                rows.append((attribute.capitalize(), 'CPU free', 'RAM free'))
+                rows.append((attribute.capitalize(), 'CPU free', 'RAM free', 'Disk free'))
                 for attribute_location, resources_remaining in resource_dict.items():
                     rows.append((
                         attribute_location,
                         '%.2f' % resources_remaining['cpus'],
                         '%.2f' % resources_remaining['mem'],
+                        '%.2f' % resources_remaining['free_resources']['disk'],
                     ))
         if len(rows) == 0:
             result = ("  No slave attributes that apply to more than one slave were detected.", True)
