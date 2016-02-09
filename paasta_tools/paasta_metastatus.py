@@ -211,7 +211,7 @@ def assert_quorum_size(state):
 def assert_extra_slave_data(mesos_state):
     extra_slave_data = get_extra_mesos_slave_data(mesos_state)
     if extra_slave_data:
-        rows = [('Hostname', 'CPU free', 'RAM free')]
+        rows = [('Hostname', 'CPU free', 'RAM free', 'Disk free')]
         for slave in extra_slave_data:
             rows.append((
                 slave['hostname'],
