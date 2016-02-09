@@ -95,8 +95,8 @@ class InstanceConfig(dict):
         Defaults to 1024 (1G) if no value specified in the config.
 
         :returns: The amount of memory specified by the config, 1024 if not specified"""
-        mem = self.config_dict.get('mem')
-        return mem if mem else 1024
+        mem = self.config_dict.get('mem', 1024)
+        return mem
 
     def get_cpus(self):
         """Gets the number of cpus required from the service's configuration.
@@ -104,8 +104,8 @@ class InstanceConfig(dict):
         Defaults to .25 (1/4 of a cpu) if no value specified in the config.
 
         :returns: The number of cpus specified in the config, .25 if not specified"""
-        cpus = self.config_dict.get('cpus')
-        return cpus if cpus else .25
+        cpus = self.config_dict.get('cpus', .25)
+        return cpus
 
     def get_disk(self):
         """Gets the  amount of disk space required from the service's configuration.
@@ -113,8 +113,8 @@ class InstanceConfig(dict):
         Defaults to 1024 (1G) if no value is specified in the config.
 
         :returns: The amount of disk space specified by the config, 1024 if not specified"""
-        disk = self.config_dict.get('disk')
-        return disk if disk else 1024
+        disk = self.config_dict.get('disk', 1024)
+        return disk
 
     def get_cmd(self):
         """Get the docker cmd specified in the service's configuration.
@@ -199,21 +199,21 @@ class InstanceConfig(dict):
     def check_cpus(self):
         cpus = self.get_cpus()
         if cpus is not None:
-            if not isinstance(cpus, float) and not isinstance(cpus, int):
+            if not isinstance(cpus, (float, int)):
                 return False, 'The specified cpus value "%s" is not a valid float or int.' % cpus
         return True, ''
 
     def check_mem(self):
         mem = self.get_mem()
         if mem is not None:
-            if not isinstance(mem, float) and not isinstance(mem, int):
+            if not isinstance(mem, (float, int)):
                 return False, 'The specified mem value "%s" is not a valid float or int.' % mem
         return True, ''
 
     def check_disk(self):
         disk = self.get_disk()
         if disk is not None:
-            if not isinstance(disk, float) and not isinstance(disk, int):
+            if not isinstance(disk, (float, int)):
                 return False, 'The specified disk value "%s" is not a valid float or int.' % disk
         return True, ''
 
