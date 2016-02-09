@@ -13,6 +13,7 @@ The `soa-configs <https://github.com/Yelp/service_configuration_lib>`_ house a f
 Available Keys
 --------------
 Within your monitoring.yaml file you can specify the following keys:
+
 * team (mandatory): The team that owns the service. If this is not defined then no alerts will ever fire
 
   * This team key must be already defined in puppet for sensu to recognize it. This is a one time thing, once the team-data exists, your team can use sensu.
