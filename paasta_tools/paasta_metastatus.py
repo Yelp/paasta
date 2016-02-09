@@ -15,6 +15,7 @@
 import argparse
 import sys
 from collections import Counter
+from collections import defaultdict
 from collections import OrderedDict
 
 from httplib2 import ServerNotFoundError
@@ -75,20 +76,40 @@ def get_mesos_disk_status(metrics):
     return total, used, available
 
 
+def filter_mesos_state_metrics(dictionary):
+    valid_keys = ['cpus', 'mem', 'disk']
+    return {key: value for (key, value) in dictionary.items() if key in valid_keys}
+
+
 def get_extra_mesos_slave_data(mesos_state):
     slaves = dict((slave['id'], {
-        'free_resources': slave['resources'],
+        'free_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
         'hostname': slave['hostname'],
     }) for slave in mesos_state['slaves'])
 
     for framework in mesos_state.get('frameworks', []):
         for task in framework.get('tasks', []):
-            resource_dict = slaves[task['slave_id']]['free_resources']
-            for resource_type, value in task['resources'].items():
-                if resource_type in ['cpus', 'disk', 'mem']:
-                    resource_dict[resource_type] -= value
+            slaves[task['slave_id']]['free_resources'].subtract(filter_mesos_state_metrics(task['resources'])),
 
     return sorted(slaves.values())
+
+
+def get_extra_mesos_attribute_data(mesos_state):
+    attributes = set().union(*(slave['attributes'].keys() for slave in mesos_state['slaves']))
+
+    for attribute in attributes:
+        resource_dict = defaultdict(Counter)
+        slave_attribute_mapping = {}
+        for slave in mesos_state['slaves']:
+            slave_attribute_name = slave['attributes'].get(attribute, 'UNDEFINED')
+            slave_attribute_mapping[slave['id']] = slave_attribute_name
+            resource_dict[slave_attribute_name].update(filter_mesos_state_metrics(slave['resources']))
+        for framework in mesos_state.get('frameworks', []):
+            for task in framework.get('tasks', []):
+                task_resources = task['resources']
+                attribute_value = slave_attribute_mapping[task['slave_id']]
+                resource_dict[attribute_value].subtract(filter_mesos_state_metrics(task_resources))
+        yield (attribute, resource_dict)
 
 
 def quorum_ok(masters, quorum):
@@ -225,6 +246,29 @@ def assert_extra_slave_data(mesos_state):
     return result
 
 
+def assert_extra_attribute_data(mesos_state):
+    extra_attribute_data = list(get_extra_mesos_attribute_data(mesos_state))
+    rows = []
+    if extra_attribute_data:
+        for attribute, resource_dict in extra_attribute_data:
+            if len(resource_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
+                rows.append((attribute.capitalize(), 'CPU free', 'RAM free', 'Disk free'))
+                for attribute_location, resources_remaining in resource_dict.items():
+                    rows.append((
+                        attribute_location,
+                        '%.2f' % resources_remaining['cpus'],
+                        '%.2f' % resources_remaining['mem'],
+                        '%.2f' % resources_remaining['free_resources']['disk'],
+                    ))
+        if len(rows) == 0:
+            result = ("  No slave attributes that apply to more than one slave were detected.", True)
+        else:
+            result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
+    else:
+        result = ("  No mesos slaves registered on this cluster!", False)
+    return result
+
+
 def get_mesos_status(mesos_state, verbosity):
     """Gathers information about the mesos cluster.
        :return: tuple of a string containing the status and a bool representing if it is ok or not
@@ -241,7 +285,9 @@ def get_mesos_status(mesos_state, verbosity):
         assert_slave_health,
     ])
 
-    if verbosity >= 2:
+    if verbosity == 2:
+        metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_attribute_data]))
+    elif verbosity >= 3:
         metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_slave_data]))
 
     return cluster_results + metrics_results

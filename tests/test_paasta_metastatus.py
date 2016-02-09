@@ -432,6 +432,13 @@ def test_assert_extra_slave_data_no_slaves():
     assert expected == actual.strip()
 
 
+def test_assert_extra_attribute_data_no_slaves():
+    fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
+    expected = 'No mesos slaves registered on this cluster!'
+    actual = paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[0]
+    assert expected == actual.strip()
+
+
 def test_status_for_results():
     assert paasta_metastatus.status_for_results([('message', True), ('message', False)]) == [True, False]
 
@@ -451,11 +458,25 @@ def test_critical_events_in_outputs():
             [('myservice_false', False)])
 
 
+def test_filter_mesos_state_metrics():
+    test_resource_dictionary = {
+        'cpus': 0,
+        'mem': 1,
+        'MEM': 2,
+        'garbage_data': 3,
+    }
+    expected = {
+        'cpus': 0,
+        'mem': 1,
+    }
+    assert paasta_metastatus.filter_mesos_state_metrics(test_resource_dictionary) == expected
+
+
 def test_get_mesos_slave_data():
     mesos_state = {
         'slaves': [
             {
-                'id': 'test-instance',
+                'id': 'test-slave',
                 'hostname': 'test.somewhere.www',
                 'resources': {
                     'cpus': 50,
@@ -468,7 +489,7 @@ def test_get_mesos_slave_data():
             {
                 'tasks': [
                     {
-                        'slave_id': 'test-instance',
+                        'slave_id': 'test-slave',
                         'resources': {
                             'cpus': 50,
                             'disk': 100,
@@ -490,3 +511,69 @@ def test_get_mesos_slave_data():
     extra_mesos_slave_data = paasta_metastatus.get_extra_mesos_slave_data(mesos_state)
     assert (len(extra_mesos_slave_data) == len(mesos_state['slaves']))
     assert ([slave['free_resources'] for slave in extra_mesos_slave_data] == expected_free_resources)
+
+
+def test_get_mesos_habitat_data():
+    mesos_state = {
+        'slaves': [
+            {
+                'id': 'test-slave',
+                'hostname': 'test.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                    'habitat': 'test-habitat',
+                },
+            },
+            {
+                'id': 'test-slave2',
+                'hostname': 'test2.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                    'habitat': 'test-habitat-2',
+                },
+            },
+        ],
+        'frameworks': [
+            {
+                'tasks': [
+                    {
+                        'slave_id': 'test-slave',
+                        'resources': {
+                            'cpus': 50,
+                            'disk': 100,
+                            'mem': 0,
+                            'something-bogus': 25,
+                        },
+                    },
+                ],
+            },
+        ],
+        'cluster': 'fake_cluster',
+    }
+    expected_free_resources = (
+        (
+            'habitat',
+            {
+                'test-habitat': {
+                    'cpus': 0,
+                    'disk': 100,
+                    'mem': 1000,
+                },
+                'test-habitat-2': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+            }
+        ),
+    )
+    extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
+    assert (tuple(extra_mesos_habitat_data) == expected_free_resources)
