@@ -16,6 +16,7 @@ import json
 import os
 import pkgutil
 import sys
+from collections import OrderedDict
 from glob import glob
 
 import yaml
@@ -198,6 +199,7 @@ def validate_chronos(service_path):
     """Check that any chronos configurations are valid"""
     soa_dir, service = path_to_soa_dir_service(service_path)
     instance_type = 'chronos'
+    cjcs = OrderedDict()
 
     returncode = True
     for cluster in list_clusters(service, soa_dir, instance_type):
@@ -205,16 +207,27 @@ def validate_chronos(service_path):
                 service=service, clusters=[cluster], instance_type=instance_type,
                 soa_dir=soa_dir):
             cjc = load_chronos_job_config(service, instance, cluster, False, soa_dir)
-            checks_passed, check_msgs = cjc.validate()
+            cjcs[service + '.' + cjc.get_job_name()] = cjc
 
-            # Remove duplicate check_msgs
-            unique_check_msgs = list(set(check_msgs))
+    for cjc in cjcs.values():
+        cluster = cjc.get_cluster()
+        instance = cjc.get_instance()
+        checks_passed, check_msgs = cjc.validate()
 
-            if not checks_passed:
-                print invalid_chronos_instance(cluster, instance, "\n  ".join(unique_check_msgs))
-                returncode = False
-            else:
-                print valid_chronos_instance(cluster, instance)
+        parents = cjc.get_parents() or []
+        for parent in parents:
+            if parent not in cjcs:
+                checks_passed = False
+                check_msgs.append("Parent job %s could not be found" % parent)
+
+        # Remove duplicate check_msgs
+        unique_check_msgs = list(set(check_msgs))
+
+        if not checks_passed:
+            print invalid_chronos_instance(cluster, instance, "\n  ".join(unique_check_msgs))
+            returncode = False
+        else:
+            print valid_chronos_instance(cluster, instance)
     return returncode
 
 
