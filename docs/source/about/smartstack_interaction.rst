@@ -126,7 +126,7 @@ In this case, there are no tasks in habitat F. This is a problem because
 be able to find the service. It is *down* in habitat F.
 
 To detect and alert on this, PaaSTA uses the ``discover`` setting to decide
-which unique locaitons to look at (e.g. ``habitat``). Paasta iterates over
+which unique locations to look at (e.g. ``habitat``). Paasta iterates over
 each unique location (e.g. habitats A-F) and inspects the replication levels
 in each location. It finds that there is at least one habitat with too few
 instances (habitat F, which has 0 out of 1) and alerts.
