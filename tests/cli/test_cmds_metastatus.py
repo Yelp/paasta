@@ -16,12 +16,20 @@ from StringIO import StringIO
 import mock
 
 from paasta_tools.cli.cmds import metastatus
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from paasta_tools.utils import SystemPaastaConfig
 
 
+@mock.patch('paasta_tools.cli.cmds.metastatus.load_system_paasta_config', autospec=True)
 @mock.patch('sys.stdout', new_callable=StringIO)
-def test_report_cluster_status(mock_stdout):
+def test_report_cluster_status(mock_stdout, mock_load_system_paasta_config):
     cluster = 'fake_cluster'
+    mock_load_system_paasta_config.return_value = SystemPaastaConfig({
+        'dashboard_links': {
+            'fake_cluster': {
+                'URL': 'http://paasta-fake_cluster.yelp:5050',
+            },
+        },
+    }, 'fake_directory')
     thing_to_patch = 'paasta_tools.cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master'
     with mock.patch(thing_to_patch) as mock_execute_paasta_metastatus_on_remote_master:
         mock_execute_paasta_metastatus_on_remote_master.return_value = 'mock_status'
@@ -42,11 +50,14 @@ def test_figure_out_clusters_to_inspect_respects_the_user():
 
 
 def test_get_cluster_dashboards():
-    output_text = metastatus.get_cluster_dashboards('fake-cluster')
-    assert 'http://paasta-fake-cluster.yelp:5050' in output_text
-    assert 'http://paasta-fake-cluster.yelp:5052' in output_text
-    assert 'http://paasta-fake-cluster.yelp:5053' in output_text
-    assert 'http://paasta-fake-cluster.yelp:%s' % DEFAULT_SYNAPSE_PORT in output_text
-    assert 'http://chronos.paasta-fake-cluster.yelp/' in output_text
-    assert 'http://mesos.paasta-fake-cluster.yelp/' in output_text
-    assert 'http://marathon.paasta-fake-cluster.yelp/' in output_text
+    with mock.patch('paasta_tools.cli.cmds.metastatus.load_system_paasta_config',
+                    autospec=True) as mock_load_system_paasta_config:
+        mock_load_system_paasta_config.return_value = SystemPaastaConfig({
+            'dashboard_links': {
+                'fake_cluster': {
+                    'URL': 'http://paasta-fake_cluster.yelp:5050',
+                },
+            },
+        }, 'fake_directory')
+        output_text = metastatus.get_cluster_dashboards('fake_cluster')
+        assert 'URL: http://paasta-fake_cluster.yelp:5050' in output_text
