@@ -45,7 +45,7 @@ Now let’s take a look at how instances are linked to a deploy group by taking 
      cpus: 1
      mem: 300
      instances: 3
-     deploy_groups: dev-stage.everything
+     deploy_group: dev-stage.everything
 
 This is repeated for each ``marathon-*.yaml`` and ``chronos-*.yaml`` file. In example_service, we create three different files - ``marathon-PROD.yaml``, ``marathon-STAGE.yaml`` and ``marathon-DEV.yaml`` and use symlinks to create the files we need. This is similar to the current ``marathon-SHARED.yaml`` file. Feel free to look at example_service in ``yelpsoa_configs`` for an example on how to use deploy groups.
 
