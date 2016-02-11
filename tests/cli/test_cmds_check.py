@@ -224,11 +224,12 @@ def test_check_sensu_check_pass(mock_stdout, mock_get_team,
     expected_output = "%s\n%s\n" % (PaastaCheckMessages.SENSU_MONITORING_FOUND,
                                     PaastaCheckMessages.sensu_team_found(team))
 
-    sensu_check('fake_service', 'path')
+    sensu_check(service='fake_service', service_path='path', soa_dir='path')
     output = mock_stdout.getvalue()
 
     assert output == expected_output
-    mock_get_team.assert_called_once_with(service='fake_service', overrides={})
+    mock_get_team.assert_called_once_with(service='fake_service', overrides={},
+                                          soa_dir='path')
 
 
 @patch('paasta_tools.cli.cmds.check.is_file_in_dir')
@@ -243,7 +244,7 @@ def test_check_sensu_team_missing(mock_stdout, mock_get_team,
     expected_output = "%s\n%s\n" % (PaastaCheckMessages.SENSU_MONITORING_FOUND,
                                     PaastaCheckMessages.SENSU_TEAM_MISSING)
 
-    sensu_check('fake_service', 'path')
+    sensu_check(service='fake_service', service_path='path', soa_dir='path')
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -257,7 +258,7 @@ def test_check_sensu_check_fail(mock_stdout, mock_is_file_in_dir):
     mock_is_file_in_dir.return_value = False
     expected_output = "%s\n" % PaastaCheckMessages.SENSU_MONITORING_MISSING
 
-    sensu_check('fake_service', 'path')
+    sensu_check(service='fake_service', service_path='path', soa_dir='path')
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -287,7 +288,7 @@ def test_check_smartstack_check_pass(mock_stdout, mock_is_file_in_dir,
                          PaastaCheckMessages.smartstack_port_found(
                              instance, port))
 
-    smartstack_check('fake_service', 'path')
+    smartstack_check(service='fake_service', service_path='path', soa_dir='path')
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -313,7 +314,7 @@ def test_check_smartstack_check_missing_port(
                       % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
                          PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
 
-    smartstack_check('fake_service', 'path')
+    smartstack_check(service='fake_service', service_path='path', soa_dir='path')
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -334,7 +335,7 @@ def test_check_smartstack_check_missing_instance(
                       % (PaastaCheckMessages.SMARTSTACK_YAML_FOUND,
                          PaastaCheckMessages.SMARTSTACK_PORT_MISSING)
 
-    smartstack_check('fake_service', 'path')
+    smartstack_check(service='fake_service', service_path='path', soa_dir='path')
     output = mock_stdout.getvalue()
 
     assert output == expected_output
@@ -346,7 +347,7 @@ def test_check_smartstack_check_is_ok_when_no_smartstack(mock_stdout, mock_is_fi
 
     mock_is_file_in_dir.return_value = False
     expected_output = ""
-    smartstack_check('fake_service', 'path')
+    smartstack_check(service='fake_service', service_path='path', soa_dir='path')
     output = mock_stdout.getvalue()
 
     assert output == expected_output
