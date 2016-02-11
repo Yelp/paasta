@@ -16,6 +16,7 @@ from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PaastaNotConfiguredError
 
 
 def add_subparser(subparsers):
@@ -72,12 +73,16 @@ def figure_out_clusters_to_inspect(args, all_clusters):
 
 def get_cluster_dashboards(cluster):
     """Returns the direct dashboards for humans to use for a given cluster"""
-    dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
-    spacing = max((len(label) for label in dashboards.keys())) + 1
     SPACER = ' '
-    output = []
-    for label, url in dashboards.items():
-        output.append('%s:%s%s' % (label, SPACER * (spacing - len(label)), url))
+    try:
+        dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
+    except PaastaNotConfiguredError:
+        output = ['No dashboards configured for %s!' % cluster]
+    else:
+        output = ['Dashboards:']
+        spacing = max((len(label) for label in dashboards.keys())) + 1
+        for label, url in dashboards.items():
+            output.append('  %s:%s%s' % (label, SPACER * (spacing - len(label)), url))
     return '\n'.join(output)
 
 
