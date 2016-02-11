@@ -288,6 +288,26 @@ def do_bounce(
         )
 
 
+def get_old_happy_unhappy_draining_tasks_for_app(app, drain_method, service, nerve_ns, bounce_health_params):
+    tasks_by_state = {
+        'happy': set(),
+        'unhappy': set(),
+        'draining': set(),
+    }
+
+    happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, **bounce_health_params)
+    for task in app.tasks:
+        if drain_method.is_draining(task):
+            state = 'draining'
+        elif task in happy_tasks:
+            state = 'happy'
+        else:
+            state = 'unhappy'
+        tasks_by_state[state].add(task)
+
+    return tasks_by_state
+
+
 def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerve_ns, bounce_health_params):
     """Split tasks from old apps into 3 categories:
       - live (not draining) and happy (according to get_happy_tasks)
@@ -300,21 +320,9 @@ def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerv
     old_app_draining_tasks = {}
 
     for app in other_apps:
-        tasks_by_state = {
-            'happy': set(),
-            'unhappy': set(),
-            'draining': set(),
-        }
 
-        happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, **bounce_health_params)
-        for task in app.tasks:
-            if drain_method.is_draining(task):
-                state = 'draining'
-            elif task in happy_tasks:
-                state = 'happy'
-            else:
-                state = 'unhappy'
-            tasks_by_state[state].add(task)
+        tasks_by_state = get_old_happy_unhappy_draining_tasks_for_app(
+            app, drain_method, service, nerve_ns, bounce_health_params)
 
         old_app_live_happy_tasks[app.id] = tasks_by_state['happy']
         old_app_live_unhappy_tasks[app.id] = tasks_by_state['unhappy']
@@ -400,16 +408,42 @@ def deploy_service(
         bounce_health_params
     )
 
+    if new_app_running:
+        protected_draining_tasks = set()
+        if new_app.instances < config['instances']:
+            client.scale_app(app_id=new_app.id, instances=config['instances'], force=True)
+        elif new_app.instances > config['instances']:
+            num_tasks_to_scale = new_app.instances - config['instances']
+            task_dict = get_old_happy_unhappy_draining_tasks_for_app(
+                new_app,
+                drain_method,
+                service,
+                nerve_ns,
+                bounce_health_params,
+            )
+            scaling_app_happy_tasks = list(task_dict['happy'])
+            scaling_app_unhappy_tasks = list(task_dict['unhappy'])
+            scaling_app_draining_tasks = list(task_dict['draining'])
+            tasks_to_move_draining = max(min(len(scaling_app_draining_tasks), num_tasks_to_scale), 0)
+            num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_draining
+            tasks_to_move_unhappy = max(min(len(scaling_app_unhappy_tasks), num_tasks_to_scale), 0)
+            num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_unhappy
+            tasks_to_move_happy = max(min(len(scaling_app_happy_tasks), num_tasks_to_scale), 0)
+            protected_draining_tasks.union(scaling_app_draining_tasks[:tasks_to_move_draining])
+            old_app_draining_tasks.update({new_app.id: set(scaling_app_draining_tasks[:tasks_to_move_draining])})
+            old_app_live_unhappy_tasks.update({new_app.id: set(scaling_app_unhappy_tasks[:tasks_to_move_unhappy])})
+            old_app_live_happy_tasks.update({new_app.id: set(scaling_app_happy_tasks[:tasks_to_move_happy])})
+            happy_new_tasks = scaling_app_happy_tasks[tasks_to_move_happy:]
+        # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
+        # `paasta mark-for-deployment`), then we should undrain them.
+        for task in new_app.tasks:
+            if task not in protected_draining_tasks:
+                drain_method.stop_draining(task)
+
     # Re-drain any already draining tasks on old apps
     for tasks in old_app_draining_tasks.values():
         for task in tasks:
             drain_method.drain(task)
-
-    # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
-    # `paasta mark-for-deployment`), then we should undrain them.
-    if new_app_running:
-        for task in new_app.tasks:
-            drain_method.stop_draining(task)
 
     # log all uncaught exceptions and raise them again
     try:
@@ -544,7 +578,7 @@ def main():
         sys.exit(0)
     except NoConfigurationForServiceError:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
-                    (args.service_instance, load_system_paasta_config().get_cluster())
+            (args.service_instance, load_system_paasta_config().get_cluster())
         log.error(error_msg)
         send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)

@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+import time
 
 import mock
 from behave import then
@@ -51,14 +52,14 @@ fake_service_config = {
             {'hostPath': u'/nail/srv', 'containerPath': '/nail/srv', 'mode': 'RO'},
             {'hostPath': u'/etc/boto_cfg', 'containerPath': '/etc/boto_cfg', 'mode': 'RO'}]
     },
-    'instances': 1,
+    'instances': 3,
     'mem': 300,
     'args': [],
     'backoff_factor': 2,
     'cpus': 0.25,
     'uris': ['file:///root/.dockercfg'],
     'backoff_seconds': 1,
-    'constraints': None
+    'constraints': None,
 }
 
 
@@ -69,10 +70,12 @@ def create_complete_app(context):
         mock.patch('paasta_tools.marathon_tools.load_marathon_config', return_value=context.marathon_config),
         mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=context.system_paasta_config),
         mock.patch('paasta_tools.bounce_lib.load_system_paasta_config', return_value=context.system_paasta_config),
+        mock.patch('paasta_tools.setup_marathon_job.send_sensu_bounce_keepalive', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config',
                    return_value=context.system_paasta_config),
     ) as (
         mock_create_complete_config,
+        _,
         _,
         _,
         _,
@@ -93,6 +96,18 @@ def create_complete_app(context):
         assert 'deployed' in return_tuple[1]
 
 
+@when(u'we change the number of instances to {number}')
+def change_number_of_context_instances(context, number):
+    fake_service_config['instances'] = int(number)
+
+
+@when(u'we run setup_marathon_job for {number}s')
+def run_setup_marathon_job(context, number):
+    for _ in xrange(int(number)):
+        create_complete_app(context)
+        time.sleep(1)
+
+
 @then(u'we should see it in the list of apps')
 def see_it_in_list(context):
     assert fake_appid in marathon_tools.list_all_marathon_app_ids(context.marathon_client)
@@ -101,3 +116,8 @@ def see_it_in_list(context):
 @then(u'we can run get_app on it')
 def can_run_get_app(context):
     assert context.marathon_client.get_app(fake_appid)
+
+
+@then(u'we should see the number of instances become {number}')
+def assert_instances_equals(context, number):
+    assert context.marathon_client.get_app(fake_appid).instances == int(number)
