@@ -49,6 +49,7 @@ setup(
         'ordereddict >= 1.1',
         'path.py >= 8.1',
         'pysensu-yelp >= 0.2.2',
+        'pytimeparse >= 1.1.0',
         'python-dateutil >= 2.4.0',
         'requests == 2.6.2',
         'requests-cache >= 0.4.10, <= 0.5.0',
