@@ -181,7 +181,7 @@ def get_desired_state(branch, remote_refs, deploy_group):
     """
     # (?:paasta-){1,2} supports a previous mistake where some tags would be called
     # paasta-paasta-cluster.instance
-    tag_pattern = r'^refs/tags/(?:paasta-){1,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$' % branch
+    tag_pattern = r'^refs/tags/(?:paasta-){1,2}%s-(?P<force_bounce>[^-]+)-(?P<state>.*)$' % branch
 
     states = []
     head_sha = remote_refs['refs/heads/paasta-%s' % deploy_group]

@@ -45,25 +45,25 @@ def test_make_determine_wants_func():
 
 
 def test_make_force_push_mutate_refs_func_overwrites_shas():
-    targets = ['refs/heads/targeta', 'refs/tags/targetb']
+    target_branches = ['targeta', 'targetb']
     newsha = 'newsha'
     input_refs = {
         'refs/heads/foo': '12345',
         'refs/heads/targeta': '12345',
-        'refs/tags/targetb': '12345',
+        'refs/heads/targetb': '12345',
         'refs/heads/ignored': '12345',
         'refs/tags/blah': '12345',
     }
     expected = {
         'refs/heads/foo': '12345',
         'refs/heads/targeta': newsha,
-        'refs/tags/targetb': newsha,
+        'refs/heads/targetb': newsha,
         'refs/heads/ignored': '12345',
         'refs/tags/blah': '12345',
     }
 
     mutate_refs_func = remote_git.make_force_push_mutate_refs_func(
-        targets=targets,
+        target_branches=target_branches,
         sha=newsha,
     )
     actual = mutate_refs_func(input_refs)
