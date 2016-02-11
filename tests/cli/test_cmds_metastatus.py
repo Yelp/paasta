@@ -60,4 +60,5 @@ def test_get_cluster_dashboards():
             },
         }, 'fake_directory')
         output_text = metastatus.get_cluster_dashboards('fake_cluster')
-        assert 'URL: http://paasta-fake_cluster.yelp:5050' in output_text
+        assert 'http://paasta-fake_cluster.yelp:5050' in output_text
+        assert 'URL: ' in output_text
