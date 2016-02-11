@@ -1,3 +1,10 @@
+paasta-tools (0.16.33-yelp1) lucid; urgency=low
+
+  * 0.16.33 tagged with 'make release'
+    Commit:
+
+ -- Nathan Handler <nhandler@yelp.com>  Wed, 10 Feb 2016 20:25:09 -0800
+
 paasta-tools (0.16.32-yelp1) lucid; urgency=low
 
   * 0.16.32 tagged with 'make release'
