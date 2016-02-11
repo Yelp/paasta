@@ -302,7 +302,7 @@ def pipeline_check(service):
         print PaastaCheckMessages.PIPELINE_MISSING
 
 
-def sensu_check(service, service_path):
+def sensu_check(service, service_path, soa_dir):
     """Check whether monitoring.yaml exists in service directory,
     and that the team name is declared.
 
@@ -310,7 +310,7 @@ def sensu_check(service, service_path):
     :param service_path: path to loction of monitoring.yaml file"""
     if is_file_in_dir('monitoring.yaml', service_path):
         print PaastaCheckMessages.SENSU_MONITORING_FOUND
-        team = get_team(service=service, overrides={})
+        team = get_team(service=service, overrides={}, soa_dir=soa_dir)
         if team is None:
             print PaastaCheckMessages.SENSU_TEAM_MISSING
         else:
@@ -330,7 +330,7 @@ def service_dir_check(service, soa_dir):
         print PaastaCheckMessages.service_dir_missing(service, soa_dir)
 
 
-def smartstack_check(service, service_path):
+def smartstack_check(service, service_path, soa_dir):
     """Check whether smartstack.yaml exists in service directory, and the proxy
     ports are declared.  Print appropriate message depending on outcome.
 
@@ -338,9 +338,11 @@ def smartstack_check(service, service_path):
     :param service_path: path to loction of smartstack.yaml file"""
     if is_file_in_dir('smartstack.yaml', service_path):
         print PaastaCheckMessages.SMARTSTACK_YAML_FOUND
-        instances = get_all_namespaces_for_service(service)
+        instances = get_all_namespaces_for_service(service=service, soa_dir=soa_dir)
         if len(instances) > 0:
-            for namespace, config in get_all_namespaces_for_service(service, full_name=False):
+            for namespace, config in get_all_namespaces_for_service(service=service,
+                                                                    soa_dir=soa_dir,
+                                                                    full_name=False):
                 if 'proxy_port' in config:
                     print PaastaCheckMessages.smartstack_port_found(
                         namespace, config.get('proxy_port'))
@@ -367,8 +369,8 @@ def paasta_check(args):
     makefile_check()
     yaml_check(service_path)
     deployments_check(service, soa_dir)
-    sensu_check(service, service_path)
-    smartstack_check(service, service_path)
+    sensu_check(service, service_path, soa_dir)
+    smartstack_check(service, service_path, soa_dir)
     paasta_validate_soa_configs(service_path)
 
 
