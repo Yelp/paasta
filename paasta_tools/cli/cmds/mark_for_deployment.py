@@ -20,7 +20,9 @@ import sys
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
+from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_paasta_branch_from_deploy_group
+from paasta_tools.utils import get_paasta_tag_from_deploy_group
 
 
 def add_subparser(subparsers):
@@ -39,7 +41,7 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-u', '--git-url',
-        help='Git url for service -- where magic mark-for-deployment branches are pushed',
+        help='Git url for service -- where magic mark-for-deployment branches/tags are pushed',
         required=True,
     )
     list_parser.add_argument(
@@ -66,9 +68,11 @@ def add_subparser(subparsers):
 
 def mark_for_deployment(git_url, deploy_group, service, commit):
     """Mark a docker image for deployment"""
-    remote_branch = get_paasta_branch_from_deploy_group(identifier=deploy_group)
+    remote_branch = 'refs/heads/%s' % get_paasta_branch_from_deploy_group(identifier=deploy_group)
+    tag = get_paasta_tag_from_deploy_group(identifier=deploy_group, desired_state='deploy')
+    remote_tag = format_tag(tag)
     ref_mutator = remote_git.make_force_push_mutate_refs_func(
-        target_branches=[remote_branch],
+        targets=[remote_branch, remote_tag],
         sha=commit,
     )
     try:
