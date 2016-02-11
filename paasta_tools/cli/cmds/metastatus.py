@@ -14,9 +14,9 @@
 # limitations under the License.
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import list_clusters
-from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PaastaNotConfiguredError
 
 
 def add_subparser(subparsers):
@@ -73,18 +73,16 @@ def figure_out_clusters_to_inspect(args, all_clusters):
 
 def get_cluster_dashboards(cluster):
     """Returns the direct dashboards for humans to use for a given cluster"""
-    output = []
-    output.append("Warning: Dashboards in prod are not directly reachable. "
-                  "See http://y/paasta-troubleshooting for instructions. (search for 'prod dashboards')")
-    output.append("User Dashboards (Read Only):")
-    output.append("  Mesos:    %s" % PaastaColors.cyan("http://mesos.paasta-%s.yelp/" % cluster))
-    output.append("  Marathon: %s" % PaastaColors.cyan("http://marathon.paasta-%s.yelp/" % cluster))
-    output.append("  Chronos:  %s" % PaastaColors.cyan("http://chronos.paasta-%s.yelp/" % cluster))
-    output.append("  Synapse:  %s" % PaastaColors.cyan("http://paasta-%s.yelp:%s/" % (cluster, DEFAULT_SYNAPSE_PORT)))
-    output.append("Admin Dashboards (Read/write, requires secrets):")
-    output.append("  Mesos:    %s" % PaastaColors.cyan("http://paasta-%s.yelp:5050/" % cluster))
-    output.append("  Marathon: %s" % PaastaColors.cyan("http://paasta-%s.yelp:5052/" % cluster))
-    output.append("  Chronos:  %s" % PaastaColors.cyan("http://paasta-%s.yelp:5053/" % cluster))
+    SPACER = ' '
+    try:
+        dashboards = load_system_paasta_config().get_dashboard_links()[cluster]
+    except PaastaNotConfiguredError:
+        output = ['No dashboards configured for %s!' % cluster]
+    else:
+        output = ['Dashboards:']
+        spacing = max((len(label) for label in dashboards.keys())) + 1
+        for label, url in dashboards.items():
+            output.append('  %s:%s%s' % (label, SPACER * (spacing - len(label)), url))
     return '\n'.join(output)
 
 

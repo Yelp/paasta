@@ -633,6 +633,13 @@ class SystemPaastaConfig(dict):
             raise PaastaNotConfiguredError(
                 'Could not find fsm_cluster_map in configuration directory: %s' % self.directory)
 
+    def get_dashboard_links(self):
+        try:
+            return self['dashboard_links']
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                'Could not find dashboard_links in configuration directory: %s' % self.directory)
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
