@@ -52,7 +52,7 @@ fake_service_config = {
             {'hostPath': u'/nail/srv', 'containerPath': '/nail/srv', 'mode': 'RO'},
             {'hostPath': u'/etc/boto_cfg', 'containerPath': '/etc/boto_cfg', 'mode': 'RO'}]
     },
-    'instances': 3,
+    'instances': 1,
     'mem': 300,
     'args': [],
     'backoff_factor': 2,
@@ -101,9 +101,9 @@ def change_number_of_context_instances(context, number):
     fake_service_config['instances'] = int(number)
 
 
-@when(u'we run setup_marathon_job for {number}s')
+@when(u'we run setup_marathon_job until the instance count is {number}')
 def run_setup_marathon_job(context, number):
-    for _ in xrange(int(number)):
+    while context.marathon_client.get_app(fake_appid).instances != int(number):
         create_complete_app(context)
         time.sleep(1)
 
