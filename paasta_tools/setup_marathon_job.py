@@ -430,9 +430,9 @@ def deploy_service(
             num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_unhappy
             tasks_to_move_happy = max(min(len(scaling_app_happy_tasks), num_tasks_to_scale), 0)
             protected_draining_tasks.union(scaling_app_draining_tasks[:tasks_to_move_draining])
-            old_app_draining_tasks.update({new_app.id: set(scaling_app_draining_tasks[:tasks_to_move_draining])})
-            old_app_live_unhappy_tasks.update({new_app.id: set(scaling_app_unhappy_tasks[:tasks_to_move_unhappy])})
-            old_app_live_happy_tasks.update({new_app.id: set(scaling_app_happy_tasks[:tasks_to_move_happy])})
+            old_app_draining_tasks[new_app.id] = set(scaling_app_draining_tasks[:tasks_to_move_draining])
+            old_app_live_unhappy_tasks[new_app.id] = set(scaling_app_unhappy_tasks[:tasks_to_move_unhappy])
+            old_app_live_happy_tasks[new_app.id] = set(scaling_app_happy_tasks[:tasks_to_move_happy])
             happy_new_tasks = scaling_app_happy_tasks[tasks_to_move_happy:]
         # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
         # `paasta mark-for-deployment`), then we should undrain them.
