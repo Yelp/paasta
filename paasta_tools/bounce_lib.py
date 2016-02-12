@@ -257,7 +257,9 @@ def get_happy_tasks(app, service, nerve_ns, min_task_uptime=None, check_haproxy=
                 continue
 
         # if there are healthchecks defined for the app but none have executed yet, then task is unhappy
-        if len(app.health_checks) > 0 and len(task.health_check_results) == 0:
+        # Except for command healchecks. Marathon currently is not reporting them back via the API
+        non_command_healthchecks = [hc for hc in app.health_checks if hc.protocol != 'COMMAND']
+        if len(non_command_healthchecks) > 0 and len(task.health_check_results) == 0:
             continue
 
         # if there are health check results, check if at least one healthcheck is passing

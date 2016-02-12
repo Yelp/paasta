@@ -96,7 +96,7 @@ def when_there_are_num_which_tasks(context, num, which, state):
                 return
         time.sleep(0.5)
     raise Exception("timed out waiting for %d %s tasks on %s; there are %d" %
-                    (context.max_tasks, state, app_id, app.tasks))
+                    (context.max_tasks, state, app_id, len(app.tasks)))
 
 
 @when(u'deploy_service with bounce strategy "{bounce_method}" and drain method "{drain_method}" is initiated')
