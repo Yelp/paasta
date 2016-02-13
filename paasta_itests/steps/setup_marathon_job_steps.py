@@ -17,6 +17,7 @@ import time
 import mock
 from behave import then
 from behave import when
+from marathon.exceptions import MarathonHttpError
 
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
@@ -83,7 +84,6 @@ def create_complete_app(context):
     ):
         mock_create_complete_config.return_value = fake_service_config
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
-        print marathon_tools.load_marathon_config()
         return_tuple = setup_marathon_job.setup_service(
             service=fake_service_name,
             instance=fake_instance_name,
@@ -96,6 +96,12 @@ def create_complete_app(context):
         assert 'deployed' in return_tuple[1]
 
 
+@when(u'we create a complete app with {number} instance(s)')
+def create_complete_app_with_instances(context, number):
+    change_number_of_context_instances(context, number)
+    create_complete_app(context)
+
+
 @when(u'we change the number of instances to {number}')
 def change_number_of_context_instances(context, number):
     fake_service_config['instances'] = int(number)
@@ -103,7 +109,12 @@ def change_number_of_context_instances(context, number):
 
 @when(u'we run setup_marathon_job until the instance count is {number}')
 def run_setup_marathon_job(context, number):
-    while context.marathon_client.get_app(fake_appid).instances != int(number):
+    app_instances = -1
+    while app_instances != int(number):
+        try:
+            app_instances = context.marathon_client.get_app(fake_appid).instances
+        except MarathonHttpError:
+            pass
         create_complete_app(context)
         time.sleep(1)
 

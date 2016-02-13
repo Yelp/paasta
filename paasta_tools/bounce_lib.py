@@ -363,7 +363,6 @@ def crossover_bounce(
         for app, tasks in old_app_live_unhappy_tasks.items():
             for task in tasks:
                 old_tasks.append(task)
-
         return {
             "create_app": False,
             "tasks_to_drain": set(set(old_tasks[needed_count:])),
