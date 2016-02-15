@@ -275,9 +275,6 @@ def test_failing_chronos_job_validate(
     fake_cluster = 'penguin'
 
     mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_job_name.return_value = fake_instance
-    mock_chronos_job.get_cluster.return_value = fake_cluster
-    mock_chronos_job.get_instance.return_value = fake_instance
     mock_chronos_job.get_parents.return_value = None
     mock_chronos_job.validate.return_value = (False, ['something is wrong with the config'])
 
@@ -294,38 +291,75 @@ def test_failing_chronos_job_validate(
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
 
+@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster')
 @patch('paasta_tools.cli.cmds.validate.list_clusters')
 @patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
 @patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
 @patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
 @patch('sys.stdout', new_callable=StringIO)
-def test_failing_chronos_job_validate_missing_parents(
+def test_failing_chronos_job_self_dependent(
     mock_stdout,
     mock_path_to_soa_dir_service,
     mock_load_chronos_job_config,
     mock_list_all_instances_for_service,
-    mock_list_clusters
+    mock_list_clusters,
+    mock_get_services_for_cluster
 ):
+    fake_service = 'fake-service'
     fake_instance = 'fake-instance'
     fake_cluster = 'penguin'
 
     mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_job_name.return_value = fake_instance
-    mock_chronos_job.get_cluster.return_value = fake_cluster
-    mock_chronos_job.get_instance.return_value = fake_instance
-    mock_chronos_job.get_parents.return_value = ['parent_1']
+    mock_chronos_job.get_parents.return_value = [fake_service + '.' + fake_instance]
     mock_chronos_job.validate.return_value = (True, [])
 
-    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', 'fake_service')
+    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', fake_service)
     mock_list_clusters.return_value = [fake_cluster]
     mock_list_all_instances_for_service.return_value = [fake_instance]
+    mock_get_services_for_cluster.return_value = [(fake_service, fake_instance)]
     mock_load_chronos_job_config.return_value = mock_chronos_job
 
     assert not validate_chronos('fake_service_path')
 
     output = mock_stdout.getvalue()
 
-    expected_output = 'Parent job parent_1 could not be found'
+    expected_output = 'Job fake-service.fake-instance can not depend on itself'
+    assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
+
+
+@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster')
+@patch('paasta_tools.cli.cmds.validate.list_clusters')
+@patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
+@patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
+@patch('sys.stdout', new_callable=StringIO)
+def test_failing_chronos_job_missing_parent(
+    mock_stdout,
+    mock_path_to_soa_dir_service,
+    mock_load_chronos_job_config,
+    mock_list_all_instances_for_service,
+    mock_list_clusters,
+    mock_get_services_for_cluster
+):
+    fake_service = 'fake-service'
+    fake_instance = 'fake-instance'
+    fake_cluster = 'penguin'
+
+    mock_chronos_job = mock.Mock(autospec=True)
+    mock_chronos_job.get_parents.return_value = [fake_service + '.' + 'parent-1']
+    mock_chronos_job.validate.return_value = (True, [])
+
+    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', fake_service)
+    mock_list_clusters.return_value = [fake_cluster]
+    mock_list_all_instances_for_service.return_value = [fake_instance]
+    mock_get_services_for_cluster.return_value = [(fake_service, fake_instance)]
+    mock_load_chronos_job_config.return_value = mock_chronos_job
+
+    assert not validate_chronos('fake_service_path')
+
+    output = mock_stdout.getvalue()
+
+    expected_output = 'Parent job fake-service.parent-1 could not be found'
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
 
@@ -345,9 +379,6 @@ def test_validate_chronos_valid_instance(
     fake_cluster = 'penguin'
 
     mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_job_name.return_value = fake_instance
-    mock_chronos_job.get_cluster.return_value = fake_cluster
-    mock_chronos_job.get_instance.return_value = fake_instance
     mock_chronos_job.get_parents.return_value = None
     mock_chronos_job.validate.return_value = (True, [])
 
