@@ -217,7 +217,7 @@ def validate_chronos(service_path):
                     continue
                 if service + '.' + instance == parent:
                     checks_passed = False
-                    check_msgs.append("Job %s can not depend on itself" % parent)
+                    check_msgs.append("Job %s cannot depend on itself" % parent)
                 elif parent not in valid_services:
                     checks_passed = False
                     check_msgs.append("Parent job %s could not be found" % parent)

@@ -323,7 +323,7 @@ def test_failing_chronos_job_self_dependent(
 
     output = mock_stdout.getvalue()
 
-    expected_output = 'Job fake-service.fake-instance can not depend on itself'
+    expected_output = 'Job fake-service.fake-instance cannot depend on itself'
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
 
