@@ -592,6 +592,25 @@ def test_get_healthy_marathon_instances_for_short_app_id_considers_new_tasks_not
     assert actual == 3
 
 
+def test_get_healthy_marathon_instances_for_short_app_id_considers_none_start_time_unhealthy():
+    fake_client = mock.Mock()
+
+    fake_task = mock.Mock()
+    fake_task.app_id = '/service.instance.foo.bar'
+    fake_task.started_at = None
+    mock_result = mock.Mock()
+    mock_result.alive = True
+    fake_task.health_check_results = [mock_result]
+
+    fakes = [fake_task]
+    fake_client.list_tasks.return_value = fakes
+    actual = check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id(
+        fake_client,
+        'service.instance',
+    )
+    assert actual == 0
+
+
 @mock.patch('paasta_tools.check_marathon_services_replication.send_event_if_under_replication')
 @mock.patch('paasta_tools.check_marathon_services_replication.get_healthy_marathon_instances_for_short_app_id')
 def test_check_healthy_marathon_tasks_for_service_instance(mock_healthy_instances,
