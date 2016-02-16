@@ -104,6 +104,31 @@ def get_instance_config_for_service(soa_dir, service):
             )
 
 
+def get_latest_deployment_tag(refs, deploy_group):
+    """Gets the latest deployment tag and sha for the specified deploy_group
+
+    :param refs: A dictionary mapping git refs to shas
+    :param deploy_group: The deployment group to return a deploy tag for
+
+    :returns: A tuple of the form (ref, sha) where ref is the actual deployment
+              tag (with the most recent timestamp)  and sha is the sha it points at
+    """
+    most_recent_dtime = None
+    most_recent_ref = None
+    most_recent_sha = None
+    pattern = re.compile("^refs/tags/paasta-%s-(\d{8}T\d{6})-deploy$" % deploy_group)
+
+    for ref_name, sha in refs.iteritems():
+        match = pattern.match(ref_name)
+        if match:
+            dtime = match.groups()[0]
+            if dtime > most_recent_dtime:
+                most_recent_dtime = dtime
+                most_recent_ref = ref_name
+                most_recent_sha = sha
+    return most_recent_ref, most_recent_sha
+
+
 def get_deploy_group_mappings(soa_dir, service, old_mappings):
     """Gets mappings from service:deploy_group to services-service:paasta-hash,
     where hash is the current SHA at the HEAD of branch_name.
@@ -139,7 +164,7 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
     remote_refs = remote_git.list_remote_refs(git_url)
 
     for control_branch, deploy_group in deploy_group_branch_mappings.items():
-        deploy_ref_name = 'refs/heads/paasta-%s' % deploy_group
+        (deploy_ref_name, _) = get_latest_deployment_tag(remote_refs, deploy_group)
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
             control_branch_alias = '%s:paasta-%s' % (service, control_branch)
@@ -183,7 +208,7 @@ def get_desired_state(branch, remote_refs, deploy_group):
     tag_pattern = r'^refs/tags/(?:paasta-){1,2}%s-(?P<force_bounce>[^-]+)-(?P<state>(start|stop))$' % branch
 
     states = []
-    head_sha = remote_refs['refs/heads/paasta-%s' % deploy_group]
+    (_, head_sha) = get_latest_deployment_tag(remote_refs, deploy_group)
 
     for ref_name, sha in remote_refs.iteritems():
         if sha == head_sha:

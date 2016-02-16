@@ -76,10 +76,10 @@ def test_make_mutate_refs_func():
     )
 
     old_refs = {
-        'refs/heads/paasta-a': 'hash_for_a',
-        'refs/heads/paasta-b': 'hash_for_b',
-        'refs/heads/paasta-c': 'hash_for_c',
-        'refs/heads/paasta-d': 'hash_for_d',
+        'refs/tags/paasta-a-20160308T053933-deploy': 'hash_for_a',
+        'refs/tags/paasta-b-20160308T053933-deploy': 'hash_for_b',
+        'refs/tags/paasta-c-20160308T053933-deploy': 'hash_for_c',
+        'refs/tags/paasta-d-20160308T053933-deploy': 'hash_for_d',
     }
 
     expected = dict(old_refs)
