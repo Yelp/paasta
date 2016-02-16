@@ -73,6 +73,18 @@ class InstanceConfig(dict):
         self.cluster = cluster
         self.instance = instance
         self.service = service
+        config_interpolation_keys = ('deploy_group',)
+        interpolation_facts = self.__get_interpolation_facts()
+        for key in config_interpolation_keys:
+            if key in self.config_dict:
+                self.config_dict[key] = self.config_dict[key].format(**interpolation_facts)
+
+    def __get_interpolation_facts(self):
+        return {
+            'cluster': self.cluster,
+            'instance': self.instance,
+            'service': self.service,
+        }
 
     def get_cluster(self):
         return self.cluster
