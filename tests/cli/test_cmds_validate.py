@@ -259,6 +259,7 @@ def test_chronos_validate_schema_keys_outside_instance_blocks_bad(
     assert SCHEMA_INVALID in output
 
 
+@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster')
 @patch('paasta_tools.cli.cmds.validate.list_clusters')
 @patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
 @patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
@@ -269,8 +270,10 @@ def test_failing_chronos_job_validate(
     mock_path_to_soa_dir_service,
     mock_load_chronos_job_config,
     mock_list_all_instances_for_service,
-    mock_list_clusters
+    mock_list_clusters,
+    mock_get_services_for_cluster
 ):
+    fake_service = 'fake-service'
     fake_instance = 'fake-instance'
     fake_cluster = 'penguin'
 
@@ -278,9 +281,10 @@ def test_failing_chronos_job_validate(
     mock_chronos_job.get_parents.return_value = None
     mock_chronos_job.validate.return_value = (False, ['something is wrong with the config'])
 
-    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', 'fake_service')
+    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', fake_service)
     mock_list_clusters.return_value = [fake_cluster]
     mock_list_all_instances_for_service.return_value = [fake_instance]
+    mock_get_services_for_cluster.return_value = [(fake_service, fake_instance)]
     mock_load_chronos_job_config.return_value = mock_chronos_job
 
     assert not validate_chronos('fake_service_path')
@@ -363,6 +367,7 @@ def test_failing_chronos_job_missing_parent(
     assert invalid_chronos_instance(fake_cluster, fake_instance, expected_output) in output
 
 
+@patch('paasta_tools.cli.cmds.validate.get_services_for_cluster')
 @patch('paasta_tools.cli.cmds.validate.list_clusters')
 @patch('paasta_tools.cli.cmds.validate.list_all_instances_for_service')
 @patch('paasta_tools.cli.cmds.validate.load_chronos_job_config')
@@ -373,8 +378,10 @@ def test_validate_chronos_valid_instance(
     mock_path_to_soa_dir_service,
     mock_load_chronos_job_config,
     mock_list_all_instances_for_service,
-    mock_list_clusters
+    mock_list_clusters,
+    mock_get_services_for_cluster
 ):
+    fake_service = 'fake-service'
     fake_instance = 'fake-instance'
     fake_cluster = 'penguin'
 
@@ -382,9 +389,10 @@ def test_validate_chronos_valid_instance(
     mock_chronos_job.get_parents.return_value = None
     mock_chronos_job.validate.return_value = (True, [])
 
-    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', 'fake_service')
+    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', fake_service)
     mock_list_clusters.return_value = [fake_cluster]
     mock_list_all_instances_for_service.return_value = [fake_instance]
+    mock_get_services_for_cluster.return_value = [(fake_service, fake_instance)]
     mock_load_chronos_job_config.return_value = mock_chronos_job
 
     assert validate_chronos('fake_service_path')
