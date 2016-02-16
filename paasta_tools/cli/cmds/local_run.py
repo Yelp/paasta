@@ -71,7 +71,7 @@ def pick_random_port():
     """
     s = socket.socket()
     s.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-    s.bind(('127.0.0.1', 0))
+    s.bind(('0.0.0.0', 0))
     s.listen(0)
 
     sockname = s.getsockname()
