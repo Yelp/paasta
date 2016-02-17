@@ -86,12 +86,15 @@ def send_event(service, instance, soa_dir, status, output):
     :param output: The output to emit for this event
     """
     cluster = load_system_paasta_config().get_cluster()
-    monitoring_overrides = chronos_tools.load_chronos_job_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        soa_dir=soa_dir,
-    ).get_monitoring()
+    try:
+        monitoring_overrides = chronos_tools.load_chronos_job_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        ).get_monitoring()
+    except chronos_tools.UnknownChronosJobError:
+        monitoring_overrides = {}
     # In order to let sensu know how often to expect this check to fire,
     # we need to set the ``check_every`` to the frequency of our cron job, which
     # is 10s.
@@ -187,7 +190,7 @@ def main():
             args.service_instance, cluster)
         send_event(
             service=service,
-            instance=None,
+            instance=instance,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
             output=error_msg,
