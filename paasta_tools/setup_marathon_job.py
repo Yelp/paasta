@@ -413,7 +413,7 @@ def deploy_service(
         if new_app.instances < config['instances']:
             client.scale_app(app_id=new_app.id, instances=config['instances'], force=True)
         elif new_app.instances > config['instances']:
-            num_tasks_to_scale = len(new_app.tasks) - config['instances']
+            num_tasks_to_scale = max(len(new_app.tasks) - config['instances'], 0)
             task_dict = get_old_happy_unhappy_draining_tasks_for_app(
                 new_app,
                 drain_method,
@@ -424,14 +424,17 @@ def deploy_service(
             scaling_app_happy_tasks = list(task_dict['happy'])
             scaling_app_unhappy_tasks = list(task_dict['unhappy'])
             scaling_app_draining_tasks = list(task_dict['draining'])
-            tasks_to_move_draining = max(min(len(scaling_app_draining_tasks), num_tasks_to_scale), 0)
-            num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_draining
-            tasks_to_move_unhappy = max(min(len(scaling_app_unhappy_tasks), num_tasks_to_scale), 0)
-            num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_unhappy
-            tasks_to_move_happy = max(min(len(scaling_app_happy_tasks), num_tasks_to_scale), 0)
-            protected_draining_tasks.update(scaling_app_draining_tasks[:tasks_to_move_draining])
+
+            tasks_to_move_draining = min(len(scaling_app_draining_tasks), num_tasks_to_scale)
             old_app_draining_tasks[new_app.id] = set(scaling_app_draining_tasks[:tasks_to_move_draining])
+            protected_draining_tasks.update(scaling_app_draining_tasks[:tasks_to_move_draining])
+            num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_draining
+
+            tasks_to_move_unhappy = min(len(scaling_app_unhappy_tasks), num_tasks_to_scale)
             old_app_live_unhappy_tasks[new_app.id] = set(scaling_app_unhappy_tasks[:tasks_to_move_unhappy])
+            num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_unhappy
+
+            tasks_to_move_happy = min(len(scaling_app_happy_tasks), num_tasks_to_scale)
             old_app_live_happy_tasks[new_app.id] = set(scaling_app_happy_tasks[:tasks_to_move_happy])
             happy_new_tasks = scaling_app_happy_tasks[tasks_to_move_happy:]
         # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
