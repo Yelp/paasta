@@ -85,7 +85,7 @@ Existing service
 
 #. Regenerate your jenkins workflow one last time by running ``paasta generate-pipeline``
 
-Alternatively to a jenkins pipeline, you can use ``paasta mark-for-deployment`` with the ``--deploy_group`` flag to manually mark each of your deploy groups.
+Alternatively to a jenkins pipeline, you can use ``paasta mark-for-deployment`` with the ``--deploy-group`` flag to manually mark each of your deploy groups.
 
 What if I don’t want to use deploy groups on my existing service?
 -----------------------------------------------------------------
