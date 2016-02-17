@@ -776,6 +776,36 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_disk() == 1024
 
+    def test_deploy_group_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='fake_instance',
+            cluster='fake_cluster',
+            config_dict={},
+            branch_dict={},
+        )
+        assert fake_conf.get_deploy_group() == 'fake_cluster.fake_instance'
+
+    def test_deploy_group_if_config(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={'deploy_group': 'fake_deploy_group'},
+            branch_dict={},
+        )
+        assert fake_conf.get_deploy_group() == 'fake_deploy_group'
+
+    def test_deploy_group_string_interpolation(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='fake_cluster',
+            config_dict={'deploy_group': 'cluster_is_{cluster}'},
+            branch_dict={},
+        )
+        assert fake_conf.get_deploy_group() == 'cluster_is_fake_cluster'
+
     def test_get_cmd_default(self):
         fake_conf = utils.InstanceConfig(
             service='',
