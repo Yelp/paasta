@@ -258,7 +258,7 @@ def assert_extra_attribute_data(mesos_state):
                         attribute_location,
                         '%.2f' % resources_remaining['cpus'],
                         '%.2f' % resources_remaining['mem'],
-                        '%.2f' % resources_remaining['free_resources']['disk'],
+                        '%.2f' % resources_remaining['disk'],
                     ))
         if len(rows) == 0:
             result = ("  No slave attributes that apply to more than one slave were detected.", True)
