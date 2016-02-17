@@ -78,11 +78,11 @@ class TestGetPaastaConfig:
             yield mock_get_monitoring_stanza
 
     @yield_fixture
-    def mock_get_deploy_stanza(self):
+    def mock_get_paasta_config(self):
         with (
-            mock.patch("paasta_tools.cli.cmds.fsm.get_deploy_stanza", autospec=True)
-        ) as mock_get_deploy_stanza:
-            yield mock_get_deploy_stanza
+            mock.patch("paasta_tools.cli.cmds.fsm.load_system_paasta_config", autospec=True)
+        ) as mock_get_paasta_config:
+            yield mock_get_paasta_config
 
     def test_everything_specified(
         self,
@@ -91,7 +91,7 @@ class TestGetPaastaConfig:
         mock_get_smartstack_stanza,
         mock_get_marathon_stanza,
         mock_get_monitoring_stanza,
-        mock_get_deploy_stanza
+        mock_get_paasta_config,
     ):
         """A sort of happy path test because we don't care about the logic in
         the individual get_* methods, just that all of them get called as
@@ -111,7 +111,7 @@ class TestGetPaastaConfig:
         mock_get_smartstack_stanza.assert_called_once_with(yelpsoa_config_root, auto, port)
         mock_get_marathon_stanza.assert_called_once_with()
         mock_get_monitoring_stanza.assert_called_once_with(auto, team)
-        mock_get_deploy_stanza.assert_called_once_with()
+        mock_get_paasta_config.assert_called_once_with()
 
 
 class TestWritePaastaConfig:
@@ -132,6 +132,9 @@ class TestWritePaastaConfig:
                     'norcal-devc': 'DEV',
                     'norcal-prod': 'PROD',
                     'nova-prod': 'PROD'
+                },
+                'fsm_deploy_pipeline': {
+                    'otto': 'dude',
                 },
             },
             directory='/fake/dir',
@@ -154,7 +157,7 @@ class TestWritePaastaConfig:
             service_stanza,
             smartstack_stanza,
             monitoring_stanza,
-            deploy_stanza,
+            test_paasta_config.get_fsm_deploy_pipeline(),
             marathon_stanza,
             test_paasta_config.get_fsm_cluster_map(),
         )

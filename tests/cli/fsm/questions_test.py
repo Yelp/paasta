@@ -198,34 +198,6 @@ class TestGetMonitoringStanzaTestCase(TestQuestions):
         assert ("team", mock_ask.return_value) in actual.items()
 
 
-class TestGetDeployStanzaTestCase(TestQuestions):
-    def test(self, mock_ask):
-        actual = fsm.get_deploy_stanza()
-        assert "pipeline" in actual.keys()
-        actual["pipeline"] = actual["pipeline"]
-
-        for expected_entry in (
-            {"instancename": "itest"},
-            {"instancename": "security-check"},
-            {"instancename": "performance-check"},
-            {
-                "instancename": "dev.everything",
-            },
-            {
-                "instancename": "stage.everything",
-                "trigger_next_step_manually": True,
-            },
-            {
-                "instancename": "prod.canary",
-                "trigger_next_step_manually": True,
-            },
-            {
-                "instancename": "prod.non_canary",
-            },
-        ):
-            assert expected_entry in actual["pipeline"]
-
-
 class TestGetMarathonStanzaTestCase(TestQuestions):
     def test(self, mock_ask):
         for _, stanza in fsm.get_marathon_stanza():

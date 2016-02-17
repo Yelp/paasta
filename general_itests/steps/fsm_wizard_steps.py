@@ -76,6 +76,34 @@ def step_impl_when_fsm_auto(context):
                     'norcal-prod': 'PROD',
                     'nova-prod': 'PROD'
                 },
+                'fsm_deploy_pipeline': [
+                    {
+                        "instancename": "itest",
+                    },
+                    {
+                        "instancename": "security-check",
+                    },
+                    {
+                        "instancename": "push-to-registry",
+                    },
+                    {
+                        "instancename": "performance-check",
+                    },
+                    {
+                        "instancename": "stage.everything",
+                        "trigger_next_step_manually": True,
+                    },
+                    {
+                        "instancename": "prod.canary",
+                        "trigger_next_step_manually": True,
+                    },
+                    {
+                        "instancename": "prod.non_canary",
+                    },
+                    {
+                        "instancename": "dev.everything",
+                    },
+                ],
             },
             directory=context.fake_yelpsoa_configs,
         )
