@@ -18,6 +18,7 @@ import mock
 from mock import patch
 from pytest import raises
 
+import paasta_tools.chronos_tools
 from paasta_tools.cli.cmds.validate import check_service_path
 from paasta_tools.cli.cmds.validate import get_schema
 from paasta_tools.cli.cmds.validate import get_service_path
@@ -312,9 +313,10 @@ def test_failing_chronos_job_self_dependent(
     fake_service = 'fake-service'
     fake_instance = 'fake-instance'
     fake_cluster = 'penguin'
+    chronos_spacer = paasta_tools.chronos_tools.INTERNAL_SPACER
 
     mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_parents.return_value = [fake_service + '.' + fake_instance]
+    mock_chronos_job.get_parents.return_value = ["%s%s%s" % (fake_service, chronos_spacer, fake_instance)]
     mock_chronos_job.validate.return_value = (True, [])
 
     mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', fake_service)
@@ -348,9 +350,10 @@ def test_failing_chronos_job_missing_parent(
     fake_service = 'fake-service'
     fake_instance = 'fake-instance'
     fake_cluster = 'penguin'
+    chronos_spacer = paasta_tools.chronos_tools.INTERNAL_SPACER
 
     mock_chronos_job = mock.Mock(autospec=True)
-    mock_chronos_job.get_parents.return_value = [fake_service + '.' + 'parent-1']
+    mock_chronos_job.get_parents.return_value = ["%s%s%s" % (fake_service, chronos_spacer, 'parent-1')]
     mock_chronos_job.validate.return_value = (True, [])
 
     mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', fake_service)
