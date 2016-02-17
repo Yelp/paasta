@@ -172,6 +172,7 @@ def get_healthy_marathon_instances_for_short_app_id(client, app_id):
     healthy_tasks = []
     for task in tasks_for_app:
         if all([health_check_result.alive for health_check_result in task.health_check_results]) \
+                and task.started_at is not None \
                 and datetime_from_utc_to_local(task.started_at) < one_minute_ago:
             healthy_tasks.append(task)
     return len(healthy_tasks)
