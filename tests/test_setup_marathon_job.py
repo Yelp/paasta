@@ -296,6 +296,7 @@ class TestSetupMarathonJob:
                 fake_instance,
                 load_system_paasta_config_patch.return_value.get_cluster.return_value,
                 load_deployments=False,
+                soa_dir=fake_soa_dir,
             )
 
     def test_send_bounce_keepalive(self):
@@ -332,6 +333,7 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 cluster=fake_cluster,
                 load_deployments=False,
+                soa_dir=fake_soa_dir,
             )
 
     def test_do_bounce_when_create_app_and_new_app_not_running(self):
@@ -935,6 +937,7 @@ class TestSetupMarathonJob:
                 fake_name,
                 fake_instance,
                 self.fake_marathon_config,
+                None,
             )
             assert deploy_service_patch.call_count == 1
 
@@ -1015,7 +1018,8 @@ class TestSetupMarathonJob:
             create_config_patch.assert_called_once_with(
                 fake_name,
                 fake_instance,
-                self.fake_marathon_config
+                self.fake_marathon_config,
+                None,
             )
             get_bounce_patch.assert_called_once_with()
             get_drain_method_patch.assert_called_once_with(read_namespace_conf_patch.return_value)

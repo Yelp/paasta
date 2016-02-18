@@ -99,6 +99,7 @@ def send_event(name, instance, soa_dir, status, output):
         name,
         instance,
         cluster,
+        soa_dir=soa_dir,
         load_deployments=False,
     ).get_monitoring()
     # In order to let sensu know how often to expect this check to fire,
@@ -126,6 +127,7 @@ def send_sensu_bounce_keepalive(service, instance, cluster, soa_dir):
         service=service,
         instance=instance,
         cluster=cluster,
+        soa_dir=soa_dir,
         load_deployments=False,
     ).get_monitoring()
     # Sensu currently emits events for expired ttl checks every 30s
@@ -507,7 +509,7 @@ def setup_service(service, instance, client, marathon_config,
 
     log.info("Setting up instance %s for service %s", instance, service)
     try:
-        complete_config = marathon_tools.create_complete_config(service, instance, marathon_config)
+        complete_config = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir)
     except NoDockerImageError:
         error_msg = (
             "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"
