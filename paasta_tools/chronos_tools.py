@@ -415,7 +415,7 @@ class ChronosJobConfig(InstanceConfig):
         # Use InstanceConfig to validate shared config keys like cpus and mem
         error_msgs.extend(super(ChronosJobConfig, self).validate())
 
-        for param in ['epsilon', 'retries', 'cpus', 'mem', 'disk', 'schedule', 'scheduleTimeZone']:
+        for param in ['epsilon', 'retries', 'cpus', 'mem', 'disk', 'schedule', 'scheduleTimeZone', 'parents']:
             check_passed, check_msg = self.check(param)
             if not check_passed:
                 error_msgs.append(check_msg)

@@ -23,6 +23,8 @@ from jsonschema import Draft4Validator
 from jsonschema import FormatChecker
 from jsonschema import ValidationError
 
+import paasta_tools.chronos_tools
+from paasta_tools.chronos_tools import check_parent_format
 from paasta_tools.chronos_tools import load_chronos_job_config
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
@@ -30,6 +32,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaColors
 from paasta_tools.cli.utils import success
+from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import list_clusters
 
@@ -198,14 +201,28 @@ def validate_chronos(service_path):
     """Check that any chronos configurations are valid"""
     soa_dir, service = path_to_soa_dir_service(service_path)
     instance_type = 'chronos'
+    chronos_spacer = paasta_tools.chronos_tools.INTERNAL_SPACER
 
     returncode = True
     for cluster in list_clusters(service, soa_dir, instance_type):
+        services_in_cluster = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
+        valid_services = set(["%s%s%s" % (name, chronos_spacer, instance) for name, instance in services_in_cluster])
         for instance in list_all_instances_for_service(
                 service=service, clusters=[cluster], instance_type=instance_type,
                 soa_dir=soa_dir):
             cjc = load_chronos_job_config(service, instance, cluster, False, soa_dir)
+            parents = cjc.get_parents() or []
             checks_passed, check_msgs = cjc.validate()
+
+            for parent in parents:
+                if not check_parent_format(parent):
+                    continue
+                if "%s%s%s" % (service, chronos_spacer, instance) == parent:
+                    checks_passed = False
+                    check_msgs.append("Job %s cannot depend on itself" % parent)
+                elif parent not in valid_services:
+                    checks_passed = False
+                    check_msgs.append("Parent job %s could not be found" % parent)
 
             # Remove duplicate check_msgs
             unique_check_msgs = list(set(check_msgs))
