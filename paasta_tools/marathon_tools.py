@@ -879,7 +879,7 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_o
 
 def create_complete_config(service, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     """Generates a complete dictionary to be POST'ed to create an app on Marathon"""
-    CONFIG_HASH_BLACKLIST = ['instances']
+    CONFIG_HASH_BLACKLIST = set(['instances'])
 
     system_paasta_config = load_system_paasta_config()
     partial_id = format_job_id(service=service, instance=instance)
