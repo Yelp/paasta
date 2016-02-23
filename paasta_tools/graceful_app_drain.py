@@ -9,7 +9,7 @@ from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools.setup_marathon_job import do_bounce
-from paasta_tools.setup_marathon_job import get_old_live_draining_tasks
+from paasta_tools.setup_marathon_job import get_old_happy_unhappy_draining_tasks
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
@@ -72,14 +72,24 @@ def main():
 
     while marathon_tools.is_app_id_running(app_id=full_appid, client=client):
         app_to_kill = client.get_app(full_appid)
-        old_app_live_tasks, old_app_draining_tasks = get_old_live_draining_tasks([app_to_kill], drain_method)
+        (old_app_live_happy_tasks,
+         old_app_live_unhappy_tasks,
+         old_app_draining_tasks,
+         ) = get_old_happy_unhappy_draining_tasks(
+             other_apps=[app_to_kill],
+             drain_method=drain_method,
+             service=service,
+             nerve_ns=nerve_ns,
+             bounce_health_params=service_instance_config.get_bounce_health_params(service_namespace_config),
+        )
         do_bounce(
             bounce_func=bounce_func,
             drain_method=drain_method,
             config=complete_config,
             new_app_running='',
             happy_new_tasks=[],
-            old_app_live_tasks=old_app_live_tasks,
+            old_app_live_happy_tasks=old_app_live_happy_tasks,
+            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
             old_app_draining_tasks=old_app_draining_tasks,
             serviceinstance="{0}.{1}".format(service, instance),
             bounce_method='down',

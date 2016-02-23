@@ -363,7 +363,6 @@ def crossover_bounce(
         for app, tasks in old_app_live_unhappy_tasks.items():
             for task in tasks:
                 old_tasks.append(task)
-
         return {
             "create_app": False,
             "tasks_to_drain": set(set(old_tasks[needed_count:])),
@@ -394,7 +393,8 @@ def down_bounce(
     new_config,
     new_app_running,
     happy_new_tasks,
-    old_app_live_tasks,
+    old_app_live_happy_tasks,
+    old_app_live_unhappy_tasks,
 ):
     """
     Stops old apps, doesn't start any new apps.
@@ -402,7 +402,7 @@ def down_bounce(
     """
     return {
         "create_app": False,
-        "tasks_to_drain": set(*old_app_live_tasks.values()),
+        "tasks_to_drain": flatten_tasks(old_app_live_happy_tasks) | flatten_tasks(old_app_live_unhappy_tasks),
     }
 
 # vim: tabstop=4 expandtab shiftwidth=4 softtabstop=4
