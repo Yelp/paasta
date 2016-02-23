@@ -19,7 +19,7 @@ RUN apt-key adv --keyserver keyserver.ubuntu.com --recv-keys 2F6464D3394993A1997
 
 RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
   python-dev debhelper python-yaml python-pytest pyflakes \
-  git help2man zsh dh-virtualenv=0.11-0~85~ubuntu14.04.1
+  git help2man zsh dh-virtualenv
 
 ENV HOME /work
 ENV PWD /work
