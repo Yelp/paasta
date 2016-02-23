@@ -1,11 +1,67 @@
 # Change Log
 
-## [Unreleased](https://github.com/Yelp/paasta/tree/HEAD)
+## [v0.17.1](https://github.com/Yelp/paasta/tree/v0.17.1) (2016-02-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.0...v0.17.1)
 
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.31...HEAD)
+**Closed issues:**
+
+- Rename `--deploy\_group` to `--deploy-group` [\#243](https://github.com/Yelp/paasta/issues/243)
+- we should validate that a given service.instance parent exists before trying to deploy [\#148](https://github.com/Yelp/paasta/issues/148)
+- add validation for chronos job parents [\#97](https://github.com/Yelp/paasta/issues/97)
 
 **Merged pull requests:**
 
+- Renamed --deploy\_group to --deploy-group [\#264](https://github.com/Yelp/paasta/pull/264) ([ameya-pandilwar](https://github.com/ameya-pandilwar))
+- made setup\_chronos\_jobs handle non-existant jobs [\#263](https://github.com/Yelp/paasta/pull/263) ([mjksmith](https://github.com/mjksmith))
+- added string interpolation to deploy groups [\#259](https://github.com/Yelp/paasta/pull/259) ([mjksmith](https://github.com/mjksmith))
+- validate dependent jobs' parents - issue 148 [\#245](https://github.com/Yelp/paasta/pull/245) ([giuliano108](https://github.com/giuliano108))
+- re-ordered default deploy order in fsm [\#242](https://github.com/Yelp/paasta/pull/242) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.17.0](https://github.com/Yelp/paasta/tree/v0.17.0) (2016-02-17)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.34...v0.17.0)
+
+**Closed issues:**
+
+- error in check\_marathon\_services\_replication when a task hasn't started [\#258](https://github.com/Yelp/paasta/issues/258)
+
+**Merged pull requests:**
+
+- marathon tasks with started\_at of None are now unhealthy [\#261](https://github.com/Yelp/paasta/pull/261) ([mjksmith](https://github.com/mjksmith))
+- No longer use paasta\_execute\_in\_container for command healthchecks. [\#260](https://github.com/Yelp/paasta/pull/260) ([solarkennedy](https://github.com/solarkennedy))
+- made metastatus catch when no dashboard in configured [\#253](https://github.com/Yelp/paasta/pull/253) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.16.34](https://github.com/Yelp/paasta/tree/v0.16.34) (2016-02-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.33...v0.16.34)
+
+**Merged pull requests:**
+
+- Update paasta check sensu\_check and smartstack\_check to pass soa\_dir [\#254](https://github.com/Yelp/paasta/pull/254) ([nhandler](https://github.com/nhandler))
+- Revert "Revert "Mark for deployment tags take2"" [\#252](https://github.com/Yelp/paasta/pull/252) ([nhandler](https://github.com/nhandler))
+
+## [v0.16.33](https://github.com/Yelp/paasta/tree/v0.16.33) (2016-02-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.32...v0.16.33)
+
+**Closed issues:**
+
+- Control tags besides start/stop are all interpreted as stop. [\#223](https://github.com/Yelp/paasta/issues/223)
+
+**Merged pull requests:**
+
+- Revert "Mark for deployment tags take2" [\#250](https://github.com/Yelp/paasta/pull/250) ([nhandler](https://github.com/nhandler))
+- Added experimental script to kill old marathon deployments [\#249](https://github.com/Yelp/paasta/pull/249) ([solarkennedy](https://github.com/solarkennedy))
+- made metastatus read from /etc/paasta to get dashboards [\#248](https://github.com/Yelp/paasta/pull/248) ([mjksmith](https://github.com/mjksmith))
+- fix typo in docs [\#247](https://github.com/Yelp/paasta/pull/247) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Fixed typo in docs/source/deploy\_groups.rst [\#246](https://github.com/Yelp/paasta/pull/246) ([drolando](https://github.com/drolando))
+- Use verbose flags instead of debug in paasta logs [\#244](https://github.com/Yelp/paasta/pull/244) ([solarkennedy](https://github.com/solarkennedy))
+- Added metastatus -vv [\#234](https://github.com/Yelp/paasta/pull/234) ([mjksmith](https://github.com/mjksmith))
+- Mark for deployment tags take2 [\#231](https://github.com/Yelp/paasta/pull/231) ([nhandler](https://github.com/nhandler))
+
+## [v0.16.32](https://github.com/Yelp/paasta/tree/v0.16.32) (2016-02-09)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.16.31...v0.16.32)
+
+**Merged pull requests:**
+
+- Add support for disk resource isolation [\#241](https://github.com/Yelp/paasta/pull/241) ([nhandler](https://github.com/nhandler))
 - removed unnecessary arg from generate\_deployments.get\_desired\_state [\#240](https://github.com/Yelp/paasta/pull/240) ([mjksmith](https://github.com/mjksmith))
 - reduced kill\_orphaned\_docker\_containers runtime [\#239](https://github.com/Yelp/paasta/pull/239) ([mjksmith](https://github.com/mjksmith))
 - made paasta metastatus display total cpu and mem on critical status [\#237](https://github.com/Yelp/paasta/pull/237) ([mjksmith](https://github.com/mjksmith))

@@ -4,8 +4,8 @@ Preparation: paasta_tools and yelpsoa-configs
 paasta_tools reads configuration about services from several YAML
 files in `soa-configs <soa_configs.html>`_:
 
-marathon-[clustername].yaml
----------------------------
+``marathon-[clustername].yaml``
+-------------------------------
 
 e.g. ``marathon-norcal-prod.yaml``, ``marathon-mesosstage.yaml``. The
 clustername is usually the same as the ``superregion`` in which the cluster
@@ -212,8 +212,8 @@ Notes:
     is specified. If both are specified, an exception is thrown with an
     explanation of the problem, and the program terminates.
 
-chronos-[clustername].yaml
---------------------------
+``chronos-[clustername].yaml``
+------------------------------
 
 The yaml where Chronos jobs are defined. Top-level keys are the job names.
 
@@ -316,8 +316,8 @@ Each job configuration MAY specify the following options:
 
 .. _doc: deploy_groups.html
 
-smartstack.yaml
----------------
+``smartstack.yaml``
+-------------------
 
 Configure service registration, discovery, and load balancing.
 
@@ -501,33 +501,34 @@ superregion you are changing::
     - advertise: [region, superregion]
     + advertise: [superregion]
 
-monitoring.yaml
----------------
+``monitoring.yaml``
+-------------------
 
 The yaml where monitoring for the service is defined.
 
-Defaults for a *team* can be set globally with the global Sensu configuration
-(distributed via Puppet). ``team`` is the only mandatory key, but overrides can
-be set for the entire service with ``monitoring.yaml``.
+Defaults for a *team* can be set globally with the global Sensu configuration.
+``team`` is the only mandatory key, but overrides can be set for the entire
+service with ``monitoring.yaml``.
 
 Additionally these settings can be overridden on a *per-instance* basis. For
 example a ``canary`` instance can be set with ``page: false`` and ``team:
 devs``, while the ``main`` instance can bet set to ``page: true`` and ``team:
 ops``, and the ``dailyadsjob`` instance can be set with ``ticket: true`` and
-``team: ads``.
+``team: ads``. See the Examples section for more examples.
 
 Here is a list of options that PaaSTA will pass through:
 
- * ``team``: Team that will be notified by Sensu
+ * ``team``: Team that will be notified by Sensu.
 
- * ``page``: Boolean to indicate if an instance should alert PagerDuty if it is failing.
+ * ``page``: Boolean to indicate if an instance should page if it is failing.
+   Defaults to **false**.
 
  * ``runbook``: An optional but *highly* recommended field. Try to use
-   shortlinks (y/rb-my-service) when possible as sometimes the runbook url
-   may need to be copied from a small screen.
+   shortlinks when possible as sometimes the runbook url may need to be
+   copied from a small screen.
 
  * ``tip``: An optional one-line version of the runbook to help with
-   common issues. For example: "Check to see if it is bing first!"
+   common issues. For example: "Check to see if it is Bing first!"
 
  * ``notification_email``: String representing an email address to send
    notifications to. This will default to the team email address if is is
@@ -536,6 +537,7 @@ Here is a list of options that PaaSTA will pass through:
  * ``irc_channels``: Array of irc_channels to post notifications to.
 
  * ``ticket``: Boolean to indicate if an alert should make a JIRA ticket.
+   Defaults to **false**.
 
  * ``project``: String naming the project where JIRA tickets will be created.
    Overrides the global default for the team.
@@ -545,8 +547,56 @@ Here is a list of options that PaaSTA will pass through:
    for the replication alert.
 
 
-service.yaml
-------------
+Monitoring Examples
+^^^^^^^^^^^^^^^^^^^
+
+An example of a service that only pages on a cluster called "prod"::
+
+    # monitoring.yaml
+    team: devs
+    page: false
+
+    # marathon-prod.yaml
+    main:
+      instances: 3
+      monitoring:
+         page: true
+
+A service that pages everywhere, but only makes a ticket for a chronos job::
+
+    # monitoring.yaml
+    team: backend
+    page: true
+
+    # chronos-prod.yaml
+    nightly_batch:
+      schedule: .....
+      monitoring:
+        page: false
+        ticket: true
+
+A marathon service that overrides options on different instances (canary)::
+
+    # monitoring.yaml
+    team: frontend
+    page: false
+
+    # marathon-prod.yaml
+    main:
+      instances: 20
+      monitoring:
+        team: ops
+        page: true
+    canary:
+      instances: 1
+      nerve_ns: main
+      monitoring:
+        page: false
+        ticket: true
+
+
+``service.yaml``
+----------------
 
 Various PaaSTA utilities look at the following keys from service.yaml
 
