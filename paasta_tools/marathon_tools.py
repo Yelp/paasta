@@ -879,6 +879,8 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_o
 
 def create_complete_config(service, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
     """Generates a complete dictionary to be POST'ed to create an app on Marathon"""
+    # A set of config attributes that don't get included in the hash of the config.
+    # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
     CONFIG_HASH_BLACKLIST = set(['instances'])
 
     system_paasta_config = load_system_paasta_config()
