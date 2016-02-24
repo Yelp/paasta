@@ -31,19 +31,22 @@ def tail_paasta_logs_let_threads_be_threads(context):
     context.components = ['deploy', 'monitoring']
     context.clusters = ['fake_cluster1', 'fake_cluster2']
     with contextlib.nested(
-        mock.patch('paasta_tools.cli.cmds.logs.determine_scribereader_envs', autospec=True),
-        mock.patch('paasta_tools.cli.cmds.logs.scribe_tail', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.determine_scribereader_envs', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.ScribeLogReader.scribe_tail', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.log', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.print_log', autospec=True),
+        mock.patch('paasta_tools.cli.cmds.logs.scribereader'),
     ) as (
         context.determine_scribereader_envs_patch,
         scribe_tail_patch,
         log_patch,
         context.print_log_patch,
+        mock_scribereader,
     ):
         context.determine_scribereader_envs_patch.return_value = ['env1', 'env2']
 
         def scribe_tail_side_effect(
+            self,
             scribe_env,
             stream_name,
             service,
@@ -63,13 +66,15 @@ def tail_paasta_logs_let_threads_be_threads(context):
             time.sleep(0.05)
         scribe_tail_patch.side_effect = scribe_tail_side_effect
 
-        logs.tail_paasta_logs(service, context.levels, context.components, context.clusters)
+        context.scribe_log_reader = logs.ScribeLogReader(cluster_map={'env1': 'env1', 'env2': 'env2'})
+        context.scribe_log_reader.tail_logs(service, context.levels, context.components, context.clusters)
 
 
 @then(u'one message is displayed from each scribe env')
 def step_impl(context):
     for cluster in context.clusters:
-        context.determine_scribereader_envs_patch.assert_any_call(context.components, cluster)
+        context.determine_scribereader_envs_patch.assert_any_call(context.scribe_log_reader, context.components,
+                                                                  cluster)
     # NOTE: Assertions about scribe_tail_patch break under multiprocessing.
     # We think this is because the patched scribe_tail's attributes
     # (call_count, call_args, etc.) don't get updated here in the main
