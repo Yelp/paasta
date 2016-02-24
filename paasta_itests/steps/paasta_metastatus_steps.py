@@ -88,13 +88,3 @@ def check_metastatus_return_code_no_flags(context, expected_return_code, expecte
         expected_return_code=expected_return_code,
         expected_output=expected_output,
     )
-
-
-@then(u'paasta_metastatus -vvv exits with return code "{expected_return_code}" and outputs the slave\'s hostname')
-def check_metastatus_contains_hostname(context, expected_return_code):
-    check_metastatus_return_code_with_flags(
-        context=context,
-        flags=' -vvv',
-        expected_return_code=expected_return_code,
-        expected_output='mesosslave.test_hostname',
-    )

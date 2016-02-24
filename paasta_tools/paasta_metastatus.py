@@ -230,43 +230,45 @@ def assert_quorum_size(state):
 
 
 def assert_extra_slave_data(mesos_state):
+    if not slaves_registered(mesos_state):
+        return ('  No mesos slaves registered on this cluster!', False)
     extra_slave_data = get_extra_mesos_slave_data(mesos_state)
-    if extra_slave_data:
-        rows = [('Hostname', 'CPU free', 'RAM free', 'Disk free')]
-        for slave in extra_slave_data:
-            rows.append((
-                slave['hostname'],
-                '%.2f' % slave['free_resources']['cpus'],
-                '%.2f' % slave['free_resources']['mem'],
-                '%.2f' % slave['free_resources']['disk'],
-            ))
-        result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
-    else:
-        result = ('  No mesos slaves registered on this cluster!', False)
+    rows = [('Hostname', 'CPU free', 'RAM free', 'Disk free')]
+    for slave in extra_slave_data:
+        rows.append((
+            slave['hostname'],
+            '%.2f' % slave['free_resources']['cpus'],
+            '%.2f' % slave['free_resources']['mem'],
+            '%.2f' % slave['free_resources']['disk'],
+        ))
+    result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     return result
 
 
 def assert_extra_attribute_data(mesos_state):
+    if not slaves_registered(mesos_state):
+        return ('  No mesos slaves registered on this cluster!', False)
     extra_attribute_data = list(get_extra_mesos_attribute_data(mesos_state))
     rows = []
-    if extra_attribute_data:
-        for attribute, resource_dict in extra_attribute_data:
-            if len(resource_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
-                rows.append((attribute.capitalize(), 'CPU free', 'RAM free', 'Disk free'))
-                for attribute_location, resources_remaining in resource_dict.items():
-                    rows.append((
-                        attribute_location,
-                        '%.2f' % resources_remaining['cpus'],
-                        '%.2f' % resources_remaining['mem'],
-                        '%.2f' % resources_remaining['disk'],
-                    ))
-        if len(rows) == 0:
-            result = ("  No slave attributes that apply to more than one slave were detected.", True)
-        else:
-            result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
+    for attribute, resource_dict in extra_attribute_data:
+        if len(resource_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
+            rows.append((attribute.capitalize(), 'CPU free', 'RAM free', 'Disk free'))
+            for attribute_location, resources_remaining in resource_dict.items():
+                rows.append((
+                    attribute_location,
+                    '%.2f' % resources_remaining['cpus'],
+                    '%.2f' % resources_remaining['mem'],
+                    '%.2f' % resources_remaining['disk'],
+                ))
+    if len(rows) == 0:
+        result = ("  No slave attributes that apply to more than one slave were detected.", True)
     else:
-        result = ("  No mesos slaves registered on this cluster!", False)
+        result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     return result
+
+
+def slaves_registered(mesos_state):
+    return 'slaves' in mesos_state and mesos_state['slaves']
 
 
 def get_mesos_status(mesos_state, verbosity):
