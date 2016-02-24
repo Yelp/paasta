@@ -252,12 +252,13 @@ def do_bounce(
 
     apps_to_kill = []
     for app in old_app_live_happy_tasks.keys():
-        live_happy_tasks = old_app_live_happy_tasks[app]
-        live_unhappy_tasks = old_app_live_unhappy_tasks[app]
-        draining_tasks = old_app_draining_tasks[app]
+        if app != marathon_jobid:
+            live_happy_tasks = old_app_live_happy_tasks[app]
+            live_unhappy_tasks = old_app_live_unhappy_tasks[app]
+            draining_tasks = old_app_draining_tasks[app]
 
-        if 0 == len((live_happy_tasks | live_unhappy_tasks | draining_tasks) - killed_tasks):
-            apps_to_kill.append(app)
+            if 0 == len((live_happy_tasks | live_unhappy_tasks | draining_tasks) - killed_tasks):
+                apps_to_kill.append(app)
 
     if apps_to_kill:
         log_bounce_action(
