@@ -252,7 +252,7 @@ def do_bounce(
 
     apps_to_kill = []
     for app in old_app_live_happy_tasks.keys():
-        if app != marathon_jobid:
+        if '/%s' % app != marathon_jobid:
             live_happy_tasks = old_app_live_happy_tasks[app]
             live_unhappy_tasks = old_app_live_unhappy_tasks[app]
             draining_tasks = old_app_draining_tasks[app]
