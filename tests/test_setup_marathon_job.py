@@ -549,16 +549,18 @@ class TestSetupMarathonJob:
         fake_bounce_method = 'fake_bounce_method'
         fake_drain_method = mock.Mock()
         fake_marathon_jobid = 'fake.marathon.jobid'
-        fake_client = mock.create_autospec(
-            marathon.MarathonClient
-        )
+        fake_client = mock.Mock(get_app=mock.Mock(return_value=mock.Mock(instances=0)))
         expected_new_task_count = fake_config["instances"] - len(fake_happy_new_tasks)
 
         with contextlib.nested(
             mock.patch('paasta_tools.setup_marathon_job._log', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.create_marathon_app', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.bounce_lib.kill_old_ids', autospec=True),
-        ) as (mock_log, mock_create_marathon_app, mock_kill_old_ids):
+        ) as (
+            mock_log,
+            mock_create_marathon_app,
+            mock_kill_old_ids,
+        ):
             setup_marathon_job.do_bounce(
                 bounce_func=fake_bounce_func,
                 drain_method=fake_drain_method,

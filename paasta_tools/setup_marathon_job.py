@@ -250,15 +250,10 @@ def do_bounce(
             log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
             marathon_tools.kill_task(client=client, app_id=task.app_id, task_id=task.id, scale=True)
 
-    apps_to_kill = []
-    for app in old_app_live_happy_tasks.keys():
-        live_happy_tasks = old_app_live_happy_tasks[app]
-        live_unhappy_tasks = old_app_live_unhappy_tasks[app]
-        draining_tasks = old_app_draining_tasks[app]
+    apps = set(old_app_live_happy_tasks.keys()) | set(old_app_live_unhappy_tasks.keys()) \
+        | set(old_app_draining_tasks.keys())
 
-        if 0 == len((live_happy_tasks | live_unhappy_tasks | draining_tasks) - killed_tasks):
-            apps_to_kill.append(app)
-
+    apps_to_kill = [app for app in apps if client.get_app(app).instances == 0]
     if apps_to_kill:
         log_bounce_action(
             line='%s bounce removing old unused apps with app_ids: %s' %
