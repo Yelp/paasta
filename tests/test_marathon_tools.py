@@ -1227,7 +1227,7 @@ class TestMarathonTools:
         assert actual == expected
         assert len(actual) == 14
 
-    def test_id_changes_when_force_bounce_or_desired_state_changes(self):
+    def test_id_changes_when_force_bounce(self):
         fake_name = 'fakeapp'
         fake_instance = 'fakeinstance'
         fake_url = 'dockervania_from_konami'
@@ -1308,7 +1308,7 @@ class TestMarathonTools:
             third_id = marathon_tools.create_complete_config(fake_name,
                                                              fake_instance,
                                                              self.fake_marathon_config)['id']
-            assert second_id != third_id
+            assert second_id == third_id
 
     def test_get_expected_instance_count_for_namespace(self):
         service = 'red'
