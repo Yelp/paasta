@@ -881,7 +881,7 @@ def create_complete_config(service, instance, marathon_config, soa_dir=DEFAULT_S
     """Generates a complete dictionary to be POST'ed to create an app on Marathon"""
     # A set of config attributes that don't get included in the hash of the config.
     # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
-    CONFIG_HASH_BLACKLIST = set(['instances'])
+    CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds'])
 
     system_paasta_config = load_system_paasta_config()
     partial_id = format_job_id(service=service, instance=instance)
