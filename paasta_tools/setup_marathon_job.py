@@ -416,7 +416,7 @@ def deploy_service(
         if new_app.instances < config['instances']:
             client.scale_app(app_id=new_app.id, instances=config['instances'], force=True)
         elif new_app.instances > config['instances']:
-            num_tasks_to_scale = max(min(len(new_app.tasks), new_app.instances) - config['instances'], 0)
+            num_tasks_to_scale = max(len(new_app.tasks) - config['instances'], 0)
             task_dict = get_old_happy_unhappy_draining_tasks_for_app(
                 new_app,
                 drain_method,
