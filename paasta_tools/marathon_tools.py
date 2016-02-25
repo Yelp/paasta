@@ -993,3 +993,11 @@ def kill_task(client, app_id, task_id, scale):
             return []
         else:
             raise
+
+
+def kill_given_tasks(client, task_ids, scale):
+    """Wrapper to the official kill_given_tasks method that is tolerant of errors"""
+    try:
+        return client.kill_given_tasks(task_ids=task_ids, scale=True)
+    except MarathonHttpError:
+        raise
