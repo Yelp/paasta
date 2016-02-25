@@ -40,7 +40,7 @@ setup(
         'docker-py == 1.2.3',
         'dulwich == 0.10.0',
         'humanize >= 0.5.1',
-        'httplib2 >= 0.9, httplib2 <= 1.0',
+        'httplib2>=0.9,<= 1.0',
         'isodate >= 0.5.0',
         'jsonschema',
         'kazoo >= 2.0.0',
