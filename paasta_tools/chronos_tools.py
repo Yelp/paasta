@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import csv
 import datetime
 import json
 import logging
@@ -593,6 +594,14 @@ def sort_jobs(jobs):
         key=get_key,
         reverse=True,
     )
+
+
+def get_chronos_status_for_job(client, service, instance):
+    resp = client._call("/scheduler/graph/csv", "GET")
+    lines = csv.reader(resp.splitlines())
+    for line in lines:
+        if line[0] == "node" and line[1] == compose_job_id(service, instance):
+            return line[3]
 
 
 def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=False):
