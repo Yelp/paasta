@@ -51,8 +51,6 @@ from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
 
-BAD_PORT_WARNING = 'This_service_is_listening_on_the_PORT_variable__You_must_use_8888__see_y/paasta_deploy'
-
 
 def pick_random_port():
     """Bind to an ephemeral port, force it into the TIME_WAIT state, and
@@ -374,10 +372,6 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     for k, v in env.iteritems():
         cmd.append('--env=\"%s=%s\"' % (k, v))
     cmd.append('--env=HOST=%s' % hostname)
-    # We inject an invalid port as the PORT variable, as marathon injects the externally
-    # assigned port like this. That allows this test run to catch services that might
-    # be using this variable in surprising ways. See PAASTA-267 for more context.
-    cmd.append('--env=PORT=%s' % BAD_PORT_WARNING)
     cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
     cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))

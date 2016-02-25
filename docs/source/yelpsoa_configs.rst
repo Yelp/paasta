@@ -100,14 +100,6 @@ instance MAY have:
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
 
-    * **WARNING**: A PORT variable is provided to the docker image, but it
-      represents the EXTERNAL port, not the internal one. The internal service
-      MUST listen on 8888, so this PORT variable confuses some service stacks
-      that are listening for this variable. Such services MUST overwrite this
-      environment variable to function. (``PORT=8888 ./uwsgi.py```) We tried
-      to work around this, see `PAASTA-267
-      <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
-
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available
     on the host into the running container. Common use cases might be to share

@@ -86,8 +86,6 @@ configuration for the running image:
   ``PAASTA_`` environment variables will also be injected, see the `related docs <yelpsoa_configs.html#marathon-clustername-yaml>`_
   for more information.
 
-  * **WARNING**: A PORT variable is provided to the docker image, but it represents the EXTERNAL port, not the internal one. The internal service MUST listen on 8888, so this PORT variable confuses some service stacks that are listening for this variable. Such services MUST overwrite this environment variable to function. (``PORT=8888 ./uwisgi.py```)
-
 * ``--publish``: Mesos picks a random port on the host that maps to and exposes
   port 8888 inside the container. This random port is announced to Smartstack
   so that it can be used for load balancing.
