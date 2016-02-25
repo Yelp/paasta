@@ -478,10 +478,8 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     complete_config['description'] = get_config_hash(complete_config)
 
     # If the job was previously stopped, we should stop the new job as well
-    # NOTE this clobbers the 'disabled' param specified in the config file!
-    if desired_state == 'start':
-        complete_config['disabled'] = False
-    elif desired_state == 'stop':
+    # NOTE: this clobbers the 'disabled' param specified in the config file!
+    if desired_state == 'stop':
         complete_config['disabled'] = True
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
