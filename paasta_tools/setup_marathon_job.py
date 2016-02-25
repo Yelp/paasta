@@ -243,14 +243,14 @@ def do_bounce(
         for task in tasks:
             all_draining_tasks.add(task)
 
-    killed_tasks = set()
+    tasks_to_kill = set()
 
     for task in all_draining_tasks:
         if drain_method.is_safe_to_kill(task):
-            killed_tasks.add(task)
+            tasks_to_kill.add(task)
             log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
 
-    client.kill_given_tasks(task_ids=[task.id for task in killed_tasks], scale=True)
+    client.kill_given_tasks(task_ids=[task.id for task in tasks_to_kill], scale=True)
 
     apps_to_kill = []
     for app in old_app_live_happy_tasks.keys():
@@ -259,7 +259,7 @@ def do_bounce(
             live_unhappy_tasks = old_app_live_unhappy_tasks[app]
             draining_tasks = old_app_draining_tasks[app]
 
-            if 0 == len((live_happy_tasks | live_unhappy_tasks | draining_tasks) - killed_tasks):
+            if 0 == len((live_happy_tasks | live_unhappy_tasks | draining_tasks) - tasks_to_kill):
                 apps_to_kill.append(app)
 
     if apps_to_kill:
@@ -278,9 +278,9 @@ def do_bounce(
 
     # log if we appear to be finished
     if all([
-        (apps_to_kill or killed_tasks),
+        (apps_to_kill or tasks_to_kill),
         apps_to_kill == old_app_live_happy_tasks.keys(),
-        killed_tasks == all_old_tasks,
+        tasks_to_kill == all_old_tasks,
     ]):
         log_bounce_action(
             line='%s bounce on %s finishing. Now running %s' %
