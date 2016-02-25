@@ -1151,7 +1151,7 @@ class TestSetupMarathonJob:
 
         fake_client = mock.MagicMock(
             list_apps=mock.Mock(return_value=[old_app]),
-            kill_task=mock.Mock(spec=lambda app_id, id, scale=False: None),
+            kill_given_tasks=mock.Mock(spec=lambda task_ids, scale=False: None),
         )
 
         fake_bounce_func = mock.create_autospec(
@@ -1214,9 +1214,9 @@ class TestSetupMarathonJob:
             fake_drain_method.drain.assert_any_call(old_task_is_draining)
             fake_drain_method.drain.assert_any_call(old_task_to_drain)
 
-            assert fake_client.kill_task.call_count == 2
-            fake_client.kill_task.assert_any_call(app_id=old_app_id, task_id=old_task_is_draining.id, scale=True)
-            fake_client.kill_task.assert_any_call(app_id=old_app_id, task_id=old_task_to_drain.id, scale=True)
+            assert fake_client.kill_given_tasks.call_count == 1
+            fake_client.kill_given_tasks.assert_any_call(
+                task_ids=[old_task_to_drain.id, old_task_is_draining.id], scale=True)
 
             create_marathon_app_patch.assert_called_once_with(fake_config['id'], fake_config, fake_client)
             assert kill_old_ids_patch.call_count == 0
