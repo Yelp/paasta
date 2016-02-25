@@ -1215,8 +1215,9 @@ class TestSetupMarathonJob:
             fake_drain_method.drain.assert_any_call(old_task_to_drain)
 
             assert fake_client.kill_given_tasks.call_count == 1
-            fake_client.kill_given_tasks.assert_any_call(
-                task_ids=[old_task_to_drain.id, old_task_is_draining.id], scale=True)
+            assert set([old_task_to_drain.id, old_task_is_draining.id]) == set(
+                fake_client.kill_given_tasks.call_args[1]['task_ids'])
+            assert fake_client.kill_given_tasks.call_args[1]['scale'] is True
 
             create_marathon_app_patch.assert_called_once_with(fake_config['id'], fake_config, fake_client)
             assert kill_old_ids_patch.call_count == 0
