@@ -82,6 +82,18 @@ instance MAY have:
     constraints instead of replacing them. See ``constraints`` for details on
     format and the default constraints.
 
+  * ``pool``: Changes the "pool" constrained automatically added to all PaaSTA
+    Marathon apps. The default pool is ``default``, which equates to::
+
+       ["pool", "LIKE", "default"]
+
+    This constraint is automatically appended to the list of constraints for
+    a service unless overridden with the ``constraints`` input.
+
+    Warning: In order for an service to be launched in a particular pool, there
+    *must* exist some Mesos slaves that already exist with that particular
+    pool attribute set.
+
   * ``cmd``: The command that is executed. Can be used as an alternative to
     args for containers without an `entrypoint
     <https://docs.docker.com/reference/builder/#entrypoint>`_. This value is
@@ -290,6 +302,8 @@ Each job configuration MAY specify the following options:
     Mesos attributes. See the `official documentation
     <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more
     information.
+
+  * ``pool``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``deploy_group``: Same as ``deploy_group`` for marathon-*.yaml.
 
