@@ -44,6 +44,7 @@ import argparse
 import logging
 import sys
 import traceback
+from collections import defaultdict
 
 import pysensu_yelp
 import service_configuration_lib
@@ -227,9 +228,9 @@ def do_bounce(
         )
         bounce_lib.create_marathon_app(marathon_jobid, config, client)
     if len(actions['tasks_to_drain']) > 0:
-        tasks_to_drain_by_app_id = {}
+        tasks_to_drain_by_app_id = defaultdict(set)
         for task in actions['tasks_to_drain']:
-            tasks_to_drain_by_app_id.setdefault(task.app_id, set()).add(task)
+            tasks_to_drain_by_app_id[task.app_id].add(task)
         for app_id, tasks in tasks_to_drain_by_app_id.items():
             log_bounce_action(
                 line='%s bounce draining %d old tasks with app_id %s' %
