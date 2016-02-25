@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.17.8-yelp1
+RELEASE=0.17.9-yelp1
 
 SHELL=/bin/bash
 
