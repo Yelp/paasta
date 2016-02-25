@@ -24,7 +24,7 @@ from paasta_tools.cli.utils import list_teams
 
 
 def _yamlize(contents):
-    return yaml.dump(contents, explicit_start=True, default_flow_style=False)
+    return yaml.safe_dump(contents, explicit_start=True, default_flow_style=False)
 
 
 def get_srvname(srvname, auto):
