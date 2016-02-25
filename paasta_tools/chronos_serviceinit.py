@@ -44,10 +44,14 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
     # manual runs of previously stopped jobs
     should_run_now = not complete_job_config["disabled"] or job_config.get_desired_state() == "stop"
     log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
-    log_immediate_run = " and running it immediately" if should_run_now else ""
+    if should_run_now:
+        log_immediate_run = "and running it immediately"
+    else:
+        log_immediate_run = PaastaColors.yellow("but will not run it immediately because the job is disabled")
+
     _log(
         service=service,
-        line="%s: Sending job %s to Chronos%s" % (log_reason, name, log_immediate_run),
+        line="%s: Sending job %s to Chronos %s" % (log_reason, name, log_immediate_run),
         component="deploy",
         level="event",
         cluster=cluster,

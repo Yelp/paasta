@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+from StringIO import StringIO
 
 import mock
 import pytest
@@ -43,7 +44,8 @@ def test_start_chronos_job():
                                               mock_client,
                                               cluster,
                                               job_soa_config,
-                                              job_config)
+                                              job_config,
+                                              emergency=True)
         assert job_config['schedule'] == old_schedule
         mock_client.update.assert_called_once_with(job_config)
         mock_client.run.assert_called_once_with(job_id)
@@ -70,7 +72,8 @@ def test_start_chronos_job_does_not_run_disabled_job():
                                               mock_client,
                                               cluster,
                                               job_soa_config,
-                                              job_config)
+                                              job_config,
+                                              emergency=True)
         assert job_config['schedule'] == old_schedule
         mock_client.update.assert_called_once_with(job_config)
         assert mock_client.run.call_count == 0
