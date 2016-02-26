@@ -75,6 +75,16 @@
                 },
                 "uniqueItems": true
             },
+            "extra_constraints": {
+                "type": "array",
+                "items": {
+                    "type": "array"
+                },
+                "uniqueItems": true
+            },
+            "pool": {
+                "type": "string"
+            },
             "cmd": {
                 "type": "string"
             },
