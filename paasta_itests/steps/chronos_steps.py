@@ -69,9 +69,10 @@ def list_chronos_jobs_has_job(context, should_or_not):
         assert context.chronos_job_name in job_names
 
 
-# NOTE this is a placeholder until we are able to get per-job task information from Chronos
 @then(u'the job stored as "{job_name}" {has_or_not} running tasks')
 def chronos_check_running_tasks(context, job_name, has_or_not):
+    # This uses an undocumented endpoint that should be replaced once it's possible
+    # to get more detailed per-job task information from Chronos
     job_id = context.jobs[job_name]['name']
     service, instance = chronos_tools.decompose_job_id(job_id)
     for _ in xrange(10):
