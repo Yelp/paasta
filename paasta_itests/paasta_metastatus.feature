@@ -52,8 +52,11 @@ Feature: paasta_metastatus describes the state of the paasta cluster
 #     When all masters are unavailable
 #     Then metastatus returns 2
 
-  Scenario:
+  Scenario: paasta metastatus verbose succeeds
     Given a working paasta cluster
      When we create a trivial marathon app
-     Then paasta_metastatus -vvv exits with return code "0" and outputs the slave's hostname
+     Then paasta_metastatus -v exits with return code "0" and output " "
+     Then paasta_metastatus -vv exits with return code "0" and output " "
+     Then paasta_metastatus -vvv exits with return code "0" and output "mesosslave.test_hostname"
+
 # vim: set ts=2 sw=2

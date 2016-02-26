@@ -439,6 +439,70 @@ def test_assert_extra_attribute_data_no_slaves():
     assert expected == actual.strip()
 
 
+def test_assert_extra_attribute_data_slaves_attributes():
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'id': 'test-slave',
+                'hostname': 'test.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                    'habitat': 'test-habitat',
+                },
+            },
+            {
+                'id': 'test-slave2',
+                'hostname': 'test2.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                    'habitat': 'test-habitat-2',
+                },
+            },
+        ],
+        'frameworks': [],
+    }
+    assert paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[1]
+
+
+def test_assert_extra_attribute_data_slaves_no_attributes():
+    fake_mesos_state = {
+        'slaves': [
+            {
+                'id': 'test-slave',
+                'hostname': 'test.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                },
+            },
+            {
+                'id': 'test-slave2',
+                'hostname': 'test2.somewhere.www',
+                'resources': {
+                    'cpus': 50,
+                    'disk': 200,
+                    'mem': 1000,
+                },
+                'attributes': {
+                },
+            },
+        ],
+        'frameworks': [],
+    }
+    assert paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[1]
+
+
 def test_status_for_results():
     assert paasta_metastatus.status_for_results([('message', True), ('message', False)]) == [True, False]
 
