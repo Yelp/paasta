@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import time
+
 from behave import then
 from behave import when
 
@@ -68,14 +70,20 @@ def list_chronos_jobs_has_job(context, should_or_not):
 
 
 # NOTE this is a placeholder until we are able to get per-job task information from Chronos
-@then(u"the {old_or_new_job} {has_or_not} running tasks")
-def chronos_check_running_tasks(context, old_or_new_job, has_or_not):
-    # job_id = context.old_chronos_job_name if old_or_new_job == 'old job' else context.chronos_job_name
-    # if has_or_not == "has no":
-    #     assert job_id has no running tasks
-    # else:  # has_or_not should be "has"
-    #     assert job_id has running tasks
-    assert True
+@then(u'the job stored as "{job_name}" {has_or_not} running tasks')
+def chronos_check_running_tasks(context, job_name, has_or_not):
+    job_id = context.jobs[job_name]['name']
+    service, instance = chronos_tools.decompose_job_id(job_id)
+    for _ in xrange(10):
+        status = chronos_tools.get_chronos_status_for_job(context.chronos_client, service, instance)
+        if has_or_not == "has no":
+            if status == "idle":
+                return
+        else:  # has_or_not should be "has"
+            if status == "running" or status == "queued":
+                return
+        time.sleep(1)
+    assert False
 
 
 @then(u'the field "{field}" for the job stored as "{job_name}" is set to "{value}"')

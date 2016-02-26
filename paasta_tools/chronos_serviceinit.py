@@ -39,10 +39,9 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
     name = PaastaColors.cyan(job_id)
     # The job should be run immediately as long as the job is not disabled via
     # the 'disabled' key in soa-configs. Since we clobber the 'disabled' key in
-    # order to prevent previously stopped jobs from running in setup_chronos_jobs
-    # we need to also check the job's desired state so that we can still trigger
-    # manual runs of previously stopped jobs
-    should_run_now = not complete_job_config["disabled"] or job_config.get_desired_state() == "stop"
+    # complete_job_config (that gets passed to Chronos), we need to look at the
+    # service's soa-config directly to check if it is disabled.
+    should_run_now = not job_config.get_disabled()
     log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
     if should_run_now:
         log_immediate_run = "and running it immediately"
@@ -81,9 +80,19 @@ def stop_chronos_job(service, instance, client, cluster, existing_jobs, emergenc
         client.delete_tasks(job["name"])
 
 
-def restart_chronos_job(service, instance, job_id, client, cluster, matching_jobs, job_config, emergency=False):
+def restart_chronos_job(
+    service,
+    instance,
+    job_id,
+    client,
+    cluster,
+    matching_jobs,
+    job_config,
+    complete_job_config,
+    emergency=False
+):
     stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency)
-    start_chronos_job(service, instance, job_id, client, cluster, job_config, emergency)
+    start_chronos_job(service, instance, job_id, client, cluster, job_config, complete_job_config, emergency)
 
 
 def get_short_task_id(task_id):
@@ -356,6 +365,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             client,
             cluster,
             matching_jobs,
+            job_config,
             complete_job_config,
             emergency=True,
         )

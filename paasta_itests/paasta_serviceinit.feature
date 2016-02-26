@@ -52,9 +52,11 @@ Feature: paasta_serviceinit
      Then we should get exit code 0
      When we store the name of the job for the service testservice and instance testinstance as myjob
       And we wait for the chronos job stored as "myjob" to appear in the job list
+          # Force job to be scheduled so that we can check that emergency-stop is in fact working
+      And we paasta_serviceinit emergency-start the service_instance "testservice.testinstance"
       And we paasta_serviceinit emergency-stop the service_instance "testservice.testinstance"
      Then the job stored as "myjob" is disabled in chronos
-      And the job has no running tasks
+      And the job stored as "myjob" has no running tasks
 
   Scenario: paasta_serviceinit can run emergency-start on an enabled chronos job
     Given a working paasta cluster
@@ -66,9 +68,9 @@ Feature: paasta_serviceinit
       And we wait for the chronos job stored as "myjob" to appear in the job list
       And we paasta_serviceinit emergency-start the service_instance "testservice.testinstance"
      Then the job stored as "myjob" is enabled in chronos
-      And the job has running tasks
+      And the job stored as "myjob" has running tasks
 
-  Scenario: paasta_serviceinit can run emergency-start on a disabled chronos job
+  Scenario: paasta_serviceinit cannot run emergency-start on a disabled chronos job
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
@@ -78,7 +80,7 @@ Feature: paasta_serviceinit
       And we wait for the chronos job stored as "myjob" to appear in the job list
       And we paasta_serviceinit emergency-start the service_instance "testservice.testinstance"
      Then the job stored as "myjob" is disabled in chronos
-      And the job has no running tasks
+      And the job stored as "myjob" has no running tasks
 
   Scenario: paasta_serviceinit can run emergency-start on a stopped chronos job
     Given a working paasta cluster
@@ -89,7 +91,7 @@ Feature: paasta_serviceinit
       And we wait for the chronos job stored as "myjob" to appear in the job list
       And we paasta_serviceinit emergency-start the service_instance "testservice.testinstance"
      Then the job stored as "myjob" is disabled in chronos
-      And the job has running tasks
+      And the job stored as "myjob" has running tasks
 
   Scenario: paasta_serviceinit can run emergency-restart on an enabled chronos job
     Given a working paasta cluster
@@ -99,13 +101,9 @@ Feature: paasta_serviceinit
      Then we should get exit code 0
      When we store the name of the job for the service testservice and instance testinstance as myjob
       And we wait for the chronos job stored as "myjob" to appear in the job list
-     When we set the "cmd" field of the chronos config for service "testservice" and instance "testinstance" to "sleep 60m"
-      And we paasta_serviceinit emergency-start the service_instance "testservice.testinstance"
-      And we store the name of the job for the service testservice and instance testinstance as mynewjob
+      And we paasta_serviceinit emergency-restart the service_instance "testservice.testinstance"
      Then the job stored as "myjob" is enabled in chronos
-      And the job stored as "mynewjob" is enabled in chronos
-      And the old job has no running tasks
-      And the new job has running tasks
+      And the job stored as "myjob" has running tasks
 
   Scenario: paasta_serviceinit can run emergency-stop on a marathon app
     Given a working paasta cluster

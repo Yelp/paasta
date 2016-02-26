@@ -597,6 +597,19 @@ def sort_jobs(jobs):
 
 
 def get_chronos_status_for_job(client, service, instance):
+    """
+    Returns the status (queued, idle, running, etc.) for a specific job from
+    the undocumented Chronos csv api that has the following format:
+
+    node,example_job,success,queued
+    node,parent_job,success,idle
+    node,child_job,success,idle
+    link,parent_job,child_job
+
+    :param client: Chronos client object
+    :param service: service name
+    :param instance: instance name
+    """
     resp = client._call("/scheduler/graph/csv", "GET")
     lines = csv.reader(resp.splitlines())
     for line in lines:
