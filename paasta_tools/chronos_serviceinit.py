@@ -39,8 +39,8 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
     name = PaastaColors.cyan(job_id)
     # The job should be run immediately as long as the job is not disabled via
     # the 'disabled' key in soa-configs. Since we clobber the 'disabled' key in
-    # complete_job_config (that gets passed to Chronos), we need to look at the
-    # service's soa-config directly to check if it is disabled.
+    # complete_job_config (the dict that gets passed to Chronos), we need to look
+    # at the service's soa-config directly to check if it is disabled.
     should_run_now = not job_config.get_disabled()
     log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
     if should_run_now:
