@@ -910,7 +910,7 @@ def create_complete_config(service, instance, marathon_config, soa_dir=DEFAULT_S
     instance_config = load_marathon_service_config(
         service=service,
         instance=instance,
-        cluster=load_system_paasta_config().get_cluster(),
+        cluster=system_paasta_config.get_cluster(),
         soa_dir=soa_dir,
     )
     docker_url = get_docker_url(system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
