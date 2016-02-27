@@ -12,7 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
-from pytest import raises
 
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 
@@ -49,10 +48,7 @@ def test_run_makefile_fail(
     args = mock.MagicMock()
     args.service = 'fake_service'
 
-    with raises(SystemExit) as excinfo:
-        paasta_cook_image(args)
-
-    assert excinfo.value.code == 1
+    assert paasta_cook_image(args) == 1
 
 
 class FakeKeyboardInterrupt(KeyboardInterrupt):
@@ -75,7 +71,4 @@ def test_run_keyboard_interrupt(
     args = mock.MagicMock()
     args.service = 'fake_service'
 
-    with raises(SystemExit) as excinfo:
-        paasta_cook_image(args)
-
-    assert excinfo.value.code == 2
+    assert paasta_cook_image(args) == 2

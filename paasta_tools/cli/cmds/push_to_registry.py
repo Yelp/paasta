@@ -15,8 +15,6 @@
 """Contains methods used by the paasta client to upload a docker
 image to a registry.
 """
-import sys
-
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
@@ -96,4 +94,4 @@ def paasta_push_to_registry(args):
             component='build',
             level='event',
         )
-    sys.exit(returncode)
+    return returncode

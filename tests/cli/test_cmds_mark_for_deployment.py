@@ -13,7 +13,6 @@
 # limitations under the License.
 from mock import ANY
 from mock import patch
-from pytest import raises
 
 from paasta_tools.cli.cmds import mark_for_deployment
 
@@ -32,17 +31,14 @@ def test_paasta_mark_for_deployment_acts_like_main(
     mock_validate_service_name,
 ):
     mock_mark_for_deployment.return_value = 42
-    with raises(SystemExit) as sys_exit:
-        mark_for_deployment.paasta_mark_for_deployment(fake_args)
+    assert mark_for_deployment.paasta_mark_for_deployment(fake_args) == 42
     mock_mark_for_deployment.assert_called_once_with(
         service='test_service',
         deploy_group='test_deploy_group',
         commit='fake-hash',
         git_url='git://false.repo/services/test_services',
     )
-
     assert mock_validate_service_name.called
-    assert sys_exit.value.code == 42
 
 
 @patch('paasta_tools.remote_git.create_remote_refs', autospec=True)

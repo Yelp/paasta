@@ -15,7 +15,6 @@
 """Contains methods used by the paasta client to generate a Jenkins build
 pipeline."""
 import re
-import sys
 
 from paasta_tools.cli.utils import guess_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -54,7 +53,7 @@ def paasta_generate_pipeline(args):
         validate_service_name(service)
     except NoSuchService as service_not_found:
         print service_not_found
-        sys.exit(1)
+        return 1
 
     generate_pipeline(service=service)
 
@@ -116,4 +115,4 @@ def generate_pipeline(service):
         if returncode != 0:
             print "ERROR: Failed to generate Jenkins pipeline"
             print output
-            sys.exit(returncode)
+            return returncode

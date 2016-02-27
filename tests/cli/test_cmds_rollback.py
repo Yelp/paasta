@@ -15,7 +15,6 @@
 from mock import call
 from mock import Mock
 from mock import patch
-from pytest import raises
 
 from paasta_tools.cli.cmds.rollback import paasta_rollback
 from paasta_tools.cli.cmds.rollback import validate_given_deploy_groups
@@ -49,9 +48,8 @@ def test_paasta_rollback_mark_for_deployment_simple_invocation(
         config_dict={'deploy_group': 'fake_deploy_groups'},
     )]
 
-    with raises(SystemExit) as sys_exit:
-        paasta_rollback(fake_args)
-        assert sys_exit.value_code == 0
+    mock_mark_for_deployment.return_value = 0
+    assert paasta_rollback(fake_args) == 0
 
     mock_mark_for_deployment.assert_called_once_with(
         git_url=mock_get_git_url.return_value,
@@ -99,9 +97,8 @@ def test_paasta_rollback_mark_for_deployment_no_deploy_group_arg(
         ),
     ]
 
-    with raises(SystemExit) as sys_exit:
-        paasta_rollback(fake_args)
-        assert sys_exit.value_code == 0
+    mock_mark_for_deployment.return_value = 0
+    assert paasta_rollback(fake_args) == 0
 
     expected = [
         call(
@@ -152,10 +149,7 @@ def test_paasta_rollback_mark_for_deployment_wrong_deploy_group_args(
         ),
     ]
 
-    with raises(SystemExit) as sys_exit:
-        paasta_rollback(fake_args)
-        assert sys_exit.value_code == 1
-
+    assert paasta_rollback(fake_args) == 1
     assert mock_mark_for_deployment.call_count == 0
 
 
@@ -195,9 +189,8 @@ def test_paasta_rollback_mark_for_deployment_multiple_instance_args(
         ),
     ]
 
-    with raises(SystemExit) as sys_exit:
-        paasta_rollback(fake_args)
-        assert sys_exit.value_code == 0
+    mock_mark_for_deployment.return_value = 0
+    assert paasta_rollback(fake_args) == 0
 
     expected = [
         call(
