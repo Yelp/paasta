@@ -25,14 +25,10 @@ from paasta_tools.utils import decompose_job_id
 
 def create_complete_app(context):
     with contextlib.nested(
-        mock.patch('paasta_tools.bounce_lib.create_app_lock', autospec=True),
-        mock.patch('paasta_tools.setup_marathon_job.bounce_lib.bounce_lock_zookeeper', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job.marathon_tools.create_complete_config', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job.parse_args', autospec=True),
     ) as (
-        _,
-        _,
         _,
         mock_create_complete_config,
         mock_parse_args,

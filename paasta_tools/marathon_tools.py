@@ -25,6 +25,8 @@ import socket
 from time import sleep
 
 import service_configuration_lib
+from kazoo.client import KazooClient
+from kazoo.exceptions import NoNodeError
 from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
@@ -185,8 +187,14 @@ class MarathonServiceConfig(InstanceConfig):
     def copy(self):
         return self.__class__(self.service, self.instance, dict(self.config_dict), dict(self.branch_dict))
 
+    def get_min_instances(self):
+        return self.config_dict.get('instances', 1)
+
+    def get_max_instances(self):
+        return self.config_dict.get('max_instances', None)
+
     def get_instances(self):
-        """Get the number of instances specified in the service's marathon configuration.
+        """Get the number of instances specified in zookeeper or the service's marathon configuration.
 
         Defaults to 0 if not specified in the config.
 
@@ -194,8 +202,22 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The number of instances specified in the config, 0 if not
                   specified or if desired_state is not 'start'."""
         if self.get_desired_state() == 'start':
-            instances = self.config_dict.get('instances', 1)
-            return int(instances)
+            instances = self.get_min_instances()
+            max_instances = self.get_max_instances()
+            if max_instances is not None:
+                try:
+                    zk_instances = get_instances_from_zookeeper(
+                        service=self.service,
+                        instance=self.instance,
+                    )
+                except NoNodeError:  # zookeeper doesn't have instance data for this app
+                    pass
+                else:
+                    instances = max(
+                        min(zk_instances, max_instances),
+                        instances,
+                    )
+            return instances
         else:
             return 0
 
@@ -993,3 +1015,47 @@ def kill_task(client, app_id, task_id, scale):
             return []
         else:
             raise
+
+
+def get_instances_from_zookeeper(service, instance):
+    with ZookeeperPool() as zookeeper_client:
+        (instances, _) = zookeeper_client.get('/autoscaling/%s/%s/instances' % (service, instance))
+        return int(instances)
+
+
+def update_instances_for_marathon_service(service, instance, delta):
+    zookeeper_path = '/autoscaling/%s/%s/instances' % (service, instance)
+    marathon_config = load_marathon_service_config(
+        service=service,
+        instance=instance,
+        cluster=load_system_paasta_config().get_cluster(),
+        load_deployments=False,
+    )
+    with ZookeeperPool() as zookeeper_client:
+        instances = min(
+            marathon_config.get_max_instances(),
+            max(marathon_config.get_min_instances(), marathon_config.get_instances() + delta))
+        zookeeper_client.ensure_path(zookeeper_path)
+        zookeeper_client.set(zookeeper_path, instances)
+        return instances
+
+
+class ZookeeperPool(object):
+    counter = 0
+    zk = None
+
+    @classmethod
+    def __enter__(cls):
+        if cls.zk is None:
+            cls.zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), read_only=True)
+            cls.zk.start()
+        cls.counter = cls.counter + 1
+        return cls.zk
+
+    @classmethod
+    def __exit__(cls, *args, **kwargs):
+        cls.counter = cls.counter - 1
+        if cls.counter == 0:
+            cls.zk.stop()
+            cls.zk.close()
+            cls.zk = None

@@ -1,0 +1,21 @@
+Feature: we can modify marathon instances through zookeeper
+
+  Scenario: zookeeper records can be used to scale services up
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the marathon job "test-service.autoscaling"
+      And we have a deployments.json for the service "test-service" with enabled instance "main"
+     When we create a marathon app called "test-service.autoscaling" with 1 instance(s)
+      And we run setup_marathon_job until it has 1 task(s)
+      And I increase the instance count for service "test-service" instance "autoscaling" by 4
+      And we run setup_marathon_job until it has 5 task(s)
+     Then we should see the number of instances become 5
+
+  Scenario: zookeeper records can be used to scale services down
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the marathon job "test-service.autoscaling"
+      And we have a deployments.json for the service "test-service" with enabled instance "main"
+     When we create a marathon app called "test-service.autoscaling" with 1 instance(s)
+      And we run setup_marathon_job until it has 5 task(s)
+      And I increase the instance count for service "test-service" instance "autoscaling" by -4
+      And we run setup_marathon_job until it has 1 task(s)
+     Then we should see the number of instances become 1
