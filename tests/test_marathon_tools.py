@@ -2191,7 +2191,7 @@ def test_get_zookeeper_instances():
     )
     with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.utils.SystemPaastaConfig.get_zk_hosts', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
     ) as (
         mock_zk_client,
         _,
@@ -2205,7 +2205,7 @@ def test_get_zookeeper_instances():
 def test_zookeeper_pool():
     with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.utils.SystemPaastaConfig.get_zk_hosts', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
     ) as (
         mock_zk_client,
         _,
@@ -2233,7 +2233,7 @@ def test_get_zookeeper_instances_defaults_to_config_no_zk_node():
     )
     with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.utils.SystemPaastaConfig.get_zk_hosts', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
     ) as (
         mock_zk_client,
         _,
@@ -2255,7 +2255,7 @@ def test_get_zookeeper_instances_defaults_to_config_out_of_boumds():
     )
     with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.utils.SystemPaastaConfig.get_zk_hosts', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
     ) as (
         mock_zk_client,
         _,
@@ -2270,12 +2270,10 @@ def test_update_instances_for_marathon_service():
     with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.utils.SystemPaastaConfig.get_zk_hosts', autospec=True),
-            mock.patch('paasta_tools.utils.SystemPaastaConfig.get_cluster', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
     ) as (
         mock_load_marathon_service_config,
         mock_zk_client,
-        _,
         _,
     ):
         zk_client = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
@@ -2298,12 +2296,10 @@ def test_update_instances_for_marathon_service_bounds():
     with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.utils.SystemPaastaConfig.get_zk_hosts', autospec=True),
-            mock.patch('paasta_tools.utils.SystemPaastaConfig.get_cluster', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
     ) as (
         mock_load_marathon_service_config,
         mock_zk_client,
-        _,
         _,
     ):
         zk_client = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
