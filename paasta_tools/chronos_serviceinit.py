@@ -324,13 +324,13 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
 
     if command == "start":
         start_chronos_job(
-            service,
-            instance,
-            job_id,
-            client,
-            cluster,
-            job_config,
-            complete_job_config,
+            service=service,
+            instance=instance,
+            job_id=job_id,
+            client=client,
+            cluster=cluster,
+            job_config=job_config,
+            complete_job_config=complete_job_config,
             emergency=True,
         )
     elif command == "stop":
@@ -349,14 +349,14 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             include_disabled=True,
         )
         restart_chronos_job(
-            service,
-            instance,
-            job_id,
-            client,
-            cluster,
-            matching_jobs,
-            job_config,
-            complete_job_config,
+            service=service,
+            instance=instance,
+            job_id=job_id,
+            client=client,
+            cluster=cluster,
+            matching_jobs=matching_jobs,
+            job_config=job_config,
+            complete_job_config=complete_job_config,
             emergency=True,
         )
     elif command == "status":
