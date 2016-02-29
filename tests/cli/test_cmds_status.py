@@ -16,6 +16,7 @@ from StringIO import StringIO
 from mock import MagicMock
 from mock import Mock
 from mock import patch
+from pytest import mark
 from pytest import raises
 
 from paasta_tools import utils
@@ -241,6 +242,7 @@ def test_print_cluster_status_missing_deploys_in_red(
     assert expected_output in output
 
 
+@mark.parametrize('verbosity_level', [0, 2])
 @patch('paasta_tools.cli.cmds.status.execute_paasta_serviceinit_on_remote_master', autospec=True)
 @patch('paasta_tools.cli.cmds.status.report_invalid_whitelist_values', autospec=True)
 @patch('sys.stdout', new_callable=StringIO)
@@ -248,6 +250,7 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
     mock_stdout,
     mock_report_invalid_whitelist_values,
     mock_execute_paasta_serviceinit_on_remote_master,
+    verbosity_level,
 ):
     service = 'fake_service'
     planned_deployments = [
@@ -268,10 +271,11 @@ def test_print_cluster_status_calls_execute_paasta_serviceinit_on_remote_master(
         deploy_pipeline=planned_deployments,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
+        verbose=verbosity_level,
     )
     assert mock_execute_paasta_serviceinit_on_remote_master.call_count == 1
     mock_execute_paasta_serviceinit_on_remote_master.assert_any_call(
-        'status', 'a_cluster', service, 'a_instance', verbose=False)
+        'status', 'a_cluster', service, 'a_instance', verbose=verbosity_level)
 
     output = mock_stdout.getvalue()
     assert expected_output in output
@@ -435,7 +439,7 @@ def test_status_calls_sergeants(
         actual_deployments=actual_deployments,
         cluster_whitelist=[],
         instance_whitelist=[],
-        verbose=False,
+        verbose=0,
     )
 
 
@@ -485,7 +489,7 @@ def test_report_status_obeys_cluster_whitelist(
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
-        verbose=False
+        verbose=0
     )
 
 
@@ -515,7 +519,7 @@ def test_report_status_handle_none_whitelist(
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
-        verbose=False
+        verbose=0
     )
     mock_report_status_for_cluster.assert_any_call(
         service=service,
@@ -523,7 +527,7 @@ def test_report_status_handle_none_whitelist(
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
-        verbose=False
+        verbose=0
     )
     mock_report_status_for_cluster.assert_any_call(
         service=service,
@@ -531,5 +535,5 @@ def test_report_status_handle_none_whitelist(
         deploy_pipeline=deploy_pipeline,
         actual_deployments=actual_deployments,
         instance_whitelist=instance_whitelist,
-        verbose=False
+        verbose=0
     )

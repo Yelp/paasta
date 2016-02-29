@@ -159,7 +159,24 @@ def test_run_paasta_serviceinit_status_verbose(mock_run):
         'fake_service',
         'fake_instance',
         'fake_cluster',
-        verbose=True,
+        verbose=1,
+    )
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    assert actual == mock_run.return_value[1]
+
+
+@patch('paasta_tools.cli.utils._run', autospec=True)
+def test_run_paasta_serviceinit_status_verbose_multi(mock_run):
+    mock_run.return_value = ('unused', 'fake_output')
+    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v -v -v -v fake_service.fake_instance status '
+
+    actual = utils.run_paasta_serviceinit(
+        'status',
+        'fake_master',
+        'fake_service',
+        'fake_instance',
+        'fake_cluster',
+        verbose=4,
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
     assert actual == mock_run.return_value[1]
@@ -226,7 +243,7 @@ def test_run_paasta_serviceinit_scaling(mock_run):
         'fake_service',
         'fake_instance',
         'fake_cluster',
-        verbose=True,
+        verbose=1,
         delta=1,
     )
     mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)

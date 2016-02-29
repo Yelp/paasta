@@ -324,7 +324,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     :param service: service name
     :param instance: instance name, like "main" or "canary"
     :param cluster: cluster name
-    :param verbose: bool if the output should be verbose or not
+    :param verbose: int verbosity level
     :returns: A unix-style return code
     """
     marathon_config = marathon_tools.load_marathon_config()
@@ -357,10 +357,10 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
         print status_desired_state(service, instance, client, job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         tasks, out = status_marathon_job_verbose(service, instance, client)
-        if verbose:
+        if verbose > 0:
             print out
         print status_mesos_tasks(service, instance, normal_instance_count)
-        if verbose:
+        if verbose > 0:
             print status_mesos_tasks_verbose(app_id, get_short_task_id)
         if proxy_port is not None:
             print status_smartstack_backends(
@@ -371,7 +371,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 tasks=tasks,
                 expected_count=normal_smartstack_count,
                 soa_dir=soa_dir,
-                verbose=verbose,
+                verbose=verbose > 0,
             )
     elif command == 'scale':
         scale_marathon_job(service, instance, app_id, delta, client, cluster)

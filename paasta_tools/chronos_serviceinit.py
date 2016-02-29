@@ -288,6 +288,14 @@ def status_chronos_jobs(jobs, job_config, verbose):
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
+    """Performs a start/stop/restart/status on an instance
+    :param command: String of start, stop, restart, status or scale
+    :param service: service name
+    :param instance: instance name, like "main" or "canary"
+    :param cluster: cluster name
+    :param verbose: int verbosity level
+    :returns: A unix-style return code
+    """
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
     complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
@@ -337,7 +345,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             cluster=cluster,
             soa_dir=soa_dir,
         )
-        print status_chronos_jobs(sorted_matching_jobs, job_config, verbose)
+        print status_chronos_jobs(sorted_matching_jobs, job_config, verbose > 0)
     else:
         # The command parser shouldn't have let us get this far...
         raise NotImplementedError("Command %s is not implemented!" % command)
