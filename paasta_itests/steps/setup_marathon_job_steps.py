@@ -29,24 +29,22 @@ from paasta_tools.utils import decompose_job_id
 def create_complete_app(context):
     with contextlib.nested(
         mock.patch('paasta_tools.utils.SystemPaastaConfig.get_zk_hosts', autospec=True),
-        mock.patch('paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job.marathon_tools.create_complete_config', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job.parse_args', autospec=True),
+        mock.patch('paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True),
     ) as (
         mock_get_zk_hosts,
-        _,
         mock_create_complete_config,
         mock_parse_args,
+        _,
     ):
         mock_get_zk_hosts.return_value = '%s,mesos-testcluster' % get_service_connection_string('zookeeper')
         whitelist_keys = set(['id', 'cmd', 'instances', 'mem', 'cpus', 'backoff_factor',
                               'backoff_seconds', 'constraints', 'args', 'max_instances'])
-        mock_create_complete_config.return_value = {key: value for (key, value) in
-                                                    marathon_tools.create_complete_config(
-                                                        context.service,
-                                                        context.instance,
-                                                        None,
-                                                        soa_dir=context.soa_dir,
+        mock_create_complete_config.return_value = {key: value for key, value in marathon_tools.create_complete_config(
+            context.service,
+            context.instance,
+            soa_dir=context.soa_dir,
         ).items() if key in whitelist_keys}
         mock_create_complete_config.return_value['cmd'] = '/bin/sleep 1m'
         mock_parse_args.return_value = mock.Mock(
@@ -66,7 +64,7 @@ def create_app_with_instances(context, job_id, number):
         (service, instance, _, __) = decompose_job_id(job_id)
         context.service = service
         context.instance = instance
-        context.app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+        context.app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     set_number_instances(context, number)
     create_complete_app(context)
 
@@ -84,11 +82,10 @@ def set_number_instances(context, number):
 @when(u'we run setup_marathon_job until it has {number:d} task(s)')
 def run_until_number_tasks(context, number):
     for _ in xrange(20):
+        create_complete_app(context)
+        sleep(0.5)
         if marathon_tools.app_has_tasks(context.marathon_client, context.app_id, number, exact_matches_only=True):
             return
-        else:
-            sleep(0.5)
-            create_complete_app(context)
 
 
 @when(u'we increase the instance count in zookeeper for service "{service}" instance "{instance}" by {number:d}')

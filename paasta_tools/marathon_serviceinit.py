@@ -330,7 +330,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     marathon_config = marathon_tools.load_marathon_config()
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster, soa_dir=soa_dir)
     try:
-        complete_config = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir=soa_dir)
+        complete_config = marathon_tools.create_complete_config(service, instance, soa_dir=soa_dir)
         if not app_id:
             app_id = complete_config['id']
     except NoDockerImageError:
