@@ -90,7 +90,7 @@ Alternatively to a jenkins pipeline, you can use ``paasta mark-for-deployment`` 
 String interpolation
 --------------------
 
-Deploy groups support string interpolation for the following facts: ``cluster``, ``instance`` and ``service``. String interpolation works by surrounding the fact's name with braces (``{}``) in the ``deploy_group`` field -- this is python's ``string.format`` syntax. You must still specify explicit deploy groups in your ``deploy.yaml`` however.
+Deploy groups support string interpolation for the following variables: ``cluster``, ``instance`` and ``service``. String interpolation works by surrounding the varbiable's name with braces (``{}``) in the ``deploy_group`` field -- this is python's ``str.format`` syntax. You must still specify explicit deploy groups in your ``deploy.yaml`` however.
 
 What if I don’t want to use deploy groups on my existing service?
 -----------------------------------------------------------------
