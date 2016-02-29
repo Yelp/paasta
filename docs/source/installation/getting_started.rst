@@ -99,7 +99,7 @@ PaaSTA uses `Marathon <https://mesosphere.github.io/marathon/>`_ for supervising
 services running in Mesos. See the `official documentation <https://mesosphere.github.io/marathon/docs/>`_
 for how to get started with Marathon.
 
-Then, see the `PaaSTA documentation <yelpsoa_configs.html#marathon-clustername-yaml>`_
+Then, see the `PaaSTA documentation <../yelpsoa_configs.html#marathon-clustername-yaml>`_
 for how to define Marathon jobs.
 
 Once Marathon jobs are defined in soa-configs, there are a few tools provided by PaaSTA
@@ -118,9 +118,9 @@ that interact with the Marathon API:
 Chronos
 -------
 
-`Chronos <http://mesos.github.io/chronos/>`_ is a Marathon framework for
+`Chronos <http://mesos.github.io/chronos/>`_ is a Mesos framework for
 running scheduled tasks. See the `official documentation <http://mesos.github.io/chronos/docs/getting-started.html>`_
-for how to get started with Chronos, and then see the `PaaSTA documentation <yelpsoa_configs.html#marathon-clustername-yaml>`_
+for how to get started with Chronos, and then see the `PaaSTA documentation <../yelpsoa_configs.html#chronos-[clustername].yaml>`_
 for how to define Chronos jobs.
 
 PaaSTA has tools for synchronizing jobs with the Chronos API:
@@ -130,6 +130,7 @@ PaaSTA has tools for synchronizing jobs with the Chronos API:
 * ``cleanup_chronos_jobs``: Cleans up lost or abandoned Chronos jobs.
 * ``check_chronos_jobs``: Iterates over the current status of the Chronos jobs associated
   with a service and alerts the team responsible when they start to fail.
+* ``list_chronos_jobs``: List all the chronos jobs in a cluster.
 
 SmartStack
 ----------
@@ -193,5 +194,5 @@ centrally log events about what is happening in the infrastructure and to power
 ``paasta logs``. Currently this is the most "Yelpy" aspect of PaaSTA, so much
 so that have had to remove it from the normal ``requirements.txt``. We are
 investigating ways to make the logging components of PaaSTA more reusable for
-everyone. Till then it is not expected that PaaSTA logging will work in a
+everyone. Until then, it is not expected that PaaSTA logging will work in a
 non-Yelp environment.
