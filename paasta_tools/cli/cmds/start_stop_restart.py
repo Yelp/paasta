@@ -14,7 +14,6 @@
 # limitations under the License.
 import datetime
 import socket
-import sys
 
 from service_configuration_lib import DEFAULT_SOA_DIR
 
@@ -138,7 +137,7 @@ def paasta_start_or_stop(args, desired_state):
         print "No branches found for %s in %s." % \
             (service_config.get_deploy_group(), remote_refs)
         print "Has it been deployed there yet?"
-        sys.exit(1)
+        return 1
 
     force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
     issue_state_change_for_service(

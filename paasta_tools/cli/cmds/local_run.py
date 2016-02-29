@@ -678,4 +678,4 @@ def paasta_local_run(args):
         )
     except errors.APIError as e:
         sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))
-        sys.exit(1)
+        return 1

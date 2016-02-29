@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
-import sys
 
 from paasta_tools.cli.utils import get_jenkins_build_output_url
 from paasta_tools.cli.utils import validate_service_name
@@ -95,4 +94,4 @@ def paasta_itest(args):
             component='build',
             level='event',
         )
-    sys.exit(returncode)
+    return returncode

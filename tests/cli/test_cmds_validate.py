@@ -16,7 +16,6 @@ from StringIO import StringIO
 
 import mock
 from mock import patch
-from pytest import raises
 
 import paasta_tools.chronos_tools
 from paasta_tools.cli.cmds.validate import check_service_path
@@ -78,11 +77,7 @@ def test_validate_unknown_service():
     args = mock.MagicMock()
     args.service = None
     args.yelpsoa_config_root = 'unused'
-
-    with raises(SystemExit) as excinfo:
-        paasta_validate(args)
-
-    assert excinfo.value.code == 1
+    paasta_validate(args) == 1
 
 
 def test_validate_unknown_service_service_path():
