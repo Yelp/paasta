@@ -32,10 +32,10 @@ Feature: setup_marathon_job can create a "complete" app
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
-     When we set the "max_instances" field of the marathon config for service "test-service" and instance "main" to the integer 7
+     When we set up an app to use zookeeper scaling with 10 max instances
       And we create a marathon app called "test-service.main" with 1 instance(s)
       And we run setup_marathon_job until it has 1 task(s)
-      And we increase the instance count in zookeeper for service "test-service" instance "main" by 4
+      And we set the instance count in zookeeper for service "test-service" instance "main" to 5
       And we run setup_marathon_job until it has 5 task(s)
      Then we should see the number of instances become 5
 
@@ -43,9 +43,10 @@ Feature: setup_marathon_job can create a "complete" app
     Given a working paasta cluster
       And I have yelpsoa-configs for the marathon job "test-service.main"
       And we have a deployments.json for the service "test-service" with enabled instance "main"
-     When we set the "max_instances" field of the marathon config for service "test-service" and instance "main" to the integer 7
+     When we set up an app to use zookeeper scaling with 10 max instances
       And we create a marathon app called "test-service.main" with 1 instance(s)
+      And we set the instance count in zookeeper for service "test-service" instance "main" to 5
       And we run setup_marathon_job until it has 5 task(s)
-      And we increase the instance count in zookeeper for service "test-service" instance "main" by -4
+      And we set the instance count in zookeeper for service "test-service" instance "main" to 1
       And we run setup_marathon_job until it has 1 task(s)
      Then we should see the number of instances become 1

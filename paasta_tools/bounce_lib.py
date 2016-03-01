@@ -26,12 +26,12 @@ import mesos_tools
 from kazoo.client import KazooClient
 from kazoo.exceptions import LockTimeout
 from marathon.models import MarathonApp
-from utils import compose_job_id
-from utils import load_system_paasta_config
 
 from paasta_tools.monitoring.replication_utils import \
     get_registered_marathon_tasks
 from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import load_system_paasta_config
 
 log = logging.getLogger('__main__')
 logging.getLogger("requests").setLevel(logging.WARNING)

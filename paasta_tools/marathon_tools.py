@@ -1020,27 +1020,25 @@ def kill_task(client, app_id, task_id, scale):
 def get_instances_from_zookeeper(service, instance):
     with ZookeeperPool() as zookeeper_client:
         (instances, _) = zookeeper_client.get('/autoscaling/%s/%s/instances' % (service, instance))
+        if instances is None or instances == 'None':
+            raise NoNodeError
         return int(instances)
 
 
-def update_instances_for_marathon_service(service, instance, delta):
+def set_instances_for_marathon_service(service, instance, instance_count, soa_dir=DEFAULT_SOA_DIR):
     zookeeper_path = '/autoscaling/%s/%s/instances' % (service, instance)
-    marathon_config = load_marathon_service_config(
-        service=service,
-        instance=instance,
-        cluster=load_system_paasta_config().get_cluster(),
-        load_deployments=False,
-    )
     with ZookeeperPool() as zookeeper_client:
-        instances = min(
-            marathon_config.get_max_instances(),
-            max(marathon_config.get_min_instances(), marathon_config.get_instances() + delta))
         zookeeper_client.ensure_path(zookeeper_path)
-        zookeeper_client.set(zookeeper_path, instances)
-        return instances
+        zookeeper_client.set(zookeeper_path, str(instance_count))
 
 
 class ZookeeperPool(object):
+    """
+    A context manager that shares the same KazooClient with its children. The first nested contest manager
+    creates and deletes the client and shares it with any of its children. This allows to place a context
+    manager over a large number of zookeeper calls without opening and closing a connection each time.
+    GIL makes this 'safe'.
+    """
     counter = 0
     zk = None
 

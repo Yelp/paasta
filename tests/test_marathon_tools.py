@@ -2288,33 +2288,5 @@ def test_update_instances_for_marathon_service():
             },
             branch_dict={},
         )
-        marathon_tools.update_instances_for_marathon_service('service', 'instance', delta=3)
-        zk_client.set.assert_called_once_with('/autoscaling/service/instance/instances', 8)
-
-
-def test_update_instances_for_marathon_service_bounds():
-    with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
-            mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
-    ) as (
-        mock_load_marathon_service_config,
-        mock_zk_client,
-        _,
-    ):
-        zk_client = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
-        mock_zk_client.return_value = zk_client
-        mock_load_marathon_service_config.return_value = marathon_tools.MarathonServiceConfig(
-            service='service',
-            instance='instance',
-            cluster='cluster',
-            config_dict={
-                'instances': 5,
-                'max_instances': 10,
-            },
-            branch_dict={},
-        )
-        marathon_tools.update_instances_for_marathon_service('service', 'instance', delta=-5)
-        zk_client.set.assert_called_with('/autoscaling/service/instance/instances', 5)
-        marathon_tools.update_instances_for_marathon_service('service', 'instance', delta=15)
-        zk_client.set.assert_called_with('/autoscaling/service/instance/instances', 10)
+        marathon_tools.set_instances_for_marathon_service('service', 'instance', instance_count=8)
+        zk_client.set.assert_called_once_with('/autoscaling/service/instance/instances', '8')

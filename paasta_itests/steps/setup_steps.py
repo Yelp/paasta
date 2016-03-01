@@ -183,7 +183,7 @@ def write_soa_dir_marathon_job(context, job_id):
         f.write(yaml.dump({
             "%s" % instance: {
                 'cpus': 0.1,
-                'ram': 100,
+                'mem': 100,
             }
         }))
     context.soa_dir = soa_dir
