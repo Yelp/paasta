@@ -496,13 +496,9 @@ def configure_log():
     _log_writer = LogWriterClass(**log_writer_options)
 
 
-class PaastaLogsNotConfiguredError(Exception):
-    pass
-
-
 def _log(*args, **kwargs):
     if _log_writer is None:
-        raise PaastaLogsNotConfiguredError("configure_log() must be called before _log")
+        configure_log()
     return _log_writer.log(*args, **kwargs)
 
 
@@ -738,6 +734,20 @@ class SystemPaastaConfig(dict):
             return self['log_reader']
         except KeyError:
             raise PaastaNotConfiguredError('Could not find log_reader in configuration directory: %s' % self.directory)
+
+    def get_sensu_host(self):
+        """Get the host that we should send sensu events to.
+
+        :returns: the sensu_host string, or localhost if not specified.
+        """
+        return self.get('sensu_host', 'localhost')
+
+    def get_sensu_port(self):
+        """Get the port that we should send sensu events to.
+
+        :returns: the sensu_port value as an integer, or 3030 if not specified.
+        """
+        return int(self.get('sensu_port', 3030))
 
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):

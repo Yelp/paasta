@@ -31,6 +31,11 @@ marathon:
     -CLUSTER: testcluster
   command: 'marathon --zk zk://zookeeper:2181/marathon --master zk://zookeeper:2181/mesos-testcluster --no-logger --env_vars_prefix MARATHON_'
 
+fakesensu:
+  build: ../yelp_package/dockerfiles/itest/fake_sensu/
+  ports:
+    - 3030
+
 paastatools:
   build: ../yelp_package/dockerfiles/trusty/
   links:
@@ -40,11 +45,13 @@ paastatools:
     - zookeeper
     - chronos
     - hacheck
+    - fakesensu
   # environment:
     # -CLUSTER: testcluster ???
   # make --no-capture global ???
   volumes:
   - ../:/work:rw
+  - ./fake_etc_paasta:/etc/paasta:rw
   command: 'tox -e paasta_itests_inside_container -- --no-capture'
 
 chronos:

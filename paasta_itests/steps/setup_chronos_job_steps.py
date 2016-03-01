@@ -30,11 +30,20 @@ def job_exists(context, service, instance):
     assert len(matching_jobs) == 1
 
 
-@when(u'we run setup_chronos_job for service_instance "{service_instance}"')
-def run_setup_chronos_job(context, service_instance):
+@when(u'we run setup_chronos_job for service_instance "{service_instance}", expecting exit code {expected_exit_code}')
+def run_setup_chronos_job(context, service_instance, expected_exit_code):
     cmd = "../paasta_tools/setup_chronos_job.py %s -d %s" % (service_instance, context.soa_dir)
     exit_code, output = _run(cmd)
     context.exit_code, context.output = exit_code, output
+
+    try:
+        assert context.exit_code == int(expected_exit_code), \
+            "expected %d, got %d" % (int(expected_exit_code), context.exit_code)
+    except AssertionError:
+        # behave likes to back up by two lines and then print some stuff, which clobbers my output, so I stick some
+        # extra newlines on here.
+        print "Output of setup_chronos_job:\n" + context.output + "\n\n"
+        raise
 
 
 @when(u'we create {job_count:d} disabled jobs that look like the job stored as "{job_name}"')

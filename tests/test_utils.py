@@ -316,6 +316,34 @@ def test_SystemPaastaConfig_get_registry_dne():
         fake_config.get_docker_registry()
 
 
+def test_SystemPaastaConfig_get_sensu_host_default():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    actual = fake_config.get_sensu_host()
+    expected = 'localhost'
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_sensu_host():
+    fake_config = utils.SystemPaastaConfig({"sensu_host": "blurp"}, '/some/fake/dir')
+    actual = fake_config.get_sensu_host()
+    expected = 'blurp'
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_sensu_port_default():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    actual = fake_config.get_sensu_port()
+    expected = 3030
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_sensu_port():
+    fake_config = utils.SystemPaastaConfig({"sensu_port": 4040}, '/some/fake/dir')
+    actual = fake_config.get_sensu_port()
+    expected = 4040
+    assert actual == expected
+
+
 def test_atomic_file_write():
     with mock.patch('tempfile.NamedTemporaryFile', autospec=True) as ntf_patch:
         file_patch = ntf_patch().__enter__()

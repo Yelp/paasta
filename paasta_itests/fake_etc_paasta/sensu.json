@@ -1,0 +1,4 @@
+{
+	"sensu_host": "fakesensu",
+	"sensu_port": 3030
+}

@@ -303,6 +303,8 @@ class TestMonitoring_Tools:
         fake_irc = '#fake'
         fake_soa_dir = '/fake/soa/dir'
         self.fake_cluster = 'fake_cluster'
+        fake_sensu_host = 'fake_sensu_host'
+        fake_sensu_port = 12345
         expected_runbook = 'http://y/paasta-troubleshooting'
         expected_check_name = fake_check_name
         expected_kwargs = {
@@ -368,6 +370,9 @@ class TestMonitoring_Tools:
             load_system_paasta_config_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
+            load_system_paasta_config_patch.return_value.get_sensu_host = mock.Mock(return_value=fake_sensu_host)
+            load_system_paasta_config_patch.return_value.get_sensu_port = mock.Mock(return_value=fake_sensu_port)
+
             monitoring_tools.send_event(
                 fake_service,
                 fake_check_name,
@@ -376,6 +381,7 @@ class TestMonitoring_Tools:
                 fake_output,
                 fake_soa_dir
             )
+
             get_team_patch.assert_called_once_with(
                 fake_monitoring_overrides,
                 fake_service,
@@ -407,6 +413,8 @@ class TestMonitoring_Tools:
                 fake_status,
                 fake_output,
                 fake_team,
+                sensu_host=fake_sensu_host,
+                sensu_port=fake_sensu_port,
                 **expected_kwargs
             )
             load_system_paasta_config_patch.return_value.get_cluster.assert_called_once_with()

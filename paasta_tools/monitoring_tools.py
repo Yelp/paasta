@@ -161,6 +161,7 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
     if not team:
         return
     runbook = overrides.get('runbook', 'http://y/paasta-troubleshooting')
+    system_paasta_config = load_system_paasta_config()
     result_dict = {
         'tip': get_tip(overrides, service, soa_dir),
         'notification_email': get_notification_email(overrides, service, soa_dir),
@@ -171,10 +172,11 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
         'alert_after': overrides.get('alert_after', '5m'),
         'check_every': overrides.get('check_every', '1m'),
         'realert_every': -1,
-        'source': 'paasta-%s' % load_system_paasta_config().get_cluster(),
+        'source': 'paasta-%s' % system_paasta_config.get_cluster(),
         'ttl': ttl,
     }
-    pysensu_yelp.send_event(check_name, runbook, status, output, team, **result_dict)
+    pysensu_yelp.send_event(check_name, runbook, status, output, team, sensu_host=system_paasta_config.get_sensu_host(),
+                            sensu_port=system_paasta_config.get_sensu_port(), **result_dict)
 
 
 def read_monitoring_config(service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):

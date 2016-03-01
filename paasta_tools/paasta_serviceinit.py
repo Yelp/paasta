@@ -26,6 +26,7 @@ import service_configuration_lib
 from paasta_tools import chronos_serviceinit
 from paasta_tools import marathon_serviceinit
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import configure_log
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import validate_service_instance
@@ -63,6 +64,8 @@ def main():
         log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
+
+    configure_log()
 
     command = args.command
     service_instance = args.service_instance
