@@ -271,11 +271,14 @@ def get_mesos_stats():
 
 
 def get_local_slave_state():
-    """Fetches mesos slave state.json and returns it as a dict."""
+    """Fetches mesos slave state and returns it as a dict."""
     hostname = socket.getfqdn()
-    stats_uri = 'http://%s:%s/state.json' % (hostname, MESOS_SLAVE_PORT)
+    stats_uri = 'http://%s:%s/state' % (hostname, MESOS_SLAVE_PORT)
     try:
         response = requests.get(stats_uri, timeout=10)
+        if response.status_code == 404:
+            fallback_stats_uri = 'http://%s:%s/state.json' % (hostname, MESOS_SLAVE_PORT)
+            response = requests.get(fallback_stats_uri, timeout=10)
     except requests.ConnectionError as e:
         raise MesosSlaveConnectionError(
             'Could not connect to the mesos slave to see which services are running\n'
