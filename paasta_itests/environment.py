@@ -16,8 +16,11 @@ import shutil
 import time
 
 from itest_utils import cleanup_file
+from itest_utils import get_service_connection_string
 from itest_utils import setup_mesos_cli_config
 from itest_utils import wait_for_marathon
+from kazoo.client import KazooClient
+from kazoo.exceptions import NoNodeError
 
 from paasta_tools import marathon_tools
 
@@ -82,6 +85,18 @@ def _clean_up_soa_dir(context):
         print 'Cleaning up %s' % context.soa_dir
         shutil.rmtree(context.soa_dir)
         del context.soa_dir
+
+
+def _clean_up_zookeeper_autoscaling(context):
+    """If max_instances was set for autoscaling, clean up zookeeper"""
+    client = KazooClient(hosts='%s/mesos-testcluster' % get_service_connection_string('zookeeper'), read_only=True)
+    client.start()
+    try:
+        client.delete('/autoscaling', recursive=True)
+    except NoNodeError:
+        pass
+    client.stop()
+    client.close()
 
 
 def after_scenario(context, scenario):

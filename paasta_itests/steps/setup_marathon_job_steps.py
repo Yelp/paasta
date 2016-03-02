@@ -18,8 +18,6 @@ import mock
 from behave import then
 from behave import when
 from itest_utils import get_service_connection_string
-from kazoo.client import KazooClient
-from kazoo.exceptions import NoNodeError
 
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
@@ -54,14 +52,6 @@ def run_setup_marathon_job(context):
 
 @when(u'we set up an app to use zookeeper scaling with {number:d} max instances')
 def setup_zookeeper(context, number):
-    client = KazooClient(hosts='%s/mesos-testcluster' % get_service_connection_string('zookeeper'), read_only=True)
-    client.start()
-    try:
-        client.delete('/autoscaling', recursive=True)
-    except NoNodeError:
-        pass
-    client.stop()
-    client.close()
     context.max_instances = number
 
 

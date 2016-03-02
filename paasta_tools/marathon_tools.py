@@ -195,6 +195,8 @@ class MarathonServiceConfig(InstanceConfig):
 
     def get_instances(self):
         """Get the number of instances specified in zookeeper or the service's marathon configuration.
+        If the number of instances in zookeeper is less than min_instances, returns min_instances.
+        If the number of instances in zookeeper is greater than max_instances, returns max_instances.
 
         Defaults to 0 if not specified in the config.
 
@@ -1019,9 +1021,7 @@ def kill_task(client, app_id, task_id, scale):
 
 def get_instances_from_zookeeper(service, instance):
     with ZookeeperPool() as zookeeper_client:
-        (instances, _) = zookeeper_client.get('/autoscaling/%s/%s/instances' % (service, instance))
-        if instances is None or instances == 'None':
-            raise NoNodeError
+        instances, _ = zookeeper_client.get('/autoscaling/%s/%s/instances' % (service, instance))
         return int(instances)
 
 
