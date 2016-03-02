@@ -1,5 +1,4 @@
 # Copyright 2015 Yelp Inc.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -25,12 +24,12 @@ import socket
 from time import sleep
 
 import service_configuration_lib
-from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
 
+from paasta_tools.autoscaling_lib import get_instances_from_zookeeper
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
@@ -188,7 +187,7 @@ class MarathonServiceConfig(InstanceConfig):
         return self.__class__(self.service, self.instance, dict(self.config_dict), dict(self.branch_dict))
 
     def get_min_instances(self):
-        return self.config_dict.get('instances', 1)
+        return self.config_dict.get('min_instances', 1)
 
     def get_max_instances(self):
         return self.config_dict.get('max_instances', None)
@@ -204,24 +203,31 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The number of instances specified in the config, 0 if not
                   specified or if desired_state is not 'start'."""
         if self.get_desired_state() == 'start':
-            instances = self.get_min_instances()
             max_instances = self.get_max_instances()
             if max_instances is not None:
+                instances = self.get_min_instances()
                 try:
                     zk_instances = get_instances_from_zookeeper(
                         service=self.service,
                         instance=self.instance,
                     )
                 except NoNodeError:  # zookeeper doesn't have instance data for this app
-                    pass
+                    return instances
                 else:
-                    instances = max(
+                    return max(
                         min(zk_instances, max_instances),
                         instances,
                     )
-            return instances
+            else:
+                return self.config_dict.get('instances', 1)
         else:
             return 0
+
+    def get_autoscaling_params(self):
+        default_params = {
+            'method': 'default',
+        }
+        return self.config_dict.get('autoscaling', default_params)
 
     def get_backoff_seconds(self, instances=None):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.
@@ -1012,43 +1018,3 @@ def kill_task(client, app_id, task_id, scale):
             return []
         else:
             raise
-
-
-def get_instances_from_zookeeper(service, instance):
-    with ZookeeperPool() as zookeeper_client:
-        instances, _ = zookeeper_client.get('/autoscaling/%s/%s/instances' % (service, instance))
-        return int(instances)
-
-
-def set_instances_for_marathon_service(service, instance, instance_count, soa_dir=DEFAULT_SOA_DIR):
-    zookeeper_path = '/autoscaling/%s/%s/instances' % (service, instance)
-    with ZookeeperPool() as zookeeper_client:
-        zookeeper_client.ensure_path(zookeeper_path)
-        zookeeper_client.set(zookeeper_path, str(instance_count))
-
-
-class ZookeeperPool(object):
-    """
-    A context manager that shares the same KazooClient with its children. The first nested contest manager
-    creates and deletes the client and shares it with any of its children. This allows to place a context
-    manager over a large number of zookeeper calls without opening and closing a connection each time.
-    GIL makes this 'safe'.
-    """
-    counter = 0
-    zk = None
-
-    @classmethod
-    def __enter__(cls):
-        if cls.zk is None:
-            cls.zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), read_only=True)
-            cls.zk.start()
-        cls.counter = cls.counter + 1
-        return cls.zk
-
-    @classmethod
-    def __exit__(cls, *args, **kwargs):
-        cls.counter = cls.counter - 1
-        if cls.counter == 0:
-            cls.zk.stop()
-            cls.zk.close()
-            cls.zk = None

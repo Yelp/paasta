@@ -14,7 +14,6 @@
 import contextlib
 
 import mock
-from kazoo.exceptions import NoNodeError
 from marathon import MarathonHttpError
 from marathon.models import MarathonApp
 from mock import patch
@@ -865,9 +864,10 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.format_job_id', autospec=True, return_value=fake_id),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=fake_service_namespace_config),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
-                       return_value=mock.Mock(get_volumes=mock.Mock(return_value=fake_volumes))),
+            mock.patch.object(SystemPaastaConfig, 'get_volumes', autospec=True, return_value=fake_volumes),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
         ) as (
+            _,
             _,
             _,
             _,
@@ -2151,115 +2151,15 @@ def test_kill_tasks_passes_catches_already_dead_task():
     assert actual == []
 
 
-def test_get_zookeeper_instances():
-    fake_marathon_config = marathon_tools.MarathonServiceConfig(
-        service='service',
-        instance='instance',
-        cluster='cluster',
-        config_dict={
-            'instances': 5,
-            'max_instances': 10,
-        },
-        branch_dict={},
-    )
+def test_create_complete_config():
+    mock_format_marathon_app_dict = mock.Mock()
     with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
-    ) as (
-        mock_zk_client,
-        _,
-    ):
-        mock_zk_get = mock.Mock(return_value=(7, None))
-        mock_zk_client.return_value = mock.Mock(get=mock_zk_get)
-        assert fake_marathon_config.get_instances() == 7
-        assert mock_zk_get.call_count == 1
-
-
-def test_zookeeper_pool():
-    with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
-    ) as (
-        mock_zk_client,
-        _,
-    ):
-        zk_client = mock.Mock()
-        mock_zk_client.return_value = zk_client
-        with marathon_tools.ZookeeperPool():
-            with marathon_tools.ZookeeperPool():
-                assert zk_client.start.call_count == 1
-            assert zk_client.stop.call_count == 0
-
-        assert zk_client.stop.call_count == 1
-
-
-def test_get_zookeeper_instances_defaults_to_config_no_zk_node():
-    fake_marathon_config = marathon_tools.MarathonServiceConfig(
-        service='service',
-        instance='instance',
-        cluster='cluster',
-        config_dict={
-            'instances': 5,
-            'max_instances': 10,
-        },
-        branch_dict={},
-    )
-    with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
-    ) as (
-        mock_zk_client,
-        _,
-    ):
-        mock_zk_client.return_value = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
-        assert fake_marathon_config.get_instances() == 5
-
-
-def test_get_zookeeper_instances_defaults_to_config_out_of_boumds():
-    fake_marathon_config = marathon_tools.MarathonServiceConfig(
-        service='service',
-        instance='instance',
-        cluster='cluster',
-        config_dict={
-            'instances': 5,
-            'max_instances': 10,
-        },
-        branch_dict={},
-    )
-    with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
-    ) as (
-        mock_zk_client,
-        _,
-    ):
-        mock_zk_client.return_value = mock.Mock(get=mock.Mock(return_value=(15, None)))
-        assert fake_marathon_config.get_instances() == 10
-        mock_zk_client.return_value = mock.Mock(get=mock.Mock(return_value=(0, None)))
-        assert fake_marathon_config.get_instances() == 5
-
-
-def test_update_instances_for_marathon_service():
-    with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
-            mock.patch('paasta_tools.marathon_tools.KazooClient', autospec=True),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True,
+                   return_value=mock.Mock(format_marathon_app_dict=mock_format_marathon_app_dict)),
+        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
     ) as (
         mock_load_marathon_service_config,
-        mock_zk_client,
         _,
     ):
-        zk_client = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
-        mock_zk_client.return_value = zk_client
-        mock_load_marathon_service_config.return_value = marathon_tools.MarathonServiceConfig(
-            service='service',
-            instance='instance',
-            cluster='cluster',
-            config_dict={
-                'instances': 5,
-                'max_instances': 10,
-            },
-            branch_dict={},
-        )
-        marathon_tools.set_instances_for_marathon_service('service', 'instance', instance_count=8)
-        zk_client.set.assert_called_once_with('/autoscaling/service/instance/instances', '8')
+        marathon_tools.create_complete_config('service', 'instance', soa_dir=mock.Mock())
+        mock_format_marathon_app_dict.assert_called_once_with()
