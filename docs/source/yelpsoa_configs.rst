@@ -118,6 +118,10 @@ instance MAY have:
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
 
+    Marathon adds a ``MARATHON_`` prefix to environment variables it sets up to
+    avoid conflicting with variables created by your service. It will *not* add
+    a prefix to variables specified in this dictionary.
+
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available
     on the host into the running container. Common use cases might be to share
