@@ -936,7 +936,6 @@ class TestSetupMarathonJob:
             create_config_patch.assert_called_once_with(
                 fake_name,
                 fake_instance,
-                self.fake_marathon_config,
                 None,
             )
             assert deploy_service_patch.call_count == 1
@@ -1018,7 +1017,6 @@ class TestSetupMarathonJob:
             create_config_patch.assert_called_once_with(
                 fake_name,
                 fake_instance,
-                self.fake_marathon_config,
                 None,
             )
             get_bounce_patch.assert_called_once_with()

@@ -27,7 +27,7 @@ from paasta_tools.utils import decompose_job_id
 @when(u'we run the marathon app "{job_id}"')
 def run_marathon_app(context, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     app_config = {
         'id': app_id,
         'cmd': '/bin/sleep 1m',
@@ -46,7 +46,7 @@ def wait_for_deploy(context):
 def status_marathon_job(context, status, job_id):
     normal_instance_count = 1
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
 
     output = marathon_serviceinit.status_marathon_job(
         service,
@@ -61,7 +61,7 @@ def status_marathon_job(context, status, job_id):
 @then(u'marathon_serviceinit restart should get new task_ids for "{job_id}"')
 def marathon_restart_gets_new_task_ids(context, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     normal_instance_count = 1
     cluster = context.system_paasta_config['cluster']
 
@@ -157,7 +157,7 @@ def paasta_serviceinit_command(context, command, job_id):
 @when(u'we run paasta serviceinit --appid "{command}" on "{job_id}"')
 def paasta_serviceinit_command_appid(context, command, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s --appid %s %s %s' \
           % (context.soa_dir, app_id, job_id, command)
     print 'Running cmd %s' % cmd
@@ -183,7 +183,7 @@ def paasta_serviceinit_command_scale(context, delta, job_id):
 @when(u'we wait for "{job_id}" to launch exactly {task_count:d} tasks')
 def wait_launch_tasks(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
     marathon_tools.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only=True)
 
@@ -191,7 +191,7 @@ def wait_launch_tasks(context, job_id, task_count):
 @then(u'"{job_id}" has exactly {task_count:d} requested tasks in marathon')
 def marathon_app_task_count(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
 
     tasks = context.marathon_client.get_app(app_id).tasks
     assert len(tasks) == task_count
