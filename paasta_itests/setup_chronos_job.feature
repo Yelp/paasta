@@ -24,12 +24,12 @@ Feature: setup_chronos_job can create and bounce jobs
   Scenario: dependent jobs can be launched
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
-      And we have a deployments.json for the service "testservice" with enabled chronos instance "testinstance"
+      And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
 
     Given we have yelpsoa-configs for the service "testservice" with enabled dependent chronos instance "dependentjob" and parent "testservice.testinstance"
-      And we have a deployments.json for the service "testservice" with enabled chronos instance "dependentjob"
+      And we have a deployments.json for the service "testservice" with enabled instance "dependentjob"
      When we run setup_chronos_job for service_instance "testservice.dependentjob"
      Then there should be 1 enabled jobs for the service "testservice" and instance "dependentjob"
 
@@ -39,3 +39,17 @@ Feature: setup_chronos_job can create and bounce jobs
       And we have a deployments.json for the service "testservice" with enabled chronos instance "dependentjob"
      When we run setup_chronos_job for service_instance "testservice.dependentjob"
      Then setup_chronos_job exits with return code "0" and the output contains "Parent job could not be found"
+
+  Scenario: job is disabled when enabled in soa-configs and stopped in deployments.json
+    Given a working paasta cluster
+      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
+     When we run setup_chronos_job for service_instance "testservice.testinstance"
+     Then there should be 1 disabled jobs for the service "testservice" and instance "testinstance"
+
+  Scenario: job is disabled when disabled in soa-configs and started in deployments.json
+    Given a working paasta cluster
+      And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
+      And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
+     When we run setup_chronos_job for service_instance "testservice.testinstance"
+     Then there should be 1 disabled jobs for the service "testservice" and instance "testinstance"
