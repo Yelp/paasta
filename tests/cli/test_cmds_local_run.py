@@ -444,6 +444,7 @@ def test_get_docker_run_cmd_interactive_false():
     actual = get_docker_run_cmd(memory, random_port, container_name, volumes,
                                 env, interactive, docker_hash, command, hostname)
 
+    assert any(['--env=MARATHON_PORT=%s' % random_port in arg for arg in actual])
     assert '--memory=%dm' % memory in actual
     assert any(['--publish=%s' % random_port in arg for arg in actual])
     assert '--name=%s' % container_name in actual

@@ -371,6 +371,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     cmd = ['docker', 'run']
     for k, v in env.iteritems():
         cmd.append('--env=\"%s=%s\"' % (k, v))
+    cmd.append('--env=MARATHON_PORT=%s' % random_port)
     cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
