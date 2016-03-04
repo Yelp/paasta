@@ -37,7 +37,7 @@ class TestChronosTools:
         'cpus': 5.5,
         'mem': 1024.4,
         'disk': 1234.5,
-        'disabled': True,
+        'disabled': False,
         'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
         'schedule_time_zone': 'Zulu',
         'monitoring': fake_monitoring_info,
@@ -1465,3 +1465,9 @@ class TestChronosTools:
         mock_load_chronos_config.return_value = {}
         matching = chronos_tools.get_job_for_service_instance('service', 'instance')
         assert matching == mock_matching_jobs[0]
+
+    def test_determine_disabled_state(self):
+        assert chronos_tools.determine_disabled_state('start', False) is False
+        assert chronos_tools.determine_disabled_state('stop', False) is True
+        assert chronos_tools.determine_disabled_state('start', True) is True
+        assert chronos_tools.determine_disabled_state('stop', True) is True
