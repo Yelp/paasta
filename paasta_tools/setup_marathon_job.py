@@ -512,7 +512,7 @@ def setup_service(service, instance, client, marathon_config,
 
     log.info("Setting up instance %s for service %s", instance, service)
     try:
-        complete_config = marathon_tools.create_complete_config(service, instance, soa_dir)
+        complete_config = service_marathon_config.format_marathon_app_dict()
     except NoDockerImageError:
         error_msg = (
             "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"

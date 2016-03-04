@@ -50,7 +50,6 @@ def main():
         sys.exit(1)
 
     service, instance, _, __ = (s.replace('--', '_') for s in decompose_job_id(full_appid))
-    complete_config = marathon_tools.create_complete_config(service, instance, marathon_config)
     cluster = load_system_paasta_config().get_cluster()
     service_instance_config = marathon_tools.load_marathon_service_config(
         service=service,
@@ -58,6 +57,7 @@ def main():
         cluster=cluster,
         soa_dir=soa_dir,
     )
+    complete_config = service_instance_config.format_marathon_app_dict()
     nerve_ns = service_instance_config.get_nerve_namespace()
     service_namespace_config = marathon_tools.load_service_namespace_config(service=service, namespace=nerve_ns)
     drain_method = drain_lib.get_drain_method(

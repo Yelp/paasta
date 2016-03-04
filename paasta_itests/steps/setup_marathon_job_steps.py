@@ -30,16 +30,16 @@ def run_setup_marathon_job(context):
     update_context_marathon_config(context)
     with contextlib.nested(
         mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
-        mock.patch('paasta_tools.setup_marathon_job.marathon_tools.create_complete_config', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job.parse_args', autospec=True),
+        mock.patch.object(MarathonServiceConfig, 'format_marathon_app_dict', autospec=True,
+                          return_value=context.marathon_complete_config),
         mock.patch('paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True),
     ) as (
         mock_get_zk_hosts,
-        mock_create_complete_config,
         mock_parse_args,
         _,
+        _,
     ):
-        mock_create_complete_config.return_value = context.marathon_complete_config
         mock_parse_args.return_value = mock.Mock(
             soa_dir=context.soa_dir,
             service_instance=context.job_id,
