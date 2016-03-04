@@ -27,6 +27,25 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook, mock_load_ch
     }
 
 
+@patch('paasta_tools.check_chronos_jobs.chronos_tools.load_chronos_job_config')
+@patch('paasta_tools.check_chronos_jobs.monitoring_tools.get_runbook')
+def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_runbook, mock_load_chronos_job_config):
+    mymock = Mock()
+    mymock.get_monitoring.return_value = {'alert_after': '10m'}
+    mock_load_chronos_job_config.return_value = mymock
+    mock_get_runbook.return_value = 'myrunbook'
+    assert check_chronos_jobs.compose_monitoring_overrides_for_service(
+        'mycluster',
+        'myservice',
+        'myjob',
+        'soa_dir'
+    ) == {
+        'alert_after': '10m',
+        'check_every': '1m',
+        'runbook': 'myrunbook'
+    }
+
+
 def test_compose_check_name_for_job():
     expected_check = 'check-chronos-jobs.myservice.myinstance'
     assert chronos_tools.compose_check_name_for_service_instance('check-chronos-jobs',
