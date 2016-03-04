@@ -81,7 +81,6 @@ def _generate_mesos_cli_config(zk_host_and_port):
             'master': zk_host_and_port,
             'log_level': 'warning',
             'log_file': 'None',
-            'response_timeout': 5,
         }
     }
     return config

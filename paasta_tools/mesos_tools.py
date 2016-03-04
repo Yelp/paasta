@@ -322,7 +322,7 @@ def get_number_of_mesos_masters(zk_config):
     zk = KazooClient(hosts=zk_config['hosts'], read_only=True)
     zk.start()
     root_entries = zk.get_children(zk_config['path'])
-    result = [info for info in root_entries if info.startswith('json.info_') or info.startswith('info_')]
+    result = [info for info in root_entries if info.startswith('info_')]
     zk.stop()
     return len(result)
 

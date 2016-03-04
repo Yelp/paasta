@@ -26,8 +26,7 @@ from paasta_tools import check_mesos_resource_utilization
 def check_mesos_utilization(context, percent):
     config = {
         "master": "%s" % get_service_connection_string('mesosmaster'),
-        "scheme": "http",
-        "response_timeout": 5,
+        "scheme": "http"
     }
 
     with contextlib.nested(
