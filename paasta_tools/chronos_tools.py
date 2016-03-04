@@ -469,8 +469,6 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     complete_config['name'] = compose_job_id(service, job_name)
     desired_state = chronos_job_config.get_desired_state()
 
-    # use the 'description' field to determine the disabled state
-    # of the job
     if desired_state == 'start':
         complete_config['disabled'] = False
     elif desired_state == 'stop':
