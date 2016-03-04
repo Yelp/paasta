@@ -181,6 +181,7 @@ class ChronosJobConfig(InstanceConfig):
             config_dict=config_dict,
             branch_dict=branch_dict,
         )
+        self.framework = 'chronos'
 
     def get_service(self):
         return self.service

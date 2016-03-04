@@ -196,6 +196,7 @@ class TestChronosTools:
                                                                        self.fake_cluster,
                                                                        soa_dir=fake_soa_dir)
             assert actual == self.fake_chronos_job_config
+            assert actual.get_framework() == 'chronos'
 
     def test_load_chronos_job_config_can_ignore_deployments(self):
         fake_soa_dir = '/tmp/'

@@ -92,15 +92,16 @@ class TestMarathonTools:
             mock_read_extra_service_information,
         ):
             mock_read_extra_service_information.return_value = {fake_instance: {}}
-            marathon_tools.load_marathon_service_config(
-                fake_name,
-                fake_instance,
-                fake_cluster,
+            actual = marathon_tools.load_marathon_service_config(
+                service=fake_name,
+                instance=fake_instance,
+                cluster=fake_cluster,
                 soa_dir=fake_dir,
             )
             assert mock_read_service_configuration.call_count == 1
             assert mock_read_extra_service_information.call_count == 1
             mock_load_deployments_json.assert_called_once_with(fake_name, soa_dir=fake_dir)
+            assert actual.get_framework() == 'marathon'
 
     def test_load_marathon_service_config_bails_with_no_config(self):
         fake_name = 'jazz'
