@@ -37,7 +37,6 @@ class TestChronosTools:
         'cpus': 5.5,
         'mem': 1024.4,
         'disk': 1234.5,
-        'disabled': True,
         'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
         'schedule_time_zone': 'Zulu',
         'monitoring': fake_monitoring_info,
@@ -301,7 +300,6 @@ class TestChronosTools:
             'cpus': 5.5,
             'mem': 1024.4,
             'disk': 1234.5,
-            'disabled': True,
             'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
             'schedule_time_zone': 'Zulu',
             'monitoring': {},
@@ -413,28 +411,6 @@ class TestChronosTools:
         )
         actual = fake_conf.get_retries()
         assert actual == fake_retries
-
-    def test_get_disabled_default(self):
-        fake_conf = chronos_tools.ChronosJobConfig(
-            service='fake_name',
-            cluster='fake_cluster',
-            instance='fake_instance',
-            config_dict={},
-            branch_dict={},
-        )
-        actual = fake_conf.get_disabled()
-        assert not actual
-
-    def test_get_disabled(self):
-        fake_conf = chronos_tools.ChronosJobConfig(
-            service='fake_name',
-            cluster='fake_cluster',
-            instance='fake_instance',
-            config_dict={'disabled': True},
-            branch_dict={},
-        )
-        actual = fake_conf.get_disabled()
-        assert actual
 
     def test_get_schedule(self):
         fake_schedule = 'fake_schedule'
@@ -864,7 +840,6 @@ class TestChronosTools:
             'cpus': 0.25,
             'async': False,
             'owner': fake_owner,
-            'disabled': False,
             'mem': 1024,
             'disk': 1024,
             'container': {
