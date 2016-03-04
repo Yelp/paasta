@@ -146,6 +146,8 @@ def get_running_tasks_from_active_frameworks(job_id):
 def get_non_running_tasks_from_active_frameworks(job_id):
     active_framework_tasks = get_current_tasks(job_id)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
+    # Order the tasks by timestamp
+    not_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
     return not_running_tasks
 
 

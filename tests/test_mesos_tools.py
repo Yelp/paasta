@@ -46,6 +46,40 @@ def test_filter_not_running_tasks():
     assert not_running[0]['id'] == 2
 
 
+def test_get_non_running_tasks_from_active_frameworks():
+    with mock.patch('paasta_tools.mesos_tools.get_current_tasks', autospec=True) as get_current_tasks_patch:
+        get_current_tasks_patch.return_value = [
+            {
+                'statuses': [{'timestamp': '1457109986'}],
+                'state': 'NOT_RUNNING',
+            },
+            {
+                'statuses': [{'timestamp': '1457110226'}],
+                'state': 'NOT_RUNNING',
+            },
+            {
+                'statuses': [{'timestamp': '1457110106'}],
+                'state': 'NOT_RUNNING',
+            },
+        ]
+        expected = [
+            {
+                'statuses': [{'timestamp': '1457109986'}],
+                'state': 'NOT_RUNNING',
+            },
+            {
+                'statuses': [{'timestamp': '1457110106'}],
+                'state': 'NOT_RUNNING',
+            },
+            {
+                'statuses': [{'timestamp': '1457110226'}],
+                'state': 'NOT_RUNNING',
+            },
+        ]
+
+        assert mesos_tools.get_non_running_tasks_from_active_frameworks(123) == expected
+
+
 @mark.parametrize('test_case', [
     [False, 0],
     [True, 2]
