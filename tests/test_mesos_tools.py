@@ -187,7 +187,7 @@ def test_get_number_of_mesos_masters(
     fake_zk_config = {'hosts': '1.1.1.1', 'path': 'fake_path'}
 
     zk = mock_kazoo.return_value
-    zk.get_children.return_value = ['log_11', 'state', 'json.info_1', 'info_2']
+    zk.get_children.return_value = ['log_11', 'state', 'info_1', 'info_2']
     assert mesos_tools.get_number_of_mesos_masters(fake_zk_config) == 2
 
 

@@ -61,7 +61,6 @@ def setup_mesos_cli_config(config_file, cluster):
         "default": {
             "master": "zk://%s/mesos-%s" % (zookeeper_service, cluster),
             "log_file": "None",
-            "response_timeout": 5,
         }
     }
     print 'Generating mesos.cli config file: %s' % config_file
