@@ -331,7 +331,6 @@ class MarathonServiceConfig(InstanceConfig):
 
         CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds'])
 
-        partial_id = format_job_id(service=self.service, instance=self.instance)
         system_paasta_config = load_system_paasta_config()
         docker_url = get_docker_url(system_paasta_config.get_docker_registry(), self.get_docker_image())
         service_namespace_config = load_service_namespace_config(
@@ -341,7 +340,6 @@ class MarathonServiceConfig(InstanceConfig):
         docker_volumes = system_paasta_config.get_volumes() + self.get_extra_volumes()
 
         complete_config = {
-            'id': partial_id,
             'container': {
                 'docker': {
                     'image': docker_url,
