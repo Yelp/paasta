@@ -35,6 +35,12 @@ instance MAY have:
 
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
+  * ``min_instances``: When autoscaling, the minimum number of instances that
+    marathon will create for a service. Defaults to 1.
+
+  * ``max_instances``: When autoscaling, the maximum number of instances that
+    marathon will create for a service
+
   * ``nerve_ns``: Specifies that this namespace should be routed to by another
     namespace in SmartStack. In SmartStack, each service has difference pools
     of backend servers that are listening on a particul port. In PaaSTA we call
@@ -136,6 +142,11 @@ instance MAY have:
   * ``monitoring``: A dictionary of values that configure overrides for
     monitoring parameters that will take precedence over what is in
     `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
+
+  * ``autoscaling``:
+
+    * ``method``: Which autoscaling method to use. See the `autoscaling docs <autoscaling.html>`_
+      for valid options and how they work
 
   * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 
