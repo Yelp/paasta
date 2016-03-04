@@ -83,11 +83,8 @@ configuration for the running image:
 * ``--net``: PaaSTA uses bridge mode to enable random port allocation.
 
 * ``--env``: Any environment variables specified in the ``env`` section will be here. Additional
-  ``PAASTA_`` environment variables will also be injected, see the `related docs <yelpsoa_configs.html#marathon-clustername-yaml>`_
-  for more information. Marathon and Mesos will also set up some
-  `environment variables <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_.
-  They will all be prefixed with ``MARATHON_`` or ``MESOS_`` to avoid conflicting with environment
-  variables set by your service.
+  ``PAASTA_``, ``MARATHON_``, and ``MESOS_`` environment variables will also be injected, see the
+  `related docs <yelpsoa_configs.html#env>`_ for more information.
 
 * ``--publish``: Mesos picks a random port on the host that maps to and exposes
   port 8888 inside the container. This random port is announced to Smartstack
