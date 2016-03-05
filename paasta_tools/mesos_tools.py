@@ -256,26 +256,26 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
     error_message = PaastaColors.red("      couldn't read stdout/stderr for %s (%s)")
     output = []
     try:
-        for stream in ['stdout', 'stderr']:
-            fobjs = mesos.cli.cluster.files(flist=[stream], fltr=task['id'])
-            if not fobjs:
-                output.append(PaastaColors.blue("      no stdout/stderrr for %s" % get_short_task_id(task['id'])))
-                return output
-            for fobj in fobjs:
-                output.append(PaastaColors.blue("      %s tail for %s" % (fobj[0].path, get_short_task_id(task['id']))))
-                # read nlines, starting from EOF
-                # mesos.cli is smart and can efficiently read a file backwards
-                reversed_file = reversed(fobj[0])
-                tail = []
-                for _ in xrange(nlines):
-                    line = next(reversed_file, None)
-                    if line is None:
-                        break
-                    tail.append(line)
-                # reverse the tail, so that EOF is at the bottom again
-                if tail:
-                    output.extend(tail[::-1])
-                output.append(PaastaColors.blue("      %s EOF" % fobj[0].path))
+        fobjs = list(mesos.cli.cluster.files(flist=['stdout', 'stderr'], fltr=task['id']))
+        fobjs.sort(key=lambda fobj: fobj[0].path, reverse=True)
+        if not fobjs:
+            output.append(PaastaColors.blue("      no stdout/stderrr for %s" % get_short_task_id(task['id'])))
+            return output
+        for fobj in fobjs:
+            output.append(PaastaColors.blue("      %s tail for %s" % (fobj[0].path, get_short_task_id(task['id']))))
+            # read nlines, starting from EOF
+            # mesos.cli is smart and can efficiently read a file backwards
+            reversed_file = reversed(fobj[0])
+            tail = []
+            for _ in xrange(nlines):
+                line = next(reversed_file, None)
+                if line is None:
+                    break
+                tail.append(line)
+            # reverse the tail, so that EOF is at the bottom again
+            if tail:
+                output.extend(tail[::-1])
+            output.append(PaastaColors.blue("      %s EOF" % fobj[0].path))
     except (MasterNotAvailableException,
             SlaveNotAvailableException,
             TaskNotFoundException,
