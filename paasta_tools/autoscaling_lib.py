@@ -62,9 +62,9 @@ def bespoke_autoscaling_method(*args, **kwargs):
 def default_autoscaling_method(marathon_service_config):
     PID_SETPOINT = 0.8
     AUTOSCALING_DELAY = 600
-    Kp = 0.0
-    Ki = 0.0 / AUTOSCALING_DELAY
-    Kd = 0.0 * AUTOSCALING_DELAY
+    Kp = 0.2
+    Ki = 0.2 / AUTOSCALING_DELAY
+    Kd = 0.05 * AUTOSCALING_DELAY
 
     zookeeper_root = compose_autoscaling_zookeeper_root(marathon_service_config.service,
                                                         marathon_service_config.instance)
