@@ -205,18 +205,18 @@ class MarathonServiceConfig(InstanceConfig):
         if self.get_desired_state() == 'start':
             max_instances = self.get_max_instances()
             if max_instances is not None:
-                instances = self.get_min_instances()
+                min_instances = self.get_min_instances()
                 try:
                     zk_instances = get_instances_from_zookeeper(
                         service=self.service,
                         instance=self.instance,
                     )
                 except NoNodeError:  # zookeeper doesn't have instance data for this app
-                    return instances
+                    return min_instances
                 else:
                     return max(
                         min(zk_instances, max_instances),
-                        instances,
+                        min_instances,
                     )
             else:
                 return self.config_dict.get('instances', 1)
@@ -229,15 +229,15 @@ class MarathonServiceConfig(InstanceConfig):
         }
         return self.config_dict.get('autoscaling', default_params)
 
-    def get_backoff_seconds(self, instances=None):
+    def get_backoff_seconds(self):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.
         Every time a task fails, Marathon adds this value multiplied by a backoff_factor.
         In PaaSTA we know how many instances a service has, so we adjust the backoff_seconds
         to account for this, which prevents services with large number of instances from
         being penalized more than services with small instance counts. (for example, a service
         with 30 instances will get backed off 10 times faster than a service with 3 instances)."""
-        if instances is None:
-            instances = self.get_instances()
+        max_instances = self.get_max_instances()
+        instances = max_instances if max_instances is not None else self.get_instances()
         if instances == 0:
             return 1
         else:
@@ -333,7 +333,6 @@ class MarathonServiceConfig(InstanceConfig):
                                marathon configuration file
         :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
-        instances = self.get_instances()
 
         # A set of config attributes that don't get included in the hash of the config.
         # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
@@ -364,7 +363,7 @@ class MarathonServiceConfig(InstanceConfig):
                 'volumes': docker_volumes,
             },
             'uris': ['file:///root/.dockercfg', ],
-            'backoff_seconds': self.get_backoff_seconds(instances),
+            'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),
             'env': self.get_env(),
@@ -372,7 +371,7 @@ class MarathonServiceConfig(InstanceConfig):
             'cpus': float(self.get_cpus()),
             'disk': float(self.get_disk()),
             'constraints': self.get_constraints(service_namespace_config),
-            'instances': instances,
+            'instances': self.get_instances(),
             'cmd': self.get_cmd(),
             'args': self.get_args(),
         }

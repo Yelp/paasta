@@ -761,7 +761,6 @@ class TestMarathonTools:
             classic_patch.assert_called_once_with(soa_dir)
 
     def test_format_marathon_app_dict(self):
-        fake_id = marathon_tools.format_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
             {
@@ -806,7 +805,7 @@ class TestMarathonTools:
         ]
 
         expected_conf = {
-            'id': fake_id,
+            'id': mock.ANY,
             'container': {
                 'docker': {
                     'image': fake_url,
@@ -861,14 +860,11 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
                        return_value={'fake_region': {}}),
             mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
-            mock.patch('paasta_tools.marathon_tools.format_job_id', autospec=True, return_value=fake_id),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=fake_service_namespace_config),
-            mock.patch.object(SystemPaastaConfig, 'get_volumes', autospec=True, return_value=fake_volumes),
-            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
+                       return_value=mock.Mock(get_volumes=mock.Mock(return_value=fake_volumes))),
         ) as (
-            _,
-            _,
             _,
             _,
             _,
