@@ -49,7 +49,8 @@ def add_subparser(subparsers):
         action='count',
         dest="verbose",
         default=0,
-        help="Print out more output regarding the state of the service")
+        help="Print out more output regarding the state of the service. "
+             "A second -v will also print the stdout/stderr tail.")
     status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect'

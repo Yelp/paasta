@@ -39,13 +39,31 @@ class MasterNotAvailableException(Exception):
     pass
 
 
+class SlaveNotAvailableException(Exception):
+    pass
+
+
 class NoSlavesAvailable(Exception):
+    pass
+
+
+class TaskNotFoundException(Exception):
+    pass
+
+
+class FileNotFoundForTaskException(Exception):
     pass
 
 
 def raise_cli_exception(msg):
     if msg.startswith("unable to connect to a master"):
         raise MasterNotAvailableException(msg)
+    if msg.startswith("Slave no longer exists"):
+        raise SlaveNotAvailableException(msg)
+    if msg.startswith("Cannot find a task by that name"):
+        raise TaskNotFoundException(msg)
+    if msg.startswith("No such task has the requested file or directory"):
+        raise FileNotFoundForTaskException(msg)
     else:
         raise Exception(msg)
 
@@ -58,6 +76,7 @@ MY_HOSTNAME = socket.getfqdn()
 MESOS_MASTER_PORT = 5050
 MESOS_SLAVE_PORT = '5051'
 from mesos.cli import master  # noqa
+import mesos.cli.cluster  # noqa
 
 
 class MesosMasterConnectionError(Exception):
@@ -226,13 +245,69 @@ def format_non_running_mesos_task_row(task, get_short_task_id):
     )
 
 
-def status_mesos_tasks_verbose(job_id, get_short_task_id):
+@timeout()
+def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
+    """Returns the formatted "tail" of stdout/stderr, for a given a task.
+
+    :param get_short_task_id: A function which given a
+                              task_id returns a short task_id suitable for
+                              printing.
+    """
+    error_message = PaastaColors.red("      couldn't read stdout/stderr for %s (%s)")
+    output = []
+    try:
+        for stream in ['stdout', 'stderr']:
+            fobjs = mesos.cli.cluster.files(flist=[stream], fltr=task['id'])
+            if not fobjs:
+                output.append(PaastaColors.blue("      no stdout/stderrr for %s" % get_short_task_id(task['id'])))
+                return output
+            for fobj in fobjs:
+                output.append(PaastaColors.blue("      %s tail for %s" % (fobj[0].path, get_short_task_id(task['id']))))
+                # read nlines, starting from EOF
+                # mesos.cli is smart and can efficiently read a file backwards
+                reversed_file = reversed(fobj[0])
+                tail = []
+                for _ in xrange(nlines):
+                    line = next(reversed_file, None)
+                    if line is None:
+                        break
+                    tail.append(line)
+                # reverse the tail, so that EOF is at the bottom again
+                if tail:
+                    output.extend(tail[::-1])
+                output.append(PaastaColors.blue("      %s EOF" % fobj[0].path))
+    except (MasterNotAvailableException,
+            SlaveNotAvailableException,
+            TaskNotFoundException,
+            FileNotFoundForTaskException) as e:
+        output.append(error_message % (get_short_task_id(task['id']), e.message))
+    except TimeoutError:
+        output.append(error_message % (get_short_task_id(task['id']), 'timeout'))
+    return output
+
+
+def zip_tasks_verbose_output(table, stdstreams):
+    """Zip a list of strings (table) with a list of lists (stdstreams)
+    :param table: a formatted list of tasks
+    :param stdstreams: for each task, a list of lines from stdout/stderr tail
+    """
+    assert len(table) == len(stdstreams)
+    output = []
+    for i in xrange(len(table)):
+        output.append(table[i])
+        output.extend([line for line in stdstreams[i]])
+    return output
+
+
+def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False):
     """Returns detailed information about the mesos tasks for a service.
 
     :param job_id: An id used for looking up Mesos tasks
     :param get_short_task_id: A function which given a
                               task_id returns a short task_id suitable for
                               printing.
+    :param tail_stdstreams: If True, also display the stdout/stderr tail,
+                            as obtained from the Mesos sandbox.
     """
     output = []
     running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
@@ -246,9 +321,17 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id):
     ]]
     for task in running_and_active_tasks:
         rows_running.append(format_running_mesos_task_row(task, get_short_task_id))
-    output.extend(["    %s" % row for row in format_table(rows_running)])
+    tasks_table_running = ["    %s" % row for row in format_table(rows_running)]
+    if not tail_stdstreams:
+        output.extend(tasks_table_running)
+    else:
+        tasks_stdstreams_running = []
+        for task in running_and_active_tasks:
+            tasks_stdstreams_running.append(format_stdstreams_tail_for_task(task, get_short_task_id))
+        output.append(tasks_table_running[0])  # header
+        output.extend(zip_tasks_verbose_output(tasks_table_running[1:], tasks_stdstreams_running))
 
-    non_running_tasks = reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:])
+    non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:]))
     output.append(PaastaColors.grey("  Non-Running Tasks"))
     rows_non_running = [[
         PaastaColors.grey("Mesos Task ID"),
@@ -258,7 +341,15 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id):
     ]]
     for task in non_running_tasks:
         rows_non_running.append(format_non_running_mesos_task_row(task, get_short_task_id))
-    output.extend(["    %s" % row for row in format_table(rows_non_running)])
+    tasks_table_non_running = ["    %s" % row for row in format_table(rows_non_running)]
+    if not tail_stdstreams:
+        output.extend(tasks_table_non_running)
+    else:
+        tasks_stdstreams_non_running = []
+        for task in non_running_tasks:
+            tasks_stdstreams_non_running.append(format_stdstreams_tail_for_task(task, get_short_task_id))
+        output.append(tasks_table_non_running[0])  # header
+        output.extend(zip_tasks_verbose_output(tasks_table_non_running[1:], tasks_stdstreams_non_running))
 
     return "\n".join(output)
 
