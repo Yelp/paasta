@@ -233,9 +233,6 @@ class ChronosJobConfig(InstanceConfig):
     def get_retries(self):
         return self.config_dict.get('retries', 2)
 
-    def get_disabled(self):
-        return self.config_dict.get('disabled', False)
-
     def get_schedule(self):
         return self.config_dict.get('schedule')
 
@@ -394,7 +391,6 @@ class ChronosJobConfig(InstanceConfig):
             'epsilon': self.get_epsilon(),
             'retries': self.get_retries(),
             'async': False,  # we don't support async jobs
-            'disabled': self.get_disabled(),
             'owner': self.get_owner(),
             'scheduleTimeZone': self.get_schedule_time_zone(),
             'shell': self.get_shell(),
@@ -474,14 +470,14 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     complete_config['name'] = compose_job_id(service, job_name)
     desired_state = chronos_job_config.get_desired_state()
 
+    if desired_state == 'start':
+        complete_config['disabled'] = False
+    elif desired_state == 'stop':
+        complete_config['disabled'] = True
+
     # we use the undocumented description field to store a hash of the chronos config.
     # this makes it trivial to compare configs and know when to bounce.
     complete_config['description'] = get_config_hash(complete_config)
-
-    # If the job was previously stopped, we should stop the new job as well
-    # NOTE: this clobbers the 'disabled' param specified in the config file!
-    if desired_state == 'stop':
-        complete_config['disabled'] = True
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
     return complete_config

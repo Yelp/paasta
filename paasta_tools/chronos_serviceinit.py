@@ -30,37 +30,24 @@ log = logging.getLogger('__main__')
 logging.basicConfig()
 
 
-def start_chronos_job(service, instance, job_id, client, cluster, job_config, complete_job_config, emergency=False):
+def start_chronos_job(service, instance, job_id, client, cluster, complete_job_config, emergency=False):
     """
     Calls the 'manual start' Chronos endpoint (https://mesos.github.io/chronos/docs/api.html#manually-starting-a-job),
-    running the job now regardless of its 'schedule'. The job's "schedule" is unmodified. If a job is disabled,
-    this function does not do anything.
+    running the job now regardless of its 'schedule'. The job's "schedule" is unmodified.
     """
     name = PaastaColors.cyan(job_id)
-    # The job should be run immediately as long as the job is not disabled via
-    # the 'disabled' key in soa-configs. Since we clobber the 'disabled' key in
-    # complete_job_config (the dict that gets passed to Chronos), we need to look
-    # at the service's soa-config directly to check if it is disabled.
-    should_run_now = not job_config.get_disabled()  # or job_config.get_desired_state() == "start"
     log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
-    if should_run_now:
-        log_immediate_run = "and running it immediately"
-    else:
-        log_immediate_run = PaastaColors.yellow("but will not run it immediately because the job is disabled")
 
     _log(
         service=service,
-        line="%s: Sending job %s to Chronos %s" % (log_reason, name, log_immediate_run),
+        line="%s: Sending job %s to Chronos" % (log_reason, name),
         component="deploy",
         level="event",
         cluster=cluster,
         instance=instance
     )
     client.update(complete_job_config)
-
-    # Calling start on a disabled job is a noop
-    if should_run_now:
-        client.run(job_id)
+    client.run(job_id)
 
 
 def stop_chronos_job(service, instance, client, cluster, existing_jobs, emergency=False):
@@ -87,12 +74,11 @@ def restart_chronos_job(
     client,
     cluster,
     matching_jobs,
-    job_config,
     complete_job_config,
     emergency=False
 ):
     stop_chronos_job(service, instance, client, cluster, matching_jobs, emergency)
-    start_chronos_job(service, instance, job_id, client, cluster, job_config, complete_job_config, emergency)
+    start_chronos_job(service, instance, job_id, client, cluster, complete_job_config, emergency)
 
 
 def get_short_task_id(task_id):
@@ -313,12 +299,6 @@ def status_chronos_jobs(jobs, job_config, verbose):
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
-    job_config = chronos_tools.load_chronos_job_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        soa_dir=soa_dir,
-    )
     complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)
     job_id = complete_job_config["name"]
 
@@ -329,7 +309,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             job_id=job_id,
             client=client,
             cluster=cluster,
-            job_config=job_config,
             complete_job_config=complete_job_config,
             emergency=True,
         )
@@ -355,7 +334,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             client=client,
             cluster=cluster,
             matching_jobs=matching_jobs,
-            job_config=job_config,
             complete_job_config=complete_job_config,
             emergency=True,
         )

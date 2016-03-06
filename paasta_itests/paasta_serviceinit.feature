@@ -18,7 +18,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run status on chronos jobs
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -27,7 +27,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run status --verbose on chronos jobs
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -36,7 +36,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-stop on an enabled chronos job
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -49,7 +49,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-start on an enabled chronos job
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -58,20 +58,9 @@ Feature: paasta_serviceinit
      Then the job stored as "myjob" is enabled in chronos
       And the job stored as "myjob" has running tasks
 
-  Scenario: paasta_serviceinit can run emergency-start on a disabled chronos job that results in noop
+  Scenario: paasta_serviceinit can run emergency-start on a stopped chronos job that results in a noop
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
-      And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
-     When we run setup_chronos_job for service_instance "testservice.testinstance"
-      And we store the name of the job for the service testservice and instance testinstance as myjob
-      And we wait for the chronos job stored as "myjob" to appear in the job list
-      And we paasta_serviceinit emergency-start the service_instance "testservice.testinstance"
-     Then the job stored as "myjob" is disabled in chronos
-      And the job stored as "myjob" has no running tasks
-
-  Scenario: paasta_serviceinit can run emergency-start on a stopped chronos job
-    Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -80,9 +69,9 @@ Feature: paasta_serviceinit
      Then the job stored as "myjob" is disabled in chronos
       And the job stored as "myjob" has running tasks
 
-  Scenario: paasta_serviceinit can run emergency-restart on an enabled chronos job
+  Scenario: paasta_serviceinit can run emergency-restart on an chronos job
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
