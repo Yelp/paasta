@@ -12,92 +12,120 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+from time import sleep
 
 import mock
 from behave import then
 from behave import when
+from itest_utils import get_service_connection_string
 
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
-
-fake_service_name = 'fake_complete_service'
-fake_cluster_name = 'fake_cluster'
-fake_instance_name = 'fake_instance'
-fake_appid = 'fake--complete--service.fake--instance.gitdeadbeef.configdeadbeef2'
-fake_service_marathon_config = marathon_tools.MarathonServiceConfig(
-    service=fake_service_name,
-    cluster=fake_cluster_name,
-    instance=fake_instance_name,
-    config_dict={},
-    branch_dict={'docker_image': 'test-image'},
-)
-fake_service_config = {
-    'id': fake_appid,
-    'container': {
-        'docker': {
-            'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
-            'image': u'localhost/fake_docker_url',
-            'network': 'BRIDGE'
-        },
-        'type': 'DOCKER',
-        'volumes': [
-            {'hostPath': u'/nail/etc/habitat', 'containerPath': '/nail/etc/habitat', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/datacenter', 'containerPath': '/nail/etc/datacenter', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/ecosystem', 'containerPath': '/nail/etc/ecosystem', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/rntimeenv', 'containerPath': '/nail/etc/rntimeenv', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/region', 'containerPath': '/nail/etc/region', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/sperregion', 'containerPath': '/nail/etc/sperregion', 'mode': 'RO'},
-            {'hostPath': u'/nail/etc/topology_env', 'containerPath': '/nail/etc/topology_env', 'mode': 'RO'},
-            {'hostPath': u'/nail/srv', 'containerPath': '/nail/srv', 'mode': 'RO'},
-            {'hostPath': u'/etc/boto_cfg', 'containerPath': '/etc/boto_cfg', 'mode': 'RO'}]
-    },
-    'instances': 1,
-    'mem': 300,
-    'args': [],
-    'backoff_factor': 2,
-    'cpus': 0.25,
-    'uris': ['file:///root/.dockercfg'],
-    'backoff_seconds': 1,
-    'constraints': None
-}
+from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import SystemPaastaConfig
 
 
-@when(u'we create a complete app')
-def create_complete_app(context):
+def run_setup_marathon_job(context):
+    update_context_marathon_config(context)
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_tools.create_complete_config'),
-        mock.patch('paasta_tools.marathon_tools.load_marathon_config', return_value=context.marathon_config),
-        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=context.system_paasta_config),
-        mock.patch('paasta_tools.bounce_lib.load_system_paasta_config', return_value=context.system_paasta_config),
-        mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config',
-                   return_value=context.system_paasta_config),
+        mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
+        mock.patch('paasta_tools.setup_marathon_job.marathon_tools.create_complete_config', autospec=True),
+        mock.patch('paasta_tools.setup_marathon_job.parse_args', autospec=True),
+        mock.patch('paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True),
     ) as (
+        mock_get_zk_hosts,
         mock_create_complete_config,
+        mock_parse_args,
         _,
-        _,
-        _,
-        mock_load_system_paasta_config,
     ):
-        mock_create_complete_config.return_value = fake_service_config
-        mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
-        print marathon_tools.load_marathon_config()
-        return_tuple = setup_marathon_job.setup_service(
-            service=fake_service_name,
-            instance=fake_instance_name,
-            client=context.marathon_client,
-            marathon_config=context.marathon_config,
-            service_marathon_config=fake_service_marathon_config,
-            soa_dir=None,
+        mock_create_complete_config.return_value = context.marathon_complete_config
+        mock_parse_args.return_value = mock.Mock(
+            soa_dir=context.soa_dir,
+            service_instance=context.job_id,
         )
-        assert return_tuple[0] == 0
-        assert 'deployed' in return_tuple[1]
+        try:
+            setup_marathon_job.main()
+        except SystemExit:
+            pass
+
+
+@when(u'we set up an app to use zookeeper scaling with {number:d} max instances')
+def setup_zookeeper(context, number):
+    context.max_instances = number
+
+
+def update_context_marathon_config(context):
+    whitelist_keys = set(['id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'])
+    with contextlib.nested(
+        mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
+        mock.patch.object(MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=context.instances),
+        mock.patch.object(MarathonServiceConfig, 'get_max_instances', autospec=True),
+    ) as (
+        _,
+        _,
+        mock_get_max_instances,
+    ):
+        mock_get_max_instances.return_value = context.max_instances if 'max_instances' in context else None
+        context.marathon_complete_config = {key: value for key, value in marathon_tools.create_complete_config(
+            context.service,
+            context.instance,
+            soa_dir=context.soa_dir,
+        ).items() if key in whitelist_keys}
+    context.marathon_complete_config.update({
+        'cmd': '/bin/sleep 1m',
+        'constraints': None,
+    })
+
+
+@when(u'we create a marathon app called "{job_id}" with {number:d} instance(s)')
+def create_app_with_instances(context, job_id, number):
+    set_number_instances(context, number)
+    context.job_id = job_id
+    (service, instance, _, __) = decompose_job_id(job_id)
+    context.service = service
+    context.instance = instance
+    context.zk_hosts = '%s/mesos-testcluster' % get_service_connection_string('zookeeper')
+    update_context_marathon_config(context)
+    context.app_id = context.marathon_complete_config['id']
+    run_setup_marathon_job(context)
+
+
+@when(u'we set the number of instances to {number:d}')
+def set_number_instances(context, number):
+    context.instances = number
+
+
+@when(u'we run setup_marathon_job until it has {number:d} task(s)')
+def run_until_number_tasks(context, number):
+    for _ in xrange(20):
+        run_setup_marathon_job(context)
+        sleep(0.5)
+        if marathon_tools.app_has_tasks(context.marathon_client, context.app_id, number, exact_matches_only=True):
+            return
+    assert marathon_tools.app_has_tasks(context.marathon_client, context.app_id, number, exact_matches_only=True)
+
+
+@when(u'we set the instance count in zookeeper for service "{service}" instance "{instance}" to {number:d}')
+def zookeeper_scale_job(context, service, instance, number):
+    with contextlib.nested(
+        mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts)
+    ) as (
+        _,
+    ):
+        marathon_tools.set_instances_for_marathon_service(service, instance, number, soa_dir=context.soa_dir)
 
 
 @then(u'we should see it in the list of apps')
 def see_it_in_list(context):
-    assert fake_appid in marathon_tools.list_all_marathon_app_ids(context.marathon_client)
+    assert context.app_id in marathon_tools.list_all_marathon_app_ids(context.marathon_client)
 
 
-@then(u'we can run get_app on it')
+@then(u'we can run get_app')
 def can_run_get_app(context):
-    assert context.marathon_client.get_app(fake_appid)
+    assert context.marathon_client.get_app(context.app_id)
+
+
+@then(u'we should see the number of instances become {number:d}')
+def assert_instances_equals(context, number):
+    assert context.marathon_client.get_app(context.app_id).instances == number

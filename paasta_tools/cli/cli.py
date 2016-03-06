@@ -15,6 +15,7 @@
 # PYTHON_ARGCOMPLETE_OK
 """A command line tool for viewing information from the PaaSTA stack."""
 import argparse
+import sys
 
 import argcomplete
 import pkg_resources
@@ -93,7 +94,8 @@ def main(argv=None):
     """
     configure_log()
     args = parse_args(argv)
-    args.command(args)
+    return_code = args.command(args)
+    sys.exit(return_code)
 
 if __name__ == '__main__':
     main()

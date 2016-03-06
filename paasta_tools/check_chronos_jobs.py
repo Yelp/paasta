@@ -35,7 +35,8 @@ def compose_monitoring_overrides_for_service(cluster, service, instance, soa_dir
         cluster=cluster,
         soa_dir=soa_dir
     ).get_monitoring()
-    monitoring_overrides['alert_after'] = '2m'
+    if 'alert_after' not in monitoring_overrides:
+        monitoring_overrides['alert_after'] = '2m'
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service, soa_dir=soa_dir)
     return monitoring_overrides

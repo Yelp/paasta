@@ -15,8 +15,6 @@
 """Contains methods used by the paasta client to mark a docker image for
 deployment to a cluster.instance.
 """
-import sys
-
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
@@ -103,10 +101,9 @@ def paasta_mark_for_deployment(args):
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
     validate_service_name(service)
-    returncode = mark_for_deployment(
+    return mark_for_deployment(
         git_url=args.git_url,
         deploy_group=deploy_group,
         service=service,
         commit=args.commit
     )
-    sys.exit(returncode)

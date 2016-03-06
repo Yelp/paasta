@@ -14,7 +14,6 @@
 # limitations under the License.
 import datetime
 import socket
-import sys
 
 from service_configuration_lib import DEFAULT_SOA_DIR
 
@@ -132,13 +131,24 @@ def paasta_start_or_stop(args, desired_state):
         load_deployments=False,
     )
 
-    remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
+    try:
+        remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
+    except remote_git.LSRemoteException as e:
+        msg = (
+            "Error talking to the git server: %s\n"
+            "This PaaSTA command requires access to the git server to operate.\n"
+            "The git server may be down or not reachable from here.\n"
+            "Try again from somewhere where the git server can be reached, "
+            "like your developer environment."
+        ) % str(e)
+        print msg
+        return 1
 
     if 'refs/heads/paasta-%s' % service_config.get_deploy_group() not in remote_refs:
         print "No branches found for %s in %s." % \
             (service_config.get_deploy_group(), remote_refs)
         print "Has it been deployed there yet?"
-        sys.exit(1)
+        return 1
 
     force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
     issue_state_change_for_service(

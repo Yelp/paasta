@@ -12,7 +12,6 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import sys
 
 
 def add_subparser(subparsers):
@@ -37,4 +36,4 @@ def add_subparser(subparsers):
 
 def perform_security_check(args):
     print 'Not implemented yet'
-    sys.exit(0)
+    return 0

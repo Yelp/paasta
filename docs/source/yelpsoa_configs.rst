@@ -4,8 +4,8 @@ Preparation: paasta_tools and yelpsoa-configs
 paasta_tools reads configuration about services from several YAML
 files in `soa-configs <soa_configs.html>`_:
 
-marathon-[clustername].yaml
----------------------------
+``marathon-[clustername].yaml``
+-------------------------------
 
 e.g. ``marathon-norcal-prod.yaml``, ``marathon-mesosstage.yaml``. The
 clustername is usually the same as the ``superregion`` in which the cluster
@@ -34,6 +34,12 @@ instance MAY have:
     unable to write any more data to disk.
 
   * ``instances``: Marathon will attempt to run this many instances of the Service
+
+  * ``min_instances``: When autoscaling, the minimum number of instances that
+    marathon will create for a service. Defaults to 1.
+
+  * ``max_instances``: When autoscaling, the maximum number of instances that
+    marathon will create for a service
 
   * ``nerve_ns``: Specifies that this namespace should be routed to by another
     namespace in SmartStack. In SmartStack, each service has difference pools
@@ -82,6 +88,18 @@ instance MAY have:
     constraints instead of replacing them. See ``constraints`` for details on
     format and the default constraints.
 
+  * ``pool``: Changes the "pool" constrained automatically added to all PaaSTA
+    Marathon apps. The default pool is ``default``, which equates to::
+
+       ["pool", "LIKE", "default"]
+
+    This constraint is automatically appended to the list of constraints for
+    a service unless overridden with the ``constraints`` input.
+
+    Warning: In order for an service to be launched in a particular pool, there
+    *must* exist some Mesos slaves that already exist with that particular
+    pool attribute set.
+
   * ``cmd``: The command that is executed. Can be used as an alternative to
     args for containers without an `entrypoint
     <https://docs.docker.com/reference/builder/#entrypoint>`_. This value is
@@ -99,14 +117,6 @@ instance MAY have:
     * ``PAASTA_SERVICE``: The service name
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
-
-    * **WARNING**: A PORT variable is provided to the docker image, but it
-      represents the EXTERNAL port, not the internal one. The internal service
-      MUST listen on 8888, so this PORT variable confuses some service stacks
-      that are listening for this variable. Such services MUST overwrite this
-      environment variable to function. (``PORT=8888 ./uwsgi.py```) We tried
-      to work around this, see `PAASTA-267
-      <https://jira.yelpcorp.com/browse/PAASTA-267>`_.
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available
@@ -132,6 +142,11 @@ instance MAY have:
   * ``monitoring``: A dictionary of values that configure overrides for
     monitoring parameters that will take precedence over what is in
     `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
+
+  * ``autoscaling``:
+
+    * ``method``: Which autoscaling method to use. See the `autoscaling docs <autoscaling.html>`_
+      for valid options and how they work
 
   * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 
@@ -212,8 +227,8 @@ Notes:
     is specified. If both are specified, an exception is thrown with an
     explanation of the problem, and the program terminates.
 
-chronos-[clustername].yaml
---------------------------
+``chronos-[clustername].yaml``
+------------------------------
 
 The yaml where Chronos jobs are defined. Top-level keys are the job names.
 
@@ -222,6 +237,11 @@ which can be found here:
 https://mesos.github.io/chronos/docs/api.html#job-configuration
 
 Each job configuration MUST specify the following options:
+
+  * One of ``schedule`` and ``parents``. If both are present, then ``schedule``
+    takes precedence and ``parents`` is ignored.
+
+Each job configuration MAY specify the following options:
 
   * ``schedule``: When the job should run. The value must be specified in the
     cryptic ISO 8601 format. For more details about the schedule format, see:
@@ -246,7 +266,24 @@ Each job configuration MUST specify the following options:
       substitution is used, PaaSTA will create a new job for *each* new day,
       allowing the previous job to take more than 24 hours.
 
-Each job configuration MAY specify the following options:
+  * ``parents``: An array of parents jobs. If specified, then the job will not run
+    until *all* of the jobs in this array have completed. The parents jobs should be
+    in the form of ``service.instance``. For example::
+
+        cat myservice/chronos-testcluster.yml
+        ---
+        job_one:
+          schedule: R/2014-10-10T18:32:00Z/PT60M
+
+        job_two:
+          schedule: R/2014-10-10T19:32:00Z/PT60M
+
+        child_job:
+          parents:
+            - myservice.parent_one
+            - myservice.parent_two
+
+
 
   * ``cmd``: See the `marathon-[clustername].yaml`_ section for details
     Additionally ``cmd`` strings with time or date strings that Tron
@@ -299,6 +336,8 @@ Each job configuration MAY specify the following options:
     <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more
     information.
 
+  * ``pool``: See the `marathon-[clustername].yaml`_ section for details
+
   * ``deploy_group``: Same as ``deploy_group`` for marathon-*.yaml.
 
   * ``schedule_time_zone``: The time zone name to use when scheduling the job.
@@ -316,8 +355,8 @@ Each job configuration MAY specify the following options:
 
 .. _doc: deploy_groups.html
 
-smartstack.yaml
----------------
+``smartstack.yaml``
+-------------------
 
 Configure service registration, discovery, and load balancing.
 
@@ -501,33 +540,34 @@ superregion you are changing::
     - advertise: [region, superregion]
     + advertise: [superregion]
 
-monitoring.yaml
----------------
+``monitoring.yaml``
+-------------------
 
 The yaml where monitoring for the service is defined.
 
-Defaults for a *team* can be set globally with the global Sensu configuration
-(distributed via Puppet). ``team`` is the only mandatory key, but overrides can
-be set for the entire service with ``monitoring.yaml``.
+Defaults for a *team* can be set globally with the global Sensu configuration.
+``team`` is the only mandatory key, but overrides can be set for the entire
+service with ``monitoring.yaml``.
 
 Additionally these settings can be overridden on a *per-instance* basis. For
 example a ``canary`` instance can be set with ``page: false`` and ``team:
 devs``, while the ``main`` instance can bet set to ``page: true`` and ``team:
 ops``, and the ``dailyadsjob`` instance can be set with ``ticket: true`` and
-``team: ads``.
+``team: ads``. See the Examples section for more examples.
 
 Here is a list of options that PaaSTA will pass through:
 
- * ``team``: Team that will be notified by Sensu
+ * ``team``: Team that will be notified by Sensu.
 
- * ``page``: Boolean to indicate if an instance should alert PagerDuty if it is failing.
+ * ``page``: Boolean to indicate if an instance should page if it is failing.
+   Defaults to **false**.
 
  * ``runbook``: An optional but *highly* recommended field. Try to use
-   shortlinks (y/rb-my-service) when possible as sometimes the runbook url
-   may need to be copied from a small screen.
+   shortlinks when possible as sometimes the runbook url may need to be
+   copied from a small screen.
 
  * ``tip``: An optional one-line version of the runbook to help with
-   common issues. For example: "Check to see if it is bing first!"
+   common issues. For example: "Check to see if it is Bing first!"
 
  * ``notification_email``: String representing an email address to send
    notifications to. This will default to the team email address if is is
@@ -536,6 +576,7 @@ Here is a list of options that PaaSTA will pass through:
  * ``irc_channels``: Array of irc_channels to post notifications to.
 
  * ``ticket``: Boolean to indicate if an alert should make a JIRA ticket.
+   Defaults to **false**.
 
  * ``project``: String naming the project where JIRA tickets will be created.
    Overrides the global default for the team.
@@ -545,8 +586,56 @@ Here is a list of options that PaaSTA will pass through:
    for the replication alert.
 
 
-service.yaml
-------------
+Monitoring Examples
+^^^^^^^^^^^^^^^^^^^
+
+An example of a service that only pages on a cluster called "prod"::
+
+    # monitoring.yaml
+    team: devs
+    page: false
+
+    # marathon-prod.yaml
+    main:
+      instances: 3
+      monitoring:
+         page: true
+
+A service that pages everywhere, but only makes a ticket for a chronos job::
+
+    # monitoring.yaml
+    team: backend
+    page: true
+
+    # chronos-prod.yaml
+    nightly_batch:
+      schedule: .....
+      monitoring:
+        page: false
+        ticket: true
+
+A marathon service that overrides options on different instances (canary)::
+
+    # monitoring.yaml
+    team: frontend
+    page: false
+
+    # marathon-prod.yaml
+    main:
+      instances: 20
+      monitoring:
+        team: ops
+        page: true
+    canary:
+      instances: 1
+      nerve_ns: main
+      monitoring:
+        page: false
+        ticket: true
+
+
+``service.yaml``
+----------------
 
 Various PaaSTA utilities look at the following keys from service.yaml
 

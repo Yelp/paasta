@@ -183,7 +183,7 @@ def write_soa_dir_marathon_job(context, job_id):
         f.write(yaml.dump({
             "%s" % instance: {
                 'cpus': 0.1,
-                'ram': 100,
+                'mem': 100,
             }
         }))
     context.soa_dir = soa_dir
@@ -219,3 +219,9 @@ def modify_configs(context, field, framework, service, instance, value):
         f.seek(0)
         f.write(yaml.safe_dump(data))
         f.truncate()
+
+
+@when((u'we set the "{field}" field of the {framework} config for service "{service}"'
+       ' and instance "{instance}" to the integer {value:d}'))
+def modify_configs_for_int(context, field, framework, service, instance, value):
+    modify_configs(context, field, framework, service, instance, value)

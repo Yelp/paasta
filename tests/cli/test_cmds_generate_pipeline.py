@@ -38,12 +38,8 @@ def test_paasta_generate_pipeline_service_not_found(
     args.service = None
     expected_output = "%s\n" % NoSuchService.GUESS_ERROR_MSG
 
-    # Fail if exit(1) does not get called
-    with raises(SystemExit) as sys_exit:
-        paasta_generate_pipeline(args)
-
+    assert paasta_generate_pipeline(args) == 1
     output = mock_stdout.getvalue()
-    assert sys_exit.value.code == 1
     assert output == expected_output
 
 
@@ -57,9 +53,7 @@ def test_generate_pipeline_run_fails(
 ):
     mock_get_team_email_address.return_value = 'fake_email'
     mock_run.return_value = (1, 'Big bad wolf')
-    with raises(SystemExit) as sys_exit:
-        generate_pipeline('fake_service')
-    assert sys_exit.value.code == 1
+    assert generate_pipeline('fake_service') == 1
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)

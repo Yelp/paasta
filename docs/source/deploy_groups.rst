@@ -87,6 +87,11 @@ Existing service
 
 Alternatively to a jenkins pipeline, you can use ``paasta mark-for-deployment`` with the ``--deploy-group`` flag to manually mark each of your deploy groups.
 
+String interpolation
+--------------------
+
+Deploy groups support string interpolation for the following variables: ``cluster``, ``instance`` and ``service``. String interpolation works by surrounding the varbiable's name with braces (``{}``) in the ``deploy_group`` field -- this is python's ``str.format`` syntax. E.g. ``deploy_group: '{cluster}.all'``. You must still specify explicit deploy groups in your ``deploy.yaml`` however.
+
 What if I don’t want to use deploy groups on my existing service?
 -----------------------------------------------------------------
 

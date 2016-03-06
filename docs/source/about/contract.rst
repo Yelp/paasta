@@ -65,7 +65,7 @@ MUST EITHER:
       proxy_port: 12345
     # (no worker definition in smartstack.yaml!)
 
-* MAY set ``healthcheck_mode`` to ``cmd`` and  specify a ``healthcheck_cmd`` in `marathon-<cluster>.yaml <yelpsoa_configs.html#marathon-clustername-yaml>`_ to give Mesos better insight into the health of a task::
+* MAY set ``healthcheck_mode`` to ``cmd`` and  specify a ``healthcheck_cmd`` in `marathon-<cluster>.yaml <../yelpsoa_configs.html#marathon-clustername-yaml>`_ to give Mesos better insight into the health of a task::
 
     # marathon.yaml
     ---

@@ -15,7 +15,6 @@
 import json
 import os
 import pkgutil
-import sys
 from glob import glob
 
 import yaml
@@ -264,4 +263,4 @@ def paasta_validate(args):
     service_path = get_service_path(service, soa_dir)
 
     if not paasta_validate_soa_configs(service_path):
-        sys.exit(1)
+        return 1

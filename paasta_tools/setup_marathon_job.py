@@ -44,6 +44,7 @@ import argparse
 import logging
 import sys
 import traceback
+from collections import defaultdict
 
 import pysensu_yelp
 import service_configuration_lib
@@ -99,6 +100,7 @@ def send_event(name, instance, soa_dir, status, output):
         name,
         instance,
         cluster,
+        soa_dir=soa_dir,
         load_deployments=False,
     ).get_monitoring()
     # In order to let sensu know how often to expect this check to fire,
@@ -126,6 +128,7 @@ def send_sensu_bounce_keepalive(service, instance, cluster, soa_dir):
         service=service,
         instance=instance,
         cluster=cluster,
+        soa_dir=soa_dir,
         load_deployments=False,
     ).get_monitoring()
     # Sensu currently emits events for expired ttl checks every 30s
@@ -225,9 +228,9 @@ def do_bounce(
         )
         bounce_lib.create_marathon_app(marathon_jobid, config, client)
     if len(actions['tasks_to_drain']) > 0:
-        tasks_to_drain_by_app_id = {}
+        tasks_to_drain_by_app_id = defaultdict(set)
         for task in actions['tasks_to_drain']:
-            tasks_to_drain_by_app_id.setdefault(task.app_id, set()).add(task)
+            tasks_to_drain_by_app_id[task.app_id].add(task)
         for app_id, tasks in tasks_to_drain_by_app_id.items():
             log_bounce_action(
                 line='%s bounce draining %d old tasks with app_id %s' %
@@ -240,22 +243,24 @@ def do_bounce(
         for task in tasks:
             all_draining_tasks.add(task)
 
-    killed_tasks = set()
+    tasks_to_kill = set()
 
     for task in all_draining_tasks:
         if drain_method.is_safe_to_kill(task):
-            killed_tasks.add(task)
+            tasks_to_kill.add(task)
             log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
-            marathon_tools.kill_task(client=client, app_id=task.app_id, task_id=task.id, scale=True)
+
+    client.kill_given_tasks(task_ids=[task.id for task in tasks_to_kill], scale=True)
 
     apps_to_kill = []
     for app in old_app_live_happy_tasks.keys():
-        live_happy_tasks = old_app_live_happy_tasks[app]
-        live_unhappy_tasks = old_app_live_unhappy_tasks[app]
-        draining_tasks = old_app_draining_tasks[app]
+        if app != '/%s' % marathon_jobid:
+            live_happy_tasks = old_app_live_happy_tasks[app]
+            live_unhappy_tasks = old_app_live_unhappy_tasks[app]
+            draining_tasks = old_app_draining_tasks[app]
 
-        if 0 == len((live_happy_tasks | live_unhappy_tasks | draining_tasks) - killed_tasks):
-            apps_to_kill.append(app)
+            if 0 == len((live_happy_tasks | live_unhappy_tasks | draining_tasks) - tasks_to_kill):
+                apps_to_kill.append(app)
 
     if apps_to_kill:
         log_bounce_action(
@@ -273,9 +278,9 @@ def do_bounce(
 
     # log if we appear to be finished
     if all([
-        (apps_to_kill or killed_tasks),
+        (apps_to_kill or tasks_to_kill),
         apps_to_kill == old_app_live_happy_tasks.keys(),
-        killed_tasks == all_old_tasks,
+        tasks_to_kill == all_old_tasks,
     ]):
         log_bounce_action(
             line='%s bounce on %s finishing. Now running %s' %
@@ -286,6 +291,26 @@ def do_bounce(
             ),
             level='event',
         )
+
+
+def get_old_happy_unhappy_draining_tasks_for_app(app, drain_method, service, nerve_ns, bounce_health_params):
+    tasks_by_state = {
+        'happy': set(),
+        'unhappy': set(),
+        'draining': set(),
+    }
+
+    happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, **bounce_health_params)
+    for task in app.tasks:
+        if drain_method.is_draining(task):
+            state = 'draining'
+        elif task in happy_tasks:
+            state = 'happy'
+        else:
+            state = 'unhappy'
+        tasks_by_state[state].add(task)
+
+    return tasks_by_state
 
 
 def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerve_ns, bounce_health_params):
@@ -300,21 +325,9 @@ def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerv
     old_app_draining_tasks = {}
 
     for app in other_apps:
-        tasks_by_state = {
-            'happy': set(),
-            'unhappy': set(),
-            'draining': set(),
-        }
 
-        happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, **bounce_health_params)
-        for task in app.tasks:
-            if drain_method.is_draining(task):
-                state = 'draining'
-            elif task in happy_tasks:
-                state = 'happy'
-            else:
-                state = 'unhappy'
-            tasks_by_state[state].add(task)
+        tasks_by_state = get_old_happy_unhappy_draining_tasks_for_app(
+            app, drain_method, service, nerve_ns, bounce_health_params)
 
         old_app_live_happy_tasks[app.id] = tasks_by_state['happy']
         old_app_live_unhappy_tasks[app.id] = tasks_by_state['unhappy']
@@ -400,16 +413,45 @@ def deploy_service(
         bounce_health_params
     )
 
+    if new_app_running:
+        protected_draining_tasks = set()
+        if new_app.instances < config['instances']:
+            client.scale_app(app_id=new_app.id, instances=config['instances'], force=True)
+        elif new_app.instances > config['instances']:
+            num_tasks_to_scale = max(min(len(new_app.tasks), new_app.instances) - config['instances'], 0)
+            task_dict = get_old_happy_unhappy_draining_tasks_for_app(
+                new_app,
+                drain_method,
+                service,
+                nerve_ns,
+                bounce_health_params,
+            )
+            scaling_app_happy_tasks = list(task_dict['happy'])
+            scaling_app_unhappy_tasks = list(task_dict['unhappy'])
+            scaling_app_draining_tasks = list(task_dict['draining'])
+
+            tasks_to_move_draining = min(len(scaling_app_draining_tasks), num_tasks_to_scale)
+            old_app_draining_tasks[new_app.id] = set(scaling_app_draining_tasks[:tasks_to_move_draining])
+            protected_draining_tasks.update(scaling_app_draining_tasks[:tasks_to_move_draining])
+            num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_draining
+
+            tasks_to_move_unhappy = min(len(scaling_app_unhappy_tasks), num_tasks_to_scale)
+            old_app_live_unhappy_tasks[new_app.id] = set(scaling_app_unhappy_tasks[:tasks_to_move_unhappy])
+            num_tasks_to_scale = num_tasks_to_scale - tasks_to_move_unhappy
+
+            tasks_to_move_happy = min(len(scaling_app_happy_tasks), num_tasks_to_scale)
+            old_app_live_happy_tasks[new_app.id] = set(scaling_app_happy_tasks[:tasks_to_move_happy])
+            happy_new_tasks = scaling_app_happy_tasks[tasks_to_move_happy:]
+        # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
+        # `paasta mark-for-deployment`), then we should undrain them.
+        for task in new_app.tasks:
+            if task not in protected_draining_tasks:
+                drain_method.stop_draining(task)
+
     # Re-drain any already draining tasks on old apps
     for tasks in old_app_draining_tasks.values():
         for task in tasks:
             drain_method.drain(task)
-
-    # If any tasks on the new app happen to be draining (e.g. someone reverts to an older version with
-    # `paasta mark-for-deployment`), then we should undrain them.
-    if new_app_running:
-        for task in new_app.tasks:
-            drain_method.stop_draining(task)
 
     # log all uncaught exceptions and raise them again
     try:
@@ -470,7 +512,7 @@ def setup_service(service, instance, client, marathon_config,
 
     log.info("Setting up instance %s for service %s", instance, service)
     try:
-        complete_config = marathon_tools.create_complete_config(service, instance, marathon_config)
+        complete_config = marathon_tools.create_complete_config(service, instance, soa_dir)
     except NoDockerImageError:
         error_msg = (
             "Docker image for {0}.{1} not in deployments.json. Exiting. Has Jenkins deployed it?\n"
@@ -544,7 +586,7 @@ def main():
         sys.exit(0)
     except NoConfigurationForServiceError:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
-                    (args.service_instance, load_system_paasta_config().get_cluster())
+            (args.service_instance, load_system_paasta_config().get_cluster())
         log.error(error_msg)
         send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)
