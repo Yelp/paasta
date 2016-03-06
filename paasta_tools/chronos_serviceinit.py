@@ -41,7 +41,7 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
     # the 'disabled' key in soa-configs. Since we clobber the 'disabled' key in
     # complete_job_config (the dict that gets passed to Chronos), we need to look
     # at the service's soa-config directly to check if it is disabled.
-    should_run_now = not job_config.get_disabled()
+    should_run_now = not job_config.get_disabled()  # or job_config.get_desired_state() == "start"
     log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
     if should_run_now:
         log_immediate_run = "and running it immediately"

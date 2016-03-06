@@ -39,14 +39,16 @@ def test_start_chronos_job():
         mock_client,
         mock_stdout,
     ):
-        chronos_serviceinit.start_chronos_job(service,
-                                              instance,
-                                              job_id,
-                                              mock_client,
-                                              cluster,
-                                              job_soa_config,
-                                              job_config,
-                                              emergency=True)
+        chronos_serviceinit.start_chronos_job(
+            service,
+            instance=instance,
+            job_id=job_id,
+            client=mock_client,
+            cluster=cluster,
+            job_config=job_soa_config,
+            complete_job_config=job_config,
+            emergency=True,
+        )
         assert job_config['schedule'] == old_schedule
         mock_client.update.assert_called_once_with(job_config)
         mock_client.run.assert_called_once_with(job_id)
@@ -74,14 +76,16 @@ def test_start_chronos_job_does_not_run_disabled_job():
         mock_client,
         mock_stdout,
     ):
-        chronos_serviceinit.start_chronos_job(service,
-                                              instance,
-                                              job_id,
-                                              mock_client,
-                                              cluster,
-                                              job_soa_config,
-                                              job_config,
-                                              emergency=True)
+        chronos_serviceinit.start_chronos_job(
+            service,
+            instance=instance,
+            job_id=job_id,
+            client=mock_client,
+            cluster=cluster,
+            job_config=job_soa_config,
+            complete_job_config=job_config,
+            emergency=True,
+        )
         assert job_config['schedule'] == old_schedule
         mock_client.update.assert_called_once_with(job_config)
         assert mock_client.run.call_count == 0

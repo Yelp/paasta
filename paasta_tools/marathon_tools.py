@@ -186,13 +186,14 @@ class MarathonServiceConfig(InstanceConfig):
         return self.__class__(self.service, self.instance, dict(self.config_dict), dict(self.branch_dict))
 
     def get_instances(self):
-        """Get the number of instances specified in the service's marathon configuration.
+        """
+        Get the number of instances specified in the service's marathon configuration.
 
         Defaults to 0 if not specified in the config.
 
-        :param service_config: The service instance's configuration dictionary
         :returns: The number of instances specified in the config, 0 if not
-                  specified or if desired_state is not 'start'."""
+                  specified or if desired_state is not 'start'.
+                  """
         if self.get_desired_state() == 'start':
             instances = self.config_dict.get('instances', 1)
             return int(instances)
