@@ -10,7 +10,7 @@ How to use autoscaling
 Enabling autoscaling
 --------------------
 
-In order to use autoscaling, edit your ``marathon-*.yaml`` files in your soa configs and add a ``min_instances`` and a ``max_instances`` attribute and remove the ``instances`` attribute from each instance you want to autoscale. When using autoscaling, the ``min_instances`` and ``max_instances`` attributes become the minimum and maximum (inclusive) number of marathon tasks paasta will create for your job. If autoscaling information for your service is not available in Zookeeper (e.g. you've just created your service) PaaSTA will default to createing ``min_instances`` instances.
+In order to use autoscaling, edit your ``marathon-*.yaml`` files in your soa configs and add a ``min_instances`` and a ``max_instances`` attribute and remove the ``instances`` attribute from each instance you want to autoscale. When using autoscaling, the ``min_instances`` and ``max_instances`` attributes become the minimum and maximum (inclusive) number of marathon tasks paasta will create for your job. If autoscaling information for your service is not available in Zookeeper (e.g. you've just created your service) PaaSTA will default to creating ``min_instances`` instances.
 
 Autoscaling parameters are stored in an ``autoscaling`` attribute of your instances as a dictionary. Within the ``autoscaling`` attribute, specifying a ``method`` will allow you to specify the logic that determines when to scale up and scale down your instance. If an autoscaling method isn't provided, the ``"default"`` autoscaling method will be used.
 
