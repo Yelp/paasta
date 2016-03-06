@@ -37,7 +37,6 @@ class TestChronosTools:
         'cpus': 5.5,
         'mem': 1024.4,
         'disk': 1234.5,
-        'disabled': True,
         'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
         'schedule_time_zone': 'Zulu',
         'monitoring': fake_monitoring_info,
@@ -301,7 +300,6 @@ class TestChronosTools:
             'cpus': 5.5,
             'mem': 1024.4,
             'disk': 1234.5,
-            'disabled': True,
             'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
             'schedule_time_zone': 'Zulu',
             'monitoring': {},
@@ -413,28 +411,6 @@ class TestChronosTools:
         )
         actual = fake_conf.get_retries()
         assert actual == fake_retries
-
-    def test_get_disabled_default(self):
-        fake_conf = chronos_tools.ChronosJobConfig(
-            service='fake_name',
-            cluster='fake_cluster',
-            instance='fake_instance',
-            config_dict={},
-            branch_dict={},
-        )
-        actual = fake_conf.get_disabled()
-        assert not actual
-
-    def test_get_disabled(self):
-        fake_conf = chronos_tools.ChronosJobConfig(
-            service='fake_name',
-            cluster='fake_cluster',
-            instance='fake_instance',
-            config_dict={'disabled': True},
-            branch_dict={},
-        )
-        actual = fake_conf.get_disabled()
-        assert actual
 
     def test_get_schedule(self):
         fake_schedule = 'fake_schedule'
@@ -864,7 +840,6 @@ class TestChronosTools:
             'cpus': 0.25,
             'async': False,
             'owner': fake_owner,
-            'disabled': False,
             'mem': 1024,
             'disk': 1024,
             'container': {
@@ -941,6 +916,24 @@ class TestChronosTools:
                 instance=fake_instance,
                 include_disabled=False,
             )
+
+    def test_get_chronos_status_for_job(self):
+        fake_service = 'fakeservice'
+        fake_instance = 'fakeinstance'
+        fake_client_class = mock.Mock(spec='chronos.ChronosClient')
+        fake_client = fake_client_class(servers=[])
+        expected_status = "imdead"
+
+        fake_csv = [
+            "node,fake_service_instance,fresh,alive",
+            "node,%s,fresh,%s" % (chronos_tools.compose_job_id(fake_service, fake_instance), expected_status),
+            "node,other_fake_service_instance,fresh,alive",
+        ]
+        fake_client._call = mock.Mock(return_value="\n".join(fake_csv))
+
+        status = chronos_tools.get_chronos_status_for_job(fake_client, fake_service, fake_instance)
+        fake_client._call.assert_called_once_with("/scheduler/graph/csv", "GET")
+        assert status == expected_status
 
     def test_filter_chronos_jobs_with_no_filters(self):
         fake_jobs = [
@@ -1100,63 +1093,7 @@ class TestChronosTools:
             }
             assert actual == expected
 
-    def test_create_complete_config_desired_state_start(self):
-        fake_owner = 'test_team'
-        fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            service=self.fake_service,
-            cluster='',
-            instance=self.fake_job_name,
-            config_dict=self.fake_config_dict,
-            branch_dict={
-                'desired_state': 'start',
-                'docker_image': 'fake_image'
-            },
-        )
-        fake_config_hash = 'fake_config_hash'
-        with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
-            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
-                       autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
-            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
-        ) as (
-            load_system_paasta_config_patch,
-            load_chronos_job_config_patch,
-            mock_get_team,
-            mock_fake_config_hash,
-        ):
-            load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
-            load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
-            expected = {
-                'arguments': None,
-                'description': fake_config_hash,
-                'constraints': [['pool', 'EQUALS', 'default']],
-                'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
-                'async': False,
-                'cpus': 5.5,
-                'scheduleTimeZone': 'Zulu',
-                'environmentVariables': mock.ANY,
-                'retries': 5,
-                'disabled': False,
-                'name': 'fake_service fake_job',
-                'command': '/bin/sleep 40',
-                'epsilon': 'PT30M',
-                'container': {
-                    'network': 'BRIDGE',
-                    'volumes': [],
-                    'image': "fake_registry/fake_image",
-                    'type': 'DOCKER'
-                },
-                'uris': ['file:///root/.dockercfg', ],
-                'mem': 1024.4,
-                'disk': 1234.5,
-                'owner': fake_owner,
-                'shell': True,
-            }
-            assert actual == expected
-
-    def test_create_complete_config_desired_state_stop(self):
+    def test_create_complete_config_disabled_job_when_desired_state_stop(self):
         fake_owner = 'test@test.com'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
             service=self.fake_service,

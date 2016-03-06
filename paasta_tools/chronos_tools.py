@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import csv
 import datetime
 import json
 import logging
@@ -232,9 +233,6 @@ class ChronosJobConfig(InstanceConfig):
     def get_retries(self):
         return self.config_dict.get('retries', 2)
 
-    def get_disabled(self):
-        return self.config_dict.get('disabled', False)
-
     def get_schedule(self):
         return self.config_dict.get('schedule')
 
@@ -393,7 +391,6 @@ class ChronosJobConfig(InstanceConfig):
             'epsilon': self.get_epsilon(),
             'retries': self.get_retries(),
             'async': False,  # we don't support async jobs
-            'disabled': self.get_disabled(),
             'owner': self.get_owner(),
             'scheduleTimeZone': self.get_schedule_time_zone(),
             'shell': self.get_shell(),
@@ -473,16 +470,14 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     complete_config['name'] = compose_job_id(service, job_name)
     desired_state = chronos_job_config.get_desired_state()
 
-    # we use the undocumented description field to store a hash of the chronos config.
-    # this makes it trivial to compare configs and know when to bounce.
-    complete_config['description'] = get_config_hash(complete_config)
-
-    # If the job was previously stopped, we should stop the new job as well
-    # NOTE this clobbers the 'disabled' param specified in the config file!
     if desired_state == 'start':
         complete_config['disabled'] = False
     elif desired_state == 'stop':
         complete_config['disabled'] = True
+
+    # we use the undocumented description field to store a hash of the chronos config.
+    # this makes it trivial to compare configs and know when to bounce.
+    complete_config['description'] = get_config_hash(complete_config)
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
     return complete_config
@@ -595,6 +590,27 @@ def sort_jobs(jobs):
         key=get_key,
         reverse=True,
     )
+
+
+def get_chronos_status_for_job(client, service, instance):
+    """
+    Returns the status (queued, idle, running, etc.) for a specific job from
+    the undocumented Chronos csv api that has the following format:
+
+    node,example_job,success,queued
+    node,parent_job,success,idle
+    node,child_job,success,idle
+    link,parent_job,child_job
+
+    :param client: Chronos client object
+    :param service: service name
+    :param instance: instance name
+    """
+    resp = client._call("/scheduler/graph/csv", "GET")
+    lines = csv.reader(resp.splitlines())
+    for line in lines:
+        if line[0] == "node" and line[1] == compose_job_id(service, instance):
+            return line[3]
 
 
 def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=False):

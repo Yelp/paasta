@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+from StringIO import StringIO
 
 import mock
 import pytest
@@ -31,41 +32,28 @@ def test_start_chronos_job():
     job_config = {'beep': 'boop', 'disabled': False, 'schedule': old_schedule}
     with contextlib.nested(
         mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
+        mock.patch('sys.stdout', new_callable=StringIO),
     ) as (
         mock_client,
+        mock_stdout,
     ):
-        chronos_serviceinit.start_chronos_job(service,
-                                              instance,
-                                              job_id,
-                                              mock_client,
-                                              cluster,
-                                              job_config)
+        chronos_serviceinit.start_chronos_job(
+            service,
+            instance=instance,
+            job_id=job_id,
+            client=mock_client,
+            cluster=cluster,
+            complete_job_config=job_config,
+            emergency=True,
+        )
         assert job_config['schedule'] == old_schedule
         mock_client.update.assert_called_once_with(job_config)
         mock_client.run.assert_called_once_with(job_id)
-
-
-def test_start_chronos_job_does_not_run_disabled_job():
-    service = 'my_service'
-    instance = 'my_instance'
-    job_id = 'my_job_id'
-    cluster = 'my_cluster'
-    old_schedule = 'R/2015-03-25T19:36:35Z/PT5M'
-    job_config = {'beep': 'boop', 'disabled': True, 'schedule': old_schedule}
-    with contextlib.nested(
-        mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
-    ) as (
-        mock_client,
-    ):
-        chronos_serviceinit.start_chronos_job(service,
-                                              instance,
-                                              job_id,
-                                              mock_client,
-                                              cluster,
-                                              job_config)
-        assert job_config['schedule'] == old_schedule
-        mock_client.update.assert_called_once_with(job_config)
-        assert mock_client.run.call_count == 0
+        expected_output = "%s: Sending job %s to Chronos\n" % (
+            PaastaColors.red("EmergencyStart"),
+            PaastaColors.cyan(job_id),
+        )
+        assert mock_stdout.getvalue() == expected_output
 
 
 def test_stop_chronos_job():

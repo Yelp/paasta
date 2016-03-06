@@ -136,29 +136,26 @@ def working_paasta_cluster(context):
     }, 'volumes.json')
 
 
-@given(u'we have yelpsoa-configs for the service "{service}" with {disabled} scheduled chronos instance "{instance}"')
-def write_soa_dir_chronos_instance(context, service, disabled, instance):
+@given(u'we have yelpsoa-configs for the service "{service}" with scheduled chronos instance "{instance}"')
+def write_soa_dir_chronos_instance(context, service, instance):
     soa_dir = mkdtemp()
-    desired_disabled = (disabled == 'disabled')
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
     with open(os.path.join(soa_dir, service, 'chronos-%s.yaml' % context.cluster), 'w') as f:
         f.write(yaml.safe_dump({
             instance: {
-                'schedule': 'R/2000-01-01T16:20:00Z/PT60S',
-                'cmd': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
+                'schedule': 'R0/2000-01-01T16:20:00Z/PT60S',  # R0 prevents the job from being scheduled automatically
+                'cmd': 'echo "Taking a nap..." && sleep 60m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
-                'disabled': desired_disabled,
             }
         }))
     context.soa_dir = soa_dir
 
 
-@given((u'we have yelpsoa-configs for the service "{service}" with {disabled} dependent chronos instance'
+@given((u'we have yelpsoa-configs for the service "{service}" with dependent chronos instance'
         ' "{instance}" and parent "{parent}"'))
-def write_soa_dir_dependent_chronos_instance(context, service, disabled, instance, parent):
+def write_soa_dir_dependent_chronos_instance(context, service, instance, parent):
     soa_dir = mkdtemp()
-    desired_disabled = (disabled == 'disabled')
     if not os.path.exists(os.path.join(soa_dir, service)):
         os.makedirs(os.path.join(soa_dir, service))
     with open(os.path.join(soa_dir, service, 'chronos-%s.yaml' % context.cluster), 'w') as f:
@@ -167,7 +164,6 @@ def write_soa_dir_dependent_chronos_instance(context, service, disabled, instanc
                 'parents': [parent],
                 'cmd': 'echo "Taking a nap..." && sleep 1m && echo "Nap time over, back to work"',
                 'monitoring': {'team': 'fake_team'},
-                'disabled': desired_disabled,
             }
         }))
     context.soa_dir = soa_dir
