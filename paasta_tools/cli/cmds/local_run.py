@@ -24,7 +24,6 @@ from urlparse import urlparse
 
 import requests
 import service_configuration_lib
-from docker import Client
 from docker import errors
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
@@ -40,7 +39,7 @@ from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.utils import _run
-from paasta_tools.utils import get_docker_host
+from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
@@ -659,8 +658,7 @@ def paasta_local_run(args):
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     cluster = guess_cluster(service=service, args=args)
     instance = guess_instance(service=service, cluster=cluster, args=args)
-    base_docker_url = get_docker_host()
-    docker_client = Client(base_url=base_docker_url)
+    docker_client = get_docker_client()
 
     if build:
         default_tag = 'paasta-local-run-%s-%s' % (service, get_username())
