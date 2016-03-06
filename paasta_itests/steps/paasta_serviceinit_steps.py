@@ -110,6 +110,22 @@ def chronos_status_verbose_returns_healthy(context, service_instance):
     assert "Running Tasks:" in output
 
 
+@then((u'paasta_serviceinit status -vv for the service_instance "{service_instance}"'
+       ' exits with return code 0 and the correct output'))
+def paasta_serviceinit_tail_stdstreams(context, service_instance):
+    cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status -vv" % (context.soa_dir, service_instance)
+    print 'Running cmd %s' % cmd
+    (exit_code, output) = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == 0
+    # The container we run doesn't really have a stdout/stderr. The message below
+    # comes from mesos.cli, proving that paasta_serviceinit tried to read stdout/sdterr,
+    # caught the Exception and presented the right information to the user.
+    assert "No such task has the requested file or directory" in output
+
+
 @when(u'we paasta_serviceinit emergency-stop the service_instance "{service_instance}"')
 def chronos_emergency_stop_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s stop' % (context.soa_dir, service_instance)
