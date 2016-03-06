@@ -29,4 +29,4 @@ How to create a custom autoscaling method
 
 To set the number of instances for a particular service and instance, have your service write to its local Zookeeper cluster. The node that controls the number of instances for a particular service is ``'/mesos-CLUSTER/autoscaling/SERVICE_NAME/INSTANCE_NAME/instances'``.
 
-Finally, remember to set the ``method`` of the ``autoscaling`` parameter for each service to ``"bespoke"`` or else PaaSTA attempt to autoscale your service with the default autoscaling method.
+Finally, remember to set the ``method`` of the ``autoscaling`` parameter for each service to ``"bespoke"`` or else PaaSTA will attempt to autoscale your service with the default autoscaling method.
