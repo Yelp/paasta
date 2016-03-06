@@ -206,9 +206,9 @@ class MarathonServiceConfig(InstanceConfig):
 
         Defaults to 0 if not specified in the config.
 
-        :param service_config: The service instance's configuration dictionary
         :returns: The number of instances specified in the config, 0 if not
-                  specified or if desired_state is not 'start'."""
+                  specified or if desired_state is not 'start'.
+                  """
         if self.get_desired_state() == 'start':
             max_instances = self.get_max_instances()
             if max_instances is not None:
