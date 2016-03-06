@@ -18,6 +18,7 @@ import docker
 import mesos
 import mock
 import requests
+from pytest import mark
 from pytest import raises
 
 import paasta_tools.mesos_tools as mesos_tools
@@ -45,32 +46,41 @@ def test_filter_not_running_tasks():
     assert not_running[0]['id'] == 2
 
 
-def test_status_mesos_tasks_verbose():
+@mark.parametrize('test_case', [
+    [False, 0],
+    [True, 2]
+])
+def test_status_mesos_tasks_verbose(test_case):
+    tail_stdstreams, expected_format_tail_call_count = test_case
     with contextlib.nested(
         mock.patch('paasta_tools.mesos_tools.get_running_tasks_from_active_frameworks', autospec=True,),
         mock.patch('paasta_tools.mesos_tools.get_non_running_tasks_from_active_frameworks', autospec=True,),
         mock.patch('paasta_tools.mesos_tools.format_running_mesos_task_row', autospec=True,),
         mock.patch('paasta_tools.mesos_tools.format_non_running_mesos_task_row', autospec=True,),
+        mock.patch('paasta_tools.mesos_tools.format_stdstreams_tail_for_task', autospec=True,),
     ) as (
         get_running_mesos_tasks_patch,
         get_non_running_mesos_tasks_patch,
         format_running_mesos_task_row_patch,
         format_non_running_mesos_task_row_patch,
+        format_stdstreams_tail_for_task_patch,
     ):
         get_running_mesos_tasks_patch.return_value = ['doing a lap']
         get_non_running_mesos_tasks_patch.return_value = ['eating a burrito']
         format_running_mesos_task_row_patch.return_value = ['id', 'host', 'mem', 'cpu', 'disk', 'time']
         format_non_running_mesos_task_row_patch.return_value = ['id', 'host', 'time', 'state']
+        format_stdstreams_tail_for_task_patch.return_value = ['tail']
         job_id = format_job_id('fake_service', 'fake_instance'),
 
         def get_short_task_id(_):
             return 'short_task_id'
 
-        actual = mesos_tools.status_mesos_tasks_verbose(job_id, get_short_task_id)
+        actual = mesos_tools.status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams)
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
         format_running_mesos_task_row_patch.assert_called_once_with('doing a lap', get_short_task_id)
         format_non_running_mesos_task_row_patch.assert_called_once_with('eating a burrito', get_short_task_id)
+        assert format_stdstreams_tail_for_task_patch.call_count == expected_format_tail_call_count
 
 
 def test_get_cpu_usage_good():
@@ -422,3 +432,103 @@ def test_get_paasta_execute_docker_healthcheck_when_not_found():
         side_effect=fake_container_info,
     )
     assert mesos_tools.get_container_id_for_mesos_id(mock_docker_client, fake_mesos_id) is None
+
+
+@mark.parametrize('test_case', [
+    [['taska', 'taskb'],  # test_case0 - OK
+     [['outlna1', 'outlna2', 'errlna1'],
+      ['outlnb1', 'errlnb1', 'errlnb2']],
+     ['taska', 'outlna1', 'outlna2', 'errlna1', 'taskb', 'outlnb1', 'errlnb1', 'errlnb2'],
+     False],
+    [['a'],  # test_case1 - can't zip different length lists
+     [1, 2],
+     None,
+     True]])
+def test_zip_tasks_verbose_output(test_case):
+    table, stdstreams, expected, should_raise = test_case
+    result = None
+    raised = False
+    try:
+        result = mesos_tools.zip_tasks_verbose_output(table, stdstreams)
+    except AssertionError:
+        raised = True
+
+    assert raised == should_raise
+    assert result == expected
+
+
+@mark.parametrize('test_case', [
+    # task_id, file1, file2, nlines, raise_what
+    ['a_task',  # test_case0 - OK
+     ['stdout', [str(x) for x in range(20)]],
+     ['stderr', [str(x) for x in range(30)]],
+     10,
+     None],
+    ['a_task',  # test_case1 - OK, short stdout, swapped stdout/stderr
+     ['stderr', [str(x) for x in range(30)]],
+     ['stdout', ['1', '2']],
+     10,
+     None],
+    ['a_task', None, None, 10, 'MasterNotAvailableException'],
+    ['a_task', None, None, 10, 'SlaveNotAvailableException'],
+    ['a_task', None, None, 10, 'TaskNotFoundException'],
+    ['a_task', None, None, 10, 'FileNotFoundForTaskException'],
+    ['a_task', None, None, 10, 'TimeoutError']
+])
+def test_format_stdstreams_tail_for_task(test_case):
+    def gen_mesos_cli_fobj(file_path, file_lines):
+        """mesos.cli.cluster.files (0.1.3 - newer versions differ),
+        returns a list of tuples like:
+          (mesos.cli.mesos_file.File, Bool)
+        `File` is an iterator-like object.
+        """
+        fake_iter = mock.MagicMock()
+        fake_iter.return_value = reversed(file_lines)
+        fobj = mock.create_autospec(mesos.cli.mesos_file.File)
+        fobj.path = file_path
+        fobj.__reversed__ = fake_iter
+        return (fobj, False)
+
+    def get_short_task_id(task_id):
+        return task_id
+
+    def gen_mock_cluster_files(file1, file2, raise_what):
+        def retfunc(**kwargs):
+            # If we're asked to raise a particular exception we do so.
+            # .message is set to the exception class name.
+            if raise_what:
+                exception_class = getattr(mesos_tools, raise_what)
+                raise exception_class(exception_class.__name__)
+            return [
+                gen_mesos_cli_fobj(file1[0], file1[1]),
+                gen_mesos_cli_fobj(file2[0], file2[1])
+            ]
+        mock_cluster_files = mock.MagicMock()
+        mock_cluster_files.side_effect = retfunc
+        return mock_cluster_files
+
+    def gen_output(task_id, file1, file2, nlines, raise_what):
+        error_message = PaastaColors.red("      couldn't read stdout/stderr for %s (%s)")
+        output = []
+        if not raise_what:
+            files = [file1, file2]
+            # reverse sort because stdout is supposed to always come before stderr in the output
+            files.sort(key=lambda f: f[0], reverse=True)
+            for f in files:
+                output.append(PaastaColors.blue("      %s tail for %s" % (f[0], task_id)))
+                output.extend(f[1][-nlines:])
+                output.append(PaastaColors.blue("      %s EOF" % f[0]))
+        else:
+            if raise_what == 'TimeoutError':
+                raise_what = 'timeout'
+            output.append(error_message % (task_id, raise_what))
+        return output
+
+    task_id, file1, file2, nlines, raise_what = test_case
+
+    mock_cluster_files = gen_mock_cluster_files(file1, file2, raise_what)
+    fake_task = {'id': task_id}
+    expected = gen_output(task_id, file1, file2, nlines, raise_what)
+    with mock.patch('paasta_tools.mesos_tools.mesos.cli.cluster.files', mock_cluster_files):
+        result = mesos_tools.format_stdstreams_tail_for_task(fake_task, get_short_task_id)
+        assert result == expected
