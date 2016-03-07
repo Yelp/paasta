@@ -223,14 +223,15 @@ class MarathonServiceConfig(InstanceConfig):
         else:
             return 0
 
-    def get_backoff_seconds(self):
-        """backoff_seconds represents how many seconds a penalization factor for failing tasks.
+    def get_backoff_seconds(self, instances=None):
+        """backoff_seconds represents a penalization factor for relaunching failing tasks.
         Every time a task fails, Marathon adds this value multiplied by a backoff_factor.
         In PaaSTA we know how many instances a service has, so we adjust the backoff_seconds
         to account for this, which prevents services with large number of instances from
         being penalized more than services with small instance counts. (for example, a service
         with 30 instances will get backed off 10 times faster than a service with 3 instances)."""
-        instances = self.get_instances()
+        if instances is None:
+            instances = self.get_instances()
         if instances == 0:
             return 1
         else:
@@ -300,7 +301,7 @@ class MarathonServiceConfig(InstanceConfig):
         pool = self.get_pool()
         return [["pool", "LIKE", pool]]
 
-    def format_marathon_app_dict(self, app_id, docker_url, docker_volumes, service_namespace_config):
+    def format_marathon_app_dict(self):
         """Create the configuration that will be passed to the Marathon REST API.
 
         Currently compiles the following keys into one nice dict:
@@ -326,8 +327,21 @@ class MarathonServiceConfig(InstanceConfig):
                                marathon configuration file
         :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
+        instances = self.get_instances()
+
+        # A set of config attributes that don't get included in the hash of the config.
+        # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
+        CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds'])
+
+        system_paasta_config = load_system_paasta_config()
+        docker_url = get_docker_url(system_paasta_config.get_docker_registry(), self.get_docker_image())
+        service_namespace_config = load_service_namespace_config(
+            service=self.service,
+            namespace=self.get_nerve_namespace(),
+        )
+        docker_volumes = system_paasta_config.get_volumes() + self.get_extra_volumes()
+
         complete_config = {
-            'id': app_id,
             'container': {
                 'docker': {
                     'image': docker_url,
@@ -344,7 +358,7 @@ class MarathonServiceConfig(InstanceConfig):
                 'volumes': docker_volumes,
             },
             'uris': ['file:///root/.dockercfg', ],
-            'backoff_seconds': self.get_backoff_seconds(),
+            'backoff_seconds': self.get_backoff_seconds(instances),
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),
             'env': self.get_env(),
@@ -352,7 +366,7 @@ class MarathonServiceConfig(InstanceConfig):
             'cpus': float(self.get_cpus()),
             'disk': float(self.get_disk()),
             'constraints': self.get_constraints(service_namespace_config),
-            'instances': self.get_instances(),
+            'instances': instances,
             'cmd': self.get_cmd(),
             'args': self.get_args(),
         }
@@ -360,6 +374,14 @@ class MarathonServiceConfig(InstanceConfig):
         accepted_resource_roles = self.get_accepted_resource_roles()
         if accepted_resource_roles is not None:
             complete_config['accepted_resource_roles'] = accepted_resource_roles
+
+        code_sha = get_code_sha_from_dockerurl(docker_url)
+
+        config_hash = get_config_hash(
+            {key: value for key, value in complete_config.items() if key not in CONFIG_HASH_BLACKLIST},
+            force_bounce=self.get_force_bounce(),
+        )
+        complete_config['id'] = format_job_id(self.service, self.instance, code_sha, config_hash)
 
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
@@ -903,39 +925,12 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_o
 
 def create_complete_config(service, instance, soa_dir=DEFAULT_SOA_DIR):
     """Generates a complete dictionary to be POST'ed to create an app on Marathon"""
-    # A set of config attributes that don't get included in the hash of the config.
-    # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
-    CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds'])
-
-    system_paasta_config = load_system_paasta_config()
-    partial_id = format_job_id(service=service, instance=instance)
-    instance_config = load_marathon_service_config(
+    return load_marathon_service_config(
         service=service,
         instance=instance,
-        cluster=system_paasta_config.get_cluster(),
+        cluster=load_system_paasta_config().get_cluster(),
         soa_dir=soa_dir,
-    )
-    docker_url = get_docker_url(system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
-    service_namespace_config = load_service_namespace_config(
-        service=service,
-        namespace=instance_config.get_nerve_namespace(),
-    )
-    docker_volumes = system_paasta_config.get_volumes() + instance_config.get_extra_volumes()
-
-    complete_config = instance_config.format_marathon_app_dict(
-        app_id=partial_id,
-        docker_url=docker_url,
-        docker_volumes=docker_volumes,
-        service_namespace_config=service_namespace_config,
-    )
-    code_sha = get_code_sha_from_dockerurl(docker_url)
-    config_hash = get_config_hash(
-        {key: value for key, value in complete_config.items() if key not in CONFIG_HASH_BLACKLIST},
-        force_bounce=instance_config.get_force_bounce(),
-    )
-    full_id = format_job_id(service, instance, code_sha, config_hash)
-    complete_config['id'] = full_id
-    return complete_config
+    ).format_marathon_app_dict()
 
 
 def get_expected_instance_count_for_namespace(service, namespace, cluster=None, soa_dir=DEFAULT_SOA_DIR):
