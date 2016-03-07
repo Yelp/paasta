@@ -370,7 +370,7 @@ def test_configure_and_run_pulls_image_when_asked(
 
 @mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.Client', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.get_docker_client', spec_set=docker.Client)
 @mock.patch('paasta_tools.cli.cmds.cook_image.validate_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.cook_image.makefile_responds_to', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.cook_image._run', autospec=True)

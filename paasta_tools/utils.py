@@ -38,6 +38,9 @@ import dateutil.tz
 import docker
 import service_configuration_lib
 import yaml
+from docker import Client
+from docker.utils import kwargs_from_env
+
 
 # DO NOT CHANGE SPACER, UNLESS YOU'RE PREPARED TO CHANGE ALL INSTANCES
 # OF IT IN OTHER LIBRARIES (i.e. service_configuration_lib).
@@ -982,6 +985,14 @@ def parse_yaml_file(yaml_file):
 
 def get_docker_host():
     return os.environ.get('DOCKER_HOST', 'unix://var/run/docker.sock')
+
+
+def get_docker_client():
+    client_opts = kwargs_from_env(assert_hostname=False)
+    if 'base_url' in client_opts:
+        return Client(**client_opts)
+    else:
+        return Client(base_url=get_docker_host(), **client_opts)
 
 
 class TimeoutError(Exception):
