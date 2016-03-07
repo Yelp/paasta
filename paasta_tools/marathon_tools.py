@@ -224,7 +224,7 @@ class MarathonServiceConfig(InstanceConfig):
             return 0
 
     def get_backoff_seconds(self, instances=None):
-        """backoff_seconds represents how many seconds a penalization factor for failing tasks.
+        """backoff_seconds represents a penalization factor for relaunching failing tasks.
         Every time a task fails, Marathon adds this value multiplied by a backoff_factor.
         In PaaSTA we know how many instances a service has, so we adjust the backoff_seconds
         to account for this, which prevents services with large number of instances from
