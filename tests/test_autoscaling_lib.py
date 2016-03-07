@@ -219,7 +219,41 @@ def test_default_autoscaling():
         _,
     ):
         assert autoscaling_lib.default_autoscaling_method(fake_marathon_service_config) == 0
-        mock_zk_client.return_value.set.assert_any_call('/autoscaling/fake-service/fake-instance/last_tstamp', mock.ANY)
-        mock_zk_client.return_value.set.assert_any_call('/autoscaling/fake-service/fake-instance/last_error', '0.0')
-        mock_zk_client.return_value.set.assert_any_call('/autoscaling/fake-service/fake-instance/iterm', '0.0')
-        mock_zk_client.return_value.set.assert_any_call('/autoscaling/fake-service/fake-instance/cpu_seconds', '480.0')
+        mock_zk_client.return_value.set.assert_has_calls(
+            (
+                mock.call('/autoscaling/fake-service/fake-instance/last_tstamp', mock.ANY),
+                mock.call('/autoscaling/fake-service/fake-instance/last_error', '0.0'),
+                mock.call('/autoscaling/fake-service/fake-instance/iterm', '0.0'),
+                mock.call('/autoscaling/fake-service/fake-instance/cpu_seconds', '480.0'),
+            ),
+            any_order=True,
+        )
+
+
+def test_default_autoscaling_no_data():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={'max_instances': 5, 'min_instances': 1},
+        branch_dict={},
+    )
+    with contextlib.nested(
+            mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True,
+                       return_value=mock.Mock(get=mock.Mock(side_effect=NoNodeError))),
+            mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True,
+                       return_value=mock.Mock(get_zk_hosts=mock.Mock())),
+    ) as (
+        mock_zk_client,
+        _,
+    ):
+        assert autoscaling_lib.default_autoscaling_method(fake_marathon_service_config) == 0
+        mock_zk_client.return_value.set.assert_has_calls(
+            (
+                mock.call('/autoscaling/fake-service/fake-instance/last_tstamp', mock.ANY),
+                mock.call('/autoscaling/fake-service/fake-instance/last_error', '0.0'),
+                mock.call('/autoscaling/fake-service/fake-instance/iterm', '0.0'),
+                mock.call('/autoscaling/fake-service/fake-instance/cpu_seconds', '0.0'),
+            ),
+            any_order=True,
+        )
