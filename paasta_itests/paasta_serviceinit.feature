@@ -18,7 +18,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run status on chronos jobs
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -27,7 +27,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run status --verbose on chronos jobs
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -36,7 +36,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-stop on an enabled chronos job
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -47,7 +47,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-start on an enabled chronos job
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -58,7 +58,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-start on a disabled chronos job
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob
@@ -69,7 +69,7 @@ Feature: paasta_serviceinit
 
   Scenario: paasta_serviceinit can run emergency-restart on an enabled chronos job
     Given a working paasta cluster
-      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have yelpsoa-configs for the service "testservice" with scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
       And we store the name of the job for the service testservice and instance testinstance as myjob

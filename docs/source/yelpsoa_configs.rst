@@ -314,8 +314,6 @@ Each job configuration MAY specify the following options:
   * ``retries``: Number of retries to attempt if a command returns a
     non-zero exit status. Defaults to 2.
 
-  * ``disabled``: If set to ``True``, this job will not be run. Defaults to ``False``
-
   * ``cpus``: See the `marathon-[clustername].yaml`_ section for details
 
   * ``mem``: See the `marathon-[clustername].yaml`_ section for details
