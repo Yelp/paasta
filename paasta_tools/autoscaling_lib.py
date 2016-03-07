@@ -73,6 +73,12 @@ def default_autoscaling_method(marathon_service_config):
     integral_term_zk_node = '%s/iterm' % zookeeper_root
     cpu_seconds_zk_node = '%s/cpu_seconds' % zookeeper_root
 
+    current_time = int(datetime.datetime.now().strftime('%s'))
+    error = 0.0
+    iterm = 0.0
+    pid_output = 0
+    average_cpu_seconds = 0.0
+
     def clamp_value(number):
         return min(max(number, -1), 1)
 
@@ -87,33 +93,19 @@ def default_autoscaling_method(marathon_service_config):
             last_time, _ = zk.get(tstamp_zk_node)
             last_error, _ = zk.get(error_zk_node)
             iterm, _ = zk.get(integral_term_zk_node)
+            last_average_cpu_seconds, _ = zk.get(cpu_seconds_zk_node)
             last_time = int(last_time)
             last_error = float(last_error)
             iterm = float(iterm)
-            return int(last_time), float(last_error), float(iterm)
-
-    def calculate_cpu_percentage(average_cpu_seconds, time_delta):
-        with ZookeeperPool() as zk:
-            try:
-                last_average_cpu_seconds, _ = zk.get(cpu_seconds_zk_node)
-                last_average_cpu_seconds = float(last_average_cpu_seconds)
-                average_cpu = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
-            except NoNodeError:
-                average_cpu = 0.0
-            finally:
-                zk.ensure_path(cpu_seconds_zk_node)
-                zk.set(cpu_seconds_zk_node, str(average_cpu_seconds))
-                return average_cpu
+            last_average_cpu_seconds = float(last_average_cpu_seconds)
+            return last_time, last_error, iterm, last_average_cpu_seconds
 
     with ZookeeperPool() as zk:
         try:
-            last_time, last_error, iterm = get_zookeeper_data()
+            last_time, last_error, iterm, last_average_cpu_seconds = get_zookeeper_data()
         except NoNodeError:
             # we have no historical data for this service yet
-            current_time = int(datetime.datetime.now().strftime('%s'))
-            error = 0.0
-            iterm = 0.0
-            pid_output = 0
+            pass
         else:
             job_id = marathon_service_config.format_marathon_app_dict()['id']
             mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
@@ -127,21 +119,22 @@ def default_autoscaling_method(marathon_service_config):
             if time_delta < AUTOSCALING_DELAY:
                 return 0
 
-            average_cpu = calculate_cpu_percentage(average_cpu_seconds, time_delta)
+            average_cpu = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
 
             # if one resource is underprovisioned and one is overprovisioned, we still want to scale up
             max_utilization = max(average_cpu, average_ram)
             error = max_utilization - PID_SETPOINT
             iterm = clamp_value(iterm + (Ki * error) * time_delta)
             pid_output = round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta))
-        finally:
-            zk.ensure_path(tstamp_zk_node)
-            zk.ensure_path(error_zk_node)
-            zk.ensure_path(integral_term_zk_node)
-            zk.set(tstamp_zk_node, str(current_time))
-            zk.set(error_zk_node, str(error))
-            zk.set(integral_term_zk_node, str(iterm))
-            return int(pid_output)
+        zk.ensure_path(tstamp_zk_node)
+        zk.ensure_path(error_zk_node)
+        zk.ensure_path(integral_term_zk_node)
+        zk.ensure_path(cpu_seconds_zk_node)
+        zk.set(tstamp_zk_node, str(current_time))
+        zk.set(error_zk_node, str(error))
+        zk.set(integral_term_zk_node, str(iterm))
+        zk.set(cpu_seconds_zk_node, str(average_cpu_seconds))
+        return int(pid_output)
 
 
 def autoscale_marathon_instance(marathon_service_config):
