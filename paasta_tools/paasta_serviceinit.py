@@ -89,7 +89,7 @@ def main():
             service=service,
             instance=instance,
             cluster=cluster,
-            verbose=args.verbose > 0,
+            verbose=args.verbose,
             soa_dir=args.soa_dir,
         )
         sys.exit(return_code)
