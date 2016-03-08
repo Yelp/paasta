@@ -477,9 +477,8 @@ def test_zip_tasks_verbose_output(test_case):
 ])
 def test_format_stdstreams_tail_for_task(test_case):
     def gen_mesos_cli_fobj(file_path, file_lines):
-        """mesos.cli.cluster.files (0.1.3 - newer versions differ),
-        returns a list of tuples like:
-          (mesos.cli.mesos_file.File, Bool)
+        """mesos.cli.cluster.files (0.1.5),
+        returns a list of mesos.cli.mesos_file.File
         `File` is an iterator-like object.
         """
         fake_iter = mock.MagicMock()
@@ -487,13 +486,13 @@ def test_format_stdstreams_tail_for_task(test_case):
         fobj = mock.create_autospec(mesos.cli.mesos_file.File)
         fobj.path = file_path
         fobj.__reversed__ = fake_iter
-        return (fobj, False)
+        return fobj
 
     def get_short_task_id(task_id):
         return task_id
 
     def gen_mock_cluster_files(file1, file2, raise_what):
-        def retfunc(**kwargs):
+        def retfunc(*args, **kwargs):
             # If we're asked to raise a particular exception we do so.
             # .message is set to the exception class name.
             if raise_what:

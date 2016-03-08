@@ -256,16 +256,16 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
     error_message = PaastaColors.red("      couldn't read stdout/stderr for %s (%s)")
     output = []
     try:
-        fobjs = list(mesos.cli.cluster.files(flist=['stdout', 'stderr'], fltr=task['id']))
-        fobjs.sort(key=lambda fobj: fobj[0].path, reverse=True)
+        fobjs = list(mesos.cli.cluster.files(lambda x: x, flist=['stdout', 'stderr'], fltr=task['id']))
+        fobjs.sort(key=lambda fobj: fobj.path, reverse=True)
         if not fobjs:
             output.append(PaastaColors.blue("      no stdout/stderrr for %s" % get_short_task_id(task['id'])))
             return output
         for fobj in fobjs:
-            output.append(PaastaColors.blue("      %s tail for %s" % (fobj[0].path, get_short_task_id(task['id']))))
+            output.append(PaastaColors.blue("      %s tail for %s" % (fobj.path, get_short_task_id(task['id']))))
             # read nlines, starting from EOF
             # mesos.cli is smart and can efficiently read a file backwards
-            reversed_file = reversed(fobj[0])
+            reversed_file = reversed(fobj)
             tail = []
             for _ in xrange(nlines):
                 line = next(reversed_file, None)
@@ -275,7 +275,7 @@ def format_stdstreams_tail_for_task(task, get_short_task_id, nlines=10):
             # reverse the tail, so that EOF is at the bottom again
             if tail:
                 output.extend(tail[::-1])
-            output.append(PaastaColors.blue("      %s EOF" % fobj[0].path))
+            output.append(PaastaColors.blue("      %s EOF" % fobj.path))
     except (MasterNotAvailableException,
             SlaveNotAvailableException,
             TaskNotFoundException,
