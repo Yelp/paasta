@@ -14,17 +14,15 @@
 from behave import given
 from behave import then
 from behave import when
-from docker import Client
 from docker.errors import APIError
 
 from paasta_tools.utils import _run
-from paasta_tools.utils import get_docker_host
+from paasta_tools.utils import get_docker_client
 
 
 @given(u'Docker is available')
 def docker_is_available(context):
-    base_docker_url = get_docker_host()
-    docker_client = Client(base_url=base_docker_url)
+    docker_client = get_docker_client()
     assert docker_client.ping()
     context.docker_client = docker_client
 

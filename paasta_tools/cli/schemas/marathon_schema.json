@@ -66,6 +66,9 @@
 	    "deploy_group": {
 		"type": "string"
 	    },
+            "autoscaling": {
+		"type": "object"
+            },
             "drain_method": {
                 "enum": [ "noop", "hacheck", "test" ],
                 "default": "noop"

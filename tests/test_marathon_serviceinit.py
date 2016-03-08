@@ -811,14 +811,12 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
     soa_dir = 'fake_soa_dir'
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_config', autospec=True),
-        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_service_config', autospec=True),
-        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.create_complete_config', autospec=True),
+        mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_service_config', autospec=True,
+                   return_value=mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError))),
     ) as (
         mock_load_marathon_config,
         mock_load_marathon_service_config,
-        mock_create_complete_config,
     ):
-        mock_create_complete_config.side_effect = NoDockerImageError()
         actual = marathon_serviceinit.perform_command(
             'start', fake_service, fake_instance, fake_cluster, False, soa_dir)
         assert actual == 1

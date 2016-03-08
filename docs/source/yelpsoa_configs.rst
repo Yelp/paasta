@@ -111,12 +111,18 @@ instance MAY have:
     Parsing the Marathon config file will fail if both args and cmd are
     specified [#note]_.
 
+  .. _env:
+
   * ``env``: A dictionary of environment variables that will be made available
     to the container. PaaSTA additionally will inject the following variables:
 
     * ``PAASTA_SERVICE``: The service name
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
+
+    Additionally, there are ``MARATHON_`` prefixed variables available. See the
+    `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_
+    for more information about these variables.
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available

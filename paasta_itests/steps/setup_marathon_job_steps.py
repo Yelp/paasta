@@ -21,6 +21,7 @@ from itest_utils import get_service_connection_string
 
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
+from paasta_tools.autoscaling_lib import set_instances_for_marathon_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import SystemPaastaConfig
@@ -30,16 +31,16 @@ def run_setup_marathon_job(context):
     update_context_marathon_config(context)
     with contextlib.nested(
         mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
-        mock.patch('paasta_tools.setup_marathon_job.marathon_tools.create_complete_config', autospec=True),
         mock.patch('paasta_tools.setup_marathon_job.parse_args', autospec=True),
+        mock.patch.object(MarathonServiceConfig, 'format_marathon_app_dict', autospec=True,
+                          return_value=context.marathon_complete_config),
         mock.patch('paasta_tools.setup_marathon_job.monitoring_tools.send_event', autospec=True),
     ) as (
         mock_get_zk_hosts,
-        mock_create_complete_config,
         mock_parse_args,
         _,
+        _,
     ):
-        mock_create_complete_config.return_value = context.marathon_complete_config
         mock_parse_args.return_value = mock.Mock(
             soa_dir=context.soa_dir,
             service_instance=context.job_id,
@@ -76,6 +77,8 @@ def update_context_marathon_config(context):
         'cmd': '/bin/sleep 1m',
         'constraints': None,
     })
+    if 'max_instances' not in context:
+        context.marathon_complete_config['instances'] = context.instances
 
 
 @when(u'we create a marathon app called "{job_id}" with {number:d} instance(s)')
@@ -113,7 +116,7 @@ def zookeeper_scale_job(context, service, instance, number):
     ) as (
         _,
     ):
-        marathon_tools.set_instances_for_marathon_service(service, instance, number, soa_dir=context.soa_dir)
+        set_instances_for_marathon_service(service, instance, number, soa_dir=context.soa_dir)
 
 
 @then(u'we should see it in the list of apps')

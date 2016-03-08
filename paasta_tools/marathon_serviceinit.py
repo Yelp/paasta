@@ -329,18 +329,17 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     """
     marathon_config = marathon_tools.load_marathon_config()
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster, soa_dir=soa_dir)
-    try:
-        complete_config = marathon_tools.create_complete_config(service, instance, soa_dir=soa_dir)
-        if not app_id:
-            app_id = complete_config['id']
-    except NoDockerImageError:
-        job_id = compose_job_id(service, instance)
-        print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_id
-        return 1
+    if not app_id:
+        try:
+            app_id = job_config.format_marathon_app_dict()['id']
+        except NoDockerImageError:
+            job_id = compose_job_id(service, instance)
+            print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_id
+            return 1
 
     normal_instance_count = job_config.get_instances()
-    normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
-    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
+    normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, cluster)
+    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
 
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())

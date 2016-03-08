@@ -906,8 +906,9 @@ class TestSetupMarathonJob:
             'id': full_id,
         }
         with contextlib.nested(
-            mock.patch(
-                'paasta_tools.marathon_tools.create_complete_config',
+            mock.patch.object(
+                self.fake_marathon_service_config,
+                'format_marathon_app_dict',
                 return_value=fake_complete,
                 autospec=True,
             ),
@@ -921,7 +922,7 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
         ) as (
-            create_config_patch,
+            format_marathon_app_dict_patch,
             get_config_patch,
             deploy_service_patch,
         ):
@@ -933,11 +934,7 @@ class TestSetupMarathonJob:
                 service_marathon_config=self.fake_marathon_service_config,
                 soa_dir=None,
             )
-            create_config_patch.assert_called_once_with(
-                fake_name,
-                fake_instance,
-                None,
-            )
+            format_marathon_app_dict_patch.assert_called_once_with()
             assert deploy_service_patch.call_count == 1
 
     def test_setup_service_srv_does_not_exist(self):
@@ -956,11 +953,6 @@ class TestSetupMarathonJob:
         fake_drain_method = 'noop'
         fake_drain_method_params = {}
         with contextlib.nested(
-            mock.patch(
-                'paasta_tools.marathon_tools.create_complete_config',
-                return_value=fake_complete,
-                autospec=True,
-            ),
             mock.patch(
                 'paasta_tools.setup_marathon_job.deploy_service',
                 return_value=(111, 'Never'),
@@ -984,6 +976,12 @@ class TestSetupMarathonJob:
                 return_value=fake_drain_method_params,
                 autospec=True,
             ),
+            mock.patch.object(
+                self.fake_marathon_service_config,
+                'format_marathon_app_dict',
+                return_value=fake_complete,
+                autospec=True,
+            ),
             mock.patch(
                 'paasta_tools.marathon_tools.load_marathon_service_config',
                 return_value=self.fake_marathon_service_config,
@@ -995,11 +993,11 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
         ) as (
-            create_config_patch,
             deploy_service_patch,
             get_bounce_patch,
             get_drain_method_patch,
             get_drain_method_params_patch,
+            format_marathon_app_dict_patch,
             read_service_conf_patch,
             read_namespace_conf_patch,
         ):
@@ -1014,12 +1012,8 @@ class TestSetupMarathonJob:
             assert status == 111
             assert output == 'Never'
 
-            create_config_patch.assert_called_once_with(
-                fake_name,
-                fake_instance,
-                None,
-            )
             get_bounce_patch.assert_called_once_with()
+            format_marathon_app_dict_patch.assert_called_once_with()
             get_drain_method_patch.assert_called_once_with(read_namespace_conf_patch.return_value)
             deploy_service_patch.assert_called_once_with(
                 service=fake_name,
@@ -1039,8 +1033,9 @@ class TestSetupMarathonJob:
     def test_setup_service_srv_complete_config_raises(self):
         fake_name = 'test_service'
         fake_instance = 'test_instance'
-        with mock.patch(
-            'paasta_tools.setup_marathon_job.marathon_tools.create_complete_config',
+        with mock.patch.object(
+            self.fake_marathon_service_config,
+            'format_marathon_app_dict',
             side_effect=NoDockerImageError,
         ):
             status, output = setup_marathon_job.setup_service(
@@ -1048,7 +1043,7 @@ class TestSetupMarathonJob:
                 instance=fake_instance,
                 client=None,
                 marathon_config=None,
-                service_marathon_config=None,
+                service_marathon_config=self.fake_marathon_service_config,
                 soa_dir=None,
             )
             assert status == 1
