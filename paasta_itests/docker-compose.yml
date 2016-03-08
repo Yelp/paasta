@@ -51,7 +51,6 @@ paastatools:
   # make --no-capture global ???
   volumes:
   - ../:/work:rw
-  - ./fake_etc_paasta:/etc/paasta:rw
   command: 'tox -e paasta_itests_inside_container -- --no-capture'
 
 chronos:

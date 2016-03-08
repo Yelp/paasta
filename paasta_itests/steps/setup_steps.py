@@ -93,11 +93,11 @@ def write_mesos_cli_config(config):
     return mesos_cli_config_file.name
 
 
-def write_etc_paasta(config, filename):
-    paasta_dir = '/etc/paasta'
-    if not os.path.exists(paasta_dir):
-        os.makedirs(paasta_dir)
-    with open(os.path.join(paasta_dir, filename), 'w') as f:
+def write_etc_paasta(context, config, filename):
+    context.etc_paasta = '/etc/paasta'
+    if not os.path.exists(context.etc_paasta):
+        os.makedirs(context.etc_paasta)
+    with open(os.path.join(context.etc_paasta, filename), 'w') as f:
         f.write(json.dumps(config))
 
 
@@ -120,14 +120,16 @@ def working_paasta_cluster(context):
     mesos_cli_config = _generate_mesos_cli_config(_get_zookeeper_connection_string('mesos-testcluster'))
     context.mesos_cli_config_filename = write_mesos_cli_config(mesos_cli_config)
     context.tag_version = 0
-    write_etc_paasta(context.marathon_config, 'marathon.json')
-    write_etc_paasta(context.chronos_config, 'chronos.json')
-    write_etc_paasta({
+    write_etc_paasta(context, context.marathon_config, 'marathon.json')
+    write_etc_paasta(context, context.chronos_config, 'chronos.json')
+    write_etc_paasta(context, {
         "cluster": "testcluster",
         "zookeeper": "zk://fake",
         "docker_registry": "fake.com"
     }, 'cluster.json')
-    write_etc_paasta({
+    write_etc_paasta(context, {'log_writer': {'driver': "null"}}, 'logs.json')
+    write_etc_paasta(context, {"sensu_host": "fakesensu", "sensu_port": 3030}, 'sensu.json')
+    write_etc_paasta(context, {
         'volumes': [
             {'hostPath': u'/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},
             {'hostPath': u'/nail/etc/bop', 'containerPath': '/nail/etc/bop', 'mode': 'RO'},

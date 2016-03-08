@@ -1,1 +1,0 @@
-{"cluster": "testcluster", "zookeeper": "zk://fake", "docker_registry": "fake.com"}

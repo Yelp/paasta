@@ -84,8 +84,16 @@ def _clean_up_soa_dir(context):
         del context.soa_dir
 
 
+def _clean_up_etc_paasta(context):
+    if hasattr(context, 'etc_paasta'):
+        print 'Cleaning up %s' % context.etc_paasta
+        shutil.rmtree(context.etc_paasta)
+        del context.etc_paasta
+
+
 def after_scenario(context, scenario):
     _clean_up_marathon_apps(context)
     _clean_up_chronos_jobs(context)
     _clean_up_mesos_cli_config(context)
     _clean_up_soa_dir(context)
+    _clean_up_etc_paasta(context)

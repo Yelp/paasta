@@ -1,1 +1,0 @@
-{"volumes": [{"hostPath": "/nail/etc/beep", "containerPath": "/nail/etc/beep", "mode": "RO"}, {"hostPath": "/nail/etc/bop", "containerPath": "/nail/etc/bop", "mode": "RO"}, {"hostPath": "/nail/etc/boop", "containerPath": "/nail/etc/boop", "mode": "RO"}]}
