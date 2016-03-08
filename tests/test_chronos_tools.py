@@ -1100,6 +1100,37 @@ class TestChronosTools:
             }
             assert actual == expected
 
+    def test_create_complete_config_considers_disabled(self):
+        fake_owner = 'test_team'
+        with contextlib.nested(
+            mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
+                       autospec=True, return_value=self.fake_chronos_job_config),
+            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
+        ) as (
+            load_system_paasta_config_patch,
+            load_chronos_job_config_patch,
+            mock_get_team,
+        ):
+            load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
+            load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
+            first_description = chronos_tools.create_complete_config('fake-service', 'fake-job')['description']
+
+            stopped_job_config = chronos_tools.ChronosJobConfig(
+                service=self.fake_service,
+                cluster=self.fake_cluster,
+                instance=self.fake_job_name,
+                config_dict=self.fake_config_dict,
+                branch_dict={
+                    'desired_state': 'stop',
+                    'docker_image': 'paasta-%s-%s' % (self.fake_service, self.fake_cluster),
+                }
+            )
+            load_chronos_job_config_patch.return_value = stopped_job_config
+            second_description = chronos_tools.create_complete_config('fake-service', 'fake-job')['description']
+
+            assert first_description != second_description
+
     def test_create_complete_config_desired_state_start(self):
         fake_owner = 'test_team'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
