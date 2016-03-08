@@ -298,11 +298,11 @@ _log_reader_classes = {}
 
 
 def register_log_reader(name):
-    """Returns a decorator that registers that bounce function at a given name
+    """Returns a decorator that registers a log reader class at a given name
     so get_log_reader_classes can find it."""
-    def outer(bounce_func):
-        _log_reader_classes[name] = bounce_func
-        return bounce_func
+    def outer(log_reader_class):
+        _log_reader_classes[name] = log_reader_class
+        return log_reader_class
     return outer
 
 
