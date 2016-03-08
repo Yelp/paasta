@@ -21,6 +21,7 @@ from itest_utils import get_service_connection_string
 
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
+from paasta_tools.autoscaling_lib import set_instances_for_marathon_service
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import SystemPaastaConfig
@@ -76,6 +77,8 @@ def update_context_marathon_config(context):
         'cmd': '/bin/sleep 1m',
         'constraints': None,
     })
+    if 'max_instances' not in context:
+        context.marathon_complete_config['instances'] = context.instances
 
 
 @when(u'we create a marathon app called "{job_id}" with {number:d} instance(s)')
@@ -113,7 +116,7 @@ def zookeeper_scale_job(context, service, instance, number):
     ) as (
         _,
     ):
-        marathon_tools.set_instances_for_marathon_service(service, instance, number, soa_dir=context.soa_dir)
+        set_instances_for_marathon_service(service, instance, number, soa_dir=context.soa_dir)
 
 
 @then(u'we should see it in the list of apps')
