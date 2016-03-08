@@ -84,7 +84,7 @@ def test_get_zookeeper_instances_defaults_to_config_no_zk_node():
         assert fake_marathon_config.get_instances() == 5
 
 
-def test_get_zookeeper_instances_defaults_to_config_out_of_boumds():
+def test_get_zookeeper_instances_defaults_to_config_out_of_bounds():
     fake_marathon_config = marathon_tools.MarathonServiceConfig(
         service='service',
         instance='instance',
