@@ -291,7 +291,8 @@ def zip_tasks_verbose_output(table, stdstreams):
     :param table: a formatted list of tasks
     :param stdstreams: for each task, a list of lines from stdout/stderr tail
     """
-    assert len(table) == len(stdstreams)
+    if len(table) != len(stdstreams):
+        raise ValueError('Can only zip same-length lists')
     output = []
     for i in xrange(len(table)):
         output.append(table[i])

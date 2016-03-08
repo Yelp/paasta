@@ -225,7 +225,7 @@ def _format_mesos_status(job, running_tasks):
     return mesos_status
 
 
-def format_chronos_job_status(job, running_tasks, verbose):
+def format_chronos_job_status(job, running_tasks, verbose=0):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
 

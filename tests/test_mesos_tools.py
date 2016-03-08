@@ -450,7 +450,7 @@ def test_zip_tasks_verbose_output(test_case):
     raised = False
     try:
         result = mesos_tools.zip_tasks_verbose_output(table, stdstreams)
-    except AssertionError:
+    except ValueError:
         raised = True
 
     assert raised == should_raise
