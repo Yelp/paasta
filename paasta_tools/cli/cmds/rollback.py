@@ -12,6 +12,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
+
 from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
@@ -19,8 +21,28 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
+from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import PaastaColors
+
+
+def list_previously_deployed_shas(parsed_args, **kwargs):
+    service = parsed_args.service
+    if service is None:
+        return []
+    git_url = get_git_url(service=service)
+    all_deploy_groups = set(config.get_deploy_group() for config in get_instance_config_for_service(
+        soa_dir=DEFAULT_SOA_DIR,
+        service=service,
+    ))
+    deploy_groups = [deploy_group for deploy_group in parsed_args.deploy_groups.split(',') if deploy_group]
+    deploy_groups, _ = validate_given_deploy_groups(all_deploy_groups, deploy_groups)
+    regex = r'^refs/tags/(?:paasta-){1,2}(?:%s)-.{15}-deploy$' % '|'.join(deploy_groups)
+    previously_deployed_shas = set()
+    for ref, sha in list_remote_refs(git_url).items():
+        if sha not in previously_deployed_shas and re.match(regex, ref):
+            previously_deployed_shas.add(sha)
+    return previously_deployed_shas
 
 
 def add_subparser(subparsers):
@@ -42,7 +64,7 @@ def add_subparser(subparsers):
         '-k', '--commit',
         help='Git SHA to mark for rollback',
         required=True,
-    )
+    ).completer = lazy_choices_completer(list_previously_deployed_shas)
     list_parser.add_argument(
         '-d', '--deploy-groups',
         help='Mark one or more deploy groups to roll back (e.g. '
