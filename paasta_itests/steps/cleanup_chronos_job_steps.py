@@ -79,7 +79,7 @@ def launch_non_paasta_jobs(context, num_jobs):
 def check_cleanup_chronos_jobs_output(context, expected_return_code):
     cmd = '../paasta_tools/cleanup_chronos_jobs.py --soa-dir %s' % context.soa_dir
     print cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print context.unconfigured_job_names
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
 

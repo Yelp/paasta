@@ -88,7 +88,7 @@ def marathon_restart_gets_new_task_ids(context, job_id):
 def chronos_status_returns_healthy(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -102,7 +102,7 @@ def chronos_status_returns_healthy(context, service_instance):
 def chronos_status_verbose_returns_healthy(context, service_instance):
     cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status --verbose" % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -115,7 +115,7 @@ def chronos_status_verbose_returns_healthy(context, service_instance):
 def paasta_serviceinit_tail_stdstreams(context, service_instance):
     cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status -vv" % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -130,7 +130,7 @@ def paasta_serviceinit_tail_stdstreams(context, service_instance):
 def chronos_emergency_stop_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s stop' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -141,7 +141,7 @@ def chronos_emergency_stop_job(context, service_instance):
 def chronos_emergency_start_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s start' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -152,7 +152,7 @@ def chronos_emergency_start_job(context, service_instance):
 def chronos_emergency_restart_job(context):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job restart' % context.soa_dir
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -163,7 +163,7 @@ def chronos_emergency_restart_job(context):
 def paasta_serviceinit_command(context, command, job_id):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s %s' % (context.soa_dir, job_id, command)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -177,7 +177,7 @@ def paasta_serviceinit_command_appid(context, command, job_id):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s --appid %s %s %s' \
           % (context.soa_dir, app_id, job_id, command)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -189,7 +189,7 @@ def paasta_serviceinit_command_scale(context, delta, job_id):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s scale --delta %s' \
           % (context.soa_dir, job_id, delta)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 

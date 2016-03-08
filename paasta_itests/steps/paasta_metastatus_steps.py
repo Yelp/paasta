@@ -69,7 +69,7 @@ def check_metastatus_return_code_with_flags(context, flags, expected_return_code
     env = dict(os.environ)
     env['MESOS_CLI_CONFIG'] = context.mesos_cli_config_filename
     print 'Running cmd %s with MESOS_CLI_CONFIG=%s' % (cmd, env['MESOS_CLI_CONFIG'])
-    (exit_code, output) = _run(cmd, env=env)
+    exit_code, output = _run(cmd, env=env)
 
     # we don't care about the colouring here, so remove any ansi escape sequences
     escaped_output = remove_ansi_escape_sequences(output)
