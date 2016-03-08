@@ -46,10 +46,11 @@ def add_subparser(subparsers):
     )
     status_parser.add_argument(
         '-v', '--verbose',
-        action='store_true',
+        action='count',
         dest="verbose",
-        default=False,
-        help="Print out more output regarding the state of the service")
+        default=0,
+        help="Print out more output regarding the state of the service. "
+             "A second -v will also print the stdout/stderr tail.")
     status_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to inspect'
@@ -119,7 +120,7 @@ def get_actual_deployments(service):
     return actual_deployments
 
 
-def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist, verbose=False):
+def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist, verbose=0):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     print
@@ -172,7 +173,7 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
     return return_string
 
 
-def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist, verbose=False):
+def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist, verbose=0):
     pipeline_url = get_pipeline_url(service)
     print "Pipeline: %s" % pipeline_url
 

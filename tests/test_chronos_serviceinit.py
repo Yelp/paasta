@@ -310,20 +310,22 @@ def test_format_schedule_scheduletimezone():
     assert "(Zulu) Epsilon" in actual
 
 
-def test_format_chronos_job_mesos_verbose():
+@pytest.mark.parametrize('verbosity_level', [1, 2])
+def test_format_chronos_job_mesos_verbose(verbosity_level):
     example_job = {
         'name': 'my_service my_instance gityourmom configyourdad',
         'schedule': 'foo',
     }
     running_tasks = ['slay the nemean lion']
-    verbose = True
+    tail_stdstreams = verbosity_level > 1
     with mock.patch(
         'paasta_tools.chronos_serviceinit.status_mesos_tasks_verbose',
         autospec=True,
         return_value='status_mesos_tasks_verbose output',
     ) as mock_status_mesos_tasks_verbose:
-        actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
-    mock_status_mesos_tasks_verbose.assert_called_once_with(example_job['name'], chronos_serviceinit.get_short_task_id)
+        actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbosity_level)
+    mock_status_mesos_tasks_verbose.assert_called_once_with(example_job['name'],
+                                                            chronos_serviceinit.get_short_task_id, tail_stdstreams)
     assert 'status_mesos_tasks_verbose output' in actual
 
 

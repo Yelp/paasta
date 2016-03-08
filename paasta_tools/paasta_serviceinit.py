@@ -39,8 +39,9 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='Runs start/stop/restart/status/scale on a PaaSTA service in a given cluster.',
     )
-    parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
-                        help="Print out more output regarding the state of the service")
+    parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
+                        help="Print out more output regarding the state of the service. "
+                             "Multiple -v options increase verbosity. Maximum is 2.")
     parser.add_argument('-D', '--debug', action='store_true', dest="debug", default=False,
                         help="Output debug logs regarding files, connections, etc")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
