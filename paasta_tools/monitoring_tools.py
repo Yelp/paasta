@@ -175,8 +175,13 @@ def send_event(service, check_name, overrides, status, output, soa_dir, ttl=None
         'source': 'paasta-%s' % system_paasta_config.get_cluster(),
         'ttl': ttl,
     }
-    pysensu_yelp.send_event(check_name, runbook, status, output, team, sensu_host=system_paasta_config.get_sensu_host(),
-                            sensu_port=system_paasta_config.get_sensu_port(), **result_dict)
+
+    sensu_host = system_paasta_config.get_sensu_host()
+    sensu_port = system_paasta_config.get_sensu_port()
+
+    if sensu_host is not None:
+        pysensu_yelp.send_event(check_name, runbook, status, output, team, sensu_host=sensu_host, sensu_port=sensu_port,
+                                **result_dict)
 
 
 def read_monitoring_config(service, soa_dir=service_configuration_lib.DEFAULT_SOA_DIR):

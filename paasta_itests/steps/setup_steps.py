@@ -128,7 +128,7 @@ def working_paasta_cluster(context):
         "docker_registry": "fake.com"
     }, 'cluster.json')
     write_etc_paasta(context, {'log_writer': {'driver': "null"}}, 'logs.json')
-    write_etc_paasta(context, {"sensu_host": "fakesensu", "sensu_port": 3030}, 'sensu.json')
+    write_etc_paasta(context, {"sensu_host": None}, 'sensu.json')
     write_etc_paasta(context, {
         'volumes': [
             {'hostPath': u'/nail/etc/beep', 'containerPath': '/nail/etc/beep', 'mode': 'RO'},

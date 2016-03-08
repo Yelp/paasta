@@ -330,6 +330,13 @@ def test_SystemPaastaConfig_get_sensu_host():
     assert actual == expected
 
 
+def test_SystemPaastaConfig_get_sensu_host_None():
+    fake_config = utils.SystemPaastaConfig({"sensu_host": None}, '/some/fake/dir')
+    actual = fake_config.get_sensu_host()
+    expected = None
+    assert actual == expected
+
+
 def test_SystemPaastaConfig_get_sensu_port_default():
     fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
     actual = fake_config.get_sensu_port()
