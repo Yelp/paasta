@@ -28,6 +28,13 @@ from paasta_tools.utils import PaastaColors
 
 def list_previously_deployed_shas(parsed_args, **kwargs):
     service = parsed_args.service
+    deploy_groups = set([deploy_group for deploy_group in parsed_args.deploy_groups.split(',') if deploy_group])
+    return set((sha for sha, _ in get_git_shas_for_service(service, deploy_groups)))
+
+
+def get_git_shas_for_service(service, deploy_groups):
+    """Returns a list of 2-tuples of the form (sha, timestamp) for each deploy tag in a service's git
+    repository"""
     if service is None:
         return []
     git_url = get_git_url(service=service)
@@ -35,13 +42,13 @@ def list_previously_deployed_shas(parsed_args, **kwargs):
         soa_dir=DEFAULT_SOA_DIR,
         service=service,
     ))
-    deploy_groups = [deploy_group for deploy_group in parsed_args.deploy_groups.split(',') if deploy_group]
     deploy_groups, _ = validate_given_deploy_groups(all_deploy_groups, deploy_groups)
-    regex = r'^refs/tags/(?:paasta-){1,2}(?:%s)-.{15}-deploy$' % '|'.join(deploy_groups)
-    previously_deployed_shas = set()
+    regex = r'^refs/tags/(?:paasta-){1,2}(?:%s)-(?P<tstamp>\d{8}T\d{6})-deploy$' % '|'.join(deploy_groups)
+    previously_deployed_shas = []
     for ref, sha in list_remote_refs(git_url).items():
-        if sha not in previously_deployed_shas and re.match(regex, ref):
-            previously_deployed_shas.add(sha)
+        regex_match = re.match(regex, ref)
+        if regex_match:
+            previously_deployed_shas.append((sha, regex_match.groupdict()['tstamp']))
     return previously_deployed_shas
 
 
