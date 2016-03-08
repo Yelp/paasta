@@ -303,7 +303,7 @@ def test_list_previously_deployed_shas():
             service='fake_service',
             deploy_groups='test.deploy.group,nonexistant.deploy.group',
         )
-        assert list_previously_deployed_shas(fake_args) == set(['SHA_IN_OUTPUT'])
+        assert set(list_previously_deployed_shas(fake_args)) == set(['SHA_IN_OUTPUT'])
 
 
 def test_list_previously_deployed_shas_no_deploy_groups():
@@ -340,4 +340,4 @@ def test_list_previously_deployed_shas_no_deploy_groups():
             service='fake_service',
             deploy_groups='',
         )
-        assert list_previously_deployed_shas(fake_args) == set(['SHA_IN_OUTPUT', 'SHA_IN_OUTPUT_2'])
+        assert set(list_previously_deployed_shas(fake_args)) == set(['SHA_IN_OUTPUT', 'SHA_IN_OUTPUT_2'])

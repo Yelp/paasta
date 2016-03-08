@@ -14,6 +14,7 @@
 # limitations under the License.
 import re
 
+from humanize import naturaltime
 from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
@@ -22,14 +23,17 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
 from paasta_tools.remote_git import list_remote_refs
+from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import format_table
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import parse_timestamp
 
 
 def list_previously_deployed_shas(parsed_args, **kwargs):
     service = parsed_args.service
     deploy_groups = set([deploy_group for deploy_group in parsed_args.deploy_groups.split(',') if deploy_group])
-    return set((sha for sha, _ in get_git_shas_for_service(service, deploy_groups)))
+    return (sha for sha, _ in get_git_shas_for_service(service, deploy_groups))
 
 
 def get_git_shas_for_service(service, deploy_groups):
@@ -44,12 +48,14 @@ def get_git_shas_for_service(service, deploy_groups):
     ))
     deploy_groups, _ = validate_given_deploy_groups(all_deploy_groups, deploy_groups)
     regex = r'^refs/tags/(?:paasta-){1,2}(?:%s)-(?P<tstamp>\d{8}T\d{6})-deploy$' % '|'.join(deploy_groups)
-    previously_deployed_shas = []
+    previously_deployed_shas = {}
     for ref, sha in list_remote_refs(git_url).items():
         regex_match = re.match(regex, ref)
         if regex_match:
-            previously_deployed_shas.append((sha, regex_match.groupdict()['tstamp']))
-    return previously_deployed_shas
+            tstamp = regex_match.groupdict()['tstamp']
+            if previously_deployed_shas.get(sha, '') < tstamp:
+                previously_deployed_shas[sha] = tstamp
+    return previously_deployed_shas.items()
 
 
 def add_subparser(subparsers):
@@ -70,7 +76,7 @@ def add_subparser(subparsers):
     list_parser.add_argument(
         '-k', '--commit',
         help='Git SHA to mark for rollback',
-        required=True,
+        required=False,
     ).completer = lazy_choices_completer(list_previously_deployed_shas)
     list_parser.add_argument(
         '-d', '--deploy-groups',
@@ -105,6 +111,22 @@ def validate_given_deploy_groups(service_deploy_groups, args_deploy_groups):
     return valid_deploy_groups, invalid_deploy_groups
 
 
+def list_previous_commits(service, deploy_groups):
+    def format_timestamp(tstamp):
+        return naturaltime(datetime_from_utc_to_local(parse_timestamp(tstamp)))
+
+    print "Please specify a commit to mark for rollback (-k, --commit). Below is a list of recent commits:"
+    git_shas = sorted(get_git_shas_for_service(service, deploy_groups), key=lambda x: x[1], reverse=True)[:10]
+    rows = [('Timestamp -- UTC', 'Git SHA')]
+    rows.extend([('%s (%s)' % (timestamp, format_timestamp(timestamp)), sha) for sha, timestamp in git_shas])
+    for line in format_table(rows):
+        print line
+    if len(git_shas) >= 2:
+        sha, tstamp = git_shas[1]
+        print "For example, to roll back to the second to last commit from %s, run:" % format_timestamp(tstamp)
+        print "paasta rollback -s %s -d %s -k %s" % (service, ','.join(deploy_groups), sha)
+
+
 def paasta_rollback(args):
     """Call mark_for_deployment with rollback parameters
     :param args: contains all the arguments passed onto the script: service,
@@ -112,8 +134,8 @@ def paasta_rollback(args):
     mark_for_deployment.
     """
     service = figure_out_service_name(args)
+
     git_url = get_git_url(service)
-    commit = args.commit
     given_deploy_groups = [deploy_group for deploy_group in args.deploy_groups.split(",") if deploy_group]
 
     service_deploy_groups = set(config.get_deploy_group() for config in get_instance_config_for_service(
@@ -121,19 +143,30 @@ def paasta_rollback(args):
         service=service,
     ))
     deploy_groups, invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
+
     if len(invalid) > 0:
         print PaastaColors.yellow("These deploy groups are not valid and will be skipped: %s.\n" % (",").join(invalid))
 
     if len(deploy_groups) == 0:
         print PaastaColors.red("ERROR: No valid deploy groups specified for %s.\n" % (service))
-        returncode = 1
+        return 1
+
+    commit = args.commit
+    if not commit:
+        list_previous_commits(service, deploy_groups)
+        return 1
+
+    returncode = 0
 
     for deploy_group in deploy_groups:
-        returncode = mark_for_deployment(
-            git_url=git_url,
-            service=service,
-            deploy_group=deploy_group,
-            commit=commit,
+        returncode = max(
+            mark_for_deployment(
+                git_url=git_url,
+                service=service,
+                deploy_group=deploy_group,
+                commit=commit,
+            ),
+            returncode,
         )
 
     return returncode

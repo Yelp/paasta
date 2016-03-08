@@ -1069,6 +1069,10 @@ def get_paasta_branch(cluster, instance):
     return get_paasta_branch_from_deploy_group('%s.%s' % (cluster, instance))
 
 
+def parse_timestamp(tstamp):
+    return datetime.datetime.strptime(tstamp, '%Y%m%dT%H%M%S')
+
+
 def format_timestamp(dt=None):
     if dt is None:
         dt = datetime.datetime.utcnow()
