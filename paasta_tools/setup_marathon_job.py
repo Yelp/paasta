@@ -55,7 +55,6 @@ from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
-from paasta_tools.utils import configure_log
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import InvalidInstanceConfig
 from paasta_tools.utils import InvalidJobNameError
@@ -553,7 +552,6 @@ def main():
     - Create the complete marathon job configuration
     - Deploy/bounce the service
     - Emit an event about the deployment to sensu"""
-    configure_log()
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:

@@ -93,7 +93,6 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),
             mock.patch('sys.exit', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.configure_log', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -103,7 +102,6 @@ class TestSetupMarathonJob:
             load_system_paasta_config_patch,
             sensu_patch,
             sys_exit_patch,
-            configure_log_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             setup_marathon_job.main()
@@ -161,7 +159,6 @@ class TestSetupMarathonJob:
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),
             mock.patch('sys.exit', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.configure_log', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -171,7 +168,6 @@ class TestSetupMarathonJob:
             load_system_paasta_config_patch,
             sensu_patch,
             sys_exit_patch,
-            configure_log_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             setup_marathon_job.main()
@@ -226,7 +222,6 @@ class TestSetupMarathonJob:
             ),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
             mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.configure_log', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -235,7 +230,6 @@ class TestSetupMarathonJob:
             setup_service_patch,
             load_system_paasta_config_patch,
             sensu_patch,
-            configure_log_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             with raises(SystemExit) as exc_info:
