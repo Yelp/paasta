@@ -19,18 +19,20 @@ from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools import remote_git
 from paasta_tools import utils
+from paasta_tools.chronos_tools import ChronosJobConfig
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
+from paasta_tools.marathon_tools import MarathonServiceConfig
 
 
 def add_subparser(subparsers):
     for command, lower, upper, cmd_func in [
         ('start', 'start or restart', 'Start or restart', paasta_start),
         ('restart', 'start or restart', 'Start or restart', paasta_start),
-        ('stop', 'stop', 'Stop', paasta_stop)
+        ('stop', 'stop', 'Stop', paasta_stop),
     ]:
         status_parser = subparsers.add_parser(
             command,
@@ -114,6 +116,30 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
         service_config=service_config,
         desired_state=desired_state,
     )
+    if isinstance(service_config, MarathonServiceConfig):
+        if desired_state == 'start':
+            extra_message = (
+                "A 'start' command will signal to Marathon that the service should have the normal "
+                "instance count. A restart will cause new tasks to replace the old ones gracefully."
+            )
+        elif desired_state == 'stop':
+            extra_message = (
+                "A 'stop' command will signal to Marathon that should be in Marathon, "
+                "but scaled down to 0 instances gracefully. Use 'paasta start' or make a new deployment to "
+                "make the service start back up."
+            )
+    elif isinstance(service_config, ChronosJobConfig):
+        if desired_state == 'start':
+            extra_message = (
+                "'Start' will tell Chronos to start scheduling the job. "
+                "If you need the job to start regardless of the schedule, use 'paasta emergency-start'."
+            )
+        elif desired_state == 'stop':
+            extra_message = (
+                "'Stop' for a Chronos job will cause the job to be disabled until the "
+                "next deploy or a 'start' command is issued."
+            )
+    print extra_message
 
 
 def paasta_start_or_stop(args, desired_state):
