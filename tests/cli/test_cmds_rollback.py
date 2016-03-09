@@ -18,6 +18,7 @@ from mock import call
 from mock import Mock
 from mock import patch
 
+from paasta_tools.cli.cmds.rollback import get_git_shas_for_service
 from paasta_tools.cli.cmds.rollback import list_previously_deployed_shas
 from paasta_tools.cli.cmds.rollback import paasta_rollback
 from paasta_tools.cli.cmds.rollback import validate_given_deploy_groups
@@ -341,3 +342,7 @@ def test_list_previously_deployed_shas_no_deploy_groups():
             deploy_groups='',
         )
         assert set(list_previously_deployed_shas(fake_args)) == set(['SHA_IN_OUTPUT', 'SHA_IN_OUTPUT_2'])
+
+
+def test_get_git_shas_for_service_no_service_name():
+    assert get_git_shas_for_service(None, None) == []
