@@ -475,8 +475,8 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
 
 def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, **kwargs):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
-    if 'verbose' in kwargs and kwargs['verbose']:
-        verbose_flag = "-v "
+    if 'verbose' in kwargs and kwargs['verbose'] > 0:
+        verbose_flag = '-v ' * kwargs['verbose']
         timeout = 240
     else:
         verbose_flag = ''

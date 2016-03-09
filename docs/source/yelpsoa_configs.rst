@@ -35,6 +35,12 @@ instance MAY have:
 
   * ``instances``: Marathon will attempt to run this many instances of the Service
 
+  * ``min_instances``: When autoscaling, the minimum number of instances that
+    marathon will create for a service. Defaults to 1.
+
+  * ``max_instances``: When autoscaling, the maximum number of instances that
+    marathon will create for a service
+
   * ``nerve_ns``: Specifies that this namespace should be routed to by another
     namespace in SmartStack. In SmartStack, each service has difference pools
     of backend servers that are listening on a particul port. In PaaSTA we call
@@ -105,12 +111,18 @@ instance MAY have:
     Parsing the Marathon config file will fail if both args and cmd are
     specified [#note]_.
 
+  .. _env:
+
   * ``env``: A dictionary of environment variables that will be made available
     to the container. PaaSTA additionally will inject the following variables:
 
     * ``PAASTA_SERVICE``: The service name
     * ``PAASTA_INSTANCE``: The instance name
     * ``PAASTA_CLUSTER``: The cluster name
+
+    Additionally, there are ``MARATHON_`` prefixed variables available. See the
+    `docs <https://mesosphere.github.io/marathon/docs/task-environment-vars.html>`_
+    for more information about these variables.
 
   * ``extra_volumes``: An array of dictionaries specifying extra bind-mounts
     inside the container. Can be used to expose filesystem resources available
@@ -136,6 +148,11 @@ instance MAY have:
   * ``monitoring``: A dictionary of values that configure overrides for
     monitoring parameters that will take precedence over what is in
     `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
+
+  * ``autoscaling``:
+
+    * ``method``: Which autoscaling method to use. See the `autoscaling docs <autoscaling.html>`_
+      for valid options and how they work
 
   * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 
@@ -227,6 +244,11 @@ https://mesos.github.io/chronos/docs/api.html#job-configuration
 
 Each job configuration MUST specify the following options:
 
+  * One of ``schedule`` and ``parents``. If both are present, then ``schedule``
+    takes precedence and ``parents`` is ignored.
+
+Each job configuration MAY specify the following options:
+
   * ``schedule``: When the job should run. The value must be specified in the
     cryptic ISO 8601 format. For more details about the schedule format, see:
     https://en.wikipedia.org/wiki/ISO_8601 and
@@ -250,7 +272,24 @@ Each job configuration MUST specify the following options:
       substitution is used, PaaSTA will create a new job for *each* new day,
       allowing the previous job to take more than 24 hours.
 
-Each job configuration MAY specify the following options:
+  * ``parents``: An array of parents jobs. If specified, then the job will not run
+    until *all* of the jobs in this array have completed. The parents jobs should be
+    in the form of ``service.instance``. For example::
+
+        cat myservice/chronos-testcluster.yml
+        ---
+        job_one:
+          schedule: R/2014-10-10T18:32:00Z/PT60M
+
+        job_two:
+          schedule: R/2014-10-10T19:32:00Z/PT60M
+
+        child_job:
+          parents:
+            - myservice.parent_one
+            - myservice.parent_two
+
+
 
   * ``cmd``: See the `marathon-[clustername].yaml`_ section for details
     Additionally ``cmd`` strings with time or date strings that Tron

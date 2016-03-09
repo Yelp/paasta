@@ -27,7 +27,7 @@ from paasta_tools.utils import decompose_job_id
 @when(u'we run the marathon app "{job_id}"')
 def run_marathon_app(context, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     app_config = {
         'id': app_id,
         'cmd': '/bin/sleep 1m',
@@ -46,7 +46,7 @@ def wait_for_deploy(context):
 def status_marathon_job(context, status, job_id):
     normal_instance_count = 1
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
 
     output = marathon_serviceinit.status_marathon_job(
         service,
@@ -61,7 +61,7 @@ def status_marathon_job(context, status, job_id):
 @then(u'marathon_serviceinit restart should get new task_ids for "{job_id}"')
 def marathon_restart_gets_new_task_ids(context, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     normal_instance_count = 1
     cluster = context.system_paasta_config['cluster']
 
@@ -89,7 +89,7 @@ def marathon_restart_gets_new_task_ids(context, job_id):
 def chronos_status_returns_healthy(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -103,7 +103,7 @@ def chronos_status_returns_healthy(context, service_instance):
 def chronos_status_verbose_returns_healthy(context, service_instance):
     cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status --verbose" % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -111,11 +111,27 @@ def chronos_status_verbose_returns_healthy(context, service_instance):
     assert "Running Tasks:" in output
 
 
+@then((u'paasta_serviceinit status -vv for the service_instance "{service_instance}"'
+       ' exits with return code 0 and the correct output'))
+def paasta_serviceinit_tail_stdstreams(context, service_instance):
+    cmd = "../paasta_tools/paasta_serviceinit.py --soa-dir %s %s status -vv" % (context.soa_dir, service_instance)
+    print 'Running cmd %s' % cmd
+    exit_code, output = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    assert exit_code == 0
+    # The container we run doesn't really have a stdout/stderr. The message below
+    # comes from mesos.cli, proving that paasta_serviceinit tried to read stdout/sdterr,
+    # caught the Exception and presented the right information to the user.
+    assert "No such task has the requested file or directory" in output
+
+
 @when(u'we paasta_serviceinit emergency-stop the service_instance "{service_instance}"')
 def chronos_emergency_stop_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s stop' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -126,7 +142,7 @@ def chronos_emergency_stop_job(context, service_instance):
 def chronos_emergency_start_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s start' % (context.soa_dir, service_instance)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -137,7 +153,7 @@ def chronos_emergency_start_job(context, service_instance):
 def chronos_emergency_restart_job(context):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s test-service.job restart' % context.soa_dir
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -148,7 +164,7 @@ def chronos_emergency_restart_job(context):
 def paasta_serviceinit_command(context, command, job_id):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s %s' % (context.soa_dir, job_id, command)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -158,11 +174,11 @@ def paasta_serviceinit_command(context, command, job_id):
 @when(u'we run paasta serviceinit --appid "{command}" on "{job_id}"')
 def paasta_serviceinit_command_appid(context, command, job_id):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s --appid %s %s %s' \
           % (context.soa_dir, app_id, job_id, command)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -174,7 +190,7 @@ def paasta_serviceinit_command_scale(context, delta, job_id):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s scale --delta %s' \
           % (context.soa_dir, job_id, delta)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     print  # sacrificial line for behave to eat instead of our output
 
@@ -184,7 +200,7 @@ def paasta_serviceinit_command_scale(context, delta, job_id):
 @when(u'we wait for "{job_id}" to launch exactly {task_count:d} tasks')
 def wait_launch_tasks(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
     client = context.marathon_client
     marathon_tools.wait_for_app_to_launch_tasks(client, app_id, task_count, exact_matches_only=True)
 
@@ -192,7 +208,7 @@ def wait_launch_tasks(context, job_id, task_count):
 @then(u'"{job_id}" has exactly {task_count:d} requested tasks in marathon')
 def marathon_app_task_count(context, job_id, task_count):
     (service, instance, _, __) = decompose_job_id(job_id)
-    app_id = marathon_tools.create_complete_config(service, instance, None, soa_dir=context.soa_dir)['id']
+    app_id = marathon_tools.create_complete_config(service, instance, soa_dir=context.soa_dir)['id']
 
     tasks = context.marathon_client.get_app(app_id).tasks
     assert len(tasks) == task_count

@@ -761,7 +761,6 @@ class TestMarathonTools:
             classic_patch.assert_called_once_with(soa_dir)
 
     def test_format_marathon_app_dict(self):
-        fake_id = marathon_tools.format_job_id('can_you_dig_it', 'yes_i_can')
         fake_url = 'dockervania_from_konami'
         fake_volumes = [
             {
@@ -806,7 +805,7 @@ class TestMarathonTools:
         ]
 
         expected_conf = {
-            'id': fake_id,
+            'id': mock.ANY,
             'container': {
                 'docker': {
                     'image': fake_url,
@@ -857,13 +856,21 @@ class TestMarathonTools:
             branch_dict={'desired_state': 'start'}
         )
 
-        with mock.patch(
-            'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
-            autospec=True,
-        ) as get_slaves_patch:
-            get_slaves_patch.return_value = {'fake_region': {}}
-            actual = config.format_marathon_app_dict(fake_id, fake_url, fake_volumes,
-                                                     fake_service_namespace_config)
+        with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute', autospec=True,
+                       return_value={'fake_region': {}}),
+            mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
+            mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
+                       return_value=fake_service_namespace_config),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
+                       return_value=mock.Mock(get_volumes=mock.Mock(return_value=fake_volumes))),
+        ) as (
+            _,
+            _,
+            _,
+            _,
+        ):
+            actual = config.format_marathon_app_dict()
             assert actual == expected_conf
 
             # Assert that the complete config can be inserted into the MarathonApp model
@@ -1274,7 +1281,6 @@ class TestMarathonTools:
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_system_paasta_config',
                        autospec=True, return_value=fake_system_paasta_config),
-            mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
             mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value=fake_url),
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=self.fake_service_namespace_config),
@@ -1282,32 +1288,20 @@ class TestMarathonTools:
                        autospec=True, return_value={'fake_region': {}})
         ) as (
             load_system_paasta_config_patch,
-            read_service_config_patch,
             docker_url_patch,
             _,
             __,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
-            read_service_config_patch.return_value = fake_service_config_1
-            first_id = marathon_tools.create_complete_config(fake_name,
-                                                             fake_instance,
-                                                             self.fake_marathon_config)['id']
-            first_id_2 = marathon_tools.create_complete_config(fake_name,
-                                                               fake_instance,
-                                                               self.fake_marathon_config)['id']
+            first_id = fake_service_config_1.format_marathon_app_dict()['id']
+            first_id_2 = fake_service_config_1.format_marathon_app_dict()['id']
             # just for sanity, make sure that the app_id is idempotent.
             assert first_id == first_id_2
 
-            read_service_config_patch.return_value = fake_service_config_2
-            second_id = marathon_tools.create_complete_config(fake_name,
-                                                              fake_instance,
-                                                              self.fake_marathon_config)['id']
+            second_id = fake_service_config_2.format_marathon_app_dict()['id']
             assert first_id != second_id
 
-            read_service_config_patch.return_value = fake_service_config_3
-            third_id = marathon_tools.create_complete_config(fake_name,
-                                                             fake_instance,
-                                                             self.fake_marathon_config)['id']
+            third_id = fake_service_config_3.format_marathon_app_dict()['id']
             assert second_id == third_id
 
     def test_get_expected_instance_count_for_namespace(self):
@@ -1904,14 +1898,13 @@ def test_deformat_job_id():
     assert marathon_tools.deformat_job_id('ser--vice.in--stance.git--hash.config--hash') == expected
 
 
-def test_create_complete_config_no_smartstack():
+def test_format_marathon_app_dict_no_smartstack():
     service = "service"
     instance = "instance"
     fake_job_id = "service.instance.some.hash"
-    fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service=service,
-        cluster='cluster',
+        cluster='clustername',
         instance=instance,
         config_dict={},
         branch_dict={'docker_image': 'abcdef'},
@@ -1921,13 +1914,8 @@ def test_create_complete_config_no_smartstack():
         'docker_registry': 'fake_docker_registry:443'
     }, '/fake/dir/')
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-    fake_cluster = "clustername"
 
     with contextlib.nested(
-        mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_service_config',
-            return_value=fake_marathon_service_config,
-        ),
         mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             return_value=fake_service_namespace_config,
@@ -1937,14 +1925,12 @@ def test_create_complete_config_no_smartstack():
         mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}})
     ) as (
-        mock_load_marathon_service_config,
         mock_load_service_namespace_config,
         mock_format_job_id,
-        mock_system_paasta_config,
+        _,
         _,
     ):
-        mock_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
-        actual = marathon_tools.create_complete_config(service, instance, fake_marathon_config)
+        actual = fake_marathon_service_config.format_marathon_app_dict()
         expected = {
             'container': {
                 'docker': {
@@ -1975,14 +1961,13 @@ def test_create_complete_config_no_smartstack():
         assert MarathonApp(**actual)
 
 
-def test_create_complete_config_with_smartstack():
+def test_format_marathon_app_dict_with_smartstack():
     service = "service"
     instance = "instance"
     fake_job_id = "service.instance.some.hash"
-    fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service=service,
-        cluster='cluster',
+        cluster='clustername',
         instance=instance,
         config_dict={},
         branch_dict={'docker_image': 'abcdef'},
@@ -1992,13 +1977,8 @@ def test_create_complete_config_with_smartstack():
         'docker_registry': 'fake_docker_registry:443'
     }, '/fake/dir/')
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({'proxy_port': 9001})
-    fake_cluster = "clustername"
 
     with contextlib.nested(
-        mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_service_config',
-            return_value=fake_marathon_service_config,
-        ),
         mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             return_value=fake_service_namespace_config,
@@ -2008,14 +1988,12 @@ def test_create_complete_config_with_smartstack():
         mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}})
     ) as (
-        mock_load_marathon_service_config,
         mock_load_service_namespace_config,
         mock_format_job_id,
         mock_system_paasta_config,
         _,
     ):
-        mock_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
-        actual = marathon_tools.create_complete_config(service, instance, fake_marathon_config)
+        actual = fake_marathon_service_config.format_marathon_app_dict()
         expected = {
             'container': {
                 'docker': {
@@ -2056,7 +2034,7 @@ def test_create_complete_config_with_smartstack():
         assert MarathonApp(**actual)
 
 
-def test_create_complete_config_utilizes_extra_volumes():
+def test_format_marathon_app_dict_utilizes_extra_volumes():
     service_name = "service"
     instance_name = "instance"
     fake_job_id = "service.instance.some.hash"
@@ -2074,10 +2052,9 @@ def test_create_complete_config_utilizes_extra_volumes():
             "mode": "RO"
         }
     ]
-    fake_marathon_config = marathon_tools.MarathonConfig({}, 'fake_file.json')
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service=service_name,
-        cluster='cluster',
+        cluster='clustername',
         instance=instance_name,
         config_dict={'extra_volumes': fake_extra_volumes},
         branch_dict={'docker_image': 'abcdef'},
@@ -2087,13 +2064,8 @@ def test_create_complete_config_utilizes_extra_volumes():
         'docker_registry': 'fake_docker_registry:443'
     }, '/fake/dir/')
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-    fake_cluster = "clustername"
 
     with contextlib.nested(
-        mock.patch(
-            'paasta_tools.marathon_tools.load_marathon_service_config',
-            return_value=fake_marathon_service_config,
-        ),
         mock.patch(
             'paasta_tools.marathon_tools.load_service_namespace_config',
             return_value=fake_service_namespace_config,
@@ -2103,14 +2075,12 @@ def test_create_complete_config_utilizes_extra_volumes():
         mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
                    autospec=True, return_value={'fake_region': {}})
     ) as (
-        mock_load_marathon_service_config,
         mock_load_service_namespace_config,
         mock_format_job_id,
         mock_system_paasta_config,
         _,
     ):
-        mock_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=fake_cluster)
-        actual = marathon_tools.create_complete_config(service_name, instance_name, fake_marathon_config)
+        actual = fake_marathon_service_config.format_marathon_app_dict()
         expected = {
             'container': {
                 'docker': {
@@ -2175,3 +2145,17 @@ def test_kill_tasks_passes_catches_already_dead_task():
     actual = marathon_tools.kill_task(client=fake_client, app_id='app_id', task_id='task_id', scale=True)
     fake_client.kill_task.assert_called_once_with(scale=True, task_id='task_id', app_id='app_id')
     assert actual == []
+
+
+def test_create_complete_config():
+    mock_format_marathon_app_dict = mock.Mock()
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True,
+                   return_value=mock.Mock(format_marathon_app_dict=mock_format_marathon_app_dict)),
+        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True),
+    ) as (
+        mock_load_marathon_service_config,
+        _,
+    ):
+        marathon_tools.create_complete_config('service', 'instance', soa_dir=mock.Mock())
+        mock_format_marathon_app_dict.assert_called_once_with()

@@ -34,6 +34,14 @@ Feature: paasta_serviceinit
       And we wait for the chronos job stored as "myjob" to appear in the job list
      Then paasta_serviceinit status --verbose for the service_instance "testservice.testinstance" exits with return code 0 and the correct output
 
+  Scenario: paasta_serviceinit can run status -vv to tail a mesos task stdout/stderr
+    Given a working paasta cluster
+      And I have yelpsoa-configs for the marathon job "test-service.main"
+      And we have a deployments.json for the service "test-service" with enabled instance "main"
+     When we run the marathon app "test-service.main"
+      And we wait for it to be deployed
+     Then paasta_serviceinit status -vv for the service_instance "test-service.main" exits with return code 0 and the correct output
+
   Scenario: paasta_serviceinit can run emergency-stop on an enabled chronos job
     Given a working paasta cluster
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"

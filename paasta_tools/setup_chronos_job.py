@@ -167,8 +167,6 @@ def main():
         log.setLevel(logging.WARNING)
     try:
         service, instance, _, __ = decompose_job_id(args.service_instance, spacer=chronos_tools.INTERNAL_SPACER)
-        print 'service, instance'
-        print service, instance
     except InvalidJobNameError:
         log.error("Invalid service instance '%s' specified. Format is service%sinstance."
                   % (args.service_instance, SPACER))

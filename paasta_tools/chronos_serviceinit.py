@@ -225,14 +225,14 @@ def _format_mesos_status(job, running_tasks):
     return mesos_status
 
 
-def format_chronos_job_status(job, running_tasks, verbose):
+def format_chronos_job_status(job, running_tasks, verbose=0):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
 
     :param job: dictionary of the job status
     :param running_tasks: a list of Mesos tasks associated with ``job``, e.g. the
                           result of ``mesos_tools.get_running_tasks_from_active_frameworks()``.
-
+    :param verbose: int verbosity level
     """
     config_hash = _format_config_hash(job)
     disabled_state = _format_disabled_status(job)
@@ -245,8 +245,9 @@ def format_chronos_job_status(job, running_tasks, verbose):
 
     command = _format_command(job)
     mesos_status = _format_mesos_status(job, running_tasks)
-    if verbose:
-        mesos_status_verbose = status_mesos_tasks_verbose(job["name"], get_short_task_id)
+    if verbose > 0:
+        tail_stdstreams = verbose > 1
+        mesos_status_verbose = status_mesos_tasks_verbose(job["name"], get_short_task_id, tail_stdstreams)
         mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
     return (
         "Config:     %(config_hash)s\n"
@@ -274,6 +275,7 @@ def status_chronos_jobs(jobs, job_config, verbose):
         client
     :param job_config: dict containing configuration about these jobs as
         provided by chronos_tools.load_chronos_job_config().
+    :param verbose: int verbosity level
     """
     if jobs == []:
         return "%s: chronos job is not set up yet" % PaastaColors.yellow("Warning")
@@ -288,6 +290,14 @@ def status_chronos_jobs(jobs, job_config, verbose):
 
 
 def perform_command(command, service, instance, cluster, verbose, soa_dir):
+    """Performs a start/stop/restart/status on an instance
+    :param command: String of start, stop, restart, status or scale
+    :param service: service name
+    :param instance: instance name, like "main" or "canary"
+    :param cluster: cluster name
+    :param verbose: int verbosity level
+    :returns: A unix-style return code
+    """
     chronos_config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(chronos_config)
     complete_job_config = chronos_tools.create_complete_config(service, instance, soa_dir=soa_dir)

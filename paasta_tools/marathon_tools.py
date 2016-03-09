@@ -1,5 +1,4 @@
 # Copyright 2015 Yelp Inc.
-#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -25,10 +24,12 @@ import socket
 from time import sleep
 
 import service_configuration_lib
+from kazoo.exceptions import NoNodeError
 from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
 
+from paasta_tools.autoscaling_lib import get_instances_from_zookeeper
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
@@ -185,8 +186,16 @@ class MarathonServiceConfig(InstanceConfig):
     def copy(self):
         return self.__class__(self.service, self.instance, dict(self.config_dict), dict(self.branch_dict))
 
+    def get_min_instances(self):
+        return self.config_dict.get('min_instances', 1)
+
+    def get_max_instances(self):
+        return self.config_dict.get('max_instances', None)
+
     def get_instances(self):
-        """Get the number of instances specified in the service's marathon configuration.
+        """Get the number of instances specified in zookeeper or the service's marathon configuration.
+        If the number of instances in zookeeper is less than min_instances, returns min_instances.
+        If the number of instances in zookeeper is greater than max_instances, returns max_instances.
 
         Defaults to 0 if not specified in the config.
 
@@ -194,19 +203,41 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The number of instances specified in the config, 0 if not
                   specified or if desired_state is not 'start'."""
         if self.get_desired_state() == 'start':
-            instances = self.config_dict.get('instances', 1)
-            return int(instances)
+            max_instances = self.get_max_instances()
+            if max_instances is not None:
+                min_instances = self.get_min_instances()
+                try:
+                    zk_instances = get_instances_from_zookeeper(
+                        service=self.service,
+                        instance=self.instance,
+                    )
+                except NoNodeError:  # zookeeper doesn't have instance data for this app
+                    return min_instances
+                else:
+                    return max(
+                        min(zk_instances, max_instances),
+                        min_instances,
+                    )
+            else:
+                return self.config_dict.get('instances', 1)
         else:
             return 0
 
+    def get_autoscaling_params(self):
+        default_params = {
+            'method': 'default',
+        }
+        return self.config_dict.get('autoscaling', default_params)
+
     def get_backoff_seconds(self):
-        """backoff_seconds represents how many seconds a penalization factor for failing tasks.
+        """backoff_seconds represents a penalization factor for relaunching failing tasks.
         Every time a task fails, Marathon adds this value multiplied by a backoff_factor.
         In PaaSTA we know how many instances a service has, so we adjust the backoff_seconds
         to account for this, which prevents services with large number of instances from
         being penalized more than services with small instance counts. (for example, a service
         with 30 instances will get backed off 10 times faster than a service with 3 instances)."""
-        instances = self.get_instances()
+        max_instances = self.get_max_instances()
+        instances = max_instances if max_instances is not None else self.get_instances()
         if instances == 0:
             return 1
         else:
@@ -276,7 +307,7 @@ class MarathonServiceConfig(InstanceConfig):
         pool = self.get_pool()
         return [["pool", "LIKE", pool]]
 
-    def format_marathon_app_dict(self, app_id, docker_url, docker_volumes, service_namespace_config):
+    def format_marathon_app_dict(self):
         """Create the configuration that will be passed to the Marathon REST API.
 
         Currently compiles the following keys into one nice dict:
@@ -302,8 +333,20 @@ class MarathonServiceConfig(InstanceConfig):
                                marathon configuration file
         :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
+
+        # A set of config attributes that don't get included in the hash of the config.
+        # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
+        CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds'])
+
+        system_paasta_config = load_system_paasta_config()
+        docker_url = get_docker_url(system_paasta_config.get_docker_registry(), self.get_docker_image())
+        service_namespace_config = load_service_namespace_config(
+            service=self.service,
+            namespace=self.get_nerve_namespace(),
+        )
+        docker_volumes = system_paasta_config.get_volumes() + self.get_extra_volumes()
+
         complete_config = {
-            'id': app_id,
             'container': {
                 'docker': {
                     'image': docker_url,
@@ -336,6 +379,14 @@ class MarathonServiceConfig(InstanceConfig):
         accepted_resource_roles = self.get_accepted_resource_roles()
         if accepted_resource_roles is not None:
             complete_config['accepted_resource_roles'] = accepted_resource_roles
+
+        code_sha = get_code_sha_from_dockerurl(docker_url)
+
+        config_hash = get_config_hash(
+            {key: value for key, value in complete_config.items() if key not in CONFIG_HASH_BLACKLIST},
+            force_bounce=self.get_force_bounce(),
+        )
+        complete_config['id'] = format_job_id(self.service, self.instance, code_sha, config_hash)
 
         log.debug("Complete configuration for instance is: %s", complete_config)
         return complete_config
@@ -877,41 +928,14 @@ def wait_for_app_to_launch_tasks(client, app_id, expected_tasks, exact_matches_o
             sleep(0.5)
 
 
-def create_complete_config(service, instance, marathon_config, soa_dir=DEFAULT_SOA_DIR):
+def create_complete_config(service, instance, soa_dir=DEFAULT_SOA_DIR):
     """Generates a complete dictionary to be POST'ed to create an app on Marathon"""
-    # A set of config attributes that don't get included in the hash of the config.
-    # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
-    CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds'])
-
-    system_paasta_config = load_system_paasta_config()
-    partial_id = format_job_id(service=service, instance=instance)
-    instance_config = load_marathon_service_config(
+    return load_marathon_service_config(
         service=service,
         instance=instance,
         cluster=load_system_paasta_config().get_cluster(),
         soa_dir=soa_dir,
-    )
-    docker_url = get_docker_url(system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
-    service_namespace_config = load_service_namespace_config(
-        service=service,
-        namespace=instance_config.get_nerve_namespace(),
-    )
-    docker_volumes = system_paasta_config.get_volumes() + instance_config.get_extra_volumes()
-
-    complete_config = instance_config.format_marathon_app_dict(
-        app_id=partial_id,
-        docker_url=docker_url,
-        docker_volumes=docker_volumes,
-        service_namespace_config=service_namespace_config,
-    )
-    code_sha = get_code_sha_from_dockerurl(docker_url)
-    config_hash = get_config_hash(
-        {key: value for key, value in complete_config.items() if key not in CONFIG_HASH_BLACKLIST},
-        force_bounce=instance_config.get_force_bounce(),
-    )
-    full_id = format_job_id(service, instance, code_sha, config_hash)
-    complete_config['id'] = full_id
-    return complete_config
+    ).format_marathon_app_dict()
 
 
 def get_expected_instance_count_for_namespace(service, namespace, cluster=None, soa_dir=DEFAULT_SOA_DIR):

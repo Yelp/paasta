@@ -31,6 +31,11 @@
                 "minimum": 0,
                 "exclusiveMinimum": false
             },
+            "max_instances": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+            },
             "nerve_ns": {
                 "type": "string"
             },
@@ -61,6 +66,9 @@
 	    "deploy_group": {
 		"type": "string"
 	    },
+            "autoscaling": {
+		"type": "object"
+            },
             "drain_method": {
                 "enum": [ "noop", "hacheck", "test" ],
                 "default": "noop"

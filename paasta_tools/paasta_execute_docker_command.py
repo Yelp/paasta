@@ -30,10 +30,8 @@ import signal
 import sys
 from contextlib import contextmanager
 
-from docker import Client
-
 from paasta_tools.mesos_tools import get_container_id_for_mesos_id
-from paasta_tools.utils import get_docker_host
+from paasta_tools.utils import get_docker_client
 
 
 def parse_args():
@@ -84,8 +82,7 @@ def main():
             "The Mesos task id you supplied seems to be an empty string! Please provide a valid task id.\n")
         sys.exit(2)
 
-    base_docker_url = get_docker_host()
-    docker_client = Client(base_url=base_docker_url)
+    docker_client = get_docker_client()
 
     container_id = get_container_id_for_mesos_id(docker_client, args.mesos_id)
 

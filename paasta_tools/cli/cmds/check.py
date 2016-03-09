@@ -236,9 +236,12 @@ def get_marathon_steps(service, soa_dir):
     with what deploy.yaml has for linting."""
     steps = []
     for cluster in list_clusters(service, soa_dir):
-        for _, instance in get_service_instance_list(service=service, cluster=cluster,
-                                                     instance_type='marathon',
-                                                     soa_dir=soa_dir):
+        for _, instance in get_service_instance_list(
+                service=service,
+                cluster=cluster,
+                instance_type='marathon',
+                soa_dir=soa_dir,
+        ):
             config = load_marathon_service_config(
                 service=service,
                 instance=instance,
@@ -270,7 +273,7 @@ def deployments_check(service, soa_dir):
     if len(in_chronos_not_deploy) > 0:
         print "%s There are some instance(s) you have asked to run in chronos that" % x_mark()
         print "  do not have a corresponding entry in deploy.yaml:"
-        print "  %s" % PaastaColors.bold(", ".join(in_marathon_not_deploy))
+        print "  %s" % PaastaColors.bold(", ".join(in_chronos_not_deploy))
         print "  You should probably add entries to deploy.yaml for them so they"
         print "  are deployed to those clusters."
         the_return = False

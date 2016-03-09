@@ -143,9 +143,8 @@ def get_deploy_group_mappings(soa_dir, service, old_mappings):
         if deploy_ref_name in remote_refs:
             commit_sha = remote_refs[deploy_ref_name]
             control_branch_alias = '%s:paasta-%s' % (service, control_branch)
-            deploy_group_branch_alias = '%s:paasta-%s' % (service, deploy_group)
             docker_image = build_docker_image_name(service, commit_sha)
-            log.info('Mapping deploy_group %s to docker image %s', deploy_group_branch_alias, docker_image)
+            log.info('Mapping %s to docker image %s', control_branch, docker_image)
             mapping = mappings.setdefault(control_branch_alias, {})
             mapping['docker_image'] = docker_image
 

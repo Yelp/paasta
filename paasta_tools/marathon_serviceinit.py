@@ -324,22 +324,22 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     :param service: service name
     :param instance: instance name, like "main" or "canary"
     :param cluster: cluster name
-    :param verbose: bool if the output should be verbose or not
+    :param verbose: int verbosity level
     :returns: A unix-style return code
     """
     marathon_config = marathon_tools.load_marathon_config()
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster, soa_dir=soa_dir)
     if not app_id:
         try:
-            app_id = marathon_tools.create_complete_config(service, instance, marathon_config, soa_dir=soa_dir)['id']
+            app_id = job_config.format_marathon_app_dict()['id']
         except NoDockerImageError:
             job_id = compose_job_id(service, instance)
             print "Docker image for %s not in deployments.json. Exiting. Has Jenkins deployed it?" % job_id
             return 1
 
     normal_instance_count = job_config.get_instances()
-    normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance)
-    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, soa_dir=soa_dir)
+    normal_smartstack_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, cluster)
+    proxy_port = marathon_tools.get_proxy_port_for_instance(service, instance, cluster, soa_dir=soa_dir)
 
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
@@ -356,11 +356,12 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
         print status_desired_state(service, instance, client, job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         tasks, out = status_marathon_job_verbose(service, instance, client)
-        if verbose:
+        if verbose > 0:
             print out
         print status_mesos_tasks(service, instance, normal_instance_count)
-        if verbose:
-            print status_mesos_tasks_verbose(app_id, get_short_task_id)
+        if verbose > 0:
+            tail_stdstreams = verbose > 1
+            print status_mesos_tasks_verbose(app_id, get_short_task_id, tail_stdstreams)
         if proxy_port is not None:
             print status_smartstack_backends(
                 service=service,
@@ -370,7 +371,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 tasks=tasks,
                 expected_count=normal_smartstack_count,
                 soa_dir=soa_dir,
-                verbose=verbose,
+                verbose=verbose > 0,
             )
     elif command == 'scale':
         scale_marathon_job(service, instance, app_id, delta, client, cluster)

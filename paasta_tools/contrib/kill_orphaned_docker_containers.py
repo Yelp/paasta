@@ -1,10 +1,8 @@
 #!/usr/bin/env python
 import argparse
 
-from docker import Client
-
 from paasta_tools import mesos_tools
-from paasta_tools.utils import get_docker_host
+from paasta_tools.utils import get_docker_client
 
 
 def parse_args():
@@ -30,11 +28,6 @@ def get_running_task_ids_from_mesos_slave():
 def get_running_mesos_docker_containers(client):
     running_containers = client.containers()
     return [container for container in running_containers if "mesos-" in container["Names"][0]]
-
-
-def get_docker_client():
-    base_docker_url = get_docker_host()
-    return Client(base_url=base_docker_url)
 
 
 def main():

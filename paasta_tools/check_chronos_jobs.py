@@ -35,7 +35,8 @@ def compose_monitoring_overrides_for_service(cluster, service, instance, soa_dir
         cluster=cluster,
         soa_dir=soa_dir
     ).get_monitoring()
-    monitoring_overrides['alert_after'] = '2m'
+    if 'alert_after' not in monitoring_overrides:
+        monitoring_overrides['alert_after'] = '2m'
     monitoring_overrides['check_every'] = '1m'
     monitoring_overrides['runbook'] = monitoring_tools.get_runbook(monitoring_overrides, service, soa_dir=soa_dir)
     return monitoring_overrides
@@ -103,10 +104,7 @@ def build_service_job_mapping(client, configured_jobs):
             instance=job[1],
             client=client,
         )
-        # filter the enabled jobs
-        enabled = chronos_tools.filter_enabled_jobs(matching_jobs)
-        # get the last run state for the job
-        with_states = last_run_state_for_jobs(enabled)
+        with_states = last_run_state_for_jobs(matching_jobs)
         service_job_mapping[job] = with_states
     return service_job_mapping
 
@@ -137,9 +135,13 @@ def sensu_message_status_for_jobs(service, instance, job_state_pairs):
         )
     else:
         full_job_id = job_state_pairs[0][0].get('name', '[Couldn\'t fetch job name]')
-        state = job_state_pairs[0][1]
-        sensu_status = sensu_event_for_last_run_state(state)
-        output = message_for_status(sensu_status, service, instance, full_job_id)
+        if job_state_pairs[0][0].get('disabled') is True:
+            sensu_status = pysensu_yelp.Status.OK
+            output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
+        else:
+            state = job_state_pairs[0][1]
+            sensu_status = sensu_event_for_last_run_state(state)
+            output = message_for_status(sensu_status, service, instance, full_job_id)
     return output, sensu_status
 
 

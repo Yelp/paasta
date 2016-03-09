@@ -14,17 +14,15 @@
 from behave import given
 from behave import then
 from behave import when
-from docker import Client
 from docker.errors import APIError
 
 from paasta_tools.utils import _run
-from paasta_tools.utils import get_docker_host
+from paasta_tools.utils import get_docker_client
 
 
 @given(u'Docker is available')
 def docker_is_available(context):
-    base_docker_url = get_docker_host()
-    docker_client = Client(base_url=base_docker_url)
+    docker_client = get_docker_client()
     assert docker_client.ping()
     context.docker_client = docker_client
 
@@ -51,7 +49,7 @@ def create_docker_container(context, task_id, image_name):
 def run_command_in_container(context, code, task_id):
     cmd = '../paasta_tools/paasta_execute_docker_command.py -i %s -c "exit %s"' % (task_id, code)
     print 'Running cmd %s' % cmd
-    (exit_code, output) = _run(cmd)
+    exit_code, output = _run(cmd)
     print 'Got exitcode %s with output:\n%s' % (exit_code, output)
     context.return_code = exit_code
 

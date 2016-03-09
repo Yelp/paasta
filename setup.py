@@ -22,7 +22,7 @@ from setuptools import setup
 setup(
     name='paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version='0.17.10',
+    version='0.17.14',
     provides=["paasta_tools"],
     author='Kyle Anderson',
     author_email='kwa@yelp.com',
@@ -45,7 +45,7 @@ setup(
         'jsonschema',
         'kazoo >= 2.0.0',
         'marathon >= 0.7.5',
-        'mesos.cli == 0.1.3',
+        'mesos.cli == 0.1.5',
         'ordereddict >= 1.1',
         'path.py >= 8.1',
         'pysensu-yelp >= 0.2.2',
