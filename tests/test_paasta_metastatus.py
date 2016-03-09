@@ -626,16 +626,32 @@ def test_get_mesos_habitat_data():
         (
             'habitat',
             {
-                'test-habitat': {
-                    'cpus': 0,
-                    'disk': 100,
-                    'mem': 1000,
+                'free':
+                {
+                    'test-habitat': {
+                        'cpus': 0,
+                        'disk': 100,
+                        'mem': 1000,
+                    },
+                    'test-habitat-2': {
+                        'cpus': 50,
+                        'disk': 200,
+                        'mem': 1000,
+                    },
                 },
-                'test-habitat-2': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
+                'availability':
+                    {
+                    'test-habitat': {
+                        'cpus': 50,
+                        'disk': 200,
+                        'mem': 1000,
+                    },
+                    'test-habitat-2': {
+                        'cpus': 50,
+                        'disk': 200,
+                        'mem': 1000,
+                    },
+                }
             }
         ),
     )
