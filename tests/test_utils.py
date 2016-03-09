@@ -1236,3 +1236,58 @@ def test_null_log_writer():
     """Basic smoke test for NullLogWriter"""
     lw = utils.NullLogWriter(driver='null')
     lw.log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
+
+
+class TestFileLogWriter:
+    def test_smoke(self):
+        """Smoke test for FileLogWriter"""
+        fw = utils.FileLogWriter('/dev/null')
+        fw.log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
+
+    def test_format_path(self):
+        """Test the path formatting for FileLogWriter"""
+        fw = utils.FileLogWriter("/logs/{service}/{component}/{level}/{cluster}/{instance}")
+        expected = "/logs/a/b/c/d/e"
+        assert expected == fw.format_path("a", "b", "c", "d", "e")
+
+    def test_maybe_flock(self):
+        """Make sure we flock and unflock when flock=True"""
+        with mock.patch("paasta_tools.utils.fcntl") as mock_fcntl:
+            fw = utils.FileLogWriter("/dev/null", flock=True)
+            mock_file = mock.Mock()
+            with fw.maybe_flock(mock_file):
+                mock_fcntl.flock.assert_called_once_with(mock_file, mock_fcntl.LOCK_EX)
+                mock_fcntl.flock.reset_mock()
+
+            mock_fcntl.flock.assert_called_once_with(mock_file, mock_fcntl.LOCK_UN)
+
+    def test_maybe_flock_flock_false(self):
+        """Make sure we don't flock/unflock when flock=False"""
+        with mock.patch("paasta_tools.utils.fcntl") as mock_fcntl:
+            fw = utils.FileLogWriter("/dev/null", flock=False)
+            mock_file = mock.Mock()
+            with fw.maybe_flock(mock_file):
+                assert mock_fcntl.flock.call_count == 0
+
+            assert mock_fcntl.flock.call_count == 0
+
+    def test_log_makes_exactly_one_write_call(self):
+        """We want to make sure that log() makes exactly one call to write, since that's how we ensure atomicity."""
+        fake_file = mock.Mock()
+        fake_contextmgr = mock.Mock(
+            __enter__=lambda _self: fake_file,
+            __exit__=lambda _self, t, v, tb: None
+        )
+
+        fake_line = "text" * 1000000
+
+        with mock.patch("paasta_tools.utils.io.FileIO", return_value=fake_contextmgr, autospec=True) as mock_FileIO:
+            fw = utils.FileLogWriter("/dev/null", flock=False)
+
+            with mock.patch("paasta_tools.utils.format_log_line", return_value=fake_line, autospec=True) as fake_fll:
+                fw.log("service", "line", "component", level="level", cluster="cluster", instance="instance")
+
+            fake_fll.assert_called_once_with("level", "cluster", "service", "instance", "component", "line")
+
+            mock_FileIO.assert_called_once_with("/dev/null", mode=fw.mode, closefd=True)
+            fake_file.write.assert_called_once_with("%s\n" % fake_line)

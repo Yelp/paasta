@@ -16,9 +16,11 @@ from __future__ import print_function
 import contextlib
 import datetime
 import errno
+import fcntl
 import glob
 import hashlib
 import importlib
+import io
 import json
 import logging
 import os
@@ -576,6 +578,50 @@ class NullLogWriter(LogWriter):
 
     def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
         pass
+
+
+@register_log_writer('file')
+class FileLogWriter(LogWriter):
+    def __init__(self, path_format, mode='a+', line_delimeter='\n', flock=False):
+        self.path_format = path_format
+        self.mode = mode
+        self.flock = flock
+        self.line_delimeter = line_delimeter
+
+    @contextlib.contextmanager
+    def maybe_flock(self, fd):
+        if self.flock:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX)
+                yield
+            finally:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+        else:
+            yield
+
+    def format_path(self, service, component, level, cluster, instance):
+        return self.path_format.format(
+            service=service,
+            component=component,
+            level=level,
+            cluster=cluster,
+            instance=instance,
+        )
+
+    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+        path = self.format_path(service, component, level, cluster, instance)
+
+        # We use io.FileIO here because it guarantees that write() is implemented with a single write syscall,
+        # and on Linux, writes to O_APPEND files with a single write syscall are atomic.
+        #
+        # https://docs.python.org/2/library/io.html#io.FileIO
+        # http://article.gmane.org/gmane.linux.kernel/43445
+
+        to_write = "%s%s" % (format_log_line(level, cluster, service, instance, component, line), self.line_delimeter)
+
+        with io.FileIO(path, mode=self.mode, closefd=True) as f:
+            with self.maybe_flock(f):
+                f.write(to_write)
 
 
 def _timeout(process):
