@@ -15,6 +15,7 @@ import fnmatch
 import logging
 import os
 import pkgutil
+import re
 import sys
 from socket import gaierror
 from socket import gethostbyname_ex
@@ -616,3 +617,10 @@ def get_instance_config(service, instance, cluster, soa_dir, load_deployments=Fa
         load_deployments=load_deployments,
         soa_dir=soa_dir
     )
+
+
+def extract_tags(paasta_tag):
+    """Returns a dictionary containing information from a git tag"""
+    regex = r'^refs/tags/(?:paasta-){1,2}(?P<deploy_group>.*?)-(?P<tstamp>\d{8}T\d{6})-(?P<tag>.*?)$'
+    regex_match = re.match(regex, paasta_tag)
+    return regex_match.groupdict() if regex_match else {}

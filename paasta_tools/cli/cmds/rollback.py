@@ -12,12 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import re
-
 from humanize import naturaltime
 from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
+from paasta_tools.cli.utils import extract_tags
 from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
@@ -32,7 +31,7 @@ from paasta_tools.utils import parse_timestamp
 
 def list_previously_deployed_shas(parsed_args, **kwargs):
     service = parsed_args.service
-    deploy_groups = set([deploy_group for deploy_group in parsed_args.deploy_groups.split(',') if deploy_group])
+    deploy_groups = {deploy_group for deploy_group in parsed_args.deploy_groups.split(',') if deploy_group}
     return (sha for sha, _ in get_git_shas_for_service(service, deploy_groups))
 
 
@@ -42,18 +41,22 @@ def get_git_shas_for_service(service, deploy_groups):
     if service is None:
         return []
     git_url = get_git_url(service=service)
-    all_deploy_groups = set(config.get_deploy_group() for config in get_instance_config_for_service(
+    all_deploy_groups = {config.get_deploy_group() for config in get_instance_config_for_service(
         soa_dir=DEFAULT_SOA_DIR,
         service=service,
-    ))
+    )}
     deploy_groups, _ = validate_given_deploy_groups(all_deploy_groups, deploy_groups)
-    regex = r'^refs/tags/(?:paasta-){1,2}(?:%s)-(?P<tstamp>\d{8}T\d{6})-deploy$' % '|'.join(deploy_groups)
     previously_deployed_shas = {}
     for ref, sha in list_remote_refs(git_url).items():
-        regex_match = re.match(regex, ref)
-        if regex_match:
-            tstamp = regex_match.groupdict()['tstamp']
-            if previously_deployed_shas.get(sha, '') < tstamp:
+        regex_match = extract_tags(ref)
+        try:
+            deploy_group = regex_match['deploy_group']
+            tstamp = regex_match['tstamp']
+        except KeyError:
+            pass
+        else:
+            # note that all strings are greater than ''
+            if deploy_group in deploy_groups and tstamp > previously_deployed_shas.get(sha, ''):
                 previously_deployed_shas[sha] = tstamp
     return previously_deployed_shas.items()
 
@@ -138,10 +141,10 @@ def paasta_rollback(args):
     git_url = get_git_url(service)
     given_deploy_groups = [deploy_group for deploy_group in args.deploy_groups.split(",") if deploy_group]
 
-    service_deploy_groups = set(config.get_deploy_group() for config in get_instance_config_for_service(
+    service_deploy_groups = {config.get_deploy_group() for config in get_instance_config_for_service(
         soa_dir=DEFAULT_SOA_DIR,
         service=service,
-    ))
+    )}
     deploy_groups, invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
 
     if len(invalid) > 0:

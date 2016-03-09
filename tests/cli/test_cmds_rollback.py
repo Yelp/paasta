@@ -304,7 +304,7 @@ def test_list_previously_deployed_shas():
             service='fake_service',
             deploy_groups='test.deploy.group,nonexistant.deploy.group',
         )
-        assert set(list_previously_deployed_shas(fake_args)) == set(['SHA_IN_OUTPUT'])
+        assert set(list_previously_deployed_shas(fake_args)) == {'SHA_IN_OUTPUT'}
 
 
 def test_list_previously_deployed_shas_no_deploy_groups():
@@ -341,7 +341,7 @@ def test_list_previously_deployed_shas_no_deploy_groups():
             service='fake_service',
             deploy_groups='',
         )
-        assert set(list_previously_deployed_shas(fake_args)) == set(['SHA_IN_OUTPUT', 'SHA_IN_OUTPUT_2'])
+        assert set(list_previously_deployed_shas(fake_args)) == {'SHA_IN_OUTPUT', 'SHA_IN_OUTPUT_2'}
 
 
 def test_get_git_shas_for_service_no_service_name():
