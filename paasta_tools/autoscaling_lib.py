@@ -79,6 +79,8 @@ def default_autoscaling_method(marathon_service_config, delay=600, **kwargs):
     average_cpu_seconds = 0.0
 
     def clamp_value(number):
+        """Limits the PID output to scaling up/down by 1.
+        Also used to limit the integral term which avoids windup lag."""
         return min(max(number, -1), 1)
 
     def get_resource_data_from_task(task):
@@ -99,32 +101,33 @@ def default_autoscaling_method(marathon_service_config, delay=600, **kwargs):
             last_average_cpu_seconds = float(last_average_cpu_seconds)
             return last_time, last_error, iterm, last_average_cpu_seconds
 
+    try:
+        last_time, last_error, iterm, last_average_cpu_seconds = get_zookeeper_data()
+    except NoNodeError:
+        # we have no historical data for this service yet
+        pass
+    else:
+        job_id = marathon_service_config.format_marathon_app_dict()['id']
+        mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
+        if not mesos_tasks:
+            return 0
+
+        resource_data = [get_resource_data_from_task(task) for task in mesos_tasks]
+        average_cpu_seconds, average_ram, current_time = (
+            sum(item) / len(resource_data) for item in zip(*resource_data))
+        time_delta = current_time - last_time
+        if time_delta < delay:
+            return 0
+
+        average_cpu = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
+
+        # if one resource is underprovisioned and one is overprovisioned, we still want to scale up
+        max_utilization = max(average_cpu, average_ram)
+        error = max_utilization - PID_SETPOINT
+        iterm = clamp_value(iterm + (Ki * error) * time_delta)
+        pid_output = round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta))
+
     with ZookeeperPool() as zk:
-        try:
-            last_time, last_error, iterm, last_average_cpu_seconds = get_zookeeper_data()
-        except NoNodeError:
-            # we have no historical data for this service yet
-            pass
-        else:
-            job_id = marathon_service_config.format_marathon_app_dict()['id']
-            mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
-            if not mesos_tasks:
-                return 0
-
-            resource_data = [get_resource_data_from_task(task) for task in mesos_tasks]
-            average_cpu_seconds, average_ram, current_time = (
-                sum(item) / len(resource_data) for item in zip(*resource_data))
-            time_delta = current_time - last_time
-            if time_delta < delay:
-                return 0
-
-            average_cpu = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
-
-            # if one resource is underprovisioned and one is overprovisioned, we still want to scale up
-            max_utilization = max(average_cpu, average_ram)
-            error = max_utilization - PID_SETPOINT
-            iterm = clamp_value(iterm + (Ki * error) * time_delta)
-            pid_output = round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta))
         zk.ensure_path(tstamp_zk_node)
         zk.ensure_path(error_zk_node)
         zk.ensure_path(integral_term_zk_node)
@@ -133,7 +136,7 @@ def default_autoscaling_method(marathon_service_config, delay=600, **kwargs):
         zk.set(error_zk_node, str(error))
         zk.set(integral_term_zk_node, str(iterm))
         zk.set(cpu_seconds_zk_node, str(average_cpu_seconds))
-        return int(pid_output)
+    return int(pid_output)
 
 
 def autoscale_marathon_instance(marathon_service_config):
