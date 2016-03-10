@@ -54,7 +54,10 @@ def get_instances_from_zookeeper(service, instance):
 
 @register_autoscaling_method('bespoke')
 def bespoke_autoscaling_method(*args, **kwargs):
-    # do nothing, the service author has written their own scaling code
+    """
+    Autoscaling method for service authors that have written their own autoscaling method.
+    Allows Marathon to read instance counts from Zookeeper but doesn't attempt to scale the service automatically.
+    """
     return 0
 
 
