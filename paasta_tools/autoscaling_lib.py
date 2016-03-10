@@ -59,12 +59,11 @@ def bespoke_autoscaling_method(*args, **kwargs):
 
 
 @register_autoscaling_method('default')
-def default_autoscaling_method(marathon_service_config):
+def default_autoscaling_method(marathon_service_config, delay=600, **kwargs):
     PID_SETPOINT = 0.8
-    AUTOSCALING_DELAY = 600
     Kp = 0.2
-    Ki = 0.2 / AUTOSCALING_DELAY
-    Kd = 0.05 * AUTOSCALING_DELAY
+    Ki = 0.2 / delay
+    Kd = 0.05 * delay
 
     zookeeper_root = compose_autoscaling_zookeeper_root(marathon_service_config.service,
                                                         marathon_service_config.instance)
@@ -116,7 +115,7 @@ def default_autoscaling_method(marathon_service_config):
             average_cpu_seconds, average_ram, current_time = (
                 sum(item) / len(resource_data) for item in zip(*resource_data))
             time_delta = current_time - last_time
-            if time_delta < AUTOSCALING_DELAY:
+            if time_delta < delay:
                 return 0
 
             average_cpu = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
@@ -141,8 +140,9 @@ def autoscale_marathon_instance(marathon_service_config):
     if marathon_service_config.get_max_instances() is None:
         return
     autoscaling_params = marathon_service_config.get_autoscaling_params()
+    autoscaling_method = get_autoscaling_method(autoscaling_params.pop('method'))
     with ZookeeperPool():
-        autoscale_amount = get_autoscaling_method(autoscaling_params['method'])(marathon_service_config)
+        autoscale_amount = autoscaling_method(marathon_service_config, **autoscaling_params)
         if autoscale_amount:
             current_instances = marathon_service_config.get_instances()
             instances = min(
