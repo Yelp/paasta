@@ -46,43 +46,9 @@ def test_filter_not_running_tasks():
     assert not_running[0]['id'] == 2
 
 
-def test_get_non_running_tasks_from_active_frameworks():
-    with mock.patch('paasta_tools.mesos_tools.get_current_tasks', autospec=True) as get_current_tasks_patch:
-        get_current_tasks_patch.return_value = [
-            {
-                'statuses': [{'timestamp': '1457109986'}],
-                'state': 'NOT_RUNNING',
-            },
-            {
-                'statuses': [{'timestamp': '1457110226'}],
-                'state': 'NOT_RUNNING',
-            },
-            {
-                'statuses': [{'timestamp': '1457110106'}],
-                'state': 'NOT_RUNNING',
-            },
-        ]
-        expected = [
-            {
-                'statuses': [{'timestamp': '1457109986'}],
-                'state': 'NOT_RUNNING',
-            },
-            {
-                'statuses': [{'timestamp': '1457110106'}],
-                'state': 'NOT_RUNNING',
-            },
-            {
-                'statuses': [{'timestamp': '1457110226'}],
-                'state': 'NOT_RUNNING',
-            },
-        ]
-
-        assert mesos_tools.get_non_running_tasks_from_active_frameworks(123) == expected
-
-
 @mark.parametrize('test_case', [
     [False, 0],
-    [True, 2]
+    [True, 4]
 ])
 def test_status_mesos_tasks_verbose(test_case):
     tail_stdstreams, expected_format_tail_call_count = test_case
@@ -100,7 +66,20 @@ def test_status_mesos_tasks_verbose(test_case):
         format_stdstreams_tail_for_task_patch,
     ):
         get_running_mesos_tasks_patch.return_value = ['doing a lap']
-        get_non_running_mesos_tasks_patch.return_value = ['eating a burrito']
+        get_non_running_mesos_tasks_patch.return_value = [
+            {
+                'statuses': [{'timestamp': '1457109986'}],
+                'state': 'NOT_RUNNING',
+            },
+            {
+                'statuses': [{'timestamp': '1457110226'}],
+                'state': 'NOT_RUNNING',
+            },
+            {
+                'statuses': [{'timestamp': '1457110106'}],
+                'state': 'NOT_RUNNING',
+            },
+        ]
         format_running_mesos_task_row_patch.return_value = ['id', 'host', 'mem', 'cpu', 'disk', 'time']
         format_non_running_mesos_task_row_patch.return_value = ['id', 'host', 'time', 'state']
         format_stdstreams_tail_for_task_patch.return_value = ['tail']
@@ -113,7 +92,7 @@ def test_status_mesos_tasks_verbose(test_case):
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
         format_running_mesos_task_row_patch.assert_called_once_with('doing a lap', get_short_task_id)
-        format_non_running_mesos_task_row_patch.assert_called_once_with('eating a burrito', get_short_task_id)
+        assert format_non_running_mesos_task_row_patch.call_count == 3
         assert format_stdstreams_tail_for_task_patch.call_count == expected_format_tail_call_count
 
 

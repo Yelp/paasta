@@ -146,8 +146,6 @@ def get_running_tasks_from_active_frameworks(job_id):
 def get_non_running_tasks_from_active_frameworks(job_id):
     active_framework_tasks = get_current_tasks(job_id)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
-    # Order the tasks by timestamp
-    not_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
     return not_running_tasks
 
 
@@ -334,7 +332,11 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False)
         output.append(tasks_table_running[0])  # header
         output.extend(zip_tasks_verbose_output(tasks_table_running[1:], tasks_stdstreams_running))
 
-    non_running_tasks = list(reversed(get_non_running_tasks_from_active_frameworks(job_id)[-10:]))
+    non_running_tasks = get_non_running_tasks_from_active_frameworks(job_id)
+    # Order the tasks by timestamp
+    non_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
+    non_running_tasks_ordered = list(reversed(non_running_tasks[-10:]))
+
     output.append(PaastaColors.grey("  Non-Running Tasks"))
     rows_non_running = [[
         PaastaColors.grey("Mesos Task ID"),
@@ -342,7 +344,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False)
         PaastaColors.grey("Deployed at what localtime"),
         PaastaColors.grey("Status"),
     ]]
-    for task in non_running_tasks:
+    for task in non_running_tasks_ordered:
         rows_non_running.append(format_non_running_mesos_task_row(task, get_short_task_id))
     tasks_table_non_running = ["    %s" % row for row in format_table(rows_non_running)]
     if not tail_stdstreams:
