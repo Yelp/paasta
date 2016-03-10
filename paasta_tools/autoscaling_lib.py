@@ -161,7 +161,7 @@ def autoscale_marathon_instance(marathon_service_config):
     if marathon_service_config.get_max_instances() is None:
         return
     autoscaling_params = marathon_service_config.get_autoscaling_params()
-    autoscaling_method = get_autoscaling_method(autoscaling_params.pop('method'))
+    autoscaling_method = get_autoscaling_method(autoscaling_params['method'])
     with ZookeeperPool():
         autoscale_amount = autoscaling_method(marathon_service_config, **autoscaling_params)
         if autoscale_amount:
