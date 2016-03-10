@@ -59,8 +59,16 @@ def bespoke_autoscaling_method(*args, **kwargs):
 
 
 @register_autoscaling_method('default')
-def default_autoscaling_method(marathon_service_config, delay=600, **kwargs):
-    PID_SETPOINT = 0.8
+def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8, **kwargs):
+    """
+    PID control of instance count using ram and cpu.
+
+    :param marathon_service_config: the MarathonServiceConfig to scale
+    :param delay: the number of seconds to wait between PID updates
+    :param setpoint: the target utilization percentage
+
+    :returns: the number of instances to scale up/down by
+    """
     Kp = 0.2
     Ki = 0.2 / delay
     Kd = 0.05 * delay
@@ -84,10 +92,9 @@ def default_autoscaling_method(marathon_service_config, delay=600, **kwargs):
         return min(max(number, -1), 1)
 
     def get_resource_data_from_task(task):
-        current_time = int(datetime.datetime.now().strftime('%s'))
         cpu_shares = task.cpu_limit - .1
         used_seconds = task.stats.get('cpus_system_time_secs', 0.0) + task.stats.get('cpus_user_time_secs', 0.0)
-        return float(used_seconds) / cpu_shares, float(task.rss) / task.mem_limit, current_time
+        return float(used_seconds) / cpu_shares, float(task.rss) / task.mem_limit
 
     def get_zookeeper_data():
         with ZookeeperPool() as zk:
@@ -101,41 +108,49 @@ def default_autoscaling_method(marathon_service_config, delay=600, **kwargs):
             last_average_cpu_seconds = float(last_average_cpu_seconds)
             return last_time, last_error, iterm, last_average_cpu_seconds
 
+    def send_zookeeper_data(current_time, error, iterm, average_cpu_seconds):
+        with ZookeeperPool() as zk:
+            zk.ensure_path(tstamp_zk_node)
+            zk.ensure_path(error_zk_node)
+            zk.ensure_path(integral_term_zk_node)
+            zk.ensure_path(cpu_seconds_zk_node)
+            zk.set(tstamp_zk_node, str(current_time))
+            zk.set(error_zk_node, str(error))
+            zk.set(integral_term_zk_node, str(iterm))
+            zk.set(cpu_seconds_zk_node, str(average_cpu_seconds))
+
     try:
         last_time, last_error, iterm, last_average_cpu_seconds = get_zookeeper_data()
     except NoNodeError:
         # we have no historical data for this service yet
         pass
     else:
+        time_delta = current_time - last_time
+        if time_delta < delay:
+            return 0
+
         job_id = marathon_service_config.format_marathon_app_dict()['id']
         mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
         if not mesos_tasks:
             return 0
 
         resource_data = [get_resource_data_from_task(task) for task in mesos_tasks]
-        average_cpu_seconds, average_ram, current_time = (
-            sum(item) / len(resource_data) for item in zip(*resource_data))
-        time_delta = current_time - last_time
-        if time_delta < delay:
-            return 0
-
+        average_cpu_seconds, average_ram = (sum(item) / len(resource_data) for item in zip(*resource_data))
         average_cpu = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
 
         # if one resource is underprovisioned and one is overprovisioned, we still want to scale up
         max_utilization = max(average_cpu, average_ram)
-        error = max_utilization - PID_SETPOINT
+        error = max_utilization - setpoint
         iterm = clamp_value(iterm + (Ki * error) * time_delta)
         pid_output = round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta))
 
-    with ZookeeperPool() as zk:
-        zk.ensure_path(tstamp_zk_node)
-        zk.ensure_path(error_zk_node)
-        zk.ensure_path(integral_term_zk_node)
-        zk.ensure_path(cpu_seconds_zk_node)
-        zk.set(tstamp_zk_node, str(current_time))
-        zk.set(error_zk_node, str(error))
-        zk.set(integral_term_zk_node, str(iterm))
-        zk.set(cpu_seconds_zk_node, str(average_cpu_seconds))
+    send_zookeeper_data(
+        current_time=current_time,
+        error=error,
+        iterm=iterm,
+        average_cpu_seconds=average_cpu_seconds,
+    )
+
     return int(pid_output)
 
 
