@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import copy
 import sys
 from collections import Counter
 from collections import defaultdict
@@ -106,7 +107,7 @@ def get_extra_mesos_attribute_data(mesos_state):
             slave_attribute_mapping[slave['id']] = slave_attribute_name
             filtered_resources = filter_mesos_state_metrics(slave['resources'])
             resource_free_dict[slave_attribute_name].update(filtered_resources)
-            resource_availability_dict[slave_attribute_name] = filtered_resources
+        resource_availability_dict = copy.deepcopy(resource_free_dict)
         for framework in mesos_state.get('frameworks', []):
             for task in framework.get('tasks', []):
                 task_resources = task['resources']
@@ -260,6 +261,7 @@ def assert_extra_attribute_data(mesos_state):
             rows.append((attribute.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)'))
             for attribute_location, resources_remaining in resource_free_dict.items():
                 resources_available = resource_availability_dict[attribute_location]
+
                 rows.append((
                     attribute_location,
                     '%.2f/%.2f' % (resources_remaining['cpus'], resources_available['cpus']),
