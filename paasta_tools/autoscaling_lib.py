@@ -126,6 +126,7 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
         last_time, last_error, iterm, last_average_cpu_seconds, last_average_start_time = get_zookeeper_data()
     except NoNodeError:
         # we have no historical data for this service yet
+        current_time = 0
         error = 0.0
         iterm = 0.0
         pid_output = 0
