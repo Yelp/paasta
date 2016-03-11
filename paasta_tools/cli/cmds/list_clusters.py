@@ -28,6 +28,6 @@ def add_subparser(subparsers):
     list_parser.set_defaults(command=paasta_list_clusters)
 
 
-def paasta_list_clusters(args):
+def paasta_list_clusters(args, **kwargs):
     for cluster in list_clusters():
         print cluster

@@ -12,10 +12,14 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
+
 from mock import call
 from mock import Mock
 from mock import patch
 
+from paasta_tools.cli.cmds.rollback import get_git_shas_for_service
+from paasta_tools.cli.cmds.rollback import list_previously_deployed_shas
 from paasta_tools.cli.cmds.rollback import paasta_rollback
 from paasta_tools.cli.cmds.rollback import validate_given_deploy_groups
 from paasta_tools.marathon_tools import MarathonServiceConfig
@@ -274,3 +278,71 @@ def test_validate_given_deploy_groups_duplicate_args():
 
     assert actual_valid == expected_valid
     assert actual_invalid == expected_invalid
+
+
+def test_list_previously_deployed_shas():
+    fake_refs = {
+        'refs/tags/paasta-test.deploy.group-00000000T000000-deploy': 'SHA_IN_OUTPUT',
+        'refs/tags/paasta-other.deploy.group-00000000T000000-deploy': 'NOT_IN_OUTPUT',
+    }
+    fake_configs = [MarathonServiceConfig(
+        service='fake_service',
+        instance='fake_instance',
+        cluster='fake_cluster',
+        config_dict={'deploy_group': 'test.deploy.group'},
+        branch_dict={},
+    )]
+    with contextlib.nested(
+            patch('paasta_tools.cli.cmds.rollback.list_remote_refs', autospec=True, return_value=fake_refs),
+            patch('paasta_tools.cli.cmds.rollback.get_instance_config_for_service', autospec=True,
+                  return_value=fake_configs),
+    ) as (
+        _,
+        _,
+    ):
+        fake_args = Mock(
+            service='fake_service',
+            deploy_groups='test.deploy.group,nonexistant.deploy.group',
+        )
+        assert set(list_previously_deployed_shas(fake_args)) == {'SHA_IN_OUTPUT'}
+
+
+def test_list_previously_deployed_shas_no_deploy_groups():
+    fake_refs = {
+        'refs/tags/paasta-test.deploy.group-00000000T000000-deploy': 'SHA_IN_OUTPUT',
+        'refs/tags/paasta-other.deploy.group-00000000T000000-deploy': 'SHA_IN_OUTPUT_2',
+        'refs/tags/paasta-nonexistant.deploy.group-00000000T000000-deploy': 'SHA_NOT_IN_OUTPUT',
+    }
+    fake_configs = [
+        MarathonServiceConfig(
+            service='fake_service',
+            instance='fake_instance',
+            cluster='fake_cluster',
+            config_dict={'deploy_group': 'test.deploy.group'},
+            branch_dict={},
+        ),
+        MarathonServiceConfig(
+            service='fake_service',
+            instance='fake_instance',
+            cluster='fake_cluster',
+            config_dict={'deploy_group': 'other.deploy.group'},
+            branch_dict={},
+        ),
+    ]
+    with contextlib.nested(
+            patch('paasta_tools.cli.cmds.rollback.list_remote_refs', autospec=True, return_value=fake_refs),
+            patch('paasta_tools.cli.cmds.rollback.get_instance_config_for_service', autospec=True,
+                  return_value=fake_configs),
+    ) as (
+        _,
+        _,
+    ):
+        fake_args = Mock(
+            service='fake_service',
+            deploy_groups='',
+        )
+        assert set(list_previously_deployed_shas(fake_args)) == {'SHA_IN_OUTPUT', 'SHA_IN_OUTPUT_2'}
+
+
+def test_get_git_shas_for_service_no_service_name():
+    assert get_git_shas_for_service(None, None) == []

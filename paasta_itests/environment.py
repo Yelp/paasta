@@ -96,14 +96,15 @@ def _clean_up_etc_paasta(context):
 
 def _clean_up_zookeeper_autoscaling(context):
     """If max_instances was set for autoscaling, clean up zookeeper"""
-    client = KazooClient(hosts='%s/mesos-testcluster' % get_service_connection_string('zookeeper'), read_only=True)
-    client.start()
-    try:
-        client.delete('/autoscaling', recursive=True)
-    except NoNodeError:
-        pass
-    client.stop()
-    client.close()
+    if 'max_instances' in context:
+        client = KazooClient(hosts='%s/mesos-testcluster' % get_service_connection_string('zookeeper'), read_only=True)
+        client.start()
+        try:
+            client.delete('/autoscaling', recursive=True)
+        except NoNodeError:
+            pass
+        client.stop()
+        client.close()
 
 
 def after_scenario(context, scenario):
@@ -112,3 +113,4 @@ def after_scenario(context, scenario):
     _clean_up_mesos_cli_config(context)
     _clean_up_soa_dir(context)
     _clean_up_etc_paasta(context)
+    _clean_up_zookeeper_autoscaling(context)

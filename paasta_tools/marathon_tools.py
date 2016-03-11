@@ -184,7 +184,13 @@ class MarathonServiceConfig(InstanceConfig):
         )
 
     def copy(self):
-        return self.__class__(self.service, self.instance, dict(self.config_dict), dict(self.branch_dict))
+        return self.__class__(
+            service=self.service,
+            instance=self.instance,
+            cluster=self.cluster,
+            config_dict=dict(self.config_dict),
+            branch_dict=dict(self.branch_dict),
+        )
 
     def get_min_instances(self):
         return self.config_dict.get('min_instances', 1)
@@ -227,7 +233,7 @@ class MarathonServiceConfig(InstanceConfig):
         default_params = {
             'method': 'default',
         }
-        return self.config_dict.get('autoscaling', default_params)
+        return dict(default_params, **self.config_dict.get('autoscaling', {}))
 
     def get_backoff_seconds(self):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.
@@ -703,8 +709,6 @@ def get_proxy_port_for_instance(name, instance, cluster=None, soa_dir=DEFAULT_SO
     :param cluster: The cluster to read the configuration for
     :param soa_dir: The SOA config directory to read from
     :returns: The proxy_port for the service instance, or None if not defined"""
-    if not cluster:
-        cluster = load_system_paasta_config().get_cluster()
     namespace = read_namespace_for_service_instance(name, instance, cluster, soa_dir)
     nerve_dict = load_service_namespace_config(name, namespace, soa_dir)
     return nerve_dict.get('proxy_port')

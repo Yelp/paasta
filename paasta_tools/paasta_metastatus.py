@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import argparse
+import copy
 import sys
 from collections import Counter
 from collections import defaultdict
@@ -98,18 +99,21 @@ def get_extra_mesos_attribute_data(mesos_state):
     attributes = set().union(*(slave['attributes'].keys() for slave in mesos_state['slaves']))
 
     for attribute in attributes:
-        resource_dict = defaultdict(Counter)
+        resource_free_dict = defaultdict(Counter)
+        resource_availability_dict = dict()
         slave_attribute_mapping = {}
         for slave in mesos_state['slaves']:
             slave_attribute_name = slave['attributes'].get(attribute, 'UNDEFINED')
             slave_attribute_mapping[slave['id']] = slave_attribute_name
-            resource_dict[slave_attribute_name].update(filter_mesos_state_metrics(slave['resources']))
+            filtered_resources = filter_mesos_state_metrics(slave['resources'])
+            resource_free_dict[slave_attribute_name].update(filtered_resources)
+        resource_availability_dict = copy.deepcopy(resource_free_dict)
         for framework in mesos_state.get('frameworks', []):
             for task in framework.get('tasks', []):
                 task_resources = task['resources']
                 attribute_value = slave_attribute_mapping[task['slave_id']]
-                resource_dict[attribute_value].subtract(filter_mesos_state_metrics(task_resources))
-        yield (attribute, resource_dict)
+                resource_free_dict[attribute_value].subtract(filter_mesos_state_metrics(task_resources))
+        yield (attribute, {"free": resource_free_dict, "availability": resource_availability_dict})
 
 
 def quorum_ok(masters, quorum):
@@ -251,14 +255,18 @@ def assert_extra_attribute_data(mesos_state):
     extra_attribute_data = list(get_extra_mesos_attribute_data(mesos_state))
     rows = []
     for attribute, resource_dict in extra_attribute_data:
-        if len(resource_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
-            rows.append((attribute.capitalize(), 'CPU free', 'RAM free', 'Disk free'))
-            for attribute_location, resources_remaining in resource_dict.items():
+        resource_free_dict = resource_dict["free"]
+        resource_availability_dict = resource_dict["availability"]
+        if len(resource_free_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
+            rows.append((attribute.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)'))
+            for attribute_location, resources_remaining in resource_free_dict.items():
+                resources_available = resource_availability_dict[attribute_location]
+
                 rows.append((
                     attribute_location,
-                    '%.2f' % resources_remaining['cpus'],
-                    '%.2f' % resources_remaining['mem'],
-                    '%.2f' % resources_remaining['disk'],
+                    '%.2f/%.2f' % (resources_remaining['cpus'], resources_available['cpus']),
+                    '%.2f/%.2f' % (resources_remaining['mem'], resources_available['mem']),
+                    '%.2f/%.2f' % (resources_remaining['disk'], resources_available['disk'])
                 ))
     if len(rows) == 0:
         result = ("  No slave attributes that apply to more than one slave were detected.", True)

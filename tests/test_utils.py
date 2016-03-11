@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+import datetime
 import json
 import os
 import shutil
@@ -1222,6 +1223,12 @@ def test_format_table_with_interjected_lines():
 def test_format_table_all_strings():
     actual = utils.format_table(['foo', 'bar', 'baz'])
     expected = ['foo', 'bar', 'baz']
+    assert actual == expected
+
+
+def test_parse_timestamp():
+    actual = utils.parse_timestamp('19700101T000000')
+    expected = datetime.datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0)
     assert actual == expected
 
 

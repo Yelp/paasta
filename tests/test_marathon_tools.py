@@ -2159,3 +2159,88 @@ def test_create_complete_config():
     ):
         marathon_tools.create_complete_config('service', 'instance', soa_dir=mock.Mock())
         mock_format_marathon_app_dict.assert_called_once_with()
+
+
+def test_marathon_config_key_errors():
+    fake_marathon_config = marathon_tools.MarathonConfig({}, '')
+    with raises(marathon_tools.MarathonNotConfigured):
+        fake_marathon_config.get_url()
+    with raises(marathon_tools.MarathonNotConfigured):
+        fake_marathon_config.get_username()
+    with raises(marathon_tools.MarathonNotConfigured):
+        fake_marathon_config.get_password()
+
+
+def test_marathon_service_config_copy():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={'elem': 'test'},
+        branch_dict={'elem2': 'test2'},
+    )
+    fake_marathon_service_config_2 = fake_marathon_service_config.copy()
+    assert fake_marathon_service_config is not fake_marathon_service_config_2
+    assert fake_marathon_service_config == fake_marathon_service_config_2
+
+
+def test_marathon_service_config_get_healthchecks_invalid_type():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={},
+        branch_dict={},
+    )
+    with mock.patch.object(marathon_tools.MarathonServiceConfig, 'get_healthcheck_mode', autospec=True,
+                           return_value='fake-mode'):
+        with raises(marathon_tools.InvalidMarathonHealthcheckMode):
+            fake_marathon_service_config.get_healthchecks(mock.Mock())
+
+
+def test_marathon_service_config_get_desired_state_human_invalid_desired_state():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={},
+        branch_dict={},
+    )
+    with mock.patch.object(marathon_tools.MarathonServiceConfig, 'get_desired_state', autospec=True,
+                           return_value='fake-state'):
+        assert 'Unknown (desired_state: fake-state)' in fake_marathon_service_config.get_desired_state_human()
+
+
+def test_read_namespace_for_service_instance_no_cluster():
+    mock_get_cluster = mock.Mock()
+    with contextlib.nested(
+            mock.patch('paasta_tools.marathon_tools.service_configuration_lib.read_extra_service_information',
+                       autospec=True),
+            mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
+                       return_value=mock.Mock(get_cluster=mock_get_cluster)),
+    ) as (
+        _,
+        _,
+    ):
+        marathon_tools.read_namespace_for_service_instance(mock.Mock(), mock.Mock())
+        mock_get_cluster.assert_called_once_with()
+
+
+def wait_for_app_to_launch_tasks():
+    return_values = [False, None, True]
+
+    def get_mock_return_values(*args):
+        val = return_values.pop()
+        if val is None:
+            raise marathon_tools.NotFoundError
+        return val
+    with contextlib.nested(
+        mock.patch('paasta_tools.marathon_tools.app_has_tasks', autospec=True, side_effect=get_mock_return_values),
+        mock.patch('paasta_tools.marathon_tools.sleep', autospec=True),
+    ) as (
+        mock_app_has_tasks,
+        mock_sleep,
+    ):
+        marathon_tools.wait_for_app_to_launch_tasks(mock.Mock(), 'app_id', 0)
+        assert mock_app_has_tasks.call_count == 3
+        assert mock_sleep.call_count == 2

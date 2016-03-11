@@ -15,6 +15,7 @@ import fnmatch
 import logging
 import os
 import pkgutil
+import re
 import sys
 from socket import gaierror
 from socket import gethostbyname_ex
@@ -352,7 +353,7 @@ def validate_service_name(service, soa_dir=DEFAULT_SOA_DIR):
     return True
 
 
-def list_services():
+def list_services(**kwargs):
     """Returns a sorted list of all services"""
     return sorted(read_services_configuration().keys())
 
@@ -377,7 +378,7 @@ def list_service_instances():
     return the_list
 
 
-def list_instances():
+def list_instances(**kwargs):
     """Returns a sorted list of all possible instance names
     for tab completion. We try to guess what service you might be
     operating on, otherwise we just provide *all* of them
@@ -394,7 +395,7 @@ def list_instances():
     return sorted(all_instances)
 
 
-def list_teams():
+def list_teams(**kwargs):
     """Loads team data from the system. Returns a set of team names (or empty
     set).
     """
@@ -549,7 +550,7 @@ def execute_paasta_metastatus_on_remote_master(cluster, verbose=0):
 
 def lazy_choices_completer(list_func):
     def inner(prefix, **kwargs):
-        options = list_func()
+        options = list_func(**kwargs)
         return [o for o in options if o.startswith(prefix)]
     return inner
 
@@ -616,3 +617,10 @@ def get_instance_config(service, instance, cluster, soa_dir, load_deployments=Fa
         load_deployments=load_deployments,
         soa_dir=soa_dir
     )
+
+
+def extract_tags(paasta_tag):
+    """Returns a dictionary containing information from a git tag"""
+    regex = r'^refs/tags/(?:paasta-){1,2}(?P<deploy_group>.*?)-(?P<tstamp>\d{8}T\d{6})-(?P<tag>.*?)$'
+    regex_match = re.match(regex, paasta_tag)
+    return regex_match.groupdict() if regex_match else {}
