@@ -187,7 +187,8 @@ def test_default_autoscaling():
         config_dict={'max_instances': 5, 'min_instances': 1},
         branch_dict={},
     )
-    fake_task = mock.Mock(
+    last_measurement = (datetime.now() - timedelta(seconds=600)).strftime('%s')
+    fake_task = mock.MagicMock(
         rss=800,
         mem_limit=1000,
         cpu_limit=1.1,
@@ -196,8 +197,10 @@ def test_default_autoscaling():
             'cpus_user_time_secs': 240,
         },
     )
+    fake_task.__getitem__.return_value = [{'timestamp': last_measurement}, ]
     zookeeper_get_payload = {
-        'last_tstamp': (datetime.now() - timedelta(seconds=600)).strftime('%s'),
+        'last_tstamp': last_measurement,
+        'start_time': last_measurement,
         'last_error': '0',
         'iterm': '0',
         'cpu_seconds': '0',
@@ -254,6 +257,7 @@ def test_default_autoscaling_no_data():
                 mock.call('/autoscaling/fake-service/fake-instance/last_error', '0.0'),
                 mock.call('/autoscaling/fake-service/fake-instance/iterm', '0.0'),
                 mock.call('/autoscaling/fake-service/fake-instance/cpu_seconds', '0.0'),
+                mock.call('/autoscaling/fake-service/fake-instance/start_time', '0.0'),
             ),
             any_order=True,
         )

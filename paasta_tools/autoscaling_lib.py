@@ -82,12 +82,7 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
     error_zk_node = '%s/last_error' % zookeeper_root
     integral_term_zk_node = '%s/iterm' % zookeeper_root
     cpu_seconds_zk_node = '%s/cpu_seconds' % zookeeper_root
-
-    current_time = int(datetime.datetime.now().strftime('%s'))
-    error = 0.0
-    iterm = 0.0
-    pid_output = 0
-    average_cpu_seconds = 0.0
+    start_time_zk_node = '%s/start_time' % zookeeper_root
 
     def clamp_value(number):
         """Limits the PID output to scaling up/down by 1.
@@ -97,7 +92,8 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
     def get_resource_data_from_task(task):
         cpu_shares = task.cpu_limit - .1
         used_seconds = task.stats.get('cpus_system_time_secs', 0.0) + task.stats.get('cpus_user_time_secs', 0.0)
-        return float(used_seconds) / cpu_shares, float(task.rss) / task.mem_limit
+        start_time = task['statuses'][0]['timestamp']
+        return float(used_seconds) / cpu_shares, float(task.rss) / task.mem_limit, float(start_time)
 
     def get_zookeeper_data():
         with ZookeeperPool() as zk:
@@ -105,28 +101,36 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
             last_error, _ = zk.get(error_zk_node)
             iterm, _ = zk.get(integral_term_zk_node)
             last_average_cpu_seconds, _ = zk.get(cpu_seconds_zk_node)
-            last_time = int(last_time)
-            last_error = float(last_error)
-            iterm = float(iterm)
-            last_average_cpu_seconds = float(last_average_cpu_seconds)
-            return last_time, last_error, iterm, last_average_cpu_seconds
+            last_average_start_time, _ = zk.get(start_time_zk_node)
+            return (float(x) for x in (last_time, last_error, iterm, last_average_cpu_seconds, last_average_start_time))
 
-    def send_zookeeper_data(current_time, error, iterm, average_cpu_seconds):
+    def send_zookeeper_data(current_time, error, iterm, average_cpu_seconds, average_start_time):
         with ZookeeperPool() as zk:
             zk.ensure_path(tstamp_zk_node)
             zk.ensure_path(error_zk_node)
             zk.ensure_path(integral_term_zk_node)
             zk.ensure_path(cpu_seconds_zk_node)
+            zk.ensure_path(start_time_zk_node)
             zk.set(tstamp_zk_node, str(current_time))
             zk.set(error_zk_node, str(error))
             zk.set(integral_term_zk_node, str(iterm))
             zk.set(cpu_seconds_zk_node, str(average_cpu_seconds))
+            zk.set(start_time_zk_node, str(average_start_time))
+
+    def get_current_time():
+        return int(datetime.datetime.now().strftime('%s'))
+
+    current_time = get_current_time()
 
     try:
-        last_time, last_error, iterm, last_average_cpu_seconds = get_zookeeper_data()
+        last_time, last_error, iterm, last_average_cpu_seconds, last_average_start_time = get_zookeeper_data()
     except NoNodeError:
         # we have no historical data for this service yet
-        pass
+        error = 0.0
+        iterm = 0.0
+        pid_output = 0
+        average_cpu_seconds = 0.0
+        average_start_time = 0.0
     else:
         time_delta = current_time - last_time
         if time_delta < delay:
@@ -138,8 +142,16 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
             return 0
 
         resource_data = [get_resource_data_from_task(task) for task in mesos_tasks]
-        average_cpu_seconds, average_ram = (sum(item) / len(resource_data) for item in zip(*resource_data))
-        average_cpu = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
+        average_cpu_seconds, average_ram, average_start_time = (
+            sum(item) / len(resource_data) for item in zip(*resource_data))
+
+        current_time = get_current_time()
+
+        time_delta = current_time - last_time
+        cpu_seconds_delta = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
+        start_time_delta = (average_start_time - last_average_start_time) / time_delta
+
+        average_cpu = (cpu_seconds_delta + start_time_delta) / time_delta
 
         # if one resource is underprovisioned and one is overprovisioned, we still want to scale up
         max_utilization = max(average_cpu, average_ram)
@@ -152,6 +164,7 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
         error=error,
         iterm=iterm,
         average_cpu_seconds=average_cpu_seconds,
+        average_start_time=average_start_time,
     )
 
     return int(pid_output)
