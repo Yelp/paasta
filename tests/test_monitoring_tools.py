@@ -303,6 +303,8 @@ class TestMonitoring_Tools:
         fake_irc = '#fake'
         fake_soa_dir = '/fake/soa/dir'
         self.fake_cluster = 'fake_cluster'
+        fake_sensu_host = 'fake_sensu_host'
+        fake_sensu_port = 12345
         expected_runbook = 'http://y/paasta-troubleshooting'
         expected_check_name = fake_check_name
         expected_kwargs = {
@@ -368,6 +370,9 @@ class TestMonitoring_Tools:
             load_system_paasta_config_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
+            load_system_paasta_config_patch.return_value.get_sensu_host = mock.Mock(return_value=fake_sensu_host)
+            load_system_paasta_config_patch.return_value.get_sensu_port = mock.Mock(return_value=fake_sensu_port)
+
             monitoring_tools.send_event(
                 fake_service,
                 fake_check_name,
@@ -376,6 +381,7 @@ class TestMonitoring_Tools:
                 fake_output,
                 fake_soa_dir
             )
+
             get_team_patch.assert_called_once_with(
                 fake_monitoring_overrides,
                 fake_service,
@@ -407,9 +413,56 @@ class TestMonitoring_Tools:
                 fake_status,
                 fake_output,
                 fake_team,
+                sensu_host=fake_sensu_host,
+                sensu_port=fake_sensu_port,
                 **expected_kwargs
             )
             load_system_paasta_config_patch.return_value.get_cluster.assert_called_once_with()
+
+    def test_send_event_sensu_host_is_None(self):
+        fake_service = 'fake_service'
+        fake_monitoring_overrides = {}
+        fake_check_name = 'fake_check_name'
+        fake_status = '42'
+        fake_output = 'The http port is not open'
+        fake_soa_dir = '/fake/soa/dir'
+        self.fake_cluster = 'fake_cluster'
+        fake_sensu_port = 12345
+
+        with contextlib.nested(
+            mock.patch("paasta_tools.monitoring_tools.get_team", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_tip", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_notification_email", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_irc_channels", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_ticket", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_project", autospec=True),
+            mock.patch("paasta_tools.monitoring_tools.get_page", autospec=True),
+            mock.patch("pysensu_yelp.send_event", autospec=True),
+            mock.patch('paasta_tools.monitoring_tools.load_system_paasta_config', autospec=True),
+        ) as (
+            get_team_patch,
+            get_tip_patch,
+            get_notification_email_patch,
+            get_irc_patch,
+            get_ticket_patch,
+            get_project_patch,
+            get_page_patch,
+            pysensu_yelp_send_event_patch,
+            load_system_paasta_config_patch,
+        ):
+            load_system_paasta_config_patch.return_value.get_sensu_host = mock.Mock(return_value=None)
+            load_system_paasta_config_patch.return_value.get_sensu_port = mock.Mock(return_value=fake_sensu_port)
+
+            monitoring_tools.send_event(
+                fake_service,
+                fake_check_name,
+                fake_monitoring_overrides,
+                fake_status,
+                fake_output,
+                fake_soa_dir
+            )
+
+            assert pysensu_yelp_send_event_patch.call_count == 0
 
     def test_read_monitoring_config(self):
         fake_name = 'partial'

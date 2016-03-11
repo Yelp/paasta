@@ -144,7 +144,7 @@ class TestSetupChronosJob:
             load_chronos_job_config_patch,
             setup_job_patch,
             load_system_paasta_config_patch,
-            send_event_patch
+            send_event_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.MagicMock(return_value=self.fake_cluster)
             with raises(SystemExit) as excinfo:

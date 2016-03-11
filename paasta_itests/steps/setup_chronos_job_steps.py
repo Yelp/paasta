@@ -37,6 +37,18 @@ def run_setup_chronos_job(context, service_instance):
     context.exit_code, context.output = exit_code, output
 
 
+@then(u'we should get exit code {expected_exit_code:d}')
+def check_exit_code(context, expected_exit_code):
+    try:
+        assert context.exit_code == expected_exit_code, \
+            "expected %d, got %d" % (expected_exit_code, context.exit_code)
+    except AssertionError:
+        # behave likes to back up by two lines and then print some stuff, which clobbers my output, so I stick some
+        # extra newlines on here.
+        print "Output of setup_chronos_job:\n" + context.output + "\n\n"
+        raise
+
+
 @when(u'we create {job_count:d} disabled jobs that look like the job stored as "{job_name}"')
 def old_jobs_leftover(context, job_count, job_name):
     for i in xrange(job_count):

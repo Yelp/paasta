@@ -66,14 +66,15 @@ def marathon_restart_gets_new_task_ids(context, job_id):
     cluster = context.system_paasta_config['cluster']
 
     old_tasks = context.marathon_client.get_app(app_id).tasks
-    marathon_serviceinit.restart_marathon_job(
-        service,
-        instance,
-        app_id,
-        normal_instance_count,
-        context.marathon_client,
-        cluster
-    )
+    with mock.patch('paasta_tools.marathon_serviceinit._log', autospec=True):
+        marathon_serviceinit.restart_marathon_job(
+            service,
+            instance,
+            app_id,
+            normal_instance_count,
+            context.marathon_client,
+            cluster
+        )
     print "Sleeping 5 seconds to wait for %s to be restarted." % service
     time.sleep(5)
     new_tasks = context.marathon_client.get_app(app_id).tasks

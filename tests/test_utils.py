@@ -50,6 +50,7 @@ def test_get_git_url_default():
 def test_format_log_line():
     input_line = 'foo'
     fake_cluster = 'fake_cluster'
+    fake_service = 'fake_service'
     fake_instance = 'fake_instance'
     fake_component = 'build'
     fake_level = 'debug'
@@ -58,19 +59,28 @@ def test_format_log_line():
         'timestamp': fake_now,
         'level': fake_level,
         'cluster': fake_cluster,
+        'service': fake_service,
         'instance': fake_instance,
         'component': fake_component,
         'message': input_line,
     }, sort_keys=True)
     with mock.patch('paasta_tools.utils._now', autospec=True) as mock_now:
         mock_now.return_value = fake_now
-        actual = utils.format_log_line(fake_level, fake_cluster, fake_instance, fake_component, input_line)
+        actual = utils.format_log_line(
+            level=fake_level,
+            cluster=fake_cluster,
+            service=fake_service,
+            instance=fake_instance,
+            component=fake_component,
+            line=input_line,
+        )
         assert actual == expected
 
 
 def test_format_log_line_with_timestamp():
     input_line = 'foo'
     fake_cluster = 'fake_cluster'
+    fake_service = 'fake_service'
     fake_instance = 'fake_instance'
     fake_component = 'build'
     fake_level = 'debug'
@@ -79,6 +89,7 @@ def test_format_log_line_with_timestamp():
         'timestamp': fake_timestamp,
         'level': fake_level,
         'cluster': fake_cluster,
+        'service': fake_service,
         'instance': fake_instance,
         'component': fake_component,
         'message': input_line,
@@ -86,6 +97,7 @@ def test_format_log_line_with_timestamp():
     actual = utils.format_log_line(
         fake_level,
         fake_cluster,
+        fake_service,
         fake_instance,
         fake_component,
         input_line,
@@ -96,12 +108,19 @@ def test_format_log_line_with_timestamp():
 
 def test_format_log_line_rejects_invalid_components():
     with raises(utils.NoSuchLogComponent):
-        utils.format_log_line('fake_service', 'fake_line', 'BOGUS_COMPONENT', 'debug', 'fake_input')
+        utils.format_log_line(
+            level='debug',
+            cluster='fake_cluster',
+            service='fake_service',
+            instance='fake_instance',
+            line='fake_line',
+            component='BOGUS_COMPONENT',
+        )
 
 
-def test_log_raise_on_unknown_level():
+def test_ScribeLogWriter_log_raise_on_unknown_level():
     with raises(utils.NoSuchLogLevel):
-        utils._log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
+        utils.ScribeLogWriter().log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
 
 
 def test_get_log_name_for_service():
@@ -298,6 +317,41 @@ def test_SystemPaastaConfig_get_registry_dne():
         fake_config.get_docker_registry()
 
 
+def test_SystemPaastaConfig_get_sensu_host_default():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    actual = fake_config.get_sensu_host()
+    expected = 'localhost'
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_sensu_host():
+    fake_config = utils.SystemPaastaConfig({"sensu_host": "blurp"}, '/some/fake/dir')
+    actual = fake_config.get_sensu_host()
+    expected = 'blurp'
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_sensu_host_None():
+    fake_config = utils.SystemPaastaConfig({"sensu_host": None}, '/some/fake/dir')
+    actual = fake_config.get_sensu_host()
+    expected = None
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_sensu_port_default():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    actual = fake_config.get_sensu_port()
+    expected = 3030
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_sensu_port():
+    fake_config = utils.SystemPaastaConfig({"sensu_port": 4040}, '/some/fake/dir')
+    actual = fake_config.get_sensu_port()
+    expected = 4040
+    assert actual == expected
+
+
 def test_atomic_file_write():
     with mock.patch('tempfile.NamedTemporaryFile', autospec=True) as ntf_patch:
         file_patch = ntf_patch().__enter__()
@@ -352,7 +406,13 @@ def test_atomic_file_write_itest():
 
 
 def test_configure_log():
-    utils.configure_log()
+    fake_log_writer = {'driver': 'fake'}
+    with mock.patch('paasta_tools.utils.load_system_paasta_config') as mock_load_system_paasta_config:
+        mock_load_system_paasta_config().get_log_writer.return_value = fake_log_writer
+        with mock.patch('paasta_tools.utils.get_log_writer_class') as mock_get_log_writer_class:
+            utils.configure_log()
+            mock_get_log_writer_class.assert_called_once_with('fake')
+            mock_get_log_writer_class('fake').assert_called_once_with(**fake_log_writer)
 
 
 def test_compose_job_id_without_hashes():
@@ -1170,3 +1230,64 @@ def test_parse_timestamp():
     actual = utils.parse_timestamp('19700101T000000')
     expected = datetime.datetime(year=1970, month=1, day=1, hour=0, minute=0, second=0)
     assert actual == expected
+
+
+def test_null_log_writer():
+    """Basic smoke test for NullLogWriter"""
+    lw = utils.NullLogWriter(driver='null')
+    lw.log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
+
+
+class TestFileLogWriter:
+    def test_smoke(self):
+        """Smoke test for FileLogWriter"""
+        fw = utils.FileLogWriter('/dev/null')
+        fw.log('fake_service', 'fake_line', 'build', 'BOGUS_LEVEL')
+
+    def test_format_path(self):
+        """Test the path formatting for FileLogWriter"""
+        fw = utils.FileLogWriter("/logs/{service}/{component}/{level}/{cluster}/{instance}")
+        expected = "/logs/a/b/c/d/e"
+        assert expected == fw.format_path("a", "b", "c", "d", "e")
+
+    def test_maybe_flock(self):
+        """Make sure we flock and unflock when flock=True"""
+        with mock.patch("paasta_tools.utils.fcntl") as mock_fcntl:
+            fw = utils.FileLogWriter("/dev/null", flock=True)
+            mock_file = mock.Mock()
+            with fw.maybe_flock(mock_file):
+                mock_fcntl.flock.assert_called_once_with(mock_file, mock_fcntl.LOCK_EX)
+                mock_fcntl.flock.reset_mock()
+
+            mock_fcntl.flock.assert_called_once_with(mock_file, mock_fcntl.LOCK_UN)
+
+    def test_maybe_flock_flock_false(self):
+        """Make sure we don't flock/unflock when flock=False"""
+        with mock.patch("paasta_tools.utils.fcntl") as mock_fcntl:
+            fw = utils.FileLogWriter("/dev/null", flock=False)
+            mock_file = mock.Mock()
+            with fw.maybe_flock(mock_file):
+                assert mock_fcntl.flock.call_count == 0
+
+            assert mock_fcntl.flock.call_count == 0
+
+    def test_log_makes_exactly_one_write_call(self):
+        """We want to make sure that log() makes exactly one call to write, since that's how we ensure atomicity."""
+        fake_file = mock.Mock()
+        fake_contextmgr = mock.Mock(
+            __enter__=lambda _self: fake_file,
+            __exit__=lambda _self, t, v, tb: None
+        )
+
+        fake_line = "text" * 1000000
+
+        with mock.patch("paasta_tools.utils.io.FileIO", return_value=fake_contextmgr, autospec=True) as mock_FileIO:
+            fw = utils.FileLogWriter("/dev/null", flock=False)
+
+            with mock.patch("paasta_tools.utils.format_log_line", return_value=fake_line, autospec=True) as fake_fll:
+                fw.log("service", "line", "component", level="level", cluster="cluster", instance="instance")
+
+            fake_fll.assert_called_once_with("level", "cluster", "service", "instance", "component", "line")
+
+            mock_FileIO.assert_called_once_with("/dev/null", mode=fw.mode, closefd=True)
+            fake_file.write.assert_called_once_with("%s\n" % fake_line)

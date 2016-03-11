@@ -16,8 +16,11 @@ from __future__ import print_function
 import contextlib
 import datetime
 import errno
+import fcntl
 import glob
 import hashlib
+import importlib
+import io
 import json
 import logging
 import os
@@ -33,7 +36,6 @@ from subprocess import PIPE
 from subprocess import Popen
 from subprocess import STDOUT
 
-import clog
 import dateutil.tz
 import docker
 import service_configuration_lib
@@ -47,7 +49,7 @@ from docker.utils import kwargs_from_env
 # It's used to compose a job's full ID from its name and instance
 SPACER = '.'
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
-PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = '/etc/paasta/'
+PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get('PAASTA_SYSTEM_CONFIG_DIR', '/etc/paasta/')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
@@ -468,9 +470,46 @@ class NoSuchLogLevel(Exception):
     pass
 
 
+# The active log writer.
+_log_writer = None
+# The map of name -> LogWriter subclasses, used by configure_log.
+_log_writer_classes = {}
+
+
+def register_log_writer(name):
+    """Returns a decorator that registers that bounce function at a given name
+    so get_log_writer_classes can find it."""
+    def outer(bounce_func):
+        _log_writer_classes[name] = bounce_func
+        return bounce_func
+    return outer
+
+
+def get_log_writer_class(name):
+    return _log_writer_classes[name]
+
+
+def list_log_writers():
+    return _log_writer_classes.keys()
+
+
 def configure_log():
     """We will log to the yocalhost binded scribe."""
-    clog.config.configure(scribe_host='169.254.255.254', scribe_port=1463, scribe_disable=False)
+    log_writer_options = load_system_paasta_config().get_log_writer()
+    global _log_writer
+    LogWriterClass = get_log_writer_class(log_writer_options['driver'])
+    _log_writer = LogWriterClass(**log_writer_options)
+
+
+def _log(*args, **kwargs):
+    if _log_writer is None:
+        configure_log()
+    return _log_writer.log(*args, **kwargs)
+
+
+class LogWriter(object):
+    def log(self, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+        raise NotImplementedError()
 
 
 def _now():
@@ -482,7 +521,7 @@ def remove_ansi_escape_sequences(line):
     return no_escape.sub('', line)
 
 
-def format_log_line(level, cluster, instance, component, line, timestamp=None):
+def format_log_line(level, cluster, service, instance, component, line, timestamp=None):
     """Accepts a string 'line'.
 
     Returns an appropriately-formatted dictionary which can be serialized to
@@ -496,6 +535,7 @@ def format_log_line(level, cluster, instance, component, line, timestamp=None):
         'timestamp': timestamp,
         'level': level,
         'cluster': cluster,
+        'service': service,
         'instance': instance,
         'component': component,
         'message': line,
@@ -507,19 +547,81 @@ def get_log_name_for_service(service):
     return 'stream_paasta_%s' % service
 
 
-def _log(service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
-    """This expects someone (currently the paasta cli main()) to have already
-    configured the log object. We'll just write things to it.
-    """
-    if level == 'event':
-        print(line, file=sys.stdout)
-    elif level == 'debug':
-        print(line, file=sys.stderr)
-    else:
-        raise NoSuchLogLevel
-    log_name = get_log_name_for_service(service)
-    formatted_line = format_log_line(level, cluster, instance, component, line)
-    clog.log_line(log_name, formatted_line)
+@register_log_writer('scribe')
+class ScribeLogWriter(LogWriter):
+    def __init__(self, scribe_host='169.254.255.254', scribe_port=1463, scribe_disable=False, **kwargs):
+        self.clog = importlib.import_module('clog')
+        self.clog.config.configure(scribe_host=scribe_host, scribe_port=scribe_port, scribe_disable=scribe_disable)
+
+    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+        """This expects someone (currently the paasta cli main()) to have already
+        configured the log object. We'll just write things to it.
+        """
+        if level == 'event':
+            print(line, file=sys.stdout)
+        elif level == 'debug':
+            print(line, file=sys.stderr)
+        else:
+            raise NoSuchLogLevel
+        log_name = get_log_name_for_service(service)
+        formatted_line = format_log_line(level, cluster, service, instance, component, line)
+        self.clog.log_line(log_name, formatted_line)
+
+
+@register_log_writer('null')
+class NullLogWriter(LogWriter):
+    """A LogWriter class that doesn't do anything. Primarily useful for integration tests where we don't care about
+    logs."""
+
+    def __init__(self, **kwargs):
+        pass
+
+    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+        pass
+
+
+@register_log_writer('file')
+class FileLogWriter(LogWriter):
+    def __init__(self, path_format, mode='a+', line_delimeter='\n', flock=False):
+        self.path_format = path_format
+        self.mode = mode
+        self.flock = flock
+        self.line_delimeter = line_delimeter
+
+    @contextlib.contextmanager
+    def maybe_flock(self, fd):
+        if self.flock:
+            try:
+                fcntl.flock(fd, fcntl.LOCK_EX)
+                yield
+            finally:
+                fcntl.flock(fd, fcntl.LOCK_UN)
+        else:
+            yield
+
+    def format_path(self, service, component, level, cluster, instance):
+        return self.path_format.format(
+            service=service,
+            component=component,
+            level=level,
+            cluster=cluster,
+            instance=instance,
+        )
+
+    def log(self, service, line, component, level=DEFAULT_LOGLEVEL, cluster=ANY_CLUSTER, instance=ANY_INSTANCE):
+        path = self.format_path(service, component, level, cluster, instance)
+
+        # We use io.FileIO here because it guarantees that write() is implemented with a single write syscall,
+        # and on Linux, writes to O_APPEND files with a single write syscall are atomic.
+        #
+        # https://docs.python.org/2/library/io.html#io.FileIO
+        # http://article.gmane.org/gmane.linux.kernel/43445
+
+        to_write = "%s%s" % (format_log_line(level, cluster, service, instance, component, line), self.line_delimeter)
+
+        with io.FileIO(path, mode=self.mode, closefd=True) as f:
+            with self.maybe_flock(f):
+                f.write(to_write)
 
 
 def _timeout(process):
@@ -661,6 +763,40 @@ class SystemPaastaConfig(dict):
         except KeyError:
             raise PaastaNotConfiguredError(
                 'Could not find fsm_deploy_pipeline in configuration directory: %s' % self.directory)
+
+    def get_log_writer(self):
+        """Get the log_writer configuration out of global paasta config
+
+        :returns: The log_writer dictionary.
+        """
+        try:
+            return self['log_writer']
+        except KeyError:
+            raise PaastaNotConfiguredError('Could not find log_writer in configuration directory: %s' % self.directory)
+
+    def get_log_reader(self):
+        """Get the log_reader configuration out of global paasta config
+
+        :returns: the log_reader dictionary.
+        """
+        try:
+            return self['log_reader']
+        except KeyError:
+            raise PaastaNotConfiguredError('Could not find log_reader in configuration directory: %s' % self.directory)
+
+    def get_sensu_host(self):
+        """Get the host that we should send sensu events to.
+
+        :returns: the sensu_host string, or localhost if not specified.
+        """
+        return self.get('sensu_host', 'localhost')
+
+    def get_sensu_port(self):
+        """Get the port that we should send sensu events to.
+
+        :returns: the sensu_port value as an integer, or 3030 if not specified.
+        """
+        return int(self.get('sensu_port', 3030))
 
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):

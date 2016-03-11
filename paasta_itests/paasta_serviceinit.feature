@@ -21,7 +21,8 @@ Feature: paasta_serviceinit
       And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
-      And we store the name of the job for the service testservice and instance testinstance as myjob
+     Then we should get exit code 0
+     When we store the name of the job for the service testservice and instance testinstance as myjob
       And we wait for the chronos job stored as "myjob" to appear in the job list
      Then paasta_serviceinit status for the service_instance "testservice.testinstance" exits with return code 0 and the correct output
 
@@ -30,7 +31,8 @@ Feature: paasta_serviceinit
       And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
-      And we store the name of the job for the service testservice and instance testinstance as myjob
+     Then we should get exit code 0
+     When we store the name of the job for the service testservice and instance testinstance as myjob
       And we wait for the chronos job stored as "myjob" to appear in the job list
      Then paasta_serviceinit status --verbose for the service_instance "testservice.testinstance" exits with return code 0 and the correct output
 
@@ -47,7 +49,8 @@ Feature: paasta_serviceinit
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
-      And we store the name of the job for the service testservice and instance testinstance as myjob
+     Then we should get exit code 0
+     When we store the name of the job for the service testservice and instance testinstance as myjob
       And we wait for the chronos job stored as "myjob" to appear in the job list
       And we paasta_serviceinit emergency-stop the service_instance "testservice.testinstance"
      Then the job stored as "myjob" is disabled in chronos
@@ -58,7 +61,8 @@ Feature: paasta_serviceinit
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
-      And we store the name of the job for the service testservice and instance testinstance as myjob
+     Then we should get exit code 0
+     When we store the name of the job for the service testservice and instance testinstance as myjob
       And we wait for the chronos job stored as "myjob" to appear in the job list
       And we paasta_serviceinit emergency-start the service_instance "testservice.testinstance"
      Then the job stored as "myjob" is enabled in chronos
@@ -69,7 +73,8 @@ Feature: paasta_serviceinit
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
-      And we store the name of the job for the service testservice and instance testinstance as myjob
+     Then we should get exit code 0
+     When we store the name of the job for the service testservice and instance testinstance as myjob
       And we wait for the chronos job stored as "myjob" to appear in the job list
       And we paasta_serviceinit emergency-start the service_instance "testservice.testinstance"
      Then the job stored as "myjob" is enabled in chronos
@@ -80,7 +85,8 @@ Feature: paasta_serviceinit
       And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
       And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
      When we run setup_chronos_job for service_instance "testservice.testinstance"
-      And we store the name of the job for the service testservice and instance testinstance as myjob
+     Then we should get exit code 0
+     When we store the name of the job for the service testservice and instance testinstance as myjob
       And we wait for the chronos job stored as "myjob" to appear in the job list
      When we set the "cmd" field of the chronos config for service "testservice" and instance "testinstance" to "sleep 60m"
       And we paasta_serviceinit emergency-start the service_instance "testservice.testinstance"

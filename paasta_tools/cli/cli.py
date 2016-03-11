@@ -23,7 +23,6 @@ import pkg_resources
 from paasta_tools.cli import cmds
 from paasta_tools.cli.utils import load_method
 from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
-from paasta_tools.utils import configure_log
 
 
 def add_subparser(command, subparsers):
@@ -92,7 +91,6 @@ def main(argv=None):
 
     Ensure we kill any child pids before we quit
     """
-    configure_log()
     args = parse_args(argv)
     return_code = args.command(args)
     sys.exit(return_code)

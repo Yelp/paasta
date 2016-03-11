@@ -128,41 +128,6 @@ def prefix(input_string, component):
     return "%s: %s" % (LOG_COMPONENTS[component]['color'](component), input_string)
 
 
-def determine_scribereader_envs(components, cluster):
-    """Returns a list of environments that scribereader needs to connect
-    to based on a given list of components and the cluster involved.
-
-    Some components are in certain environments, regardless of the cluster.
-    Some clusters do not match up with the scribe environment names, so
-    we figure that out here"""
-    envs = []
-    for component in components:
-        # If a component has a 'source_env', we use that
-        # otherwise we lookup what scribe env is associated with a given cluster
-        env = LOG_COMPONENTS[component].get('source_env', cluster_to_scribe_env(cluster))
-        envs.append(env)
-    return set(envs)
-
-
-def cluster_to_scribe_env(cluster):
-    """Looks up the particular scribe env associated with a given paasta cluster.
-
-    Scribe has its own "environment" key, which doesn't always map 1:1 with our
-    cluster names, so we have to maintain a manual mapping.
-
-    This mapping is deployed as a config file via puppet as part of the public
-    config deployed to every server.
-    """
-    system_paasta_config = load_system_paasta_config()
-    scribe_map = system_paasta_config.get_scribe_map()
-    env = scribe_map.get(cluster, None)
-    if env is None:
-        print "I don't know where scribe logs for %s live?" % cluster
-        sys.exit(1)
-    else:
-        return env
-
-
 def paasta_log_line_passes_filter(line, levels, service, components, clusters):
     """Given a (JSON-formatted) log line, return True if the line should be
     displayed given the provided levels, components, and clusters; return False
@@ -203,7 +168,7 @@ def extract_utc_timestamp_from_log_line(line):
     return utc_timestamp
 
 
-def parse_marathon_log_line(line, clusters):
+def parse_marathon_log_line(line, clusters, service):
     utc_timestamp = extract_utc_timestamp_from_log_line(line)
     if not utc_timestamp:
         return ''
@@ -211,6 +176,7 @@ def parse_marathon_log_line(line, clusters):
         return format_log_line(
             level='event',
             cluster=clusters[0],
+            service=service,
             instance='ALL',
             component='marathon',
             line=line.strip(),
@@ -218,7 +184,7 @@ def parse_marathon_log_line(line, clusters):
         )
 
 
-def parse_chronos_log_line(line, clusters):
+def parse_chronos_log_line(line, clusters, service):
     utc_timestamp = extract_utc_timestamp_from_log_line(line)
     if not utc_timestamp:
         return ''
@@ -226,6 +192,7 @@ def parse_chronos_log_line(line, clusters):
         return format_log_line(
             level='event',
             cluster=clusters[0],
+            service=service,
             instance='ALL',
             component='chronos',
             line=line.strip(),
@@ -255,36 +222,6 @@ def chronos_log_line_passes_filter(line, levels, service, components, clusters):
         log.debug('Trouble parsing line as json. Skipping. Line: %r' % line)
         return False
     return chronos_tools.compose_job_id(service, '') in parsed_line.get('message', '')
-
-
-def scribe_tail(scribe_env, stream_name, service, levels, components, clusters, queue, filter_fn, parse_fn=None):
-    """Creates a scribetailer for a particular environment.
-
-    When it encounters a line that it should report, it sticks it into the
-    provided queue.
-
-    This code is designed to run in a thread as spawned by tail_paasta_logs().
-    """
-    try:
-        log.debug("Going to tail %s scribe stream in %s" % (stream_name, scribe_env))
-        host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
-        host = host_and_port['host']
-        port = host_and_port['port']
-        tailer = scribereader.get_stream_tailer(stream_name, host, port)
-        for line in tailer:
-            if parse_fn:
-                line = parse_fn(line, clusters)
-            if filter_fn(line, levels, service, components, clusters):
-                queue.put(line)
-    except KeyboardInterrupt:
-        # Die peacefully rather than printing N threads worth of stack
-        # traces.
-        pass
-    except StreamTailerSetupError:
-        log.error("Failed to setup stream tailing for %s in %s" % (stream_name, scribe_env))
-        log.error("Don't Panic! This can happen the first time a service is deployed because the log")
-        log.error("doesn't exist yet. Please wait for the service to be deployed in %s and try again." % scribe_env)
-        raise
 
 
 def print_log(line, requested_levels, raw_mode=False):
@@ -356,171 +293,268 @@ def prettify_log_line(line, requested_levels):
     return pretty_line
 
 
-def tail_paasta_logs(service, levels, components, clusters, raw_mode=False):
-    """Sergeant function for spawning off all the right log tailing functions.
+# The map of name -> LogReader subclasses, used by configure_log.
+_log_reader_classes = {}
 
-    NOTE: This function spawns concurrent processes and doesn't necessarily
-    worry about cleaning them up! That's because we expect to just exit the
-    main process when this function returns (as main() does). Someone calling
-    this function directly with something like "while True: tail_paasta_logs()"
-    may be very sad.
 
-    NOTE: We try pretty hard to supress KeyboardInterrupts to prevent big
-    useless stack traces, but it turns out to be non-trivial and we fail ~10%
-    of the time. We decided we could live with it and we're shipping this to
-    see how it fares in real world testing.
+def register_log_reader(name):
+    """Returns a decorator that registers a log reader class at a given name
+    so get_log_reader_classes can find it."""
+    def outer(log_reader_class):
+        _log_reader_classes[name] = log_reader_class
+        return log_reader_class
+    return outer
 
-    Here are some things we read about this problem:
-    * http://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
-    * http://jtushman.github.io/blog/2014/01/14/python-%7C-multiprocessing-and-interrupts/
-    * http://bryceboe.com/2010/08/26/python-multiprocessing-and-keyboardinterrupt/
 
-    We could also try harder to terminate processes from more places. We could
-    use process.join() to ensure things have a chance to die. We punted these
-    things.
+def get_log_reader_class(name):
+    return _log_reader_classes[name]
 
-    It's possible this whole multiprocessing strategy is wrong-headed. If you
-    are reading this code to curse whoever wrote it, see discussion in
-    PAASTA-214 and https://reviewboard.yelpcorp.com/r/87320/ and feel free to
-    implement one of the other options.
-    """
-    scribe_envs = set([])
-    for cluster in clusters:
-        scribe_envs.update(determine_scribereader_envs(components, cluster))
-    log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
-    queue = Queue()
-    spawned_processes = []
-    for scribe_env in scribe_envs:
-        # Tail stream_paasta_<service> for build or deploy components
-        if any([component in components for component in DEFAULT_COMPONENTS]):
-            # Start a thread that tails scribe in this env
-            kw = {
-                'scribe_env': scribe_env,
-                'stream_name': get_log_name_for_service(service),
-                'service': service,
-                'levels': levels,
-                'components': components,
-                'clusters': clusters,
-                'queue': queue,
-                'filter_fn': paasta_log_line_passes_filter,
-            }
-            process = Process(target=scribe_tail, kwargs=kw)
-            spawned_processes.append(process)
-            process.start()
 
-        # Tail Marathon logs for the relevant clusters for this service
-        if 'marathon' in components:
-            for cluster in clusters:
+def list_log_readers():
+    return _log_reader_classes.keys()
+
+
+def get_log_reader():
+    log_reader_config = load_system_paasta_config().get_log_reader()
+    log_reader_class = get_log_reader_class(log_reader_config['driver'])
+    return log_reader_class(**log_reader_config)
+
+
+class LogReader(object):
+    def __init__(self, **kwargs):
+        pass
+
+    def tail_logs(service, levels, components, clusters, raw_mode=False):
+        raise NotImplementedError("tail_logs is not implemented")
+
+
+@register_log_reader('scribereader')
+class ScribeLogReader(LogReader):
+    def __init__(self, cluster_map, **kwargs):
+        if scribereader is None:
+            raise Exception("scribereader package must be available to use scribereader log reading backend")
+        self.cluster_map = cluster_map
+
+    def tail_logs(self, service, levels, components, clusters, raw_mode=False):
+        """Sergeant function for spawning off all the right log tailing functions.
+
+        NOTE: This function spawns concurrent processes and doesn't necessarily
+        worry about cleaning them up! That's because we expect to just exit the
+        main process when this function returns (as main() does). Someone calling
+        this function directly with something like "while True: tail_paasta_logs()"
+        may be very sad.
+
+        NOTE: We try pretty hard to supress KeyboardInterrupts to prevent big
+        useless stack traces, but it turns out to be non-trivial and we fail ~10%
+        of the time. We decided we could live with it and we're shipping this to
+        see how it fares in real world testing.
+
+        Here are some things we read about this problem:
+        * http://stackoverflow.com/questions/1408356/keyboard-interrupts-with-pythons-multiprocessing-pool
+        * http://jtushman.github.io/blog/2014/01/14/python-%7C-multiprocessing-and-interrupts/
+        * http://bryceboe.com/2010/08/26/python-multiprocessing-and-keyboardinterrupt/
+
+        We could also try harder to terminate processes from more places. We could
+        use process.join() to ensure things have a chance to die. We punted these
+        things.
+
+        It's possible this whole multiprocessing strategy is wrong-headed. If you
+        are reading this code to curse whoever wrote it, see discussion in
+        PAASTA-214 and https://reviewboard.yelpcorp.com/r/87320/ and feel free to
+        implement one of the other options.
+        """
+        scribe_envs = set([])
+        for cluster in clusters:
+            scribe_envs.update(self.determine_scribereader_envs(components, cluster))
+        log.info("Would connect to these envs to tail scribe logs: %s" % scribe_envs)
+        queue = Queue()
+        spawned_processes = []
+        for scribe_env in scribe_envs:
+            # Tail stream_paasta_<service> for build or deploy components
+            if any([component in components for component in DEFAULT_COMPONENTS]):
+                # Start a thread that tails scribe in this env
                 kw = {
                     'scribe_env': scribe_env,
-                    'stream_name': 'stream_marathon_%s' % cluster,
+                    'stream_name': get_log_name_for_service(service),
                     'service': service,
                     'levels': levels,
                     'components': components,
-                    'clusters': [cluster],
+                    'clusters': clusters,
                     'queue': queue,
-                    'parse_fn': parse_marathon_log_line,
-                    'filter_fn': marathon_log_line_passes_filter,
+                    'filter_fn': paasta_log_line_passes_filter,
                 }
-                process = Process(target=scribe_tail, kwargs=kw)
+                process = Process(target=self.scribe_tail, kwargs=kw)
                 spawned_processes.append(process)
                 process.start()
 
-        # Tail Chronos logs for the relevant clusters for this service
-        if 'chronos' in components:
-            for cluster in clusters:
-                kw = {
-                    'scribe_env': scribe_env,
-                    'stream_name': 'stream_chronos_%s' % cluster,
-                    'service': service,
-                    'levels': levels,
-                    'components': components,
-                    'clusters': [cluster],
-                    'queue': queue,
-                    'parse_fn': parse_chronos_log_line,
-                    'filter_fn': chronos_log_line_passes_filter,
-                }
-                process = Process(target=scribe_tail, kwargs=kw)
-                spawned_processes.append(process)
-                process.start()
-    # Pull things off the queue and output them. If any thread dies we are no
-    # longer presenting the user with the full picture so we quit.
-    #
-    # This is convenient for testing, where a fake scribe_tail() can emit a
-    # fake log and exit. Without the thread aliveness check, we would just sit
-    # here forever even though the threads doing the tailing are all gone.
-    #
-    # NOTE: A noisy tailer in one scribe_env (such that the queue never gets
-    # empty) will prevent us from ever noticing that another tailer has died.
-    while True:
-        try:
-            # This is a blocking call with a timeout for a couple reasons:
-            #
-            # * If the queue is empty and we get_nowait(), we loop very tightly
-            # and accomplish nothing.
-            #
-            # * Testing revealed a race condition where print_log() is called
-            # and even prints its message, but this action isn't recorded on
-            # the patched-in print_log(). This resulted in test flakes. A short
-            # timeout seems to soothe this behavior: running this test 10 times
-            # with a timeout of 0.0 resulted in 2 failures; running it with a
-            # timeout of 0.1 resulted in 0 failures.
-            #
-            # * There's a race where thread1 emits its log line and exits
-            # before thread2 has a chance to do anything, causing us to bail
-            # out via the Queue Empty and thread aliveness check.
-            #
-            # We've decided to live with this for now and see if it's really a
-            # problem. The threads in test code exit pretty much immediately
-            # and a short timeout has been enough to ensure correct behavior
-            # there, so IRL with longer start-up times for each thread this
-            # will surely be fine.
-            #
-            # UPDATE: Actually this is leading to a test failure rate of about
-            # 1/10 even with timeout of 1s. I'm adding a sleep to the threads
-            # in test code to smooth this out, then pulling the trigger on
-            # moving that test to integration land where it belongs.
-            line = queue.get(True, 0.1)
-            print_log(line, levels, raw_mode)
-        except Empty:
+            # Tail Marathon logs for the relevant clusters for this service
+            if 'marathon' in components:
+                for cluster in clusters:
+                    kw = {
+                        'scribe_env': scribe_env,
+                        'stream_name': 'stream_marathon_%s' % cluster,
+                        'service': service,
+                        'levels': levels,
+                        'components': components,
+                        'clusters': [cluster],
+                        'queue': queue,
+                        'parse_fn': parse_marathon_log_line,
+                        'filter_fn': marathon_log_line_passes_filter,
+                    }
+                    process = Process(target=self.scribe_tail, kwargs=kw)
+                    spawned_processes.append(process)
+                    process.start()
+
+            # Tail Chronos logs for the relevant clusters for this service
+            if 'chronos' in components:
+                for cluster in clusters:
+                    kw = {
+                        'scribe_env': scribe_env,
+                        'stream_name': 'stream_chronos_%s' % cluster,
+                        'service': service,
+                        'levels': levels,
+                        'components': components,
+                        'clusters': [cluster],
+                        'queue': queue,
+                        'parse_fn': parse_chronos_log_line,
+                        'filter_fn': chronos_log_line_passes_filter,
+                    }
+                    process = Process(target=self.scribe_tail, kwargs=kw)
+                    spawned_processes.append(process)
+                    process.start()
+        # Pull things off the queue and output them. If any thread dies we are no
+        # longer presenting the user with the full picture so we quit.
+        #
+        # This is convenient for testing, where a fake scribe_tail() can emit a
+        # fake log and exit. Without the thread aliveness check, we would just sit
+        # here forever even though the threads doing the tailing are all gone.
+        #
+        # NOTE: A noisy tailer in one scribe_env (such that the queue never gets
+        # empty) will prevent us from ever noticing that another tailer has died.
+        while True:
             try:
-                # If there's nothing in the queue, take this opportunity to make
-                # sure all the tailers are still running.
-                running_processes = [tt.is_alive() for tt in spawned_processes]
-                if not running_processes or not all(running_processes):
-                    log.warn('Quitting because I expected %d log tailers to be alive but only %d are alive.' % (
-                        len(spawned_processes),
-                        running_processes.count(True),
-                    ))
-                    for process in spawned_processes:
-                        if process.is_alive():
-                            process.terminate()
+                # This is a blocking call with a timeout for a couple reasons:
+                #
+                # * If the queue is empty and we get_nowait(), we loop very tightly
+                # and accomplish nothing.
+                #
+                # * Testing revealed a race condition where print_log() is called
+                # and even prints its message, but this action isn't recorded on
+                # the patched-in print_log(). This resulted in test flakes. A short
+                # timeout seems to soothe this behavior: running this test 10 times
+                # with a timeout of 0.0 resulted in 2 failures; running it with a
+                # timeout of 0.1 resulted in 0 failures.
+                #
+                # * There's a race where thread1 emits its log line and exits
+                # before thread2 has a chance to do anything, causing us to bail
+                # out via the Queue Empty and thread aliveness check.
+                #
+                # We've decided to live with this for now and see if it's really a
+                # problem. The threads in test code exit pretty much immediately
+                # and a short timeout has been enough to ensure correct behavior
+                # there, so IRL with longer start-up times for each thread this
+                # will surely be fine.
+                #
+                # UPDATE: Actually this is leading to a test failure rate of about
+                # 1/10 even with timeout of 1s. I'm adding a sleep to the threads
+                # in test code to smooth this out, then pulling the trigger on
+                # moving that test to integration land where it belongs.
+                line = queue.get(True, 0.1)
+                print_log(line, levels, raw_mode)
+            except Empty:
+                try:
+                    # If there's nothing in the queue, take this opportunity to make
+                    # sure all the tailers are still running.
+                    running_processes = [tt.is_alive() for tt in spawned_processes]
+                    if not running_processes or not all(running_processes):
+                        log.warn('Quitting because I expected %d log tailers to be alive but only %d are alive.' % (
+                            len(spawned_processes),
+                            running_processes.count(True),
+                        ))
+                        for process in spawned_processes:
+                            if process.is_alive():
+                                process.terminate()
+                        break
+                except KeyboardInterrupt:
+                    # Die peacefully rather than printing N threads worth of stack
+                    # traces.
+                    #
+                    # This extra nested catch is because it's pretty easy to be in
+                    # the above try block when the user hits Ctrl-C which otherwise
+                    # dumps a stack trace.
+                    log.warn('Terminating.')
                     break
             except KeyboardInterrupt:
                 # Die peacefully rather than printing N threads worth of stack
                 # traces.
-                #
-                # This extra nested catch is because it's pretty easy to be in
-                # the above try block when the user hits Ctrl-C which otherwise
-                # dumps a stack trace.
                 log.warn('Terminating.')
                 break
+
+    def scribe_tail(self, scribe_env, stream_name, service, levels, components, clusters, queue, filter_fn,
+                    parse_fn=None):
+        """Creates a scribetailer for a particular environment.
+
+        When it encounters a line that it should report, it sticks it into the
+        provided queue.
+
+        This code is designed to run in a thread as spawned by tail_paasta_logs().
+        """
+        try:
+            log.debug("Going to tail %s scribe stream in %s" % (stream_name, scribe_env))
+            host_and_port = scribereader.get_env_scribe_host(scribe_env, True)
+            host = host_and_port['host']
+            port = host_and_port['port']
+            tailer = scribereader.get_stream_tailer(stream_name, host, port)
+            for line in tailer:
+                if parse_fn:
+                    line = parse_fn(line, clusters, service)
+                if filter_fn(line, levels, service, components, clusters):
+                    queue.put(line)
         except KeyboardInterrupt:
             # Die peacefully rather than printing N threads worth of stack
             # traces.
-            log.warn('Terminating.')
-            break
+            pass
+        except StreamTailerSetupError:
+            log.error("Failed to setup stream tailing for %s in %s" % (stream_name, scribe_env))
+            log.error("Don't Panic! This can happen the first time a service is deployed because the log")
+            log.error("doesn't exist yet. Please wait for the service to be deployed in %s and try again." % scribe_env)
+            raise
+
+    def determine_scribereader_envs(self, components, cluster):
+        """Returns a list of environments that scribereader needs to connect
+        to based on a given list of components and the cluster involved.
+
+        Some components are in certain environments, regardless of the cluster.
+        Some clusters do not match up with the scribe environment names, so
+        we figure that out here"""
+        envs = []
+        for component in components:
+            # If a component has a 'source_env', we use that
+            # otherwise we lookup what scribe env is associated with a given cluster
+            env = LOG_COMPONENTS[component].get('source_env', self.cluster_to_scribe_env(cluster))
+            envs.append(env)
+        return set(envs)
+
+    def cluster_to_scribe_env(self, cluster):
+        """Looks up the particular scribe env associated with a given paasta cluster.
+
+        Scribe has its own "environment" key, which doesn't always map 1:1 with our
+        cluster names, so we have to maintain a manual mapping.
+
+        This mapping is deployed as a config file via puppet as part of the public
+        config deployed to every server.
+        """
+        env = self.cluster_map.get(cluster, None)
+        if env is None:
+            print "I don't know where scribe logs for %s live?" % cluster
+            sys.exit(1)
+        else:
+            return env
 
 
 def paasta_logs(args):
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
-    if scribereader is None:
-        sys.exit(
-            "Unfortunately, `paasta logs` is unavailable without Scribe."
-            " We're working to support alternative logging backends in PaaSTA:"
-            " follow https://github.com/Yelp/paasta/issues/64 for updates."
-        )
     service = figure_out_service_name(args)
 
     if args.clusters is None:
@@ -541,7 +575,10 @@ def paasta_logs(args):
         levels = [DEFAULT_LOGLEVEL]
 
     log.info("Going to get logs for %s on clusters %s" % (service, clusters))
+
+    log_reader = get_log_reader()
+
     if args.tail:
-        tail_paasta_logs(service, levels, components, clusters, raw_mode=args.raw_mode)
+        log_reader.tail_logs(service, levels, components, clusters, raw_mode=args.raw_mode)
     else:
         print "Non-tailing actions are not yet supported"
