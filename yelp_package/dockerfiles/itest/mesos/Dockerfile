@@ -15,25 +15,7 @@
 FROM ubuntu:trusty
 RUN echo "deb http://repos.mesosphere.com/ubuntu trusty main" > /etc/apt/sources.list.d/mesosphere.list
 RUN apt-key adv --keyserver keyserver.ubuntu.com --recv 81026D0004C44CF7EF55ADF8DF7D54CBE56151BF
-RUN apt-get update && apt-get -y install libsasl2-modules mesos=0.23.1-0.2.61.ubuntu1404
-RUN echo -n '{\n\
-  "credentials": [\n\
-    {\n\
-      "principal": "slave",\n\
-      "secret": "secret1"\n\
-    },\n\
-    {\n\
-      "principal": "marathon",\n\
-      "secret": "secret2"\n\
-    },\n\
-    {\n\
-      "principal": "chronos",\n\
-      "secret": "secret3"\n\
-    }\n\
-  ]\n\
-}' > /etc/mesos-secrets
-RUN echo -n '{\n\
-  "principal": "slave",\n\
-  "secret": "secret1"\n\
-}' > /etc/mesos-slave-secret
+RUN apt-get update && apt-get -y install libsasl2-modules mesos=0.24.1-0.2.35.ubuntu1404
+RUN echo -n 'slave secret1\nmarathon secret2\nchronos secret3' > /etc/mesos-secrets
+RUN echo -n 'slave secret1' > /etc/mesos-slave-secret
 RUN chmod 600 /etc/mesos-secrets
