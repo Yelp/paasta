@@ -15,6 +15,7 @@ Submodules
 .. toctree::
 
    paasta_tools.am_i_mesos_leader
+   paasta_tools.autoscaling_lib
    paasta_tools.bounce_lib
    paasta_tools.check_chronos_jobs
    paasta_tools.check_marathon_services_replication
