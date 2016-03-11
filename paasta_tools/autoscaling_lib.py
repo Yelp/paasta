@@ -90,10 +90,11 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
         return min(max(number, -1), 1)
 
     def get_resource_data_from_task(task):
+        mem_usage = float(task.rss) / task.mem_limit
         cpu_shares = task.cpu_limit - .1
-        used_seconds = task.stats.get('cpus_system_time_secs', 0.0) + task.stats.get('cpus_user_time_secs', 0.0)
-        start_time = task['statuses'][0]['timestamp']
-        return float(used_seconds) / cpu_shares, float(task.rss) / task.mem_limit, float(start_time)
+        used_seconds = float(task.stats.get('cpus_system_time_secs', 0.0)) + task.stats.get('cpus_user_time_secs', 0.0)
+        start_time = float(task['statuses'][0]['timestamp'])
+        return used_seconds / cpu_shares, mem_usage, start_time, float(get_current_time())
 
     def get_zookeeper_data():
         with ZookeeperPool() as zk:
@@ -143,10 +144,8 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
             return 0
 
         resource_data = [get_resource_data_from_task(task) for task in mesos_tasks]
-        average_cpu_seconds, average_ram, average_start_time = (
+        average_cpu_seconds, average_ram, average_start_time, current_time = (
             sum(item) / len(resource_data) for item in zip(*resource_data))
-
-        current_time = get_current_time()
 
         time_delta = current_time - last_time
         cpu_seconds_delta = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
