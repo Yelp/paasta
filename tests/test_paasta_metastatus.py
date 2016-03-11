@@ -584,8 +584,8 @@ def test_get_mesos_habitat_data():
                 'id': 'test-slave',
                 'hostname': 'test.somewhere.www',
                 'resources': {
-                    'cpus': 50,
-                    'disk': 200,
+                    'cpus': 75,
+                    'disk': 250,
                     'mem': 1000,
                 },
                 'attributes': {
@@ -598,7 +598,19 @@ def test_get_mesos_habitat_data():
                 'resources': {
                     'cpus': 50,
                     'disk': 200,
-                    'mem': 1000,
+                    'mem': 750,
+                },
+                'attributes': {
+                    'habitat': 'test-habitat-2',
+                },
+            },
+            {
+                'id': 'test-slave3',
+                'hostname': 'test3.somewhere.www',
+                'resources': {
+                    'cpus': 22,
+                    'disk': 201,
+                    'mem': 920,
                 },
                 'attributes': {
                     'habitat': 'test-habitat-2',
@@ -626,18 +638,35 @@ def test_get_mesos_habitat_data():
         (
             'habitat',
             {
-                'test-habitat': {
-                    'cpus': 0,
-                    'disk': 100,
-                    'mem': 1000,
+                'free':
+                {
+                    'test-habitat': {
+                        'cpus': 25,
+                        'disk': 150,
+                        'mem': 1000,
+                    },
+                    'test-habitat-2': {
+                        'cpus': 72,
+                        'disk': 401,
+                        'mem': 1670,
+                    },
                 },
-                'test-habitat-2': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
+                'availability':
+                    {
+                    'test-habitat': {
+                        'cpus': 75,
+                        'disk': 250,
+                        'mem': 1000,
+                    },
+                    'test-habitat-2': {
+                        'cpus': 72,
+                        'disk': 401,
+                        'mem': 1670,
+                    },
+                }
             }
         ),
     )
     extra_mesos_habitat_data = paasta_metastatus.get_extra_mesos_attribute_data(mesos_state)
+
     assert (tuple(extra_mesos_habitat_data) == expected_free_resources)
