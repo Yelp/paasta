@@ -148,8 +148,8 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
             sum(item) / len(resource_data) for item in zip(*resource_data))
 
         time_delta = current_time - last_time
-        cpu_seconds_delta = (average_cpu_seconds - last_average_cpu_seconds) / time_delta
-        start_time_delta = (average_start_time - last_average_start_time) / time_delta
+        cpu_seconds_delta = (average_cpu_seconds - last_average_cpu_seconds)
+        start_time_delta = (average_start_time - last_average_start_time)
 
         average_cpu = (cpu_seconds_delta + start_time_delta) / time_delta
 
