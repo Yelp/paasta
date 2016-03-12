@@ -110,22 +110,22 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
             last_error = 0.0
             last_time = 0.0
 
-    initial_time = get_current_time()
-    if initial_time - last_time < delay:
+    if get_current_time() - last_time < delay:
         return 0
     job_id = marathon_service_config.format_marathon_app_dict()['id']
 
     mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
+    initial_time = get_current_time()
     initial_task_cpu_data = get_mesos_cpu_data(mesos_tasks)
 
     sleep(5)
 
     mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
     current_time = get_current_time()
-    time_delta = current_time - initial_time
+    time_delta = current_time - last_time
     task_cpu_data = get_mesos_cpu_data(mesos_tasks)
 
-    utilization = {task_id: (cpu_seconds - initial_task_cpu_data[task_id]) / time_delta
+    utilization = {task_id: (cpu_seconds - initial_task_cpu_data[task_id]) / (current_time - initial_time)
                    for task_id, cpu_seconds in task_cpu_data.items() if task_id in initial_task_cpu_data}
 
     for task in mesos_tasks:

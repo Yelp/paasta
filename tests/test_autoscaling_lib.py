@@ -214,6 +214,7 @@ def test_default_autoscaling():
     fake_tstamps = [
         current_time,
         current_time - timedelta(seconds=600),
+        current_time - timedelta(seconds=600),
     ]
 
     def get_fake_timestamp():
