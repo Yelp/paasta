@@ -187,77 +187,66 @@ def test_default_autoscaling():
         config_dict={'max_instances': 5, 'min_instances': 1},
         branch_dict={},
     )
-    last_measurement = (datetime.now() - timedelta(seconds=600)).strftime('%s')
-    fake_task = mock.MagicMock(
-        rss=800,
-        mem_limit=1000,
-        cpu_limit=1.1,
-        stats={
-            'cpus_system_time_secs': 240,
-            'cpus_user_time_secs': 240,
-        },
-    )
-    fake_task.__getitem__.return_value = [{'timestamp': last_measurement}, ]
+    fake_tasks = [
+        mock.MagicMock(
+            rss=800,
+            mem_limit=1000,
+            cpu_limit=1.1,
+            stats={},
+        ),
+        mock.MagicMock(
+            rss=800,
+            mem_limit=1000,
+            cpu_limit=1.1,
+            stats={
+                'cpus_system_time_secs': 240,
+                'cpus_user_time_secs': 240,
+            },
+        ),
+    ]
+
+    def get_fake_tasks(arg):
+        fake_task = fake_tasks.pop()
+        fake_task.__getitem__.return_value = 'fake_id'
+        return (fake_task,)
+
+    current_time = datetime.now()
+    fake_tstamps = [
+        current_time,
+        current_time - timedelta(seconds=600),
+    ]
+
+    def get_fake_timestamp():
+        return fake_tstamps.pop()
+
     zookeeper_get_payload = {
-        'last_tstamp': last_measurement,
-        'start_time': last_measurement,
-        'last_error': '0',
         'iterm': '0',
-        'cpu_seconds': '0',
+        'last_error': '0',
     }
     with contextlib.nested(
             mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True,
                        return_value=mock.Mock(get=mock.Mock(
                            side_effect=lambda x: (zookeeper_get_payload[x.split('/')[-1]], None)))),
+            mock.patch('paasta_tools.autoscaling_lib.datetime', autospec=True),
             mock.patch('paasta_tools.autoscaling_lib.get_running_tasks_from_active_frameworks', autospec=True,
-                       return_value=(fake_task,)),
+                       side_effect=get_fake_tasks),
             mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True,
                        return_value=mock.Mock(get_zk_hosts=mock.Mock())),
             mock.patch.object(marathon_tools.MarathonServiceConfig, 'format_marathon_app_dict', autospec=True,
                               return_value={'id': 'fake-service.fake-instance.abcd.1234'}),
+            mock.patch('paasta_tools.autoscaling_lib.sleep', autospec=True),
     ) as (
         mock_zk_client,
+        mock_datetime,
+        _,
         _,
         _,
         _,
     ):
+        mock_datetime.now.side_effect = get_fake_timestamp
         assert autoscaling_lib.default_autoscaling_method(fake_marathon_service_config) == 0
-        mock_zk_client.return_value.set.assert_has_calls(
-            (
-                mock.call('/autoscaling/fake-service/fake-instance/last_tstamp', mock.ANY),
-                mock.call('/autoscaling/fake-service/fake-instance/last_error', '0.0'),
-                mock.call('/autoscaling/fake-service/fake-instance/iterm', '0.0'),
-                mock.call('/autoscaling/fake-service/fake-instance/cpu_seconds', '480.0'),
-            ),
-            any_order=True,
-        )
-
-
-def test_default_autoscaling_no_data():
-    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service='fake-service',
-        instance='fake-instance',
-        cluster='fake-cluster',
-        config_dict={'max_instances': 5, 'min_instances': 1},
-        branch_dict={},
-    )
-    with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True,
-                       return_value=mock.Mock(get=mock.Mock(side_effect=NoNodeError))),
-            mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True,
-                       return_value=mock.Mock(get_zk_hosts=mock.Mock())),
-    ) as (
-        mock_zk_client,
-        _,
-    ):
-        assert autoscaling_lib.default_autoscaling_method(fake_marathon_service_config) == 0
-        mock_zk_client.return_value.set.assert_has_calls(
-            (
-                mock.call('/autoscaling/fake-service/fake-instance/last_tstamp', mock.ANY),
-                mock.call('/autoscaling/fake-service/fake-instance/last_error', '0.0'),
-                mock.call('/autoscaling/fake-service/fake-instance/iterm', '0.0'),
-                mock.call('/autoscaling/fake-service/fake-instance/cpu_seconds', '0.0'),
-                mock.call('/autoscaling/fake-service/fake-instance/start_time', '0.0'),
-            ),
-            any_order=True,
-        )
+        mock_zk_client.return_value.set.assert_has_calls([
+            mock.call('/autoscaling/fake-service/fake-instance/iterm', '0.0'),
+            mock.call('/autoscaling/fake-service/fake-instance/last_error', '0.0'),
+            mock.call('/autoscaling/fake-service/fake-instance/last_time', current_time.strftime('%s')),
+        ], any_order=False)
