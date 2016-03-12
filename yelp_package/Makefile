@@ -21,14 +21,18 @@ UID:=`id -u`
 GID:=`id -g`
 DOCKER_RUN_LUCID:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_lucid_container
 DOCKER_RUN_TRUSTY:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_trusty_container
-ADD_MISSING_DEPS:=-diff --unchanged-line-format= --old-line-format= --new-line-format='%L' ../requirements.txt ./extra_requirements.txt >> ../requirements.txt
+ifeq ($(PAASTA_ENV),YELP)
+	ADD_MISSING_DEPS_MAYBE:=-diff --unchanged-line-format= --old-line-format= --new-line-format='%L' ../requirements.txt ./extra_requirements_yelp.txt >> ../requirements.txt
+else
+	ADD_MISSING_DEPS_MAYBE:=true
+endif
 
 build_lucid_docker:
 	[ -d ../dist ] || mkdir ../dist
 	cd dockerfiles/lucid/ && docker build -t "paastatools_lucid_container" .
 package_lucid: build_lucid_docker
 	cp ../requirements.txt ../requirements.txt.old
-	$(ADD_MISSING_DEPS)
+	$(ADD_MISSING_DEPS_MAYBE)
 	$(DOCKER_RUN_LUCID) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	mv ../requirements.txt.old ../requirements.txt
 	$(DOCKER_RUN_LUCID) chown -R $(UID):$(GID) /work
@@ -41,7 +45,7 @@ build_trusty_docker:
 	cd dockerfiles/trusty/ && docker build -t "paastatools_trusty_container" .
 package_trusty: build_trusty_docker
 	cp ../requirements.txt ../requirements.txt.old
-	$(ADD_MISSING_DEPS)
+	$(ADD_MISSING_DEPS_MAYBE)
 	$(DOCKER_RUN_TRUSTY) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	mv ../requirements.txt.old ../requirements.txt
 	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work

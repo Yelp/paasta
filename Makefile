@@ -36,11 +36,7 @@ itest: test
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
 	# Note: For now, these builds only work inside Yelp's environment.
-	@if [ "$(PAASTA_ENV)" = "YELP" ]; then \
-		make -C yelp_package $@; \
-	else \
-		echo "This Makefile target currently will NOT work outside of Yelp's Environment."; \
-	fi
+	make -C yelp_package PAASTA_ENV=$(PAASTA_ENV) $@
 
 # Steps to release
 # 1. Bump version in yelp_package/Makefile
