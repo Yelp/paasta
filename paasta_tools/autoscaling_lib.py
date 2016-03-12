@@ -129,7 +129,8 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
                    for task_id, cpu_seconds in task_cpu_data.items() if task_id in initial_task_cpu_data}
 
     for task in mesos_tasks:
-        utilization[task['id']] = max(utilization[task['id']], float(task.rss) / task.mem_limit)
+        if task['id'] in utilization:
+            utilization[task['id']] = max(utilization[task['id']], float(task.rss) / task.mem_limit)
 
     task_errors = [amount - setpoint for amount in utilization.values()]
     error = sum(task_errors) / len(task_errors)
