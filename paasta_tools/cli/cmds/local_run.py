@@ -93,18 +93,18 @@ def perform_http_healthcheck(url, timeout):
             try:
                 res = requests.head(url)
             except requests.ConnectionError:
-                return False
+                return (False, "http request failed: connection failed")
     except TimeoutError:
-        return False
+        return (False, "http request timed out after %d seconds" % timeout)
 
     if 'content-type' in res.headers and ',' in res.headers['content-type']:
         sys.stdout.write(PaastaColors.yellow(
             "Multiple content-type headers detected in response."
             " The Mesos healthcheck system will treat this as a failure!"))
-        return False
+        return (False, "http request succeeded, code %d" % res.status_code)
     # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
     elif res.status_code >= 200 and res.status_code < 400:
-        return True
+        return (True, "http request succeeded, code %d" % res.status_code)
 
 
 def perform_tcp_healthcheck(url, timeout):
@@ -120,9 +120,9 @@ def perform_tcp_healthcheck(url, timeout):
     result = sock.connect_ex((url_elem.hostname, url_elem.port))
     sock.close()
     if result == 0:
-        return True
+        return (True, "tcp connection succeeded")
     else:
-        return False
+        return (False, "%s (timeout %d seconds)" % (os.strerror(result), timeout))
 
 
 def perform_cmd_healthcheck(docker_client, container_id, command, timeout):
@@ -134,11 +134,11 @@ def perform_cmd_healthcheck(docker_client, container_id, command, timeout):
     :param timeout: timeout in seconds
     :returns: True if command exits with return code 0, false otherwise
     """
-    (_, return_code) = execute_in_container(docker_client, container_id, command, timeout)
+    (output, return_code) = execute_in_container(docker_client, container_id, command, timeout)
     if return_code == 0:
-        return True
+        return (True, output)
     else:
-        return False
+        return (False, output)
 
 
 def run_healthcheck_on_container(
@@ -154,9 +154,9 @@ def run_healthcheck_on_container(
     :param healthcheck_mode: one of 'http', 'tcp', or 'cmd'
     :param healthcheck_data: a URL when healthcheck_mode is 'http' or 'tcp', a command if healthcheck_mode is 'cmd'
     :param timeout: timeout in seconds for individual check
-    :returns: true if healthcheck succeeds, false otherwise
+    :returns: a tuple of (bool, output string)
     """
-    healthcheck_result = False
+    healthcheck_result = (False, "unknown")
     if healthcheck_mode == 'cmd':
         healthcheck_result = perform_cmd_healthcheck(docker_client, container_id, healthcheck_data, timeout)
     elif healthcheck_mode == 'http':
@@ -208,17 +208,18 @@ def simulate_healthcheck_on_service(
                         container_state['State']['ExitCode'],
                     )) + '\n'
                 )
-                healthcheck_status = False
+                healthcheck_result = (False, "Aborted by the user")
                 break
 
-            healthcheck_status = run_healthcheck_on_container(
+            healthcheck_result = run_healthcheck_on_container(
                 docker_client, container_id, healthcheck_mode, healthcheck_data, timeout,
             )
 
             # Yay, we passed the healthcheck
-            if healthcheck_status:
-                sys.stdout.write('{} (via {})\n'.format(
-                    PaastaColors.green('Healthcheck succeeded!'),
+            if healthcheck_result[0]:
+                sys.stdout.write("{}'{}' (via {})\n".format(
+                    PaastaColors.green("Healthcheck succeeded!: "),
+                    healthcheck_result[1],
                     healthcheck_link,
                 ))
                 break
@@ -248,8 +249,8 @@ def simulate_healthcheck_on_service(
             time.sleep(interval)
     else:
         sys.stdout.write('\nMesos would have healthchecked your service via\n%s\n' % healthcheck_link)
-        healthcheck_status = True
-    return healthcheck_status
+        healthcheck_result = (True, "No healthcheck enabled")
+    return healthcheck_result
 
 
 def read_local_dockerfile_lines():
