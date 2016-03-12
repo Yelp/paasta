@@ -84,7 +84,7 @@ def paasta_cook_image(args, service=None, soa_dir=None):
                 component='build',
                 level='event',
             )
-            return returncode
+        return returncode
 
     except KeyboardInterrupt:
         sys.stderr.write('\nProcess interrupted by the user. Cancelling.\n')

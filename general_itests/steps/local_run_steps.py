@@ -73,5 +73,6 @@ def local_run_on_chronos_job(context):
                          "--service fake_simple_service "
                          "--cluster test-cluster "
                          "--instance chronos_job "
+                         "--build "
                          "--cmd '/bin/sh -c \"sleep 2s && exit 42\"'")
         context.local_run_return_code, context.local_run_output = _run(command=local_run_cmd, timeout=30)
