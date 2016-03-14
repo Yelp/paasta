@@ -89,7 +89,7 @@ def step_paasta_mark_for_deployments_when(context):
 @when(u'paasta stop is run against the repo')
 def step_paasta_stop_when(context):
     fake_args = mock.MagicMock(
-        cluster='test_cluster',
+        clusters='test_cluster',
         instance='test_instance',
         soa_dir='fake_soa_configs',
         service='fake_deployments_json_service',
