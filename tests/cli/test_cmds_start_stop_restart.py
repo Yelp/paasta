@@ -132,6 +132,7 @@ def test_stop_or_start_handls_ls_remote_failures(
     mock_stdout,
 ):
     args = mock.Mock()
+    args.clusters = 'cluster1,cluster2'
     mock_get_git_url.return_value = 'fake_git_url'
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_get_instance_config.return_value = None
