@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from datetime import datetime
+from math import ceil
 from time import sleep
 
 from kazoo.client import KazooClient
@@ -147,20 +148,21 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
     return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
 
 
+def get_new_instance_count(current_instances, autoscaling_direction):
+    return int(ceil((1 + float(autoscaling_direction) / 10) * current_instances))
+
+
 def autoscale_marathon_instance(marathon_service_config):
     if marathon_service_config.get_max_instances() is None:
         return
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     autoscaling_method = get_autoscaling_method(autoscaling_params['method'])
     with ZookeeperPool():
-        autoscale_amount = autoscaling_method(marathon_service_config, **autoscaling_params)
-        if autoscale_amount:
+        autoscaling_direction = autoscaling_method(marathon_service_config, **autoscaling_params)
+        if autoscaling_direction:
             current_instances = marathon_service_config.get_instances()
-            instances = min(
-                marathon_service_config.get_max_instances(),
-                max(marathon_service_config.get_min_instances(),
-                    current_instances + autoscale_amount),
-            )
+            autoscaling_amount = get_new_instance_count(current_instances, autoscaling_direction)
+            instances = marathon_service_config.limit_instance_count(autoscaling_amount)
             if instances != current_instances:
                 set_instances_for_marathon_service(
                     service=marathon_service_config.service,

@@ -210,21 +210,16 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The number of instances specified in the config, 0 if not
                   specified or if desired_state is not 'start'."""
         if self.get_desired_state() == 'start':
-            max_instances = self.get_max_instances()
-            if max_instances is not None:
-                min_instances = self.get_min_instances()
+            if self.get_max_instances() is not None:
                 try:
                     zk_instances = get_instances_from_zookeeper(
                         service=self.service,
                         instance=self.instance,
                     )
                 except NoNodeError:  # zookeeper doesn't have instance data for this app
-                    return min_instances
+                    return self.get_min_instances()
                 else:
-                    return max(
-                        min(zk_instances, max_instances),
-                        min_instances,
-                    )
+                    return self.limit_instance_count(zk_instances)
             else:
                 return self.config_dict.get('instances', 1)
         else:
@@ -235,6 +230,17 @@ class MarathonServiceConfig(InstanceConfig):
             'method': 'default',
         }
         return deep_merge_dictionaries(source=self.config_dict.get('autoscaling', {}), destination=default_params)
+
+    def limit_instance_count(self, instances):
+        """
+        Returns param instances if it is between min_instances and max_instances.
+        Returns max_instances if instances > max_instances
+        Returns min_instances if instances < min_instances
+        """
+        return max(
+            self.get_min_instances(),
+            min(self.get_max_instances(), instances),
+        )
 
     def get_backoff_seconds(self):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.

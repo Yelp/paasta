@@ -150,7 +150,7 @@ def test_autoscaling_marathon_instance():
         service='fake-service',
         instance='fake-instance',
         cluster='fake-cluster',
-        config_dict={'max_instances': 5, 'min_instances': 1},
+        config_dict={'max_instances': 50, 'min_instances': 20},
         branch_dict={},
     )
     with contextlib.nested(
@@ -159,7 +159,7 @@ def test_autoscaling_marathon_instance():
             mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True,
                        return_value=mock.Mock(get_zk_hosts=mock.Mock())),
             mock.patch('paasta_tools.autoscaling_lib.get_autoscaling_method', autospec=True,
-                       return_value=mock.Mock(return_value=2)),
+                       return_value=mock.Mock(return_value=1)),
             mock.patch('paasta_tools.autoscaling_lib.set_instances_for_marathon_service', autospec=True),
     ) as (
         _,
@@ -171,7 +171,7 @@ def test_autoscaling_marathon_instance():
         mock_set_instances_for_marathon_service.assert_called_once_with(
             service='fake-service',
             instance='fake-instance',
-            instance_count=3,
+            instance_count=22,
         )
 
 
