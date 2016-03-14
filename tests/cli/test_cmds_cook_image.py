@@ -30,7 +30,7 @@ def test_run_success(
 
     args = mock.MagicMock()
     args.service = 'fake_service'
-    assert paasta_cook_image(args) is None
+    assert paasta_cook_image(args) is 0
 
 
 @mock.patch('paasta_tools.cli.cmds.cook_image.validate_service_name', autospec=True)
