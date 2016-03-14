@@ -404,6 +404,30 @@ def test_run_success(
     assert paasta_local_run(args) is None
 
 
+@mock.patch('paasta_tools.cli.cmds.local_run.figure_out_service_name', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.configure_and_run_docker_container', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.get_docker_client', spec_set=docker.Client)
+@mock.patch('paasta_tools.cli.cmds.local_run.paasta_cook_image', autospec=True)
+def test_run_cook_image_fails(
+    mock_paasta_cook_image,
+    mock_Client,
+    mock_run_docker_container,
+    mock_figure_out_service_name,
+):
+    mock_paasta_cook_image.return_value = 1
+    mock_Client.return_value = None
+    mock_run_docker_container.return_value = None
+    mock_figure_out_service_name.return_value = 'fake_service'
+
+    args = mock.MagicMock()
+    args.service = 'fake_service'
+    args.healthcheck = False
+    args.interactive = False
+    args.pull = False
+    assert paasta_local_run(args) is 1
+    assert not mock_run_docker_container.called
+
+
 def test_get_docker_run_cmd_without_additional_args():
     memory = 555
     random_port = 666

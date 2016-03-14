@@ -661,7 +661,9 @@ def paasta_local_run(args):
         tag = os.environ.get('DOCKER_TAG', default_tag)
         os.environ['DOCKER_TAG'] = tag
         pull_image = False
-        paasta_cook_image(args=None, service=service, soa_dir=args.yelpsoa_config_root)
+        cook_return = paasta_cook_image(args=None, service=service, soa_dir=args.yelpsoa_config_root)
+        if cook_return != 0:
+            return cook_return
     else:
         pull_image = True
         tag = None
