@@ -351,7 +351,7 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False)
         output.extend(tasks_table_non_running)
     else:
         tasks_stdstreams_non_running = []
-        for task in non_running_tasks:
+        for task in non_running_tasks_ordered:
             tasks_stdstreams_non_running.append(format_stdstreams_tail_for_task(task, get_short_task_id))
         output.append(tasks_table_non_running[0])  # header
         output.extend(zip_tasks_verbose_output(tasks_table_non_running[1:], tasks_stdstreams_non_running))
