@@ -115,7 +115,8 @@ def test_log_event():
             level='event',
             component='deploy',
             cluster='fake_cluster',
-            line="Issued request to change state of fake_instance to 'stopped' by fake_user@fake_fqdn"
+            line=("Issued request to change state of fake_instance (an instance of "
+                  "fake_service) to 'stopped' by fake_user@fake_fqdn")
         )
 
 
@@ -124,7 +125,7 @@ def test_log_event():
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.start_stop_restart.utils.get_git_url', autospec=True)
-def test_stop_or_start_handls_ls_remote_failures(
+def test_stop_or_start_handle_ls_remote_failures(
     mock_get_git_url,
     mock_get_instance_config,
     mock_figure_out_service_name,
@@ -132,7 +133,7 @@ def test_stop_or_start_handls_ls_remote_failures(
     mock_stdout,
 ):
     args = mock.Mock()
-    args.clusters = 'cluster1,cluster2'
+    args.clusters = 'cluster1'
     mock_get_git_url.return_value = 'fake_git_url'
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_get_instance_config.return_value = None
