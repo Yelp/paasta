@@ -184,6 +184,14 @@ def paasta_start_or_stop(args, desired_state):
         return 1
 
     for cluster in clusters:
+        service_config = get_instance_config(
+            service=service,
+            cluster=cluster,
+            instance=instance,
+            soa_dir=soa_dir,
+            load_deployments=False,
+        )
+
         force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
         issue_state_change_for_service(
             service_config=service_config,
