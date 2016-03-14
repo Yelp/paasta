@@ -62,7 +62,10 @@ def test_perform_tcp_healthcheck_failure(mock_socket_connect):
     fake_tcp_url = "tcp://fakehost:1234"
     fake_timeout = 10
     mock_socket_connect.return_value = 1
-    assert not perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
+    actual = perform_tcp_healthcheck(fake_tcp_url, fake_timeout)
+    assert actual[0] is False
+    assert 'timeout' in actual[1]
+    assert '10 seconds' in actual[1]
 
 
 @mock.patch('requests.head')
@@ -90,7 +93,10 @@ def test_perform_http_healthcheck_timeout(mock_http_conn):
     fake_http_url = "http://fakehost:1234/fake_status_path"
     fake_timeout = 10
 
-    assert not perform_http_healthcheck(fake_http_url, fake_timeout)
+    actual = perform_http_healthcheck(fake_http_url, fake_timeout)
+    assert actual[0] is False
+    assert "10" in actual[1]
+    assert "timed out" in actual[1]
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
@@ -101,7 +107,9 @@ def test_perform_http_healthcheck_failure_with_multiple_content_type(mock_http_c
 
     mock_http_conn.return_value = mock.Mock(
         status_code=200, headers={'content-type': 'fake_content_type_1, fake_content_type_2'})
-    assert not perform_http_healthcheck(fake_http_url, fake_timeout)
+    actual = perform_http_healthcheck(fake_http_url, fake_timeout)
+    assert actual[0] is False
+    assert "200" in actual[1]
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
@@ -862,7 +870,7 @@ def test_simulate_healthcheck_on_service_enabled_success(mock_run_healthcheck_on
     fake_container_id = 'fake_container_id'
     fake_mode = 'http'
     fake_url = 'http://fake_host/fake_status_path'
-    mock_run_healthcheck_on_container.return_value = True
+    mock_run_healthcheck_on_container.return_value = (True, "it works")
     assert simulate_healthcheck_on_service(
         mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
 
@@ -885,15 +893,17 @@ def test_simulate_healthcheck_on_service_enabled_failure(mock_run_healthcheck_on
     fake_container_id = 'fake_container_id'
     fake_mode = 'http'
     fake_url = 'http://fake_host/fake_status_path'
-    mock_run_healthcheck_on_container.return_value = False
-    assert not simulate_healthcheck_on_service(
+    mock_run_healthcheck_on_container.return_value = (False, "it failed")
+    actual = simulate_healthcheck_on_service(
         mock_service_manifest, mock_docker_client, fake_container_id, fake_mode, fake_url, True)
+    assert actual[0] is False
 
 
 @mock.patch('time.sleep', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container',
-            autospec=True, side_effect=[False, False, False, False, True])
+@mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
 def test_simulate_healthcheck_on_service_enabled_partial_failure(mock_run_healthcheck_on_container, mock_sleep):
+    mock_run_healthcheck_on_container.side_effect = iter([
+        (False, ""), (False, ""), (False, ""), (False, ""), (True, "")])
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_service_manifest = MarathonServiceConfig(
         service='fake_name',
@@ -918,7 +928,7 @@ def test_simulate_healthcheck_on_service_enabled_partial_failure(mock_run_health
 @mock.patch('time.sleep', autospec=True)
 @mock.patch('time.time', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container',
-            autospec=True, return_value=True)
+            autospec=True, return_value=(True, "healcheck status"))
 def test_simulate_healthcheck_on_service_enabled_during_grace_period(
     mock_run_healthcheck_on_container,
     mock_time,
@@ -948,8 +958,7 @@ def test_simulate_healthcheck_on_service_enabled_during_grace_period(
 
 @mock.patch('time.sleep', autospec=True)
 @mock.patch('time.time', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container',
-            autospec=True, side_effect=[False, False, True])
+@mock.patch('paasta_tools.cli.cmds.local_run.run_healthcheck_on_container', autospec=True)
 def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     mock_run_healthcheck_on_container,
     mock_time,
@@ -957,6 +966,9 @@ def test_simulate_healthcheck_on_service_enabled_honors_grace_period(
     capsys,
 ):
     # change time to make sure we are sufficiently past grace period
+    mock_run_healthcheck_on_container.side_effect = iter([
+        (False, "noop"), (False, "noop"), (True, "noop")])
+
     mock_time.side_effect = [0, 1, 5]
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
     mock_service_manifest = MarathonServiceConfig(
@@ -1003,7 +1015,7 @@ def test_simulate_healthcheck_on_service_dead_container_exits_immediately(capsys
             fake_service_manifest, mock_client, mock.sentinel.container_id,
             'http', 'http://fake_host/status', True,
         )
-        assert ret is False
+        assert ret == (False, 'Aborted by the user')
         out, _ = capsys.readouterr()
         assert out.count('Container exited with code 127') == 1
 
