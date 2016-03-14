@@ -95,8 +95,9 @@ def make_mutate_refs_func(service_config, force_bounce, desired_state):
 def log_event(service_config, desired_state):
     user = utils.get_username()
     host = socket.getfqdn()
-    line = "Issued request to change state of %s to '%s' by %s@%s" % (
-        service_config.get_instance(), desired_state, user, host)
+    line = "Issued request to change state of %s (an instance of %s) to '%s' by %s@%s" % (
+        service_config.get_instance(), service_config.get_service(),
+        desired_state, user, host)
     utils._log(
         service=service_config.get_service(),
         level='event',
