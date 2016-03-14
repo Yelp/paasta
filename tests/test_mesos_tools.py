@@ -79,7 +79,7 @@ def test_status_mesos_tasks_verbose(test_case):
             non_running_mesos_tasks.append(task_return)
         get_non_running_mesos_tasks_patch.return_value = non_running_mesos_tasks
 
-        format_running_mesos_task_row_patch.return_value = ['id', 'host', 'mem', 'cpu', 'disk', 'time']
+        format_running_mesos_task_row_patch.return_value = ['id', 'host', 'mem', 'cpu', 'time']
         format_non_running_mesos_task_row_patch.return_value = ['id', 'host', 'time', 'state']
         format_stdstreams_tail_for_task_patch.return_value = ['tail']
         job_id = format_job_id('fake_service', 'fake_instance'),
