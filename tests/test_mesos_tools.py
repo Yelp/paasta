@@ -13,6 +13,7 @@
 # limitations under the License.
 import contextlib
 import datetime
+import random
 
 import docker
 import mesos
@@ -48,7 +49,7 @@ def test_filter_not_running_tasks():
 
 @mark.parametrize('test_case', [
     [False, 0],
-    [True, 4]
+    [True, 1 + 10]  # 1 running task, 10 non-running taks (truncated)
 ])
 def test_status_mesos_tasks_verbose(test_case):
     tail_stdstreams, expected_format_tail_call_count = test_case
@@ -66,21 +67,19 @@ def test_status_mesos_tasks_verbose(test_case):
         format_stdstreams_tail_for_task_patch,
     ):
         get_running_mesos_tasks_patch.return_value = ['doing a lap']
-        get_non_running_mesos_tasks_patch.return_value = [
-            {
-                'statuses': [{'timestamp': '1457109986'}],
-                'state': 'NOT_RUNNING',
-            },
-            {
-                'statuses': [{'timestamp': '1457110226'}],
-                'state': 'NOT_RUNNING',
-            },
-            {
-                'statuses': [{'timestamp': '1457110106'}],
-                'state': 'NOT_RUNNING',
-            },
-        ]
-        format_running_mesos_task_row_patch.return_value = ['id', 'host', 'mem', 'cpu', 'disk', 'time']
+
+        template_task_return = {
+            'statuses': [{'timestamp': '##########'}],
+            'state': 'NOT_RUNNING',
+        }
+        non_running_mesos_tasks = []
+        for _ in xrange(15):  # excercise the code that sorts/truncates the list of non running tasks
+            task_return = template_task_return.copy()
+            task_return['statuses'][0]['timestamp'] = str(1457109986 + random.randrange(-60 * 60 * 24, 60 * 60 * 24))
+            non_running_mesos_tasks.append(task_return)
+        get_non_running_mesos_tasks_patch.return_value = non_running_mesos_tasks
+
+        format_running_mesos_task_row_patch.return_value = ['id', 'host', 'mem', 'cpu', 'time']
         format_non_running_mesos_task_row_patch.return_value = ['id', 'host', 'time', 'state']
         format_stdstreams_tail_for_task_patch.return_value = ['tail']
         job_id = format_job_id('fake_service', 'fake_instance'),
@@ -92,7 +91,7 @@ def test_status_mesos_tasks_verbose(test_case):
         assert 'Running Tasks' in actual
         assert 'Non-Running Tasks' in actual
         format_running_mesos_task_row_patch.assert_called_once_with('doing a lap', get_short_task_id)
-        assert format_non_running_mesos_task_row_patch.call_count == 3
+        assert format_non_running_mesos_task_row_patch.call_count == 10  # maximum n of tasks we display
         assert format_stdstreams_tail_for_task_patch.call_count == expected_format_tail_call_count
 
 

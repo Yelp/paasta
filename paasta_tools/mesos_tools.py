@@ -300,6 +300,46 @@ def zip_tasks_verbose_output(table, stdstreams):
     return output
 
 
+def format_task_list(tasks, list_title, table_header, get_short_task_id, format_task_row, grey, tail_stdstreams):
+    """Formats a list of tasks, returns a list of output lines
+    :param tasks: List of tasks as returned by get_*_tasks_from_active_frameworks.
+    :param list_title: 'Running Tasks:' or 'Non-Running Tasks'.
+    :param table_header: List of column names used in the tasks table.
+    :param get_short_task_id: A function which given a
+                              task_id returns a short task_id suitable for
+                              printing.
+    :param format_task_row: Formatting function, works on a task and a get_short_task_id function.
+    :param tail_stdstreams: If True, also display the stdout/stderr tail,
+                            as obtained from the Mesos sandbox.
+    :param grey: If True, the list will be made less visually prominent.
+    :return output: Formatted output (list of output lines).
+    """
+    if not grey:
+        def colorize(x):
+            return(x)
+    else:
+        def colorize(x):
+            return(PaastaColors.grey(x))
+    output = []
+    output.append(colorize("  %s" % list_title))
+    table_rows = [
+        [colorize(th) for th in table_header]
+    ]
+    for task in tasks:
+        table_rows.append(format_task_row(task, get_short_task_id))
+    tasks_table = ["    %s" % row for row in format_table(table_rows)]
+    if not tail_stdstreams:
+        output.extend(tasks_table)
+    else:
+        stdstreams = []
+        for task in tasks:
+            stdstreams.append(format_stdstreams_tail_for_task(task, get_short_task_id))
+        output.append(tasks_table[0])  # header
+        output.extend(zip_tasks_verbose_output(tasks_table[1:], stdstreams))
+
+    return output
+
+
 def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False):
     """Returns detailed information about the mesos tasks for a service.
 
@@ -312,49 +352,45 @@ def status_mesos_tasks_verbose(job_id, get_short_task_id, tail_stdstreams=False)
     """
     output = []
     running_and_active_tasks = get_running_tasks_from_active_frameworks(job_id)
-    output.append("  Running Tasks:")
-    rows_running = [[
+    list_title = "Running Tasks:"
+    table_header = [
         "Mesos Task ID",
         "Host deployed to",
         "Ram",
         "CPU",
         "Deployed at what localtime"
-    ]]
-    for task in running_and_active_tasks:
-        rows_running.append(format_running_mesos_task_row(task, get_short_task_id))
-    tasks_table_running = ["    %s" % row for row in format_table(rows_running)]
-    if not tail_stdstreams:
-        output.extend(tasks_table_running)
-    else:
-        tasks_stdstreams_running = []
-        for task in running_and_active_tasks:
-            tasks_stdstreams_running.append(format_stdstreams_tail_for_task(task, get_short_task_id))
-        output.append(tasks_table_running[0])  # header
-        output.extend(zip_tasks_verbose_output(tasks_table_running[1:], tasks_stdstreams_running))
+    ]
+    output.extend(format_task_list(
+        running_and_active_tasks,
+        list_title,
+        table_header,
+        get_short_task_id,
+        format_running_mesos_task_row,
+        False,
+        tail_stdstreams
+    ))
 
     non_running_tasks = get_non_running_tasks_from_active_frameworks(job_id)
     # Order the tasks by timestamp
     non_running_tasks.sort(key=lambda task: get_first_status_timestamp(task))
     non_running_tasks_ordered = list(reversed(non_running_tasks[-10:]))
 
-    output.append(PaastaColors.grey("  Non-Running Tasks"))
-    rows_non_running = [[
-        PaastaColors.grey("Mesos Task ID"),
-        PaastaColors.grey("Host deployed to"),
-        PaastaColors.grey("Deployed at what localtime"),
-        PaastaColors.grey("Status"),
-    ]]
-    for task in non_running_tasks_ordered:
-        rows_non_running.append(format_non_running_mesos_task_row(task, get_short_task_id))
-    tasks_table_non_running = ["    %s" % row for row in format_table(rows_non_running)]
-    if not tail_stdstreams:
-        output.extend(tasks_table_non_running)
-    else:
-        tasks_stdstreams_non_running = []
-        for task in non_running_tasks:
-            tasks_stdstreams_non_running.append(format_stdstreams_tail_for_task(task, get_short_task_id))
-        output.append(tasks_table_non_running[0])  # header
-        output.extend(zip_tasks_verbose_output(tasks_table_non_running[1:], tasks_stdstreams_non_running))
+    list_title = "Non-Running Tasks"
+    table_header = [
+        "Mesos Task ID",
+        "Host deployed to",
+        "Deployed at what localtime",
+        "Status",
+    ]
+    output.extend(format_task_list(
+        non_running_tasks_ordered,
+        list_title,
+        table_header,
+        get_short_task_id,
+        format_non_running_mesos_task_row,
+        True,
+        tail_stdstreams
+    ))
 
     return "\n".join(output)
 
