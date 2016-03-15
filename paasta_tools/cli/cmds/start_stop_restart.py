@@ -57,8 +57,15 @@ def add_subparser(subparsers):
         ).completer = lazy_choices_completer(list_instances)
         status_parser.add_argument(
             '-c', '--clusters',
+            choices=list_clusters(),
             help="A comma-separated list of clusters to view. Defaults to view all clusters.\n"
             "For example: --clusters norcal-prod,nova-prod"
+        ).completer = lazy_choices_completer(list_clusters)
+        status_parser.add_argument(
+            '--cluster',
+            choices=list_clusters(),
+            help="A single cluster to view.\n"
+            " Deprecated! For example: --cluster norcal-prod. Will supersede any use of --clusters."
         ).completer = lazy_choices_completer(list_clusters)
 
         status_parser.add_argument(
@@ -151,18 +158,16 @@ def paasta_start_or_stop(args, desired_state):
     clusters = args.clusters
     soa_dir = args.soa_dir
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
+
     if args.clusters is not None:
         clusters = args.clusters.split(",")
     else:
         clusters = list_clusters(service)
 
-    service_config = get_instance_config(
-        service=service,
-        cluster=clusters[0],
-        instance=instance,
-        soa_dir=soa_dir,
-        load_deployments=False,
-    )
+    if args.cluster is not None:
+        print ("Warning - the use of --cluster is deprecated and will be removed in "
+               "favour of --clusters in future versions.")
+        clusters = [args.cluster]
 
     try:
         remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
@@ -177,12 +182,7 @@ def paasta_start_or_stop(args, desired_state):
         print msg
         return 1
 
-    if 'refs/heads/paasta-%s' % service_config.get_deploy_group() not in remote_refs:
-        print "No branches found for %s in %s." % \
-            (service_config.get_deploy_group(), remote_refs)
-        print "Has it been deployed there yet?"
-        return 1
-
+    invalid_deploy_groups = []
     for cluster in clusters:
         service_config = get_instance_config(
             service=service,
@@ -192,12 +192,21 @@ def paasta_start_or_stop(args, desired_state):
             load_deployments=False,
         )
 
-        force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
-        issue_state_change_for_service(
-            service_config=service_config,
-            force_bounce=force_bounce,
-            desired_state=desired_state,
-        )
+        if 'refs/heads/paasta-%s' % service_config.get_deploy_group() not in remote_refs:
+            invalid_deploy_groups.append(service_config.get_deploy_group())
+        else:
+            force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
+            issue_state_change_for_service(
+                service_config=service_config,
+                force_bounce=force_bounce,
+                desired_state=desired_state,
+            )
+
+    if invalid_deploy_groups:
+        print "No branches found for %s in %s." % \
+            (", ".join(invalid_deploy_groups), remote_refs)
+        print "Has it been deployed there yet?"
+        return 1
 
 
 def paasta_start(args):

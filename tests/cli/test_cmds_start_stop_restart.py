@@ -141,3 +141,25 @@ def test_stop_or_start_handle_ls_remote_failures(
 
     assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
     assert "may be down" in mock_stdout.getvalue()
+
+
+@mock.patch('sys.stdout', new_callable=StringIO)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.figure_out_service_name', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.get_instance_config', autospec=True)
+@mock.patch('paasta_tools.cli.cmds.start_stop_restart.remote_git.list_remote_refs', autospec=True)
+def test_start_or_stop_bad_refs(mock_list_remote_refs, mock_get_instance_config,
+                                mock_figure_out_service_name, mock_stdout):
+
+    args = mock.Mock()
+
+    mock_figure_out_service_name.return_value = 'fake_service'
+    mock_get_instance_config.return_value = MarathonServiceConfig(
+        cluster='fake_cluster',
+        instance='fake_instance',
+        service='fake_service',
+        config_dict={},
+        branch_dict={},
+    )
+    mock_list_remote_refs.return_value = ["refs/heads/paasta-deliberatelyinvalidref"]
+    assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
+    assert "No branches found for" in mock_stdout.getvalue()
