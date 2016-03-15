@@ -16,12 +16,14 @@ from datetime import datetime
 from math import ceil
 from time import sleep
 
-from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
-from service_configuration_lib import DEFAULT_SOA_DIR
 
+from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
+from paasta_tools.marathon_tools import get_marathon_client
+from paasta_tools.marathon_tools import load_marathon_config
+from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
-from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import ZookeeperPool
 
 _autoscaling_methods = {}
 
@@ -35,23 +37,6 @@ def register_autoscaling_method(name):
 
 def get_autoscaling_method(function_name):
     return _autoscaling_methods[function_name]
-
-
-def compose_autoscaling_zookeeper_root(service, instance):
-    return '/autoscaling/%s/%s' % (service, instance)
-
-
-def set_instances_for_marathon_service(service, instance, instance_count, soa_dir=DEFAULT_SOA_DIR):
-    zookeeper_path = '%s/instances' % compose_autoscaling_zookeeper_root(service, instance)
-    with ZookeeperPool() as zookeeper_client:
-        zookeeper_client.ensure_path(zookeeper_path)
-        zookeeper_client.set(zookeeper_path, str(instance_count))
-
-
-def get_instances_from_zookeeper(service, instance):
-    with ZookeeperPool() as zookeeper_client:
-        (instances, _) = zookeeper_client.get('%s/instances' % compose_autoscaling_zookeeper_root(service, instance))
-        return int(instances)
 
 
 @register_autoscaling_method('bespoke')
@@ -111,15 +96,30 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
             last_error = 0.0
             last_time = 0.0
 
-    if get_current_time() - last_time < delay:
+    if get_current_time() - last_time < delay / 2:
         return 0
     job_id = marathon_service_config.format_marathon_app_dict()['id']
 
+    marathon_config = load_marathon_config()
+    marathon_client = get_marathon_client(
+        url=marathon_config.get_url(),
+        user=marathon_config.get_username(),
+        passwd=marathon_config.get_password(),
+    )
+
+    healthy_ids = {task.id for task in marathon_client.list_tasks(app_id=job_id) if task.health_check_results}
+
+    if not healthy_ids:
+        return 0
+
     mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
     initial_time = get_current_time()
-    initial_task_cpu_data = get_mesos_cpu_data(mesos_tasks)
+    initial_task_cpu_data = get_mesos_cpu_data((task for task in mesos_tasks if task['id'] in healthy_ids))
 
-    sleep(5)
+    if not initial_task_cpu_data:
+        return 0
+
+    sleep(delay / 2)
 
     mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
     current_time = get_current_time()
@@ -169,30 +169,3 @@ def autoscale_marathon_instance(marathon_service_config):
                     instance=marathon_service_config.instance,
                     instance_count=instances,
                 )
-
-
-class ZookeeperPool(object):
-    """
-    A context manager that shares the same KazooClient with its children. The first nested contest manager
-    creates and deletes the client and shares it with any of its children. This allows to place a context
-    manager over a large number of zookeeper calls without opening and closing a connection each time.
-    GIL makes this 'safe'.
-    """
-    counter = 0
-    zk = None
-
-    @classmethod
-    def __enter__(cls):
-        if cls.zk is None:
-            cls.zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), read_only=True)
-            cls.zk.start()
-        cls.counter = cls.counter + 1
-        return cls.zk
-
-    @classmethod
-    def __exit__(cls, *args, **kwargs):
-        cls.counter = cls.counter - 1
-        if cls.counter == 0:
-            cls.zk.stop()
-            cls.zk.close()
-            cls.zk = None

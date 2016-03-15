@@ -29,7 +29,6 @@ from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
 
-from paasta_tools.autoscaling_lib import get_instances_from_zookeeper
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
@@ -50,6 +49,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
+from paasta_tools.utils import ZookeeperPool
 
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
@@ -1031,3 +1031,20 @@ def kill_task(client, app_id, task_id, scale):
             return []
         else:
             raise
+
+
+def compose_autoscaling_zookeeper_root(service, instance):
+    return '/autoscaling/%s/%s' % (service, instance)
+
+
+def set_instances_for_marathon_service(service, instance, instance_count, soa_dir=DEFAULT_SOA_DIR):
+    zookeeper_path = '%s/instances' % compose_autoscaling_zookeeper_root(service, instance)
+    with ZookeeperPool() as zookeeper_client:
+        zookeeper_client.ensure_path(zookeeper_path)
+        zookeeper_client.set(zookeeper_path, str(instance_count))
+
+
+def get_instances_from_zookeeper(service, instance):
+    with ZookeeperPool() as zookeeper_client:
+        (instances, _) = zookeeper_client.get('%s/instances' % compose_autoscaling_zookeeper_root(service, instance))
+        return int(instances)

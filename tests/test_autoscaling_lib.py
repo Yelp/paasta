@@ -34,8 +34,8 @@ def test_get_zookeeper_instances():
         branch_dict={},
     )
     with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True),
-            mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.utils.KazooClient', autospec=True),
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True),
     ) as (
         mock_zk_client,
         _,
@@ -48,8 +48,8 @@ def test_get_zookeeper_instances():
 
 def test_zookeeper_pool():
     with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True),
-            mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.utils.KazooClient', autospec=True),
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True),
     ) as (
         mock_zk_client,
         _,
@@ -76,8 +76,8 @@ def test_get_zookeeper_instances_defaults_to_config_no_zk_node():
         branch_dict={},
     )
     with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True),
-            mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.utils.KazooClient', autospec=True),
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True),
     ) as (
         mock_zk_client,
         _,
@@ -98,8 +98,8 @@ def test_get_zookeeper_instances_defaults_to_config_out_of_bounds():
         branch_dict={},
     )
     with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True),
-            mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.utils.KazooClient', autospec=True),
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True),
     ) as (
         mock_zk_client,
         _,
@@ -113,8 +113,8 @@ def test_get_zookeeper_instances_defaults_to_config_out_of_bounds():
 def test_update_instances_for_marathon_service():
     with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
-            mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True),
-            mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True),
+            mock.patch('paasta_tools.utils.KazooClient', autospec=True),
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True),
     ) as (
         mock_load_marathon_service_config,
         mock_zk_client,
@@ -154,9 +154,9 @@ def test_autoscaling_marathon_instance():
         branch_dict={},
     )
     with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True,
+            mock.patch('paasta_tools.utils.KazooClient', autospec=True,
                        return_value=mock.Mock(get=mock.Mock(side_effect=NoNodeError))),
-            mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True,
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
                        return_value=mock.Mock(get_zk_hosts=mock.Mock())),
             mock.patch('paasta_tools.autoscaling_lib.get_autoscaling_method', autospec=True,
                        return_value=mock.Mock(return_value=1)),
@@ -193,6 +193,7 @@ def test_default_autoscaling():
             mem_limit=1000,
             cpu_limit=1.1,
             stats={},
+            id='fake_id',
         ),
         mock.MagicMock(
             rss=800,
@@ -202,6 +203,7 @@ def test_default_autoscaling():
                 'cpus_system_time_secs': 240,
                 'cpus_user_time_secs': 240,
             },
+            id='fake_id',
         ),
     ]
 
@@ -225,20 +227,25 @@ def test_default_autoscaling():
         'last_error': '0',
     }
     with contextlib.nested(
-            mock.patch('paasta_tools.autoscaling_lib.KazooClient', autospec=True,
+            mock.patch('paasta_tools.utils.KazooClient', autospec=True,
                        return_value=mock.Mock(get=mock.Mock(
                            side_effect=lambda x: (zookeeper_get_payload[x.split('/')[-1]], None)))),
             mock.patch('paasta_tools.autoscaling_lib.datetime', autospec=True),
             mock.patch('paasta_tools.autoscaling_lib.get_running_tasks_from_active_frameworks', autospec=True,
                        side_effect=get_fake_tasks),
-            mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True,
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
                        return_value=mock.Mock(get_zk_hosts=mock.Mock())),
             mock.patch.object(marathon_tools.MarathonServiceConfig, 'format_marathon_app_dict', autospec=True,
                               return_value={'id': 'fake-service.fake-instance.abcd.1234'}),
             mock.patch('paasta_tools.autoscaling_lib.sleep', autospec=True),
+            mock.patch('paasta_tools.autoscaling_lib.load_marathon_config', autospec=True),
+            mock.patch('paasta_tools.autoscaling_lib.get_marathon_client', autospec=True,
+                       return_value=mock.Mock(list_tasks=mock.Mock(return_value=[mock.Mock(id='fake_id')]))),
     ) as (
         mock_zk_client,
         mock_datetime,
+        _,
+        _,
         _,
         _,
         _,
