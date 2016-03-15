@@ -26,6 +26,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.utils import list_clusters
 
 
 def add_subparser(subparsers):
@@ -55,10 +56,12 @@ def add_subparser(subparsers):
             required=True,
         ).completer = lazy_choices_completer(list_instances)
         status_parser.add_argument(
-            '-c', '--cluster',
-            help='The PaaSTA cluster that has the service you want to %s. Like norcal-prod' % lower,
-            required=True,
-        ).completer = lazy_choices_completer(utils.list_clusters)
+            '-c', '--clusters',
+            choices=list_clusters(),
+            help="A comma-separated list of clusters to view. Defaults to view all clusters.\n"
+            "For example: --clusters norcal-prod,nova-prod"
+        ).completer = lazy_choices_completer(list_clusters)
+
         status_parser.add_argument(
             '-d', '--soa-dir',
             dest="soa_dir",
@@ -93,8 +96,9 @@ def make_mutate_refs_func(service_config, force_bounce, desired_state):
 def log_event(service_config, desired_state):
     user = utils.get_username()
     host = socket.getfqdn()
-    line = "Issued request to change state of %s to '%s' by %s@%s" % (
-        service_config.get_instance(), desired_state, user, host)
+    line = "Issued request to change state of %s (an instance of %s) to '%s' by %s@%s" % (
+        service_config.get_instance(), service_config.get_service(),
+        desired_state, user, host)
     utils._log(
         service=service_config.get_service(),
         level='event',
@@ -145,17 +149,14 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
 def paasta_start_or_stop(args, desired_state):
     """Requests a change of state to start or stop given branches of a service."""
     instance = args.instance
-    cluster = args.cluster
+    clusters = args.clusters
     soa_dir = args.soa_dir
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
 
-    service_config = get_instance_config(
-        service=service,
-        cluster=cluster,
-        instance=instance,
-        soa_dir=soa_dir,
-        load_deployments=False,
-    )
+    if args.clusters is not None:
+        clusters = args.clusters.split(",")
+    else:
+        clusters = list_clusters(service)
 
     try:
         remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
@@ -170,18 +171,34 @@ def paasta_start_or_stop(args, desired_state):
         print msg
         return 1
 
-    if 'refs/heads/paasta-%s' % service_config.get_deploy_group() not in remote_refs:
-        print "No branches found for %s in %s." % \
-            (service_config.get_deploy_group(), remote_refs)
-        print "Has it been deployed there yet?"
-        return 1
+    invalid_deploy_groups = []
+    for cluster in clusters:
+        service_config = get_instance_config(
+            service=service,
+            cluster=cluster,
+            instance=instance,
+            soa_dir=soa_dir,
+            load_deployments=False,
+        )
 
-    force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
-    issue_state_change_for_service(
-        service_config=service_config,
-        force_bounce=force_bounce,
-        desired_state=desired_state,
-    )
+        if 'refs/heads/paasta-%s' % service_config.get_deploy_group() not in remote_refs:
+            invalid_deploy_groups.append(service_config.get_deploy_group())
+        else:
+            force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
+            issue_state_change_for_service(
+                service_config=service_config,
+                force_bounce=force_bounce,
+                desired_state=desired_state,
+            )
+
+    return_val = 0
+    if invalid_deploy_groups:
+        print "No branches found for %s in %s." % \
+            (", ".join(invalid_deploy_groups), remote_refs)
+        print "Has %s been deployed there yet?" % service
+        return_val = 1
+
+    return return_val
 
 
 def paasta_start(args):
