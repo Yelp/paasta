@@ -70,7 +70,7 @@ def set_default_schedule(job):
     schedule replaced with one that will set the job to run now.
     """
     cloned = copy.deepcopy(job)
-    cloned['schedule'] = 'R1///'
+    cloned['schedule'] = 'R1//PT1M'
     return cloned
 
 
@@ -111,14 +111,15 @@ def main():
 
     service, instance = chronos_tools.decompose_job_id(args.service_instance)
 
+    config = chronos_tools.load_chronos_config()
+    client = chronos_tools.get_chronos_client(config)
+
     try:
         complete_job_config = chronos_tools.create_complete_config(
             service=service,
             job_name=instance,
             soa_dir=args.soa_dir,
         )
-        clone = clone_job(complete_job_config)
-        print clone
 
     except (NoDeploymentsAvailable, NoDockerImageError) as e:
         error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
@@ -133,6 +134,9 @@ def main():
         raise e
     except chronos_tools.InvalidParentError:
         pass
+
+    clone = clone_job(complete_job_config)
+    client.add(clone)
 
 
 if __name__ == "__main__":

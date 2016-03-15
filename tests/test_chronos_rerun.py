@@ -39,7 +39,7 @@ def test_set_default_schedule():
         'schedule': 'foo'
     }
     assert chronos_rerun.set_default_schedule(fake_chronos_job_config) == \
-        {'schedule': 'R1///'}
+        {'schedule': 'R1//PT1M'}
 
 
 @mock.patch('paasta_tools.chronos_rerun.remove_parents')

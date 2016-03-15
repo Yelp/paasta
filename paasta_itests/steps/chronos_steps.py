@@ -90,6 +90,8 @@ def chronos_check_job_state(context, field, job_name, value):
     )
     assert len(jobs) == 1
     # we cast to a string so you can correctly assert that a value is True/False
+    print jobs[0]
+    print str(jobs[0][field])
     assert str(jobs[0][field]) == value
 
 
