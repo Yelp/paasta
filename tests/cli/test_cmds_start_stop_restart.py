@@ -133,6 +133,7 @@ def test_stop_or_start_handle_ls_remote_failures(
     mock_stdout,
 ):
     args = mock.Mock()
+    args.cluster = None
     args.clusters = 'cluster1'
     mock_get_git_url.return_value = 'fake_git_url'
     mock_figure_out_service_name.return_value = 'fake_service'
@@ -151,10 +152,13 @@ def test_start_or_stop_bad_refs(mock_list_remote_refs, mock_get_instance_config,
                                 mock_figure_out_service_name, mock_stdout):
 
     args = mock.Mock()
+    # To suppress any messages due to Mock making everything truthy
+    args.cluster = None
+    args.clusters = 'fake_cluster1,fake_cluster2'
 
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_get_instance_config.return_value = MarathonServiceConfig(
-        cluster='fake_cluster',
+        cluster='fake_cluster1',
         instance='fake_instance',
         service='fake_service',
         config_dict={},

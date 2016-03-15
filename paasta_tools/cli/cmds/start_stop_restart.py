@@ -202,11 +202,14 @@ def paasta_start_or_stop(args, desired_state):
                 desired_state=desired_state,
             )
 
+    return_val = 0
     if invalid_deploy_groups:
         print "No branches found for %s in %s." % \
             (", ".join(invalid_deploy_groups), remote_refs)
-        print "Has it been deployed there yet?"
-        return 1
+        print "Has %s been deployed there yet?" % service
+        return_val = 1
+
+    return return_val
 
 
 def paasta_start(args):
