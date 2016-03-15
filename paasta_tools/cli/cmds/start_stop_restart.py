@@ -14,6 +14,7 @@
 # limitations under the License.
 import datetime
 import socket
+import sys
 
 from service_configuration_lib import DEFAULT_SOA_DIR
 
@@ -65,7 +66,7 @@ def add_subparser(subparsers):
             '--cluster',
             choices=list_clusters(),
             help="A single cluster to view.\n"
-            " Deprecated! For example: --cluster norcal-prod. Will override any use of --clusters."
+            " Deprecated! For example: --cluster norcal-prod."
         ).completer = lazy_choices_completer(list_clusters)
 
         status_parser.add_argument(
@@ -159,14 +160,18 @@ def paasta_start_or_stop(args, desired_state):
     soa_dir = args.soa_dir
     service = figure_out_service_name(args=args, soa_dir=soa_dir)
 
+    if args.clusters and args.cluster:
+        print "--cluster and --clusters cannot be used at the same time"
+        return 1
+
     if args.clusters is not None:
         clusters = args.clusters.split(",")
     else:
         clusters = list_clusters(service)
 
     if args.cluster is not None:
-        print ("Warning - the use of --cluster is deprecated and will be removed in "
-               "favour of --clusters in future versions.")
+        sys.stderr.write(("Warning - the use of --cluster is deprecated and will be removed in "
+                          "favour of --clusters in future versions."))
         clusters = [args.cluster]
 
     try:
