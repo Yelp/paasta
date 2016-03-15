@@ -65,7 +65,7 @@ def add_subparser(subparsers):
             '--cluster',
             choices=list_clusters(),
             help="A single cluster to view.\n"
-            " Deprecated! For example: --cluster norcal-prod. Will supersede any use of --clusters."
+            " Deprecated! For example: --cluster norcal-prod. Will override any use of --clusters."
         ).completer = lazy_choices_completer(list_clusters)
 
         status_parser.add_argument(
