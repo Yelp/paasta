@@ -64,6 +64,46 @@ def job_for_date(chronos_job, date):
     return cloned
 
 
+def set_default_schedule(job):
+    """
+    Given a chronos job, return a new job identical to the first, but with the
+    schedule replaced with one that will set the job to run now.
+    """
+    cloned = copy.deepcopy(job)
+    cloned['schedule'] = 'R1///'
+    return cloned
+
+
+def remove_parents(job):
+    """
+    Given a chronos job, return a new job identifcal to the first, but with the
+    parents field removed
+    """
+    cloned = copy.deepcopy(job)
+    del cloned['parents']
+    return cloned
+
+
+def clone_job(chronos_job):
+    """
+    Given a chronos job, create a 'rerun' clone, that is due to run once and
+    only once, and as soon as possible. These jobs are made distinctive by
+    the use of a 'tmp' flag, somewhere...
+    """
+    clone = copy.deepcopy(chronos_job)
+    job_type = chronos_tools.get_job_type(clone)
+
+    # if the job is a dependent job
+    # then convert it to be a scheduled job
+    # that should run now
+    if job_type == chronos_tools.JobType.Dependent:
+        clone = remove_parents(clone)
+
+    # set the job to run now
+    clone = set_default_schedule(clone)
+    return clone
+
+
 def main():
     args = parse_args()
 
@@ -77,8 +117,8 @@ def main():
             job_name=instance,
             soa_dir=args.soa_dir,
         )
-        job_type = chronos_tools.get_job_type(complete_job_config)
-        print job_type
+        clone = clone_job(complete_job_config)
+        print clone
 
     except (NoDeploymentsAvailable, NoDockerImageError) as e:
         error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
