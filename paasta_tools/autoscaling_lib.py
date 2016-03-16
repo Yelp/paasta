@@ -57,6 +57,7 @@ def default_autoscaling_method(marathon_service_config, marathon_client, delay=6
     PID control of instance count using ram and cpu.
 
     :param marathon_service_config: the MarathonServiceConfig to scale
+    :param marathon_client: a Marathon client to fetch task data
     :param delay: the number of seconds to wait between PID updates
     :param setpoint: the target utilization percentage
 
