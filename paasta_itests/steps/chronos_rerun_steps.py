@@ -18,7 +18,6 @@ from paasta_tools.utils import _run
 
 @when('we run chronos_rerun for service_instance {service_instance}')
 def run_chronos_rerun(context, service_instance):
-    print 'hello, world'
     cmd = (
         "python ../paasta_tools/chronos_rerun.py -d %s '%s' "
         "2016-03-13T04:50:31"

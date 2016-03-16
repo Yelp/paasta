@@ -58,8 +58,6 @@ def job_for_date(chronos_job, date):
     has been modified to reflect what it would have run as on
     a given date.
     """
-    print 'swapping job'
-    print chronos_job['command']
     current_command = chronos_job['command']
     cloned = copy.deepcopy(chronos_job)
     cloned['command'] = chronos_tools.parse_time_variables(current_command, date)
@@ -126,7 +124,6 @@ def main():
             job_name=instance,
             soa_dir=args.soa_dir,
         )
-        complete_job_config['command'] = "echo '%(shortdate)s'"
 
     except (NoDeploymentsAvailable, NoDockerImageError) as e:
         error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
