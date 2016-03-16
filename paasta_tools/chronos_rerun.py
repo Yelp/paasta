@@ -27,6 +27,7 @@ affecting the child jobs
 """
 import argparse
 import copy
+import datetime
 
 import service_configuration_lib
 
@@ -57,10 +58,11 @@ def job_for_date(chronos_job, date):
     has been modified to reflect what it would have run as on
     a given date.
     """
-    current_command = chronos_job.get('command')
+    print 'swapping job'
+    print chronos_job['command']
+    current_command = chronos_job['command']
     cloned = copy.deepcopy(chronos_job)
-    cloned['command'] = chronos_tools.parse_time_variables(
-        current_command, date)
+    cloned['command'] = chronos_tools.parse_time_variables(current_command, date)
     return cloned
 
 
@@ -84,7 +86,7 @@ def remove_parents(job):
     return cloned
 
 
-def clone_job(chronos_job):
+def clone_job(chronos_job, date):
     """
     Given a chronos job, create a 'rerun' clone, that is due to run once and
     only once, and as soon as possible. These jobs are made distinctive by
@@ -101,6 +103,10 @@ def clone_job(chronos_job):
 
     # set the job to run now
     clone = set_default_schedule(clone)
+
+    # modify the command to run commands
+    # for a given date
+    clone = job_for_date(clone, date)
     return clone
 
 
@@ -120,6 +126,7 @@ def main():
             job_name=instance,
             soa_dir=args.soa_dir,
         )
+        complete_job_config['command'] = "echo '%(shortdate)s'"
 
     except (NoDeploymentsAvailable, NoDockerImageError) as e:
         error_msg = "No deployment found for %s in cluster %s. Has Jenkins run for it?" % (
@@ -135,7 +142,7 @@ def main():
     except chronos_tools.InvalidParentError as e:
         raise e
 
-    clone = clone_job(complete_job_config)
+    clone = clone_job(complete_job_config, datetime.datetime.strptime(args.execution_date, "%Y-%m-%dT%H:%M:%S"))
     client.add(clone)
 
 
