@@ -43,9 +43,11 @@ def test_set_default_schedule():
 
 
 @mock.patch('paasta_tools.chronos_rerun.remove_parents')
-def test_clone_job_dependent(mock_remove_parents):
+@mock.patch('paasta_tools.chronos_rerun.set_default_schedule')
+def test_clone_job_dependent(mock_remove_parents, mock_set_default_schedule):
     fake_chronos_job_config = {
         'parents': ['foo', 'bar']
     }
     chronos_rerun.clone_job(fake_chronos_job_config)
     assert mock_remove_parents.called_once()
+    assert mock_set_default_schedule.called_once()
