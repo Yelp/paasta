@@ -188,13 +188,6 @@ class ChronosJobConfig(InstanceConfig):
     def get_job_name(self):
         return self.instance
 
-    def get_cmd(self):
-        original_cmd = super(ChronosJobConfig, self).get_cmd()
-        if original_cmd:
-            return parse_time_variables(original_cmd)
-        else:
-            return original_cmd
-
     def get_owner(self):
         overrides = self.get_monitoring()
         return monitoring_tools.get_team(overrides=overrides, service=self.get_service())
@@ -388,7 +381,7 @@ class ChronosJobConfig(InstanceConfig):
             'cpus': self.get_cpus(),
             'disk': self.get_disk(),
             'constraints': self.get_constraints(),
-            'command': self.get_cmd(),
+            'command': parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd(),
             'arguments': self.get_args(),
             'epsilon': self.get_epsilon(),
             'retries': self.get_retries(),
@@ -671,6 +664,7 @@ def parse_time_variables(input_string, parse_time=None):
     :param parse_time: Reference Datetime object to parse the date and time strings, defaults to now.
     :returns: A string with the date and time variables replaced
     """
+    print 'parse_time: %s' % parse_time
     if parse_time is None:
         parse_time = datetime.datetime.now()
     # We build up a tron context object that has the right
