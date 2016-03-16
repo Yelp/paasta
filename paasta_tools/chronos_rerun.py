@@ -59,6 +59,7 @@ def job_for_date(chronos_job, date):
     a given date.
     """
     current_command = chronos_job['command']
+
     cloned = copy.deepcopy(chronos_job)
     cloned['command'] = chronos_tools.parse_time_variables(current_command, date)
     return cloned
@@ -117,6 +118,10 @@ def main():
 
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
+    system_paasta_config = load_system_paasta_config()
+
+    chronos_job_config = chronos_tools.load_chronos_job_config(
+        service, instance, system_paasta_config.get_cluster(), soa_dir=args.soa_dir)
 
     try:
         complete_job_config = chronos_tools.create_complete_config(
@@ -139,6 +144,13 @@ def main():
     except chronos_tools.InvalidParentError as e:
         raise e
 
+    # complete_job_config is a formatted version
+    # of the job, so the command is fornatted in the context
+    # of 'now'
+    # replace it with the 'original' cmd so it can be
+    # re rendered
+    original_command = chronos_job_config.get_cmd()
+    complete_job_config['command'] = original_command
     clone = clone_job(complete_job_config, datetime.datetime.strptime(args.execution_date, "%Y-%m-%dT%H:%M:%S"))
     client.add(clone)
 
