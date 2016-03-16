@@ -14,15 +14,18 @@
 # limitations under the License.
 from datetime import datetime
 from math import ceil
-from time import sleep
 
 from kazoo.exceptions import NoNodeError
 
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.marathon_tools import load_marathon_config
+from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import get_services_for_cluster
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
 _autoscaling_methods = {}
@@ -49,7 +52,7 @@ def bespoke_autoscaling_method(*args, **kwargs):
 
 
 @register_autoscaling_method('default')
-def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8, **kwargs):
+def default_autoscaling_method(marathon_service_config, marathon_client, delay=600, setpoint=0.8, **kwargs):
     """
     PID control of instance count using ram and cpu.
 
@@ -71,10 +74,6 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
     def get_current_time():
         return int(datetime.now().strftime('%s'))
 
-    def get_mesos_cpu_data(mesos_tasks):
-        return {task['id']: (float(task.stats.get('cpus_system_time_secs', 0.0) + task.stats.get(
-            'cpus_user_time_secs', 0.0)) / (task.cpu_limit - .1)) for task in mesos_tasks}
-
     autoscaling_root = compose_autoscaling_zookeeper_root(
         service=marathon_service_config.service,
         instance=marathon_service_config.instance,
@@ -82,68 +81,68 @@ def default_autoscaling_method(marathon_service_config, delay=600, setpoint=0.8,
     zk_iterm_path = '%s/iterm' % autoscaling_root
     zk_last_error_path = '%s/last_error' % autoscaling_root
     zk_last_time_path = '%s/last_time' % autoscaling_root
+    zk_last_cpu_data = '%s/cpu_data' % autoscaling_root
 
     with ZookeeperPool() as zk:
         try:
             iterm, _ = zk.get(zk_iterm_path)
             last_error, _ = zk.get(zk_last_error_path)
-            last_time, _ = zk.get(zk_last_error_path)
+            last_time, _ = zk.get(zk_last_time_path)
+            last_cpu_data, _ = zk.get(zk_last_cpu_data)
             iterm = float(iterm)
             last_error = float(last_error)
             last_time = float(last_time)
+            last_cpu_data = (datum for datum in last_cpu_data.split(',') if datum)
         except NoNodeError:
             iterm = 0.0
             last_error = 0.0
             last_time = 0.0
+            last_cpu_data = []
 
-    if get_current_time() - last_time < delay / 2:
+    if get_current_time() - last_time < delay:
         return 0
-    job_id = marathon_service_config.format_marathon_app_dict()['id']
 
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(
-        url=marathon_config.get_url(),
-        user=marathon_config.get_username(),
-        passwd=marathon_config.get_password(),
-    )
+    job_id = marathon_service_config.format_marathon_app_dict()['id']
 
     healthy_ids = {task.id for task in marathon_client.list_tasks(app_id=job_id) if task.health_check_results}
 
     if not healthy_ids:
         return 0
 
-    mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
-    initial_time = get_current_time()
-    initial_task_cpu_data = get_mesos_cpu_data((task for task in mesos_tasks if task['id'] in healthy_ids))
-
-    if not initial_task_cpu_data:
-        return 0
-
-    sleep(delay / 2)
-
-    mesos_tasks = get_running_tasks_from_active_frameworks(job_id)
+    mesos_tasks = [task for task in get_running_tasks_from_active_frameworks(job_id) if task['id'] in healthy_ids]
     current_time = get_current_time()
     time_delta = current_time - last_time
-    task_cpu_data = get_mesos_cpu_data(mesos_tasks)
 
-    utilization = {task_id: (cpu_seconds - initial_task_cpu_data[task_id]) / (current_time - initial_time)
-                   for task_id, cpu_seconds in task_cpu_data.items() if task_id in initial_task_cpu_data}
+    mesos_cpu_data = {task['id']: float(task.stats.get('cpus_system_time_secs', 0.0) + task.stats.get(
+        'cpus_user_time_secs', 0.0)) / (task.cpu_limit - .1) for task in mesos_tasks}
+
+    utilization = {}
+    for datum in last_cpu_data:
+        last_cpu_seconds, task_id = datum.split(':')
+        if task_id in mesos_cpu_data:
+            utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
 
     for task in mesos_tasks:
-        if task['id'] in utilization:
-            utilization[task['id']] = max(utilization[task['id']], float(task.rss) / task.mem_limit)
+        utilization[task['id']] = max(utilization.get(task['id'], 0), float(task.rss) / task.mem_limit)
+
+    if not utilization:
+        return 0
 
     task_errors = [amount - setpoint for amount in utilization.values()]
     error = sum(task_errors) / len(task_errors)
     iterm = clamp_value(iterm + (Ki * error) * time_delta)
 
+    cpu_data_csv = ','.join('%s:%s' % (cpu_seconds, task_id) for task_id, cpu_seconds in mesos_cpu_data.items())
+
     with ZookeeperPool() as zk:
         zk.ensure_path(zk_iterm_path)
         zk.ensure_path(zk_last_error_path)
         zk.ensure_path(zk_last_time_path)
+        zk.ensure_path(zk_last_cpu_data)
         zk.set(zk_iterm_path, str(iterm))
         zk.set(zk_last_error_path, str(error))
         zk.set(zk_last_time_path, str(current_time))
+        zk.set(zk_last_cpu_data, str(cpu_data_csv))
 
     return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
 
@@ -152,20 +151,46 @@ def get_new_instance_count(current_instances, autoscaling_direction):
     return int(ceil((1 + float(autoscaling_direction) / 10) * current_instances))
 
 
-def autoscale_marathon_instance(marathon_service_config):
-    if marathon_service_config.get_max_instances() is None:
-        return
+def autoscale_marathon_instance(marathon_service_config, marathon_client):
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     autoscaling_method = get_autoscaling_method(autoscaling_params['method'])
+    autoscaling_direction = autoscaling_method(marathon_service_config, marathon_client, **autoscaling_params)
+    if autoscaling_direction:
+        current_instances = marathon_service_config.get_instances()
+        autoscaling_amount = get_new_instance_count(current_instances, autoscaling_direction)
+        instances = marathon_service_config.limit_instance_count(autoscaling_amount)
+        if instances != current_instances:
+            set_instances_for_marathon_service(
+                service=marathon_service_config.service,
+                instance=marathon_service_config.instance,
+                instance_count=instances,
+            )
+
+
+def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
+    cluster = load_system_paasta_config().get_cluster()
+    services = get_services_for_cluster(
+        cluster=cluster,
+        instance_type='marathon',
+        soa_dir=soa_dir,
+    )
+    configs = []
+    for service, instance in services:
+        service_config = load_marathon_service_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            soa_dir=soa_dir,
+        )
+        if service_config.get_max_instances():
+            configs.append(service_config)
+
+    marathon_config = load_marathon_config()
+    marathon_client = get_marathon_client(
+        url=marathon_config.get_url(),
+        user=marathon_config.get_username(),
+        passwd=marathon_config.get_password(),
+    )
     with ZookeeperPool():
-        autoscaling_direction = autoscaling_method(marathon_service_config, **autoscaling_params)
-        if autoscaling_direction:
-            current_instances = marathon_service_config.get_instances()
-            autoscaling_amount = get_new_instance_count(current_instances, autoscaling_direction)
-            instances = marathon_service_config.limit_instance_count(autoscaling_amount)
-            if instances != current_instances:
-                set_instances_for_marathon_service(
-                    service=marathon_service_config.service,
-                    instance=marathon_service_config.instance,
-                    instance_count=instances,
-                )
+        for config in configs:
+            autoscale_marathon_instance(config, marathon_client)
