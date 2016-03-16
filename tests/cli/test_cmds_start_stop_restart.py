@@ -163,6 +163,6 @@ def test_start_or_stop_bad_refs(mock_list_remote_refs, mock_get_instance_config,
         branch_dict={},
     )
     mock_list_remote_refs.return_value = {
-        "refs/heads/paasta-deliberatelyinvalidref": "70f7245ccf039d778c7e527af04eac00d261d783"}
+        "refs/tags/paasta-deliberatelyinvalidref-20160304T053919-deploy": "70f7245ccf039d778c7e527af04eac00d261d783"}
     assert start_stop_restart.paasta_start_or_stop(args, 'restart') == 1
     assert "No branches found for" in mock_stdout.getvalue()
