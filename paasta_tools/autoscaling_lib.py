@@ -123,7 +123,8 @@ def default_autoscaling_method(marathon_service_config, marathon_client, delay=6
             utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
 
     for task in mesos_tasks:
-        utilization[task['id']] = max(utilization.get(task['id'], 0), float(task.rss) / task.mem_limit)
+        if task.mem_limit != 0:
+            utilization[task['id']] = max(utilization.get(task['id'], 0), float(task.rss) / task.mem_limit)
 
     if not utilization:
         return 0
