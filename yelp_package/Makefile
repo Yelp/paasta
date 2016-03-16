@@ -23,18 +23,24 @@ DOCKER_RUN_LUCID:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_lucid_con
 DOCKER_RUN_TRUSTY:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_trusty_container
 ifeq ($(PAASTA_ENV),YELP)
 	ADD_MISSING_DEPS_MAYBE:=-diff --unchanged-line-format= --old-line-format= --new-line-format='%L' ../requirements.txt ./extra_requirements_yelp.txt >> ../requirements.txt
+	ADD_YELP_PREFIX_MAYBE:=dch -v $(RELEASE)-yelp1 --changelog ../debian/changelog $$'Build for yelp: add scribereader to virtualenv'
 else
 	ADD_MISSING_DEPS_MAYBE:=true
+	ADD_YELP_PREFIX_MAYBE:=true
 endif
+
 
 build_lucid_docker:
 	[ -d ../dist ] || mkdir ../dist
 	cd dockerfiles/lucid/ && docker build -t "paastatools_lucid_container" .
 package_lucid: build_lucid_docker
 	cp ../requirements.txt ../requirements.txt.old
+	cp ../debian/changelog ../debian/changelog.old
 	$(ADD_MISSING_DEPS_MAYBE)
+	$(ADD_YELP_PREFIX_MAYBE)
 	$(DOCKER_RUN_LUCID) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	mv ../requirements.txt.old ../requirements.txt
+	mv ../debian/changelog.old ../debian/changelog
 	$(DOCKER_RUN_LUCID) chown -R $(UID):$(GID) /work
 itest_lucid: package_lucid
 	$(DOCKER_RUN_LUCID) /work/yelp_package/itest/ubuntu.sh
@@ -45,9 +51,12 @@ build_trusty_docker:
 	cd dockerfiles/trusty/ && docker build -t "paastatools_trusty_container" .
 package_trusty: build_trusty_docker
 	cp ../requirements.txt ../requirements.txt.old
+	cp ../debian/changelog ../debian/changelog.old
 	$(ADD_MISSING_DEPS_MAYBE)
+	$(ADD_YELP_PREFIX_MAYBE)
 	$(DOCKER_RUN_TRUSTY) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
 	mv ../requirements.txt.old ../requirements.txt
+	mv ../debian/changelog.old ../debian/changelog
 	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work
 itest_trusty: package_trusty
 	$(DOCKER_RUN_TRUSTY) /work/yelp_package/itest/ubuntu.sh

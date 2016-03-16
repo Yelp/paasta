@@ -35,7 +35,6 @@ itest: test
 
 itest_%:
 	# See the makefile in yelp_package/Makefile for packaging stuff
-	# Note: For now, these builds only work inside Yelp's environment.
 	make -C yelp_package PAASTA_ENV=$(PAASTA_ENV) $@
 
 # Steps to release
