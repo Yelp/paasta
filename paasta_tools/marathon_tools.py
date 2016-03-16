@@ -34,6 +34,7 @@ from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import deploy_blacklist_to_constraints
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
@@ -142,7 +143,9 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
             "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file)
         )
 
-    general_config.update(instance_configs[instance])
+    base_instance_config = instance_configs[instance]
+    deep_merge_dictionaries(source=general_config, destination=base_instance_config)
+    general_config = base_instance_config
 
     branch_dict = {}
     if load_deployments:

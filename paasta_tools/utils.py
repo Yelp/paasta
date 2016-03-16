@@ -1340,3 +1340,16 @@ def format_table(rows, min_spacing=2):
             expanded_rows.append(expanded_row)
 
     return [(' ' * min_spacing).join(r) for r in expanded_rows]
+
+
+def deep_merge_dictionaries(source, destination):
+    """
+    Recursively merges two dicitonaries.
+    """
+    for key, value in source.items():
+        if isinstance(value, dict):
+            child = destination.setdefault(key, {})
+            deep_merge_dictionaries(value, child)
+        else:
+            destination[key] = value
+    return destination
