@@ -23,3 +23,15 @@ Feature: chronos_rerun can rerun old jobs
      Then we should get exit code 0
      When we store the name of the job for the service testservice and instance dependentjob as myjob
      Then the field "disabled" for the job stored as "myjob" is set to "False"
+
+
+  Scenario: dates are properly interpolated
+    Given a working paasta cluster
+      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have a deployments.json for the service "testservice" with enabled chronos instance "testinstance"
+     When we set the "cmd" field of the chronos config for service "testservice" and instance "testinstance" to "echo %(shortdate)s"
+     When we run chronos_rerun for service_instance testservice testinstance
+     Then we should get exit code 0
+     When we store the name of the job for the service testservice and instance testinstance as myjob
+     Then the field "disabled" for the job stored as "myjob" is set to "False"
+      And the field "command" for the job stored as "myjob" is set to "echo '2016-03-13'"

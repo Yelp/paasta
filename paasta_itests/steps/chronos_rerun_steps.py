@@ -21,8 +21,7 @@ def run_chronos_rerun(context, service_instance):
     print 'hello, world'
     cmd = (
         "python ../paasta_tools/chronos_rerun.py -d %s '%s' "
-        "2016-03-13T04:50:31Z"
+        "2016-03-13T04:50:31"
     ) % (context.soa_dir, service_instance)
     exit_code, output = _run(cmd)
-    print output
     context.exit_code, context.output = exit_code, output
