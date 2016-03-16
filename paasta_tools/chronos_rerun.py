@@ -132,8 +132,8 @@ def main():
             "Error was: %s" % str(e))
         print error_msg
         raise e
-    except chronos_tools.InvalidParentError:
-        pass
+    except chronos_tools.InvalidParentError as e:
+        raise e
 
     clone = clone_job(complete_job_config)
     client.add(clone)
