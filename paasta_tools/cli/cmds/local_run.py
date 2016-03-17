@@ -105,6 +105,8 @@ def perform_http_healthcheck(url, timeout):
     # check if response code is valid per https://mesosphere.github.io/marathon/docs/health-checks.html
     elif res.status_code >= 200 and res.status_code < 400:
         return (True, "http request succeeded, code %d" % res.status_code)
+    elif res.status_code >= 400:
+        return (False, "http request failed, code %d" % res.status_code)
 
 
 def perform_tcp_healthcheck(url, timeout):
