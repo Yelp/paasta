@@ -5,11 +5,12 @@ env:
   - TOXENV=docs
   - TOXENV=general_itests
   - TOXENV=paasta_itests
+  - MAKE_TARGET=itest_trusty
 sudo: required
 services:
   - docker
 install: pip install coveralls tox
-script: tox
+script: if [[ -n "$MAKE_TARGET" ]]; then make "$MAKE_TARGET"; else tox; fi
 after_success:
   - coveralls
 deploy:
