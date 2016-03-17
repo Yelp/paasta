@@ -18,9 +18,11 @@ from math import ceil
 from kazoo.exceptions import NoNodeError
 
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
+from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_client
 from paasta_tools.marathon_tools import load_marathon_config
 from paasta_tools.marathon_tools import load_marathon_service_config
+from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -52,7 +54,8 @@ def bespoke_autoscaling_method(*args, **kwargs):
 
 
 @register_autoscaling_method('default')
-def default_autoscaling_method(marathon_service_config, marathon_client, delay=600, setpoint=0.8, **kwargs):
+def default_autoscaling_method(marathon_service_config, marathon_client, mesos_tasks,
+                               delay=600, setpoint=0.8, **kwargs):
     """
     PID control of instance count using ram and cpu.
 
@@ -67,6 +70,8 @@ def default_autoscaling_method(marathon_service_config, marathon_client, delay=6
     Ki = 0.2 / delay
     Kd = 0.05 * delay
 
+    job_id = format_job_id(marathon_service_config.service, marathon_service_config.instance)
+
     def clamp_value(number):
         """Limits the PID output to scaling up/down by 1.
         Also used to limit the integral term which avoids windup lag."""
@@ -74,6 +79,9 @@ def default_autoscaling_method(marathon_service_config, marathon_client, delay=6
 
     def get_current_time():
         return int(datetime.now().strftime('%s'))
+
+    def get_short_job_id(task_id):
+        return MESOS_TASK_SPACER.join(task_id.split(MESOS_TASK_SPACER, 2)[:2])
 
     autoscaling_root = compose_autoscaling_zookeeper_root(
         service=marathon_service_config.service,
@@ -103,15 +111,12 @@ def default_autoscaling_method(marathon_service_config, marathon_client, delay=6
     if get_current_time() - last_time < delay:
         return 0
 
-    job_id = marathon_service_config.format_marathon_app_dict()['id']
-
-    healthy_ids = {task.id for task in marathon_client.list_tasks(app_id=job_id) if task.health_check_results}
-
+    healthy_ids = {task.id for task in marathon_client.list_tasks()
+                   if job_id == get_short_job_id(task.id) and task.health_check_results}
     if not healthy_ids:
         return 0
 
-    mesos_tasks = {task['id']: task.stats for task in get_running_tasks_from_active_frameworks(job_id)
-                   if task['id'] in healthy_ids}
+    mesos_tasks = {task['id']: task.stats for task in mesos_tasks if task['id'] in healthy_ids}
     current_time = get_current_time()
     time_delta = current_time - last_time
 
@@ -157,10 +162,11 @@ def get_new_instance_count(current_instances, autoscaling_direction):
     return int(ceil((1 + float(autoscaling_direction) / 10) * current_instances))
 
 
-def autoscale_marathon_instance(marathon_service_config, marathon_client):
+def autoscale_marathon_instance(marathon_service_config, marathon_client, mesos_tasks):
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     autoscaling_method = get_autoscaling_method(autoscaling_params['method'])
-    autoscaling_direction = autoscaling_method(marathon_service_config, marathon_client, **autoscaling_params)
+    autoscaling_direction = autoscaling_method(marathon_service_config, marathon_client, mesos_tasks,
+                                               **autoscaling_params)
     if autoscaling_direction:
         current_instances = marathon_service_config.get_instances()
         autoscaling_amount = get_new_instance_count(current_instances, autoscaling_direction)
@@ -197,6 +203,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
         user=marathon_config.get_username(),
         passwd=marathon_config.get_password(),
     )
+    mesos_tasks = get_running_tasks_from_active_frameworks('')
     with ZookeeperPool():
         for config in configs:
-            autoscale_marathon_instance(config, marathon_client)
+            autoscale_marathon_instance(config, marathon_client, mesos_tasks)
