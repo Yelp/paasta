@@ -84,7 +84,8 @@ def test_perform_http_healthcheck_failure(mock_http_conn):
     fake_timeout = 10
 
     mock_http_conn.return_value = mock.Mock(status_code=400, headers={})
-    assert not perform_http_healthcheck(fake_http_url, fake_timeout)
+    result, reason = perform_http_healthcheck(fake_http_url, fake_timeout)
+    assert result is False
     mock_http_conn.assert_called_once_with(fake_http_url)
 
 
