@@ -1291,3 +1291,42 @@ class TestFileLogWriter:
 
             mock_FileIO.assert_called_once_with("/dev/null", mode=fw.mode, closefd=True)
             fake_file.write.assert_called_once_with("%s\n" % fake_line)
+
+
+def test_deep_merge_dictionaries():
+    source = {
+        'common_key': 'value',
+        'common_dict': {
+            'subkey1': 1,
+            'subkey2': 2,
+            'subkey3': 3,
+        },
+        'just_in_source': 'value',
+        'just_in_source_dict': {'key': 'value'},
+    }
+    destination = {
+        'common_key': 'overwritten_value',
+        'common_dict': {
+            'subkey1': 'overwritten_value',
+            'subkey4': 4,
+            'subkey5': 5,
+        },
+        'just_in_dest': 'value',
+        'just_in_dest_dict': {'key': 'value'},
+    }
+    expected = {
+        'common_key': 'value',
+        'common_dict': {
+            'subkey1': 1,
+            'subkey2': 2,
+            'subkey3': 3,
+            'subkey4': 4,
+            'subkey5': 5,
+        },
+        'just_in_source': 'value',
+        'just_in_source_dict': {'key': 'value'},
+        'just_in_dest': 'value',
+        'just_in_dest_dict': {'key': 'value'},
+    }
+    utils.deep_merge_dictionaries(source, destination)
+    assert destination == expected
