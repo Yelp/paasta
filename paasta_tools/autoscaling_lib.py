@@ -194,7 +194,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
             cluster=cluster,
             soa_dir=soa_dir,
         )
-        if service_config.get_max_instances():
+        if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
             configs.append(service_config)
 
     marathon_config = load_marathon_config()
