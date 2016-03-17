@@ -197,13 +197,14 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
         if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
             configs.append(service_config)
 
-    marathon_config = load_marathon_config()
-    marathon_client = get_marathon_client(
-        url=marathon_config.get_url(),
-        user=marathon_config.get_username(),
-        passwd=marathon_config.get_password(),
-    )
-    mesos_tasks = get_running_tasks_from_active_frameworks('')
-    with ZookeeperPool():
-        for config in configs:
-            autoscale_marathon_instance(config, marathon_client, mesos_tasks)
+    if configs:
+        marathon_config = load_marathon_config()
+        marathon_client = get_marathon_client(
+            url=marathon_config.get_url(),
+            user=marathon_config.get_username(),
+            passwd=marathon_config.get_password(),
+        )
+        mesos_tasks = get_running_tasks_from_active_frameworks('')
+        with ZookeeperPool():
+            for config in configs:
+                autoscale_marathon_instance(config, marathon_client, mesos_tasks)
