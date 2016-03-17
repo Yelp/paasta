@@ -127,7 +127,7 @@ def issue_state_change_for_service(service_config, force_bounce, desired_state):
             )
         elif desired_state == 'stop':
             extra_message = (
-                "A 'stop' command will signal to Marathon that should be in Marathon, "
+                "A 'stop' command will signal to Marathon that the service should be in Marathon, "
                 "but scaled down to 0 instances gracefully. Use 'paasta start' or make a new deployment to "
                 "make the service start back up."
             )
