@@ -664,7 +664,6 @@ def parse_time_variables(input_string, parse_time=None):
     :param parse_time: Reference Datetime object to parse the date and time strings, defaults to now.
     :returns: A string with the date and time variables replaced
     """
-    print 'parse_time: %s' % parse_time
     if parse_time is None:
         parse_time = datetime.datetime.now()
     # We build up a tron context object that has the right

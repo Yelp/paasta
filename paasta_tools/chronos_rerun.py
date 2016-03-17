@@ -20,7 +20,7 @@ If the job is a regular schedueled job, then chronos_rereun will use the
 the values they would have been on the date specified.
 
 In the case of a parent job, that is a scheduled job where other jobs have it
-listed as a parent, chronos_cleanup will create a new, temporary clone of the
+listed as a parent, chronos_rerun will create a new, temporary clone of the
 scheduled job, without the child jobs. The job will then be rerun, without
 affecting the child jobs
 
@@ -84,8 +84,7 @@ def remove_parents(chronos_job):
 def clone_job(chronos_job, date):
     """
     Given a chronos job, create a 'rerun' clone, that is due to run once and
-    only once, and as soon as possible. These jobs are made distinctive by
-    the use of a 'tmp' flag, somewhere...
+    only once, and as soon as possible.
     """
     clone = copy.deepcopy(chronos_job)
     job_type = chronos_tools.get_job_type(clone)
