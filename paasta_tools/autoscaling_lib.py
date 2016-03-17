@@ -110,12 +110,13 @@ def default_autoscaling_method(marathon_service_config, marathon_client, delay=6
     if not healthy_ids:
         return 0
 
-    mesos_tasks = [task for task in get_running_tasks_from_active_frameworks(job_id) if task['id'] in healthy_ids]
+    mesos_tasks = {task['id']: task.stats for task in get_running_tasks_from_active_frameworks(job_id)
+                   if task['id'] in healthy_ids}
     current_time = get_current_time()
     time_delta = current_time - last_time
 
-    mesos_cpu_data = {task['id']: float(task.stats.get('cpus_system_time_secs', 0.0) + task.stats.get(
-        'cpus_user_time_secs', 0.0)) / (task.cpu_limit - .1) for task in mesos_tasks}
+    mesos_cpu_data = {task_id: float(stats.get('cpus_system_time_secs', 0.0) + stats.get(
+        'cpus_user_time_secs', 0.0)) / (stats.get('cpus_limit', 0) - .1) for task_id, stats in mesos_tasks.items()}
 
     utilization = {}
     for datum in last_cpu_data:
@@ -123,9 +124,12 @@ def default_autoscaling_method(marathon_service_config, marathon_client, delay=6
         if task_id in mesos_cpu_data:
             utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
 
-    for task in mesos_tasks:
-        if task.mem_limit != 0:
-            utilization[task['id']] = max(utilization.get(task['id'], 0), float(task.rss) / task.mem_limit)
+    for task_id, stats in mesos_tasks.items():
+        if stats.get('mem_limit_bytes', 0) != 0:
+            utilization[task_id] = max(
+                utilization.get(task_id, 0),
+                float(stats.get('mem_rss_bytes', 0)) / stats.get('mem_limit_bytes', 0),
+            )
 
     if not utilization:
         return 0
