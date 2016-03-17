@@ -52,37 +52,33 @@ def parse_args():
     return args
 
 
-def job_for_date(chronos_job, date):
+def modify_command_for_date(chronos_job, date):
     """
     Given a chronos job config, return a cloned job config where the command
     has been modified to reflect what it would have run as on
     a given date.
     """
     current_command = chronos_job['command']
-
-    cloned = copy.deepcopy(chronos_job)
-    cloned['command'] = chronos_tools.parse_time_variables(current_command, date)
-    return cloned
+    chronos_job['command'] = chronos_tools.parse_time_variables(current_command, date)
+    return chronos_job
 
 
-def set_default_schedule(job):
+def set_default_schedule(chronos_job):
     """
     Given a chronos job, return a new job identical to the first, but with the
     schedule replaced with one that will set the job to run now.
     """
-    cloned = copy.deepcopy(job)
-    cloned['schedule'] = 'R1//PT1M'
-    return cloned
+    chronos_job['schedule'] = 'R1//PT1M'
+    return chronos_job
 
 
-def remove_parents(job):
+def remove_parents(chronos_job):
     """
     Given a chronos job, return a new job identifcal to the first, but with the
     parents field removed
     """
-    cloned = copy.deepcopy(job)
-    del cloned['parents']
-    return cloned
+    chronos_job.pop('parents', None)
+    return chronos_job
 
 
 def clone_job(chronos_job, date):
@@ -105,7 +101,7 @@ def clone_job(chronos_job, date):
 
     # modify the command to run commands
     # for a given date
-    clone = job_for_date(clone, date)
+    clone = modify_command_for_date(clone, date)
     return clone
 
 

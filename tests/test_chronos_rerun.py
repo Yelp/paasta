@@ -18,13 +18,18 @@ import mock
 from paasta_tools import chronos_rerun
 
 
-def test_job_for_date_no_date():
+@mock.patch('paasta_tools.chronos_rerun.chronos_tools.parse_time_variables')
+def test_modify_command_for_date(mock_parse_time_variables):
+    mock_parse_time_variables.return_value = '2016-03-17'
     fake_chronos_job_config = {
         'command': 'foo'
     }
-    assert chronos_rerun.job_for_date(fake_chronos_job_config,
-                                      datetime.datetime.now()) == \
-        fake_chronos_job_config
+    actual = chronos_rerun.modify_command_for_date(fake_chronos_job_config,
+                                                   datetime.datetime.now())
+
+    assert actual == {
+        'command': '2016-03-17'
+    }
 
 
 def test_remove_parents():
@@ -44,12 +49,12 @@ def test_set_default_schedule():
 
 @mock.patch('paasta_tools.chronos_rerun.remove_parents')
 @mock.patch('paasta_tools.chronos_rerun.set_default_schedule')
-@mock.patch('paasta_tools.chronos_rerun.job_for_date')
-def test_clone_job_dependent(mock_remove_parents, mock_set_default_schedule, mock_job_for_date):
+@mock.patch('paasta_tools.chronos_rerun.modify_command_for_date')
+def test_clone_job_dependent(mock_remove_parents, mock_set_default_schedule, mock_modify_command_for_date):
     fake_chronos_job_config = {
         'parents': ['foo', 'bar']
     }
     chronos_rerun.clone_job(fake_chronos_job_config, '2016-03-2016T04:40:31')
     assert mock_remove_parents.called_once()
     assert mock_set_default_schedule.called_once()
-    assert mock_job_for_date.called_once()
+    assert mock_modify_command_for_date.called_once()
