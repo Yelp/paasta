@@ -199,16 +199,31 @@ def test_threshold_decider():
     fake_ingester_method_1 = mock.Mock(return_value=0.5)
     fake_ingester_method_2 = mock.Mock(return_value=1)
     fake_ingester_method_3 = mock.Mock(return_value=0)
+    current_time = datetime.now()
     decider_args = {
-        'marathon_service_config': mock.Mock(),
+        'marathon_service_config': mock.Mock(service='fake-service', instance='fake-instance'),
         'marathon_tasks': mock.Mock(),
         'mesos_tasks': mock.Mock(),
         'setpoint': 0.5,
         'threshold': 0.1,
     }
-    assert autoscaling_lib.threshold_decider(ingester_method=fake_ingester_method_1, **decider_args) == 0
-    assert autoscaling_lib.threshold_decider(ingester_method=fake_ingester_method_2, **decider_args) == 1
-    assert autoscaling_lib.threshold_decider(ingester_method=fake_ingester_method_3, **decider_args) == -1
+    with contextlib.nested(
+        mock.patch('paasta_tools.utils.KazooClient', autospec=True,
+                   return_value=mock.Mock(get=mock.Mock(return_value=('0', None)))),
+        mock.patch('paasta_tools.autoscaling_lib.datetime', autospec=True),
+        mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                   return_value=mock.Mock(get_zk_hosts=mock.Mock())),
+    ) as (
+        mock_zk_client,
+        mock_datetime,
+        _,
+    ):
+        mock_datetime.now.return_value = current_time
+        assert autoscaling_lib.threshold_decider(ingester_method=fake_ingester_method_1, **decider_args) == 0
+        assert autoscaling_lib.threshold_decider(ingester_method=fake_ingester_method_2, **decider_args) == 1
+        assert autoscaling_lib.threshold_decider(ingester_method=fake_ingester_method_3, **decider_args) == -1
+        mock_zk_client.return_value.set.assert_called_with(
+            '/autoscaling/fake-service/fake-instance/threshold_last_time', current_time.strftime('%s'))
 
 
 def test_mesos_cpu_ingester():

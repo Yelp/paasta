@@ -63,8 +63,28 @@ class IngesterNoDataError(ValueError):
 
 @register_autoscaling_component('threshold', 'decider')
 def threshold_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
-                      setpoint=0.8, threshold=0.1, **kwargs):
+                      delay=600, setpoint=0.8, threshold=0.1, **kwargs):
+    zk_last_time_path = '%s/threshold_last_time' % compose_autoscaling_zookeeper_root(
+        service=marathon_service_config.service,
+        instance=marathon_service_config.instance,
+    )
+    with ZookeeperPool() as zk:
+        try:
+            last_time, _ = zk.get(zk_last_time_path)
+            last_time = float(last_time)
+        except NoNodeError:
+            last_time = 0.0
+
+    current_time = int(datetime.now().strftime('%s'))
+    if current_time - last_time < delay:
+        return 0
+
     error = ingester_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs) - setpoint
+
+    with ZookeeperPool() as zk:
+        zk.ensure_path(zk_last_time_path)
+        zk.set(zk_last_time_path, str(current_time))
+
     if error > threshold:
         return 1
     elif abs(error) > threshold:
