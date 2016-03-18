@@ -722,8 +722,8 @@ def test_get_mesos_habitat_data_humanized():
     test.somewhere.www   25.00/75.00       20.0M/100.0M      150.0M/250.0M
     test2.somewhere.www  500.00/500.00     750.0M/750.0M     200.0M/200.0M"""
     expected_attribute_humanize_output = """  Habitat                 CPU (free/total)  RAM (free/total)  Disk (free/total)
-    somenametest-habitat-2  500.00/500.00     750.0M/750.0M     200.0M/200.0M
-    somenametest-habitat    25.00/75.00       20.0M/100.0M      150.0M/250.0M"""
+    somenametest-habitat    25.00/75.00       20.0M/100.0M      150.0M/250.0M
+    somenametest-habitat-2  500.00/500.00     750.0M/750.0M     200.0M/200.0M"""
 
     extra_slave_data = paasta_metastatus.assert_extra_slave_data(mesos_state,
                                                                  humanize_output=True)
@@ -785,8 +785,8 @@ def test_get_mesos_habitat_data_nonhumanized():
     test.somewhere.www   25.00/75.00       20.00/100.00      150.00/250.00
     test2.somewhere.www  500.00/500.00     750.00/750.00     200.00/200.00"""
     expected_attribute_output = """  Habitat                 CPU (free/total)  RAM (free/total)  Disk (free/total)
-    somenametest-habitat-2  500.00/500.00     750.00/750.00     200.00/200.00
-    somenametest-habitat    25.00/75.00       20.00/100.00      150.00/250.00"""
+    somenametest-habitat    25.00/75.00       20.00/100.00      150.00/250.00
+    somenametest-habitat-2  500.00/500.00     750.00/750.00     200.00/200.00"""
 
     extra_slave_data = paasta_metastatus.assert_extra_slave_data(mesos_state, humanize_output=False)
     extra_attribute_data = paasta_metastatus.assert_extra_attribute_data(mesos_state, humanize_output=False)

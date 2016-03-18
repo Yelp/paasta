@@ -95,9 +95,7 @@ def get_extra_mesos_slave_data(mesos_state):
     for framework in mesos_state.get('frameworks', []):
         for task in framework.get('tasks', []):
             mesos_metrics = filter_mesos_state_metrics(task['resources'])
-            for resource, count in mesos_metrics.iteritems():
-                slaves[task['slave_id']]['free_resources'][resource] = slaves[
-                    task['slave_id']]['total_resources'][resource] - count
+            slaves[task['slave_id']]['free_resources'].subtract(mesos_metrics)
 
     return sorted(slaves.values())
 
@@ -278,7 +276,8 @@ def assert_extra_attribute_data(mesos_state, humanize_output=False):
         resource_availability_dict = resource_dict["availability"]
         if len(resource_free_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
             rows.append((attribute.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)'))
-            for attribute_location, resources_remaining in resource_free_dict.items():
+            for attribute_location in sorted(resource_free_dict.keys()):
+                resources_remaining = resource_free_dict[attribute_location]
                 resources_available = resource_availability_dict[attribute_location]
 
                 if humanize_output:
