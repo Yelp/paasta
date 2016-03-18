@@ -46,6 +46,8 @@ def parse_args():
     )
     parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
                         help="Print out more output regarding the state of the cluster")
+    parser.add_argument('-h', '--humanize', action='store_true', dest="humanize", default=False,
+                        help="Print human-readable sizes")
     return parser.parse_args()
 
 
@@ -238,26 +240,35 @@ def assert_quorum_size(state):
                 False)
 
 
-def assert_extra_slave_data(mesos_state):
+def assert_extra_slave_data(mesos_state, humanize_output=False):
     if not slaves_registered(mesos_state):
         return ('  No mesos slaves registered on this cluster!', False)
     extra_slave_data = get_extra_mesos_slave_data(mesos_state)
     rows = [('Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)')]
 
     for slave in extra_slave_data:
-        rows.append((
-            slave['hostname'],
-            '%.2f/%.2f' % (slave['free_resources']['cpus'], slave['total_resources']['cpus']),
-            '%s/%s' % (naturalsize(slave['free_resources']['mem'] * 1024 * 1024, gnu=True),
-                       naturalsize(slave['total_resources']['mem'] * 1024 * 1024, gnu=True)),
-            '%s/%s' % (naturalsize(slave['free_resources']['disk'] * 1024 * 1024, gnu=True),
-                       naturalsize(slave['total_resources']['disk'] * 1024 * 1024, gnu=True)),
-        ))
+        if humanize_output:
+            formatted_line = (
+                slave['hostname'],
+                '%.2f/%.2f' % (slave['free_resources']['cpus'], slave['total_resources']['cpus']),
+                '%s/%s' % (naturalsize(slave['free_resources']['mem'] * 1024 * 1024, gnu=True),
+                           naturalsize(slave['total_resources']['mem'] * 1024 * 1024, gnu=True)),
+                '%s/%s' % (naturalsize(slave['free_resources']['disk'] * 1024 * 1024, gnu=True),
+                           naturalsize(slave['total_resources']['disk'] * 1024 * 1024, gnu=True)),
+            )
+        else:
+            formatted_line = (
+                slave['hostname'],
+                '%.2f/%.2f' % (slave['free_resources']['cpus'], slave['total_resources']['cpus']),
+                '%.2f/%.2f' % (slave['free_resources']['mem'], slave['total_resources']['mem']),
+                '%.2f/%.2f' % (slave['free_resources']['disk'], slave['total_resources']['disk']),
+            )
+        rows.append(formatted_line)
     result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     return result
 
 
-def assert_extra_attribute_data(mesos_state):
+def assert_extra_attribute_data(mesos_state, humanize_output=False):
     if not slaves_registered(mesos_state):
         return ('  No mesos slaves registered on this cluster!', False)
     extra_attribute_data = list(get_extra_mesos_attribute_data(mesos_state))
@@ -270,14 +281,23 @@ def assert_extra_attribute_data(mesos_state):
             for attribute_location, resources_remaining in resource_free_dict.items():
                 resources_available = resource_availability_dict[attribute_location]
 
-                rows.append((
-                    attribute_location,
-                    '%.2f/%.2f' % (resources_remaining['cpus'], resources_available['cpus']),
-                    '%s/%s' % (naturalsize(resources_remaining['mem'] * 1024 * 1024, gnu=True),
-                               naturalsize(resources_available['mem'] * 1024 * 1024, gnu=True)),
-                    '%s/%s' % (naturalsize(resources_remaining['disk'] * 1024 * 1024, gnu=True),
-                               naturalsize(resources_available['disk'] * 1024 * 1024, gnu=True))
-                ))
+                if humanize_output:
+                    formatted_line = (
+                        attribute_location,
+                        '%.2f/%.2f' % (resources_remaining['cpus'], resources_available['cpus']),
+                        '%s/%s' % (naturalsize(resources_remaining['mem'] * 1024 * 1024, gnu=True),
+                                   naturalsize(resources_available['mem'] * 1024 * 1024, gnu=True)),
+                        '%s/%s' % (naturalsize(resources_remaining['disk'] * 1024 * 1024, gnu=True),
+                                   naturalsize(resources_available['disk'] * 1024 * 1024, gnu=True))
+                    )
+                else:
+                    formatted_line = (
+                        attribute_location,
+                        '%.2f/%.2f' % (resources_remaining['cpus'], resources_available['cpus']),
+                        '%.2f/%.2f' % (resources_remaining['mem'], resources_available['mem']),
+                        '%.2f/%.2f' % (resources_remaining['disk'], resources_available['disk'])
+                    )
+                rows.append(formatted_line)
     if len(rows) == 0:
         result = ("  No slave attributes that apply to more than one slave were detected.", True)
     else:
@@ -289,7 +309,7 @@ def slaves_registered(mesos_state):
     return 'slaves' in mesos_state and mesos_state['slaves']
 
 
-def get_mesos_status(mesos_state, verbosity):
+def get_mesos_status(mesos_state, verbosity, humanize_output=False):
     """Gathers information about the mesos cluster.
        :return: tuple of a string containing the status and a bool representing if it is ok or not
     """
@@ -306,15 +326,17 @@ def get_mesos_status(mesos_state, verbosity):
     ])
 
     if verbosity == 2:
-        metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_attribute_data]))
+        metrics_results.extend(run_healthchecks_with_param(
+            mesos_state, [assert_extra_attribute_data], {"humanize_output": humanize_output}))
     elif verbosity >= 3:
-        metrics_results.extend(run_healthchecks_with_param(mesos_state, [assert_extra_slave_data]))
+        metrics_results.extend(run_healthchecks_with_param(
+            mesos_state, [assert_extra_slave_data], {"humanize_output": humanize_output}))
 
     return cluster_results + metrics_results
 
 
-def run_healthchecks_with_param(param, healthcheck_functions):
-    return [healthcheck(param) for healthcheck in healthcheck_functions]
+def run_healthchecks_with_param(param, healthcheck_functions, format_options={}):
+    return [healthcheck(param, **format_options) for healthcheck in healthcheck_functions]
 
 
 def assert_marathon_apps(client):
@@ -428,7 +450,8 @@ def main():
         # then bomb out early
         print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
-    mesos_results = get_mesos_status(mesos_state, verbosity=args.verbose)
+    mesos_results = get_mesos_status(mesos_state, verbosity=args.verbose,
+                                     humanize_output=args.humanize)
 
     # Check to see if Marathon should be running here by checking for config
     try:
