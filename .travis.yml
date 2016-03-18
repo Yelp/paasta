@@ -27,7 +27,6 @@ deploy:
     key:
         secure: "RQewsXLalmlweQmEl6Opx418JihTDqEGLmfApwY4JCbRxb43aWswKBBak5hO4a3t4NF7egu0ds/dD6doNEt8iv4bo2dIpovYqKM6uxMvPTrv9ME7h5YVadJrkE91UvPqDSLTObRIuoo8JVmoOKEshQhtV8iz9cKVgJt2bf54aAwMpBOpVzLhslM6oTPFrc5atNO5X7sdz81pFJHdaR8TiMd1EABkhPs/01IOgTD649co2mlgYvq7hgNZcjAgNk4OVH5XOrhaFqFnlXFK457redPXmdjxMrS4sfo0/G1swp1zJaEUU85WWke2TOcniqt9tDp+p2eL1a9FvtXBNBLrh7kN61khz6LN3ibi+L0T1XA8Mz9H3IvPaMdqb4ESnvO6v8skEek5NLNSKXkoar9WWscAYvS3Qf1E6ixbx4XaJlmpthnetSJY7pDJ7EbiW8XDyYUwSkt0pFAbHtFK1IC/J5HJVQ3KMPXFGmXXT5i2+eZ3j1VUEh+mRc7jznKkYsbBJ1flPytGRQvkPMr0eMoAqvaul77u6oDr36umRyYA9dJs8UeHW7oQ1++1sEdktfvxKQBEY+WLTRKJHemFvsoLrIXEu9EfzTVioQw0QwzeswOg7GjU/uUHTEHBUrwFEhjgWSSI6Mg5gw5pVfkBE83Be/RbE7/8st+ky6VNaX/gKOk="
     on:
-      # tags: true
-      branch: public_package_build
+      tags: true
       condition: $MAKE_TARGET == itest_trusty
       repo: Yelp/paasta
