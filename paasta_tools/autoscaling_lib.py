@@ -15,6 +15,7 @@
 from datetime import datetime
 from math import ceil
 
+import requests
 from kazoo.exceptions import NoNodeError
 
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
@@ -30,22 +31,111 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
-_autoscaling_methods = {}
+_autoscaling_ingesters = {}
+_autoscaling_deciders = {}
 
 
-def register_autoscaling_method(name):
+def register_autoscaling_component(name, method_type):
+    if method_type == 'ingester':
+        component_dict = _autoscaling_ingesters
+    elif method_type == 'decider':
+        component_dict = _autoscaling_deciders
+    else:
+        raise KeyError('Autoscaling component type %s does not exist.' % method_type)
+
     def outer(autoscaling_method):
-        _autoscaling_methods[name] = autoscaling_method
+        component_dict[name] = autoscaling_method
         return autoscaling_method
     return outer
 
 
-def get_autoscaling_method(function_name):
-    return _autoscaling_methods[function_name]
+def get_autoscaling_ingester(name):
+    return _autoscaling_ingesters[name]
 
 
-@register_autoscaling_method('bespoke')
-def bespoke_autoscaling_method(*args, **kwargs):
+def get_autoscaling_decider(name):
+    return _autoscaling_deciders[name]
+
+
+class IngesterNoDataError(ValueError):
+    pass
+
+
+@register_autoscaling_component('threshold', 'decider')
+def threshold_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
+                      setpoint=0.8, threshold=0.1, **kwargs):
+    error = ingester_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs) - setpoint
+    if error > threshold:
+        return 1
+    elif abs(error) > threshold:
+        return -1
+    else:
+        return 0
+
+
+@register_autoscaling_component('pid', 'decider')
+def pid_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
+                delay=600, setpoint=0.8, **kwargs):
+    Kp = 0.2
+    Ki = 0.2 / delay
+    Kd = 0.05 * delay
+
+    autoscaling_root = compose_autoscaling_zookeeper_root(
+        service=marathon_service_config.service,
+        instance=marathon_service_config.instance,
+    )
+    zk_iterm_path = '%s/pid_iterm' % autoscaling_root
+    zk_last_error_path = '%s/pid_last_error' % autoscaling_root
+    zk_last_time_path = '%s/pid_last_time' % autoscaling_root
+
+    def clamp_value(number):
+        """Limits the PID output to scaling up/down by 1.
+        Also used to limit the integral term which avoids windup lag."""
+        return min(max(number, -1), 1)
+
+    with ZookeeperPool() as zk:
+        try:
+            iterm, _ = zk.get(zk_iterm_path)
+            last_error, _ = zk.get(zk_last_error_path)
+            last_time, _ = zk.get(zk_last_time_path)
+            iterm = float(iterm)
+            last_error = float(last_error)
+            last_time = float(last_time)
+        except NoNodeError:
+            iterm = 0.0
+            last_error = 0.0
+            last_time = 0.0
+
+    if int(datetime.now().strftime('%s')) - last_time < delay:
+        return 0
+
+    utilization = ingester_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs)
+    error = utilization - setpoint
+
+    with ZookeeperPool() as zk:
+        zk.ensure_path(zk_iterm_path)
+        zk.ensure_path(zk_last_error_path)
+        zk.set(zk_iterm_path, str(iterm))
+        zk.set(zk_last_error_path, str(error))
+
+    current_time = int(datetime.now().strftime('%s'))
+    time_delta = current_time - last_time
+
+    iterm = clamp_value(iterm + (Ki * error) * time_delta)
+
+    with ZookeeperPool() as zk:
+        zk.ensure_path(zk_iterm_path)
+        zk.ensure_path(zk_last_error_path)
+        zk.ensure_path(zk_last_time_path)
+        zk.set(zk_iterm_path, str(iterm))
+        zk.set(zk_last_error_path, str(error))
+        zk.set(zk_last_time_path, str(current_time))
+
+    return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
+
+
+@register_autoscaling_component('bespoke', 'decider')
+def bespoke_decider(*args, **kwargs):
     """
     Autoscaling method for service authors that have written their own autoscaling method.
     Allows Marathon to read instance counts from Zookeeper but doesn't attempt to scale the service automatically.
@@ -53,32 +143,38 @@ def bespoke_autoscaling_method(*args, **kwargs):
     return 0
 
 
-@register_autoscaling_method('default')
-def default_autoscaling_method(marathon_service_config, marathon_client, mesos_tasks,
-                               delay=600, setpoint=0.8, **kwargs):
-    """
-    PID control of instance count using ram and cpu.
-
-    :param marathon_service_config: the MarathonServiceConfig to scale
-    :param marathon_client: a Marathon client to fetch task data
-    :param delay: the number of seconds to wait between PID updates
-    :param setpoint: the target utilization percentage
-
-    :returns: the number of instances to scale up/down by
-    """
-    Kp = 0.2
-    Ki = 0.2 / delay
-    Kd = 0.05 * delay
-
+@register_autoscaling_component('http', 'ingester')
+def http_ingester(marathon_service_config, marathon_tasks, endpoint, *args, **kwargs):
     job_id = format_job_id(marathon_service_config.service, marathon_service_config.instance)
 
-    def clamp_value(number):
-        """Limits the PID output to scaling up/down by 1.
-        Also used to limit the integral term which avoids windup lag."""
-        return min(max(number, -1), 1)
+    def get_short_job_id(task_id):
+        return MESOS_TASK_SPACER.join(task_id.split(MESOS_TASK_SPACER, 2)[:2])
 
-    def get_current_time():
-        return int(datetime.now().strftime('%s'))
+    tasks = [task for task in marathon_tasks if job_id == get_short_job_id(task.id) and task.health_check_results]
+    utilization = []
+    for task in tasks:
+        try:
+            utilization.append(requests.get('http://%s:%s/%s' % (
+                task.host, task.ports[0], endpoint)).json()['utilization'])
+        except Exception:
+            pass
+    if not utilization:
+        raise IngesterNoDataError('Couldn\'t get any data from http endpoint %s for %s.%s' % (
+            endpoint, marathon_service_config.service, marathon_service_config.instance))
+    return sum(utilization) / len(utilization)
+
+
+@register_autoscaling_component('mesos_cpu_ram', 'ingester')
+def mesos_cpu_ram_ingester(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs):
+    """
+    :param marathon_service_config: the MarathonServiceConfig to get data from
+    :param marathon_tasks: Marathon tasks to get data from
+    :param mesos_tasks: Mesos tasks to get data from
+
+    :returns: the average utilization of a service
+    """
+
+    job_id = format_job_id(marathon_service_config.service, marathon_service_config.instance)
 
     def get_short_job_id(task_id):
         return MESOS_TASK_SPACER.join(task_id.split(MESOS_TASK_SPACER, 2)[:2])
@@ -87,37 +183,26 @@ def default_autoscaling_method(marathon_service_config, marathon_client, mesos_t
         service=marathon_service_config.service,
         instance=marathon_service_config.instance,
     )
-    zk_iterm_path = '%s/iterm' % autoscaling_root
-    zk_last_error_path = '%s/last_error' % autoscaling_root
-    zk_last_time_path = '%s/last_time' % autoscaling_root
+    zk_last_time_path = '%s/cpu_last_time' % autoscaling_root
     zk_last_cpu_data = '%s/cpu_data' % autoscaling_root
 
     with ZookeeperPool() as zk:
         try:
-            iterm, _ = zk.get(zk_iterm_path)
-            last_error, _ = zk.get(zk_last_error_path)
             last_time, _ = zk.get(zk_last_time_path)
             last_cpu_data, _ = zk.get(zk_last_cpu_data)
-            iterm = float(iterm)
-            last_error = float(last_error)
             last_time = float(last_time)
             last_cpu_data = (datum for datum in last_cpu_data.split(',') if datum)
         except NoNodeError:
-            iterm = 0.0
-            last_error = 0.0
             last_time = 0.0
             last_cpu_data = []
 
-    if get_current_time() - last_time < delay:
-        return 0
-
-    healthy_ids = {task.id for task in marathon_client.list_tasks()
+    healthy_ids = {task.id for task in marathon_tasks
                    if job_id == get_short_job_id(task.id) and task.health_check_results}
     if not healthy_ids:
-        return 0
+        raise IngesterNoDataError("Couldn't find any healthy marathon tasks")
 
     mesos_tasks = {task['id']: task.stats for task in mesos_tasks if task['id'] in healthy_ids}
-    current_time = get_current_time()
+    current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
 
     mesos_cpu_data = {task_id: float(stats.get('cpus_system_time_secs', 0.0) + stats.get(
@@ -137,36 +222,32 @@ def default_autoscaling_method(marathon_service_config, marathon_client, mesos_t
             )
 
     if not utilization:
-        return 0
+        raise IngesterNoDataError("Couldn't get any cpu or ram data from Mesos")
 
-    task_errors = [amount - setpoint for amount in utilization.values()]
-    error = sum(task_errors) / len(task_errors)
-    iterm = clamp_value(iterm + (Ki * error) * time_delta)
+    task_utilization = utilization.values()
+    average_utilization = sum(task_utilization) / len(task_utilization)
 
     cpu_data_csv = ','.join('%s:%s' % (cpu_seconds, task_id) for task_id, cpu_seconds in mesos_cpu_data.items())
 
     with ZookeeperPool() as zk:
-        zk.ensure_path(zk_iterm_path)
-        zk.ensure_path(zk_last_error_path)
-        zk.ensure_path(zk_last_time_path)
         zk.ensure_path(zk_last_cpu_data)
-        zk.set(zk_iterm_path, str(iterm))
-        zk.set(zk_last_error_path, str(error))
-        zk.set(zk_last_time_path, str(current_time))
+        zk.ensure_path(zk_last_time_path)
         zk.set(zk_last_cpu_data, str(cpu_data_csv))
+        zk.set(zk_last_time_path, str(current_time))
 
-    return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
+    return average_utilization
 
 
 def get_new_instance_count(current_instances, autoscaling_direction):
     return int(ceil((1 + float(autoscaling_direction) / 10) * current_instances))
 
 
-def autoscale_marathon_instance(marathon_service_config, marathon_client, mesos_tasks):
+def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
     autoscaling_params = marathon_service_config.get_autoscaling_params()
-    autoscaling_method = get_autoscaling_method(autoscaling_params['method'])
-    autoscaling_direction = autoscaling_method(marathon_service_config, marathon_client, mesos_tasks,
-                                               **autoscaling_params)
+    autoscaling_ingester = get_autoscaling_ingester(autoscaling_params['ingester'])
+    autoscaling_decider = get_autoscaling_decider(autoscaling_params['decider'])
+    autoscaling_direction = autoscaling_decider(marathon_service_config, autoscaling_ingester,
+                                                marathon_tasks, mesos_tasks, **autoscaling_params)
     if autoscaling_direction:
         current_instances = marathon_service_config.get_instances()
         autoscaling_amount = get_new_instance_count(current_instances, autoscaling_direction)
@@ -199,12 +280,15 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 
     if configs:
         marathon_config = load_marathon_config()
-        marathon_client = get_marathon_client(
+        marathon_tasks = get_marathon_client(
             url=marathon_config.get_url(),
             user=marathon_config.get_username(),
             passwd=marathon_config.get_password(),
-        )
+        ).get_tasks()
         mesos_tasks = get_running_tasks_from_active_frameworks('')
         with ZookeeperPool():
             for config in configs:
-                autoscale_marathon_instance(config, marathon_client, mesos_tasks)
+                try:
+                    autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
+                except Exception as e:
+                    print "Caught exception '%s', continuing..." % e
