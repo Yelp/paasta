@@ -27,7 +27,7 @@
 
     "files":
         [
-        {"includePattern": "dist/(.*\.deb)", "uploadPattern": "$1", "matrixParams": { "deb_distribution": "trusty", "deb_component": "main", "deb_architecture": "amd64"} }
+        {"includePattern": "dist/(paasta-tools.*\.deb)", "uploadPattern": "$1", "matrixParams": { "deb_distribution": "trusty", "deb_component": "main", "deb_architecture": "amd64"} }
         ],
     "publish": true
 }
