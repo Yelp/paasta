@@ -170,7 +170,7 @@ See the docs on the `marathon config <yelpsoa_configs.html#marathon-clustername-
 
 Additionally, a service author can configure how the bounce code determines
 which instances are healthy by setting ``bounce_health_params``. This
-dictionary is passed in as keyword arguments to `get_happy_tasks <bounce_lib.html#bounce_lib.get_happy_tasks>`_.
+dictionary is passed in as keyword arguments to `get_happy_tasks <generated/paasta_tools.bounce_lib.html#bounce_lib.get_happy_tasks>`_.
 Valid options are:
 
 * ``min_task_uptime``: Minimum number of seconds that a task must be running
