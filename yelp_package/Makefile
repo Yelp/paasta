@@ -58,9 +58,13 @@ package_trusty: build_trusty_docker
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog
 	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work
-itest_trusty: package_trusty
+itest_trusty: package_trusty bintray.json
 	$(DOCKER_RUN_TRUSTY) /work/yelp_package/itest/ubuntu.sh
 
+DATE := $(shell date +'%Y-%m-%d')
+PAASTAVERSION := $(shell sed 's/.*(\(.*\)).*/\1/;q' ../debian/changelog)
+bintray.json: bintray.json.in ../debian/changelog
+	sed -e 's/@DATE@/$(DATE)/g' -e 's/@PAASTAVERSION@/$(PAASTAVERSION)/g' $< > $@
 
 clean:
 	rm -rf dist/
