@@ -305,7 +305,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
             url=marathon_config.get_url(),
             user=marathon_config.get_username(),
             passwd=marathon_config.get_password(),
-        ).get_tasks()
+        ).list_tasks()
         mesos_tasks = get_running_tasks_from_active_frameworks('')
         with ZookeeperPool():
             for config in configs:

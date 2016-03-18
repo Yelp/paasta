@@ -439,7 +439,7 @@ def test_autoscale_services():
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling_lib.autoscale_marathon_instance', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.get_marathon_client', autospec=True,
-                   return_value=mock.Mock(get_tasks=mock.Mock(return_value=mock_marathon_tasks))),
+                   return_value=mock.Mock(list_tasks=mock.Mock(return_value=mock_marathon_tasks))),
         mock.patch('paasta_tools.autoscaling_lib.get_running_tasks_from_active_frameworks', autospec=True,
                    return_value=mock_mesos_tasks),
         mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True,
