@@ -46,7 +46,7 @@ def parse_args():
     )
     parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
                         help="Print out more output regarding the state of the cluster")
-    parser.add_argument('-h', '--humanize', action='store_true', dest="humanize", default=False,
+    parser.add_argument('-H', '--humanize', action='store_true', dest="humanize", default=False,
                         help="Print human-readable sizes")
     return parser.parse_args()
 
