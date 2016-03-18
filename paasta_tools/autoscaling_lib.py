@@ -144,8 +144,9 @@ def bespoke_decider(*args, **kwargs):
 
 
 @register_autoscaling_component('http', 'ingester')
-def http_ingester(marathon_service_config, marathon_tasks, endpoint, *args, **kwargs):
+def http_ingester(marathon_service_config, marathon_tasks, mesos_tasks, endpoint='status', *args, **kwargs):
     job_id = format_job_id(marathon_service_config.service, marathon_service_config.instance)
+    endpoint = endpoint.lstrip('/')
 
     def get_short_job_id(task_id):
         return MESOS_TASK_SPACER.join(task_id.split(MESOS_TASK_SPACER, 2)[:2])
@@ -154,8 +155,8 @@ def http_ingester(marathon_service_config, marathon_tasks, endpoint, *args, **kw
     utilization = []
     for task in tasks:
         try:
-            utilization.append(requests.get('http://%s:%s/%s' % (
-                task.host, task.ports[0], endpoint)).json()['utilization'])
+            utilization.append(float(requests.get('http://%s:%s/%s' % (
+                task.host, task.ports[0], endpoint)).json()['utilization']))
         except Exception:
             pass
     if not utilization:
