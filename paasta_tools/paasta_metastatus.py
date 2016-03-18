@@ -20,6 +20,7 @@ from collections import defaultdict
 from collections import OrderedDict
 
 from httplib2 import ServerNotFoundError
+from humanize import naturalsize
 from marathon.exceptions import MarathonError
 
 from paasta_tools import chronos_tools
@@ -84,13 +85,17 @@ def filter_mesos_state_metrics(dictionary):
 
 def get_extra_mesos_slave_data(mesos_state):
     slaves = dict((slave['id'], {
-        'free_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
+        'total_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
         'hostname': slave['hostname'],
+        'free_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
     }) for slave in mesos_state['slaves'])
 
     for framework in mesos_state.get('frameworks', []):
         for task in framework.get('tasks', []):
-            slaves[task['slave_id']]['free_resources'].subtract(filter_mesos_state_metrics(task['resources'])),
+            mesos_metrics = filter_mesos_state_metrics(task['resources'])
+            for resource, count in mesos_metrics.iteritems():
+                slaves[task['slave_id']]['free_resources'][resource] = slaves[
+                    task['slave_id']]['total_resources'][resource] - count
 
     return sorted(slaves.values())
 
@@ -237,13 +242,16 @@ def assert_extra_slave_data(mesos_state):
     if not slaves_registered(mesos_state):
         return ('  No mesos slaves registered on this cluster!', False)
     extra_slave_data = get_extra_mesos_slave_data(mesos_state)
-    rows = [('Hostname', 'CPU free', 'RAM free', 'Disk free')]
+    rows = [('Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)')]
+
     for slave in extra_slave_data:
         rows.append((
             slave['hostname'],
-            '%.2f' % slave['free_resources']['cpus'],
-            '%.2f' % slave['free_resources']['mem'],
-            '%.2f' % slave['free_resources']['disk'],
+            '%.2f/%.2f' % (slave['free_resources']['cpus'], slave['total_resources']['cpus']),
+            '%s/%s' % (naturalsize(slave['free_resources']['mem'] * 1024 * 1024, gnu=True),
+                       naturalsize(slave['total_resources']['mem'] * 1024 * 1024, gnu=True)),
+            '%s/%s' % (naturalsize(slave['free_resources']['disk'] * 1024 * 1024, gnu=True),
+                       naturalsize(slave['total_resources']['disk'] * 1024 * 1024, gnu=True)),
         ))
     result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
     return result
@@ -265,8 +273,10 @@ def assert_extra_attribute_data(mesos_state):
                 rows.append((
                     attribute_location,
                     '%.2f/%.2f' % (resources_remaining['cpus'], resources_available['cpus']),
-                    '%.2f/%.2f' % (resources_remaining['mem'], resources_available['mem']),
-                    '%.2f/%.2f' % (resources_remaining['disk'], resources_available['disk'])
+                    '%s/%s' % (naturalsize(resources_remaining['mem'] * 1024 * 1024, gnu=True),
+                               naturalsize(resources_available['mem'] * 1024 * 1024, gnu=True)),
+                    '%s/%s' % (naturalsize(resources_remaining['disk'] * 1024 * 1024, gnu=True),
+                               naturalsize(resources_available['disk'] * 1024 * 1024, gnu=True))
                 ))
     if len(rows) == 0:
         result = ("  No slave attributes that apply to more than one slave were detected.", True)
