@@ -5,6 +5,13 @@ paasta-tools (0.18.0) lucid; urgency=low
 
  -- Evan Krall <krall@yelp.com>  Thu, 17 Mar 2016 20:23:55 -0700
 
+paasta-tools (0.17.19-yelp1) lucid; urgency=low
+
+  * 0.17.19 tagged with 'make release'
+    Commit:
+
+ -- Evan Krall <krall@yelp.com>  Fri, 18 Mar 2016 10:51:53 -0700
+
 paasta-tools (0.17.18-yelp1) lucid; urgency=low
 
   * 0.17.18 tagged with 'make release'
@@ -1301,7 +1308,7 @@ paasta-tools (0.11.14-yelp1) lucid; urgency=low
     Commit: add -c option to test-run to override cluster
 
   [ Zachary Musgrave ]
-  * SOACollector DNS fix for INFRA-3305 
+  * SOACollector DNS fix for INFRA-3305
 
  -- Zachary Musgrave <ztm@yelp.com>  Wed, 17 Jun 2015 12:00:47 -0700
 

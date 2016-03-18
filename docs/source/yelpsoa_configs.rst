@@ -51,7 +51,7 @@ instance MAY have:
     namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
     their traffic to the same pool as the other ``main`` instances.
 
-  * ``bounce_method``: Controls the bounce method; see `bounce_lib <bounce_lib.html>`_
+  * ``bounce_method``: Controls the bounce method; see `bounce_lib <generated/paasta_tools.bounce_lib.html>`_
 
   * ``bounce_method_params``: A dictionary of parameters for the specified bounce_method.
 
@@ -63,12 +63,12 @@ instance MAY have:
       running before we consider it healthy (Disabled by default)
 
   * ``drain_method``: Controls the drain method; see `drain_lib
-    <drain_lib.html>`_. Defaults to ``noop`` for instances that are not in
-    Smartstack, or ``hacheck`` if they are.
+    <generated/paasta_tools.drain_lib.html>`_. Defaults to ``noop`` for
+    instances that are not in Smartstack, or ``hacheck`` if they are.
 
   * ``drain_method_params``: A dictionary of parameters for the specified
     drain_method. Valid parameters are any of the kwargs defined for the
-    specified bounce_method in `drain_lib <drain_lib.html>`_.
+    specified bounce_method in `drain_lib <generated/paasta_tools.drain_lib.html>`_.
 
   * ``constraints``: Overrides the default placement constraints for services.
     Should be defined as an array of arrays (E.g ``[["habitat", "GROUP_BY"]]``

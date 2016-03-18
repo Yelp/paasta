@@ -109,7 +109,7 @@ def get_paasta_config(yelpsoa_config_root, srvname, auto, port, team, descriptio
     smartstack_stanza = get_smartstack_stanza(yelpsoa_config_root, auto, port)
     monitoring_stanza = get_monitoring_stanza(auto, team)
     marathon_stanza = get_marathon_stanza()
-    deploy_stanza = paasta_config.get_fsm_deploy_pipeline(),
+    deploy_stanza = paasta_config.get_fsm_deploy_pipeline()
     service_stanza = get_service_stanza(description, external_link, auto)
     cluster_stanza = paasta_config.get_fsm_cluster_map()
     return (srvname, service_stanza, smartstack_stanza, monitoring_stanza,
