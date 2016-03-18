@@ -29,4 +29,5 @@ deploy:
     on:
       # tags: true
       branch: public_package_build
+      condition: $MAKE_TARGET == itest_trusty
       repo: Yelp/paasta
