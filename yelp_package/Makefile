@@ -61,8 +61,8 @@ package_trusty: build_trusty_docker
 itest_trusty: package_trusty bintray.json
 	$(DOCKER_RUN_TRUSTY) /work/yelp_package/itest/ubuntu.sh
 
-DATE := $(shell date +'%Y-%m-%d')
-PAASTAVERSION := $(shell sed 's/.*(\(.*\)).*/\1/;q' ../debian/changelog)
+DATE := $(shell date +'%Y-%m-%d' -d `dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Date: //p'`)
+PAASTAVERSION := $(shell dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Version: //p')
 bintray.json: bintray.json.in ../debian/changelog
 	sed -e 's/@DATE@/$(DATE)/g' -e 's/@PAASTAVERSION@/$(PAASTAVERSION)/g' $< > $@
 
