@@ -34,11 +34,13 @@ build_lucid_docker:
 	[ -d ../dist ] || mkdir ../dist
 	cd dockerfiles/lucid/ && docker build -t "paastatools_lucid_container" .
 package_lucid: build_lucid_docker
+	# Copy these files to .old before maybe clobbering them
 	cp ../requirements.txt ../requirements.txt.old
 	cp ../debian/changelog ../debian/changelog.old
 	$(ADD_MISSING_DEPS_MAYBE)
 	$(ADD_YELP_PREFIX_MAYBE)
 	$(DOCKER_RUN_LUCID) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
+	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog
 	$(DOCKER_RUN_LUCID) chown -R $(UID):$(GID) /work
@@ -50,11 +52,13 @@ build_trusty_docker:
 	[ -d ../dist ] || mkdir ../dist
 	cd dockerfiles/trusty/ && docker build -t "paastatools_trusty_container" .
 package_trusty: build_trusty_docker
+	# Copy these files to .old before maybe clobbering them
 	cp ../requirements.txt ../requirements.txt.old
 	cp ../debian/changelog ../debian/changelog.old
 	$(ADD_MISSING_DEPS_MAYBE)
 	$(ADD_YELP_PREFIX_MAYBE)
 	$(DOCKER_RUN_TRUSTY) /bin/bash -c "dpkg-buildpackage -d && mv ../*.deb dist/"
+	# then move them back
 	mv ../requirements.txt.old ../requirements.txt
 	mv ../debian/changelog.old ../debian/changelog
 	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work
