@@ -123,6 +123,7 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
     expected_replication_count = 0
     soa_dir = 'test_dir'
     crit = 90
+
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
@@ -136,8 +137,13 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
         mock_load_marathon_service_config,
     ):
         mock_load_smartstack_info_for_service.return_value = available
+
+        mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
+        mock_load_marathon_service_config.return_value = mock_service_job_config
+
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -170,9 +176,10 @@ def test_check_smartstack_replication_for_instance_crit_when_absent():
     ):
         mock_load_smartstack_info_for_service.return_value = available
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -205,9 +212,10 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
     ):
         mock_load_smartstack_info_for_service.return_value = available
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -239,10 +247,11 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication():
         mock_load_marathon_service_config,
     ):
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -274,10 +283,11 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
         mock_load_marathon_service_config,
     ):
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -310,10 +320,11 @@ def test_check_smartstack_replication_for_instance_ignores_things_under_a_differ
         mock_load_marathon_service_config,
     ):
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event_if_under_replication.call_count == 0
 
@@ -331,7 +342,7 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
         mock.patch('paasta_tools.marathon_tools.read_namespace_for_service_instance',
                    autospec=True, return_value=instance),
         mock.patch('paasta_tools.check_marathon_services_replication.load_smartstack_info_for_service', autospec=True),
-        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True)
+        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
     ) as (
         mock_send_event,
         mock_read_namespace_for_service_instance,
@@ -339,10 +350,11 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
         mock_load_marathon_service_config,
     ):
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -374,10 +386,11 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
         mock_load_marathon_service_config,
     ):
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -409,10 +422,11 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
         mock_load_marathon_service_config,
     ):
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -444,10 +458,11 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
         mock_load_marathon_service_config,
     ):
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -480,9 +495,10 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
     ):
         mock_load_smartstack_info_for_service.return_value = available
         mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, crit, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -511,13 +527,12 @@ def test_check_service_replication_for_normal_smartstack():
     ):
         mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
-            client=mock_client, service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
+            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None)
         mock_check_smartstack_replication_for_service.assert_called_once_with(
             service=service,
             instance=instance,
             cluster=cluster,
             soa_dir=None,
-            crit_threshold=None,
             expected_count=100,
         )
 
@@ -539,7 +554,7 @@ def test_check_service_replication_for_non_smartstack():
     ):
         mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
-            client=mock_client, service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
+            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None)
 
         mock_check_healthy_marathon_tasks.assert_called_once_with(
             client=mock_client,
@@ -547,7 +562,6 @@ def test_check_service_replication_for_non_smartstack():
             instance=instance,
             cluster=cluster,
             soa_dir=None,
-            crit_threshold=None,
             expected_count=100)
 
 
@@ -627,14 +641,12 @@ def test_check_healthy_marathon_tasks_for_service_instance(mock_healthy_instance
         instance=instance,
         cluster=cluster,
         soa_dir=soa_dir,
-        crit_threshold=50,
         expected_count=10
     )
     assert mock_send_event_if_under_replication.called_once_with(
         service=service,
         instance=instance,
         cluster=cluster,
-        crit_threshold=50,
         expected_count=10,
         num_available=2,
         soa_dir=soa_dir
@@ -656,7 +668,7 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock_client = mock.Mock()
         mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(
-            client=mock_client, service=service, instance=instance, cluster=cluster, crit_threshold=None, soa_dir=None)
+            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None)
         assert mock_get_proxy_port_for_instance.call_count == 0
 
 
@@ -670,11 +682,17 @@ def test_send_event_if_under_replication_handles_0_expected():
     soa_dir = '/dne'
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
     ) as (
         mock_send_event,
+        mock_load_marathon_service_config,
     ):
+        mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
+        mock_load_marathon_service_config.return_value = mock_service_job_config
+
         check_marathon_services_replication.send_event_if_under_replication(
-            service, instance, cluster, crit, expected_count, available, soa_dir)
+            service, instance, cluster, expected_count, available, soa_dir)
         mock_send_event.assert_called_once_with(
             service=service,
             namespace=instance,
@@ -694,11 +712,17 @@ def test_send_event_if_under_replication_good():
     soa_dir = '/dne'
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
     ) as (
         mock_send_event,
+        mock_load_marathon_service_config,
     ):
+        mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
+        mock_load_marathon_service_config.return_value = mock_service_job_config
+
         check_marathon_services_replication.send_event_if_under_replication(
-            service, instance, cluster, crit, expected_count, available, soa_dir)
+            service, instance, cluster, expected_count, available, soa_dir)
         mock_send_event.assert_called_once_with(
             service=service,
             namespace=instance,
@@ -718,14 +742,19 @@ def test_send_event_if_under_replication_critical():
     soa_dir = '/dne'
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
+        mock.patch('paasta_tools.marathon_tools.load_marathon_service_config', autospec=True),
     ) as (
         mock_send_event,
+        mock_load_marathon_service_config,
     ):
+        mock_service_job_config = mock.MagicMock(spec_set=MarathonServiceConfig)
+        mock_service_job_config.get_replication_crit_percentage.return_value = crit
+        mock_load_marathon_service_config.return_value = mock_service_job_config
+
         check_marathon_services_replication.send_event_if_under_replication(
             service=service,
             instance=instance,
             cluster=cluster,
-            crit_threshold=crit,
             expected_count=expected_count,
             num_available=available,
             soa_dir=soa_dir)
