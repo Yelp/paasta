@@ -26,7 +26,6 @@ import monitoring_tools
 import service_configuration_lib
 from tron import command_context
 
-from paasta_tools.utils import decompose_job_id as utils_decompose_job_id
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
@@ -129,9 +128,18 @@ def compose_job_id(service, instance):
 
 
 def decompose_job_id(job_id):
-    """Thin wrapper around generic decompose_job_id to use our local SPACER."""
-    service, job, _, __ = utils_decompose_job_id(job_id, spacer=SPACER)
-    return (service, job)
+    """ A custom implementation of utils.decompose_job_id, accounting for the
+    possiblity of 'tmp' being prepended to the job name """
+    decomposed = job_id.split(SPACER)
+    if len(decomposed) == 3:
+        if decomposed[0] != 'tmp':
+            raise InvalidJobNameError('invalid job id %s' % job_id)
+        else:
+            return (decomposed[1], decomposed[2])
+    elif len(decomposed) == 2:
+        return (decomposed[0], decomposed[1])
+    else:
+        raise InvalidJobNameError('invalid job id %s' % job_id)
 
 
 class InvalidChronosConfigError(Exception):

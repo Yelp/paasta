@@ -156,6 +156,18 @@ class TestChronosTools:
         actual = chronos_tools.decompose_job_id('service instance')
         assert actual == ('service', 'instance')
 
+    def test_decompose_job_id_with_tmp(self):
+        actual = chronos_tools.decompose_job_id('tmp service instance')
+        assert actual == ('service', 'instance')
+
+    def test_decompose_job_id_wrong_tmp_identifier(self):
+        with raises(chronos_tools.InvalidJobNameError):
+            chronos_tools.decompose_job_id('foo service instance')
+
+    def test_decompose_job_id_invalid_length(self):
+        with raises(chronos_tools.InvalidJobNameError):
+            chronos_tools.decompose_job_id('service instance baz')
+
     def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'
         expected_chronos_conf_file = 'chronos-penguin'
