@@ -16,6 +16,7 @@ import datetime
 import mock
 
 from paasta_tools import chronos_rerun
+from paasta_tools import chronos_tools
 
 
 @mock.patch('paasta_tools.chronos_rerun.chronos_tools.parse_time_variables')
@@ -52,7 +53,7 @@ def test_set_tmp_naming_scheme():
         'name': 'foo bar'
     }
     assert chronos_rerun.set_tmp_naming_scheme(fake_chronos_job_config) == \
-        {'name': 'tmp foo bar'}
+        {'name': '%s foo bar' % chronos_tools.TMP_JOB_IDENTIFIER}
 
 
 @mock.patch('paasta_tools.chronos_rerun.remove_parents')

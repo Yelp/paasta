@@ -52,6 +52,10 @@ INTERNAL_SPACER = '.'
 # we can decompose Mesos task ids.
 MESOS_TASK_SPACER = ':'
 
+# this is the identifier prepended to a job name for use
+# with temporary jobs, like those created by ``chronos_rerun.py``
+TMP_JOB_IDENTIFIER = "tmp"
+
 VALID_BOUNCE_METHODS = ['graceful']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
@@ -129,10 +133,10 @@ def compose_job_id(service, instance):
 
 def decompose_job_id(job_id):
     """ A custom implementation of utils.decompose_job_id, accounting for the
-    possiblity of 'tmp' being prepended to the job name """
+    possiblity of TMP_JOB_IDENTIFIER being prepended to the job name """
     decomposed = job_id.split(SPACER)
     if len(decomposed) == 3:
-        if decomposed[0] != 'tmp':
+        if decomposed[0] != TMP_JOB_IDENTIFIER:
             raise InvalidJobNameError('invalid job id %s' % job_id)
         else:
             return (decomposed[1], decomposed[2])

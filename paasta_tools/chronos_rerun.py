@@ -78,7 +78,7 @@ def set_tmp_naming_scheme(chronos_job):
     schedule replaced with one that will set the job to run now.
     """
     current_name = chronos_job['name']
-    chronos_job['name'] = 'tmp%s%s' % (chronos_tools.SPACER, current_name)
+    chronos_job['name'] = '%s%s%s' % (chronos_tools.TMP_JOB_IDENTIFIER, chronos_tools.SPACER, current_name)
     return chronos_job
 
 
@@ -98,6 +98,12 @@ def clone_job(chronos_job, date):
     """
     clone = copy.deepcopy(chronos_job)
     job_type = chronos_tools.get_job_type(clone)
+
+    # modify the name of the job
+    clone = set_tmp_naming_scheme(clone)
+
+    # give the job a schedule for it to run now
+    clone = set_default_schedule(clone)
 
     # if the job is a dependent job
     # then convert it to be a scheduled job
