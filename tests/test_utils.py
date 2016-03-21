@@ -1303,6 +1303,8 @@ def test_deep_merge_dictionaries():
         },
         'just_in_source': 'value',
         'just_in_source_dict': {'key': 'value'},
+        'overwriting_key': 'value',
+        'overwriting_dict': {'test': 'value'},
     }
     destination = {
         'common_key': 'overwritten_value',
@@ -1313,6 +1315,8 @@ def test_deep_merge_dictionaries():
         },
         'just_in_dest': 'value',
         'just_in_dest_dict': {'key': 'value'},
+        'overwriting_key': {'overwritten-key', 'overwritten-value'},
+        'overwriting_dict': 'overwritten-value',
     }
     expected = {
         'common_key': 'value',
@@ -1327,6 +1331,8 @@ def test_deep_merge_dictionaries():
         'just_in_source_dict': {'key': 'value'},
         'just_in_dest': 'value',
         'just_in_dest_dict': {'key': 'value'},
+        'overwriting_key': 'value',
+        'overwriting_dict': {'test': 'value'},
     }
     utils.deep_merge_dictionaries(source, destination)
     assert destination == expected

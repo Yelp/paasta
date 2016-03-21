@@ -1347,8 +1347,8 @@ def deep_merge_dictionaries(source, destination):
     Recursively merges two dicitonaries.
     """
     for key, value in source.items():
-        if isinstance(value, dict):
-            child = destination.setdefault(key, {})
+        child = destination.setdefault(key, {})
+        if isinstance(value, dict) and isinstance(child, dict):
             deep_merge_dictionaries(value, child)
         else:
             destination[key] = value
