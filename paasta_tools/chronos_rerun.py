@@ -72,6 +72,16 @@ def set_default_schedule(chronos_job):
     return chronos_job
 
 
+def set_tmp_naming_scheme(chronos_job):
+    """
+    Given a chronos job, return a new job identical to the first, but with the
+    schedule replaced with one that will set the job to run now.
+    """
+    current_name = chronos_job['name']
+    chronos_job['name'] = 'tmp%s%s' % (chronos_tools.SPACER, current_name)
+    return chronos_job
+
+
 def remove_parents(chronos_job):
     """
     Given a chronos job, return a new job identifcal to the first, but with the

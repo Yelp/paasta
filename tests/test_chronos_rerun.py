@@ -47,6 +47,14 @@ def test_set_default_schedule():
         {'schedule': 'R1//PT1M'}
 
 
+def test_set_tmp_naming_scheme():
+    fake_chronos_job_config = {
+        'name': 'foo bar'
+    }
+    assert chronos_rerun.set_tmp_naming_scheme(fake_chronos_job_config) == \
+        {'name': 'tmp foo bar'}
+
+
 @mock.patch('paasta_tools.chronos_rerun.remove_parents')
 @mock.patch('paasta_tools.chronos_rerun.set_default_schedule')
 @mock.patch('paasta_tools.chronos_rerun.modify_command_for_date')
