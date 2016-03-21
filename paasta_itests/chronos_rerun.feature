@@ -7,6 +7,7 @@ Feature: chronos_rerun can rerun old jobs
      When we run chronos_rerun for service_instance testservice testinstance
      Then we should get exit code 0
      When we store the name of the job for the service testservice and instance testinstance as myjob
+     Then the field "name" for the job stored as "myjob" is set to "tmp testservice testinstance"
      Then the field "disabled" for the job stored as "myjob" is set to "False"
 
   Scenario: a dependent job is converted to a scheduled job
