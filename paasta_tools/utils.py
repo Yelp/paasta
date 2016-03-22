@@ -1345,7 +1345,7 @@ def format_table(rows, min_spacing=2):
 
 def deep_merge_dictionaries(source, destination):
     """
-    Merges two dicitonaries.
+    Merges two dictionaries.
     """
     result = copy.deepcopy(destination)
     stack = [(source, result)]
