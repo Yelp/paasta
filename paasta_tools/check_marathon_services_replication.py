@@ -25,9 +25,10 @@ are expected to be available for that namespace based on the number of instances
 on that namespace.
 
 After retrieving that information, a fraction of available instances is calculated
-(available/expected), and then compared against a threshold. The default threshold
-is 50, meaning if less than 50% of a service's backends are available, the script
-sends CRITICAL.
+(available/expected), and then compared against a threshold. The default threshold is
+50, meaning if less than 50% of a service's backends are available, the script sends
+CRITICAL. If replication_threshold is defined in the yelpsoa config for a service
+instance then it will be used instead.
 """
 import argparse
 import logging
