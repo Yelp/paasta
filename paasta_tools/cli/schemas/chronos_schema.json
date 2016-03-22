@@ -30,6 +30,9 @@
 	    "deploy_group": {
 	        "type": "string"
 	    },
+	    "schedule_time_zone": {
+	    	"type": "string"
+	    },
             "disabled": {
                 "type": "boolean",
                 "default": false

@@ -755,6 +755,14 @@ def test_run_cancels_timer_thread_on_keyboard_interrupt():
         assert mock_timer_object.cancel.call_count == 1
 
 
+def test_run_returns_when_popen_fails():
+    fake_exception = OSError(1234, 'fake error')
+    with mock.patch('paasta_tools.utils.Popen', autospec=True, side_effect=fake_exception):
+        return_code, output = utils._run('nonexistant command', timeout=10)
+    assert return_code == 1234
+    assert 'fake error' in output
+
+
 class TestInstanceConfig:
 
     def test_get_monitoring(self):
