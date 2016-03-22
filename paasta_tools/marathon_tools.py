@@ -523,7 +523,7 @@ class MarathonServiceConfig(InstanceConfig):
             return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
 
     def get_replication_crit_percentage(self):
-        return self.config_dict.get('replication_crit', 50)
+        return self.config_dict.get('replication_threshold', 50)
 
 
 def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
