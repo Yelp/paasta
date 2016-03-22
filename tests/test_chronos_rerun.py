@@ -59,7 +59,9 @@ def test_set_tmp_naming_scheme():
 @mock.patch('paasta_tools.chronos_rerun.remove_parents')
 @mock.patch('paasta_tools.chronos_rerun.set_default_schedule')
 @mock.patch('paasta_tools.chronos_rerun.modify_command_for_date')
-def test_clone_job_dependent(mock_remove_parents, mock_set_default_schedule, mock_modify_command_for_date):
+@mock.patch('paasta_tools.chronos_rerun.set_tmp_naming_scheme')
+def test_clone_job_dependent(mock_remove_parents, mock_set_default_schedule,
+                             mock_modify_command_for_date, mock_set_tmp_naming_scheme):
     fake_chronos_job_config = {
         'parents': ['foo', 'bar']
     }
@@ -67,3 +69,4 @@ def test_clone_job_dependent(mock_remove_parents, mock_set_default_schedule, moc
     assert mock_remove_parents.called_once()
     assert mock_set_default_schedule.called_once()
     assert mock_modify_command_for_date.called_once()
+    assert mock_set_tmp_naming_scheme.called_once()
