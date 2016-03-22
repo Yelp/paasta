@@ -14,6 +14,7 @@
 from __future__ import print_function
 
 import contextlib
+import copy
 import datetime
 import errno
 import fcntl
@@ -1344,12 +1345,12 @@ def format_table(rows, min_spacing=2):
 
 def deep_merge_dictionaries(source, destination):
     """
-    Recursively merges two dicitonaries.
+    Merges two dicitonaries.
     """
+    result = copy.deepcopy(destination)
     for key, value in source.items():
-        child = destination.setdefault(key, {})
+        child = result.setdefault(key, {})
         if isinstance(value, dict) and isinstance(child, dict):
-            deep_merge_dictionaries(value, child)
-        else:
-            destination[key] = value
-    return destination
+            value = deep_merge_dictionaries(value, child)
+        result[key] = value
+    return result

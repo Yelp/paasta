@@ -1334,5 +1334,4 @@ def test_deep_merge_dictionaries():
         'overwriting_key': 'value',
         'overwriting_dict': {'test': 'value'},
     }
-    utils.deep_merge_dictionaries(source, destination)
-    assert destination == expected
+    assert utils.deep_merge_dictionaries(source, destination) == expected

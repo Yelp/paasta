@@ -143,9 +143,7 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
             "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file)
         )
 
-    base_instance_config = instance_configs[instance]
-    deep_merge_dictionaries(source=general_config, destination=base_instance_config)
-    general_config = base_instance_config
+    general_config = deep_merge_dictionaries(source=general_config, destination=instance_configs[instance])
 
     branch_dict = {}
     if load_deployments:
