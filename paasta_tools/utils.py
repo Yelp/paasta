@@ -859,9 +859,10 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
         if timeout:
             proctimer.cancel()
         raise
-    # Stop the timer
-    if timeout:
-        proctimer.cancel()
+    else:
+        # Stop the timer
+        if timeout:
+            proctimer.cancel()
     if returncode == -9:
         output.append("Command '%s' timed out (longer than %ss)" % (command, timeout))
     return returncode, '\n'.join(output)
