@@ -135,7 +135,11 @@ def percent_used(total, used):
 
 def assert_cpu_health(metrics, threshold=10):
     total, used, available = get_mesos_cpu_status(metrics)
-    perc_used = percent_used(total, used)
+    try:
+        perc_used = percent_used(total, used)
+    except ZeroDivisionError:
+        return (PaastaColors.red("Error reading total available cpu from mesos!"), False)
+
     if check_threshold(perc_used, threshold):
         return ("CPUs: %.2f / %d in use (%s)"
                 % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
@@ -150,7 +154,10 @@ def assert_cpu_health(metrics, threshold=10):
 def assert_memory_health(metrics, threshold=10):
     total = metrics['master/mem_total'] / float(1024)
     used = metrics['master/mem_used'] / float(1024)
-    perc_used = percent_used(total, used)
+    try:
+        perc_used = percent_used(total, used)
+    except ZeroDivisionError:
+        return (PaastaColors.red("Error reading total available memory from mesos!"), False)
 
     if check_threshold(perc_used, threshold):
         return ("Memory: %0.2f / %0.2fGB in use (%s)"
@@ -166,7 +173,10 @@ def assert_memory_health(metrics, threshold=10):
 def assert_disk_health(metrics, threshold=10):
     total = metrics['master/disk_total'] / float(1024)
     used = metrics['master/disk_used'] / float(1024)
-    perc_used = percent_used(total, used)
+    try:
+        perc_used = percent_used(total, used)
+    except ZeroDivisionError:
+        return (PaastaColors.red("Error reading total available disk from mesos!"), False)
 
     if check_threshold(perc_used, threshold):
         return ("Disk: %0.2f / %0.2fGB in use (%s)"
