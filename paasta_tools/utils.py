@@ -1154,6 +1154,12 @@ def get_docker_client():
         return Client(base_url=get_docker_host(), **client_opts)
 
 
+def get_running_mesos_docker_containers():
+    client = get_docker_client()
+    running_containers = client.containers()
+    return [container for container in running_containers if "mesos-" in container["Names"][0]]
+
+
 class TimeoutError(Exception):
     pass
 

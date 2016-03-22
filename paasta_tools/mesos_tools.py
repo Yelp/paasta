@@ -137,6 +137,17 @@ def filter_not_running_tasks(tasks):
     return [task for task in tasks if task['state'] != 'TASK_RUNNING']
 
 
+def get_running_task_ids_from_mesos_slave():
+    state = get_local_slave_state()
+    frameworks = state.get('frameworks')
+    running_task_ids = []
+    for fw in frameworks:
+        for ex in fw.get("executors", []):
+            tasks = filter_running_tasks(ex.get('tasks'))
+            running_task_ids.extend([task["id"] for task in tasks])
+    return set(running_task_ids)
+
+
 def get_running_tasks_from_active_frameworks(job_id):
     active_framework_tasks = get_current_tasks(job_id)
     running_tasks = filter_running_tasks(active_framework_tasks)
