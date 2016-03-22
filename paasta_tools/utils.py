@@ -1348,9 +1348,13 @@ def deep_merge_dictionaries(source, destination):
     Merges two dicitonaries.
     """
     result = copy.deepcopy(destination)
-    for key, value in source.items():
-        child = result.setdefault(key, {})
-        if isinstance(value, dict) and isinstance(child, dict):
-            value = deep_merge_dictionaries(value, child)
-        result[key] = value
+    stack = [(source, result)]
+    while stack:
+        source_dict, result_dict = stack.pop()
+        for key, value in source_dict.items():
+            child = result_dict.setdefault(key, {})
+            if isinstance(value, dict) and isinstance(child, dict):
+                stack.append((value, child))
+            else:
+                result_dict[key] = value
     return result
