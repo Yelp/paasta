@@ -234,7 +234,7 @@ class MarathonServiceConfig(InstanceConfig):
         default_params = {
             'method': 'default',
         }
-        return dict(default_params, **self.config_dict.get('autoscaling', {}))
+        return deep_merge_dictionaries(source=self.config_dict.get('autoscaling', {}), destination=default_params)
 
     def get_backoff_seconds(self):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.
