@@ -26,7 +26,7 @@ on that namespace.
 
 After retrieving that information, a fraction of available instances is calculated
 (available/expected), and then compared against a threshold. The default threshold
-is .50, meaning if less than 50% of a service's backends are available, the script
+is 50, meaning if less than 50% of a service's backends are available, the script
 sends CRITICAL.
 """
 import argparse
