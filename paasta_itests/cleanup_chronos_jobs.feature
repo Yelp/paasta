@@ -10,3 +10,13 @@ Feature: cleanup_chronos_jobs removes chronos jobs no longer in the config
      And the non-paasta jobs are not in the job list
      And the configured chronos jobs are in the job list
      And the unconfigured chronos jobs are not in the job list
+
+ Scenario: Cleanup chronos jobs ignores temporary jobs
+   Given a working paasta cluster
+     And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+     And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
+    When we run chronos_rerun for service_instance testservice testinstance
+     And we store the name of the job for the service testservice and instance testinstance as myjob
+     And we run cleanup_chronos_jobs
+    Then we should get exit code 0
+     And we should see a job for the service "testservice" and instance "testinstance" in the job list
