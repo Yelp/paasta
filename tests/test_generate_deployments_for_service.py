@@ -41,11 +41,11 @@ def test_get_deploy_group_mappings():
     ]
 
     fake_remote_refs = {
-        'refs/heads/paasta-try_me': '123456',
+        'refs/tags/paasta-try_me-20160308T053933-deploy': '123456',
         'refs/tags/paasta-clusterB.main-123-stop': '123456',
-        'refs/heads/paasta-okay': 'ijowarg',
-        'refs/heads/paasta-no_thanks': '789009',
-        'refs/heads/paasta-nah': 'j8yiomwer',
+        'refs/tags/paasta-okay-20160308T053933-deploy': 'ijowarg',
+        'refs/tags/paasta-no_thanks-20160308T053933-deploy': '789009',
+        'refs/tags/paasta-nah-20160308T053933-deploy': 'j8yiomwer',
     }
 
     fake_old_mappings = ['']
@@ -166,8 +166,8 @@ def test_get_desired_state_understands_tags():
         'refs/tags/paasta-cluster.instance-20160202T233805-start': 'BE68473F98F619F26FD7824B8F56F9A7ABAEB860',
         'refs/tags/paasta-cluster2.someinstance-20160202T233805-start': 'D6B9A0F86DC54A132FBB7747460F53F48C9AEEAD',
         'refs/tags/paasta-cluster2.someinstance-20160205T182601-stop': '9085FD67ED1BB5FADAFA7F2AFAF8DEDEE7342711',
-        'refs/heads/paasta-cluster.instance': '4EF01B5A574B519AB546309E89F72972A33B6B75',
-        'refs/heads/paasta-cluster2.someinstance': '9085FD67ED1BB5FADAFA7F2AFAF8DEDEE7342711',
+        'refs/tags/paasta-cluster.instance-20160308T053933-deploy': '4EF01B5A574B519AB546309E89F72972A33B6B75',
+        'refs/tags/paasta-cluster2.someinstance-20160308T053933-deploy': '9085FD67ED1BB5FADAFA7F2AFAF8DEDEE7342711',
     }
     branch = 'cluster2.someinstance'
     deploy_group = branch
