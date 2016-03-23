@@ -22,7 +22,9 @@ def parse_args():
 def main():
     args = parse_args()
     docker_client = get_docker_client()
-    running_mesos_task_ids = mesos_tools.get_running_task_ids_from_mesos_slave()
+
+    running_mesos_task_ids = [task["id"] for task in mesos_tools.filter_running_tasks(
+        mesos_tools.get_running_tasks_from_active_frameworks(''))]
     running_mesos_docker_containers = get_running_mesos_docker_containers()
 
     orphaned_containers = []
