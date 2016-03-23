@@ -26,7 +26,8 @@ import os
 
 import pysensu_yelp
 import service_configuration_lib
-from utils import load_system_paasta_config
+
+from paasta_tools.utils import load_system_paasta_config
 
 
 log = logging.getLogger('__main__')

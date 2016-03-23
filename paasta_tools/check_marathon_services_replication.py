@@ -80,7 +80,7 @@ def send_event(service, namespace, cluster, soa_dir, status, output):
         component='monitoring',
         level='debug',
         cluster=cluster,
-        instance=namespace
+        instance=namespace,
     )
 
 
