@@ -34,6 +34,7 @@ from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import deploy_blacklist_to_constraints
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
@@ -142,7 +143,7 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
             "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file)
         )
 
-    general_config.update(instance_configs[instance])
+    general_config = deep_merge_dictionaries(source=general_config, destination=instance_configs[instance])
 
     branch_dict = {}
     if load_deployments:
@@ -233,7 +234,7 @@ class MarathonServiceConfig(InstanceConfig):
         default_params = {
             'method': 'default',
         }
-        return dict(default_params, **self.config_dict.get('autoscaling', {}))
+        return deep_merge_dictionaries(source=self.config_dict.get('autoscaling', {}), destination=default_params)
 
     def get_backoff_seconds(self):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.

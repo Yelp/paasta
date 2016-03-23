@@ -14,6 +14,7 @@
 from __future__ import print_function
 
 import contextlib
+import copy
 import datetime
 import errno
 import fcntl
@@ -1341,3 +1342,20 @@ def format_table(rows, min_spacing=2):
             expanded_rows.append(expanded_row)
 
     return [(' ' * min_spacing).join(r) for r in expanded_rows]
+
+
+def deep_merge_dictionaries(source, destination):
+    """
+    Merges two dictionaries.
+    """
+    result = copy.deepcopy(destination)
+    stack = [(source, result)]
+    while stack:
+        source_dict, result_dict = stack.pop()
+        for key, value in source_dict.items():
+            child = result_dict.setdefault(key, {})
+            if isinstance(value, dict) and isinstance(child, dict):
+                stack.append((value, child))
+            else:
+                result_dict[key] = value
+    return result
