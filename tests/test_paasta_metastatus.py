@@ -105,6 +105,36 @@ def test_failing_disk_health():
     assert PaastaColors.red("CRITICAL: Less than 10% disk available. (Currently using 97.66%)") in failure_output
 
 
+def assert_cpu_health_mesos_reports_zero():
+    mesos_metrics = {
+        'master/cpus_total': 0,
+        'master/cpus_used': 1,
+    }
+    failure_output, failure_health = paasta_metastatus.assert_cpu_health(mesos_metrics)
+    assert failure_output == "Error reading total available cpu from mesos!"
+    assert failure_health is False
+
+
+def assert_memory_health_mesos_reports_zero():
+    mesos_metrics = {
+        'master/mem_total': 0,
+        'master/mem_used': 1,
+    }
+    failure_output, failure_health = paasta_metastatus.assert_memory_health(mesos_metrics)
+    assert failure_output == "Error reading total available memory from mesos!"
+    assert failure_health is False
+
+
+def assert_disk_health_mesos_reports_zero():
+    mesos_metrics = {
+        'master/disk_total': 0,
+        'master/disk_used': 1,
+    }
+    failure_output, failure_health = paasta_metastatus.assert_disk_health(mesos_metrics)
+    assert failure_output == "Error reading total available disk from mesos!"
+    assert failure_health is False
+
+
 def test_assert_no_duplicate_frameworks():
     state = {
         'frameworks': [
