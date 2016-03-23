@@ -179,6 +179,11 @@ instance MAY have:
     to determine the order in which to build & deploy deploy groups. Defaults to
     ``clustername.instancename``. See the deploy group doc_ for more information.
 
+  * ``replication_threshold``: An integer representing the percentage of instances that
+    need to be available for monitoring purposes. If less than ``replication_threshold``
+    percent instances of a service's backends are not available, the monitoring
+    scripts will send a CRITICAL alert.
+
 In addition, each instancename MAY configure additional Marathon healthcheck
 options:
 

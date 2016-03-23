@@ -143,6 +143,10 @@
             "healthcheck_max_consecutive_failures": {
                 "type": "integer",
                 "default": 6
+            },
+            "replication_threshold": {
+                "type": "integer",
+                "minimum": 0
             }
         }
     }
