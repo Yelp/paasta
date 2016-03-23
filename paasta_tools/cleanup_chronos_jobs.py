@@ -26,6 +26,7 @@ Any tasks associated with that job are also deleted.
 - -d <SOA_DIR>, --soa-dir <SOA_DIR>: Specify a SOA config dir to read from
 """
 import argparse
+import datetime
 import sys
 
 import pysensu_yelp
@@ -95,11 +96,44 @@ def filter_paasta_jobs(jobs):
     for job in jobs:
         try:
             # attempt to decompose it
-            chronos_tools.decompose_job_id(job)
+            service, instance = chronos_tools.decompose_job_id(job)
             formatted.append(job)
         except InvalidJobNameError:
             pass
     return formatted
+
+
+def filter_tmp_jobs(job_names):
+    """
+    filter temporary jobs created by chronos_rerun
+    """
+    return [name for name in job_names if name.startswith(chronos_tools.TMP_JOB_IDENTIFIER)]
+
+
+def filter_expired_tmp_jobs(client, job_names):
+    """
+    Given a list of temporary jobs, find those ready to be removed. Their
+    suitablity for removal is defined by two things:
+
+        - the job has completed (irrespective of whether it was a success or
+          failure)
+        - the job completed more than 24 hours ago
+    """
+    expired = []
+    for job_name in job_names:
+        service, instance = chronos_tools.decompose_job_id(job_name)
+        temporary_jobs = chronos_tools.get_temporary_jobs_for_service_instance(
+            client=client,
+            service=service,
+            instance=instance
+        )
+        for job in temporary_jobs:
+            last_run_time, last_run_state = chronos_tools.get_status_last_run(job)
+            print last_run_time, last_run_state
+            if last_run_state != chronos_tools.LastRunState.NotRun:
+                if (datetime.datetime.utcnow() - last_run_time) > datetime.timedelta(days=1):
+                    expired.append(job_name)
+    return expired
 
 
 def main():
@@ -110,13 +144,17 @@ def main():
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
 
-    # get_chronos_jobs_for_cluster returns (service, job)
-    expected_service_jobs = set([chronos_tools.compose_job_id(*job) for job in
-                                 chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)])
+    running_jobs = set(deployed_job_names(client))
 
-    running_service_jobs = set(deployed_job_names(client))
+    expected_service_jobs = [chronos_tools.compose_job_id(*job) for job in
+                             chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)]
 
-    to_delete = running_service_jobs - expected_service_jobs
+    all_tmp_jobs = filter_tmp_jobs(filter_paasta_jobs(running_jobs))
+    expired_tmp_jobs = filter_expired_tmp_jobs(client, all_tmp_jobs)
+
+    valid_tmp_jobs = [job for job in all_tmp_jobs if job not in expired_tmp_jobs]
+
+    to_delete = [job for job in running_jobs if job not in expected_service_jobs and job not in valid_tmp_jobs]
 
     task_responses = cleanup_tasks(client, to_delete)
     task_successes = []
