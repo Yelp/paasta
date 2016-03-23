@@ -129,7 +129,6 @@ def filter_expired_tmp_jobs(client, job_names):
         )
         for job in temporary_jobs:
             last_run_time, last_run_state = chronos_tools.get_status_last_run(job)
-            print last_run_time, last_run_state
             if last_run_state != chronos_tools.LastRunState.NotRun:
                 if (datetime.datetime.utcnow() - last_run_time) > datetime.timedelta(days=1):
                     expired.append(job_name)
