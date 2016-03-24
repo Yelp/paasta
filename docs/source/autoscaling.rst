@@ -17,6 +17,9 @@ Autoscaling parameters are stored in an ``autoscaling`` attribute of your instan
 Autoscaling components
 ----------------------
 
+Ingesters
+^^^^^^^^^
+
 The currently available ingesters are:
 
 :mesos_cpu_ram:
@@ -27,6 +30,9 @@ The currently available ingesters are:
   Autoscaling parameters:
 
   :endpoint: the path to perform the HTTP request on (the requested URL will be \http://$HOST:$PORT/endpoint). Defaults to 'status'.
+
+Deciders
+^^^^^^^^
 
 The currently available deciders are:
 
