@@ -58,6 +58,12 @@ def get_autoscaling_ingester(name):
 
 
 def get_autoscaling_decider(name):
+    """
+    Deciders the direction a service needs to be scaled in. Possible return values are:
+    -1: autoscale down
+    0:  don't autoscale
+    1:  autoscale up
+    """
     return _autoscaling_deciders[name]
 
 
@@ -68,6 +74,10 @@ class IngesterNoDataError(ValueError):
 @register_autoscaling_component('threshold', DECIDER_KEY)
 def threshold_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
                       delay=600, setpoint=0.8, threshold=0.1, **kwargs):
+    """
+    Decides to autoscale a service up or down if the service utilization exceeds the setpoint
+    by a certain threshold.
+    """
     zk_last_time_path = '%s/threshold_last_time' % compose_autoscaling_zookeeper_root(
         service=marathon_service_config.service,
         instance=marathon_service_config.instance,
@@ -106,6 +116,12 @@ def clamp_value(number):
 @register_autoscaling_component('pid', DECIDER_KEY)
 def pid_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
                 delay=600, setpoint=0.8, **kwargs):
+    """
+    Uses a PID to determine when to autoscale a service.
+    See https://en.wikipedia.org/wiki/PID_controller for more information on PIDs.
+    Kp, Ki and Kd are the canonical PID constants, where the output of the PID is:
+    Kp * error + Ki * integral(error * dt) + Kd * (d(error) / dt)
+    """
     Kp = 0.2
     Ki = 0.2 / delay
     Kd = 0.05 * delay
@@ -170,6 +186,19 @@ def bespoke_decider(*args, **kwargs):
 
 @register_autoscaling_component('http', INGESTER_KEY)
 def http_ingester(marathon_service_config, marathon_tasks, mesos_tasks, endpoint='status', *args, **kwargs):
+    """
+    Gets the average utilization of a service across all of its tasks, where the utilization of
+    a task is read from a HTTP endpoint on the host.
+
+    The HTTP endpoint must return JSON with a 'utilization' key with a value from 0 to 1.
+
+    :param marathon_service_config: the MarathonServiceConfig to get data from
+    :param marathon_tasks: Marathon tasks to get data from
+    :param mesos_tasks: Mesos tasks to get data from
+
+    :returns: the service's average utilization, from 0 to 1
+    """
+
     job_id = format_job_id(marathon_service_config.service, marathon_service_config.instance)
     endpoint = endpoint.lstrip('/')
 
@@ -193,11 +222,14 @@ def http_ingester(marathon_service_config, marathon_tasks, mesos_tasks, endpoint
 @register_autoscaling_component('mesos_cpu_ram', INGESTER_KEY)
 def mesos_cpu_ram_ingester(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs):
     """
+    Gets the average utilization of a service across all of its tasks, where the utilization of
+    a task is the maximum value between its cpu and ram utilization.
+
     :param marathon_service_config: the MarathonServiceConfig to get data from
     :param marathon_tasks: Marathon tasks to get data from
     :param mesos_tasks: Mesos tasks to get data from
 
-    :returns: the average utilization of a service
+    :returns: the service's average utilization, from 0 to 1
     """
 
     job_id = format_job_id(marathon_service_config.service, marathon_service_config.instance)
