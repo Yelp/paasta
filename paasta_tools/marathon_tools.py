@@ -291,13 +291,13 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The constraints specified in the config, or defaults described above
         """
         if 'constraints' in self.config_dict:
-            return self.config_dict.get('constraints')
+            constraints = self.config_dict.get('constraints')
         else:
             constraints = self.config_dict.get('extra_constraints', [])
             constraints.extend(self.get_routing_constraints(service_namespace_config))
             constraints.extend(self.get_deploy_constraints())
             constraints.extend(self.get_pool_constraints())
-            return constraints
+        return [[str(val) for val in constraint] for constraint in constraints]
 
     def get_routing_constraints(self, service_namespace_config):
         discover_level = service_namespace_config.get_discover()
