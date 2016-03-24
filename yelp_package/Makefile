@@ -21,12 +21,16 @@ UID:=`id -u`
 GID:=`id -g`
 DOCKER_RUN_LUCID:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_lucid_container
 DOCKER_RUN_TRUSTY:=docker run -t -v  $(CURDIR)/../:/work:rw paastatools_trusty_container
+
+NOOP = true
 ifeq ($(PAASTA_ENV),YELP)
 	ADD_MISSING_DEPS_MAYBE:=-diff --unchanged-line-format= --old-line-format= --new-line-format='%L' ../requirements.txt ./extra_requirements_yelp.txt >> ../requirements.txt
-	ADD_YELP_PREFIX_MAYBE:=dch -v $(RELEASE)-yelp1 --changelog ../debian/changelog $$'Build for yelp: add scribereader to virtualenv'
+	ACTUAL_PACKAGE_VERSION:=$(RELEASE)-yelp1
+	ADD_YELP_PREFIX_MAYBE:=dch -v $(ACTUAL_PACKAGE_VERSION) --changelog ../debian/changelog $$'Build for yelp: add scribereader to virtualenv'
 else
-	ADD_MISSING_DEPS_MAYBE:=true
-	ADD_YELP_PREFIX_MAYBE:=true
+	ADD_MISSING_DEPS_MAYBE:=$(NOOP)
+	ADD_YELP_PREFIX_MAYBE:=$(NOOP)
+	ACTUAL_PACKAGE_VERSION:=$(RELEASE)
 endif
 
 
@@ -45,7 +49,7 @@ package_lucid: build_lucid_docker
 	mv ../debian/changelog.old ../debian/changelog
 	$(DOCKER_RUN_LUCID) chown -R $(UID):$(GID) /work
 itest_lucid: package_lucid
-	$(DOCKER_RUN_LUCID) /work/yelp_package/itest/ubuntu.sh
+	$(DOCKER_RUN_LUCID) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
 
 build_trusty_docker:
@@ -63,7 +67,7 @@ package_trusty: build_trusty_docker
 	mv ../debian/changelog.old ../debian/changelog
 	$(DOCKER_RUN_TRUSTY) chown -R $(UID):$(GID) /work
 itest_trusty: package_trusty bintray.json
-	$(DOCKER_RUN_TRUSTY) /work/yelp_package/itest/ubuntu.sh
+	$(DOCKER_RUN_TRUSTY) /work/yelp_package/itest/ubuntu.sh paasta-tools_$(ACTUAL_PACKAGE_VERSION)_amd64.deb
 
 DATE := $(shell date +'%Y-%m-%d' -d `dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Date: //p'`)
 PAASTAVERSION := $(shell dpkg-parsechangelog -l../debian/changelog | sed -n 's/^Version: //p')
