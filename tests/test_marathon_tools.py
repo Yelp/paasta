@@ -1040,14 +1040,14 @@ class TestMarathonTools:
             service='fake_name',
             cluster='fake_cluster',
             instance='fake_instance',
-            config_dict={'constraints': 'so_many_walls', 'extra_constraints': [['ignore', 'this']]},
+            config_dict={'constraints': [['something', 'GROUP_BY']], 'extra_constraints': [['ignore', 'this']]},
             branch_dict={},
         )
         with mock.patch(
             'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
             autospec=True,
         ) as get_slaves_patch:
-            assert fake_conf.get_constraints(fake_service_namespace_config) == 'so_many_walls'
+            assert fake_conf.get_constraints(fake_service_namespace_config) == [['something', 'GROUP_BY']]
             assert get_slaves_patch.call_count == 0
 
     def test_get_constraints_default(self):
@@ -1065,6 +1065,27 @@ class TestMarathonTools:
         ) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
             expected_constraints = [
+                ["region", "GROUP_BY", "1"],
+                ["pool", "LIKE", "default"],
+            ]
+            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+
+    def test_get_constraints_stringifies(self):
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'extra_constraints': [['foo', 1]]},
+            branch_dict={},
+        )
+        with mock.patch(
+            'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
+            autospec=True,
+        ) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}}
+            expected_constraints = [
+                ["foo", "1"],
                 ["region", "GROUP_BY", "1"],
                 ["pool", "LIKE", "default"],
             ]

@@ -37,8 +37,8 @@ import service_configuration_lib
 
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
-from paasta_tools.check_marathon_services_replication import send_event
 from paasta_tools.mesos_tools import is_mesos_leader
+from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import _log
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InvalidJobNameError
@@ -67,35 +67,42 @@ def delete_app(app_id, client, soa_dir):
     service, instance, _, __ = marathon_tools.deformat_job_id(app_id)
     cluster = load_system_paasta_config().get_cluster()
     try:
-        with bounce_lib.bounce_lock_zookeeper(marathon_tools.compose_job_id(service, instance)):
+        short_app_id = marathon_tools.compose_job_id(service, instance)
+        with bounce_lib.bounce_lock_zookeeper(short_app_id):
             bounce_lib.delete_marathon_app(app_id, client)
-            send_event(
-                service=service,
-                namespace=instance,
-                cluster=cluster,
-                soa_dir=soa_dir,
-                status=pysensu_yelp.Status.OK,
-                output="This instance was removed and is no longer running",
-            )
-            log_line = "Deleted stale marathon job that looks lost: %s" % app_id
-            _log(service=service,
-                 component='deploy',
-                 level='event',
-                 cluster=cluster,
-                 instance=instance,
-                 line=log_line)
+        # resolve any check marathon replication alerts
+        check_name = 'check_marathon_services_replication.%s' % short_app_id
+        send_event(
+            service=service,
+            check_name=check_name,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.OK,
+            overrides={},
+            output="This instance was removed and is no longer running",
+        )
+        log_line = "Deleted stale marathon job that looks lost: %s" % app_id
+        _log(
+            service=service,
+            component='deploy',
+            level='event',
+            cluster=cluster,
+            instance=instance,
+            line=log_line,
+        )
     except IOError:
         log.debug("%s is being bounced, skipping" % app_id)
     except Exception:
         loglines = ['Exception raised during cleanup of service %s:' % service]
         loglines.extend(traceback.format_exc().rstrip().split("\n"))
         for logline in loglines:
-            _log(service=service,
-                 component='deploy',
-                 level='debug',
-                 cluster=load_system_paasta_config().get_cluster(),
-                 instance=instance,
-                 line=logline)
+            _log(
+                service=service,
+                component='deploy',
+                level='debug',
+                cluster=load_system_paasta_config().get_cluster(),
+                instance=instance,
+                line=logline,
+            )
         raise
 
 

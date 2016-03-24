@@ -25,9 +25,10 @@ are expected to be available for that namespace based on the number of instances
 on that namespace.
 
 After retrieving that information, a fraction of available instances is calculated
-(available/expected), and then compared against a threshold. The default threshold
-is .50, meaning if fewer than 50 of a service's backends are available, the script
-sends CRITICAL.
+(available/expected), and then compared against a threshold. The default threshold is
+50, meaning if less than 50% of a service's backends are available, the script sends
+CRITICAL. If replication_threshold is defined in the yelpsoa config for a service
+instance then it will be used instead.
 """
 import argparse
 import logging
@@ -80,7 +81,7 @@ def send_event(service, namespace, cluster, soa_dir, status, output):
         component='monitoring',
         level='debug',
         cluster=cluster,
-        instance=namespace
+        instance=namespace,
     )
 
 
@@ -88,10 +89,6 @@ def parse_args():
     epilog = "PERCENTAGE is an integer value representing the percentage of available to expected instances"
     parser = argparse.ArgumentParser(epilog=epilog)
 
-    parser.add_argument('-c', '--critical', dest='crit', type=int,
-                        metavar='PERCENTAGE', default=50,
-                        help="Generate critical state if fraction of instances \
-                        available is less than this percentage")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
@@ -107,17 +104,16 @@ def check_smartstack_replication_for_instance(
     instance,
     cluster,
     soa_dir,
-    crit_threshold,
     expected_count,
 ):
     """Check a set of namespaces to see if their number of available backends is too low,
-    emitting events to Sensu based on the fraction available and the thresholds given.
+    emitting events to Sensu based on the fraction available and the thresholds defined in
+    the corresponding yelpsoa config.
 
     :param service: A string like example_service
     :param namespace: A nerve namespace, like "main"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
-    :param crit_threshold: The fraction of instances that need to be up to avoid a CRITICAL event
     """
     namespace = marathon_tools.read_namespace_for_service_instance(service, instance, soa_dir=soa_dir)
     if namespace != instance:
@@ -126,6 +122,7 @@ def check_smartstack_replication_for_instance(
         return
     full_name = compose_job_id(service, instance)
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
+    crit_threshold = job_config.get_replication_crit_percentage()
     monitoring_blacklist = job_config.get_monitoring_blacklist()
     log.info('Checking instance %s in smartstack', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
@@ -179,7 +176,7 @@ def get_healthy_marathon_instances_for_short_app_id(client, app_id):
 
 
 def check_healthy_marathon_tasks_for_service_instance(client, service, instance, cluster,
-                                                      soa_dir, crit_threshold, expected_count):
+                                                      soa_dir, expected_count):
     app_id = format_job_id(service, instance)
     log.info("Checking %s in marathon as it is not in smartstack" % app_id)
     num_healthy_tasks = get_healthy_marathon_instances_for_short_app_id(client, app_id)
@@ -187,7 +184,6 @@ def check_healthy_marathon_tasks_for_service_instance(client, service, instance,
         service=service,
         instance=instance,
         cluster=cluster,
-        crit_threshold=crit_threshold,
         expected_count=expected_count,
         num_available=num_healthy_tasks,
         soa_dir=soa_dir,
@@ -198,12 +194,13 @@ def send_event_if_under_replication(
     service,
     instance,
     cluster,
-    crit_threshold,
     expected_count,
     num_available,
     soa_dir,
 ):
     full_name = compose_job_id(service, instance)
+    job_config = marathon_tools.load_marathon_service_config(service, instance, cluster)
+    crit_threshold = job_config.get_replication_crit_percentage()
     output = ('Service %s has %d out of %d expected instances available!\n' +
               '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
     under_replicated, _ = is_under_replicated(num_available, expected_count, crit_threshold)
@@ -222,14 +219,13 @@ def send_event_if_under_replication(
         output=output)
 
 
-def check_service_replication(client, service, instance, cluster, crit_threshold, soa_dir):
+def check_service_replication(client, service, instance, cluster, soa_dir):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
     :param service: Service name, like "example_service"
     :param instance: Instance name, like "main" or "canary"
     :param cluster: name of the cluster
-    :param crit_threshold: an int from 0-100 representing the percentage threshold for triggering an alert
     :param soa_dir: The SOA configuration directory to read from
     """
     job_id = compose_job_id(service, instance)
@@ -248,7 +244,6 @@ def check_service_replication(client, service, instance, cluster, crit_threshold
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
-            crit_threshold=crit_threshold,
             expected_count=expected_count)
     else:
         check_healthy_marathon_tasks_for_service_instance(
@@ -257,7 +252,6 @@ def check_service_replication(client, service, instance, cluster, crit_threshold
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
-            crit_threshold=crit_threshold,
             expected_count=expected_count,
         )
 
@@ -321,9 +315,10 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
 
 
 def main():
+
     args = parse_args()
     soa_dir = args.soa_dir
-    crit_threshold = args.crit
+
     logging.basicConfig()
     if args.verbose:
         log.setLevel(logging.DEBUG)
@@ -336,12 +331,12 @@ def main():
     config = marathon_tools.load_marathon_config()
     client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password())
     for service, instance in service_instances:
+
         check_service_replication(
             client=client,
             service=service,
             instance=instance,
             cluster=cluster,
-            crit_threshold=crit_threshold,
             soa_dir=soa_dir,
         )
 

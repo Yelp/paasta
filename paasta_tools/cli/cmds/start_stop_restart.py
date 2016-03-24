@@ -25,6 +25,7 @@ from paasta_tools.cli.utils import get_instance_config
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
+from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.marathon_tools import MarathonServiceConfig
 from paasta_tools.utils import list_clusters
 
@@ -86,8 +87,10 @@ def make_mutate_refs_func(service_config, force_bounce, desired_state):
     then diff what is returned versus what was passed in, and inform the remote
     git repo of our desires."""
     def mutate_refs(refs):
+        deploy_group = service_config.get_deploy_group()
+        (_, head_sha) = get_latest_deployment_tag(refs, deploy_group)
         refs[format_tag(service_config.get_branch(), force_bounce, desired_state)] = \
-            refs['refs/heads/paasta-%s' % service_config.get_deploy_group()]
+            head_sha
         return refs
     return mutate_refs
 
@@ -179,9 +182,11 @@ def paasta_start_or_stop(args, desired_state):
             soa_dir=soa_dir,
             load_deployments=False,
         )
+        deploy_group = service_config.get_deploy_group()
+        (deploy_tag, _) = get_latest_deployment_tag(remote_refs, deploy_group)
 
-        if 'refs/heads/paasta-%s' % service_config.get_deploy_group() not in remote_refs:
-            invalid_deploy_groups.append(service_config.get_deploy_group())
+        if deploy_tag not in remote_refs:
+            invalid_deploy_groups.append(deploy_group)
         else:
             force_bounce = utils.format_timestamp(datetime.datetime.utcnow())
             issue_state_change_for_service(

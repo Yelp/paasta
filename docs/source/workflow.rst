@@ -193,3 +193,51 @@ monitoring checks for free:
   instances are deployed on a cluster. If the service is registered in Smartstack
   it will look in Smartstack to count the available instances. Otherwise it
   counts the number of healthy tasks in Mesos.
+
+
+The PaaSTA command line
+------------------------
+
+The PaaSTA command line interface, ``paasta``, gives users of PaaSTA the
+ability to inspect the state of services, as well as stop and start existing
+services. See the man pages for a description and detail of options for any
+individual paasta command.  Some of the most frequently used commands are
+listed below:
+
+   * ``paasta start`` - sets the desired state of the service instance to
+  'started'. In the case of long-running services, this will mean ensuring that
+  the number of instances of your application matches that set in your
+  soa-configs. In the case of scheduled-tasks, this will ensure that your task
+  is enabled, and will be scheduled as normal. **Note** unless you have run
+  `paasta stop` or `paasta emergency-stop` against your instance, this will be
+  noop. Your service is started by default, and this command does not have to
+  be run for a service to run.
+
+* ``paasta stop`` - sets the desired state of the service instance to 'stop'.
+  The result of this for long running tasks is that your tasks are shutdown
+  using whichever drain method you have specified, and tells PaaSTA that the
+  number of instances of your task deployed should be 0.
+  In the case of scheduled tasks, this tells PaaSTA to ensure that your task is
+  no longer scheduled.
+  **NB**: ``paasta stop`` is a temporary measure; that is, it's effect only lasts until
+  you deploy a new version of your service. That means that if you run ``paasta
+  stop``` and push a version of the docker image serving your service, then
+  paasta will reset the effect of ``paasta stop``.
+
+
+* ``paasta emergency-start`` - In the case of long running services,
+  ``emergency-start`` will ensure that the number of running instances of a
+  service matches the desired instances; if this is already the case, then this
+  is a noop. In the case of a chronos job, then emergency start will trigger a
+  run of the job now, irrespective of whether one is scheduled to be run.  This
+  will not impact the schedule, and jobs will continue to run according to the
+  schedule thereafter. If the scheduled task has ``disabled: True`` in the
+  service's soa-configs, then this is no op.
+
+
+* ``paasta emergency-stop`` - In the case of long running services, any
+  instances of your service will be immediately killed, with no regard for
+  draining or a safe shutdown. PaaSTA will leave the number of desired
+  instances at 0 until you next deploy your service. In the case of scheduled
+  tasks, any in-flight tasks will be killed, and the job disabled until a new
+  version of the service is deployed.

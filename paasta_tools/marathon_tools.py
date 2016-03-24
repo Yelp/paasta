@@ -34,6 +34,7 @@ from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import deploy_blacklist_to_constraints
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
@@ -142,7 +143,7 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
             "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file)
         )
 
-    general_config.update(instance_configs[instance])
+    general_config = deep_merge_dictionaries(source=general_config, destination=instance_configs[instance])
 
     branch_dict = {}
     if load_deployments:
@@ -233,7 +234,7 @@ class MarathonServiceConfig(InstanceConfig):
         default_params = {
             'method': 'default',
         }
-        return dict(default_params, **self.config_dict.get('autoscaling', {}))
+        return deep_merge_dictionaries(source=self.config_dict.get('autoscaling', {}), destination=default_params)
 
     def get_backoff_seconds(self):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.
@@ -290,13 +291,13 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The constraints specified in the config, or defaults described above
         """
         if 'constraints' in self.config_dict:
-            return self.config_dict.get('constraints')
+            constraints = self.config_dict.get('constraints')
         else:
             constraints = self.config_dict.get('extra_constraints', [])
             constraints.extend(self.get_routing_constraints(service_namespace_config))
             constraints.extend(self.get_deploy_constraints())
             constraints.extend(self.get_pool_constraints())
-            return constraints
+        return [[str(val) for val in constraint] for constraint in constraints]
 
     def get_routing_constraints(self, service_namespace_config):
         discover_level = service_namespace_config.get_discover()
@@ -521,6 +522,9 @@ class MarathonServiceConfig(InstanceConfig):
             return PaastaColors.red('Stopped')
         else:
             return PaastaColors.red('Unknown (desired_state: %s)' % desired_state)
+
+    def get_replication_crit_percentage(self):
+        return self.config_dict.get('replication_threshold', 50)
 
 
 def load_service_namespace_config(service, namespace, soa_dir=DEFAULT_SOA_DIR):
