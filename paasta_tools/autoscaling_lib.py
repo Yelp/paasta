@@ -93,6 +93,12 @@ def threshold_decider(marathon_service_config, ingester_method, marathon_tasks, 
         return 0
 
 
+def clamp_value(number):
+    """Limits the PID output to scaling up/down by 1.
+    Also used to limit the integral term which avoids windup lag."""
+    return min(max(number, -1), 1)
+
+
 @register_autoscaling_component('pid', 'decider')
 def pid_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
                 delay=600, setpoint=0.8, **kwargs):
@@ -107,11 +113,6 @@ def pid_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_
     zk_iterm_path = '%s/pid_iterm' % autoscaling_root
     zk_last_error_path = '%s/pid_last_error' % autoscaling_root
     zk_last_time_path = '%s/pid_last_time' % autoscaling_root
-
-    def clamp_value(number):
-        """Limits the PID output to scaling up/down by 1.
-        Also used to limit the integral term which avoids windup lag."""
-        return min(max(number, -1), 1)
 
     with ZookeeperPool() as zk:
         try:
