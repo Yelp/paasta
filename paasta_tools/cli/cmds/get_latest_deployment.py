@@ -24,7 +24,7 @@ from paasta_tools.utils import get_git_url
 
 def add_subparser(subparsers):
     list_parser = subparsers.add_parser(
-        'get_latest_deployment',
+        'get-latest-deployment',
         help='Gets the Git SHA for the latest deployment of a service',
     )
     list_parser.add_argument(
