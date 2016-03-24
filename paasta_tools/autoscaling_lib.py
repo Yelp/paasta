@@ -35,10 +35,14 @@ _autoscaling_ingesters = {}
 _autoscaling_deciders = {}
 
 
+INGESTER_KEY = 'ingester'
+DECIDER_KEY = 'decider'
+
+
 def register_autoscaling_component(name, method_type):
-    if method_type == 'ingester':
+    if method_type == INGESTER_KEY:
         component_dict = _autoscaling_ingesters
-    elif method_type == 'decider':
+    elif method_type == DECIDER_KEY:
         component_dict = _autoscaling_deciders
     else:
         raise KeyError('Autoscaling component type %s does not exist.' % method_type)
@@ -61,7 +65,7 @@ class IngesterNoDataError(ValueError):
     pass
 
 
-@register_autoscaling_component('threshold', 'decider')
+@register_autoscaling_component('threshold', DECIDER_KEY)
 def threshold_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
                       delay=600, setpoint=0.8, threshold=0.1, **kwargs):
     zk_last_time_path = '%s/threshold_last_time' % compose_autoscaling_zookeeper_root(
@@ -99,7 +103,7 @@ def clamp_value(number):
     return min(max(number, -1), 1)
 
 
-@register_autoscaling_component('pid', 'decider')
+@register_autoscaling_component('pid', DECIDER_KEY)
 def pid_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
                 delay=600, setpoint=0.8, **kwargs):
     Kp = 0.2
@@ -155,7 +159,7 @@ def pid_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_
     return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
 
 
-@register_autoscaling_component('bespoke', 'decider')
+@register_autoscaling_component('bespoke', DECIDER_KEY)
 def bespoke_decider(*args, **kwargs):
     """
     Autoscaling method for service authors that have written their own autoscaling method.
@@ -164,7 +168,7 @@ def bespoke_decider(*args, **kwargs):
     return 0
 
 
-@register_autoscaling_component('http', 'ingester')
+@register_autoscaling_component('http', INGESTER_KEY)
 def http_ingester(marathon_service_config, marathon_tasks, mesos_tasks, endpoint='status', *args, **kwargs):
     job_id = format_job_id(marathon_service_config.service, marathon_service_config.instance)
     endpoint = endpoint.lstrip('/')
@@ -186,7 +190,7 @@ def http_ingester(marathon_service_config, marathon_tasks, mesos_tasks, endpoint
     return sum(utilization) / len(utilization)
 
 
-@register_autoscaling_component('mesos_cpu_ram', 'ingester')
+@register_autoscaling_component('mesos_cpu_ram', INGESTER_KEY)
 def mesos_cpu_ram_ingester(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs):
     """
     :param marathon_service_config: the MarathonServiceConfig to get data from
@@ -266,8 +270,8 @@ def get_new_instance_count(current_instances, autoscaling_direction):
 
 def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
     autoscaling_params = marathon_service_config.get_autoscaling_params()
-    autoscaling_ingester = get_autoscaling_ingester(autoscaling_params['ingester'])
-    autoscaling_decider = get_autoscaling_decider(autoscaling_params['decider'])
+    autoscaling_ingester = get_autoscaling_ingester(autoscaling_params[INGESTER_KEY])
+    autoscaling_decider = get_autoscaling_decider(autoscaling_params[DECIDER_KEY])
     autoscaling_direction = autoscaling_decider(marathon_service_config, autoscaling_ingester,
                                                 marathon_tasks, mesos_tasks, **autoscaling_params)
     if autoscaling_direction:
