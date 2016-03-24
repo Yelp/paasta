@@ -25,6 +25,7 @@ from jsonschema import ValidationError
 import paasta_tools.chronos_tools
 from paasta_tools.chronos_tools import check_parent_format
 from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.chronos_tools import TMP_JOB_IDENTIFIER
 from paasta_tools.cli.utils import failure
 from paasta_tools.cli.utils import get_file_contents
 from paasta_tools.cli.utils import lazy_choices_completer
@@ -203,6 +204,11 @@ def validate_chronos(service_path):
     chronos_spacer = paasta_tools.chronos_tools.INTERNAL_SPACER
 
     returncode = True
+
+    if service == TMP_JOB_IDENTIFIER:
+        print ("Services using scheduled tasks cannot be named %s, as it clashes with the"
+               " identifier used for temporary jobs" % TMP_JOB_IDENTIFIER)
+        return False
     for cluster in list_clusters(service, soa_dir, instance_type):
         services_in_cluster = get_services_for_cluster(cluster=cluster, instance_type='chronos', soa_dir=soa_dir)
         valid_services = set(["%s%s%s" % (name, chronos_spacer, instance) for name, instance in services_in_cluster])
