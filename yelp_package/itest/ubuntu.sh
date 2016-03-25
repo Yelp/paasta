@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -eu
 
 SCRIPTS="am_i_mesos_leader
 check_marathon_services_replication
@@ -72,7 +72,7 @@ mkdir -p /etc/paasta
 # If left there, they are included in the python path and can pollute the tests.
 rm -r debian/paasta-tools/
 
-if dpkg -i /work/dist/*.deb; then
+if dpkg -i /work/dist/"$1"; then
   echo "Looks like it installed correctly"
 else
   echo "Dpkg install failed"
