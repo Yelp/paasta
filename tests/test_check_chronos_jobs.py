@@ -157,7 +157,8 @@ def test_message_for_status_unknown():
 def test_sensu_message_status_for_jobs_too_many():
     fake_job_state_pairs = [({'name': 'full_job_id', 'disabled': False}, chronos_tools.LastRunState.Success),
                             ({}, chronos_tools.LastRunState.Success)]
-    output, status = check_chronos_jobs.sensu_message_status_for_jobs('myservice', 'myinstance', fake_job_state_pairs)
+    output, status = check_chronos_jobs.sensu_message_status_for_jobs(
+        'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
     expected_output = (
         "Unknown: somehow there was more than one enabled job for myservice.myinstance. "
         "Talk to the PaaSTA team as this indicates a bug"
@@ -168,7 +169,8 @@ def test_sensu_message_status_for_jobs_too_many():
 
 def test_sensu_message_status_ok():
     fake_job_state_pairs = [({'name': 'full_job_id', 'disabled': False}, chronos_tools.LastRunState.Success)]
-    output, status = check_chronos_jobs.sensu_message_status_for_jobs('myservice', 'myinstance', fake_job_state_pairs)
+    output, status = check_chronos_jobs.sensu_message_status_for_jobs(
+        'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
     expected_output = "Last run of job myservice.myinstance Succeded"
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
@@ -177,7 +179,8 @@ def test_sensu_message_status_ok():
 def test_sensu_message_status_fail():
     fake_job_id = 'full_job_id'
     fake_job_state_pairs = [({'name': fake_job_id, 'disabled': False}, chronos_tools.LastRunState.Fail)]
-    output, status = check_chronos_jobs.sensu_message_status_for_jobs('myservice', 'myinstance', fake_job_state_pairs)
+    output, status = check_chronos_jobs.sensu_message_status_for_jobs(
+        'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
     expected_output = "Last run of job myservice.myinstance Failed - job id %s" % fake_job_id
     assert output == expected_output
     assert status == pysensu_yelp.Status.CRITICAL
@@ -185,15 +188,30 @@ def test_sensu_message_status_fail():
 
 def test_sensu_message_status_no_run():
     fake_job_state_pairs = []
-    output, status = check_chronos_jobs.sensu_message_status_for_jobs('myservice', 'myinstance', fake_job_state_pairs)
+    with patch('paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
+               return_value=Mock(get_disabled=Mock(return_value=False))):
+        output, status = check_chronos_jobs.sensu_message_status_for_jobs(
+            'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
     expected_output = "Warning: myservice.myinstance isn't in chronos at all, which means it may not be deployed yet"
     assert output == expected_output
     assert status == pysensu_yelp.Status.WARNING
 
 
+def test_sensu_message_status_no_run_disabled():
+    fake_job_state_pairs = []
+    with patch('paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
+               return_value=Mock(get_disabled=Mock(return_value=True))):
+        output, status = check_chronos_jobs.sensu_message_status_for_jobs(
+            'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
+    expected_output = "Job myservice.myinstance is disabled - ignoring status."
+    assert output == expected_output
+    assert status == pysensu_yelp.Status.OK
+
+
 def test_sensu_message_status_disabled():
     fake_job_state_pairs = [({'name': 'fake_job_id', 'disabled': True}, chronos_tools.LastRunState.Fail)]
-    output, status = check_chronos_jobs.sensu_message_status_for_jobs('myservice', 'myinstance', fake_job_state_pairs)
+    output, status = check_chronos_jobs.sensu_message_status_for_jobs(
+        'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
     expected_output = "Job myservice.myinstance is disabled - ignoring status."
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK

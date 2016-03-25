@@ -15,6 +15,7 @@ from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import utils
 from paasta_tools.chronos_tools import compose_check_name_for_service_instance
+from paasta_tools.chronos_tools import load_chronos_job_config
 
 
 def parse_args():
@@ -120,7 +121,7 @@ def message_for_status(status, service, instance, full_job_id):
         return 'Last run of job %s%s%s Succeded' % (service, utils.SPACER, instance)
 
 
-def sensu_message_status_for_jobs(service, instance, job_state_pairs):
+def sensu_message_status_for_jobs(service, instance, cluster, job_state_pairs, soa_dir):
     if len(job_state_pairs) > 1:
         sensu_status = pysensu_yelp.Status.UNKNOWN
         output = (
@@ -128,11 +129,15 @@ def sensu_message_status_for_jobs(service, instance, job_state_pairs):
             "Talk to the PaaSTA team as this indicates a bug" % (service, utils.SPACER, instance)
         )
     elif len(job_state_pairs) == 0:
-        sensu_status = pysensu_yelp.Status.WARNING
-        output = (
-            "Warning: %s%s%s isn't in chronos at all, "
-            "which means it may not be deployed yet" % (service, utils.SPACER, instance)
-        )
+        if load_chronos_job_config(service, instance, cluster, soa_dir=soa_dir).get_disabled():
+            sensu_status = pysensu_yelp.Status.OK
+            output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
+        else:
+            sensu_status = pysensu_yelp.Status.WARNING
+            output = (
+                "Warning: %s%s%s isn't in chronos at all, "
+                "which means it may not be deployed yet" % (service, utils.SPACER, instance)
+            )
     else:
         full_job_id = job_state_pairs[0][0].get('name', '[Couldn\'t fetch job name]')
         if job_state_pairs[0][0].get('disabled') is True:
@@ -146,22 +151,24 @@ def sensu_message_status_for_jobs(service, instance, job_state_pairs):
 
 
 def main(args):
+    soa_dir = args.soa_dir
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
     system_paasta_config = utils.load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
 
     # get those jobs listed in configs
-    configured_jobs = chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)
+    configured_jobs = chronos_tools.get_chronos_jobs_for_cluster(soa_dir=soa_dir)
 
     service_job_mapping = build_service_job_mapping(client, configured_jobs)
     for service_instance, job_state_pairs in service_job_mapping.items():
         service, instance = service_instance[0], service_instance[1]
-        sensu_output, sensu_status = sensu_message_status_for_jobs(service, instance, job_state_pairs)
+        sensu_output, sensu_status = sensu_message_status_for_jobs(service, instance, cluster, job_state_pairs, soa_dir)
         monitoring_overrides = compose_monitoring_overrides_for_service(
-            cluster=system_paasta_config.get_cluster(),
+            cluster=cluster,
             service=service,
             instance=instance,
-            soa_dir=args.soa_dir
+            soa_dir=soa_dir
         )
         send_event(
             service=service,
@@ -169,7 +176,7 @@ def main(args):
             monitoring_overrides=monitoring_overrides,
             status_code=sensu_status,
             message=sensu_output,
-            soa_dir=args.soa_dir,
+            soa_dir=soa_dir,
         )
 
 if __name__ == '__main__':
