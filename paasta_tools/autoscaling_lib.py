@@ -26,6 +26,7 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.marathon_tools import MESOS_TASK_SPACER
 from paasta_tools.marathon_tools import set_instances_for_marathon_service
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
+from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
@@ -311,6 +312,7 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
         autoscaling_amount = get_new_instance_count(current_instances, autoscaling_direction)
         instances = marathon_service_config.limit_instance_count(autoscaling_amount)
         if instances != current_instances:
+            write_to_log(config=marathon_service_config, line='Scaling from %d to %d' % (current_instances, instances))
             set_instances_for_marathon_service(
                 service=marathon_service_config.service,
                 instance=marathon_service_config.instance,
@@ -349,4 +351,15 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                 try:
                     autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
                 except Exception as e:
-                    print "Caught exception '%s', continuing..." % e
+                    write_to_log(config=config, line='Caught Exception %s' % e, level='event')
+
+
+def write_to_log(config, line, level='debug'):
+    _log(
+        service=config.service,
+        line=line,
+        component='deploy',
+        level=level,
+        cluster=config.cluster,
+        instance=config.instance,
+    )

@@ -415,8 +415,10 @@ def test_autoscale_marathon_instance():
         mock.patch('paasta_tools.autoscaling_lib.get_autoscaling_decider', autospec=True,
                    return_value=mock.Mock(return_value=1)),
         mock.patch.object(marathon_tools.MarathonServiceConfig, 'get_instances', autospec=True, return_value=5),
+        mock.patch('paasta_tools.autoscaling_lib._log', autospec=True),
     ) as (
         mock_set_instances_for_marathon_service,
+        _,
         _,
         _,
         _,
