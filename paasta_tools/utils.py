@@ -1344,12 +1344,12 @@ def format_table(rows, min_spacing=2):
     return [(' ' * min_spacing).join(r) for r in expanded_rows]
 
 
-def deep_merge_dictionaries(source, destination):
+def deep_merge_dictionaries(overrides, defaults):
     """
     Merges two dictionaries.
     """
-    result = copy.deepcopy(destination)
-    stack = [(source, result)]
+    result = copy.deepcopy(defaults)
+    stack = [(overrides, result)]
     while stack:
         source_dict, result_dict = stack.pop()
         for key, value in source_dict.items():

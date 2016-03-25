@@ -143,7 +143,7 @@ def load_marathon_service_config(service, instance, cluster, load_deployments=Tr
             "%s not found in config file %s/%s/%s.yaml." % (instance, soa_dir, service, marathon_conf_file)
         )
 
-    general_config = deep_merge_dictionaries(source=instance_configs[instance], destination=general_config)
+    general_config = deep_merge_dictionaries(overrides=instance_configs[instance], defaults=general_config)
 
     branch_dict = {}
     if load_deployments:
@@ -234,7 +234,7 @@ class MarathonServiceConfig(InstanceConfig):
         default_params = {
             'method': 'default',
         }
-        return deep_merge_dictionaries(source=self.config_dict.get('autoscaling', {}), destination=default_params)
+        return deep_merge_dictionaries(overrides=self.config_dict.get('autoscaling', {}), defaults=default_params)
 
     def get_backoff_seconds(self):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.

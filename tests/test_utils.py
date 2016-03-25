@@ -1302,27 +1302,27 @@ class TestFileLogWriter:
 
 
 def test_deep_merge_dictionaries():
-    source = {
+    overrides = {
         'common_key': 'value',
         'common_dict': {
             'subkey1': 1,
             'subkey2': 2,
             'subkey3': 3,
         },
-        'just_in_source': 'value',
-        'just_in_source_dict': {'key': 'value'},
+        'just_in_overrides': 'value',
+        'just_in_overrides_dict': {'key': 'value'},
         'overwriting_key': 'value',
         'overwriting_dict': {'test': 'value'},
     }
-    destination = {
+    defaults = {
         'common_key': 'overwritten_value',
         'common_dict': {
             'subkey1': 'overwritten_value',
             'subkey4': 4,
             'subkey5': 5,
         },
-        'just_in_dest': 'value',
-        'just_in_dest_dict': {'key': 'value'},
+        'just_in_defaults': 'value',
+        'just_in_defaults_dict': {'key': 'value'},
         'overwriting_key': {'overwritten-key', 'overwritten-value'},
         'overwriting_dict': 'overwritten-value',
     }
@@ -1335,11 +1335,11 @@ def test_deep_merge_dictionaries():
             'subkey4': 4,
             'subkey5': 5,
         },
-        'just_in_source': 'value',
-        'just_in_source_dict': {'key': 'value'},
-        'just_in_dest': 'value',
-        'just_in_dest_dict': {'key': 'value'},
+        'just_in_overrides': 'value',
+        'just_in_overrides_dict': {'key': 'value'},
+        'just_in_defaults': 'value',
+        'just_in_defaults_dict': {'key': 'value'},
         'overwriting_key': 'value',
         'overwriting_dict': {'test': 'value'},
     }
-    assert utils.deep_merge_dictionaries(source, destination) == expected
+    assert utils.deep_merge_dictionaries(overrides, defaults) == expected
