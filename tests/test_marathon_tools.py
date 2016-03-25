@@ -85,10 +85,12 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.load_deployments_json', autospec=True),
             mock.patch('service_configuration_lib.read_service_configuration', autospec=True),
             mock.patch('service_configuration_lib.read_extra_service_information', autospec=True),
+            mock.patch('paasta_tools.marathon_tools.deep_merge_dictionaries', autospec=True),
         ) as (
             mock_load_deployments_json,
             mock_read_service_configuration,
             mock_read_extra_service_information,
+            _,
         ):
             mock_read_extra_service_information.return_value = {fake_instance: {}}
             marathon_tools.load_marathon_service_config(
