@@ -35,6 +35,7 @@ from paasta_tools.cli.utils import guess_instance
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
+from paasta_tools.generate_deployments_for_service import generate_deployments_for_service
 from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
@@ -44,6 +45,7 @@ from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
@@ -583,14 +585,29 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         ))
         system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
 
+    soa_dir = args.yelpsoa_config_root
+
     volumes = list()
-    instance_config = get_instance_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        load_deployments=pull_image,
-        soa_dir=args.yelpsoa_config_root,
-    )
+    try:
+        instance_config = get_instance_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            load_deployments=pull_image,
+            soa_dir=soa_dir,
+        )
+    except NoDeploymentsAvailable:
+        sys.stdout.write(PaastaColors.yellow("Could not find deployment information for %s in %s.\n"
+                                             "local-run will attempt to generate it now.\n" % (
+                                                 service, soa_dir)))
+        generate_deployments_for_service(service, soa_dir)
+        instance_config = get_instance_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            load_deployments=pull_image,
+            soa_dir=soa_dir,
+        )
 
     if pull_image:
         docker_url = get_docker_url(
