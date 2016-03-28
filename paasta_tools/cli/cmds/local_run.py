@@ -321,7 +321,7 @@ def add_subparser(subparsers):
         '-C', '--cmd',
         help=('Run Docker container with particular command, '
               'for example: "bash". By default will use the command or args specified by the '
-              'soa-configs or what was specified in the Dockefile'),
+              'soa-configs or what was specified in the Dockerfile'),
         required=False,
         default=None,
     )
