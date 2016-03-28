@@ -16,7 +16,7 @@ humanize==0.5.1
 importlib==1.0.3
 isodate==0.5.1
 jsonschema==2.5.1
-kazoo==2.2
+kazoo==2.0.0
 lockfile==0.9.1
 marathon==0.7.6
 mccabe==0.3.1
