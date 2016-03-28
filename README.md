@@ -1,3 +1,4 @@
+[![Stories in Ready](https://badge.waffle.io/Yelp/paasta.png?label=ready&title=Ready)](https://waffle.io/Yelp/paasta)
 [![Build Status](https://travis-ci.org/Yelp/paasta.svg?branch=master)](https://travis-ci.org/Yelp/paasta)
 [![Coverage Status](https://coveralls.io/repos/Yelp/paasta/badge.svg?branch=master&service=github)](https://coveralls.io/github/Yelp/paasta?branch=master)
 [![Download](https://api.bintray.com/packages/yelp/paasta/paasta-tools/images/download.svg) ](https://bintray.com/yelp/paasta/paasta-tools/_latestVersion)
