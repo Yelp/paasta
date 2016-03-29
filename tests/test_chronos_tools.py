@@ -1118,7 +1118,6 @@ class TestChronosTools:
             }
             assert actual == expected
 
-
     def test_create_complete_config_considers_disabled(self):
         fake_owner = 'test_team'
         with contextlib.nested(
@@ -1149,7 +1148,6 @@ class TestChronosTools:
             second_description = chronos_tools.create_complete_config('fake-service', 'fake-job')['description']
 
             assert first_description != second_description
-
 
     def test_create_complete_config_desired_state_start_with_non_disabled_job(self):
         fake_owner = 'test_team'
