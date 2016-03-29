@@ -8,17 +8,14 @@ from paasta_tools import chronos_tools
 from paasta_tools import utils
 
 
-@patch('paasta_tools.check_chronos_jobs.chronos_tools.load_chronos_job_config')
 @patch('paasta_tools.check_chronos_jobs.monitoring_tools.get_runbook')
-def test_compose_monitoring_overrides_for_service(mock_get_runbook, mock_load_chronos_job_config):
-    mymock = Mock()
-    mymock.get_monitoring.return_value = {}
-    mock_load_chronos_job_config.return_value = mymock
+def test_compose_monitoring_overrides_for_service(mock_get_runbook):
     mock_get_runbook.return_value = 'myrunbook'
     assert check_chronos_jobs.compose_monitoring_overrides_for_service(
-        'mycluster',
-        'myservice',
-        'myjob',
+        Mock(
+            service='myservice',
+            get_monitoring=Mock(return_value={}),
+        ),
         'soa_dir'
     ) == {
         'alert_after': '2m',
@@ -27,17 +24,14 @@ def test_compose_monitoring_overrides_for_service(mock_get_runbook, mock_load_ch
     }
 
 
-@patch('paasta_tools.check_chronos_jobs.chronos_tools.load_chronos_job_config')
 @patch('paasta_tools.check_chronos_jobs.monitoring_tools.get_runbook')
-def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_runbook, mock_load_chronos_job_config):
-    mymock = Mock()
-    mymock.get_monitoring.return_value = {'alert_after': '10m'}
-    mock_load_chronos_job_config.return_value = mymock
+def test_compose_monitoring_overrides_for_service_respects_alert_after(mock_get_runbook):
     mock_get_runbook.return_value = 'myrunbook'
     assert check_chronos_jobs.compose_monitoring_overrides_for_service(
-        'mycluster',
-        'myservice',
-        'myjob',
+        Mock(
+            service='myservice',
+            get_monitoring=Mock(return_value={'alert_after': '10m'}),
+        ),
         'soa_dir'
     ) == {
         'alert_after': '10m',
@@ -158,7 +152,7 @@ def test_sensu_message_status_for_jobs_too_many():
     fake_job_state_pairs = [({'name': 'full_job_id', 'disabled': False}, chronos_tools.LastRunState.Success),
                             ({}, chronos_tools.LastRunState.Success)]
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
+        Mock(), 'myservice', 'myinstance', fake_job_state_pairs)
     expected_output = (
         "Unknown: somehow there was more than one enabled job for myservice.myinstance. "
         "Talk to the PaaSTA team as this indicates a bug"
@@ -170,7 +164,7 @@ def test_sensu_message_status_for_jobs_too_many():
 def test_sensu_message_status_ok():
     fake_job_state_pairs = [({'name': 'full_job_id', 'disabled': False}, chronos_tools.LastRunState.Success)]
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
+        Mock(), 'myservice', 'myinstance', fake_job_state_pairs)
     expected_output = "Last run of job myservice.myinstance Succeded"
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
@@ -180,7 +174,7 @@ def test_sensu_message_status_fail():
     fake_job_id = 'full_job_id'
     fake_job_state_pairs = [({'name': fake_job_id, 'disabled': False}, chronos_tools.LastRunState.Fail)]
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
+        Mock(), 'myservice', 'myinstance', fake_job_state_pairs)
     expected_output = "Last run of job myservice.myinstance Failed - job id %s" % fake_job_id
     assert output == expected_output
     assert status == pysensu_yelp.Status.CRITICAL
@@ -191,7 +185,7 @@ def test_sensu_message_status_no_run():
     with patch('paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
                return_value=Mock(get_disabled=Mock(return_value=False))):
         output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-            'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
+            Mock(get_disabled=Mock(return_value=False)), 'myservice', 'myinstance', fake_job_state_pairs)
     expected_output = "Warning: myservice.myinstance isn't in chronos at all, which means it may not be deployed yet"
     assert output == expected_output
     assert status == pysensu_yelp.Status.WARNING
@@ -202,7 +196,7 @@ def test_sensu_message_status_no_run_disabled():
     with patch('paasta_tools.check_chronos_jobs.load_chronos_job_config', autospec=True,
                return_value=Mock(get_disabled=Mock(return_value=True))):
         output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-            'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
+            Mock(), 'myservice', 'myinstance', fake_job_state_pairs)
     expected_output = "Job myservice.myinstance is disabled - ignoring status."
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
@@ -211,7 +205,7 @@ def test_sensu_message_status_no_run_disabled():
 def test_sensu_message_status_disabled():
     fake_job_state_pairs = [({'name': 'fake_job_id', 'disabled': True}, chronos_tools.LastRunState.Fail)]
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
-        'myservice', 'myinstance', 'mycluster', fake_job_state_pairs, '/fake/soa/dir')
+        Mock(), 'myservice', 'myinstance', fake_job_state_pairs)
     expected_output = "Job myservice.myinstance is disabled - ignoring status."
     assert output == expected_output
     assert status == pysensu_yelp.Status.OK
