@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import re
 
 import mock
 
@@ -52,8 +53,8 @@ def test_set_tmp_naming_scheme():
     fake_chronos_job_config = {
         'name': 'foo bar'
     }
-    assert chronos_rerun.set_tmp_naming_scheme(fake_chronos_job_config) == \
-        {'name': '%s foo bar' % chronos_tools.TMP_JOB_IDENTIFIER}
+    name_pattern = re.compile(r"%s-.* foo bar" % chronos_tools.TMP_JOB_IDENTIFIER)
+    assert name_pattern.match(chronos_rerun.set_tmp_naming_scheme(fake_chronos_job_config)['name']) is not None
 
 
 @mock.patch('paasta_tools.chronos_rerun.remove_parents')
