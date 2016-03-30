@@ -20,3 +20,4 @@ Feature: cleanup_chronos_jobs removes chronos jobs no longer in the config
      And we run cleanup_chronos_jobs
     Then we should get exit code 0
      And we should see a job for the service "testservice" and instance "testinstance" in the job list
+     And there exists a job named "tmp testservice testinstance" in chronos

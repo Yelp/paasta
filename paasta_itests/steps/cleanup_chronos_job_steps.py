@@ -86,7 +86,6 @@ def check_cleanup_chronos_jobs_output(context, expected_return_code):
     assert "Successfully Removed Tasks (if any were running) for:" in output
     assert "Successfully Removed Jobs:" in output
     for job in context.unconfigured_job_names:
-        print job
         assert '  %s' % job in output
 
 

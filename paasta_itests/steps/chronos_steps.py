@@ -100,3 +100,9 @@ def job_is_disabled(context, job_name, disabled):
     all_jobs = context.chronos_client.list()
     filtered_jobs = [job for job in all_jobs if job["name"] == full_job_name]
     assert filtered_jobs[0]["disabled"] is is_disabled
+
+
+@then('there exists a job named "{job_name}" in chronos')
+def job_exists(context, job_name):
+    all_jobs = context.chronos_client.list()
+    assert any([job['name'] == job_name for job in all_jobs])
