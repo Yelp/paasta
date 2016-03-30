@@ -267,15 +267,15 @@ def deployments_check(service, soa_dir):
         print "%s There are some instance(s) you have asked to run in marathon that" % x_mark()
         print "  do not have a corresponding entry in deploy.yaml:"
         print "  %s" % PaastaColors.bold(", ".join(in_marathon_not_deploy))
-        print "  You should probably add entries to deploy.yaml for them so they"
-        print "  are deployed to those clusters."
+        print "  You should probably configure these to use a 'deploy_group' or"
+        print "  add entries to deploy.yaml for them so they are deployed to those clusters."
         the_return = False
     if len(in_chronos_not_deploy) > 0:
         print "%s There are some instance(s) you have asked to run in chronos that" % x_mark()
         print "  do not have a corresponding entry in deploy.yaml:"
         print "  %s" % PaastaColors.bold(", ".join(in_chronos_not_deploy))
-        print "  You should probably add entries to deploy.yaml for them so they"
-        print "  are deployed to those clusters."
+        print "  You should probably configure these to use a 'deploy_group' or"
+        print "  add entries to deploy.yaml for them so they are deployed to those clusters."
         the_return = False
     in_deploy_not_marathon_chronos = set(pipeline_steps) - set(marathon_steps) - set(chronos_steps)
     if len(in_deploy_not_marathon_chronos) > 0:
