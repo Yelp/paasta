@@ -12,15 +12,15 @@ Enabling autoscaling
 
 In order to use autoscaling, edit your ``marathon-*.yaml`` files in your soa configs and add a ``min_instances`` and a ``max_instances`` attribute and remove the ``instances`` attribute from each instance you want to autoscale. When using autoscaling, the ``min_instances`` and ``max_instances`` attributes become the minimum and maximum (inclusive) number of marathon tasks paasta will create for your job. If autoscaling information for your service is not available in Zookeeper (e.g. you've just created your service) PaaSTA will default to creating ``min_instances`` instances.
 
-Autoscaling parameters are stored in an ``autoscaling`` attribute of your instances as a dictionary. Within the ``autoscaling`` attribute, setting an ``ingester`` will allow you to specify a method that determines the utilization of your service. If an ingester isn't provided, the ``"mesos_cpu_ram"`` ingester will be used. Within the ``autoscaling`` attribute, setting a ``decider`` will allow you to specify the logic that determines when to autoscale your service. If a decider isn't provided, the ``"pid"`` decider will be used. Deciders and ingesters have their own optional keyword arguments that may be placed into the ``autoscaling`` dictionary as well.
+Autoscaling parameters are stored in an ``autoscaling`` attribute of your instances as a dictionary. Within the ``autoscaling`` attribute, setting a ``metrics_provider`` will allow you to specify a method that determines the utilization of your service. If a metrics provider isn't provided, the ``"mesos_cpu_ram"`` metrics provider will be used. Within the ``autoscaling`` attribute, setting a ``decision_policy`` will allow you to specify the logic that determines when to autoscale your service. If a decision policy isn't provided, the ``"pid"`` decision policy will be used. Decision policies and metrics providers have their own optional keyword arguments that may be placed into the ``autoscaling`` dictionary as well.
 
 Autoscaling components
 ----------------------
 
-Ingesters
-^^^^^^^^^
+Metrics providers
+^^^^^^^^^^^^^^^^^
 
-The currently available ingesters are:
+The currently available metrics providers are:
 
 :mesos_cpu_ram:
   The default autoscaling method if none is provided. Tries to use cpu and ram usage to predict when to autoscale.
@@ -31,10 +31,10 @@ The currently available ingesters are:
 
   :endpoint: the path to perform the HTTP request on (the requested URL will be \http://$HOST:$PORT/endpoint). Defaults to 'status'.
 
-Deciders
-^^^^^^^^
+Decision policies
+^^^^^^^^^^^^^^^^^
 
-The currently available deciders are:
+The currently available decicion policies are:
 
 :pid:
   Uses a PID controller to determine when to autoscale a service.
@@ -42,7 +42,7 @@ The currently available deciders are:
   Autoscaling parameters:
 
   :setpoint: the target utilization the controller aims for. Defaults to 0.8 (80%).
-  :delay: the number of seconds the decider must wait before fetching new data. Defaults to 600.
+  :delay: the number of seconds the decision policy must wait before fetching new data. Defaults to 600.
 :threshold:
   Autoscales when a service's utilization exceeds beyond a certain threshold.
 
@@ -50,7 +50,7 @@ The currently available deciders are:
 
   :setpoint: the target utilization the controller aims for. Defaults to 0.8 (80%).
   :threshold: the amount by which the setpoint must be exceeded in either direction before autoscaling is triggered. Defaults to 0.1 (10%).
-  :delay: the number of seconds the decider must wait before fetching new data. Defaults to 600.
+  :delay: the number of seconds the decision policy must wait before fetching new data. Defaults to 600.
 :bespoke:
   Allows a service author to implement their own autoscaling.
 
@@ -59,4 +59,4 @@ How to create a custom autoscaling method
 
 To set the number of instances for a particular service and instance, have your service write to its local Zookeeper cluster. The node that controls the number of instances for a particular service is ``'/mesos-CLUSTER_NAME/autoscaling/SERVICE_NAME/INSTANCE_NAME/instances'``.
 
-Finally, remember to set the ``decider`` of the ``autoscaling`` parameter for each service instance to ``"bespoke"`` or else PaaSTA will attempt to autoscale your service with the default autoscaling method.
+Finally, remember to set the ``decision_policy`` of the ``autoscaling`` parameter for each service instance to ``"bespoke"`` or else PaaSTA will attempt to autoscale your service with the default autoscaling method.
