@@ -32,19 +32,19 @@ from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import ZookeeperPool
 
-_autoscaling_ingesters = {}
-_autoscaling_deciders = {}
+_autoscaling_metrics_providers = {}
+_autoscaling_decision_policies = {}
 
 
-INGESTER_KEY = 'ingester'
-DECIDER_KEY = 'decider'
+METRICS_PROVIDER_KEY = 'metrics_provider'
+DECISION_POLICY_KEY = 'decision_policy'
 
 
 def register_autoscaling_component(name, method_type):
-    if method_type == INGESTER_KEY:
-        component_dict = _autoscaling_ingesters
-    elif method_type == DECIDER_KEY:
-        component_dict = _autoscaling_deciders
+    if method_type == METRICS_PROVIDER_KEY:
+        component_dict = _autoscaling_metrics_providers
+    elif method_type == DECISION_POLICY_KEY:
+        component_dict = _autoscaling_decision_policies
     else:
         raise KeyError('Autoscaling component type %s does not exist.' % method_type)
 
@@ -54,27 +54,32 @@ def register_autoscaling_component(name, method_type):
     return outer
 
 
-def get_autoscaling_ingester(name):
-    return _autoscaling_ingesters[name]
-
-
-def get_autoscaling_decider(name):
+def get_autoscaling_metrics_provider(name):
     """
-    Deciders the direction a service needs to be scaled in. Possible return values are:
+    Returns an metrics provider matching the given name.
+    """
+    return _autoscaling_metrics_providers[name]
+
+
+def get_autoscaling_decision_policy(name):
+    """
+    Returns a decision policy matching the given name.
+    Decision policies determine the direction a service needs to be scaled in.
+    Each decision policy returns one of the following values:
     -1: autoscale down
     0:  don't autoscale
     1:  autoscale up
     """
-    return _autoscaling_deciders[name]
+    return _autoscaling_decision_policies[name]
 
 
 class IngesterNoDataError(ValueError):
     pass
 
 
-@register_autoscaling_component('threshold', DECIDER_KEY)
-def threshold_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
-                      delay=600, setpoint=0.8, threshold=0.1, **kwargs):
+@register_autoscaling_component('threshold', DECISION_POLICY_KEY)
+def threshold_decision_policy(marathon_service_config, metrics_provider_method, marathon_tasks, mesos_tasks,
+                              delay=600, setpoint=0.8, threshold=0.1, **kwargs):
     """
     Decides to autoscale a service up or down if the service utilization exceeds the setpoint
     by a certain threshold.
@@ -94,7 +99,7 @@ def threshold_decider(marathon_service_config, ingester_method, marathon_tasks, 
     if current_time - last_time < delay:
         return 0
 
-    error = ingester_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs) - setpoint
+    error = metrics_provider_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs) - setpoint
 
     with ZookeeperPool() as zk:
         zk.ensure_path(zk_last_time_path)
@@ -114,9 +119,9 @@ def clamp_value(number):
     return min(max(number, -1), 1)
 
 
-@register_autoscaling_component('pid', DECIDER_KEY)
-def pid_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_tasks,
-                delay=600, setpoint=0.8, **kwargs):
+@register_autoscaling_component('pid', DECISION_POLICY_KEY)
+def pid_decision_policy(marathon_service_config, metrics_provider_method, marathon_tasks, mesos_tasks,
+                        delay=600, setpoint=0.8, **kwargs):
     """
     Uses a PID to determine when to autoscale a service.
     See https://en.wikipedia.org/wiki/PID_controller for more information on PIDs.
@@ -151,7 +156,7 @@ def pid_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_
     if int(datetime.now().strftime('%s')) - last_time < delay:
         return 0
 
-    utilization = ingester_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs)
+    utilization = metrics_provider_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs)
     error = utilization - setpoint
 
     with ZookeeperPool() as zk:
@@ -176,8 +181,8 @@ def pid_decider(marathon_service_config, ingester_method, marathon_tasks, mesos_
     return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
 
 
-@register_autoscaling_component('bespoke', DECIDER_KEY)
-def bespoke_decider(*args, **kwargs):
+@register_autoscaling_component('bespoke', DECISION_POLICY_KEY)
+def bespoke_decision_policy(*args, **kwargs):
     """
     Autoscaling method for service authors that have written their own autoscaling method.
     Allows Marathon to read instance counts from Zookeeper but doesn't attempt to scale the service automatically.
@@ -185,8 +190,8 @@ def bespoke_decider(*args, **kwargs):
     return 0
 
 
-@register_autoscaling_component('http', INGESTER_KEY)
-def http_ingester(marathon_service_config, marathon_tasks, mesos_tasks, endpoint='status', *args, **kwargs):
+@register_autoscaling_component('http', METRICS_PROVIDER_KEY)
+def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, endpoint='status', *args, **kwargs):
     """
     Gets the average utilization of a service across all of its tasks, where the utilization of
     a task is read from a HTTP endpoint on the host.
@@ -220,8 +225,8 @@ def http_ingester(marathon_service_config, marathon_tasks, mesos_tasks, endpoint
     return sum(utilization) / len(utilization)
 
 
-@register_autoscaling_component('mesos_cpu_ram', INGESTER_KEY)
-def mesos_cpu_ram_ingester(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs):
+@register_autoscaling_component('mesos_cpu_ram', METRICS_PROVIDER_KEY)
+def mesos_cpu_ram_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs):
     """
     Gets the average utilization of a service across all of its tasks, where the utilization of
     a task is the maximum value between its cpu and ram utilization.
@@ -303,10 +308,10 @@ def get_new_instance_count(current_instances, autoscaling_direction):
 
 def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
     autoscaling_params = marathon_service_config.get_autoscaling_params()
-    autoscaling_ingester = get_autoscaling_ingester(autoscaling_params[INGESTER_KEY])
-    autoscaling_decider = get_autoscaling_decider(autoscaling_params[DECIDER_KEY])
-    autoscaling_direction = autoscaling_decider(marathon_service_config, autoscaling_ingester,
-                                                marathon_tasks, mesos_tasks, **autoscaling_params)
+    autoscaling_metrics_provider = get_autoscaling_metrics_provider(autoscaling_params[METRICS_PROVIDER_KEY])
+    autoscaling_decision_policy = get_autoscaling_decision_policy(autoscaling_params[DECISION_POLICY_KEY])
+    autoscaling_direction = autoscaling_decision_policy(marathon_service_config, autoscaling_metrics_provider,
+                                                        marathon_tasks, mesos_tasks, **autoscaling_params)
     if autoscaling_direction:
         current_instances = marathon_service_config.get_instances()
         autoscaling_amount = get_new_instance_count(current_instances, autoscaling_direction)

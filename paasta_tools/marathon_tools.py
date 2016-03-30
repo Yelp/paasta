@@ -227,8 +227,8 @@ class MarathonServiceConfig(InstanceConfig):
 
     def get_autoscaling_params(self):
         default_params = {
-            'ingester': 'mesos_cpu_ram',
-            'decider': 'pid',
+            'metrics_provider': 'mesos_cpu_ram',
+            'decision_policy': 'pid',
         }
         return deep_merge_dictionaries(source=self.config_dict.get('autoscaling', {}), destination=default_params)
 
