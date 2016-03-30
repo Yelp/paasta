@@ -136,7 +136,7 @@ def decompose_job_id(job_id):
     possiblity of TMP_JOB_IDENTIFIER being prepended to the job name """
     decomposed = job_id.split(SPACER)
     if len(decomposed) == 3:
-        if decomposed[0] != TMP_JOB_IDENTIFIER:
+        if not decomposed[0].startswith(TMP_JOB_IDENTIFIER):
             raise InvalidJobNameError('invalid job id %s' % job_id)
         else:
             return (decomposed[1], decomposed[2])
