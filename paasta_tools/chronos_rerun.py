@@ -90,10 +90,16 @@ def set_tmp_naming_scheme(chronos_job):
     allow it to be idenitified as a temporary job.
     """
     current_name = chronos_job['name']
+    timestamp = datetime.datetime.utcnow().isoformat()
+    timestamp = timestamp.replace(':', '')
+    timestamp = timestamp.replace('.', '')
+
     chronos_job['name'] = '%s-%s%s%s' % (chronos_tools.TMP_JOB_IDENTIFIER,
-                                         datetime.datetime.utcnow().isoformat(),
+                                         timestamp,
                                          chronos_tools.SPACER,
                                          current_name)
+
+    print chronos_job['name']
     return chronos_job
 
 
