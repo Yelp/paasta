@@ -45,6 +45,7 @@ from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
@@ -599,11 +600,17 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
     )
 
     if pull_image:
-        docker_url = get_docker_url(
-            system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
-        docker_pull_image(docker_url)
-
+        try:
+            docker_url = get_docker_url(
+                system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
+        except NoDockerImageError:
+            sys.stderr.write(PaastaColors.red(
+                "Error: The deploy group %s for the service %s has not been marked for deployment.\n"
+                "To use paasta local-run with `--pull`, make sure you've pushed a docker image and "
+                "run paasta mark-for-deployment.\n" % (instance_config.get_deploy_group(), service)))
+            return
         docker_hash = docker_url
+        docker_pull_image(docker_url)
 
     # if only one volume specified, extra_volumes should be converted to a list
     extra_volumes = instance_config.get_extra_volumes()
