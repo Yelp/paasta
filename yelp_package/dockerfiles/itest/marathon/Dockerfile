@@ -24,7 +24,7 @@ RUN echo "debconf shared/accepted-oracle-license-v1-1 select true" | debconf-set
 RUN echo "debconf shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
 RUN apt-get update && apt-get -y install lsb-release oracle-java8-installer
 
-RUN apt-get -y install libsasl2-modules marathon=0.13.0-1.0.456.ubuntu1404
+RUN apt-get -y install libsasl2-modules marathon=0.13.1-1.0.456.ubuntu1404
 
 RUN echo -n "secret2" > /etc/marathon_framework_secret
 
