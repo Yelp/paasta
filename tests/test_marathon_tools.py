@@ -1818,7 +1818,7 @@ class TestMarathonServiceConfig(object):
             config_dict={'instances': 100},
             branch_dict={},
         )
-        assert marathon_config.get_backoff_seconds() == 0.1
+        assert marathon_config.get_backoff_seconds() == 1
 
     def test_get_backoff_seconds_scales_down(self):
         marathon_config = marathon_tools.MarathonServiceConfig(

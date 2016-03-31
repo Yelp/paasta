@@ -49,7 +49,7 @@ def given_a_new_app_to_be_deployed(context, state):
         'id': 'bounce.test1.newapp.confighash',
         'cmd': '/bin/sleep 300',
         'instances': 2,
-        'backoff_seconds': 0.1,
+        'backoff_seconds': 1,
         'backoff_factor': 1,
         'health_checks': [
             {
@@ -68,7 +68,7 @@ def given_an_old_app_to_be_destroyed(context):
         'id': old_app_name,
         'cmd': '/bin/sleep 300',
         'instances': 2,
-        'backoff_seconds': 0.1,
+        'backoff_seconds': 1,
         'backoff_factor': 1,
     }
     with contextlib.nested(

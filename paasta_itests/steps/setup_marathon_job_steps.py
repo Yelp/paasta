@@ -18,6 +18,7 @@ import mock
 from behave import then
 from behave import when
 from itest_utils import get_service_connection_string
+from marathon.exceptions import MarathonHttpError
 
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
@@ -47,7 +48,7 @@ def run_setup_marathon_job(context):
         )
         try:
             setup_marathon_job.main()
-        except SystemExit:
+        except (SystemExit, MarathonHttpError):
             pass
 
 

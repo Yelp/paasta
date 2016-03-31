@@ -53,6 +53,7 @@ from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
 from paasta_tools import monitoring_tools
+from paasta_tools.marathon_tools import kill_given_tasks
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -249,7 +250,7 @@ def do_bounce(
             tasks_to_kill.add(task)
             log_bounce_action(line='%s bounce killing drained task %s' % (bounce_method, task.id))
 
-    client.kill_given_tasks(task_ids=[task.id for task in tasks_to_kill], scale=True)
+    kill_given_tasks(client=client, task_ids=[task.id for task in tasks_to_kill], scale=True)
 
     apps_to_kill = []
     for app in old_app_live_happy_tasks.keys():
