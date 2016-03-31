@@ -135,6 +135,7 @@ class TestCleanupMarathonJobs:
                 cluster='fake_cluster',
                 line=expected_log_line,
             )
+            assert mock_send_sensu_event.call_count == 3
 
     def test_delete_app_throws_exception(self):
         app_id = 'example--service.main.git93340779.configddb38a65'
