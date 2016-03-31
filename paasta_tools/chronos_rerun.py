@@ -43,7 +43,8 @@ def parse_args():
                         default=service_configuration_lib.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
-    parser.add_argument('execution_date', help="The date the job should be rerun for")
+    parser.add_argument('execution_date',
+                        help="The date the job should be rerun for. Expected in the format %Y-%m-%dT%H:%M:%S .")
     args = parser.parse_args()
     return args
 
@@ -83,7 +84,7 @@ def set_default_schedule(chronos_job):
 def set_tmp_naming_scheme(chronos_job):
     """
     Given a chronos job, return a new job identical to the first, but with the
-    schedule replaced with one that will set the job to run now.
+    name set to one which makes it identifiable as a temporary job.
 
     :param chronos_jobs: a chronos job suitable for POSTing to Chronos
     :returns: the chronos_job parameter, with the name of the job modified to
@@ -99,7 +100,6 @@ def set_tmp_naming_scheme(chronos_job):
                                          chronos_tools.SPACER,
                                          current_name)
 
-    print chronos_job['name']
     return chronos_job
 
 
