@@ -19,8 +19,6 @@ changes. This usually drives the orchestration sequence as follows:
 
 #. Upgrade to the latest version of the Python client.
 
-   #. Add the new package to our `pypi <https://trac.yelpcorp.com/wiki/InternalPyPI#AddinganewopensourcepackagetoourInternalPyPi>`_.
-   #. Hint: ``$ fetch_python_package marathon==0.6.15``
    #. Bump the version we want in paasta_tool's setup.py and requirements.txt.
 
 #. Run the integration tests to ensure the new client works with the existing
