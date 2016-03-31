@@ -145,15 +145,14 @@ def main():
 
     running_jobs = set(deployed_job_names(client))
 
-    expected_service_jobs = [chronos_tools.compose_job_id(*job) for job in
-                             chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)]
+    expected_service_jobs = set([chronos_tools.compose_job_id(*job) for job in
+                                 chronos_tools.get_chronos_jobs_for_cluster(soa_dir=args.soa_dir)])
 
-    all_tmp_jobs = filter_tmp_jobs(filter_paasta_jobs(running_jobs))
-    expired_tmp_jobs = filter_expired_tmp_jobs(client, all_tmp_jobs)
+    all_tmp_jobs = set(filter_tmp_jobs(filter_paasta_jobs(running_jobs)))
+    expired_tmp_jobs = set(filter_expired_tmp_jobs(client, all_tmp_jobs))
+    valid_tmp_jobs = all_tmp_jobs - expired_tmp_jobs
 
-    valid_tmp_jobs = [job for job in all_tmp_jobs if job not in expired_tmp_jobs]
-
-    to_delete = [job for job in running_jobs if job not in expected_service_jobs and job not in valid_tmp_jobs]
+    to_delete = running_jobs - expected_service_jobs - valid_tmp_jobs
 
     task_responses = cleanup_tasks(client, to_delete)
     task_successes = []
