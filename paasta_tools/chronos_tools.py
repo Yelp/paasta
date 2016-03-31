@@ -479,12 +479,6 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
     resolved_disabled_state = determine_disabled_state(desired_state,
                                                        soa_disabled_state)
-
-    if resolved_disabled_state != soa_disabled_state:
-        log.info(("disabled state in deployments.json conflicts with state in"
-                  "soa_configs. setting disabled state to %r" %
-                  resolved_disabled_state))
-
     complete_config['disabled'] = resolved_disabled_state
 
     # we use the undocumented description field to store a hash of the chronos config.
@@ -515,10 +509,8 @@ def determine_disabled_state(branch_state, soa_disabled_state):
         raise ValueError('Expected branch_state to be start or stop')
 
     if branch_state == 'start' and soa_disabled_state is True:
-        log.info("Job has been set to start, but config has disabled:True. Disabling job.")
         return True
     elif branch_state == 'stop' and soa_disabled_state is False:
-        log.info("Job has been set to stop, but config has disabled:False. Disabling job.")
         return True
     else:
         return soa_disabled_state
