@@ -99,23 +99,19 @@ def bounce_lock(name):
 def bounce_lock_zookeeper(name):
     """Acquire a bounce lock in zookeeper for the name given. The name should
     generally be the service namespace being bounced.
-
     This is a contextmanager. Please use it via 'with bounce_lock(name):'.
-
     :param name: The lock name to acquire"""
     zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
     zk.start()
     lock = zk.Lock('%s/%s' % (ZK_LOCK_PATH, name))
-    acquired = False
     try:
         lock.acquire(timeout=1)  # timeout=0 throws some other strange exception
-        acquired = True
         yield
     except LockTimeout:
         raise LockHeldException("Service %s is already being bounced!" % name)
+    else:
+        lock.release()
     finally:
-        if acquired:
-            lock.release()
         zk.stop()
 
 
@@ -133,8 +129,9 @@ def create_app_lock():
         yield
     except LockTimeout:
         raise LockHeldException("Failed to acquire lock for creating marathon app!")
-    finally:
+    else:
         lock.release()
+    finally:
         zk.stop()
 
 
