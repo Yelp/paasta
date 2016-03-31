@@ -205,7 +205,7 @@ def validate_chronos(service_path):
 
     returncode = True
 
-    if service == TMP_JOB_IDENTIFIER:
+    if service.startswith(TMP_JOB_IDENTIFIER):
         print ("Services using scheduled tasks cannot be named %s, as it clashes with the"
                " identifier used for temporary jobs" % TMP_JOB_IDENTIFIER)
         return False
