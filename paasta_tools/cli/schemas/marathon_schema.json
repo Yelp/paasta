@@ -31,6 +31,11 @@
                 "minimum": 0,
                 "exclusiveMinimum": false
             },
+            "min_instances": {
+                "type": "integer",
+                "minimum": 0,
+                "exclusiveMinimum": false
+            },
             "max_instances": {
                 "type": "integer",
                 "minimum": 0,
