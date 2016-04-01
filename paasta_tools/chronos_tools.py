@@ -739,3 +739,20 @@ def get_job_for_service_instance(service, instance, include_disabled=True):
 def compose_check_name_for_service_instance(check_name, service, instance):
     """Compose a sensu check name for a given job"""
     return '%s.%s%s%s' % (check_name, service, INTERNAL_SPACER, instance)
+
+
+def get_temporary_jobs_for_service_instance(client, service, instance):
+    """ Given a service and instance, find any temporary jobs
+    for that job, as created by chronos_rerun.
+    """
+    temporary_jobs = []
+    all_jobs = lookup_chronos_jobs(
+        client=client,
+        service=service,
+        instance=instance,
+        include_disabled=True,
+    )
+    for job in all_jobs:
+        if job['name'].startswith(TMP_JOB_IDENTIFIER):
+            temporary_jobs.append(job)
+    return temporary_jobs
