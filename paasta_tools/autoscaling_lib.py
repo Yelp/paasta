@@ -357,7 +357,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                     user=marathon_config.get_username(),
                     passwd=marathon_config.get_password(),
                 ).list_tasks()
-                mesos_tasks = get_running_tasks_from_active_frameworks('')
+                mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
                 for config in configs:
                     try:
                         autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
@@ -370,7 +370,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 def write_to_log(config, line, level='debug'):
     _log(
         service=config.service,
-        line=line,
+        line="%s: %s" % (format_job_id(config.service, config.instance), line),
         component='deploy',
         level=level,
         cluster=config.cluster,
