@@ -471,14 +471,15 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     )
 
     complete_config['name'] = compose_job_id(service, job_name)
-    desired_state = chronos_job_config.get_desired_state()
 
-    # If the job was previously stopped, we should stop the new job as well
-    # NOTE this clobbers the 'disabled' param specified in the config file!
-    if desired_state == 'start':
-        complete_config['disabled'] = False
-    elif desired_state == 'stop':
-        complete_config['disabled'] = True
+    # resolve conflicts between the 'desired_state' and soa_configs disabled
+    # flag.
+    desired_state = chronos_job_config.get_desired_state()
+    soa_disabled_state = complete_config['disabled']
+
+    resolved_disabled_state = determine_disabled_state(desired_state,
+                                                       soa_disabled_state)
+    complete_config['disabled'] = resolved_disabled_state
 
     # we use the undocumented description field to store a hash of the chronos config.
     # this makes it trivial to compare configs and know when to bounce.
@@ -486,6 +487,33 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
     return complete_config
+
+
+def determine_disabled_state(branch_state, soa_disabled_state):
+    """ Determine the *real* disabled state for a job. There are two sources of truth for
+    the disabled/enabled state of a job: the 'disabled' flag in soa-configs,
+    and the state set in deployments.json by `paasta stop` or `paasta start`.
+    If the two conflict, then this determines the 'real' state for it.
+
+    We take a defensive stance here: if either source has disabled as True,
+    then we go with that - better safe than sorry I guess?
+
+    Note that this means that `paasta start` and `paasta emergency-start` are noop if you
+    have 'disabled:True' in your soa-config.
+
+    :param branch_state: the desired state on the branch - either start or
+    stop.
+    :param soa_disabled_state: the value of the disabled state in soa-configs.
+    """
+    if branch_state not in ['start', 'stop']:
+        raise ValueError('Expected branch_state to be start or stop')
+
+    if branch_state == 'start' and soa_disabled_state is True:
+        return True
+    elif branch_state == 'stop' and soa_disabled_state is False:
+        return True
+    else:
+        return soa_disabled_state
 
 
 def _safe_parse_datetime(dt):
