@@ -156,6 +156,18 @@ class TestChronosTools:
         actual = chronos_tools.decompose_job_id('service instance')
         assert actual == ('service', 'instance')
 
+    def test_decompose_job_id_with_tmp(self):
+        actual = chronos_tools.decompose_job_id('tmp service instance')
+        assert actual == ('service', 'instance')
+
+    def test_decompose_job_id_wrong_tmp_identifier(self):
+        with raises(chronos_tools.InvalidJobNameError):
+            chronos_tools.decompose_job_id('foo service instance')
+
+    def test_decompose_job_id_invalid_length(self):
+        with raises(chronos_tools.InvalidJobNameError):
+            chronos_tools.decompose_job_id('service instance baz')
+
     def test_read_chronos_jobs_for_service(self):
         fake_soa_dir = '/tmp/'
         expected_chronos_conf_file = 'chronos-penguin'
@@ -291,7 +303,7 @@ class TestChronosTools:
         actual = self.fake_chronos_job_config.get_service()
         assert actual == expected
 
-    def test_get_cmd_uses_time_parser(self):
+    def test_format_chronos_job_dict_uses_time_parser(self):
         fake_cmd = 'foo bar baz'
         fake_config_dict = {
             'bounce_method': 'graceful',
@@ -306,6 +318,8 @@ class TestChronosTools:
             'schedule_time_zone': 'Zulu',
             'monitoring': {},
         }
+        fake_docker_url = 'fake_docker_image_url'
+        fake_docker_volumes = ['fake_docker_volume']
         expected = 'parsed_time'
         with mock.patch(
             'paasta_tools.chronos_tools.parse_time_variables', autospec=True, return_value=expected
@@ -317,9 +331,8 @@ class TestChronosTools:
                 config_dict=fake_config_dict,
                 branch_dict={},
             )
-            actual = fake_chronos_job_config.get_cmd()
+            fake_chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes)
             mock_parse_time_variables.assert_called_once_with(fake_cmd)
-        assert actual == expected
 
     def test_get_owner(self):
         fake_owner = 'fake_team'
