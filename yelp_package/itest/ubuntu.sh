@@ -16,6 +16,7 @@
 set -eu
 
 SCRIPTS="am_i_mesos_leader
+autoscale_all_services
 check_marathon_services_replication
 cleanup_chronos_jobs
 check_chronos_jobs
