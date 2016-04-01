@@ -20,6 +20,7 @@ Submodules
    paasta_tools.check_chronos_jobs
    paasta_tools.check_marathon_services_replication
    paasta_tools.check_mesos_resource_utilization
+   paasta_tools.chronos_rerun
    paasta_tools.chronos_serviceinit
    paasta_tools.chronos_tools
    paasta_tools.cleanup_chronos_jobs
