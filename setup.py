@@ -61,6 +61,7 @@ setup(
     ],
     scripts=[
         'paasta_tools/am_i_mesos_leader.py',
+        'paasta_tools/autoscale_all_services.py',
         'paasta_tools/check_marathon_services_replication.py',
         'paasta_tools/check_mesos_resource_utilization.py',
         'paasta_tools/cleanup_chronos_jobs.py',

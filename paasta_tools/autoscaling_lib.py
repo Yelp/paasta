@@ -12,12 +12,17 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from contextlib import contextmanager
 from datetime import datetime
 from math import ceil
 
 import requests
+from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 
+from paasta_tools.bounce_lib import LockHeldException
+from paasta_tools.bounce_lib import LockTimeout
+from paasta_tools.bounce_lib import ZK_LOCK_CONNECT_TIMEOUT_S
 from paasta_tools.marathon_tools import compose_autoscaling_zookeeper_root
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.marathon_tools import get_marathon_client
@@ -326,37 +331,40 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
 
 
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
-    cluster = load_system_paasta_config().get_cluster()
-    services = get_services_for_cluster(
-        cluster=cluster,
-        instance_type='marathon',
-        soa_dir=soa_dir,
-    )
-    configs = []
-    for service, instance in services:
-        service_config = load_marathon_service_config(
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            soa_dir=soa_dir,
-        )
-        if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
-            configs.append(service_config)
+    try:
+        with create_autoscaling_lock():
+            cluster = load_system_paasta_config().get_cluster()
+            services = get_services_for_cluster(
+                cluster=cluster,
+                instance_type='marathon',
+                soa_dir=soa_dir,
+            )
+            configs = []
+            for service, instance in services:
+                service_config = load_marathon_service_config(
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    soa_dir=soa_dir,
+                )
+                if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
+                    configs.append(service_config)
 
-    if configs:
-        marathon_config = load_marathon_config()
-        marathon_tasks = get_marathon_client(
-            url=marathon_config.get_url(),
-            user=marathon_config.get_username(),
-            passwd=marathon_config.get_password(),
-        ).list_tasks()
-        mesos_tasks = get_running_tasks_from_active_frameworks('')
-        with ZookeeperPool():
-            for config in configs:
-                try:
-                    autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
-                except Exception as e:
-                    write_to_log(config=config, line='Caught Exception %s' % e, level='event')
+            if configs:
+                marathon_config = load_marathon_config()
+                marathon_tasks = get_marathon_client(
+                    url=marathon_config.get_url(),
+                    user=marathon_config.get_username(),
+                    passwd=marathon_config.get_password(),
+                ).list_tasks()
+                mesos_tasks = get_running_tasks_from_active_frameworks('')
+                for config in configs:
+                    try:
+                        autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
+                    except Exception as e:
+                        write_to_log(config=config, line='Caught Exception %s' % e, level='event')
+    except LockHeldException:
+        pass
 
 
 def write_to_log(config, line, level='debug'):
@@ -368,3 +376,23 @@ def write_to_log(config, line, level='debug'):
         cluster=config.cluster,
         instance=config.instance,
     )
+
+
+@contextmanager
+def create_autoscaling_lock():
+    """Acquire a lock in zookeeper for autoscaling. This is
+    to avoid autoscaling a service multiple times, and to avoid
+    having multiple paasta services all attempting to autoscale and
+    fetching mesos data."""
+    zk = KazooClient(hosts=load_system_paasta_config().get_zk_hosts(), timeout=ZK_LOCK_CONNECT_TIMEOUT_S)
+    zk.start()
+    lock = zk.Lock('/autoscaling/autoscaling.lock')
+    try:
+        lock.acquire(timeout=1)  # timeout=0 throws some other strange exception
+        yield
+    except LockTimeout:
+        raise LockHeldException("Failed to acquire lock for autoscaling!")
+    else:
+        lock.release()
+    finally:
+        zk.stop()
