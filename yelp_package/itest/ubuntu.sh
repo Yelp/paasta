@@ -31,6 +31,7 @@ paasta_execute_docker_command
 paasta_metastatus
 paasta_serviceinit
 setup_chronos_job
+chronos_rerun
 setup_marathon_job
 synapse_srv_namespaces_fact"
 

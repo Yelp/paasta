@@ -84,6 +84,7 @@ setup(
         'paasta_tools/setup_chronos_job.py',
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
+        'paasta_tools/chronos_rerun.py',
     ] + glob.glob('paasta_tools/contrib/*'),
     package_data={'': ['cli/fsm/templates/*.tmpl', 'cli/schemas/*.json']},
 )
