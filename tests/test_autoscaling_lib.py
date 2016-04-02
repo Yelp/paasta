@@ -342,7 +342,7 @@ def test_http_metrics_provider_no_data():
     fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance', host='fake_host', ports=[30101])]
     mock_request_result = mock.Mock(json=mock.Mock(return_value='malformed_result'))
     with mock.patch('paasta_tools.autoscaling_lib.requests.get', autospec=True, return_value=mock_request_result):
-        with raises(autoscaling_lib.IngesterNoDataError):
+        with raises(autoscaling_lib.MetricsProviderNoDataError):
             autoscaling_lib.http_metrics_provider(fake_marathon_service_config, fake_marathon_tasks, mock.Mock()) == 0.5
 
 
@@ -368,7 +368,7 @@ def test_mesos_ram_cpu_metrics_provider_no_data_marathon():
         _,
         _,
     ):
-        with raises(autoscaling_lib.IngesterNoDataError):
+        with raises(autoscaling_lib.MetricsProviderNoDataError):
             autoscaling_lib.mesos_cpu_ram_metrics_provider(fake_marathon_service_config, [], mock.Mock())
 
 
@@ -395,7 +395,7 @@ def test_mesos_ram_cpu_metrics_provider_no_data_mesos():
         _,
         _,
     ):
-        with raises(autoscaling_lib.IngesterNoDataError):
+        with raises(autoscaling_lib.MetricsProviderNoDataError):
             autoscaling_lib.mesos_cpu_ram_metrics_provider(fake_marathon_service_config, fake_marathon_tasks, [])
 
 

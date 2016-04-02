@@ -78,7 +78,7 @@ def get_autoscaling_decision_policy(name):
     return _autoscaling_decision_policies[name]
 
 
-class IngesterNoDataError(ValueError):
+class MetricsProviderNoDataError(ValueError):
     pass
 
 
@@ -225,7 +225,7 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, 
         except Exception:
             pass
     if not utilization:
-        raise IngesterNoDataError('Couldn\'t get any data from http endpoint %s for %s.%s' % (
+        raise MetricsProviderNoDataError('Couldn\'t get any data from http endpoint %s for %s.%s' % (
             endpoint, marathon_service_config.service, marathon_service_config.instance))
     return sum(utilization) / len(utilization)
 
@@ -268,7 +268,7 @@ def mesos_cpu_ram_metrics_provider(marathon_service_config, marathon_tasks, meso
     healthy_ids = {task.id for task in marathon_tasks
                    if job_id == get_short_job_id(task.id) and task.health_check_results}
     if not healthy_ids:
-        raise IngesterNoDataError("Couldn't find any healthy marathon tasks")
+        raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
 
     mesos_tasks = {task['id']: task.stats for task in mesos_tasks if task['id'] in healthy_ids}
     current_time = int(datetime.now().strftime('%s'))
@@ -291,7 +291,7 @@ def mesos_cpu_ram_metrics_provider(marathon_service_config, marathon_tasks, meso
             )
 
     if not utilization:
-        raise IngesterNoDataError("Couldn't get any cpu or ram data from Mesos")
+        raise MetricsProviderNoDataError("Couldn't get any cpu or ram data from Mesos")
 
     task_utilization = utilization.values()
     average_utilization = sum(task_utilization) / len(task_utilization)
