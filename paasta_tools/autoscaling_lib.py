@@ -313,8 +313,8 @@ def get_new_instance_count(current_instances, autoscaling_direction):
 
 def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
     autoscaling_params = marathon_service_config.get_autoscaling_params()
-    autoscaling_metrics_provider = get_autoscaling_metrics_provider(autoscaling_params[METRICS_PROVIDER_KEY])
-    autoscaling_decision_policy = get_autoscaling_decision_policy(autoscaling_params[DECISION_POLICY_KEY])
+    autoscaling_metrics_provider = get_autoscaling_metrics_provider(autoscaling_params.pop(METRICS_PROVIDER_KEY))
+    autoscaling_decision_policy = get_autoscaling_decision_policy(autoscaling_params.pop(DECISION_POLICY_KEY))
     autoscaling_direction = autoscaling_decision_policy(marathon_service_config, autoscaling_metrics_provider,
                                                         marathon_tasks, mesos_tasks, **autoscaling_params)
     if autoscaling_direction:

@@ -14,6 +14,22 @@ In order to use autoscaling, edit your ``marathon-*.yaml`` files in your soa con
 
 Autoscaling parameters are stored in an ``autoscaling`` attribute of your instances as a dictionary. Within the ``autoscaling`` attribute, setting a ``metrics_provider`` will allow you to specify a method that determines the utilization of your service. If a metrics provider isn't provided, the ``"mesos_cpu_ram"`` metrics provider will be used. Within the ``autoscaling`` attribute, setting a ``decision_policy`` will allow you to specify the logic that determines when to autoscale your service. If a decision policy isn't provided, the ``"pid"`` decision policy will be used. Decision policies and metrics providers have their own optional keyword arguments that may be placed into the ``autoscaling`` dictionary as well.
 
+Let's look at sample marathon config file:
+
+.. sourcecode:: yaml
+
+   ---
+   main:
+     cpus: 1
+     mem: 300
+     min_instances: 30
+     max_instances: 50
+     autoscaling:
+       decision_policy: pid
+       metrics_provider: mesos_cpu_ram
+       delay: 300
+       setpoint: 0.5
+
 Autoscaling components
 ----------------------
 
