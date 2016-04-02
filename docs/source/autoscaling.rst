@@ -41,11 +41,11 @@ The currently available metrics providers are:
 :mesos_cpu_ram:
   The default autoscaling method if none is provided. Tries to use cpu and ram usage to predict when to autoscale.
 :http:
-  Makes a request on a HTTP endpoint on your service. Expects a JSON-formatted dictionary with a 'utilization' field containing a number between 0 and 1.
+  Makes a request on a HTTP endpoint on your service. Expects a JSON-formatted dictionary with a ``'utilization'`` field containing a number between 0 and 1.
 
   Autoscaling parameters:
 
-  :endpoint: the path to perform the HTTP request on (the requested URL will be \http://$HOST:$PORT/endpoint). Defaults to 'status'.
+  :endpoint: the path to perform the HTTP request on (the requested URL will be ``http://$HOST:$PORT/endpoint``). Defaults to 'status'.
 
 Decision policies
 ^^^^^^^^^^^^^^^^^
