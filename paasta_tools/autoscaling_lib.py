@@ -358,11 +358,12 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                     passwd=marathon_config.get_password(),
                 ).list_tasks()
                 mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
-                for config in configs:
-                    try:
-                        autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
-                    except Exception as e:
-                        write_to_log(config=config, line='Caught Exception %s' % e, level='event')
+                with ZookeeperPool():
+                    for config in configs:
+                        try:
+                            autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
+                        except Exception as e:
+                            write_to_log(config=config, line='Caught Exception %s' % e, level='event')
     except LockHeldException:
         pass
 
