@@ -800,6 +800,13 @@ class SystemPaastaConfig(dict):
         """
         return int(self.get('sensu_port', 3030))
 
+    def get_dockerfile_location(self):
+        """Get the location of the dockerfile, as a URI.
+
+        :returns: the URI speicfied, or file:///root/.dockercfg if not specified.
+        """
+        return self.get('dockerfile_location', 'file:///root/.dockercfg')
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any

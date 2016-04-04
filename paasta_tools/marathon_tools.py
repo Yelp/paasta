@@ -265,6 +265,14 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The bounce method specified in the config, or 'crossover' if not specified"""
         return self.config_dict.get('bounce_method', 'crossover')
 
+    def get_dockerfile_location(self):
+        """Get the URI for the .dockerfile.
+
+        :param service_config: The service instance's configuration dictionary.
+        :returns: The URI specified, or file:///root/.dockerfile if unspecified."""
+
+        return self.config_dict.get('dockerfile_location', 'file:///root/.dockercfg')
+
     def get_drain_method(self, service_namespace_config):
         """Get the drain method specified in the service's marathon configuration.
 
@@ -377,7 +385,7 @@ class MarathonServiceConfig(InstanceConfig):
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
             },
-            'uris': ['file:///root/.dockercfg', ],
+            'uris': [self.get_dockerfile_location(), ],
             'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),
