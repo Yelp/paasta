@@ -362,12 +362,12 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                         try:
                             autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
                         except Exception as e:
-                            write_to_log(config=config, line='Caught Exception %s' % e, level='event')
+                            write_to_log(config=config, line='Caught Exception %s' % e)
     except LockHeldException:
         pass
 
 
-def write_to_log(config, line, level='debug'):
+def write_to_log(config, line, level='event'):
     _log(
         service=config.service,
         line="%s: %s" % (format_job_id(config.service, config.instance), line),
