@@ -83,7 +83,7 @@ def test_start_chronos_job_does_not_run_disabled_job():
             emergency=True,
         )
         assert job_config['schedule'] == old_schedule
-        mock_client.update.assert_called_once_with(job_config)
+        assert mock_client.update.call_count == 0
         assert mock_client.run.call_count == 0
 
 

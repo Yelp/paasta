@@ -37,29 +37,22 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
     this function does not do anything.
     """
     name = PaastaColors.cyan(job_id)
-    # The job should be run immediately as long as the job is not disabled via
-    # the 'disabled' key in soa-configs. Since we clobber the 'disabled' key in
-    # complete_job_config (the dict that gets passed to Chronos), we need to look
-    # at the service's soa-config directly to check if it is disabled.
-    should_run_now = not job_config.get_disabled()  # or job_config.get_desired_state() == "start"
-    log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
-    if should_run_now:
-        log_immediate_run = "and running it immediately"
+
+    # The job should be run immediately as long as the job is not disabled via the 'disabled' key in soa-configs.
+    if job_config.get_disabled():
+        print "You cannot emergency start a disabled job. Run `paasta start` first."
     else:
-        log_immediate_run = PaastaColors.yellow("but will not run it immediately because the job is disabled")
+        log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"
+        _log(
+            service=service,
+            line="%s: Starting manual run of %s in Chronos" % (log_reason, name),
+            component="deploy",
+            level="event",
+            cluster=cluster,
+            instance=instance
+        )
 
-    _log(
-        service=service,
-        line="%s: Sending job %s to Chronos %s" % (log_reason, name, log_immediate_run),
-        component="deploy",
-        level="event",
-        cluster=cluster,
-        instance=instance
-    )
-    client.update(complete_job_config)
-
-    # Calling start on a disabled job is a noop
-    if should_run_now:
+        client.update(complete_job_config)
         client.run(job_id)
 
 
