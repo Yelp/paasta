@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 import argparse
+import sys
 
 from paasta_tools import mesos_tools
 from paasta_tools.utils import get_docker_client
@@ -42,9 +43,10 @@ def main():
         if args.force:
             for container_name, mesos_task_id in orphaned_containers:
                 docker_client.kill(container_name)
+        sys.exit(1)
     else:
         print "OK: All mesos task IDs accounted for"
-
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()
