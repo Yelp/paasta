@@ -223,7 +223,6 @@ def test_get_container_name(mock_get_username, mock_randint):
     assert actual == expected
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.generate_deployments_for_service', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
@@ -233,7 +232,6 @@ def test_configure_and_run_command_uses_cmd_from_config(
     mock_load_system_paasta_config,
     mock_run_docker_container,
     mock_socket_getfqdn,
-    mock_generate_deployments_for_service,
 ):
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
@@ -275,7 +273,6 @@ def test_configure_and_run_command_uses_cmd_from_config(
     )
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.generate_deployments_for_service', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.load_system_paasta_config', autospec=True)
@@ -285,7 +282,6 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     mock_load_system_paasta_config,
     mock_run_docker_container,
     mock_socket_getfqdn,
-    mock_generate_deployments_for_service,
 ):
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': []}, '/fake_dir/')
@@ -326,7 +322,6 @@ def test_configure_and_run_uses_bash_by_default_when_interactive(
     )
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.generate_deployments_for_service', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.socket.getfqdn', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.docker_pull_image', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.run_docker_container', autospec=True)
@@ -338,7 +333,6 @@ def test_configure_and_run_pulls_image_when_asked(
     mock_run_docker_container,
     mock_docker_pull_image,
     mock_socket_getfqdn,
-    mock_generate_deployments_for_service,
 ):
     mock_load_system_paasta_config.return_value = SystemPaastaConfig(
         {'cluster': 'fake_cluster', 'volumes': [], 'docker_registry': 'fake_registry'}, '/fake_dir/')
