@@ -61,3 +61,17 @@ Feature: setup_chronos_job can create and bounce jobs
      Then we should get exit code 0
       And the field "disabled" for the job stored as "mydisabledjob" is set to "True"
       And the job stored as "mydisabledjob" is disabled in chronos
+
+  Scenario: job is disabled when enabled in soa-configs and stopped in deployments.json
+    Given a working paasta cluster
+      And we have yelpsoa-configs for the service "testservice" with enabled scheduled chronos instance "testinstance"
+      And we have a deployments.json for the service "testservice" with disabled instance "testinstance"
+     When we run setup_chronos_job for service_instance "testservice.testinstance"
+     Then there should be 1 disabled jobs for the service "testservice" and instance "testinstance"
+
+  Scenario: job is disabled when disabled in soa-configs and started in deployments.json
+    Given a working paasta cluster
+      And we have yelpsoa-configs for the service "testservice" with disabled scheduled chronos instance "testinstance"
+      And we have a deployments.json for the service "testservice" with enabled instance "testinstance"
+     When we run setup_chronos_job for service_instance "testservice.testinstance"
+     Then there should be 1 disabled jobs for the service "testservice" and instance "testinstance"

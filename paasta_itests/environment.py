@@ -15,6 +15,7 @@ import os
 import shutil
 import time
 
+from behave_pytest.hook import install_pytest_asserts
 from itest_utils import cleanup_file
 from itest_utils import get_service_connection_string
 from itest_utils import setup_mesos_cli_config
@@ -26,6 +27,7 @@ from paasta_tools import marathon_tools
 
 
 def before_all(context):
+    install_pytest_asserts()
     context.cluster = "testcluster"
     context.mesos_cli_config = os.path.join(os.getcwd(), 'mesos-cli.json')
     wait_for_marathon()

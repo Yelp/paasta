@@ -13,7 +13,13 @@
 # limitations under the License.
 import shutil
 
+from behave_pytest.hook import install_pytest_asserts
+
 from paasta_tools.utils import get_docker_client
+
+
+def before_all(context):
+    install_pytest_asserts()
 
 
 def after_scenario(context, scenario):

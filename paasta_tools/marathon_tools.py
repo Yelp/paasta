@@ -29,7 +29,6 @@ from marathon import MarathonClient
 from marathon import MarathonHttpError
 from marathon import NotFoundError
 
-from paasta_tools.autoscaling_lib import get_instances_from_zookeeper
 from paasta_tools.mesos_tools import get_local_slave_state
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
@@ -50,6 +49,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
+from paasta_tools.utils import ZookeeperPool
 
 CONTAINER_PORT = 8888
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
@@ -210,21 +210,16 @@ class MarathonServiceConfig(InstanceConfig):
                   specified or if desired_state is not 'start'.
                   """
         if self.get_desired_state() == 'start':
-            max_instances = self.get_max_instances()
-            if max_instances is not None:
-                min_instances = self.get_min_instances()
+            if self.get_max_instances() is not None:
                 try:
                     zk_instances = get_instances_from_zookeeper(
                         service=self.service,
                         instance=self.instance,
                     )
                 except NoNodeError:  # zookeeper doesn't have instance data for this app
-                    return min_instances
+                    return self.get_min_instances()
                 else:
-                    return max(
-                        min(zk_instances, max_instances),
-                        min_instances,
-                    )
+                    return self.limit_instance_count(zk_instances)
             else:
                 return self.config_dict.get('instances', 1)
         else:
@@ -232,9 +227,21 @@ class MarathonServiceConfig(InstanceConfig):
 
     def get_autoscaling_params(self):
         default_params = {
-            'method': 'default',
+            'metrics_provider': 'mesos_cpu_ram',
+            'decision_policy': 'pid',
         }
         return deep_merge_dictionaries(overrides=self.config_dict.get('autoscaling', {}), defaults=default_params)
+
+    def limit_instance_count(self, instances):
+        """
+        Returns param instances if it is between min_instances and max_instances.
+        Returns max_instances if instances > max_instances
+        Returns min_instances if instances < min_instances
+        """
+        return max(
+            self.get_min_instances(),
+            min(self.get_max_instances(), instances),
+        )
 
     def get_backoff_seconds(self):
         """backoff_seconds represents a penalization factor for relaunching failing tasks.
@@ -1025,3 +1032,20 @@ def kill_task(client, app_id, task_id, scale):
             return []
         else:
             raise
+
+
+def compose_autoscaling_zookeeper_root(service, instance):
+    return '/autoscaling/%s/%s' % (service, instance)
+
+
+def set_instances_for_marathon_service(service, instance, instance_count, soa_dir=DEFAULT_SOA_DIR):
+    zookeeper_path = '%s/instances' % compose_autoscaling_zookeeper_root(service, instance)
+    with ZookeeperPool() as zookeeper_client:
+        zookeeper_client.ensure_path(zookeeper_path)
+        zookeeper_client.set(zookeeper_path, str(instance_count))
+
+
+def get_instances_from_zookeeper(service, instance):
+    with ZookeeperPool() as zookeeper_client:
+        (instances, _) = zookeeper_client.get('%s/instances' % compose_autoscaling_zookeeper_root(service, instance))
+        return int(instances)

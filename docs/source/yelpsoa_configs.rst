@@ -149,10 +149,11 @@ instance MAY have:
     monitoring parameters that will take precedence over what is in
     `monitoring.yaml`_. These are things like ``team``, ``page``, etc.
 
-  * ``autoscaling``:
+  * ``autoscaling``: See the `autoscaling docs <autoscaling.html>`_ for valid options and how they work
 
-    * ``method``: Which autoscaling method to use. See the `autoscaling docs <autoscaling.html>`_
-      for valid options and how they work
+    * ``metrics_provider``: Which method PaaSTA will use to determine a service's utilization.
+
+    * ``decision_policy``: Which method PaaSTA will use to determine when to autoscale a service.
 
   * ``deploy_blacklist``: A list of lists indicating a set of locations to *not* deploy to. For example:
 

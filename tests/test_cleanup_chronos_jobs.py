@@ -11,6 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
+
 import mock
 
 from paasta_tools import cleanup_chronos_jobs
@@ -45,3 +47,21 @@ def test_deployed_job_names():
     mock_client = mock.Mock()
     mock_client.list.return_value = [{'name': 'foo', 'blah': 'blah'}, {'name': 'bar', 'blah': 'blah'}]
     assert cleanup_chronos_jobs.deployed_job_names(mock_client) == ['foo', 'bar']
+
+
+@mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.get_temporary_jobs_for_service_instance')
+def test_filter_expired_tmp_jobs(mock_get_temporary_jobs):
+    two_days_ago = datetime.datetime.now() - datetime.timedelta(days=2)
+    one_hour_ago = datetime.datetime.now() - datetime.timedelta(hours=1)
+    mock_get_temporary_jobs.side_effect = [
+                                          [{'name': 'tmp foo bar',
+                                            'lastSuccess': two_days_ago}],
+                                          [{'name': 'tmp anotherservice anotherinstance',
+                                            'lastSuccess': one_hour_ago}]]
+    actual = cleanup_chronos_jobs.filter_expired_tmp_jobs(mock.Mock(), ['foo bar', 'anotherservice anotherinstance'])
+    assert actual == ['foo bar']
+
+
+def test_filter_paasta_jobs():
+    expected = ['foo bar']
+    assert cleanup_chronos_jobs.filter_paasta_jobs(['foo bar', 'madeupchronosjob']) == expected

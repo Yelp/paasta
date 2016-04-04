@@ -400,6 +400,20 @@ def test_validate_chronos_valid_instance(
     assert valid_chronos_instance(fake_cluster, fake_instance) in output
 
 
+@patch("paasta_tools.chronos_tools.TMP_JOB_IDENTIFIER", 'tmp')
+@patch('paasta_tools.cli.cmds.validate.path_to_soa_dir_service')
+@patch('sys.stdout', new_callable=StringIO)
+def test_validate_chronos_tmp_job(
+    mock_stdout,
+    mock_path_to_soa_dir_service,
+):
+    mock_path_to_soa_dir_service.return_value = ('fake_soa_dir', 'tmp')
+    assert validate_chronos('fake_path/tmp') is False
+    assert ("Services using scheduled tasks cannot be named tmp, as it clashes"
+            " with the identifier used for temporary jobs") in \
+        mock_stdout.getvalue()
+
+
 @patch('sys.stdout', new_callable=StringIO)
 def test_check_service_path_none(
     mock_stdout

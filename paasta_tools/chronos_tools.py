@@ -27,7 +27,6 @@ import monitoring_tools
 import service_configuration_lib
 from tron import command_context
 
-from paasta_tools.utils import decompose_job_id as utils_decompose_job_id
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
@@ -53,6 +52,10 @@ INTERNAL_SPACER = '.'
 # here and expect the world to change with you. We need to know what it is so
 # we can decompose Mesos task ids.
 MESOS_TASK_SPACER = ':'
+
+# this is the identifier prepended to a job name for use
+# with temporary jobs, like those created by ``chronos_rerun.py``
+TMP_JOB_IDENTIFIER = "tmp"
 
 VALID_BOUNCE_METHODS = ['graceful']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
@@ -130,9 +133,18 @@ def compose_job_id(service, instance):
 
 
 def decompose_job_id(job_id):
-    """Thin wrapper around generic decompose_job_id to use our local SPACER."""
-    service, job, _, __ = utils_decompose_job_id(job_id, spacer=SPACER)
-    return (service, job)
+    """ A custom implementation of utils.decompose_job_id, accounting for the
+    possiblity of TMP_JOB_IDENTIFIER being prepended to the job name """
+    decomposed = job_id.split(SPACER)
+    if len(decomposed) == 3:
+        if not decomposed[0].startswith(TMP_JOB_IDENTIFIER):
+            raise InvalidJobNameError('invalid job id %s' % job_id)
+        else:
+            return (decomposed[1], decomposed[2])
+    elif len(decomposed) == 2:
+        return (decomposed[0], decomposed[1])
+    else:
+        raise InvalidJobNameError('invalid job id %s' % job_id)
 
 
 class InvalidChronosConfigError(Exception):
@@ -188,13 +200,6 @@ class ChronosJobConfig(InstanceConfig):
 
     def get_job_name(self):
         return self.instance
-
-    def get_cmd(self):
-        original_cmd = super(ChronosJobConfig, self).get_cmd()
-        if original_cmd:
-            return parse_time_variables(original_cmd)
-        else:
-            return original_cmd
 
     def get_owner(self):
         overrides = self.get_monitoring()
@@ -389,7 +394,7 @@ class ChronosJobConfig(InstanceConfig):
             'cpus': self.get_cpus(),
             'disk': self.get_disk(),
             'constraints': self.get_constraints(),
-            'command': self.get_cmd(),
+            'command': parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd(),
             'arguments': self.get_args(),
             'epsilon': self.get_epsilon(),
             'retries': self.get_retries(),
@@ -472,12 +477,15 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     )
 
     complete_config['name'] = compose_job_id(service, job_name)
-    desired_state = chronos_job_config.get_desired_state()
 
-    # If the job was previously stopped, we should stop the new job as well
-    # NOTE: this clobbers the 'disabled' param specified in the config file!
-    if desired_state == 'stop':
-        complete_config['disabled'] = True
+    # resolve conflicts between the 'desired_state' and soa_configs disabled
+    # flag.
+    desired_state = chronos_job_config.get_desired_state()
+    soa_disabled_state = complete_config['disabled']
+
+    resolved_disabled_state = determine_disabled_state(desired_state,
+                                                       soa_disabled_state)
+    complete_config['disabled'] = resolved_disabled_state
 
     # we use the undocumented description field to store a hash of the chronos config.
     # this makes it trivial to compare configs and know when to bounce.
@@ -485,6 +493,33 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
     return complete_config
+
+
+def determine_disabled_state(branch_state, soa_disabled_state):
+    """ Determine the *real* disabled state for a job. There are two sources of truth for
+    the disabled/enabled state of a job: the 'disabled' flag in soa-configs,
+    and the state set in deployments.json by `paasta stop` or `paasta start`.
+    If the two conflict, then this determines the 'real' state for it.
+
+    We take a defensive stance here: if either source has disabled as True,
+    then we go with that - better safe than sorry I guess?
+
+    Note that this means that `paasta start` and `paasta emergency-start` are noop if you
+    have 'disabled:True' in your soa-config.
+
+    :param branch_state: the desired state on the branch - either start or
+    stop.
+    :param soa_disabled_state: the value of the disabled state in soa-configs.
+    """
+    if branch_state not in ['start', 'stop']:
+        raise ValueError('Expected branch_state to be start or stop')
+
+    if branch_state == 'start' and soa_disabled_state is True:
+        return True
+    elif branch_state == 'stop' and soa_disabled_state is False:
+        return True
+    else:
+        return soa_disabled_state
 
 
 def _safe_parse_datetime(dt):
@@ -754,3 +789,20 @@ def get_job_for_service_instance(service, instance, include_disabled=True):
 def compose_check_name_for_service_instance(check_name, service, instance):
     """Compose a sensu check name for a given job"""
     return '%s.%s%s%s' % (check_name, service, INTERNAL_SPACER, instance)
+
+
+def get_temporary_jobs_for_service_instance(client, service, instance):
+    """ Given a service and instance, find any temporary jobs
+    for that job, as created by chronos_rerun.
+    """
+    temporary_jobs = []
+    all_jobs = lookup_chronos_jobs(
+        client=client,
+        service=service,
+        instance=instance,
+        include_disabled=True,
+    )
+    for job in all_jobs:
+        if job['name'].startswith(TMP_JOB_IDENTIFIER):
+            temporary_jobs.append(job)
+    return temporary_jobs
