@@ -126,16 +126,15 @@ def clamp_value(number):
 
 @register_autoscaling_component('pid', DECISION_POLICY_KEY)
 def pid_decision_policy(marathon_service_config, metrics_provider_method, marathon_tasks, mesos_tasks,
-                        delay=600, setpoint=0.8, **kwargs):
+                        delay=600, setpoint=0.8, Kp=0.2, Ki=0.2, Kd=0.05, **kwargs):
     """
     Uses a PID to determine when to autoscale a service.
     See https://en.wikipedia.org/wiki/PID_controller for more information on PIDs.
     Kp, Ki and Kd are the canonical PID constants, where the output of the PID is:
     Kp * error + Ki * integral(error * dt) + Kd * (d(error) / dt)
     """
-    Kp = 0.2
-    Ki = 0.2 / delay
-    Kd = 0.05 * delay
+    Ki = Ki / delay
+    Kd = Kd * delay
 
     autoscaling_root = compose_autoscaling_zookeeper_root(
         service=marathon_service_config.service,
