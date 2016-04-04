@@ -645,7 +645,7 @@ def get_chronos_status_for_job(client, service, instance):
     :param service: service name
     :param instance: instance name
     """
-    resp = client._call("/scheduler/graph/csv", "GET")
+    resp = client.scheduler_graph()
     lines = csv.reader(resp.splitlines())
     for line in lines:
         if line[0] == "node" and line[1] == compose_job_id(service, instance):

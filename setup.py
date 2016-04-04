@@ -34,7 +34,7 @@ setup(
         # argparse is pinned to 1.2.1 since it comes in the core python2.7
         # libs and pip can't seem to override it
         'argparse == 1.2.1',
-        'chronos-python == 0.34.0',
+        'chronos-python == 0.35.0',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
