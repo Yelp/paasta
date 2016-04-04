@@ -78,7 +78,7 @@ def get_autoscaling_decision_policy(name):
     return _autoscaling_decision_policies[name]
 
 
-class IngesterNoDataError(ValueError):
+class MetricsProviderNoDataError(ValueError):
     pass
 
 
@@ -225,7 +225,7 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, 
         except Exception:
             pass
     if not utilization:
-        raise IngesterNoDataError('Couldn\'t get any data from http endpoint %s for %s.%s' % (
+        raise MetricsProviderNoDataError('Couldn\'t get any data from http endpoint %s for %s.%s' % (
             endpoint, marathon_service_config.service, marathon_service_config.instance))
     return sum(utilization) / len(utilization)
 
@@ -268,7 +268,7 @@ def mesos_cpu_ram_metrics_provider(marathon_service_config, marathon_tasks, meso
     healthy_ids = {task.id for task in marathon_tasks
                    if job_id == get_short_job_id(task.id) and task.health_check_results}
     if not healthy_ids:
-        raise IngesterNoDataError("Couldn't find any healthy marathon tasks")
+        raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
 
     mesos_tasks = {task['id']: task.stats for task in mesos_tasks if task['id'] in healthy_ids}
     current_time = int(datetime.now().strftime('%s'))
@@ -291,7 +291,7 @@ def mesos_cpu_ram_metrics_provider(marathon_service_config, marathon_tasks, meso
             )
 
     if not utilization:
-        raise IngesterNoDataError("Couldn't get any cpu or ram data from Mesos")
+        raise MetricsProviderNoDataError("Couldn't get any cpu or ram data from Mesos")
 
     task_utilization = utilization.values()
     average_utilization = sum(task_utilization) / len(task_utilization)
@@ -313,8 +313,8 @@ def get_new_instance_count(current_instances, autoscaling_direction):
 
 def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
     autoscaling_params = marathon_service_config.get_autoscaling_params()
-    autoscaling_metrics_provider = get_autoscaling_metrics_provider(autoscaling_params[METRICS_PROVIDER_KEY])
-    autoscaling_decision_policy = get_autoscaling_decision_policy(autoscaling_params[DECISION_POLICY_KEY])
+    autoscaling_metrics_provider = get_autoscaling_metrics_provider(autoscaling_params.pop(METRICS_PROVIDER_KEY))
+    autoscaling_decision_policy = get_autoscaling_decision_policy(autoscaling_params.pop(DECISION_POLICY_KEY))
     autoscaling_direction = autoscaling_decision_policy(marathon_service_config, autoscaling_metrics_provider,
                                                         marathon_tasks, mesos_tasks, **autoscaling_params)
     if autoscaling_direction:
@@ -357,12 +357,13 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                     user=marathon_config.get_username(),
                     passwd=marathon_config.get_password(),
                 ).list_tasks()
-                mesos_tasks = get_running_tasks_from_active_frameworks('')
-                for config in configs:
-                    try:
-                        autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
-                    except Exception as e:
-                        write_to_log(config=config, line='Caught Exception %s' % e, level='event')
+                mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
+                with ZookeeperPool():
+                    for config in configs:
+                        try:
+                            autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
+                        except Exception as e:
+                            write_to_log(config=config, line='Caught Exception %s' % e, level='event')
     except LockHeldException:
         pass
 
@@ -370,7 +371,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 def write_to_log(config, line, level='debug'):
     _log(
         service=config.service,
-        line=line,
+        line="%s: %s" % (format_job_id(config.service, config.instance), line),
         component='deploy',
         level=level,
         cluster=config.cluster,

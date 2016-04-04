@@ -44,7 +44,7 @@ def parse_args():
                         help="define a different soa config directory")
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
     parser.add_argument('execution_date',
-                        help="The date the job should be rerun for. Expected in the format %Y-%m-%dT%H:%M:%S .")
+                        help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .")
     args = parser.parse_args()
     return args
 

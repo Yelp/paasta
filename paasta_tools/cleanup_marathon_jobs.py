@@ -70,11 +70,25 @@ def delete_app(app_id, client, soa_dir):
         short_app_id = marathon_tools.compose_job_id(service, instance)
         with bounce_lib.bounce_lock_zookeeper(short_app_id):
             bounce_lib.delete_marathon_app(app_id, client)
-        # resolve any check marathon replication alerts
-        check_name = 'check_marathon_services_replication.%s' % short_app_id
         send_event(
             service=service,
-            check_name=check_name,
+            check_name='check_marathon_services_replication.%s' % short_app_id,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.OK,
+            overrides={},
+            output="This instance was removed and is no longer running",
+        )
+        send_event(
+            service=service,
+            check_name='setup_marathon_job.%s' % short_app_id,
+            soa_dir=soa_dir,
+            status=pysensu_yelp.Status.OK,
+            overrides={},
+            output="This instance was removed and is no longer running",
+        )
+        send_event(
+            service=service,
+            check_name='paasta_bounce_progress.%s' % short_app_id,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
             overrides={},
