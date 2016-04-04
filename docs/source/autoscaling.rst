@@ -27,10 +27,9 @@ Let's look at sample marathon config file:
      autoscaling:
        decision_policy: pid
        metrics_provider: mesos_cpu_ram
-       delay: 300
        setpoint: 0.5
 
-This makes the service ``main`` autoscale using the ``pid`` decision policy and the ``mesos_cpu_ram`` metrics provider. Paasta will check this service's utilization every 300 seconds (5 minutes) and aim to keep its utilization at 50%.
+This makes the service ``main`` autoscale using the ``pid`` decision policy and the ``mesos_cpu_ram`` metrics provider. Paasta will aim to keep this service's utilization at 50%.
 
 Autoscaling components
 ----------------------
@@ -60,7 +59,6 @@ The currently available decicion policies are:
   Autoscaling parameters:
 
   :setpoint: the target utilization the controller aims for. Defaults to 0.8 (80%).
-  :delay: the number of seconds the decision policy must wait before fetching new data. Defaults to 600.
   :Kp: the proportional control constant. Defaults to 0.2.
   :Ki: the integral control constant. Defaults to 0.2.
   :Kd: the derivative control constant. Defaults to 0.05.
@@ -71,11 +69,8 @@ The currently available decicion policies are:
 
   :setpoint: the target utilization the controller aims for. Defaults to 0.8 (80%).
   :threshold: the amount by which the setpoint must be exceeded in either direction before autoscaling is triggered. Defaults to 0.1 (10%).
-  :delay: the number of seconds the decision policy must wait before fetching new data. Defaults to 600.
 :bespoke:
   Allows a service author to implement their own autoscaling.
-
-Note that while all decision policies allow you to specify a ``delay``, services are only autoscaled once every 300 seconds so setting a lower delay will have no effect.
 
 How to create a custom autoscaling method
 -----------------------------------------

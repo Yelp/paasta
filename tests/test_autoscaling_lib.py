@@ -200,7 +200,6 @@ def test_threshold_decision_policy():
     fake_metrics_provider_method_1 = mock.Mock(return_value=0.5)
     fake_metrics_provider_method_2 = mock.Mock(return_value=1)
     fake_metrics_provider_method_3 = mock.Mock(return_value=0)
-    current_time = datetime.now()
     decision_policy_args = {
         'marathon_service_config': mock.Mock(service='fake-service', instance='fake-instance'),
         'marathon_tasks': mock.Mock(),
@@ -209,25 +208,19 @@ def test_threshold_decision_policy():
         'threshold': 0.1,
     }
     with contextlib.nested(
-        mock.patch('paasta_tools.utils.KazooClient', autospec=True,
-                   return_value=mock.Mock(get=mock.Mock(return_value=('0', None)))),
         mock.patch('paasta_tools.autoscaling_lib.datetime', autospec=True),
         mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
                    return_value=mock.Mock(get_zk_hosts=mock.Mock())),
     ) as (
-        mock_zk_client,
         mock_datetime,
         _,
     ):
-        mock_datetime.now.return_value = current_time
         assert autoscaling_lib.threshold_decision_policy(
             metrics_provider_method=fake_metrics_provider_method_1, **decision_policy_args) == 0
         assert autoscaling_lib.threshold_decision_policy(
             metrics_provider_method=fake_metrics_provider_method_2, **decision_policy_args) == 1
         assert autoscaling_lib.threshold_decision_policy(
             metrics_provider_method=fake_metrics_provider_method_3, **decision_policy_args) == -1
-        mock_zk_client.return_value.set.assert_called_with(
-            '/autoscaling/fake-service/fake-instance/threshold_last_time', current_time.strftime('%s'))
 
 
 def test_mesos_cpu_metrics_provider():

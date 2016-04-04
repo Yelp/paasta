@@ -44,6 +44,8 @@ _autoscaling_decision_policies = {}
 METRICS_PROVIDER_KEY = 'metrics_provider'
 DECISION_POLICY_KEY = 'decision_policy'
 
+AUTOSCALING_DELAY = 300
+
 
 def register_autoscaling_component(name, method_type):
     if method_type == METRICS_PROVIDER_KEY:
@@ -84,31 +86,12 @@ class MetricsProviderNoDataError(ValueError):
 
 @register_autoscaling_component('threshold', DECISION_POLICY_KEY)
 def threshold_decision_policy(marathon_service_config, metrics_provider_method, marathon_tasks, mesos_tasks,
-                              delay=600, setpoint=0.8, threshold=0.1, **kwargs):
+                              setpoint=0.8, threshold=0.1, **kwargs):
     """
     Decides to autoscale a service up or down if the service utilization exceeds the setpoint
     by a certain threshold.
     """
-    zk_last_time_path = '%s/threshold_last_time' % compose_autoscaling_zookeeper_root(
-        service=marathon_service_config.service,
-        instance=marathon_service_config.instance,
-    )
-    with ZookeeperPool() as zk:
-        try:
-            last_time, _ = zk.get(zk_last_time_path)
-            last_time = float(last_time)
-        except NoNodeError:
-            last_time = 0.0
-
-    current_time = int(datetime.now().strftime('%s'))
-    if current_time - last_time < delay:
-        return 0
-
     error = metrics_provider_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs) - setpoint
-
-    with ZookeeperPool() as zk:
-        zk.ensure_path(zk_last_time_path)
-        zk.set(zk_last_time_path, str(current_time))
 
     if error > threshold:
         return 1
@@ -126,15 +109,15 @@ def clamp_value(number):
 
 @register_autoscaling_component('pid', DECISION_POLICY_KEY)
 def pid_decision_policy(marathon_service_config, metrics_provider_method, marathon_tasks, mesos_tasks,
-                        delay=600, setpoint=0.8, Kp=0.2, Ki=0.2, Kd=0.05, **kwargs):
+                        setpoint=0.8, Kp=0.2, Ki=0.2, Kd=0.05, **kwargs):
     """
     Uses a PID to determine when to autoscale a service.
     See https://en.wikipedia.org/wiki/PID_controller for more information on PIDs.
     Kp, Ki and Kd are the canonical PID constants, where the output of the PID is:
     Kp * error + Ki * integral(error * dt) + Kd * (d(error) / dt)
     """
-    Ki = Ki / delay
-    Kd = Kd * delay
+    Ki = Ki / AUTOSCALING_DELAY
+    Kd = Kd * AUTOSCALING_DELAY
 
     autoscaling_root = compose_autoscaling_zookeeper_root(
         service=marathon_service_config.service,
@@ -156,9 +139,6 @@ def pid_decision_policy(marathon_service_config, metrics_provider_method, marath
             iterm = 0.0
             last_error = 0.0
             last_time = 0.0
-
-    if int(datetime.now().strftime('%s')) - last_time < delay:
-        return 0
 
     utilization = metrics_provider_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs)
     error = utilization - setpoint
