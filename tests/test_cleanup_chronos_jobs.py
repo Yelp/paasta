@@ -13,6 +13,7 @@
 # limitations under the License.
 import datetime
 
+import dateutil
 import mock
 
 from paasta_tools import cleanup_chronos_jobs
@@ -51,8 +52,8 @@ def test_deployed_job_names():
 
 @mock.patch('paasta_tools.cleanup_chronos_jobs.chronos_tools.get_temporary_jobs_for_service_instance')
 def test_filter_expired_tmp_jobs(mock_get_temporary_jobs):
-    two_days_ago = datetime.datetime.now() - datetime.timedelta(days=2)
-    one_hour_ago = datetime.datetime.now() - datetime.timedelta(hours=1)
+    two_days_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(days=2)
+    one_hour_ago = datetime.datetime.now(dateutil.tz.tzutc()) - datetime.timedelta(hours=1)
     mock_get_temporary_jobs.side_effect = [
                                           [{'name': 'tmp foo bar',
                                             'lastSuccess': two_days_ago.isoformat()}],
