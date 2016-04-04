@@ -285,8 +285,8 @@ def test_format_parents_verbose():
         'name': 'myexamplejob',
         'parents': ['testservice testinstance']
     }
-    fake_last_datetiime = '2007-04-01T17:52:58.908Z'
-    example_status = (fake_last_datetiime, chronos_tools.LastRunState.Success)
+    fake_last_datetime = '2007-04-01T17:52:58.908Z'
+    example_status = (fake_last_datetime, chronos_tools.LastRunState.Success)
     with contextlib.nested(
         mock.patch(
             'paasta_tools.chronos_tools.get_job_for_service_instance',
@@ -303,7 +303,7 @@ def test_format_parents_verbose():
     ):
         expected_years = dateutil.relativedelta.relativedelta(
             datetime.datetime.now(dateutil.tz.tzutc()),
-            dateutil.parser.parse(fake_last_datetiime)
+            dateutil.parser.parse(fake_last_datetime)
         ).years
         actual = chronos_serviceinit._format_parents_verbose(example_job)
         assert "testservice testinstance" in actual
