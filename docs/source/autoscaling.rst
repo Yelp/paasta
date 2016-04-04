@@ -54,7 +54,7 @@ Decision policies
 The currently available decicion policies are:
 
 :pid:
-  Uses a PID controller to determine when to autoscale a service. See https://en.wikipedia.org/wiki/PID_controller for more information on PIDs.
+  Uses a PID controller to determine when to autoscale a service. See `this page <https://en.wikipedia.org/wiki/PID_controller>`_ for more information on PIDs.
 
   Autoscaling parameters:
 
