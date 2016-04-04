@@ -13,7 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+import datetime
 
+import dateutil.parser
+import dateutil.relativedelta
 import mock
 import pytest
 
@@ -282,7 +285,8 @@ def test_format_parents_verbose():
         'name': 'myexamplejob',
         'parents': ['testservice testinstance']
     }
-    example_status = ('2007-04-05T14:30', chronos_tools.LastRunState.Success)
+    fake_last_datetiime = '2007-04-01T17:52:58.908Z'
+    example_status = (fake_last_datetiime, chronos_tools.LastRunState.Success)
     with contextlib.nested(
         mock.patch(
             'paasta_tools.chronos_tools.get_job_for_service_instance',
@@ -297,9 +301,13 @@ def test_format_parents_verbose():
             return_value=example_status
         ),
     ):
+        expected_years = dateutil.relativedelta.relativedelta(
+            datetime.datetime.now(dateutil.tz.tzutc()),
+            dateutil.parser.parse(fake_last_datetiime)
+        ).years
         actual = chronos_serviceinit._format_parents_verbose(example_job)
         assert "testservice testinstance" in actual
-        assert "  Last Run: %s (2007-04-05T14:30, 8 years ago)" % PaastaColors.green("OK") in actual
+        assert "  Last Run: %s (2007-04-01T17:52, %s years ago)" % (PaastaColors.green("OK"), expected_years) in actual
 
 
 def test_format_schedule_dependent_job():
