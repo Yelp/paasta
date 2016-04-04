@@ -21,6 +21,7 @@ import logging
 import os
 import re
 import socket
+from math import ceil
 from time import sleep
 
 import service_configuration_lib
@@ -255,7 +256,7 @@ class MarathonServiceConfig(InstanceConfig):
         if instances == 0:
             return 1
         else:
-            return float(10.0 / instances)
+            return int(ceil(10.0 / instances))
 
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.
@@ -1029,6 +1030,22 @@ def kill_task(client, app_id, task_id, scale):
             return []
         elif 'does not exist' in e.error_message and e.status_code == 404:
             log.debug("Probably tried to kill a task id that was already dead. Continuing.")
+            return []
+        else:
+            raise
+
+
+def kill_given_tasks(client, task_ids, scale):
+    """Wrapper to the official kill_given_tasks method that is tolerant of errors"""
+    try:
+        return client.kill_given_tasks(task_ids=task_ids, scale=scale)
+    except MarathonHttpError as e:
+        # Marathon's interface is always async, so it is possible for you to see
+        # a task in the interface and kill it, yet by the time it tries to kill
+        # it, it is already gone. This is not really a failure condition, so we
+        # swallow this error.
+        if e.error_message == 'Bean is not valid' and e.status_code == 422:
+            log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
             return []
         else:
             raise
