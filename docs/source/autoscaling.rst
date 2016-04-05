@@ -56,11 +56,6 @@ The currently available decicion policies are:
 :pid:
   Uses a PID controller to determine when to autoscale a service. See `this page <https://en.wikipedia.org/wiki/PID_controller>`_ for more information on PIDs.
 
-  Autoscaling parameters:
-
-  :Kp: the proportional control constant. Defaults to 0.2.
-  :Ki: the integral control constant. Defaults to 0.2.
-  :Kd: the derivative control constant. Defaults to 0.05.
 :threshold:
   Autoscales when a service's utilization exceeds beyond a certain threshold.
 
