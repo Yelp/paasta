@@ -377,7 +377,7 @@ class MarathonServiceConfig(InstanceConfig):
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
             },
-            'uris': ['file:///root/.dockercfg', ],
+            'uris': [system_paasta_config.get_dockerfile_location(), ],
             'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),

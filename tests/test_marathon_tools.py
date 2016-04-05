@@ -865,7 +865,9 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=fake_service_namespace_config),
             mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
-                       return_value=mock.Mock(get_volumes=mock.Mock(return_value=fake_volumes))),
+                       return_value=mock.Mock(get_volumes=mock.Mock(return_value=fake_volumes),
+                                              get_dockerfile_location=mock.Mock(
+                                                  return_value='file:///root/.dockercfg'))),
         ) as (
             _,
             _,
