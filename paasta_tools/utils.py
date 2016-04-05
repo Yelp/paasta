@@ -1319,7 +1319,7 @@ def deploy_blacklist_to_constraints(deploy_blacklist):
 
 
 def deploy_whitelist_to_constraints(deploy_whitelist):
-    """Convers a whitelist of locations into marathon appropriate constraints
+    """Converts a whitelist of locations into marathon appropriate constraints
     https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
 
     :param deploy_whitelist: List of lists of locations to whitelist
