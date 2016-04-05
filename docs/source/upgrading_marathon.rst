@@ -1,8 +1,9 @@
 Upgrading Marathon
 ==================
 
-The Marathon App itself is deployed via Docker using our `continuous
-integration workflow <https://jenkins.yelpcorp.com/view/docker-images-marathon/>`_.
+The Marathon App itself is deployed via our `continuous
+integration package workflow <https://jenkins.yelpcorp.com/view/packages-marathon/>`_.
+Currently, it is using the official packages from the Mesosphere repository.
 
 Releases for Marathon are `here <https://github.com/mesosphere/marathon/releases>`_.
 Any API-breaking changes are usually listed in the changelog.
@@ -30,14 +31,14 @@ changes. This usually drives the orchestration sequence as follows:
 #. If passing, deploy the new version of paasta_tools with the new client library.
    (follow the `standard release cycle stuff <contributing.html#making-new-versions>`_)
 
-#. Once deployed everywhere, pull in the new version of the Marathon container.
+#. Once deployed everywhere, pull in the new version of the Marathon package.
 
-   #. Clone the repo where it is built. (``<git@git.yelpcorp.com:docker-images/marathon>``)
-   #. Bump as necessary; let jenkins push out the new container.
-   #. Ask puppet to run the new version of the container in a safe area (e.g. mesosstage).
-         if that works, ask puppet to run the new version everywhere.
+   #. Clone the repo where it is built. (``<git@git.yelpcorp.com:packages/marathon>``)
+   #. Bump the version numbers in the Makefile.
+   #. Push and let Jenkins build the new package.
+   #. Update Puppet to use the new version of Marathon. This is done using Hiera.
          (see the `puppet code <https://opengrok.yelpcorp.com/xref/sysgit/puppet/modules/profile_paasta/manifests/marathon.pp>`_)
-
+   #. Using ``./orchestration_tools/upgrade_marathon.sh``, perform the Marathon upgrade in each cluster.
 
 If you find that there is incompatibility anywhere along the way, use judgement
 to decide what steps need to be re-ordered preserve Marathon availability.
