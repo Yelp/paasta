@@ -22,6 +22,7 @@ from pytest import raises
 from paasta_tools import chronos_tools
 from paasta_tools.utils import SystemPaastaConfig
 
+
 class TestChronosTools:
 
     fake_service = 'test-service'
@@ -1088,7 +1089,8 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = mock.Mock(return_value='file:///root/.dockercfg')
+            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+                mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake-service', 'fake-job')
             expected = {
                 'arguments': None,
@@ -1132,7 +1134,8 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = mock.Mock(return_value='file:///root/.dockercfg')
+            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+                mock.Mock(return_value='file:///root/.dockercfg')
             first_description = chronos_tools.create_complete_config('fake-service', 'fake-job')['description']
 
             stopped_job_config = chronos_tools.ChronosJobConfig(
@@ -1177,7 +1180,8 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = mock.Mock(return_value='file:///root/.dockercfg')
+            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+                mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
                 'arguments': None,
@@ -1234,7 +1238,8 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = mock.Mock(return_value='file:///root/.dockercfg')
+            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+                mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
                 'arguments': None,
@@ -1307,7 +1312,8 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=fake_system_volumes)
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = mock.Mock(return_value='file:///root/.dockercfg')
+            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+                mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
                 'description': fake_config_hash,
