@@ -643,7 +643,7 @@ class TestChronosTools:
         assert okay is True
         assert msg == ''
 
-    def test_check_schedule_invalid_empty_start_time(self):
+    def test_check_schedule_valid_empty_start_time(self):
         fake_schedule = 'R10//PT70S'
         chronos_config = chronos_tools.ChronosJobConfig(
             service='',
@@ -653,8 +653,8 @@ class TestChronosTools:
             branch_dict={},
         )
         okay, msg = chronos_config.check_schedule()
-        assert okay is False
-        assert msg == 'The specified schedule "%s" does not contain a start time' % fake_schedule
+        assert okay is True
+        assert msg == ''
 
     def test_check_schedule_invalid_start_time_no_t_designator(self):
         fake_start_time = 'now'
