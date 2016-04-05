@@ -599,9 +599,11 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         )
     except NoDeploymentsAvailable:
         sys.stderr.write(PaastaColors.red(
-            "Error: No deployments.json found in %s/%s.\n"
-            "You can generate this by running paasta generate_deployments_for_service.\n" % (
-                soa_dir, service)))
+            "Error: No deployments.json found in %(soa_dir)s/%(service)s.\n"
+            "You can generate this by running:\n"
+            "generate_deployments_for_service -d %(soa_dir)s -s %(service)s\n" % {
+                'soa_dir': soa_dir, 'service': service}))
+        return
 
     if pull_image:
         try:
