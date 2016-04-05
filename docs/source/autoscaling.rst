@@ -29,7 +29,7 @@ Let's look at sample marathon config file:
        metrics_provider: mesos_cpu_ram
        setpoint: 0.5
 
-This makes the service ``main`` autoscale using the ``pid`` decision policy and the ``mesos_cpu_ram`` metrics provider. Paasta will aim to keep this service's utilization at 50%.
+This makes the instance ``main`` autoscale using the ``pid`` decision policy and the ``mesos_cpu_ram`` metrics provider. Paasta will aim to keep this service's utilization at 50%.
 
 Autoscaling components
 ----------------------
