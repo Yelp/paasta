@@ -374,7 +374,7 @@ class ChronosJobConfig(InstanceConfig):
         else:
             return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
 
-    def format_chronos_job_dict(self, docker_url, docker_volumes, system_paasta_config):
+    def format_chronos_job_dict(self, docker_url, docker_volumes, dockerfile_location):
         valid, error_msgs = self.validate()
         if not valid:
             raise InvalidChronosConfigError("\n".join(error_msgs))
@@ -387,7 +387,7 @@ class ChronosJobConfig(InstanceConfig):
                 'type': 'DOCKER',
                 'volumes': docker_volumes
             },
-            'uris': [system_paasta_config.get_dockerfile_location(), ],
+            'uris': [dockerfile_location, ],
             'environmentVariables': self.get_env(),
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
@@ -473,7 +473,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     complete_config = chronos_job_config.format_chronos_job_dict(
         docker_url,
         docker_volumes,
-        system_paasta_config,
+        system_paasta_config.get_dockerfile_location(),
     )
 
     complete_config['name'] = compose_job_id(service, job_name)

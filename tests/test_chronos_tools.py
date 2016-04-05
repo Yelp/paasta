@@ -318,7 +318,6 @@ class TestChronosTools:
             'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
             'schedule_time_zone': 'Zulu',
             'monitoring': {},
-            'dockerfile_location': "file:///root/.dockercfg",
         }
         fake_docker_url = 'fake_docker_image_url'
         fake_docker_volumes = ['fake_docker_volume']
@@ -335,7 +334,8 @@ class TestChronosTools:
                 config_dict=fake_config_dict,
                 branch_dict={},
             )
-            fake_chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes, dummy_config)
+            fake_chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
+                                                            dummy_config.get_dockerfile_location())
             mock_parse_time_variables.assert_called_once_with(fake_cmd)
 
     def test_get_owner(self):
@@ -897,7 +897,8 @@ class TestChronosTools:
         with contextlib.nested(
             mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
         ):
-            actual = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes, dummy_config)
+            actual = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
+                                                                dummy_config.get_dockerfile_location())
             assert actual == expected
 
     def test_format_chronos_job_dict_invalid_param(self):
