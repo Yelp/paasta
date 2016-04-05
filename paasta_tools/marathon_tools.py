@@ -311,7 +311,8 @@ class MarathonServiceConfig(InstanceConfig):
     def get_routing_constraints(self, service_namespace_config):
         discover_level = service_namespace_config.get_discover()
         locations = get_mesos_slaves_grouped_by_attribute(
-            attribute=discover_level, blacklist=self.get_deploy_blacklist())
+            attribute=discover_level, blacklist=self.get_deploy_blacklist(),
+            whitelist=self.get_deploy_whitelist())
 
         routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
         return routing_constraints

@@ -1139,7 +1139,7 @@ class TestMarathonTools:
                 ["pool", "LIKE", "default"],
             ]
             assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
-            get_slaves_patch.assert_called_once_with(attribute='habitat', blacklist=[])
+            get_slaves_patch.assert_called_once_with(attribute='habitat', blacklist=[], whitelist=[])
 
     def test_get_constraints_respects_deploy_blacklist(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
@@ -1162,7 +1162,30 @@ class TestMarathonTools:
         ) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
             assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
-            get_slaves_patch.assert_called_once_with(attribute='region', blacklist=fake_deploy_blacklist)
+            get_slaves_patch.assert_called_once_with(attribute='region', blacklist=fake_deploy_blacklist, whitelist=[])
+
+    def test_get_constraints_respects_deploy_whitelist(self):
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_deploy_whitelist = [["region", "fake_whitelisted_region"]]
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'deploy_whitelist': fake_deploy_whitelist},
+            branch_dict={},
+        )
+        expected_constraints = [
+            ["region", "GROUP_BY", "1"],
+            ["region", "LIKE", "fake_whitelisted_region"],
+            ["pool", "LIKE", "default"],
+        ]
+        with mock.patch(
+            'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
+            autospec=True,
+        ) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}}
+            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+            get_slaves_patch.assert_called_once_with(attribute='region', blacklist=[], whitelist=fake_deploy_whitelist)
 
     def test_instance_config_getters_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
