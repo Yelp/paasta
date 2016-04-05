@@ -18,6 +18,7 @@ import mock
 from behave import given
 from behave import then
 from behave import when
+from marathon import MarathonHttpError
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
