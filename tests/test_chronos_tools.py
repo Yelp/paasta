@@ -918,7 +918,7 @@ class TestChronosTools:
             branch_dict={},
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
-            invalid_config.format_chronos_job_dict('', [], {})
+            invalid_config.format_chronos_job_dict(docker_url='', docker_volumes=[], dockerfile_location={})
         assert 'The specified schedule "%s" is invalid' % fake_schedule in exc.value
 
     def test_list_job_names(self):
