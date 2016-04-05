@@ -18,6 +18,7 @@ import mock
 from behave import given
 from behave import then
 from behave import when
+from marathon import MarathonHttpError
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
@@ -124,19 +125,26 @@ def when_deploy_service_initiated(context, bounce_method, drain_method):
         _,
     ):
         mock_load_system_paasta_config.return_value.get_cluster = mock.Mock(return_value=context.cluster)
-        setup_marathon_job.deploy_service(
-            service=context.service,
-            instance=context.instance,
-            marathon_jobid=context.new_config['id'],
-            config=context.new_config,
-            client=context.marathon_client,
-            bounce_method=bounce_method,
-            drain_method_name=drain_method,
-            drain_method_params={},
-            nerve_ns=context.instance,
-            bounce_health_params={},
-            soa_dir=None,
-        )
+        # 120 * 0.5 = 60 seconds
+        for _ in xrange(120):
+            try:
+                setup_marathon_job.deploy_service(
+                    service=context.service,
+                    instance=context.instance,
+                    marathon_jobid=context.new_config['id'],
+                    config=context.new_config,
+                    client=context.marathon_client,
+                    bounce_method=bounce_method,
+                    drain_method_name=drain_method,
+                    drain_method_params={},
+                    nerve_ns=context.instance,
+                    bounce_health_params={},
+                    soa_dir=None,
+                )
+                return
+            except MarathonHttpError:
+                time.sleep(0.5)
+        raise Exception("Unable to qcuiqre app lock for setup_marathon_job.deploy_service")
 
 
 @when(u'the {which} app is down to {num} instances')
