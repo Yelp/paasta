@@ -12,7 +12,7 @@ Enabling autoscaling
 
 In order to use autoscaling, edit your ``marathon-*.yaml`` files in your soa configs and add a ``min_instances`` and a ``max_instances`` attribute and remove the ``instances`` attribute from each instance you want to autoscale. When using autoscaling, the ``min_instances`` and ``max_instances`` attributes become the minimum and maximum (inclusive) number of marathon tasks paasta will create for your job. If autoscaling information for your service is not available in Zookeeper (e.g. you've just created your service) PaaSTA will default to creating ``min_instances`` instances.
 
-Autoscaling parameters are stored in an ``autoscaling`` attribute of your instances as a dictionary. Within the ``autoscaling`` attribute, setting a ``metrics_provider`` will allow you to specify a method that determines the utilization of your service. If a metrics provider isn't provided, the ``"mesos_cpu_ram"`` metrics provider will be used. Within the ``autoscaling`` attribute, setting a ``decision_policy`` will allow you to specify the logic that determines when to autoscale your service. If a decision policy isn't provided, the ``"pid"`` decision policy will be used. Decision policies and metrics providers have their own optional keyword arguments that may be placed into the ``autoscaling`` dictionary as well.
+Autoscaling parameters are stored in an ``autoscaling`` attribute of your instances as a dictionary. Within the ``autoscaling`` attribute, setting a ``metrics_provider`` will allow you to specify a method that determines the utilization of your service. If a metrics provider isn't provided, the ``"mesos_cpu_ram"`` metrics provider will be used. Within the ``autoscaling`` attribute, setting a ``decision_policy`` will allow you to specify the logic that determines when to autoscale your service. If a decision policy isn't provided, the ``"pid"`` decision policy will be used. Specifying a ``setpoint`` allows you to specify a target utilization for your service. The default ``setpoint`` is 0.8 (80%). Decision policies and metrics providers have their own optional keyword arguments that may be placed into the ``autoscaling`` dictionary as well.
 
 Let's look at sample marathon config file:
 
@@ -58,7 +58,6 @@ The currently available decicion policies are:
 
   Autoscaling parameters:
 
-  :setpoint: the target utilization the controller aims for. Defaults to 0.8 (80%).
   :Kp: the proportional control constant. Defaults to 0.2.
   :Ki: the integral control constant. Defaults to 0.2.
   :Kd: the derivative control constant. Defaults to 0.05.
@@ -67,7 +66,6 @@ The currently available decicion policies are:
 
   Autoscaling parameters:
 
-  :setpoint: the target utilization the controller aims for. Defaults to 0.8 (80%).
   :threshold: the amount by which the setpoint must be exceeded in either direction before autoscaling is triggered. Defaults to 0.1 (10%).
 :bespoke:
   Allows a service author to implement their own autoscaling.

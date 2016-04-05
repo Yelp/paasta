@@ -230,6 +230,7 @@ class MarathonServiceConfig(InstanceConfig):
         default_params = {
             'metrics_provider': 'mesos_cpu_ram',
             'decision_policy': 'pid',
+            'setpoint': 0.8,
         }
         return deep_merge_dictionaries(overrides=self.config_dict.get('autoscaling', {}), defaults=default_params)
 
