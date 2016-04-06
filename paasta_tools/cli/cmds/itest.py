@@ -15,6 +15,8 @@
 import os
 
 from paasta_tools.cli.utils import get_jenkins_build_output_url
+from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
@@ -46,11 +48,11 @@ def add_subparser(subparsers):
         required=True,
     )
     list_parser.add_argument(
-        '-d', '--soa_dir',
+        '-d', '--soa-dir',
         dest='soa_dir',
         help='A directory from which soa-configs should be read from',
         default=DEFAULT_SOA_DIR,
-    )
+    ).completer = lazy_choices_completer(list_services)
     list_parser.set_defaults(command=paasta_itest)
 
 
