@@ -44,8 +44,7 @@ HTTP/TCP services
 -----------------
 
 * MUST be discoverable by SmartStack
-* MUST bind to port 8888 if using the BRIDE `networking mode <../yelpsoa_configs.html#networking_mode>`_
-* MUST bind to port $MARATHON_PORT if using the HOST `networking mode <../yelpsoa_configs.html#networking_mode>`_
+* MUST bind to port 8888 if using the BRIDGE `networking mode <../yelpsoa_configs.html#networking_mode>`_ or to port $MARATHON_PORT if using the HOST networking mode
 
 Long-running tasks (services that don’t listen on a port, or “batch daemons”)
 -----------------------------------------------------------------------------
