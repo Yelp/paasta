@@ -2071,7 +2071,7 @@ def test_format_marathon_app_dict_with_smartstack():
         assert MarathonApp(**actual)
 
 
-def test_format_marathon_app_dict_utilizes_networking_mode():
+def test_format_marathon_app_dict_utilizes_net():
     service_name = "service"
     instance_name = "instance"
     fake_job_id = "service.instance.some.hash"
@@ -2086,7 +2086,7 @@ def test_format_marathon_app_dict_utilizes_networking_mode():
         service=service_name,
         cluster='clustername',
         instance=instance_name,
-        config_dict={'networking_mode': 'HOST'},
+        config_dict={'net': 'host'},
         branch_dict={'docker_image': 'abcdef'},
     )
     fake_system_paasta_config = SystemPaastaConfig({

@@ -51,12 +51,11 @@ instance MAY have:
     namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
     their traffic to the same pool as the other ``main`` instances.
 
-  .. _networking_mode:
+  .. _net:
 
-  * ``networking_mode``: Specify which kind of
+  * ``net``: Specify which kind of
     `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
-    instances of this service should be launched using. Possible values are ``'BRIDGE'``
-    and ``'HOST'``, defaults to ``'BRIDGE'``.
+    instances of this service should be launched using. Defaults to ``'bridge'``.
 
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <generated/paasta_tools.bounce_lib.html>`_
 

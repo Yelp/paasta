@@ -901,7 +901,7 @@ class TestChronosTools:
                                                                 dummy_config.get_dockerfile_location())
             assert actual == expected
 
-    def test_format_chronos_job_dict_uses_networking_mode(self):
+    def test_format_chronos_job_dict_uses_net(self):
         fake_service = 'test_service'
         fake_job_name = 'test_job'
         fake_owner = 'test_team'
@@ -918,7 +918,7 @@ class TestChronosTools:
                 'cmd': fake_command,
                 'schedule': fake_schedule,
                 'epsilon': 'PT60S',
-                'networking_mode': 'HOST',
+                'net': 'host',
             },
             branch_dict={},
         )

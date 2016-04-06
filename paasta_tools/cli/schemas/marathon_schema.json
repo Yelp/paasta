@@ -120,9 +120,8 @@
             "monitoring": {
                 "type": "object"
             },
-            "networking_mode": {
-                "enum": [ "BRIDGE", "HOST" ],
-                "default": "BRIDGE"
+            "net": {
+                "type": "string"
             },
             "deploy_blacklist": {
                 "type": "array"

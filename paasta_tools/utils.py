@@ -274,11 +274,11 @@ class InstanceConfig(dict):
         :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
         return self.config_dict.get('pool', 'default')
 
-    def get_networking_mode(self):
+    def get_net(self):
         """
-        :returns: the networking mode the container should be started with. Choices are either HOST or BRIDGE
+        :returns: the docker networking mode the container should be started with.
         """
-        return self.config_dict.get('networking_mode', 'BRIDGE')
+        return self.config_dict.get('net', 'bridge')
 
 
 def validate_service_instance(service, instance, cluster, soa_dir):

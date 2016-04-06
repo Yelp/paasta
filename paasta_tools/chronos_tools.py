@@ -377,13 +377,19 @@ class ChronosJobConfig(InstanceConfig):
         if not valid:
             raise InvalidChronosConfigError("\n".join(error_msgs))
 
-        networking_mode = self.get_networking_mode()
+        net = self.get_net()
+        docker_chronos_net_mapping = {
+            'none': 'NONE',
+            'bridge': 'BRIDGE',
+            'host': 'HOST',
+        }
+        net = docker_chronos_net_mapping.get(net, net)
 
         complete_config = {
             'name': self.get_job_name().encode('utf_8'),
             'container': {
                 'image': docker_url,
-                'network': networking_mode,
+                'network': net,
                 'type': 'DOCKER',
                 'volumes': docker_volumes
             },
