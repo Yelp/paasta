@@ -377,11 +377,13 @@ class ChronosJobConfig(InstanceConfig):
         if not valid:
             raise InvalidChronosConfigError("\n".join(error_msgs))
 
+        networking_mode = self.get_networking_mode()
+
         complete_config = {
             'name': self.get_job_name().encode('utf_8'),
             'container': {
                 'image': docker_url,
-                'network': 'BRIDGE',
+                'network': networking_mode,
                 'type': 'DOCKER',
                 'volumes': docker_volumes
             },

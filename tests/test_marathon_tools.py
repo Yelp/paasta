@@ -2071,6 +2071,48 @@ def test_format_marathon_app_dict_with_smartstack():
         assert MarathonApp(**actual)
 
 
+def test_format_marathon_app_dict_utilizes_networking_mode():
+    service_name = "service"
+    instance_name = "instance"
+    fake_job_id = "service.instance.some.hash"
+    fake_system_volumes = [
+        {
+            "containerPath": "/system",
+            "hostPath": "/system",
+            "mode": "RO"
+        }
+    ]
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service=service_name,
+        cluster='clustername',
+        instance=instance_name,
+        config_dict={'networking_mode': 'HOST'},
+        branch_dict={'docker_image': 'abcdef'},
+    )
+    fake_system_paasta_config = SystemPaastaConfig({
+        'volumes': fake_system_volumes,
+        'docker_registry': 'fake_docker_registry:443'
+    }, '/fake/dir/')
+    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+
+    with contextlib.nested(
+        mock.patch(
+            'paasta_tools.marathon_tools.load_service_namespace_config',
+            return_value=fake_service_namespace_config,
+        ),
+        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id),
+        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
+                   autospec=True, return_value={'fake_region': {}})
+    ) as (
+        mock_load_service_namespace_config,
+        mock_format_job_id,
+        mock_system_paasta_config,
+        _,
+    ):
+        assert fake_marathon_service_config.format_marathon_app_dict()['container']['docker']['network'] == 'HOST'
+
+
 def test_format_marathon_app_dict_utilizes_extra_volumes():
     service_name = "service"
     instance_name = "instance"

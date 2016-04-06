@@ -361,11 +361,13 @@ class MarathonServiceConfig(InstanceConfig):
         )
         docker_volumes = system_paasta_config.get_volumes() + self.get_extra_volumes()
 
+        networking_mode = self.get_networking_mode()
+
         complete_config = {
             'container': {
                 'docker': {
                     'image': docker_url,
-                    'network': 'BRIDGE',
+                    'network': networking_mode,
                     'portMappings': [
                         {
                             'containerPort': CONTAINER_PORT,

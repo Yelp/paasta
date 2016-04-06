@@ -86,6 +86,10 @@
                 },
                 "uniqueItems": true
             },
+            "networking_mode": {
+                "enum": [ "BRIDGE", "HOST" ],
+                "default": "BRIDGE"
+            },
             "pool": {
                 "type": "string"
             },
