@@ -93,8 +93,7 @@ def validate_args(args):
     Otherwise returns None (implicitly)."""
     if not exists(args.yelpsoa_config_root):
         sys.exit(
-            "I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root"
-            "Like %s" % args.yelpsoa_config_root
+            "I'd Really Rather You Didn't Use A Non-Existent --yelpsoa-config-root Like %s" % args.yelpsoa_config_root
         )
     if args.auto and not args.srvname:
         sys.exit(
