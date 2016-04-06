@@ -1166,7 +1166,7 @@ class TestMarathonTools:
 
     def test_get_constraints_respects_deploy_whitelist(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
-        fake_deploy_whitelist = [["region", "fake_whitelisted_region"]]
+        fake_deploy_whitelist = ["region", ["fake_whitelisted_region"]]
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
             cluster='fake_cluster',

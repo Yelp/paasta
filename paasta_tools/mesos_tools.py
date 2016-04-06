@@ -518,16 +518,16 @@ def slave_passes_blacklist(slave, blacklist):
 def slave_passes_whitelist(slave, whitelist):
     """
     :param slave: A single mesos slave with attributes.
-    :param whitelist: A list of lists like [["location_type", "location"], ["foo", "bar"]]
+    :param whitelist: A list of lists like ["location_type", ["location1", 'location2']]
     :returns: boolean, True if the slave gets past the whitelist
     """
     # No whitelist, so disable whitelisting behaviour.
     if len(whitelist) == 0:
         return True
     attributes = slave["attributes"]
-    for location_type, location in whitelist:
-        if attributes.get(location_type) == location:
-            return True
+    (location_type, locations) = whitelist
+    if attributes.get(location_type) in locations:
+        return True
     return False
 
 

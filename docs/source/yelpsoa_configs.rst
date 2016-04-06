@@ -163,11 +163,12 @@ instance MAY have:
 
   * ``deploy_whitelist``: A list of lists indicating a set of locations where deployment is allowed.  For example:
 
-      ``deploy_whitelist: [['region', 'uswest1-prod"]]``
+      ``deploy_whitelist: ['region', ['uswest1-prod", 'uswest2-prod]]``
 
-    would indicate that PaaSTA can **only** deploy in ``uswest1-prod``.  If this list is empty (the default), then
-    deployment is allowed anywhere.  This is superseded by the blacklist; if a host is both whitelisted and blacklisted,
-    the blacklist will take precedence.
+    would indicate that PaaSTA can **only** deploy in ``uswest1-prod`` or ``uswest2-prod``.  If this list
+    is empty (the default), then deployment is allowed anywhere.  This is superseded by the blacklist; if
+    a host is both whitelisted and blacklisted, the blacklist will take precedence.  Only one region-level
+    of whitelisting may be specified.
 
   * ``monitoring_blacklist``: A list of lists indicating a set of locations to
     *not* monitor for Smartstack replication. For example:

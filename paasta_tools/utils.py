@@ -1325,11 +1325,12 @@ def deploy_whitelist_to_constraints(deploy_whitelist):
     :param deploy_whitelist: List of lists of locations to whitelist
     :returns: List of lists of constraints
     """
-    constraints = []
-    for whitelisted_location in deploy_whitelist:
-        constraints.append([whitelisted_location[0], "LIKE", whitelisted_location[1]])
+    if len(deploy_whitelist) > 0:
+        (region_type, regions) = deploy_whitelist
+        regionstr = '|'.join(regions)
 
-    return constraints
+        return [[region_type, 'LIKE', regionstr]]
+    return []
 
 
 def terminal_len(text):

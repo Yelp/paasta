@@ -281,6 +281,24 @@ def test_get_mesos_slaves_grouped_by_attribute_bombs_out_with_no_slaves(mock_fet
         mesos_tools.get_mesos_slaves_grouped_by_attribute('fake_attribute')
 
 
+def test_slave_passes_whitelist():
+    fake_slave = {
+        'attributes': {
+            'location_type': 'fake_location',
+            'fake_location_type': 'fake_location'
+        }
+    }
+    fake_whitelist_allow = ['fake_location_type', ['fake_location']]
+    fake_whitelist_deny = ['anoterfake_location_type', ['anotherfake_location']]
+
+    slave_passes = mesos_tools.slave_passes_whitelist(fake_slave, fake_whitelist_deny)
+    assert not slave_passes
+    slave_passes = mesos_tools.slave_passes_whitelist(fake_slave, fake_whitelist_allow)
+    assert slave_passes
+    slave_passes = mesos_tools.slave_passes_whitelist(fake_slave, [])
+    assert slave_passes
+
+
 @mock.patch('paasta_tools.mesos_tools.get_mesos_state_from_leader', autospec=True)
 @mock.patch('paasta_tools.mesos_tools.filter_mesos_slaves_by_blacklist', autospec=True)
 def test_get_mesos_slaves_grouped_by_attribute_uses_blacklist(
