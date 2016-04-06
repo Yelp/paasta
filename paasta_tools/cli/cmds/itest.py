@@ -20,6 +20,7 @@ from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import build_docker_tag
 from paasta_tools.utils import check_docker_image
+from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 def add_subparser(subparsers):
@@ -44,15 +45,22 @@ def add_subparser(subparsers):
         help='Git sha used to construct tag for built image',
         required=True,
     )
+    list_parser.add_argument(
+        '-d', '--soa_dir',
+        dest='soa_dir',
+        help='A directory from which soa-configs should be read from',
+        default=DEFAULT_SOA_DIR,
+    )
     list_parser.set_defaults(command=paasta_itest)
 
 
 def paasta_itest(args):
     """Build and test a docker image"""
     service = args.service
+    soa_dir = args.soa_dir
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
-    validate_service_name(service)
+    validate_service_name(service, soa_dir=soa_dir)
 
     tag = build_docker_tag(service, args.commit)
     run_env = os.environ.copy()
