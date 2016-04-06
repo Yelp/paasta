@@ -1238,6 +1238,18 @@ class TestMarathonTools:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is False
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
 
+    def test_is_app_id_running_handles_leading_slashes(self):
+        fake_id = '/fake_app1'
+        fake_all_marathon_app_ids = ['fake_app1', 'fake_app2']
+        fake_client = mock.Mock()
+        with mock.patch(
+            'paasta_tools.marathon_tools.list_all_marathon_app_ids',
+            autospec=True,
+            return_value=fake_all_marathon_app_ids,
+        ) as list_all_marathon_app_ids_patch:
+            assert marathon_tools.is_app_id_running(fake_id, fake_client) is True
+            list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
+
     @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
     def test_app_has_tasks_exact(self, patch_list_tasks):
         fake_client = mock.Mock()

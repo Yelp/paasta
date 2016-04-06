@@ -894,7 +894,7 @@ def is_app_id_running(app_id, client):
     :param client: A MarathonClient object"""
 
     all_app_ids = list_all_marathon_app_ids(client)
-    return app_id in all_app_ids
+    return app_id.lstrip('/') in all_app_ids
 
 
 def app_has_tasks(client, app_id, expected_tasks, exact_matches_only=False):
