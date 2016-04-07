@@ -369,7 +369,8 @@ def get_container_name():
     return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
-def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command, hostname):
+def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive,
+                       docker_hash, command, hostname, net):
     cmd = ['docker', 'run']
     for k, v in env.iteritems():
         cmd.append('--env=\"%s=%s\"' % (k, v))
@@ -377,7 +378,10 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
-    cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+    if net == 'bridge':
+        cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+    elif net == 'host':
+        cmd.append('--net=host')
     cmd.append('--name=%s' % container_name)
     for volume in volumes:
         cmd.append('--volume=%s' % volume)
@@ -481,6 +485,7 @@ def run_docker_container(
             "tty attached (as your program is about to run).\n\n"
         ))
     environment = instance_config.get_env_dictionary()
+    net = instance_config.get_net()
     memory = instance_config.get_mem()
     random_port = pick_random_port()
     container_name = get_container_name()
@@ -494,6 +499,7 @@ def run_docker_container(
         docker_hash=docker_hash,
         command=command,
         hostname=hostname,
+        net=net,
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)

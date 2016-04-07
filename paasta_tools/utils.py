@@ -280,6 +280,12 @@ class InstanceConfig(dict):
         :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
         return self.config_dict.get('pool', 'default')
 
+    def get_net(self):
+        """
+        :returns: the docker networking mode the container should be started with.
+        """
+        return self.config_dict.get('net', 'bridge')
+
 
 def validate_service_instance(service, instance, cluster, soa_dir):
     marathon_services = get_services_for_cluster(cluster=cluster, instance_type='marathon', soa_dir=soa_dir)

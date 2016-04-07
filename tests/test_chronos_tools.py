@@ -901,6 +901,35 @@ class TestChronosTools:
                                                                 dummy_config.get_dockerfile_location())
             assert actual == expected
 
+    def test_format_chronos_job_dict_uses_net(self):
+        fake_service = 'test_service'
+        fake_job_name = 'test_job'
+        fake_owner = 'test_team'
+        fake_command = 'echo foo >> /tmp/test_service_log'
+        fake_schedule = 'R10/2012-10-01T05:52:00Z/PT1M'
+        fake_docker_url = 'fake_docker_image_url'
+        fake_docker_volumes = ['fake_docker_volume']
+
+        chronos_job_config = chronos_tools.ChronosJobConfig(
+            service=fake_service,
+            cluster='',
+            instance=fake_job_name,
+            config_dict={
+                'cmd': fake_command,
+                'schedule': fake_schedule,
+                'epsilon': 'PT60S',
+                'net': 'host',
+            },
+            branch_dict={},
+        )
+        dummy_config = SystemPaastaConfig({}, '/tmp/foo.cfg')
+        with contextlib.nested(
+            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
+        ):
+            result = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
+                                                                dummy_config.get_dockerfile_location())
+            assert result['container']['network'] == 'HOST'
+
     def test_format_chronos_job_dict_invalid_param(self):
         fake_service = 'test_service'
         fake_job_name = 'test_job'

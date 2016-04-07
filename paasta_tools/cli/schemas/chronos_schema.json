@@ -86,6 +86,9 @@
                 },
                 "uniqueItems": true
             },
+            "net": {
+		"type": "string"
+            },
             "pool": {
                 "type": "string"
             },

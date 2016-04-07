@@ -31,6 +31,7 @@ from marathon import MarathonHttpError
 from marathon import NotFoundError
 
 from paasta_tools.mesos_tools import get_local_slave_state
+from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -364,11 +365,13 @@ class MarathonServiceConfig(InstanceConfig):
         )
         docker_volumes = system_paasta_config.get_volumes() + self.get_extra_volumes()
 
+        net = get_mesos_network_for_net(self.get_net())
+
         complete_config = {
             'container': {
                 'docker': {
                     'image': docker_url,
-                    'network': 'BRIDGE',
+                    'network': net,
                     'portMappings': [
                         {
                             'containerPort': CONTAINER_PORT,

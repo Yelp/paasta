@@ -51,6 +51,12 @@ instance MAY have:
     namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
     their traffic to the same pool as the other ``main`` instances.
 
+  .. _net:
+
+  * ``net``: Specify which kind of
+    `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
+    instances of this service should be launched using. Defaults to ``'bridge'``.
+
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <generated/paasta_tools.bounce_lib.html>`_
 
   * ``bounce_method_params``: A dictionary of parameters for the specified bounce_method.
@@ -334,6 +340,10 @@ Each job configuration MAY specify the following options:
 
   * ``retries``: Number of retries to attempt if a command returns a
     non-zero exit status. Defaults to 2.
+
+  * ``net``: Specify which kind of
+    `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
+    instances of this service should be launched using. Defaults to ``'bridge'``.
 
   * ``disabled``: If set to ``True``, this job will not be run. Defaults to ``False``
 

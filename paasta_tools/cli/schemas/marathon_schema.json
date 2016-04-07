@@ -120,6 +120,9 @@
             "monitoring": {
                 "type": "object"
             },
+            "net": {
+                "type": "string"
+            },
             "deploy_blacklist": {
                 "type": "array"
             },
