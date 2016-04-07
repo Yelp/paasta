@@ -611,9 +611,9 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
                 system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
         except NoDockerImageError:
             sys.stderr.write(PaastaColors.red(
-                "Error: The deploy group %s for the service %s has not been marked for deployment.\n"
-                "To use paasta local-run with `--pull`, make sure you've pushed a docker image and "
-                "run paasta mark-for-deployment.\n" % (instance_config.get_deploy_group(), service)))
+                "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                "Please ensure this service has either run through a jenkins pipeline "
+                "or paasta mark-for-deployment has been run for %s" % (instance_config.get_deploy_group(), service)))
             return
         docker_hash = docker_url
         docker_pull_image(docker_url)
