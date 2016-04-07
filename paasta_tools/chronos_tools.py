@@ -26,6 +26,7 @@ import monitoring_tools
 import service_configuration_lib
 from tron import command_context
 
+from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
@@ -377,7 +378,7 @@ class ChronosJobConfig(InstanceConfig):
         if not valid:
             raise InvalidChronosConfigError("\n".join(error_msgs))
 
-        net = self.get_net()
+        net = get_mesos_network_for_net(self.get_net())
         docker_chronos_net_mapping = {
             'none': 'NONE',
             'bridge': 'BRIDGE',

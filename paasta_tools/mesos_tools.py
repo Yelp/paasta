@@ -542,3 +542,12 @@ def get_mesos_id_from_container(container, client):
                 mesos_id = re.match("mesos_task_id=(.*)", env_var).group(1)
                 break
     return mesos_id
+
+
+def get_mesos_network_for_net(net):
+    docker_mesos_net_mapping = {
+        'none': 'NONE',
+        'bridge': 'BRIDGE',
+        'host': 'HOST',
+    }
+    return docker_mesos_net_mapping.get(net, net)
