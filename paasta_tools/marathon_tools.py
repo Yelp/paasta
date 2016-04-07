@@ -379,6 +379,9 @@ class MarathonServiceConfig(InstanceConfig):
                             'protocol': 'tcp',
                         },
                     ],
+                    "parameters": [
+                        {"key": "memory-swap", "value": float(self.get_mem())},
+                    ]
                 },
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
