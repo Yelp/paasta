@@ -126,6 +126,7 @@ def main():
     smartstack_grace_sleep = 10
     between_containers_grace_sleep = 10
     min_kill_interval = 60  # minimum time to wait between same service.instance kills
+    hadown_expire_in_seconds = 120
     t = 0
 
     for container_id in running_container_ids:
@@ -133,25 +134,30 @@ def main():
         condquit(rc, "docker inspect %s" % container_id)
         docker_inspect_data = json.loads(output)
         environment = docker_env_to_dict(docker_inspect_data[0]['Config']['Env'])
-        port_bindings = docker_inspect_data[0]['HostConfig']['PortBindings']
-        marathon_port = int(port_bindings['8888/tcp'][0]['HostPort'])
+        if 'CHRONOS_JOB_NAME' in environment:
+            print "# WARNING! %s is a chronos job (%s), skipping" % (container_id, environment['CHRONOS_JOB_NAME'])
+            print ""
+            continue
         for k in ('PAASTA_SERVICE', 'PAASTA_INSTANCE', 'MARATHON_PORT'):
             if k not in environment:
                 abort("No %s in %s" % (k, container_id))
         service = environment['PAASTA_SERVICE']
         instance = environment['PAASTA_INSTANCE']
+        print "# %s.%s" % (service, instance)
+        port_bindings = docker_inspect_data[0]['HostConfig']['PortBindings']
+        marathon_port = int(port_bindings['8888/tcp'][0]['HostPort'])
         assert marathon_port == int(environment['MARATHON_PORT'])
         proxy_port = get_proxy_port(service, instance)
         print "# %s,%s,%s,%s,%s" % (container_id, service, instance, proxy_port, marathon_port)
-        print "sudo iptables -I INPUT 1 -j REJECT -p tcp --syn --destination-port %s" % marathon_port
-        print "sudo iptables -I FORWARD 1 -j REJECT -p tcp --syn --destination-port %s" % marathon_port
+        print "sudo hadown -P %s -e $((`date +'%%s'`+%s)) %s.%s" % (
+            marathon_port, hadown_expire_in_seconds, service, instance
+        )
         print "sleep %s" % smartstack_grace_sleep
         t += smartstack_grace_sleep
         print "sudo docker kill %s" % container_id
+        print "sudo haup -P %s %s.%s" % (marathon_port, service, instance)
         last_killed_t = get_last_killed(drained_apps, service, instance)
         drained_apps.append((t, service, instance))
-        print "sudo iptables -D INPUT -j REJECT -p tcp --syn --destination-port %s" % marathon_port
-        print "sudo iptables -D FORWARD -j REJECT -p tcp --syn --destination-port %s" % marathon_port
         # print "t:%s last_killed_t:%s" % (t, last_killed_t)
         sleep_amount = between_containers_grace_sleep
         if (t - last_killed_t) < min_kill_interval:
