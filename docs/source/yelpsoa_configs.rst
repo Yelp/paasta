@@ -332,6 +332,10 @@ Each job configuration MAY specify the following options:
   * ``retries``: Number of retries to attempt if a command returns a
     non-zero exit status. Defaults to 2.
 
+  * ``net``: Specify which kind of
+    `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
+    instances of this service should be launched using. Defaults to ``'bridge'``.
+
   * ``disabled``: If set to ``True``, this job will not be run. Defaults to ``False``
 
   * ``cpus``: See the `marathon-[clustername].yaml`_ section for details
