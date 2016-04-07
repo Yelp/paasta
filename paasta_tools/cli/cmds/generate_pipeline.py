@@ -96,7 +96,7 @@ def print_warning():
 def generate_pipeline(service):
     email_address = get_team_email_address(service=service)
     repo = get_git_repo_for_fab_repo(service)
-    if email_address is None:
+    if not email_address:
         owner = get_team(overrides={}, service=service)
     else:
         # fab_repo tacks on the domain, so we only want the first
