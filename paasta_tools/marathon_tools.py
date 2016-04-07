@@ -372,13 +372,6 @@ class MarathonServiceConfig(InstanceConfig):
                 'docker': {
                     'image': docker_url,
                     'network': net,
-                    'portMappings': [
-                        {
-                            'containerPort': CONTAINER_PORT,
-                            'hostPort': 0,
-                            'protocol': 'tcp',
-                        },
-                    ],
                 },
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
@@ -396,6 +389,15 @@ class MarathonServiceConfig(InstanceConfig):
             'cmd': self.get_cmd(),
             'args': self.get_args(),
         }
+
+        if net == 'BRIDGE':
+            complete_config['container']['docker']['portMappings'] = [
+                {
+                    'containerPort': CONTAINER_PORT,
+                    'hostPort': 0,
+                    'protocol': 'tcp',
+                },
+            ]
 
         accepted_resource_roles = self.get_accepted_resource_roles()
         if accepted_resource_roles is not None:

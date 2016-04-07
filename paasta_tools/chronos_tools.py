@@ -379,12 +379,6 @@ class ChronosJobConfig(InstanceConfig):
             raise InvalidChronosConfigError("\n".join(error_msgs))
 
         net = get_mesos_network_for_net(self.get_net())
-        docker_chronos_net_mapping = {
-            'none': 'NONE',
-            'bridge': 'BRIDGE',
-            'host': 'HOST',
-        }
-        net = docker_chronos_net_mapping.get(net, net)
 
         complete_config = {
             'name': self.get_job_name().encode('utf_8'),
