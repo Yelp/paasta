@@ -44,6 +44,8 @@ from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
@@ -589,21 +591,38 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         ))
         system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
 
+    soa_dir = args.yelpsoa_config_root
+
     volumes = list()
-    instance_config = get_instance_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        load_deployments=pull_image,
-        soa_dir=args.yelpsoa_config_root,
-    )
+
+    try:
+        instance_config = get_instance_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            load_deployments=pull_image,
+            soa_dir=soa_dir,
+        )
+    except NoDeploymentsAvailable:
+        sys.stderr.write(PaastaColors.red(
+            "Error: No deployments.json found in %(soa_dir)s/%(service)s.\n"
+            "You can generate this by running:\n"
+            "generate_deployments_for_service -d %(soa_dir)s -s %(service)s\n" % {
+                'soa_dir': soa_dir, 'service': service}))
+        return
 
     if pull_image:
-        docker_url = get_docker_url(
-            system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
-        docker_pull_image(docker_url)
-
+        try:
+            docker_url = get_docker_url(
+                system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
+        except NoDockerImageError:
+            sys.stderr.write(PaastaColors.red(
+                "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                "Please ensure this service has either run through a jenkins pipeline "
+                "or paasta mark-for-deployment has been run for %s" % (instance_config.get_deploy_group(), service)))
+            return
         docker_hash = docker_url
+        docker_pull_image(docker_url)
 
     # if only one volume specified, extra_volumes should be converted to a list
     extra_volumes = instance_config.get_extra_volumes()

@@ -245,14 +245,7 @@ def get_deploy_group_mappings_from_deployments_dict(deployments_dict):
         return deploy_group_mappings
 
 
-def main():
-    args = parse_args()
-    soa_dir = os.path.abspath(args.soa_dir)
-    service = args.service
-    if args.verbose:
-        log.setLevel(logging.DEBUG)
-    else:
-        log.setLevel(logging.WARNING)
+def generate_deployments_for_service(service, soa_dir):
     try:
         with open(os.path.join(soa_dir, service, TARGET_FILE), 'r') as f:
             old_deployments_dict = json.load(f)
@@ -269,6 +262,18 @@ def main():
 
     with atomic_file_write(os.path.join(soa_dir, service, TARGET_FILE)) as f:
         json.dump(deployments_dict, f)
+
+
+def main():
+    args = parse_args()
+    soa_dir = os.path.abspath(args.soa_dir)
+    service = args.service
+    if args.verbose:
+        log.setLevel(logging.DEBUG)
+    else:
+        log.setLevel(logging.WARNING)
+
+    generate_deployments_for_service(service=service, soa_dir=soa_dir)
 
 
 if __name__ == "__main__":
