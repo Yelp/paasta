@@ -159,15 +159,6 @@ def pid_decision_policy(marathon_service_config, error, **kwargs):
     return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
 
 
-@register_autoscaling_component('bespoke', DECISION_POLICY_KEY)
-def bespoke_decision_policy(*args, **kwargs):
-    """
-    Autoscaling method for service authors that have written their own autoscaling method.
-    Allows Marathon to read instance counts from Zookeeper but doesn't attempt to scale the service automatically.
-    """
-    return 0
-
-
 @register_autoscaling_component('http', METRICS_PROVIDER_KEY)
 def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, endpoint='status', *args, **kwargs):
     """
@@ -322,17 +313,18 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                 all_mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
                 with ZookeeperPool():
                     for config in configs:
-                        try:
-                            job_id = format_job_id(config.service, config.instance)
-                            marathon_tasks = {task.id: task for task in all_marathon_tasks
-                                              if job_id == get_short_job_id(task.id) and task.health_check_results}
-                            if not marathon_tasks:
-                                raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
-                            mesos_tasks = [task for task in all_mesos_tasks if task['id'] in marathon_tasks]
-                            autoscale_marathon_instance(config, list(marathon_tasks.values()), mesos_tasks)
-                        except Exception as e:
-                            raise e
-                            write_to_log(config=config, line='Caught Exception %s' % e)
+                        if config.get_autoscaling_params()['decision_policy'] != 'bespoke':
+                            try:
+                                job_id = format_job_id(config.service, config.instance)
+                                marathon_tasks = {task.id: task for task in all_marathon_tasks
+                                                  if job_id == get_short_job_id(task.id) and task.health_check_results}
+                                if not marathon_tasks:
+                                    raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
+                                mesos_tasks = [task for task in all_mesos_tasks if task['id'] in marathon_tasks]
+                                autoscale_marathon_instance(config, list(marathon_tasks.values()), mesos_tasks)
+                            except Exception as e:
+                                raise e
+                                write_to_log(config=config, line='Caught Exception %s' % e)
     except LockHeldException:
         pass
 
