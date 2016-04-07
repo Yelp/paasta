@@ -77,6 +77,14 @@ def test_format_log_line():
         assert actual == expected
 
 
+def test_deploy_whitelist_to_constraints():
+    fake_whitelist = ['fake_location_type', ['fake_location', 'anotherfake_location']]
+    expected_constraints = [['fake_location_type', 'LIKE', 'fake_location|anotherfake_location']]
+
+    constraints = utils.deploy_whitelist_to_constraints(fake_whitelist)
+    assert constraints == expected_constraints
+
+
 def test_format_log_line_with_timestamp():
     input_line = 'foo'
     fake_cluster = 'fake_cluster'

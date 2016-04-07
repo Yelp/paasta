@@ -192,6 +192,12 @@ class InstanceConfig(dict):
         which locations the service should not be deployed"""
         return self.config_dict.get('deploy_blacklist', [])
 
+    def get_deploy_whitelist(self):
+        """The deploy whitelist is a list of lists, where the lists indicate
+        which locations are explicitly allowed.  The blacklist will supersede
+        this if a host matches both the white and blacklists."""
+        return self.config_dict.get('deploy_whitelist', [])
+
     def get_monitoring_blacklist(self):
         """The monitoring_blacklist is a list of tuples, where the tuples indicate
         which locations the user doesn't care to be monitored"""
@@ -1310,6 +1316,21 @@ def deploy_blacklist_to_constraints(deploy_blacklist):
         constraints.append([blacklisted_location[0], "UNLIKE", blacklisted_location[1]])
 
     return constraints
+
+
+def deploy_whitelist_to_constraints(deploy_whitelist):
+    """Converts a whitelist of locations into marathon appropriate constraints
+    https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
+
+    :param deploy_whitelist: List of lists of locations to whitelist
+    :returns: List of lists of constraints
+    """
+    if len(deploy_whitelist) > 0:
+        (region_type, regions) = deploy_whitelist
+        regionstr = '|'.join(regions)
+
+        return [[region_type, 'LIKE', regionstr]]
+    return []
 
 
 def terminal_len(text):

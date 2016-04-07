@@ -36,6 +36,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import deploy_blacklist_to_constraints
+from paasta_tools.utils import deploy_whitelist_to_constraints
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
@@ -310,13 +311,15 @@ class MarathonServiceConfig(InstanceConfig):
     def get_routing_constraints(self, service_namespace_config):
         discover_level = service_namespace_config.get_discover()
         locations = get_mesos_slaves_grouped_by_attribute(
-            attribute=discover_level, blacklist=self.get_deploy_blacklist())
+            attribute=discover_level, blacklist=self.get_deploy_blacklist(),
+            whitelist=self.get_deploy_whitelist())
 
         routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
         return routing_constraints
 
     def get_deploy_constraints(self):
-        return deploy_blacklist_to_constraints(self.get_deploy_blacklist())
+        return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
+                deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
 
     def get_pool_constraints(self):
         pool = self.get_pool()
