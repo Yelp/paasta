@@ -304,7 +304,9 @@ class ChronosJobConfig(InstanceConfig):
                 return False, 'The specified schedule "%s" is invalid' % schedule
 
             # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
-            if not start_time == '':
+            if start_time == '':
+                msgs.append('The specified schedule "%s" does not contain a start time' % schedule)
+            else:
                 # Check if start time contains time zone information
                 try:
                     dt = isodate.parse_datetime(start_time)
