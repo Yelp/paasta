@@ -1560,3 +1560,19 @@ class TestChronosTools:
         assert chronos_tools.determine_disabled_state('stop', False) is True
         assert chronos_tools.determine_disabled_state('start', True) is True
         assert chronos_tools.determine_disabled_state('stop', True) is True
+
+    def test_filter_non_temporary_jobs(self):
+        fake_jobs = [
+            {
+                'name': 'tmp-2016-04-09T064121354622 example_service mesosstage_robjreruntest'
+            },
+            {
+                'name': 'example_service mesosstage_robjreruntest'
+            }
+        ]
+        expected = [
+            {
+                'name': 'example_service mesosstage_robjreruntest'
+            }
+        ]
+        assert chronos_tools.filter_non_temporary_chronos_jobs(fake_jobs) == expected
