@@ -1560,3 +1560,13 @@ class TestChronosTools:
         assert chronos_tools.determine_disabled_state('stop', False) is True
         assert chronos_tools.determine_disabled_state('start', True) is True
         assert chronos_tools.determine_disabled_state('stop', True) is True
+
+    def test_uses_time_variables_false(self):
+        fake_chronos_job_config = copy.deepcopy(self.fake_chronos_job_config)
+        fake_chronos_job_config.config_dict['cmd'] = '/usr/bin/printf hello'
+        assert not chronos_tools.uses_time_variables(fake_chronos_job_config)
+
+    def test_uses_time_variables_true(self):
+        fake_chronos_job_config = copy.deepcopy(self.fake_chronos_job_config)
+        fake_chronos_job_config.config_dict['cmd'] = '/usr/bin/printf %(shortdate)s'
+        assert chronos_tools.uses_time_variables(fake_chronos_job_config)

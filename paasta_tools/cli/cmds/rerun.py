@@ -12,9 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import argparse
 import datetime
 
+from paasta_tools import chronos_tools
 from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.cli.cmds.status import get_planned_deployments
 from paasta_tools.cli.cmds.status import list_deployed_clusters
@@ -28,15 +28,8 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SPACER
 
 
-EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
-
-
-def type_execution_date(value):
-    try:
-        parsed = datetime.datetime.strptime(value, EXECUTION_DATE_FORMAT)
-    except ValueError:
-        raise argparse.ArgumentTypeError('must be in the format "%s"' % EXECUTION_DATE_FORMAT)
-    return parsed
+def _get_default_execution_date():
+    return datetime.datetime.utcnow()
 
 
 def add_subparser(subparsers):
@@ -62,7 +55,6 @@ def add_subparser(subparsers):
     rerun_parser.add_argument(
         '-s', '--service',
         help='The name of the service you wish to operate on.',
-        required=True,
     ).completer = lazy_choices_completer(list_services)
     rerun_parser.add_argument(
         '-i', '--instance',
@@ -77,8 +69,7 @@ def add_subparser(subparsers):
     rerun_parser.add_argument(
         '-d', '--execution_date',
         help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .",
-        required=True,
-        type=type_execution_date
+        type=chronos_tools.parse_execution_date
     )
     rerun_parser.set_defaults(command=paasta_rerun)
 
@@ -99,7 +90,10 @@ def paasta_rerun(args):
     """Reruns a Chronos job.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     service = figure_out_service_name(args)  # exit with an error if the service doesn't exist
-    execution_date = args.execution_date.strftime(EXECUTION_DATE_FORMAT)
+    if args.execution_date:
+        execution_date = args.execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT)
+    else:
+        execution_date = None
 
     all_clusters = list_clusters()
     actual_deployments = get_actual_deployments(service)  # cluster.instance: sha
@@ -117,15 +111,28 @@ def paasta_rerun(args):
         print "cluster: %s" % cluster
 
         if cluster not in all_clusters:
-            print "  Warning: \"%s\" does not look like a valid cluster..." % cluster
+            print "  Warning: \"%s\" does not look like a valid cluster." % cluster
             continue
         if cluster not in deployed_clusters:
-            print "  Warning: service \"%s\" has not been deployed to \"%s\" yet..." % (service, cluster)
+            print "  Warning: service \"%s\" has not been deployed to \"%s\" yet." % (service, cluster)
             continue
         if not deployed_cluster_instance[cluster].get(args.instance, False):
             print ("  Warning: instance \"%s\" is either invalid "
-                   "or has not been deployed to \"%s\" yet..." % (args.instance, cluster))
+                   "or has not been deployed to \"%s\" yet." % (args.instance, cluster))
             continue
+
+        try:
+            chronos_job_config = chronos_tools.load_chronos_job_config(
+                service, args.instance, cluster, load_deployments=False)
+            if chronos_tools.uses_time_variables(chronos_job_config) and execution_date is None:
+                print ("  Warning: \"%s\" uses time variables interpolation, "
+                       "please supply a `--execution_date` argument." % args.instance)
+                continue
+        except chronos_tools.UnknownChronosJobError as e:
+            print "  Warning: %s" % e.message
+            continue
+        if execution_date is None:
+            execution_date = _get_default_execution_date()
 
         rc, output = execute_chronos_rerun_on_remote_master(service,
                                                             args.instance,
@@ -133,7 +140,7 @@ def paasta_rerun(args):
                                                             verbose=args.verbose,
                                                             execution_date=execution_date)
         if rc == 0:
-            print PaastaColors.green('  success')
+            print PaastaColors.green('  successfully created job')
         else:
             print PaastaColors.red('  error')
             print output

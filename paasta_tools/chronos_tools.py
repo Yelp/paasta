@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import datetime
 import json
 import logging
@@ -60,6 +61,7 @@ TMP_JOB_IDENTIFIER = "tmp"
 VALID_BOUNCE_METHODS = ['graceful']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 log = logging.getLogger('__main__')
 
 
@@ -696,6 +698,20 @@ def wait_for_job(client, job_name):
             sleep(0.5)
 
 
+def parse_execution_date(execution_date_string):
+    """Parses execution_date_string into a datetime object.
+    Can be used as an ArgumentParser `type=` hint.
+    :param execution_date_string: string
+    :return: a datetime.datetime instance
+    :raise: ArgumentTypeError
+    """
+    try:
+        parsed = datetime.datetime.strptime(execution_date_string, EXECUTION_DATE_FORMAT)
+    except ValueError:
+        raise argparse.ArgumentTypeError('must be in the format "%s"' % EXECUTION_DATE_FORMAT)
+    return parsed
+
+
 def parse_time_variables(input_string, parse_time=None):
     """Parses an input string and uses the Tron-style dateparsing
     to replace time variables. Currently supports only the date/time
@@ -716,6 +732,15 @@ def parse_time_variables(input_string, parse_time=None):
     job_context.job_run.run_time = parse_time
     # The job_context object works like a normal dictionary for string replacement
     return input_string % job_context
+
+
+def uses_time_variables(chronos_job):
+    """
+    Given a chronos job config, returns True the if the command uses time variables
+    """
+    current_command = chronos_job.get_cmd()
+    interpolated_command = parse_time_variables(current_command, datetime.datetime.utcnow())
+    return not current_command == interpolated_command
 
 
 def check_parent_format(parent):
