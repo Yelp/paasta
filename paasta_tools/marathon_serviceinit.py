@@ -138,7 +138,7 @@ def get_verbose_status_of_marathon_app(app):
     output.append("    App created: %s (%s)" % (str(create_datetime), humanize.naturaltime(create_datetime)))
     output.append("    Tasks:")
 
-    rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health checks")]
+    rows = [("Mesos Task ID", "Host deployed to", "Deployed at what localtime", "Health")]
     for task in app.tasks:
         local_deployed_datetime = datetime_from_utc_to_local(task.staged_at)
         if task.host is not None:
@@ -148,11 +148,11 @@ def get_verbose_status_of_marathon_app(app):
         health_check_results = [health_check.alive for health_check in task.health_check_results
                                 if health_check.alive is not None]
         if not health_check_results:
-            health_check_status = PaastaColors.grey("UNKNOWN")
+            health_check_status = PaastaColors.grey("N/A")
         elif all(health_check_results):
-            health_check_status = PaastaColors.green("PASSING")
+            health_check_status = PaastaColors.green("Healthy")
         else:
-            health_check_status = PaastaColors.red("FAILING")
+            health_check_status = PaastaColors.red("Unhealthy")
 
         rows.append((
             get_short_task_id(task.id),
