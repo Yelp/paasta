@@ -148,11 +148,11 @@ def get_verbose_status_of_marathon_app(app):
         health_check_results = [health_check.alive for health_check in task.health_check_results
                                 if health_check.alive is not None]
         if not health_check_results:
-            health = PaastaColors.grey("UNKNOWN")
+            health_check_status = PaastaColors.grey("UNKNOWN")
         elif all(health_check_results):
-            health = PaastaColors.green("PASSING")
+            health_check_status = PaastaColors.green("PASSING")
         else:
-            health = PaastaColors.red("FAILING")
+            health_check_status = PaastaColors.red("FAILING")
 
         rows.append((
             get_short_task_id(task.id),
@@ -161,7 +161,7 @@ def get_verbose_status_of_marathon_app(app):
                 local_deployed_datetime.strftime("%Y-%m-%dT%H:%M"),
                 humanize.naturaltime(local_deployed_datetime),
             ),
-            health,
+            health_check_status,
         ))
     output.append('\n'.join(["      %s" % line for line in format_table(rows)]))
     if len(app.tasks) == 0:
