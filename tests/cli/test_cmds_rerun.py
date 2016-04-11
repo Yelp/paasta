@@ -119,7 +119,8 @@ def test_rerun_validations(test_case):
          expected_output) = test_case
 
         mock_load_chronos_job_config.return_value = {}
-        mock_get_default_execution_date.return_value = 'default_date'
+        default_date = datetime.datetime(2002, 2, 2, 2, 2, 2, 2)
+        mock_get_default_execution_date.return_value = default_date
         mock_execute_rerun_remote.return_value = (0, '')
 
         args = MagicMock()
@@ -137,7 +138,8 @@ def test_rerun_validations(test_case):
         # No --execution_date argument, but that's ok: the job doesn't use time vars interpolation.
         # Check if the backend rerun command was called with the default date.
         if args.execution_date is None and not mock_uses_time_variables.return_value:
-            assert mock_execute_rerun_remote.call_args[1]['execution_date'] == 'default_date'
+            assert mock_execute_rerun_remote.call_args[1]['execution_date'] \
+                == default_date.strftime(EXECUTION_DATE_FORMAT)
 
         # The job does use time vars interpolation. Make sure the User supplied date was used.
         if args.execution_date is not None and mock_uses_time_variables.return_value:

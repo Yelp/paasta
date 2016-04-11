@@ -91,7 +91,7 @@ def paasta_rerun(args):
     :param args: argparse.Namespace obj created from sys.args by cli"""
     service = figure_out_service_name(args)  # exit with an error if the service doesn't exist
     if args.execution_date:
-        execution_date = args.execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT)
+        execution_date = args.execution_date
     else:
         execution_date = None
 
@@ -134,11 +134,13 @@ def paasta_rerun(args):
         if execution_date is None:
             execution_date = _get_default_execution_date()
 
-        rc, output = execute_chronos_rerun_on_remote_master(service,
-                                                            args.instance,
-                                                            cluster,
-                                                            verbose=args.verbose,
-                                                            execution_date=execution_date)
+        rc, output = execute_chronos_rerun_on_remote_master(
+            service=service,
+            instancename=args.instance,
+            cluster=cluster,
+            verbose=args.verbose,
+            execution_date=execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT)
+        )
         if rc == 0:
             print PaastaColors.green('  successfully created job')
         else:
