@@ -380,7 +380,7 @@ class MarathonServiceConfig(InstanceConfig):
                         },
                     ],
                     "parameters": [
-                        {"key": "memory-swap", "value": "%sm" % str(float(self.get_mem()))},
+                        {"key": "memory-swap", "value": "%sm" % str(self.get_mem())},
                     ]
                 },
                 'type': 'DOCKER',
