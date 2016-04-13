@@ -740,7 +740,7 @@ def uses_time_variables(chronos_job):
     """
     current_command = chronos_job.get_cmd()
     interpolated_command = parse_time_variables(current_command, datetime.datetime.utcnow())
-    return not current_command == interpolated_command
+    return current_command != interpolated_command
 
 
 def check_parent_format(parent):

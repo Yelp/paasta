@@ -647,7 +647,7 @@ class TestChronosTools:
         assert okay is True
         assert msg == ''
 
-    def test_check_schedule_valid_empty_start_time(self):
+    def test_check_schedule_invalid_empty_start_time(self):
         fake_schedule = 'R10//PT70S'
         chronos_config = chronos_tools.ChronosJobConfig(
             service='',
@@ -657,8 +657,8 @@ class TestChronosTools:
             branch_dict={},
         )
         okay, msg = chronos_config.check_schedule()
-        assert okay is True
-        assert msg == ''
+        assert okay is False
+        assert msg == 'The specified schedule "%s" does not contain a start time' % fake_schedule
 
     def test_check_schedule_invalid_start_time_no_t_designator(self):
         fake_start_time = 'now'
@@ -889,6 +889,7 @@ class TestChronosTools:
                 'volumes': fake_docker_volumes,
                 'image': fake_docker_url,
                 'type': 'DOCKER',
+                'parameters': {'memory-swap': '1024m'}
             },
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
@@ -1140,7 +1141,8 @@ class TestChronosTools:
                     'network': 'BRIDGE',
                     'volumes': [],
                     'image': "fake_registry/paasta-test-service-penguin",
-                    'type': 'DOCKER'
+                    'type': 'DOCKER',
+                    'parameters': {'memory-swap': '1024.4m'}
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1231,7 +1233,8 @@ class TestChronosTools:
                     'network': 'BRIDGE',
                     'volumes': [],
                     'image': "fake_registry/fake_image",
-                    'type': 'DOCKER'
+                    'type': 'DOCKER',
+                    'parameters': {'memory-swap': '1024.4m'}
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1289,7 +1292,8 @@ class TestChronosTools:
                     'network': 'BRIDGE',
                     'volumes': [],
                     'image': "fake_registry/fake_image",
-                    'type': 'DOCKER'
+                    'type': 'DOCKER',
+                    'parameters': {'memory-swap': '1024.4m'}
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1363,7 +1367,8 @@ class TestChronosTools:
                     'network': 'BRIDGE',
                     'volumes': fake_system_volumes + fake_extra_volumes,
                     'image': "fake_registry/fake_image",
-                    'type': 'DOCKER'
+                    'type': 'DOCKER',
+                    'parameters': {'memory-swap': '1024.4m'}
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1560,6 +1565,22 @@ class TestChronosTools:
         assert chronos_tools.determine_disabled_state('stop', False) is True
         assert chronos_tools.determine_disabled_state('start', True) is True
         assert chronos_tools.determine_disabled_state('stop', True) is True
+
+    def test_filter_non_temporary_jobs(self):
+        fake_jobs = [
+            {
+                'name': 'tmp-2016-04-09T064121354622 example_service mesosstage_robjreruntest'
+            },
+            {
+                'name': 'example_service mesosstage_robjreruntest'
+            }
+        ]
+        expected = [
+            {
+                'name': 'example_service mesosstage_robjreruntest'
+            }
+        ]
+        assert chronos_tools.filter_non_temporary_chronos_jobs(fake_jobs) == expected
 
     def test_uses_time_variables_false(self):
         fake_chronos_job_config = copy.deepcopy(self.fake_chronos_job_config)
