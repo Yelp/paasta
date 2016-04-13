@@ -819,6 +819,11 @@ class TestMarathonTools:
                             'protocol': 'tcp',
                         },
                     ],
+                    'parameters': [
+                        {
+                            'key': 'memory-swap', 'value': "%sm" % int(fake_mem)
+                        }
+                    ]
                 },
                 'type': 'DOCKER',
                 'volumes': fake_volumes,
@@ -1996,7 +2001,8 @@ def test_format_marathon_app_dict_no_smartstack():
                 'docker': {
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
                     'image': 'fake_docker_registry:443/abcdef',
-                    'network': 'BRIDGE'
+                    'network': 'BRIDGE',
+                    'parameters': [{'key': 'memory-swap', 'value': '1024m'}]
                 },
                 'type': 'DOCKER',
                 'volumes': [],
@@ -2059,7 +2065,8 @@ def test_format_marathon_app_dict_with_smartstack():
                 'docker': {
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
                     'image': 'fake_docker_registry:443/abcdef',
-                    'network': 'BRIDGE'
+                    'network': 'BRIDGE',
+                    'parameters': [{'key': 'memory-swap', 'value': '1024m'}]
                 },
                 'type': 'DOCKER',
                 'volumes': [],
@@ -2188,7 +2195,8 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                 'docker': {
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
                     'image': 'fake_docker_registry:443/abcdef',
-                    'network': 'BRIDGE'
+                    'network': 'BRIDGE',
+                    'parameters': [{'key': 'memory-swap', 'value': '1024m'}]
                 },
                 'type': 'DOCKER',
                 'volumes': fake_system_volumes + fake_extra_volumes,

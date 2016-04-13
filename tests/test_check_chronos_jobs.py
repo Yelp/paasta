@@ -107,7 +107,18 @@ def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs
     # iter() is a workaround
     # (http://lists.idyll.org/pipermail/testing-in-python/2013-April/005527.html)
     # for a bug in mock (http://bugs.python.org/issue17826)
-    mock_lookup_chronos_jobs.side_effect = iter([[{}, {}, {}] for x in range(0, 3)])
+    fake_jobs = [[
+        {
+            'name': 'foo'
+        },
+        {
+            'name': 'foo'
+        },
+        {
+            'name': 'foo'
+        }
+    ] for x in range(0, 3)]
+    mock_lookup_chronos_jobs.side_effect = iter(fake_jobs)
     mock_filter_enabled_jobs.side_effect = iter([[{}, {}, {}] for x in range(0, 3)])
     mock_last_run_state.side_effect = iter([
         ('faketimestamp', chronos_tools.LastRunState.Success),
@@ -119,9 +130,9 @@ def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs
     fake_client = Mock(list=Mock(return_value=[('service1', 'main'), ('service2', 'main'), ('service3', 'main')]))
 
     expected_job_states = [
-        ({}, chronos_tools.LastRunState.Success),
-        ({}, chronos_tools.LastRunState.Fail),
-        ({}, chronos_tools.LastRunState.NotRun),
+        ({'name': 'foo'}, chronos_tools.LastRunState.Success),
+        ({'name': 'foo'}, chronos_tools.LastRunState.Fail),
+        ({'name': 'foo'}, chronos_tools.LastRunState.NotRun),
     ]
 
     expected = {

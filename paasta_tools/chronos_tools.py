@@ -306,7 +306,9 @@ class ChronosJobConfig(InstanceConfig):
                 return False, 'The specified schedule "%s" is invalid' % schedule
 
             # an empty start time is not valid ISO8601 but Chronos accepts it: '' == current time
-            if not start_time == '':
+            if start_time == '':
+                msgs.append('The specified schedule "%s" does not contain a start time' % schedule)
+            else:
                 # Check if start time contains time zone information
                 try:
                     dt = isodate.parse_datetime(start_time)
@@ -388,7 +390,10 @@ class ChronosJobConfig(InstanceConfig):
                 'image': docker_url,
                 'network': net,
                 'type': 'DOCKER',
-                'volumes': docker_volumes
+                'volumes': docker_volumes,
+                'parameters': {
+                    'memory-swap': "%sm" % self.get_mem(),
+                }
             },
             'uris': [dockerfile_location, ],
             'environmentVariables': self.get_env(),
@@ -651,6 +656,18 @@ def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=Fa
         instance=instance,
         include_disabled=include_disabled,
     )
+
+
+def filter_non_temporary_chronos_jobs(jobs):
+    """
+    Given a list of Chronos jobs, as pulled from the API, remove those
+    which are defined as 'temporary' jobs.
+
+    :param jobs: a list of chronos jobs
+    :returns: a list of chronos jobs containing the same jobs as those provided
+    by the ``jobs`` parameter, but with temporary jobs removed.
+    """
+    return [job for job in jobs if not job['name'].startswith(TMP_JOB_IDENTIFIER)]
 
 
 def filter_chronos_jobs(jobs, service, instance, include_disabled):

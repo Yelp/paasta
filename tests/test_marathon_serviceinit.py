@@ -177,6 +177,7 @@ def test_get_verbose_status_of_marathon_app():
     fake_task.host = 'fake_deployed_host'
     fake_task.ports = [6666]
     fake_task.staged_at = datetime.datetime.fromtimestamp(0)
+    fake_task.health_check_results = []
     fake_app.tasks = [fake_task]
     tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app)
     assert 'fake_task_id' in out
@@ -196,12 +197,14 @@ def test_get_verbose_status_of_marathon_app_column_alignment():
     fake_task1.host = 'fake_deployed_host'
     fake_task1.ports = [6666]
     fake_task1.staged_at = datetime.datetime.fromtimestamp(0)
+    fake_task1.health_check_results = []
 
     fake_task2 = mock.create_autospec(marathon.models.app.MarathonTask)
     fake_task2.id = 'fake_task2_id'
     fake_task2.host = 'fake_deployed_host_with_a_really_long_name'
     fake_task2.ports = [6666]
     fake_task2.staged_at = datetime.datetime.fromtimestamp(0)
+    fake_task2.health_check_results = []
 
     fake_app.tasks = [fake_task1, fake_task2]
     tasks, out = marathon_serviceinit.get_verbose_status_of_marathon_app(fake_app)
