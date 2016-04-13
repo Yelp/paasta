@@ -889,6 +889,7 @@ class TestChronosTools:
                 'volumes': fake_docker_volumes,
                 'image': fake_docker_url,
                 'type': 'DOCKER',
+                'parameters': {'memory-swap': '1024m'}
             },
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
@@ -1140,7 +1141,8 @@ class TestChronosTools:
                     'network': 'BRIDGE',
                     'volumes': [],
                     'image': "fake_registry/paasta-test-service-penguin",
-                    'type': 'DOCKER'
+                    'type': 'DOCKER',
+                    'parameters': {'memory-swap': '1024.4m'}
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1231,7 +1233,8 @@ class TestChronosTools:
                     'network': 'BRIDGE',
                     'volumes': [],
                     'image': "fake_registry/fake_image",
-                    'type': 'DOCKER'
+                    'type': 'DOCKER',
+                    'parameters': {'memory-swap': '1024.4m'}
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1289,7 +1292,8 @@ class TestChronosTools:
                     'network': 'BRIDGE',
                     'volumes': [],
                     'image': "fake_registry/fake_image",
-                    'type': 'DOCKER'
+                    'type': 'DOCKER',
+                    'parameters': {'memory-swap': '1024.4m'}
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1363,7 +1367,8 @@ class TestChronosTools:
                     'network': 'BRIDGE',
                     'volumes': fake_system_volumes + fake_extra_volumes,
                     'image': "fake_registry/fake_image",
-                    'type': 'DOCKER'
+                    'type': 'DOCKER',
+                    'parameters': {'memory-swap': '1024.4m'}
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
