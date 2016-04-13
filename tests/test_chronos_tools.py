@@ -1581,3 +1581,13 @@ class TestChronosTools:
             }
         ]
         assert chronos_tools.filter_non_temporary_chronos_jobs(fake_jobs) == expected
+
+    def test_uses_time_variables_false(self):
+        fake_chronos_job_config = copy.deepcopy(self.fake_chronos_job_config)
+        fake_chronos_job_config.config_dict['cmd'] = '/usr/bin/printf hello'
+        assert not chronos_tools.uses_time_variables(fake_chronos_job_config)
+
+    def test_uses_time_variables_true(self):
+        fake_chronos_job_config = copy.deepcopy(self.fake_chronos_job_config)
+        fake_chronos_job_config.config_dict['cmd'] = '/usr/bin/printf %(shortdate)s'
+        assert chronos_tools.uses_time_variables(fake_chronos_job_config)
