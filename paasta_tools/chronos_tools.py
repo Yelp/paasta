@@ -653,6 +653,18 @@ def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=Fa
     )
 
 
+def filter_non_temporary_chronos_jobs(jobs):
+    """
+    Given a list of Chronos jobs, as pulled from the API, remove those
+    which are defined as 'temporary' jobs.
+
+    :param jobs: a list of chronos jobs
+    :returns: a list of chronos jobs containing the same jobs as those provided
+    by the ``jobs`` parameter, but with temporary jobs removed.
+    """
+    return [job for job in jobs if not job['name'].startswith(TMP_JOB_IDENTIFIER)]
+
+
 def filter_chronos_jobs(jobs, service, instance, include_disabled):
     """Filters a list of Chronos jobs based on several criteria.
 
