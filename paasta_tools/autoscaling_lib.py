@@ -324,8 +324,8 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                                 mesos_tasks = [task for task in all_mesos_tasks if task['id'] in marathon_tasks]
                                 autoscale_marathon_instance(config, list(marathon_tasks.values()), mesos_tasks)
                             except Exception as e:
-                                raise e
                                 write_to_log(config=config, line='Caught Exception %s' % e)
+                                raise e
     except LockHeldException:
         pass
 
