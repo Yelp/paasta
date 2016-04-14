@@ -456,8 +456,10 @@ def test_autoscale_services_no_data_marathon():
         mock.patch('paasta_tools.autoscaling_lib.load_marathon_config', autospec=True),
         mock.patch('paasta_tools.utils.KazooClient', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.create_autoscaling_lock', autospec=True),
+        mock.patch('paasta_tools.autoscaling_lib._log', autospec=True),
     ) as (
         mock_autoscale_marathon_instance,
+        _,
         _,
         _,
         _,
