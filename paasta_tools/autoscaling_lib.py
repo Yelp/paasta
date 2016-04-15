@@ -268,8 +268,8 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
     autoscaling_metrics_provider = get_autoscaling_metrics_provider(autoscaling_params.pop(METRICS_PROVIDER_KEY))
     autoscaling_decision_policy = get_autoscaling_decision_policy(autoscaling_params.pop(DECISION_POLICY_KEY))
 
-    error = autoscaling_metrics_provider(
-        marathon_tasks, mesos_tasks, **autoscaling_params) - autoscaling_params.pop('setpoint')
+    error = autoscaling_metrics_provider(marathon_service_config, marathon_tasks,
+                                         mesos_tasks, **autoscaling_params) - autoscaling_params.pop('setpoint')
     write_to_log(config=marathon_service_config, line='Recieved error from metrics provider: %f' % error)
     autoscaling_direction = autoscaling_decision_policy(marathon_service_config, error, **autoscaling_params)
     if autoscaling_direction:
