@@ -80,6 +80,10 @@ configuration for the running image:
 
 * ``--memory``: This is the value set in ``marathon.yaml`` as "mem".
 
+* ``--memory-swap``: This value represents the total memory and swap a container
+  is allowed to consume. This is the value set in ``marathon.yaml`` as "mem",
+  meaning that there is *no* swapping allowed in your container.
+
 * ``--net``: PaaSTA uses bridge mode to enable random port allocation.
 
 * ``--env``: Any environment variables specified in the ``env`` section will be here. Additional
