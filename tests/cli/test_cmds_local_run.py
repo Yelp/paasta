@@ -510,6 +510,22 @@ def test_get_docker_run_cmd_interactive_true():
     assert '--tty=true' in actual
 
 
+def test_get_docker_run_cmd_memory_swap():
+    memory = 555
+    random_port = 666
+    container_name = 'Docker' * 6 + 'Doc'
+    volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {}
+    interactive = False
+    docker_hash = '8' * 40
+    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    hostname = 'fake_hostname'
+    net = 'bridge'
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+                                interactive, docker_hash, command, hostname, net)
+    assert '--memory-swap=555m' in actual
+
+
 def test_get_docker_run_cmd_host_networking():
     memory = 555
     random_port = 666
