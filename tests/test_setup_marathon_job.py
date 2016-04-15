@@ -16,7 +16,6 @@ import contextlib
 
 import marathon
 import mock
-from pysensu_yelp import Status
 from pytest import raises
 
 from paasta_tools import bounce_lib
@@ -192,7 +191,7 @@ class TestSetupMarathonJob:
             )
             sys_exit_patch.assert_called_once_with(0)
 
-    def test_main_sends_event_if_no_deployments(self):
+    def test_main_exits_if_no_deployments_yet(self):
         fake_client = mock.MagicMock()
         with contextlib.nested(
             mock.patch(
@@ -221,7 +220,6 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -229,7 +227,6 @@ class TestSetupMarathonJob:
             read_service_conf_patch,
             setup_service_patch,
             load_system_paasta_config_patch,
-            sensu_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             with raises(SystemExit) as exc_info:
@@ -245,15 +242,6 @@ class TestSetupMarathonJob:
                 decompose_job_id(self.fake_args.service_instance)[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
-            expected_string = 'No deployments found for %s in cluster %s' % (
-                self.fake_args.service_instance, self.fake_cluster)
-            sensu_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
-                self.fake_args.soa_dir,
-                Status.CRITICAL,
-                expected_string
-            )
             assert exc_info.value.code == 0
 
     def test_send_event(self):
