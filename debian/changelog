@@ -1,3 +1,10 @@
+paasta-tools (0.18.20) lucid; urgency=low
+
+  * 0.18.20 tagged with 'make release'
+    Commit:
+
+ -- Matthew Smith <matts@yelp.com>  Fri, 15 Apr 2016 13:40:01 -0700
+
 paasta-tools (0.18.19) lucid; urgency=low
 
   * 0.18.19 tagged with 'make release'
