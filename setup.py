@@ -44,7 +44,7 @@ setup(
         'isodate >= 0.5.0',
         'jsonschema',
         'kazoo >= 2.0.0',
-        'marathon >= 0.7.7',
+        'marathon >= 0.7.8',
         'mesos.cli == 0.1.5',
         'ordereddict >= 1.1',
         'path.py >= 8.1',
