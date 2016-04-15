@@ -137,13 +137,13 @@ def filter_not_running_tasks(tasks):
     return [task for task in tasks if task['state'] != 'TASK_RUNNING']
 
 
-def get_running_tasks_from_active_frameworks(job_id):
+def get_running_tasks_from_active_frameworks(job_id=''):
     active_framework_tasks = get_current_tasks(job_id)
     running_tasks = filter_running_tasks(active_framework_tasks)
     return running_tasks
 
 
-def get_non_running_tasks_from_active_frameworks(job_id):
+def get_non_running_tasks_from_active_frameworks(job_id=''):
     active_framework_tasks = get_current_tasks(job_id)
     not_running_tasks = filter_not_running_tasks(active_framework_tasks)
     return not_running_tasks
@@ -459,7 +459,7 @@ def get_number_of_mesos_masters(zk_config):
     return len(result)
 
 
-def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None):
+def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None, whitelist=None):
     """Returns a dictionary of unique values and the corresponding hosts for a given Mesos attribute
 
     :param attribute: an attribute to filter
@@ -469,10 +469,12 @@ def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None):
     """
     if blacklist is None:
         blacklist = []
+    if whitelist is None:
+        whitelist = []
     attr_map = {}
     mesos_state = get_mesos_state_from_leader()
     slaves = mesos_state['slaves']
-    filtered_slaves = filter_mesos_slaves_by_blacklist(slaves=slaves, blacklist=blacklist)
+    filtered_slaves = filter_mesos_slaves_by_blacklist(slaves=slaves, blacklist=blacklist, whitelist=whitelist)
     if filtered_slaves == []:
         raise NoSlavesAvailable("No mesos slaves were available to query. Try again later")
     else:
@@ -483,7 +485,7 @@ def get_mesos_slaves_grouped_by_attribute(attribute, blacklist=None):
         return attr_map
 
 
-def filter_mesos_slaves_by_blacklist(slaves, blacklist):
+def filter_mesos_slaves_by_blacklist(slaves, blacklist, whitelist):
     """Takes an input list of slaves and filters them based on the given blacklist.
     The blacklist is in the form of:
 
@@ -495,7 +497,7 @@ def filter_mesos_slaves_by_blacklist(slaves, blacklist):
     """
     filtered_slaves = []
     for slave in slaves:
-        if slave_passes_blacklist(slave, blacklist):
+        if slave_passes_blacklist(slave, blacklist) and slave_passes_whitelist(slave, whitelist):
             filtered_slaves.append(slave)
     return filtered_slaves
 
@@ -511,6 +513,22 @@ def slave_passes_blacklist(slave, blacklist):
         if attributes.get(location_type) == location:
             return False
     return True
+
+
+def slave_passes_whitelist(slave, whitelist):
+    """
+    :param slave: A single mesos slave with attributes.
+    :param whitelist: A list of lists like ["location_type", ["location1", 'location2']]
+    :returns: boolean, True if the slave gets past the whitelist
+    """
+    # No whitelist, so disable whitelisting behaviour.
+    if len(whitelist) == 0:
+        return True
+    attributes = slave["attributes"]
+    (location_type, locations) = whitelist
+    if attributes.get(location_type) in locations:
+        return True
+    return False
 
 
 def get_container_id_for_mesos_id(client, mesos_task_id):
@@ -542,3 +560,12 @@ def get_mesos_id_from_container(container, client):
                 mesos_id = re.match("mesos_task_id=(.*)", env_var).group(1)
                 break
     return mesos_id
+
+
+def get_mesos_network_for_net(net):
+    docker_mesos_net_mapping = {
+        'none': 'NONE',
+        'bridge': 'BRIDGE',
+        'host': 'HOST',
+    }
+    return docker_mesos_net_mapping.get(net, net)

@@ -77,6 +77,14 @@ def test_format_log_line():
         assert actual == expected
 
 
+def test_deploy_whitelist_to_constraints():
+    fake_whitelist = ['fake_location_type', ['fake_location', 'anotherfake_location']]
+    expected_constraints = [['fake_location_type', 'LIKE', 'fake_location|anotherfake_location']]
+
+    constraints = utils.deploy_whitelist_to_constraints(fake_whitelist)
+    assert constraints == expected_constraints
+
+
 def test_format_log_line_with_timestamp():
     input_line = 'foo'
     fake_cluster = 'fake_cluster'
@@ -737,6 +745,27 @@ def test_get_docker_url_no_error():
 def test_get_docker_url_with_no_docker_image():
     with raises(utils.NoDockerImageError):
         utils.get_docker_url('fake_registry', None)
+
+
+def test_get_running_mesos_docker_containers():
+
+    fake_container_data = [
+        {
+            "Status": "Up 2 hours",
+            "Names": [u'/mesos-legit.e1ad42eb-3ed7-4c9b-8711-aff017ef55a5'],
+            "Id": "05698f4156c4f30c8dcd747f7724b14c9af7771c9a4b96fdd6aa37d6419a12a3"
+        },
+        {
+            "Status": "Up 3 days",
+            "Names": [u'/definitely_not_meeeeesos-.6d2fb3aa-2fef-4f98-8fed-df291481e91f'],
+            "Id": u"ae66e2c3fe3c4b2a7444212592afea5cc6a4d8ca70ee595036b19949e00a257c"
+        }
+    ]
+
+    with mock.patch("paasta_tools.utils.get_docker_client") as mock_docker:
+        docker_client = mock_docker.return_value
+        docker_client.containers.return_value = fake_container_data
+        assert len(utils.get_running_mesos_docker_containers()) == 1
 
 
 def test_run_cancels_timer_thread_on_keyboard_interrupt():

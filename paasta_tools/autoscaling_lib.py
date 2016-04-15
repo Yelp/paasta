@@ -44,6 +44,8 @@ _autoscaling_decision_policies = {}
 METRICS_PROVIDER_KEY = 'metrics_provider'
 DECISION_POLICY_KEY = 'decision_policy'
 
+AUTOSCALING_DELAY = 300
+
 
 def register_autoscaling_component(name, method_type):
     if method_type == METRICS_PROVIDER_KEY:
@@ -83,33 +85,11 @@ class MetricsProviderNoDataError(ValueError):
 
 
 @register_autoscaling_component('threshold', DECISION_POLICY_KEY)
-def threshold_decision_policy(marathon_service_config, metrics_provider_method, marathon_tasks, mesos_tasks,
-                              delay=600, setpoint=0.8, threshold=0.1, **kwargs):
+def threshold_decision_policy(marathon_service_config, error, threshold=0.1, **kwargs):
     """
     Decides to autoscale a service up or down if the service utilization exceeds the setpoint
     by a certain threshold.
     """
-    zk_last_time_path = '%s/threshold_last_time' % compose_autoscaling_zookeeper_root(
-        service=marathon_service_config.service,
-        instance=marathon_service_config.instance,
-    )
-    with ZookeeperPool() as zk:
-        try:
-            last_time, _ = zk.get(zk_last_time_path)
-            last_time = float(last_time)
-        except NoNodeError:
-            last_time = 0.0
-
-    current_time = int(datetime.now().strftime('%s'))
-    if current_time - last_time < delay:
-        return 0
-
-    error = metrics_provider_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs) - setpoint
-
-    with ZookeeperPool() as zk:
-        zk.ensure_path(zk_last_time_path)
-        zk.set(zk_last_time_path, str(current_time))
-
     if error > threshold:
         return 1
     elif abs(error) > threshold:
@@ -125,8 +105,7 @@ def clamp_value(number):
 
 
 @register_autoscaling_component('pid', DECISION_POLICY_KEY)
-def pid_decision_policy(marathon_service_config, metrics_provider_method, marathon_tasks, mesos_tasks,
-                        delay=600, setpoint=0.8, **kwargs):
+def pid_decision_policy(marathon_service_config, error, **kwargs):
     """
     Uses a PID to determine when to autoscale a service.
     See https://en.wikipedia.org/wiki/PID_controller for more information on PIDs.
@@ -134,8 +113,8 @@ def pid_decision_policy(marathon_service_config, metrics_provider_method, marath
     Kp * error + Ki * integral(error * dt) + Kd * (d(error) / dt)
     """
     Kp = 0.2
-    Ki = 0.2 / delay
-    Kd = 0.05 * delay
+    Ki = 0.2 / AUTOSCALING_DELAY
+    Kd = 0.05 * AUTOSCALING_DELAY
 
     autoscaling_root = compose_autoscaling_zookeeper_root(
         service=marathon_service_config.service,
@@ -157,12 +136,6 @@ def pid_decision_policy(marathon_service_config, metrics_provider_method, marath
             iterm = 0.0
             last_error = 0.0
             last_time = 0.0
-
-    if int(datetime.now().strftime('%s')) - last_time < delay:
-        return 0
-
-    utilization = metrics_provider_method(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs)
-    error = utilization - setpoint
 
     with ZookeeperPool() as zk:
         zk.ensure_path(zk_iterm_path)
@@ -186,15 +159,6 @@ def pid_decision_policy(marathon_service_config, metrics_provider_method, marath
     return int(round(clamp_value(Kp * error + iterm + Kd * (error - last_error) / time_delta)))
 
 
-@register_autoscaling_component('bespoke', DECISION_POLICY_KEY)
-def bespoke_decision_policy(*args, **kwargs):
-    """
-    Autoscaling method for service authors that have written their own autoscaling method.
-    Allows Marathon to read instance counts from Zookeeper but doesn't attempt to scale the service automatically.
-    """
-    return 0
-
-
 @register_autoscaling_component('http', METRICS_PROVIDER_KEY)
 def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, endpoint='status', *args, **kwargs):
     """
@@ -210,15 +174,9 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, 
     :returns: the service's average utilization, from 0 to 1
     """
 
-    job_id = format_job_id(marathon_service_config.service, marathon_service_config.instance)
     endpoint = endpoint.lstrip('/')
-
-    def get_short_job_id(task_id):
-        return MESOS_TASK_SPACER.join(task_id.split(MESOS_TASK_SPACER, 2)[:2])
-
-    tasks = [task for task in marathon_tasks if job_id == get_short_job_id(task.id) and task.health_check_results]
     utilization = []
-    for task in tasks:
+    for task in marathon_tasks:
         try:
             utilization.append(float(requests.get('http://%s:%s/%s' % (
                 task.host, task.ports[0], endpoint)).json()['utilization']))
@@ -243,11 +201,6 @@ def mesos_cpu_ram_metrics_provider(marathon_service_config, marathon_tasks, meso
     :returns: the service's average utilization, from 0 to 1
     """
 
-    job_id = format_job_id(marathon_service_config.service, marathon_service_config.instance)
-
-    def get_short_job_id(task_id):
-        return MESOS_TASK_SPACER.join(task_id.split(MESOS_TASK_SPACER, 2)[:2])
-
     autoscaling_root = compose_autoscaling_zookeeper_root(
         service=marathon_service_config.service,
         instance=marathon_service_config.instance,
@@ -265,12 +218,7 @@ def mesos_cpu_ram_metrics_provider(marathon_service_config, marathon_tasks, meso
             last_time = 0.0
             last_cpu_data = []
 
-    healthy_ids = {task.id for task in marathon_tasks
-                   if job_id == get_short_job_id(task.id) and task.health_check_results}
-    if not healthy_ids:
-        raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
-
-    mesos_tasks = {task['id']: task.stats for task in mesos_tasks if task['id'] in healthy_ids}
+    mesos_tasks = {task['id']: task.stats for task in mesos_tasks}
     current_time = int(datetime.now().strftime('%s'))
     time_delta = current_time - last_time
 
@@ -312,13 +260,19 @@ def get_new_instance_count(current_instances, autoscaling_direction):
 
 
 def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
+    current_instances = marathon_service_config.get_instances()
+    if len(marathon_tasks) != current_instances:
+        write_to_log(config=marathon_service_config,
+                     line='Delaying scaling as marathon is either waiting for resources or is delayed')
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     autoscaling_metrics_provider = get_autoscaling_metrics_provider(autoscaling_params.pop(METRICS_PROVIDER_KEY))
     autoscaling_decision_policy = get_autoscaling_decision_policy(autoscaling_params.pop(DECISION_POLICY_KEY))
-    autoscaling_direction = autoscaling_decision_policy(marathon_service_config, autoscaling_metrics_provider,
-                                                        marathon_tasks, mesos_tasks, **autoscaling_params)
+
+    error = autoscaling_metrics_provider(marathon_service_config, marathon_tasks,
+                                         mesos_tasks, **autoscaling_params) - autoscaling_params.pop('setpoint')
+    write_to_log(config=marathon_service_config, line='Recieved error from metrics provider: %f' % error)
+    autoscaling_direction = autoscaling_decision_policy(marathon_service_config, error, **autoscaling_params)
     if autoscaling_direction:
-        current_instances = marathon_service_config.get_instances()
         autoscaling_amount = get_new_instance_count(current_instances, autoscaling_direction)
         instances = marathon_service_config.limit_instance_count(autoscaling_amount)
         if instances != current_instances:
@@ -347,28 +301,35 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
                     cluster=cluster,
                     soa_dir=soa_dir,
                 )
-                if service_config.get_max_instances() and service_config.get_desired_state() == 'start':
+                if service_config.get_max_instances() and service_config.get_desired_state() == 'start' \
+                        and service_config.get_autoscaling_params()['decision_policy'] != 'bespoke':
                     configs.append(service_config)
 
             if configs:
                 marathon_config = load_marathon_config()
-                marathon_tasks = get_marathon_client(
+                all_marathon_tasks = get_marathon_client(
                     url=marathon_config.get_url(),
                     user=marathon_config.get_username(),
                     passwd=marathon_config.get_password(),
                 ).list_tasks()
-                mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
+                all_mesos_tasks = get_running_tasks_from_active_frameworks('')  # empty string matches all app ids
                 with ZookeeperPool():
                     for config in configs:
                         try:
-                            autoscale_marathon_instance(config, marathon_tasks, mesos_tasks)
+                            job_id = format_job_id(config.service, config.instance)
+                            marathon_tasks = {task.id: task for task in all_marathon_tasks
+                                              if job_id == get_short_job_id(task.id) and task.health_check_results}
+                            if not marathon_tasks:
+                                raise MetricsProviderNoDataError("Couldn't find any healthy marathon tasks")
+                            mesos_tasks = [task for task in all_mesos_tasks if task['id'] in marathon_tasks]
+                            autoscale_marathon_instance(config, list(marathon_tasks.values()), mesos_tasks)
                         except Exception as e:
-                            write_to_log(config=config, line='Caught Exception %s' % e, level='event')
+                            write_to_log(config=config, line='Caught Exception %s' % e)
     except LockHeldException:
         pass
 
 
-def write_to_log(config, line, level='debug'):
+def write_to_log(config, line, level='event'):
     _log(
         service=config.service,
         line="%s: %s" % (format_job_id(config.service, config.instance), line),
@@ -377,6 +338,10 @@ def write_to_log(config, line, level='debug'):
         cluster=config.cluster,
         instance=config.instance,
     )
+
+
+def get_short_job_id(task_id):
+    return MESOS_TASK_SPACER.join(task_id.split(MESOS_TASK_SPACER, 2)[:2])
 
 
 @contextmanager

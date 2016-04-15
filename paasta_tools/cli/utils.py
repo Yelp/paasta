@@ -548,6 +548,34 @@ def execute_paasta_metastatus_on_remote_master(cluster, verbose=0):
     return run_paasta_metastatus(master, verbose)
 
 
+def run_chronos_rerun(master, service, instancename, **kwargs):
+    timeout = 60
+    verbose_flags = '-v ' * kwargs['verbose']
+    command = 'ssh -A -n %s \'sudo chronos_rerun %s"%s %s" "%s"\'' % (
+        master,
+        verbose_flags,
+        service,
+        instancename,
+        kwargs['execution_date'],
+    )
+    return _run(command, timeout=timeout)
+
+
+def execute_chronos_rerun_on_remote_master(service, instancename, cluster, **kwargs):
+    """Returns a string containing an error message if an error occurred.
+    Otherwise returns the output of run_chronos_rerun().
+    """
+    masters, output = calculate_remote_masters(cluster)
+    if masters == []:
+        return 'ERROR: %s' % output
+    master, output = find_connectable_master(masters)
+    if not master:
+        return (
+            'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
+        )
+    return run_chronos_rerun(master, service, instancename, **kwargs)
+
+
 def lazy_choices_completer(list_func):
     def inner(prefix, **kwargs):
         options = list_func(**kwargs)

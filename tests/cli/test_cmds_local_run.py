@@ -439,8 +439,9 @@ def test_get_docker_run_cmd_without_additional_args():
     docker_hash = '8' * 40
     command = None
     hostname = 'fake_hostname'
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes,
-                                env, interactive, docker_hash, command, hostname)
+    net = 'bridge'
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+                                interactive, docker_hash, command, hostname, net)
     # Since we can't assert that the command isn't present in the output, we do
     # the next best thing and check that the docker hash is the last thing in
     # the docker run command (the command would have to be after it if it existed)
@@ -457,8 +458,9 @@ def test_get_docker_run_cmd_with_env_vars():
     docker_hash = '8' * 40
     command = None
     hostname = 'fake_hostname'
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes,
-                                env, interactive, docker_hash, command, hostname)
+    net = 'bridge'
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+                                interactive, docker_hash, command, hostname, net)
     assert '--env="foo=bar"' in actual
     assert '--env="baz=qux"' in actual
     assert '--env="x= with spaces"' in actual
@@ -474,8 +476,9 @@ def test_get_docker_run_cmd_interactive_false():
     docker_hash = '8' * 40
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
     hostname = 'fake_hostname'
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes,
-                                env, interactive, docker_hash, command, hostname)
+    net = 'bridge'
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+                                interactive, docker_hash, command, hostname, net)
 
     assert any(['--env=MARATHON_PORT=%s' % random_port in arg for arg in actual])
     assert '--memory=%dm' % memory in actual
@@ -499,11 +502,29 @@ def test_get_docker_run_cmd_interactive_true():
     docker_hash = '8' * 40
     command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
     hostname = 'fake_hostname'
-    actual = get_docker_run_cmd(memory, random_port, container_name, volumes,
-                                env, interactive, docker_hash, command, hostname)
+    net = 'bridge'
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+                                interactive, docker_hash, command, hostname, net)
 
     assert '--interactive=true' in actual
     assert '--tty=true' in actual
+
+
+def test_get_docker_run_cmd_host_networking():
+    memory = 555
+    random_port = 666
+    container_name = 'Docker' * 6 + 'Doc'
+    volumes = ['7_Brides_for_7_Brothers', '7-Up', '7-11']
+    env = {}
+    interactive = True
+    docker_hash = '8' * 40
+    command = ['IE9.exe', '/VERBOSE', '/ON_ERROR_RESUME_NEXT']
+    hostname = 'fake_hostname'
+    net = 'host'
+    actual = get_docker_run_cmd(memory, random_port, container_name, volumes, env,
+                                interactive, docker_hash, command, hostname, net)
+
+    assert '--net=host' in actual
 
 
 def test_get_container_id():

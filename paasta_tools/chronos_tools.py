@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import argparse
 import csv
 import datetime
 import json
@@ -27,6 +28,7 @@ import monitoring_tools
 import service_configuration_lib
 from tron import command_context
 
+from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
@@ -60,6 +62,7 @@ TMP_JOB_IDENTIFIER = "tmp"
 VALID_BOUNCE_METHODS = ['graceful']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 log = logging.getLogger('__main__')
 
 
@@ -375,20 +378,25 @@ class ChronosJobConfig(InstanceConfig):
         else:
             return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
 
-    def format_chronos_job_dict(self, docker_url, docker_volumes):
+    def format_chronos_job_dict(self, docker_url, docker_volumes, dockerfile_location):
         valid, error_msgs = self.validate()
         if not valid:
             raise InvalidChronosConfigError("\n".join(error_msgs))
+
+        net = get_mesos_network_for_net(self.get_net())
 
         complete_config = {
             'name': self.get_job_name().encode('utf_8'),
             'container': {
                 'image': docker_url,
-                'network': 'BRIDGE',
+                'network': net,
                 'type': 'DOCKER',
-                'volumes': docker_volumes
+                'volumes': docker_volumes,
+                'parameters': {
+                    'memory-swap': "%sm" % self.get_mem(),
+                }
             },
-            'uris': ['file:///root/.dockercfg', ],
+            'uris': [dockerfile_location, ],
             'environmentVariables': self.get_env(),
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
@@ -474,6 +482,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     complete_config = chronos_job_config.format_chronos_job_dict(
         docker_url,
         docker_volumes,
+        system_paasta_config.get_dockerfile_location(),
     )
 
     complete_config['name'] = compose_job_id(service, job_name)
@@ -671,6 +680,18 @@ def lookup_chronos_jobs(client, service=None, instance=None, include_disabled=Fa
     )
 
 
+def filter_non_temporary_chronos_jobs(jobs):
+    """
+    Given a list of Chronos jobs, as pulled from the API, remove those
+    which are defined as 'temporary' jobs.
+
+    :param jobs: a list of chronos jobs
+    :returns: a list of chronos jobs containing the same jobs as those provided
+    by the ``jobs`` parameter, but with temporary jobs removed.
+    """
+    return [job for job in jobs if not job['name'].startswith(TMP_JOB_IDENTIFIER)]
+
+
 def filter_chronos_jobs(jobs, service, instance, include_disabled):
     """Filters a list of Chronos jobs based on several criteria.
 
@@ -716,6 +737,20 @@ def wait_for_job(client, job_name):
             sleep(0.5)
 
 
+def parse_execution_date(execution_date_string):
+    """Parses execution_date_string into a datetime object.
+    Can be used as an ArgumentParser `type=` hint.
+    :param execution_date_string: string
+    :return: a datetime.datetime instance
+    :raise: ArgumentTypeError
+    """
+    try:
+        parsed = datetime.datetime.strptime(execution_date_string, EXECUTION_DATE_FORMAT)
+    except ValueError:
+        raise argparse.ArgumentTypeError('must be in the format "%s"' % EXECUTION_DATE_FORMAT)
+    return parsed
+
+
 def parse_time_variables(input_string, parse_time=None):
     """Parses an input string and uses the Tron-style dateparsing
     to replace time variables. Currently supports only the date/time
@@ -736,6 +771,15 @@ def parse_time_variables(input_string, parse_time=None):
     job_context.job_run.run_time = parse_time
     # The job_context object works like a normal dictionary for string replacement
     return input_string % job_context
+
+
+def uses_time_variables(chronos_job):
+    """
+    Given a chronos job config, returns True the if the command uses time variables
+    """
+    current_command = chronos_job.get_cmd()
+    interpolated_command = parse_time_variables(current_command, datetime.datetime.utcnow())
+    return current_command != interpolated_command
 
 
 def check_parent_format(parent):

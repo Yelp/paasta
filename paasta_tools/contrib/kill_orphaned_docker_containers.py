@@ -1,8 +1,10 @@
 #!/usr/bin/env python
 import argparse
+import sys
 
 from paasta_tools import mesos_tools
 from paasta_tools.utils import get_docker_client
+from paasta_tools.utils import get_running_mesos_docker_containers
 
 
 def parse_args():
@@ -12,43 +14,39 @@ def parse_args():
             ' and optionally kills them.'
         )
     )
-    parser.add_argument('-f', '--force', help="Actually kill the containers. (defaults to dry-run)")
+    parser.add_argument('-f', '--force', action="store_true",
+                        help="Actually kill the containers. (defaults to dry-run)")
     args = parser.parse_args()
     return args
-
-
-def get_running_task_ids_from_mesos_slave():
-    state = mesos_tools.get_local_slave_state()
-    frameworks = state.get('frameworks')
-    executors = [ex for fw in frameworks for ex in fw.get('executors', [])
-                 if u'TASK_RUNNING' in [t[u'state'] for t in ex.get('tasks', [])]]
-    return set([e["id"] for e in executors])
-
-
-def get_running_mesos_docker_containers(client):
-    running_containers = client.containers()
-    return [container for container in running_containers if "mesos-" in container["Names"][0]]
 
 
 def main():
     args = parse_args()
     docker_client = get_docker_client()
-    running_mesos_task_ids = get_running_task_ids_from_mesos_slave()
-    running_mesos_docker_containers = get_running_mesos_docker_containers(docker_client)
-    print running_mesos_task_ids
 
+    running_mesos_task_ids = [task["id"] for task in mesos_tools.filter_running_tasks(
+        mesos_tools.get_running_tasks_from_active_frameworks(''))]
+    running_mesos_docker_containers = get_running_mesos_docker_containers()
+
+    orphaned_containers = []
     for container in running_mesos_docker_containers:
-        mesos_task_id = mesos_tools.get_mesos_id_from_container(container=container, client=docker_client)
-        print mesos_task_id
+        mesos_task_id = mesos_tools.get_mesos_id_from_container(
+            container=container, client=docker_client)
         if mesos_task_id not in running_mesos_task_ids:
-            if args.force:
-                print "Killing %s. (%s)" % (container["Names"][0], mesos_task_id)
-                docker_client.kill(container)
-            else:
-                print "Would kill %s. (%s)" % (container["Names"][0], mesos_task_id)
-        else:
-            print "Not killing %s. (%s)" % (container["Names"][0], mesos_task_id)
+            orphaned_containers.append((container["Names"][0], mesos_task_id))
 
+    if orphaned_containers:
+        print "CRIT: Docker containers are orphaned: %s%s" % (", ".join(
+            "%s (%s)" % (container_name, mesos_task_id)
+            for container_name, mesos_task_id in orphaned_containers
+        ), " and will be killed" if args.force else "")
+        if args.force:
+            for container_name, mesos_task_id in orphaned_containers:
+                docker_client.kill(container_name)
+        sys.exit(1)
+    else:
+        print "OK: All mesos task IDs accounted for"
+        sys.exit(0)
 
 if __name__ == "__main__":
     main()

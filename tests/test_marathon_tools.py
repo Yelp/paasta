@@ -819,6 +819,11 @@ class TestMarathonTools:
                             'protocol': 'tcp',
                         },
                     ],
+                    'parameters': [
+                        {
+                            'key': 'memory-swap', 'value': "%sm" % int(fake_mem)
+                        }
+                    ]
                 },
                 'type': 'DOCKER',
                 'volumes': fake_volumes,
@@ -865,7 +870,9 @@ class TestMarathonTools:
             mock.patch('paasta_tools.marathon_tools.load_service_namespace_config', autospec=True,
                        return_value=fake_service_namespace_config),
             mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', autospec=True,
-                       return_value=mock.Mock(get_volumes=mock.Mock(return_value=fake_volumes))),
+                       return_value=mock.Mock(get_volumes=mock.Mock(return_value=fake_volumes),
+                                              get_dockerfile_location=mock.Mock(
+                                                  return_value='file:///root/.dockercfg'))),
         ) as (
             _,
             _,
@@ -1137,7 +1144,7 @@ class TestMarathonTools:
                 ["pool", "LIKE", "default"],
             ]
             assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
-            get_slaves_patch.assert_called_once_with(attribute='habitat', blacklist=[])
+            get_slaves_patch.assert_called_once_with(attribute='habitat', blacklist=[], whitelist=[])
 
     def test_get_constraints_respects_deploy_blacklist(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
@@ -1160,7 +1167,30 @@ class TestMarathonTools:
         ) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
             assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
-            get_slaves_patch.assert_called_once_with(attribute='region', blacklist=fake_deploy_blacklist)
+            get_slaves_patch.assert_called_once_with(attribute='region', blacklist=fake_deploy_blacklist, whitelist=[])
+
+    def test_get_constraints_respects_deploy_whitelist(self):
+        fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+        fake_deploy_whitelist = ["region", ["fake_whitelisted_region"]]
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='fake_cluster',
+            instance='fake_instance',
+            config_dict={'deploy_whitelist': fake_deploy_whitelist},
+            branch_dict={},
+        )
+        expected_constraints = [
+            ["region", "GROUP_BY", "1"],
+            ["region", "LIKE", "fake_whitelisted_region"],
+            ["pool", "LIKE", "default"],
+        ]
+        with mock.patch(
+            'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
+            autospec=True,
+        ) as get_slaves_patch:
+            get_slaves_patch.return_value = {'fake_region': {}}
+            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+            get_slaves_patch.assert_called_once_with(attribute='region', blacklist=[], whitelist=fake_deploy_whitelist)
 
     def test_instance_config_getters_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
@@ -1211,6 +1241,18 @@ class TestMarathonTools:
             return_value=fake_all_marathon_app_ids,
         ) as list_all_marathon_app_ids_patch:
             assert marathon_tools.is_app_id_running(fake_id, fake_client) is False
+            list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
+
+    def test_is_app_id_running_handles_leading_slashes(self):
+        fake_id = '/fake_app1'
+        fake_all_marathon_app_ids = ['fake_app1', 'fake_app2']
+        fake_client = mock.Mock()
+        with mock.patch(
+            'paasta_tools.marathon_tools.list_all_marathon_app_ids',
+            autospec=True,
+            return_value=fake_all_marathon_app_ids,
+        ) as list_all_marathon_app_ids_patch:
+            assert marathon_tools.is_app_id_running(fake_id, fake_client) is True
             list_all_marathon_app_ids_patch.assert_called_once_with(fake_client)
 
     @patch('paasta_tools.marathon_tools.MarathonClient.list_tasks')
@@ -1818,7 +1860,7 @@ class TestMarathonServiceConfig(object):
             config_dict={'instances': 100},
             branch_dict={},
         )
-        assert marathon_config.get_backoff_seconds() == 0.1
+        assert marathon_config.get_backoff_seconds() == 1
 
     def test_get_backoff_seconds_scales_down(self):
         marathon_config = marathon_tools.MarathonServiceConfig(
@@ -1959,7 +2001,8 @@ def test_format_marathon_app_dict_no_smartstack():
                 'docker': {
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
                     'image': 'fake_docker_registry:443/abcdef',
-                    'network': 'BRIDGE'
+                    'network': 'BRIDGE',
+                    'parameters': [{'key': 'memory-swap', 'value': '1024m'}]
                 },
                 'type': 'DOCKER',
                 'volumes': [],
@@ -2022,7 +2065,8 @@ def test_format_marathon_app_dict_with_smartstack():
                 'docker': {
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
                     'image': 'fake_docker_registry:443/abcdef',
-                    'network': 'BRIDGE'
+                    'network': 'BRIDGE',
+                    'parameters': [{'key': 'memory-swap', 'value': '1024m'}]
                 },
                 'type': 'DOCKER',
                 'volumes': [],
@@ -2055,6 +2099,48 @@ def test_format_marathon_app_dict_with_smartstack():
 
         # Assert that the complete config can be inserted into the MarathonApp model
         assert MarathonApp(**actual)
+
+
+def test_format_marathon_app_dict_utilizes_net():
+    service_name = "service"
+    instance_name = "instance"
+    fake_job_id = "service.instance.some.hash"
+    fake_system_volumes = [
+        {
+            "containerPath": "/system",
+            "hostPath": "/system",
+            "mode": "RO"
+        }
+    ]
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service=service_name,
+        cluster='clustername',
+        instance=instance_name,
+        config_dict={'net': 'host'},
+        branch_dict={'docker_image': 'abcdef'},
+    )
+    fake_system_paasta_config = SystemPaastaConfig({
+        'volumes': fake_system_volumes,
+        'docker_registry': 'fake_docker_registry:443'
+    }, '/fake/dir/')
+    fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
+
+    with contextlib.nested(
+        mock.patch(
+            'paasta_tools.marathon_tools.load_service_namespace_config',
+            return_value=fake_service_namespace_config,
+        ),
+        mock.patch('paasta_tools.marathon_tools.format_job_id', return_value=fake_job_id),
+        mock.patch('paasta_tools.marathon_tools.load_system_paasta_config', return_value=fake_system_paasta_config),
+        mock.patch('paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
+                   autospec=True, return_value={'fake_region': {}})
+    ) as (
+        mock_load_service_namespace_config,
+        mock_format_job_id,
+        mock_system_paasta_config,
+        _,
+    ):
+        assert fake_marathon_service_config.format_marathon_app_dict()['container']['docker']['network'] == 'HOST'
 
 
 def test_format_marathon_app_dict_utilizes_extra_volumes():
@@ -2109,7 +2195,8 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                 'docker': {
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
                     'image': 'fake_docker_registry:443/abcdef',
-                    'network': 'BRIDGE'
+                    'network': 'BRIDGE',
+                    'parameters': [{'key': 'memory-swap', 'value': '1024m'}]
                 },
                 'type': 'DOCKER',
                 'volumes': fake_system_volumes + fake_extra_volumes,

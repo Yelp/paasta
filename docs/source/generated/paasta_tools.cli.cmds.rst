@@ -25,6 +25,7 @@ Submodules
    paasta_tools.cli.cmds.metastatus
    paasta_tools.cli.cmds.performance_check
    paasta_tools.cli.cmds.push_to_registry
+   paasta_tools.cli.cmds.rerun
    paasta_tools.cli.cmds.rollback
    paasta_tools.cli.cmds.security_check
    paasta_tools.cli.cmds.start_stop_restart

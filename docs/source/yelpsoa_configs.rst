@@ -51,6 +51,12 @@ instance MAY have:
     namespace. For example ``canary`` instances can have ``nerve_ns: main`` to route
     their traffic to the same pool as the other ``main`` instances.
 
+  .. _net:
+
+  * ``net``: Specify which kind of
+    `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
+    instances of this service should be launched using. Defaults to ``'bridge'``.
+
   * ``bounce_method``: Controls the bounce method; see `bounce_lib <generated/paasta_tools.bounce_lib.html>`_
 
   * ``bounce_method_params``: A dictionary of parameters for the specified bounce_method.
@@ -160,6 +166,15 @@ instance MAY have:
       ``deploy_blacklist: [["region", "uswest1-prod"]]``
 
    would indicate that PaaSTA should not deploy the service to the ``uswest1-prod`` region. By default the ``monitoring_blacklist`` will use the ``deploy_blacklist`` if it exists.
+
+  * ``deploy_whitelist``: A list of lists indicating a set of locations where deployment is allowed.  For example:
+
+      ``deploy_whitelist: ['region', ['uswest1-prod", 'uswest2-prod]]``
+
+    would indicate that PaaSTA can **only** deploy in ``uswest1-prod`` or ``uswest2-prod``.  If this list
+    is empty (the default), then deployment is allowed anywhere.  This is superseded by the blacklist; if
+    a host is both whitelisted and blacklisted, the blacklist will take precedence.  Only one location type
+    of whitelisting may be specified.
 
   * ``monitoring_blacklist``: A list of lists indicating a set of locations to
     *not* monitor for Smartstack replication. For example:
@@ -325,6 +340,10 @@ Each job configuration MAY specify the following options:
 
   * ``retries``: Number of retries to attempt if a command returns a
     non-zero exit status. Defaults to 2.
+
+  * ``net``: Specify which kind of
+    `networking mode <https://docs.docker.com/engine/reference/run/#network-settings>`_
+    instances of this service should be launched using. Defaults to ``'bridge'``.
 
   * ``disabled``: If set to ``True``, this job will not be run. Defaults to ``False``
 

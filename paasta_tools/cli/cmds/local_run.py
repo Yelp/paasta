@@ -44,6 +44,8 @@ from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import NoDeploymentsAvailable
+from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
@@ -369,7 +371,8 @@ def get_container_name():
     return 'paasta_local_run_%s_%s' % (get_username(), randint(1, 999999))
 
 
-def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive, docker_hash, command, hostname):
+def get_docker_run_cmd(memory, random_port, container_name, volumes, env, interactive,
+                       docker_hash, command, hostname, net):
     cmd = ['docker', 'run']
     for k, v in env.iteritems():
         cmd.append('--env=\"%s=%s\"' % (k, v))
@@ -377,7 +380,10 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
-    cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+    if net == 'bridge':
+        cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
+    elif net == 'host':
+        cmd.append('--net=host')
     cmd.append('--name=%s' % container_name)
     for volume in volumes:
         cmd.append('--volume=%s' % volume)
@@ -481,6 +487,7 @@ def run_docker_container(
             "tty attached (as your program is about to run).\n\n"
         ))
     environment = instance_config.get_env_dictionary()
+    net = instance_config.get_net()
     memory = instance_config.get_mem()
     random_port = pick_random_port()
     container_name = get_container_name()
@@ -494,6 +501,7 @@ def run_docker_container(
         docker_hash=docker_hash,
         command=command,
         hostname=hostname,
+        net=net,
     )
     # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
     joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
@@ -583,21 +591,38 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         ))
         system_paasta_config = SystemPaastaConfig({"volumes": []}, '/etc/paasta')
 
+    soa_dir = args.yelpsoa_config_root
+
     volumes = list()
-    instance_config = get_instance_config(
-        service=service,
-        instance=instance,
-        cluster=cluster,
-        load_deployments=pull_image,
-        soa_dir=args.yelpsoa_config_root,
-    )
+
+    try:
+        instance_config = get_instance_config(
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            load_deployments=pull_image,
+            soa_dir=soa_dir,
+        )
+    except NoDeploymentsAvailable:
+        sys.stderr.write(PaastaColors.red(
+            "Error: No deployments.json found in %(soa_dir)s/%(service)s.\n"
+            "You can generate this by running:\n"
+            "generate_deployments_for_service -d %(soa_dir)s -s %(service)s\n" % {
+                'soa_dir': soa_dir, 'service': service}))
+        return
 
     if pull_image:
-        docker_url = get_docker_url(
-            system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
-        docker_pull_image(docker_url)
-
+        try:
+            docker_url = get_docker_url(
+                system_paasta_config.get_docker_registry(), instance_config.get_docker_image())
+        except NoDockerImageError:
+            sys.stderr.write(PaastaColors.red(
+                "Error: No sha has been marked for deployment for the %s deploy group.\n"
+                "Please ensure this service has either run through a jenkins pipeline "
+                "or paasta mark-for-deployment has been run for %s" % (instance_config.get_deploy_group(), service)))
+            return
         docker_hash = docker_url
+        docker_pull_image(docker_url)
 
     # if only one volume specified, extra_volumes should be converted to a list
     extra_volumes = instance_config.get_extra_volumes()

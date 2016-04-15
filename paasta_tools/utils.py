@@ -53,6 +53,7 @@ SPACER = '.'
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get('PAASTA_SYSTEM_CONFIG_DIR', '/etc/paasta/')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
+DEFAULT_DOCKERFILE_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -191,6 +192,12 @@ class InstanceConfig(dict):
         which locations the service should not be deployed"""
         return self.config_dict.get('deploy_blacklist', [])
 
+    def get_deploy_whitelist(self):
+        """The deploy whitelist is a list of lists, where the lists indicate
+        which locations are explicitly allowed.  The blacklist will supersede
+        this if a host matches both the white and blacklists."""
+        return self.config_dict.get('deploy_whitelist', [])
+
     def get_monitoring_blacklist(self):
         """The monitoring_blacklist is a list of tuples, where the tuples indicate
         which locations the user doesn't care to be monitored"""
@@ -272,6 +279,12 @@ class InstanceConfig(dict):
 
         :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
         return self.config_dict.get('pool', 'default')
+
+    def get_net(self):
+        """
+        :returns: the docker networking mode the container should be started with.
+        """
+        return self.config_dict.get('net', 'bridge')
 
 
 def validate_service_instance(service, instance, cluster, soa_dir):
@@ -800,6 +813,13 @@ class SystemPaastaConfig(dict):
         """
         return int(self.get('sensu_port', 3030))
 
+    def get_dockerfile_location(self):
+        """Get the location of the dockerfile, as a URI.
+
+        :returns: the URI speicfied, or file:///root/.dockercfg if not specified.
+        """
+        return self.get('dockerfile_location', DEFAULT_DOCKERFILE_LOCATION)
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
@@ -1134,6 +1154,12 @@ def get_docker_client():
         return Client(base_url=get_docker_host(), **client_opts)
 
 
+def get_running_mesos_docker_containers():
+    client = get_docker_client()
+    running_containers = client.containers()
+    return [container for container in running_containers if "mesos-" in container["Names"][0]]
+
+
 class TimeoutError(Exception):
     pass
 
@@ -1302,6 +1328,21 @@ def deploy_blacklist_to_constraints(deploy_blacklist):
         constraints.append([blacklisted_location[0], "UNLIKE", blacklisted_location[1]])
 
     return constraints
+
+
+def deploy_whitelist_to_constraints(deploy_whitelist):
+    """Converts a whitelist of locations into marathon appropriate constraints
+    https://mesosphere.github.io/marathon/docs/constraints.html#like-operator
+
+    :param deploy_whitelist: List of lists of locations to whitelist
+    :returns: List of lists of constraints
+    """
+    if len(deploy_whitelist) > 0:
+        (region_type, regions) = deploy_whitelist
+        regionstr = '|'.join(regions)
+
+        return [[region_type, 'LIKE', regionstr]]
+    return []
 
 
 def terminal_len(text):

@@ -21,6 +21,7 @@ import logging
 import os
 import re
 import socket
+from math import ceil
 from time import sleep
 
 import service_configuration_lib
@@ -30,11 +31,13 @@ from marathon import MarathonHttpError
 from marathon import NotFoundError
 
 from paasta_tools.mesos_tools import get_local_slave_state
+from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
 from paasta_tools.utils import deploy_blacklist_to_constraints
+from paasta_tools.utils import deploy_whitelist_to_constraints
 from paasta_tools.utils import get_code_sha_from_dockerurl
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
@@ -229,6 +232,7 @@ class MarathonServiceConfig(InstanceConfig):
         default_params = {
             'metrics_provider': 'mesos_cpu_ram',
             'decision_policy': 'pid',
+            'setpoint': 0.8,
         }
         return deep_merge_dictionaries(overrides=self.config_dict.get('autoscaling', {}), defaults=default_params)
 
@@ -255,7 +259,7 @@ class MarathonServiceConfig(InstanceConfig):
         if instances == 0:
             return 1
         else:
-            return float(10.0 / instances)
+            return int(ceil(10.0 / instances))
 
     def get_bounce_method(self):
         """Get the bounce method specified in the service's marathon configuration.
@@ -309,13 +313,15 @@ class MarathonServiceConfig(InstanceConfig):
     def get_routing_constraints(self, service_namespace_config):
         discover_level = service_namespace_config.get_discover()
         locations = get_mesos_slaves_grouped_by_attribute(
-            attribute=discover_level, blacklist=self.get_deploy_blacklist())
+            attribute=discover_level, blacklist=self.get_deploy_blacklist(),
+            whitelist=self.get_deploy_whitelist())
 
         routing_constraints = [[discover_level, "GROUP_BY", str(len(locations))]]
         return routing_constraints
 
     def get_deploy_constraints(self):
-        return deploy_blacklist_to_constraints(self.get_deploy_blacklist())
+        return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
+                deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
 
     def get_pool_constraints(self):
         pool = self.get_pool()
@@ -360,11 +366,13 @@ class MarathonServiceConfig(InstanceConfig):
         )
         docker_volumes = system_paasta_config.get_volumes() + self.get_extra_volumes()
 
+        net = get_mesos_network_for_net(self.get_net())
+
         complete_config = {
             'container': {
                 'docker': {
                     'image': docker_url,
-                    'network': 'BRIDGE',
+                    'network': net,
                     'portMappings': [
                         {
                             'containerPort': CONTAINER_PORT,
@@ -372,11 +380,14 @@ class MarathonServiceConfig(InstanceConfig):
                             'protocol': 'tcp',
                         },
                     ],
+                    "parameters": [
+                        {"key": "memory-swap", "value": "%sm" % str(self.get_mem())},
+                    ]
                 },
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
             },
-            'uris': ['file:///root/.dockercfg', ],
+            'uris': [system_paasta_config.get_dockerfile_location(), ],
             'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),
@@ -389,6 +400,15 @@ class MarathonServiceConfig(InstanceConfig):
             'cmd': self.get_cmd(),
             'args': self.get_args(),
         }
+
+        if net == 'BRIDGE':
+            complete_config['container']['docker']['portMappings'] = [
+                {
+                    'containerPort': CONTAINER_PORT,
+                    'hostPort': 0,
+                    'protocol': 'tcp',
+                },
+            ]
 
         accepted_resource_roles = self.get_accepted_resource_roles()
         if accepted_resource_roles is not None:
@@ -890,7 +910,7 @@ def is_app_id_running(app_id, client):
     :param client: A MarathonClient object"""
 
     all_app_ids = list_all_marathon_app_ids(client)
-    return app_id in all_app_ids
+    return app_id.lstrip('/') in all_app_ids
 
 
 def app_has_tasks(client, app_id, expected_tasks, exact_matches_only=False):
@@ -1029,6 +1049,22 @@ def kill_task(client, app_id, task_id, scale):
             return []
         elif 'does not exist' in e.error_message and e.status_code == 404:
             log.debug("Probably tried to kill a task id that was already dead. Continuing.")
+            return []
+        else:
+            raise
+
+
+def kill_given_tasks(client, task_ids, scale):
+    """Wrapper to the official kill_given_tasks method that is tolerant of errors"""
+    try:
+        return client.kill_given_tasks(task_ids=task_ids, scale=scale)
+    except MarathonHttpError as e:
+        # Marathon's interface is always async, so it is possible for you to see
+        # a task in the interface and kill it, yet by the time it tries to kill
+        # it, it is already gone. This is not really a failure condition, so we
+        # swallow this error.
+        if e.error_message == 'Bean is not valid' and e.status_code == 422:
+            log.debug("Probably tried to kill a task id that didn't exist. Continuing.")
             return []
         else:
             raise

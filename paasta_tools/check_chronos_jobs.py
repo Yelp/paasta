@@ -101,7 +101,8 @@ def build_service_job_mapping(client, configured_jobs):
             instance=job[1],
             client=client,
         )
-        with_states = last_run_state_for_jobs(matching_jobs)
+        filtered = chronos_tools.filter_non_temporary_chronos_jobs(matching_jobs)
+        with_states = last_run_state_for_jobs(filtered)
         service_job_mapping[job] = with_states
     return service_job_mapping
 

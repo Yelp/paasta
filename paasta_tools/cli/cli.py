@@ -25,6 +25,18 @@ from paasta_tools.cli.utils import load_method
 from paasta_tools.cli.utils import modules_in_pkg as paasta_commands_dir
 
 
+class ThrowingArgumentParser(argparse.ArgumentParser):
+    """Overriding the error method allows us to print the whole help page,
+    otherwise the python arg parser prints a not-so-useful usage message that
+    is way too terse"""
+
+    def error(self, message):
+        print("Argument parse error: %s" % message)
+        print("\n")
+        self.print_help()
+        sys.exit(0)
+
+
 def add_subparser(command, subparsers):
     """Given a command name, paasta_cmd, execute the add_subparser method
     implemented in paasta_cmd.py.
@@ -42,7 +54,7 @@ def add_subparser(command, subparsers):
 
 
 def get_argparser():
-    parser = argparse.ArgumentParser(
+    parser = ThrowingArgumentParser(
         description=(
             "The PaaSTA command line tool. The 'paasta' command is the entry point "
             "to multiple subcommands, see below.\n\n"
@@ -54,6 +66,8 @@ def get_argparser():
             "command line completion for almost all options and uses pretty formatting when "
             "possible."
         ),
+        # Suppressing usage prevents it from being printed twice upon print_help
+        usage=argparse.SUPPRESS,
     )
 
     # http://stackoverflow.com/a/8521644/812183
@@ -66,6 +80,9 @@ def get_argparser():
     )
 
     subparsers = parser.add_subparsers(help="[-h, --help] for subcommand help")
+    # Adding a separate help subparser allows us to respont to "help" without --help
+    help_parser = subparsers.add_parser('help', add_help=False)
+    help_parser.set_defaults(command=None)
 
     for command in sorted(paasta_commands_dir(cmds)):
         add_subparser(command, subparsers)
@@ -82,7 +99,7 @@ def parse_args(argv):
     parser = get_argparser()
     argcomplete.autocomplete(parser)
 
-    return parser.parse_args(argv)
+    return parser.parse_args(argv), parser
 
 
 def main(argv=None):
@@ -91,8 +108,12 @@ def main(argv=None):
 
     Ensure we kill any child pids before we quit
     """
-    args = parse_args(argv)
-    return_code = args.command(args)
+    args, parser = parse_args(argv)
+    if args.command is None:
+        parser.print_help()
+        return_code = 0
+    else:
+        return_code = args.command(args)
     sys.exit(return_code)
 
 if __name__ == '__main__':

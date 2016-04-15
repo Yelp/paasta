@@ -547,3 +547,20 @@ def test_get_instance_config_unknown(
             soa_dir='fake_soa_dir',
         )
         assert mock_validate_service_instance.call_count == 1
+
+
+@patch('paasta_tools.cli.utils._run', autospec=True)
+def test_run_chronos_rerun(mock_run):
+    mock_run.return_value = (0, 'fake_output')
+    expected_command = ('ssh -A -n fake_master \'sudo chronos_rerun -v -v "a_service an_instance" '
+                        '"2016-04-08T02:37:27"\'')
+
+    actual = utils.run_chronos_rerun(
+        'fake_master',
+        'a_service',
+        'an_instance',
+        verbose=2,
+        execution_date='2016-04-08T02:37:27'
+    )
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    assert actual == mock_run.return_value
