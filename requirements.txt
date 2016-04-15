@@ -5,7 +5,7 @@ argcomplete==0.8.1
 argparse==1.2.1
 backports.ssl-match-hostname==3.4.0.2
 blessings==1.6
-boto==2.38.0
+boto3==1.3.0
 chronos-python==0.34.0
 docker-py==1.2.3
 dulwich==0.10.0

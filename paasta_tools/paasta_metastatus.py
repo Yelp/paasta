@@ -101,24 +101,32 @@ def get_extra_mesos_slave_data(mesos_state):
 
 
 def get_extra_mesos_attribute_data(mesos_state):
-    attributes = set().union(*(slave['attributes'].keys() for slave in mesos_state['slaves']))
+    slaves = mesos_state.get('slaves', [])
+    attributes = {attribute
+                  for slave in slaves
+                  for attribute in slave.get('attributes', {}).keys()}
+    tasks = [task
+             for framework in mesos_state.get('frameworks', [])
+             for task in framework.get('tasks', [])]
 
     for attribute in attributes:
-        resource_free_dict = defaultdict(Counter)
-        resource_availability_dict = dict()
-        slave_attribute_mapping = {}
-        for slave in mesos_state['slaves']:
-            slave_attribute_name = slave['attributes'].get(attribute, 'UNDEFINED')
-            slave_attribute_mapping[slave['id']] = slave_attribute_name
-            filtered_resources = filter_mesos_state_metrics(slave['resources'])
-            resource_free_dict[slave_attribute_name].update(filtered_resources)
-        resource_availability_dict = copy.deepcopy(resource_free_dict)
-        for framework in mesos_state.get('frameworks', []):
-            for task in framework.get('tasks', []):
-                task_resources = task['resources']
-                attribute_value = slave_attribute_mapping[task['slave_id']]
-                resource_free_dict[attribute_value].subtract(filter_mesos_state_metrics(task_resources))
-        yield (attribute, {"free": resource_free_dict, "availability": resource_availability_dict})
+        yield (attribute, get_mesos_utilization_for_attribute(slaves, tasks, attribute))
+
+
+def get_mesos_utilization_for_attribute(slaves, tasks, attribute):
+    resource_total_dict = defaultdict(Counter)
+    slave_attribute_mapping = {}
+    for slave in slaves:
+        slave_attribute_name = slave['attributes'].get(attribute, 'UNDEFINED')
+        slave_attribute_mapping[slave['id']] = slave_attribute_name
+        filtered_resources = filter_mesos_state_metrics(slave['resources'])
+        resource_total_dict[slave_attribute_name].update(filtered_resources)
+    resource_free_dict = copy.deepcopy(resource_total_dict)
+    for task in tasks:
+        task_resources = task['resources']
+        attribute_value = slave_attribute_mapping[task['slave_id']]
+        resource_free_dict[attribute_value].subtract(filter_mesos_state_metrics(task_resources))
+    return {"free": resource_free_dict, "total": resource_total_dict}
 
 
 def quorum_ok(masters, quorum):
@@ -282,29 +290,29 @@ def assert_extra_attribute_data(mesos_state, humanize_output=False):
     extra_attribute_data = list(get_extra_mesos_attribute_data(mesos_state))
     rows = []
     for attribute, resource_dict in extra_attribute_data:
-        resource_free_dict = resource_dict["free"]
-        resource_availability_dict = resource_dict["availability"]
+        resource_free_dict = resource_dict['free']
+        resource_total_dict = resource_dict['total']
         if len(resource_free_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
             rows.append((attribute.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)'))
             for attribute_location in sorted(resource_free_dict.keys()):
                 resources_remaining = resource_free_dict[attribute_location]
-                resources_available = resource_availability_dict[attribute_location]
+                resources_total = resource_total_dict[attribute_location]
 
                 if humanize_output:
                     formatted_line = (
                         attribute_location,
-                        '%.2f/%.2f' % (resources_remaining['cpus'], resources_available['cpus']),
+                        '%.2f/%.2f' % (resources_remaining['cpus'], resources_total['cpus']),
                         '%s/%s' % (naturalsize(resources_remaining['mem'] * 1024 * 1024, gnu=True),
-                                   naturalsize(resources_available['mem'] * 1024 * 1024, gnu=True)),
+                                   naturalsize(resources_total['mem'] * 1024 * 1024, gnu=True)),
                         '%s/%s' % (naturalsize(resources_remaining['disk'] * 1024 * 1024, gnu=True),
-                                   naturalsize(resources_available['disk'] * 1024 * 1024, gnu=True))
+                                   naturalsize(resources_total['disk'] * 1024 * 1024, gnu=True))
                     )
                 else:
                     formatted_line = (
                         attribute_location,
-                        '%.2f/%.2f' % (resources_remaining['cpus'], resources_available['cpus']),
-                        '%.2f/%.2f' % (resources_remaining['mem'], resources_available['mem']),
-                        '%.2f/%.2f' % (resources_remaining['disk'], resources_available['disk'])
+                        '%.2f/%.2f' % (resources_remaining['cpus'], resources_total['cpus']),
+                        '%.2f/%.2f' % (resources_remaining['mem'], resources_total['mem']),
+                        '%.2f/%.2f' % (resources_remaining['disk'], resources_total['disk'])
                     )
                 rows.append(formatted_line)
     if len(rows) == 0:
