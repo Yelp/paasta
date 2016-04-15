@@ -373,13 +373,6 @@ class MarathonServiceConfig(InstanceConfig):
                 'docker': {
                     'image': docker_url,
                     'network': net,
-                    'portMappings': [
-                        {
-                            'containerPort': CONTAINER_PORT,
-                            'hostPort': 0,
-                            'protocol': 'tcp',
-                        },
-                    ],
                     "parameters": [
                         {"key": "memory-swap", "value": "%sm" % str(self.get_mem())},
                     ]
