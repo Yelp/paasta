@@ -429,51 +429,6 @@ def test_autoscale_services():
             fake_marathon_service_config, mock_marathon_tasks, mock_mesos_tasks)
 
 
-def test_autoscale_services_no_data_marathon():
-    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
-        service='fake-service',
-        instance='fake-instance',
-        cluster='fake-cluster',
-        config_dict={'min_instances': 1, 'max_instances': 10, 'desired_state': 'start'},
-        branch_dict={},
-    )
-    mock_mesos_tasks = []
-    mock_marathon_tasks = []
-    with contextlib.nested(
-        mock.patch('paasta_tools.autoscaling_lib.autoscale_marathon_instance', autospec=True),
-        mock.patch('paasta_tools.autoscaling_lib.get_marathon_client', autospec=True,
-                   return_value=mock.Mock(list_tasks=mock.Mock(return_value=mock_marathon_tasks))),
-        mock.patch('paasta_tools.autoscaling_lib.get_running_tasks_from_active_frameworks', autospec=True,
-                   return_value=mock_mesos_tasks),
-        mock.patch('paasta_tools.autoscaling_lib.load_system_paasta_config', autospec=True,
-                   return_value=mock.Mock(get_cluster=mock.Mock())),
-        mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                   return_value=mock.Mock(get_zk_hosts=mock.Mock())),
-        mock.patch('paasta_tools.autoscaling_lib.get_services_for_cluster', autospec=True,
-                   return_value=[('fake-service', 'fake-instance')]),
-        mock.patch('paasta_tools.autoscaling_lib.load_marathon_service_config', autospec=True,
-                   return_value=fake_marathon_service_config),
-        mock.patch('paasta_tools.autoscaling_lib.load_marathon_config', autospec=True),
-        mock.patch('paasta_tools.utils.KazooClient', autospec=True),
-        mock.patch('paasta_tools.autoscaling_lib.create_autoscaling_lock', autospec=True),
-        mock.patch('paasta_tools.autoscaling_lib._log', autospec=True),
-    ) as (
-        mock_autoscale_marathon_instance,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-        _,
-    ):
-        with raises(autoscaling_lib.MetricsProviderNoDataError):
-            autoscaling_lib.autoscale_services()
-
-
 def test_autoscale_services_bespoke_doesnt_autoscale():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
