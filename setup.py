@@ -80,6 +80,7 @@ setup(
         'paasta_tools/monitoring/check_synapse_replication.py',
         'paasta_tools/cli/paasta_tabcomplete.sh',
         'paasta_tools/paasta_execute_docker_command.py',
+        'paasta_tools/paasta_maintenance.py',
         'paasta_tools/paasta_metastatus.py',
         'paasta_tools/paasta_serviceinit.py',
         'paasta_tools/setup_chronos_job.py',
