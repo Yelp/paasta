@@ -78,6 +78,22 @@ MESOS_SLAVE_PORT = '5051'
 from mesos.cli import master  # noqa
 import mesos.cli.cluster  # noqa
 
+# Works around a mesos-cli bug ('MesosSlave' object has no attribute 'id' - PAASTA-4119).
+# The method below gets a slave by its ID. Original code here:
+# https://github.com/mesosphere/mesos-cli/blob/master/mesos/cli/master.py#L176
+# uses "in" instead of "==", matching when the wanted ID is a substring of
+# the candidate. Because of that, multiple slaves are returned and mesos-cli
+# finds itself in a buggy "if" branch (hence the AttributeError).
+import itertools  # noqa
+
+
+def _mesos_cli_master_MesosMaster_slaves(self, fltr=''):
+    return list(map(
+        lambda x: mesos.cli.slave.MesosSlave(x),
+        itertools.ifilter(
+            lambda x: fltr == x['id'], self.state['slaves'])))
+mesos.cli.master.MesosMaster.slaves = _mesos_cli_master_MesosMaster_slaves
+
 
 class MesosMasterConnectionError(Exception):
     pass
