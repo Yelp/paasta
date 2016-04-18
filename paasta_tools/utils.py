@@ -53,7 +53,7 @@ SPACER = '.'
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get('PAASTA_SYSTEM_CONFIG_DIR', '/etc/paasta/')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
-DEFAULT_DOCKERFILE_LOCATION = "file:///root/.dockercfg"
+DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -813,12 +813,12 @@ class SystemPaastaConfig(dict):
         """
         return int(self.get('sensu_port', 3030))
 
-    def get_dockerfile_location(self):
+    def get_dockercfg_location(self):
         """Get the location of the dockerfile, as a URI.
 
         :returns: the URI speicfied, or file:///root/.dockercfg if not specified.
         """
-        return self.get('dockerfile_location', DEFAULT_DOCKERFILE_LOCATION)
+        return self.get('dockercfg_location', DEFAULT_DOCKERCFG_LOCATION)
 
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
