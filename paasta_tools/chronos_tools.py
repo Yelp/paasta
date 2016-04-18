@@ -391,9 +391,9 @@ class ChronosJobConfig(InstanceConfig):
                 'network': net,
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
-                'parameters': {
-                    'memory-swap': "%sm" % self.get_mem(),
-                }
+                'parameters': [
+                    {"key": "memory-swap", "value": self.get_mem_swap()},
+                ]
             },
             'uris': [dockerfile_location, ],
             'environmentVariables': self.get_env(),

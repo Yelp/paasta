@@ -889,7 +889,7 @@ class TestChronosTools:
                 'volumes': fake_docker_volumes,
                 'image': fake_docker_url,
                 'type': 'DOCKER',
-                'parameters': {'memory-swap': '1024m'}
+                'parameters': [{"key": "memory-swap", "value": "1024m"}],
             },
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
@@ -1142,7 +1142,7 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/paasta-test-service-penguin",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1234,7 +1234,7 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1293,7 +1293,7 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1368,7 +1368,7 @@ class TestChronosTools:
                     'volumes': fake_system_volumes + fake_extra_volumes,
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
