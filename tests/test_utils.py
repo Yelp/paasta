@@ -854,6 +854,30 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_mem() == 1024
 
+    def test_get_mem_swap_int(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={
+                'mem': 50
+            },
+            branch_dict={},
+        )
+        assert fake_conf.get_mem_swap() == "50m"
+
+    def test_get_mem_swap_float_rounds_up(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={
+                'mem': 50.4
+            },
+            branch_dict={},
+        )
+        assert fake_conf.get_mem_swap() == "51m"
+
     def test_get_disk_in_config(self):
         fake_conf = utils.InstanceConfig(
             service='',

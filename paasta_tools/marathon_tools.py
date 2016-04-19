@@ -374,7 +374,7 @@ class MarathonServiceConfig(InstanceConfig):
                     'image': docker_url,
                     'network': net,
                     "parameters": [
-                        {"key": "memory-swap", "value": "%sm" % str(self.get_mem())},
+                        {"key": "memory-swap", "value": self.get_mem_swap()},
                     ]
                 },
                 'type': 'DOCKER',
