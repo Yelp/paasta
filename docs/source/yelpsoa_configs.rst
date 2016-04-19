@@ -376,13 +376,13 @@ Each job configuration MAY specify the following options:
 
     * This field takes precedence over any time zone specified in schedule.
     * See list of `tz database time zones <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>`_.
-    * For example, the effective time zone for the following is Pacific Standard Time::
+    * For example, the effective time zone for the following is America/Los_Angeles::
 
 
         ---
         main:
           schedule: R/2014-10-10T18:32:00Z/PT60M
-          schedule_time_zone: PST
+          schedule_time_zone: America/Los_Angeles
 
 .. _doc: deploy_groups.html
 
