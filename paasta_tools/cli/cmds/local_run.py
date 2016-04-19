@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import math
 import os
 import pipes
 import shlex
@@ -380,6 +381,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
+    cmd.append('--memory-swap=%dm' % int(math.ceil(memory)))
     if net == 'bridge':
         cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     elif net == 'host':
