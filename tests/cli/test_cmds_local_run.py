@@ -765,7 +765,7 @@ def test_run_docker_container_non_interactive_run_returns_nonzero(
         assert excinfo.value.code == 99
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=(True, ''))
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
@@ -817,7 +817,7 @@ def test_run_docker_container_with_custom_soadir_uses_healthcheck(
     )
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=True)
+@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=(True, ''))
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
@@ -861,7 +861,7 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
     assert excinfo.value.code == 0
 
 
-@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=False)
+@mock.patch('paasta_tools.cli.cmds.local_run.simulate_healthcheck_on_service', autospec=True, return_value=(False, ''))
 @mock.patch('paasta_tools.cli.cmds.local_run.pick_random_port', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.get_docker_run_cmd', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
