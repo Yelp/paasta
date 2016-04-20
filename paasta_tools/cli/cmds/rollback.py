@@ -13,7 +13,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 from humanize import naturaltime
-from service_configuration_lib import DEFAULT_SOA_DIR
 
 from paasta_tools.cli.cmds.mark_for_deployment import mark_for_deployment
 from paasta_tools.cli.utils import extract_tags
@@ -23,6 +22,7 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.generate_deployments_for_service import get_instance_config_for_service
 from paasta_tools.remote_git import list_remote_refs
 from paasta_tools.utils import datetime_from_utc_to_local
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_table
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import PaastaColors
@@ -63,24 +63,32 @@ def add_subparser(subparsers):
         '-s', '--service',
         help='Name of the service to rollback (e.g. "service1")',
     ).completer = lazy_choices_completer(list_services)
+    list_parser.add_argument(
+        '-y', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     list_parser.set_defaults(command=paasta_rollback)
 
 
 def list_previously_deployed_shas(parsed_args, **kwargs):
     service = parsed_args.service
+    soa_dir = parsed_args.soa_dir
     deploy_groups = {deploy_group for deploy_group in parsed_args.deploy_groups.split(',') if deploy_group}
-    return (sha for sha, _ in get_git_shas_for_service(service, deploy_groups))
+    return (sha for sha, _ in get_git_shas_for_service(service, deploy_groups, soa_dir))
 
 
-def get_git_shas_for_service(service, deploy_groups):
+def get_git_shas_for_service(service, deploy_groups, soa_dir):
     """Returns a list of 2-tuples of the form (sha, timestamp) for each deploy tag in a service's git
     repository"""
     if service is None:
         return []
-    git_url = get_git_url(service=service)
+    git_url = get_git_url(service=service, soa_dir=soa_dir)
     all_deploy_groups = {config.get_deploy_group() for config in get_instance_config_for_service(
-        soa_dir=DEFAULT_SOA_DIR,
         service=service,
+        soa_dir=soa_dir,
     )}
     deploy_groups, _ = validate_given_deploy_groups(all_deploy_groups, deploy_groups)
     previously_deployed_shas = {}
@@ -116,12 +124,12 @@ def validate_given_deploy_groups(service_deploy_groups, args_deploy_groups):
     return valid_deploy_groups, invalid_deploy_groups
 
 
-def list_previous_commits(service, deploy_groups, any_given_deploy_groups):
+def list_previous_commits(service, deploy_groups, any_given_deploy_groups, soa_dir):
     def format_timestamp(tstamp):
         return naturaltime(datetime_from_utc_to_local(parse_timestamp(tstamp)))
 
     print "Please specify a commit to mark for rollback (-k, --commit). Below is a list of recent commits:"
-    git_shas = sorted(get_git_shas_for_service(service, deploy_groups), key=lambda x: x[1], reverse=True)[:10]
+    git_shas = sorted(get_git_shas_for_service(service, deploy_groups, soa_dir), key=lambda x: x[1], reverse=True)[:10]
     rows = [('Timestamp -- UTC', 'Git SHA')]
     rows.extend([('%s (%s)' % (timestamp, format_timestamp(timestamp)), sha) for sha, timestamp in git_shas])
     for line in format_table(rows):
@@ -139,14 +147,15 @@ def paasta_rollback(args):
     deploy groups and sha. These arguments will be verified and passed onto
     mark_for_deployment.
     """
-    service = figure_out_service_name(args)
+    soa_dir = args.soa_dir
+    service = figure_out_service_name(args, soa_dir)
 
-    git_url = get_git_url(service)
+    git_url = get_git_url(service, soa_dir)
     given_deploy_groups = {deploy_group for deploy_group in args.deploy_groups.split(",") if deploy_group}
 
     service_deploy_groups = {config.get_deploy_group() for config in get_instance_config_for_service(
-        soa_dir=DEFAULT_SOA_DIR,
         service=service,
+        soa_dir=soa_dir,
     )}
     deploy_groups, invalid = validate_given_deploy_groups(service_deploy_groups, given_deploy_groups)
 
@@ -159,7 +168,7 @@ def paasta_rollback(args):
 
     commit = args.commit
     if not commit:
-        list_previous_commits(service, deploy_groups, bool(given_deploy_groups))
+        list_previous_commits(service, deploy_groups, bool(given_deploy_groups), soa_dir)
         return 1
 
     returncode = 0

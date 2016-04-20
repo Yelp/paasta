@@ -376,7 +376,7 @@ def test_get_actual_deployments(mock_get_deployments,):
         'b_cluster.b_instance': 'this_is_a_sha',
     }
 
-    actual = status.get_actual_deployments('fake_service')
+    actual = status.get_actual_deployments('fake_service', '/fake/soa/dir')
     assert expected == actual
 
 
@@ -429,10 +429,11 @@ def test_status_calls_sergeants(
     args.clusters = None
     args.instances = None
     args.verbose = False
+    args.soa_dir = '/fake/soa/dir'
     paasta_status(args)
 
-    mock_figure_out_service_name.assert_called_once_with(args)
-    mock_get_actual_deployments.assert_called_once_with(service)
+    mock_figure_out_service_name.assert_called_once_with(args, '/fake/soa/dir')
+    mock_get_actual_deployments.assert_called_once_with(service, '/fake/soa/dir')
     mock_report_status.assert_called_once_with(
         service=service,
         deploy_pipeline=planned_deployments,

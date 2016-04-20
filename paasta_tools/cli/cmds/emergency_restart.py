@@ -18,6 +18,7 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 
 
@@ -51,6 +52,13 @@ def add_subparser(subparsers):
         help="The PaaSTA cluster that has the service you want to restart. Like 'norcal-prod'.",
         required=True,
     ).completer = lazy_choices_completer(list_clusters)
+    status_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     status_parser.set_defaults(command=paasta_emergency_restart)
 
 
@@ -60,7 +68,7 @@ def paasta_emergency_restart(args):
     Warning: This command is only intended to be used in an emergency.
     It should not be needed in normal circumstances.
     """
-    service = figure_out_service_name(args)
+    service = figure_out_service_name(args, args.soa_dir)
     print "Performing an emergency restart on %s...\n" % compose_job_id(service, args.instance)
     execute_paasta_serviceinit_on_remote_master('restart', args.cluster, service, args.instance)
     print "%s" % "\n".join(paasta_emergency_restart.__doc__.splitlines()[-7:])

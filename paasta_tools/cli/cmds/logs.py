@@ -42,6 +42,7 @@ from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_log_line
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import list_clusters
@@ -92,6 +93,13 @@ def add_subparser(subparsers):
         '-r', '--raw-mode', action='store_true',
         dest='raw_mode', default=False,
         help="Don't pretty-print logs; emit them exactly as they are in scribe."
+    )
+    status_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
     )
     default_component_string = ','.join(DEFAULT_COMPONENTS)
     component_descriptions = build_component_descriptions(LOG_COMPONENTS)
@@ -555,10 +563,11 @@ class ScribeLogReader(LogReader):
 def paasta_logs(args):
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
-    service = figure_out_service_name(args)
+    soa_dir = args.soa_dir
+    service = figure_out_service_name(args, soa_dir)
 
     if args.clusters is None:
-        clusters = list_clusters(service)
+        clusters = list_clusters(service, soa_dir=soa_dir)
     else:
         clusters = args.clusters.split(",")
 

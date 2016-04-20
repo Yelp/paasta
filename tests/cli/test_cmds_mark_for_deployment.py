@@ -22,6 +22,7 @@ class fake_args:
     service = 'test_service'
     git_url = 'git://false.repo/services/test_services'
     commit = 'fake-hash'
+    soa_dir = 'fake_soa_dir'
 
 
 @patch('paasta_tools.cli.cmds.mark_for_deployment.validate_service_name', autospec=True)

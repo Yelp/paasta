@@ -20,6 +20,7 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
 from paasta_tools.utils import _run
 from paasta_tools.utils import build_docker_tag
+from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 def add_subparser(subparsers):
@@ -49,6 +50,13 @@ def add_subparser(subparsers):
         help='Git sha after which to name the remote image',
         required=True,
     )
+    list_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     list_parser.set_defaults(command=paasta_push_to_registry)
 
 
@@ -68,7 +76,7 @@ def paasta_push_to_registry(args):
     service = args.service
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
-    validate_service_name(service)
+    validate_service_name(service, args.soa_dir)
 
     cmd = build_command(service, args.commit)
     loglines = []
