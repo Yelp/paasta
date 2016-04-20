@@ -23,8 +23,8 @@ from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_services
 from paasta_tools.cli.utils import PaastaCheckMessages
 from paasta_tools.cli.utils import x_mark
-from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.marathon_tools import load_deployments_json
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
@@ -65,6 +65,13 @@ def add_subparser(subparsers):
         help="A comma-separated list of instances to view. Defaults to view all instances.\n"
              "For example: --instances canary,main"
     )  # No completer because we need to know service first and we can't until some other stuff has happened
+    status_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     status_parser.set_defaults(command=paasta_status)
 
 
@@ -85,9 +92,10 @@ def get_deploy_info(deploy_file_path):
     return deploy_info
 
 
-def get_planned_deployments(service):
+def get_planned_deployments(service, soa_dir):
     for cluster, cluster_deploy_file in get_soa_cluster_deploy_files(
         service=service,
+        soa_dir=soa_dir,
     ):
         for instance in get_deploy_info(cluster_deploy_file):
             yield '%s.%s' % (cluster, instance)
@@ -105,8 +113,8 @@ def list_deployed_clusters(pipeline, actual_deployments):
     return deployed_clusters
 
 
-def get_actual_deployments(service):
-    deployments_json = load_deployments_json(service, DEFAULT_SOA_DIR)
+def get_actual_deployments(service, soa_dir):
+    deployments_json = load_deployments_json(service, soa_dir)
     if not deployments_json:
         sys.stderr.write("Warning: it looks like %s has not been deployed anywhere yet!\n" % service)
     # Create a dictionary of actual $service Jenkins deployments
@@ -195,8 +203,9 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
 def paasta_status(args):
     """Print the status of a Yelp service running on PaaSTA.
     :param args: argparse.Namespace obj created from sys.args by cli"""
-    service = figure_out_service_name(args)
-    actual_deployments = get_actual_deployments(service)
+    soa_dir = args.soa_dir
+    service = figure_out_service_name(args, soa_dir)
+    actual_deployments = get_actual_deployments(service, soa_dir)
     if args.clusters is not None:
         cluster_whitelist = args.clusters.split(",")
     else:
@@ -207,7 +216,7 @@ def paasta_status(args):
         instance_whitelist = []
 
     if actual_deployments:
-        deploy_pipeline = list(get_planned_deployments(service))
+        deploy_pipeline = list(get_planned_deployments(service, soa_dir))
         report_status(
             service=service,
             deploy_pipeline=deploy_pipeline,

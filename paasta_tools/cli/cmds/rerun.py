@@ -23,6 +23,7 @@ from paasta_tools.cli.utils import figure_out_service_name
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SPACER
@@ -71,6 +72,13 @@ def add_subparser(subparsers):
         help="The date the job should be rerun for. Expected in the format %%Y-%%m-%%dT%%H:%%M:%%S .",
         type=chronos_tools.parse_execution_date
     )
+    rerun_parser.add_argument(
+        '-y', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     rerun_parser.set_defaults(command=paasta_rerun)
 
 
@@ -89,16 +97,17 @@ def _get_cluster_instance(cluster_dot_instance_list):
 def paasta_rerun(args):
     """Reruns a Chronos job.
     :param args: argparse.Namespace obj created from sys.args by cli"""
-    service = figure_out_service_name(args)  # exit with an error if the service doesn't exist
+    soa_dir = args.soa_dir
+    service = figure_out_service_name(args, soa_dir)  # exit with an error if the service doesn't exist
     if args.execution_date:
         execution_date = args.execution_date
     else:
         execution_date = None
 
-    all_clusters = list_clusters()
-    actual_deployments = get_actual_deployments(service)  # cluster.instance: sha
+    all_clusters = list_clusters(soa_dir=soa_dir)
+    actual_deployments = get_actual_deployments(service, soa_dir)  # cluster.instance: sha
     if actual_deployments:
-        deploy_pipeline = list(get_planned_deployments(service))  # cluster.instance
+        deploy_pipeline = list(get_planned_deployments(service, soa_dir))  # cluster.instance
         deployed_clusters = list_deployed_clusters(deploy_pipeline, actual_deployments)
         deployed_cluster_instance = _get_cluster_instance(actual_deployments.keys())
 
@@ -123,7 +132,7 @@ def paasta_rerun(args):
 
         try:
             chronos_job_config = chronos_tools.load_chronos_job_config(
-                service, args.instance, cluster, load_deployments=False)
+                service, args.instance, cluster, load_deployments=False, soa_dir=soa_dir)
             if chronos_tools.uses_time_variables(chronos_job_config) and execution_date is None:
                 print ("  Warning: \"%s\" uses time variables interpolation, "
                        "please supply a `--execution_date` argument." % args.instance)

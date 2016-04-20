@@ -14,6 +14,7 @@
 # limitations under the License.
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
@@ -51,6 +52,13 @@ def add_subparser(subparsers):
         '-c', '--clusters',
         help=clusters_help,
     ).completer = lazy_choices_completer(list_clusters)
+    status_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     status_parser.set_defaults(command=paasta_metastatus)
 
 
@@ -88,11 +96,12 @@ def get_cluster_dashboards(cluster):
 
 def paasta_metastatus(args):
     """Print the status of a PaaSTA clusters"""
-    all_clusters = list_clusters()
+    soa_dir = args.soa_dir
+    all_clusters = list_clusters(soa_dir=soa_dir)
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
     for cluster in clusters_to_inspect:
         if cluster in all_clusters:
-            print_cluster_status(cluster, args.verbose)
+            print_cluster_status(cluster, args.verbose, soa_dir)
         else:
             print "Cluster %s doesn't look like a valid cluster?" % args.clusters
             print "Try using tab completion to help complete the cluster name"
