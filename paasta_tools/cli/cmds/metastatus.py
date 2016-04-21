@@ -101,7 +101,7 @@ def paasta_metastatus(args):
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
     for cluster in clusters_to_inspect:
         if cluster in all_clusters:
-            print_cluster_status(cluster, args.verbose, soa_dir)
+            print_cluster_status(cluster, args.verbose)
         else:
             print "Cluster %s doesn't look like a valid cluster?" % args.clusters
             print "Try using tab completion to help complete the cluster name"
