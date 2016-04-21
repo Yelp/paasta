@@ -11,10 +11,12 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 from socket import gaierror
 
 import mock
 from mock import patch
+from pytest import mark
 from pytest import raises
 
 from paasta_tools.cli import utils
@@ -314,6 +316,47 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
     assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert "fake_err_msg" in actual
+
+
+@mark.parametrize('test_case', [
+    [
+        (['fake_master1', 'fake_master2'], None),  # OK
+        ('fake_connectable_master', None),  # OK
+        (0, 'OK'),  # OK
+    ],
+    [
+        ([], 'Error in calculate_remote_masters'),  # Error
+        None,  # not called
+        None,  # not called
+    ],
+    [
+        (['fake_master1', 'fake_master2'], None),  # OK
+        (None, 'Error in find_connectable_master'),  # Error
+        None,  # not called
+    ],
+])
+def test_execute_chronos_rerun_on_remote_master(test_case):
+    with contextlib.nested(
+        patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True),
+        patch('paasta_tools.cli.utils.find_connectable_master', autospec=True),
+        patch('paasta_tools.cli.utils.run_chronos_rerun', autospec=True),
+    ) as (
+        mock_calculate_remote_masters,
+        mock_find_connectable_master,
+        mock_run_chronos_rerun,
+    ):
+        (mock_calculate_remote_masters.return_value,
+         mock_find_connectable_master.return_value,
+         mock_run_chronos_rerun.return_value) = test_case
+
+        outcome = utils.execute_chronos_rerun_on_remote_master('service', 'instance', 'cluster', verbose=1)
+        # Always return an (rc, output) tuple
+        assert type(outcome) == tuple and \
+            len(outcome) == 2 and \
+            type(outcome[0]) == int and \
+            type(outcome[1]) == str
+        assert bool(mock_find_connectable_master.return_value) == mock_find_connectable_master.called
+        assert bool(mock_run_chronos_rerun.return_value) == mock_run_chronos_rerun.called
 
 
 @patch('paasta_tools.cli.utils.list_all_instances_for_service')
