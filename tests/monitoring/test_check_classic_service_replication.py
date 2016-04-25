@@ -22,7 +22,6 @@ from paasta_tools.monitoring.check_classic_service_replication import ClassicSer
 from paasta_tools.monitoring.check_classic_service_replication import do_replication_check
 from paasta_tools.monitoring.check_classic_service_replication import extract_replication_info
 from paasta_tools.monitoring.check_classic_service_replication import report_event
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 
 
 def test_report_event():
@@ -195,9 +194,8 @@ def test_classic_replication_check_connectionerror():
         mock_init.return_value = None
         check = ClassicServiceReplicationCheck()
         check.critical = mock.Mock()
-        check.get_service_replication(['this', 'that'])
-        check.critical.assert_called_once_with(
-            'Failed to connect synapse haproxy on localhost:%s' % DEFAULT_SYNAPSE_PORT)
+        check.get_service_replication(['this', 'that'], 'localhost', 12345)
+        check.critical.assert_called_once_with('Failed to connect synapse haproxy on localhost:12345')
 
 
 def test_classic_replication_check_unknownexception():
@@ -213,5 +211,5 @@ def test_classic_replication_check_unknownexception():
         mock_init.return_value = None
         check = ClassicServiceReplicationCheck()
         check.critical = mock.Mock()
-        check.get_service_replication(['this', 'that'])
+        check.get_service_replication(['this', 'that'], 'localhost', 12345)
         check.critical.assert_called_once_with(mock.ANY)

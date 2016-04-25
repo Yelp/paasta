@@ -29,7 +29,6 @@ from marathon.models import MarathonApp
 
 from paasta_tools.monitoring.replication_utils import \
     get_registered_marathon_tasks
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
@@ -214,7 +213,7 @@ def kill_old_ids(old_ids, client):
             continue
 
 
-def get_happy_tasks(app, service, nerve_ns, min_task_uptime=None, check_haproxy=False):
+def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptime=None, check_haproxy=False):
     """Given a MarathonApp object, return the subset of tasks which are considered healthy.
     With the default options, this returns tasks where at least one of the defined Marathon healthchecks passes.
     For it to do anything interesting, set min_task_uptime or check_haproxy.
@@ -242,7 +241,7 @@ def get_happy_tasks(app, service, nerve_ns, min_task_uptime=None, check_haproxy=
             synapse_host = hosts[0]
             tasks_in_smartstack.extend(get_registered_marathon_tasks(
                 synapse_host,
-                DEFAULT_SYNAPSE_PORT,
+                system_paasta_config.get_synapse_port(),
                 service_namespace,
                 tasks,
             ))

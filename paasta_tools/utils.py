@@ -66,6 +66,8 @@ ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
 no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
+DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
+
 log = logging.getLogger('__main__')
 
 
@@ -816,9 +818,28 @@ class SystemPaastaConfig(dict):
     def get_dockerfile_location(self):
         """Get the location of the dockerfile, as a URI.
 
-        :returns: the URI speicfied, or file:///root/.dockercfg if not specified.
+        :returns: the URI specified, or file:///root/.dockercfg if not specified.
         """
         return self.get('dockerfile_location', DEFAULT_DOCKERFILE_LOCATION)
+
+    def get_synapse_port(self):
+        """Get the port that haproxy-synapse exposes its status on. Defaults to 3212.
+
+        :returns: the haproxy-synapse status port."""
+        return int(self.get('synapse_port', 3212))
+
+    def get_default_synapse_host(self):
+        """Get the default host we should interrogate for haproxy-synapse state.
+
+        :returns: A hostname that is running haproxy-synapse."""
+        return self.get('synapse_host', 'localhost')
+
+    def get_synapse_haproxy_url_format(self):
+        """Get a format string for the URL to query for haproxy-synapse state. This format string gets two keyword
+        arguments, host and port. Defaults to "http://{host:s}:{port:d}/;csv;norefresh".
+
+        :returns: A format string for constructing the URL of haproxy-synapse's status page."""
+        return self.get('synapse_haproxy_url_format', DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT)
 
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):

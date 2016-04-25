@@ -22,6 +22,7 @@ from pytest import raises
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
+from paasta_tools import utils
 from paasta_tools.bounce_lib import list_bounce_methods
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -1170,7 +1171,7 @@ class TestSetupMarathonJob:
             mock.patch(
                 'paasta_tools.bounce_lib.get_happy_tasks',
                 autospec=True,
-                side_effect=lambda x, _, __, **kwargs: x.tasks,
+                side_effect=lambda x, _, __, ___, **kwargs: x.tasks,
             ),
             mock.patch('paasta_tools.bounce_lib.kill_old_ids', autospec=True),
             mock.patch('paasta_tools.bounce_lib.create_marathon_app', autospec=True),
@@ -1338,7 +1339,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
     def fake_drain_method(self):
         return mock.Mock(is_draining=lambda t: t._drain_state == 'down')
 
-    def fake_get_happy_tasks(self, app, service, nerve_ns, **kwargs):
+    def fake_get_happy_tasks(self, app, service, nerve_ns, system_paasta_config, **kwargs):
         return [t for t in app.tasks if t._happiness == 'happy']
 
     def test_get_old_happy_unhappy_draining_tasks_empty(self):
@@ -1350,6 +1351,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             mock.Mock(id=fake_id, tasks=[]),
             mock.Mock(id=('%s2' % fake_id), tasks=[])
         ]
+        fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
 
         expected_live_happy_tasks = {
             fake_apps[0].id: set(),
@@ -1371,6 +1373,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
+                system_paasta_config=fake_system_paasta_config,
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks
@@ -1401,6 +1404,8 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             ),
         ]
 
+        fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
+
         expected_live_happy_tasks = {
             fake_apps[0].id: set([fake_apps[0].tasks[0]]),
             fake_apps[1].id: set([fake_apps[1].tasks[0]]),
@@ -1421,6 +1426,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
+                system_paasta_config=fake_system_paasta_config,
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks

@@ -293,14 +293,15 @@ def do_bounce(
         )
 
 
-def get_old_happy_unhappy_draining_tasks_for_app(app, drain_method, service, nerve_ns, bounce_health_params):
+def get_old_happy_unhappy_draining_tasks_for_app(app, drain_method, service, nerve_ns, bounce_health_params,
+                                                 system_paasta_config):
     tasks_by_state = {
         'happy': set(),
         'unhappy': set(),
         'draining': set(),
     }
 
-    happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, **bounce_health_params)
+    happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, system_paasta_config, **bounce_health_params)
     for task in app.tasks:
         if drain_method.is_draining(task):
             state = 'draining'
@@ -313,7 +314,8 @@ def get_old_happy_unhappy_draining_tasks_for_app(app, drain_method, service, ner
     return tasks_by_state
 
 
-def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerve_ns, bounce_health_params):
+def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerve_ns, bounce_health_params,
+                                         system_paasta_config):
     """Split tasks from old apps into 3 categories:
       - live (not draining) and happy (according to get_happy_tasks)
       - live (not draining) and unhappy
@@ -327,7 +329,7 @@ def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerv
     for app in other_apps:
 
         tasks_by_state = get_old_happy_unhappy_draining_tasks_for_app(
-            app, drain_method, service, nerve_ns, bounce_health_params)
+            app, drain_method, service, nerve_ns, bounce_health_params, system_paasta_config)
 
         old_app_live_happy_tasks[app.id] = tasks_by_state['happy']
         old_app_live_unhappy_tasks[app.id] = tasks_by_state['unhappy']
@@ -375,7 +377,8 @@ def deploy_service(
 
     short_id = marathon_tools.format_job_id(service, instance)
 
-    cluster = load_system_paasta_config().get_cluster()
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
     existing_apps = marathon_tools.get_matching_apps(service, instance, client, embed_failures=True)
     new_app_list = [a for a in existing_apps if a.id == '/%s' % config['id']]
     other_apps = [a for a in existing_apps if a.id != '/%s' % config['id']]
@@ -386,7 +389,8 @@ def deploy_service(
         if len(new_app_list) != 1:
             raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
         new_app_running = True
-        happy_new_tasks = bounce_lib.get_happy_tasks(new_app, service, nerve_ns, **bounce_health_params)
+        happy_new_tasks = bounce_lib.get_happy_tasks(new_app, service, nerve_ns, system_paasta_config,
+                                                     **bounce_health_params)
     else:
         new_app_running = False
         happy_new_tasks = []
@@ -410,7 +414,8 @@ def deploy_service(
         drain_method,
         service,
         nerve_ns,
-        bounce_health_params
+        bounce_health_params,
+        system_paasta_config,
     )
 
     if new_app_running:
@@ -425,6 +430,7 @@ def deploy_service(
                 service,
                 nerve_ns,
                 bounce_health_params,
+                system_paasta_config,
             )
             scaling_app_happy_tasks = list(task_dict['happy'])
             scaling_app_unhappy_tasks = list(task_dict['unhappy'])

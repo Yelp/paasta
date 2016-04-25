@@ -25,13 +25,13 @@ from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
 from paasta_tools.monitoring.replication_utils import backend_is_up
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.smartstack_tools import get_backends
 from paasta_tools.utils import _log
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import format_table
 from paasta_tools.utils import is_under_replicated
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
@@ -240,7 +240,8 @@ def format_haproxy_backend_row(backend, is_correct_instance):
         return tuple(PaastaColors.grey(remove_ansi_escape_sequences(col)) for col in row)
 
 
-def status_smartstack_backends(service, instance, job_config, cluster, tasks, expected_count, soa_dir, verbose):
+def status_smartstack_backends(service, instance, job_config, cluster, tasks, expected_count, soa_dir, verbose,
+                               synapse_port):
     """Returns detailed information about smartstack backends for a service
     and instance.
     return: A newline separated string of the smarststack backend status
@@ -274,12 +275,14 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
             tasks,
             unique_attributes,
             expected_count,
-            verbose
+            verbose,
+            synapse_port,
         ))
     return "\n".join(output)
 
 
-def pretty_print_smartstack_backends_for_locations(service_instance, tasks, locations, expected_count, verbose):
+def pretty_print_smartstack_backends_for_locations(service_instance, tasks, locations, expected_count, verbose,
+                                                   synapse_port):
     """
     Pretty prints the status of smartstack backends of a specified service and instance in the specified locations
     """
@@ -291,7 +294,7 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
         synapse_host = hosts[0]
         sorted_backends = sorted(get_backends(service_instance,
                                               synapse_host=synapse_host,
-                                              synapse_port=DEFAULT_SYNAPSE_PORT),
+                                              synapse_port=synapse_port),
                                  key=lambda backend: backend['status'],
                                  reverse=True)  # Specify reverse so that backends in 'UP' are placed above 'MAINT'
         matched_tasks = match_backends_and_tasks(sorted_backends, tasks)
@@ -337,6 +340,8 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     :param verbose: int verbosity level
     :returns: A unix-style return code
     """
+    system_config = load_system_paasta_config()
+
     marathon_config = marathon_tools.load_marathon_config()
     job_config = marathon_tools.load_marathon_service_config(service, instance, cluster, soa_dir=soa_dir)
     if not app_id:
@@ -382,6 +387,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 expected_count=normal_smartstack_count,
                 soa_dir=soa_dir,
                 verbose=verbose > 0,
+                synapse_port=system_config.get_synapse_port(),
             )
     elif command == 'scale':
         scale_marathon_job(service, instance, app_id, delta, client, cluster)

@@ -88,7 +88,7 @@ def when_there_are_num_which_tasks(context, num, which, state):
     # 120 * 0.5 = 60 seconds
     for _ in xrange(120):
         app = context.marathon_client.get_app(app_id, embed_tasks=True)
-        happy_count = len(get_happy_tasks(app, context.service, "fake_nerve_ns"))
+        happy_count = len(get_happy_tasks(app, context.service, "fake_nerve_ns", context.system_paasta_config))
         if state == "healthy":
             if happy_count >= context.max_tasks:
                 return
@@ -108,8 +108,8 @@ def when_deploy_service_initiated(context, bounce_method, drain_method):
             autospec=True,
             # Wrap function call so we can select a subset of tasks or test
             # intermediate steps, like when an app is not completely up
-            side_effect=lambda app, _, __, **kwargs: get_happy_tasks(
-                app, context.service, "fake_nerve_ns")[:context.max_tasks],
+            side_effect=lambda app, _, __, ___, **kwargs: get_happy_tasks(
+                app, context.service, "fake_nerve_ns", context.system_paasta_config)[:context.max_tasks],
         ),
         mock.patch('paasta_tools.bounce_lib.bounce_lock_zookeeper', autospec=True),
         mock.patch('paasta_tools.bounce_lib.create_app_lock', autospec=True),
