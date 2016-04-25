@@ -25,6 +25,7 @@ from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
+from paasta_tools.utils import SystemPaastaConfig
 
 
 fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
@@ -827,9 +828,12 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_config', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_service_config', autospec=True,
                    return_value=mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError))),
+        mock.patch('paasta_tools.marathon_serviceinit.load_system_paasta_config', autospec=True,
+                   return_value=SystemPaastaConfig({}, "/fake/config")),
     ) as (
         mock_load_marathon_config,
         mock_load_marathon_service_config,
+        mock_load_system_paasta_config,
     ):
         actual = marathon_serviceinit.perform_command(
             'start', fake_service, fake_instance, fake_cluster, False, soa_dir)

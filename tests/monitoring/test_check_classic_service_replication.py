@@ -22,6 +22,7 @@ from paasta_tools.monitoring.check_classic_service_replication import ClassicSer
 from paasta_tools.monitoring.check_classic_service_replication import do_replication_check
 from paasta_tools.monitoring.check_classic_service_replication import extract_replication_info
 from paasta_tools.monitoring.check_classic_service_replication import report_event
+from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_report_event():
@@ -161,6 +162,7 @@ def test_classic_replication_check():
     replication_method = check_classic_module + '.get_replication_for_services'
     extract_method = check_classic_module + '.extract_replication_info'
     check_method = check_classic_module + '.do_replication_check'
+    load_system_paasta_config_module = check_classic_module + '.load_system_paasta_config'
 
     mock_service_config = {'pow': {'wat': 1}}
     mock_replication = {'pow': -1}
@@ -174,7 +176,8 @@ def test_classic_replication_check():
             mock.patch(check_method, return_value=mock_check),
             mock.patch('pysensu_yelp.send_event'),
             mock.patch.object(sys, 'argv', ['check_classic_service_replication.py']),
-    ) as (_, _, _, mcheck, _, _):
+            mock.patch(load_system_paasta_config_module, return_value=SystemPaastaConfig({}, '/fake/config'))
+    ) as (_, _, _, mcheck, _, _, _):
         with pytest.raises(SystemExit) as error:
             check = ClassicServiceReplicationCheck()
             check.run()
