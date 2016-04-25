@@ -77,6 +77,7 @@ def paasta_cook_image(args, service=None, soa_dir=None):
             service=service,
             loglevel='debug'
         )
+        print output
         if returncode != 0:
             _log(
                 service=service,
