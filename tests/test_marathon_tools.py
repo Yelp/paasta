@@ -728,7 +728,7 @@ class TestMarathonTools:
             mock.patch(
                 'paasta_tools.marathon_tools.get_all_namespaces_for_service',
                 autospec=True,
-                side_effect=lambda x, y, full_name: [('foo', {})]
+                side_effect=lambda x, y, full_name: [('main', {}), ('canary', {})]
             ),
             mock.patch(
                 'paasta_tools.marathon_tools._namespaced_get_classic_service_information_for_nerve',
@@ -737,7 +737,7 @@ class TestMarathonTools:
             ),
         ):
             assert marathon_tools.get_classic_services_running_here_for_nerve('baz') == [
-                ('a.foo', {}), ('b.foo', {}), ('c.foo', {}),
+                ('a.main', {}), ('b.main', {}), ('c.main', {}),
             ]
 
     def test_get_services_running_here_for_nerve(self):
