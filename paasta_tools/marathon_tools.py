@@ -230,7 +230,7 @@ class MarathonServiceConfig(InstanceConfig):
 
     def get_autoscaling_params(self):
         default_params = {
-            'metrics_provider': 'mesos_cpu_ram',
+            'metrics_provider': 'mesos_cpu',
             'decision_policy': 'pid',
             'setpoint': 0.8,
         }
