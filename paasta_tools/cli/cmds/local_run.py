@@ -598,7 +598,7 @@ def command_function_for_framework(framework):
     elif framework == 'marathon':
         return format_marathon_command
     else:
-        raise ValueError("Invalid Frmework")
+        raise ValueError("Invalid Framework")
 
 
 def configure_and_run_docker_container(docker_client, docker_hash, service, instance, cluster, args, pull_image=False):

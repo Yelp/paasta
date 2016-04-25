@@ -18,6 +18,7 @@ import docker
 import mock
 from pytest import raises
 
+from paasta_tools.cli.cmds.local_run import command_function_for_framework
 from paasta_tools.cli.cmds.local_run import configure_and_run_docker_container
 from paasta_tools.cli.cmds.local_run import docker_pull_image
 from paasta_tools.cli.cmds.local_run import get_container_id
@@ -1103,3 +1104,24 @@ def test_pull_docker_image_exists_with_failure(mock_run):
         docker_pull_image('fake_image')
     assert excinfo.value.code == 42
     mock_run.assert_called_once_with('docker pull fake_image', stream=True, stdin=mock.ANY)
+
+
+def test_command_function_for_framework_for_marathon():
+    fn = command_function_for_framework('marathon')
+    assert fn('foo') == 'foo'
+
+
+@mock.patch('paasta_tools.cli.cmds.local_run.parse_time_variables')
+@mock.patch('paasta_tools.cli.cmds.local_run.datetime')
+def test_command_function_for_framework_for_chronos(mock_datetime, mock_parse_time_variables):
+    fake_date = mock.Mock()
+    mock_datetime.datetime.now.return_value = fake_date
+    mock_parse_time_variables.return_value = "foo"
+    fn = command_function_for_framework('chronos')
+    fn("foo")
+    mock_parse_time_variables.assert_called_once_with('foo', fake_date)
+
+
+def test_command_function_for_framework_throws_error():
+    with raises(ValueError):
+        assert command_function_for_framework('bogus_string')
