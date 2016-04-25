@@ -188,8 +188,8 @@ def http_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, 
     return sum(utilization) / len(utilization)
 
 
-@register_autoscaling_component('mesos_cpu_ram', METRICS_PROVIDER_KEY)
-def mesos_cpu_ram_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs):
+@register_autoscaling_component('mesos_cpu', METRICS_PROVIDER_KEY)
+def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_tasks, **kwargs):
     """
     Gets the average utilization of a service across all of its tasks, where the utilization of
     a task is the maximum value between its cpu and ram utilization.
@@ -230,13 +230,6 @@ def mesos_cpu_ram_metrics_provider(marathon_service_config, marathon_tasks, meso
         last_cpu_seconds, task_id = datum.split(':')
         if task_id in mesos_cpu_data:
             utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
-
-    for task_id, stats in mesos_tasks.items():
-        if stats.get('mem_limit_bytes', 0) != 0:
-            utilization[task_id] = max(
-                utilization.get(task_id, 0),
-                float(stats.get('mem_rss_bytes', 0)) / stats.get('mem_limit_bytes', 0),
-            )
 
     if not utilization:
         raise MetricsProviderNoDataError("Couldn't get any cpu or ram data from Mesos")
