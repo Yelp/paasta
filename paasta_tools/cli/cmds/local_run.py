@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import math
 import os
 import pipes
 import shlex
@@ -188,7 +189,7 @@ def simulate_healthcheck_on_service(
     :param container_id: Docker container id
     :param healthcheck_data: tuple url to healthcheck
     :param healthcheck_enabled: boolean
-    :returns: if healthcheck_enabled is true, then returns output of healthcheck, otherwise simply returns true
+    :returns: a 2-tuple of (healthcheck_passed_bool, healthcheck_output_string)
     """
     healthcheck_link = PaastaColors.cyan(healthcheck_data)
     if healthcheck_enabled:
@@ -380,6 +381,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
+    cmd.append('--memory-swap=%dm' % int(math.ceil(memory)))
     if net == 'bridge':
         cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     elif net == 'host':
@@ -540,7 +542,7 @@ def run_docker_container(
 
         # If the service has a healthcheck, simulate it
         if healthcheck_mode:
-            status = simulate_healthcheck_on_service(
+            status, _ = simulate_healthcheck_on_service(
                 instance_config, docker_client, container_id, healthcheck_mode, healthcheck_data, healthcheck)
         else:
             status = True

@@ -231,7 +231,7 @@ def check_service_replication(client, service, instance, cluster, soa_dir):
     try:
         expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
     except NoDeploymentsAvailable:
-        log.info('deployments.json missing for %s. Skipping replication monitoring.' % job_id)
+        log.debug('deployments.json missing for %s. Skipping replication monitoring.' % job_id)
         return
     if expected_count is None:
         return

@@ -335,7 +335,7 @@ class TestChronosTools:
                 branch_dict={},
             )
             fake_chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
-                                                            dummy_config.get_dockerfile_location())
+                                                            dummy_config.get_dockercfg_location())
             mock_parse_time_variables.assert_called_once_with(fake_cmd)
 
     def test_get_owner(self):
@@ -889,7 +889,7 @@ class TestChronosTools:
                 'volumes': fake_docker_volumes,
                 'image': fake_docker_url,
                 'type': 'DOCKER',
-                'parameters': {'memory-swap': '1024m'}
+                'parameters': [{"key": "memory-swap", "value": "1024m"}],
             },
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
@@ -899,7 +899,7 @@ class TestChronosTools:
             mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
         ):
             actual = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
-                                                                dummy_config.get_dockerfile_location())
+                                                                dummy_config.get_dockercfg_location())
             assert actual == expected
 
     def test_format_chronos_job_dict_uses_net(self):
@@ -928,7 +928,7 @@ class TestChronosTools:
             mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
         ):
             result = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
-                                                                dummy_config.get_dockerfile_location())
+                                                                dummy_config.get_dockercfg_location())
             assert result['container']['network'] == 'HOST'
 
     def test_format_chronos_job_dict_invalid_param(self):
@@ -948,7 +948,7 @@ class TestChronosTools:
             branch_dict={},
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
-            invalid_config.format_chronos_job_dict(docker_url='', docker_volumes=[], dockerfile_location={})
+            invalid_config.format_chronos_job_dict(docker_url='', docker_volumes=[], dockercfg_location={})
         assert 'The specified schedule "%s" is invalid' % fake_schedule in exc.value
 
     def test_list_job_names(self):
@@ -1120,7 +1120,7 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake-service', 'fake-job')
             expected = {
@@ -1142,7 +1142,7 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/paasta-test-service-penguin",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1166,7 +1166,7 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             first_description = chronos_tools.create_complete_config('fake-service', 'fake-job')['description']
 
@@ -1212,7 +1212,7 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
@@ -1234,7 +1234,7 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1271,7 +1271,7 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
@@ -1293,7 +1293,7 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1346,7 +1346,7 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=fake_system_volumes)
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
@@ -1368,7 +1368,7 @@ class TestChronosTools:
                     'volumes': fake_system_volumes + fake_extra_volumes,
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,

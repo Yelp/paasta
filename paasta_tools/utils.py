@@ -24,6 +24,7 @@ import importlib
 import io
 import json
 import logging
+import math
 import os
 import pwd
 import re
@@ -53,7 +54,7 @@ SPACER = '.'
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get('PAASTA_SYSTEM_CONFIG_DIR', '/etc/paasta/')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
-DEFAULT_DOCKERFILE_LOCATION = "file:///root/.dockercfg"
+DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -119,6 +120,16 @@ class InstanceConfig(dict):
         :returns: The amount of memory specified by the config, 1024 if not specified"""
         mem = self.config_dict.get('mem', 1024)
         return mem
+
+    def get_mem_swap(self):
+        """Gets the memory-swap value. This value is passed to the docker
+        container to ensure that the total memory limit (memory + swap) is the
+        same value as the 'mem' key in soa-configs. Note - this value *has* to
+        be >= to the mem key, so we always round up to the closest MB.
+        """
+        mem = self.get_mem()
+        mem_swap = int(math.ceil(mem))
+        return "%sm" % mem_swap
 
     def get_cpus(self):
         """Gets the number of cpus required from the service's configuration.
@@ -815,12 +826,12 @@ class SystemPaastaConfig(dict):
         """
         return int(self.get('sensu_port', 3030))
 
-    def get_dockerfile_location(self):
+    def get_dockercfg_location(self):
         """Get the location of the dockerfile, as a URI.
 
         :returns: the URI specified, or file:///root/.dockercfg if not specified.
         """
-        return self.get('dockerfile_location', DEFAULT_DOCKERFILE_LOCATION)
+        return self.get('dockercfg_location', DEFAULT_DOCKERCFG_LOCATION)
 
     def get_synapse_port(self):
         """Get the port that haproxy-synapse exposes its status on. Defaults to 3212.

@@ -567,10 +567,11 @@ def execute_chronos_rerun_on_remote_master(service, instancename, cluster, **kwa
     """
     masters, output = calculate_remote_masters(cluster)
     if masters == []:
-        return 'ERROR: %s' % output
+        return (-1, 'ERROR: %s' % output)
     master, output = find_connectable_master(masters)
     if not master:
         return (
+            -1,
             'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
         )
     return run_chronos_rerun(master, service, instancename, **kwargs)

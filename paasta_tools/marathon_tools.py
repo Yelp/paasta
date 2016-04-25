@@ -374,13 +374,13 @@ class MarathonServiceConfig(InstanceConfig):
                     'image': docker_url,
                     'network': net,
                     "parameters": [
-                        {"key": "memory-swap", "value": "%sm" % str(self.get_mem())},
+                        {"key": "memory-swap", "value": self.get_mem_swap()},
                     ]
                 },
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
             },
-            'uris': [system_paasta_config.get_dockerfile_location(), ],
+            'uris': [system_paasta_config.get_dockercfg_location(), ],
             'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),

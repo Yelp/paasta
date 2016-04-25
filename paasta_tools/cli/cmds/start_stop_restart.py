@@ -161,7 +161,7 @@ def paasta_start_or_stop(args, desired_state):
         clusters = list_clusters(service)
 
     try:
-        remote_refs = remote_git.list_remote_refs(utils.get_git_url(service))
+        remote_refs = remote_git.list_remote_refs(utils.get_git_url(service, soa_dir))
     except remote_git.LSRemoteException as e:
         msg = (
             "Error talking to the git server: %s\n"

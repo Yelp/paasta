@@ -583,17 +583,13 @@ def main():
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
-        error_msg = "No deployments found for %s in cluster %s" % (args.service_instance,
-                                                                   load_system_paasta_config().get_cluster())
-        log.error(error_msg)
-        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
-        # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
+        log.debug("No deployments found for %s in cluster %s. Skipping." % (args.service_instance,
+                                                                            load_system_paasta_config().get_cluster()))
         sys.exit(0)
     except NoConfigurationForServiceError:
         error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
             (args.service_instance, load_system_paasta_config().get_cluster())
         log.error(error_msg)
-        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
         sys.exit(1)
 
     try:
