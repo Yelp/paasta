@@ -156,7 +156,7 @@ def test_pid_decision_policy():
         service='fake-service',
         instance='fake-instance',
         cluster='fake-cluster',
-        config_dict={},
+        config_dict={'min_instances': 1, 'max_instances': 100},
         branch_dict={},
     )
 
@@ -181,7 +181,9 @@ def test_pid_decision_policy():
         _,
     ):
         mock_datetime.now.return_value = current_time
-        assert autoscaling_lib.pid_decision_policy(fake_marathon_service_config, 0.0) == 0
+        assert autoscaling_lib.pid_decision_policy(fake_marathon_service_config, 10, 0.0) == 0
+        assert autoscaling_lib.pid_decision_policy(fake_marathon_service_config, 10, 0.2) == 1
+        assert autoscaling_lib.pid_decision_policy(fake_marathon_service_config, 10, -0.2) == -1
         mock_zk_client.return_value.set.assert_has_calls([
             mock.call('/autoscaling/fake-service/fake-instance/pid_iterm', '0.0'),
             mock.call('/autoscaling/fake-service/fake-instance/pid_last_error', '0.0'),
@@ -194,6 +196,7 @@ def test_threshold_decision_policy():
     decision_policy_args = {
         'marathon_service_config': mock.Mock(service='fake-service', instance='fake-instance'),
         'threshold': 0.1,
+        'current_instances': 10,
     }
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling_lib.datetime', autospec=True),
@@ -312,13 +315,6 @@ def test_mesos_ram_cpu_metrics_provider_no_data_mesos():
     ):
         with raises(autoscaling_lib.MetricsProviderNoDataError):
             autoscaling_lib.mesos_cpu_metrics_provider(fake_marathon_service_config, fake_marathon_tasks, [])
-
-
-def test_get_new_instance_count():
-    assert autoscaling_lib.get_new_instance_count(20, 1) == 22
-    assert autoscaling_lib.get_new_instance_count(20, -1) == 18
-    assert autoscaling_lib.get_new_instance_count(20, 0) == 20
-    assert autoscaling_lib.get_new_instance_count(0, 1) == 0
 
 
 def test_autoscale_marathon_instance():
