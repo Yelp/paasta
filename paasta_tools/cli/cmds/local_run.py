@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import math
 import os
 import pipes
@@ -26,6 +27,7 @@ from urlparse import urlparse
 import requests
 from docker import errors
 
+from paasta_tools.chronos_tools import parse_time_variables
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import figure_out_service_name
@@ -52,6 +54,7 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
+from paasta_tools.utils import validate_service_instance
 
 
 def pick_random_port():
@@ -578,6 +581,26 @@ def run_docker_container(
     sys.exit(returncode)
 
 
+def command_function_for_framework(framework):
+    """
+    Given a framework, return a function that appropriately formats
+    the command to be run.
+    """
+    def format_marathon_command(cmd):
+        return cmd
+
+    def format_chronos_command(cmd):
+        interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
+        return interpolated_command
+
+    if framework == 'chronos':
+        return format_chronos_command
+    elif framework == 'marathon':
+        return format_marathon_command
+    else:
+        raise ValueError("Invalid Framework")
+
+
 def configure_and_run_docker_container(docker_client, docker_hash, service, instance, cluster, args, pull_image=False):
     """
     Run Docker container by image hash with args set in command line.
@@ -596,6 +619,8 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
     soa_dir = args.yelpsoa_config_root
 
     volumes = list()
+
+    instance_type = validate_service_instance(service, instance, cluster, soa_dir)
 
     try:
         instance_config = get_instance_config(
@@ -641,7 +666,8 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
     else:
         command_from_config = instance_config.get_cmd()
         if command_from_config:
-            command = shlex.split(command_from_config)
+            command_modifier = command_function_for_framework(instance_type)
+            command = shlex.split(command_modifier(command_from_config))
         else:
             command = instance_config.get_args()
 
