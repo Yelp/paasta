@@ -25,8 +25,6 @@ import argparse
 import copy
 import datetime
 
-import service_configuration_lib
-
 from paasta_tools import chronos_tools
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
@@ -40,7 +38,7 @@ def parse_args():
     parser.add_argument('-v', '--verbose', action='store_true', dest="verbose", default=False,
                         help="Print out more output regarding the state of the service")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=chronos_tools.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
     parser.add_argument('execution_date',

@@ -20,7 +20,6 @@ import sys
 from socket import gaierror
 from socket import gethostbyname_ex
 
-from service_configuration_lib import DEFAULT_SOA_DIR
 from service_configuration_lib import read_services_configuration
 
 from paasta_tools.chronos_tools import load_chronos_job_config
@@ -28,6 +27,7 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config

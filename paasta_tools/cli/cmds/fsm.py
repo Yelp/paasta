@@ -16,8 +16,6 @@ import sys
 from os.path import exists
 from os.path import join
 
-from service_configuration_lib import DEFAULT_SOA_DIR
-
 from paasta_tools.cli.fsm.questions import _yamlize
 from paasta_tools.cli.fsm.questions import get_marathon_stanza
 from paasta_tools.cli.fsm.questions import get_monitoring_stanza
@@ -27,6 +25,7 @@ from paasta_tools.cli.fsm.questions import get_srvname
 from paasta_tools.cli.fsm.service import Service
 from paasta_tools.cli.utils import lazy_choices_completer
 from paasta_tools.cli.utils import list_teams
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 

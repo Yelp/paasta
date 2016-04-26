@@ -33,13 +33,13 @@ import logging
 import traceback
 
 import pysensu_yelp
-import service_configuration_lib
 
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import _log
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
@@ -52,7 +52,7 @@ logging.basicConfig()
 def parse_args():
     parser = argparse.ArgumentParser(description='Cleans up stale marathon jobs.')
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('-v', '--verbose', action='store_true',
                         dest="verbose", default=False)

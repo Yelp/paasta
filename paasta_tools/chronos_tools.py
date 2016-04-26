@@ -28,6 +28,7 @@ import service_configuration_lib
 from tron import command_context
 
 from paasta_tools.mesos_tools import get_mesos_network_for_net
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
@@ -60,7 +61,6 @@ TMP_JOB_IDENTIFIER = "tmp"
 
 VALID_BOUNCE_METHODS = ['graceful']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
-DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 log = logging.getLogger('__main__')
 

@@ -15,8 +15,6 @@
 import datetime
 import socket
 
-from service_configuration_lib import DEFAULT_SOA_DIR
-
 from paasta_tools import remote_git
 from paasta_tools import utils
 from paasta_tools.chronos_tools import ChronosJobConfig
@@ -27,6 +25,7 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.generate_deployments_for_service import get_latest_deployment_tag
 from paasta_tools.marathon_tools import MarathonServiceConfig
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 
 

@@ -21,12 +21,11 @@ import argparse
 import logging
 import sys
 
-import service_configuration_lib
-
 from paasta_tools import chronos_serviceinit
 from paasta_tools import marathon_serviceinit
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import validate_service_instance
 
@@ -45,7 +44,7 @@ def parse_args():
     parser.add_argument('-D', '--debug', action='store_true', dest="debug", default=False,
                         help="Output debug logs regarding files, connections, etc")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
     parser.add_argument('-a', '--appid', dest="app_id",
