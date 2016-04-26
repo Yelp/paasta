@@ -226,17 +226,8 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
     mesos_cpu_data = {task_id: float(stats.get('cpus_system_time_secs', 0.0) + stats.get(
         'cpus_user_time_secs', 0.0)) / (stats.get('cpus_limit', 0) - .1) for task_id, stats in mesos_tasks.items()}
 
-    utilization = {}
-    for datum in last_cpu_data:
-        last_cpu_seconds, task_id = datum.split(':')
-        if task_id in mesos_cpu_data:
-            utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
-
-    if not utilization:
+    if not mesos_cpu_data:
         raise MetricsProviderNoDataError("Couldn't get any cpu or ram data from Mesos")
-
-    task_utilization = utilization.values()
-    average_utilization = sum(task_utilization) / len(task_utilization)
 
     cpu_data_csv = ','.join('%s:%s' % (cpu_seconds, task_id) for task_id, cpu_seconds in mesos_cpu_data.items())
 
@@ -245,6 +236,15 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
         zk.ensure_path(zk_last_time_path)
         zk.set(zk_last_cpu_data, str(cpu_data_csv))
         zk.set(zk_last_time_path, str(current_time))
+
+    utilization = {}
+    for datum in last_cpu_data:
+        last_cpu_seconds, task_id = datum.split(':')
+        if task_id in mesos_cpu_data:
+            utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
+
+    task_utilization = utilization.values()
+    average_utilization = sum(task_utilization) / len(task_utilization)
 
     return average_utilization
 
@@ -256,7 +256,7 @@ def get_error_from_utilization(utilization, setpoint, current_instances):
     Otherwise don't scale
     """
     max_threshold = setpoint
-    min_threshold = max_threshold * (current_instances - 1) * current_instances
+    min_threshold = max_threshold * (current_instances - 1) / current_instances
     if utilization < min_threshold:
         return utilization - min_threshold
     elif utilization > max_threshold:
@@ -283,7 +283,11 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
     )
     write_to_log(config=marathon_service_config, line='Recieved error from metrics provider: %f' % error)
     autoscaling_amount = autoscaling_decision_policy(
-        marathon_service_config, error, current_instances, **autoscaling_params)
+        marathon_service_config=marathon_service_config,
+        error=error,
+        current_instances=current_instances,
+        **autoscaling_params
+    )
 
     if autoscaling_amount:
         new_instance_count = marathon_service_config.limit_instance_count(current_instances + autoscaling_amount)
