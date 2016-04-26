@@ -36,6 +36,7 @@ from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import deploy_blacklist_to_constraints
 from paasta_tools.utils import deploy_whitelist_to_constraints
 from paasta_tools.utils import get_code_sha_from_dockerurl
@@ -55,7 +56,6 @@ from paasta_tools.utils import timeout
 from paasta_tools.utils import ZookeeperPool
 
 CONTAINER_PORT = 8888
-DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
 # spacer, and a UUID. This variable is that spacer. Note that we don't control
 # this spacer, i.e. you can't change it here and expect the world to change

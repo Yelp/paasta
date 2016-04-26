@@ -3,8 +3,6 @@ import argparse
 import sys
 import time
 
-import service_configuration_lib
-
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
 from paasta_tools import marathon_tools
@@ -28,7 +26,7 @@ def parse_args():
         '-d', '--soa-dir',
         dest="soa_dir",
         metavar="SOA_DIR",
-        default=service_configuration_lib.DEFAULT_SOA_DIR,
+        default=marathon_tools.DEFAULT_SOA_DIR,
         help="define a different soa config directory",
     )
     return parser.parse_args()

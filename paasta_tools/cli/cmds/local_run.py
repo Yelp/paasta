@@ -24,7 +24,6 @@ from random import randint
 from urlparse import urlparse
 
 import requests
-import service_configuration_lib
 from docker import errors
 
 from paasta_tools.cli.cmds.check import makefile_responds_to
@@ -40,6 +39,7 @@ from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.utils import _run
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
@@ -293,7 +293,7 @@ def add_subparser(subparsers):
         '-y', '--yelpsoa-config-root',
         dest='yelpsoa_config_root',
         help='A directory from which yelpsoa-configs should be read from',
-        default=service_configuration_lib.DEFAULT_SOA_DIR,
+        default=DEFAULT_SOA_DIR,
     )
     build_pull_group = list_parser.add_mutually_exclusive_group()
     build_pull_group.add_argument(
@@ -466,7 +466,7 @@ def run_docker_container(
     healthcheck,
     healthcheck_only,
     instance_config,
-    soa_dir=service_configuration_lib.DEFAULT_SOA_DIR,
+    soa_dir=DEFAULT_SOA_DIR,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
