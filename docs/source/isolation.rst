@@ -20,7 +20,7 @@ different Mesos agents, and how these isolation mechanisms are implemented.
 Note: Knowing the details of these systems isn't a requirement of using PaaSTA;
 most service authors may never need to know the details of such things. In
 fact, one of PaaSTA's primary design goals is to *hide* the minutiae of
-schedulers and performance isolation. However, this may benefit administrators
+schedulers and resource isolation. However, this may benefit administrators
 of PaaSTA (and, more generally, Mesos clusters), and the simply curious.
 
 Final note: The details herein may, nay, will contain (unintended) inaccuracies.
@@ -35,13 +35,14 @@ a task is run on a Mesos cluster.
 
 Mesos can run in two modes: Master and Agent. When a node is running Mesos in
 Master mode, it is responsible for communicating between agent processes and
-frameworks. A Framework is a program which wants to run tasks on the mesos
+frameworks. A Framework is a program which wants to run tasks on the Mesos
 cluster.
 
 A master is responsible for presenting frameworks with resource offers.
-Resource offers of compute resource on which a framework can run a task. The
+Resource offers are compute resource free for a framework to run a task. The
 details of that compute resource comes from the agent nodes, which regularly
-tell the Master agent the resources it has available for running tasks.
+tell the Master agent the resources it has available for running tasks. Using
+the correct parlance, Mesos agents make 'offers' to the master.
 
 At Yelp, the resource that a given agent has available is determined by a
 couple of things: if the node also runs 'classic' services, then the resources
@@ -52,18 +53,22 @@ available for the Mesos Agent to run tasks.
 
 If, however, the agent node is a dedicated PaaSTA box (defined by having the
 puppet role ``paasta``), then all the resources available on the box are given
-to the Agent to run tasks.
+to the Agent to run tasks. This means that the cpus offered is set to the
+total number of processors on the host, and the memory offered is equal to the
+total memory available on the host.
 
-A master then distributes resources offers across framework. The way these
-resource offers are split between frameworks is set as part of the master's
-configuration - there may be particular priority given to some frameworks.
+Once a master node receives offers from an agent, it forwards it to
+a framework. Resource offers are split between frameworks according to
+the master's configuration - there may be particular priority given
+to some frameworks.
 
 At Yelp, we treat the frameworks we run (at the time of writing, Marathon and
 Chronos) equally. That means that frameworks *should* have offers distributed
-between them evenly.
+between them evenly, and all tasks are considered equal.
 
 It is then up to the framework to decide what it wants to do with an offer.
 The framework may decide to:
+
   * Reject the offer, if the framework has no tasks to run.
   * Reject the offer, if the resources included in the offer are not enough to
     match those required by the application.
@@ -91,13 +96,14 @@ How Tasks are isolated from eachother.
 Given that a slave may run multiple tasks, we need to ensure that tasks cannot
 'interfere' with one another. We do this on a file system level using Docker -
 without some hard work and security flaws, processes are protected from
-each other and the host by using kernel namespaces. Note that this is a feature
-provided by Docker - PaaSTA doesn't do anything 'extra' to enable this. It's
-also worth noting that there are other 'container' technologies that could
-provide this - the native Mesos 'containerizer' included.
+each other and the host by using kernel namespaces. Note that the use of kernel
+namespaces is a feature of Docker - PaaSTA doesn't do anything 'extra' to
+enable this. It's also worth noting that there are other 'container'
+technologies that could provide this - the native Mesos 'containerizer'
+included.
 
 However, these tasks are still running and consuming resources on the same
-host; this section aims to detail how PaaSTA services are protected from
+host. The next section aims to explain how PaaSTA services are protected from
 so-called 'noisy neighbours' that can starve others from resources.
 
 CGroups
@@ -105,7 +111,7 @@ CGroups
 Docker uses cgroups to enforce resource isolation. Cgroups are a part of the
 linux kernel, and can be used to restrict the resources available to groups of
 processes. In our setup, each Docker container that is launched (and any child
-processes forked inside the container) are contained in a given CGroup.
+processes forked inside the container) are contained in a given cgroup.
 
 Memory
 """"""
@@ -117,19 +123,30 @@ to that shown in the config.
 
 However, one caveat with only setting *this* value is that swap is not
 accounted for. As a result, once a container reaches it's memory limit, it may
-instead start swapping. Without particular kernel cmdline options, swapping is
-*not* accounted for the cgroup.
+start swapping, rather than being killed. Without particular kernel cmdline
+options, swapping is *not* accounted for the cgroup.
 
 Once we instruct the kernel to start accounting for swap, then there is also a
-value called ``memsw.limit_in_bytes`` made available. This defines a maximum
-value for the sum of memory and swap usage by a cgroup.
+configuration value ``memsw.limit_in_bytes`` associated with the cgroup. This defines a maximum
+value for the sum of memory and swap usage processes in the cgroup can use.
 
 At Yelp, we used the '--memory-swap' parameter to tell Docker to set this value
-to the *same as memory*. This prevents a container from swapping at all.
+to the *same value as the memory parameter*. This prevents a container from swapping at all.
 
-If a container reaches this limit, then the kernel will kill the task. When
-this happens, the framework running the task may or may not decide to try and
-start the task elsewhere.
+You can see these values by looking at:
+
+* `cat /sys/fs/cgroup/docker/<container-id>/memory.limit_in_bytes`
+* `cat /sys/fs/cgroup/docker/<container-id>/memory.memsw.limit_in_bytes`
+
+In Yelp's setup, these values should be the same.
+
+If the processes in the cgroup reaches the ``memsw.limit_in_bytes`` value ,
+then the kernel will invoke the OOM killer, which in turn will kill off one of
+the processes in the cgroup (often, but not always, this is the biggest
+contributor to the memory usage). If this is the only process running in the
+Docker container, then the container will die. The mesos framework which
+launched the task may or may not decide to try and start the same task
+elsewhere.
 
 CPUs
 """"
@@ -142,8 +159,9 @@ tasks from running on the spare CPU time available.
 
 Instead, the CPU value is used as a weighting to help the Linux Scheduler
 decide the order in which to run waiting threads. If there is no contention
-between processes; that is, there is only one thread in the run queue for a CPU
-core, then any weighting is ignored and the CPU will run whichever task it can.
+between processes, that is, there is only one thread in the run queue for a CPU
+core, then the CPU will run any tasks waiting, irrespective of their weighting
+or utilization.
 However, in the case where there is contention for CPU resource, then the
 weighting of the task to be run has an impact on how the scheduler decides
 which task should run next.
@@ -154,9 +172,9 @@ are only a few tasks running on your host, and the length of the run queue is
 small, then it is doubtful that it will have much impact at all.
 
 It is also important to note that when deciding the ordering in which tasks
-should be scheduled, threads are grouped by the CGroup that they are in. That
+should be scheduled, threads are grouped by the cgroup that they are in. That
 is, the scheduler takes both the weight and the utilization of  *all* threads in
-a CGroup into account, rather than individual threads. As a result, it may be
+a cgroup into account, rather than individual threads. As a result, it may be
 prudent to scale horizontally, rather than vertically to improve performance.
 
 Disk
