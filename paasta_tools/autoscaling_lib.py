@@ -270,6 +270,7 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
     if len(marathon_tasks) != current_instances:
         write_to_log(config=marathon_service_config,
                      line='Delaying scaling as marathon is either waiting for resources or is delayed')
+        return
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     autoscaling_metrics_provider = get_autoscaling_metrics_provider(autoscaling_params.pop(METRICS_PROVIDER_KEY))
     autoscaling_decision_policy = get_autoscaling_decision_policy(autoscaling_params.pop(DECISION_POLICY_KEY))
