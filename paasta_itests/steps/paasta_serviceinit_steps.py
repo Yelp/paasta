@@ -127,6 +127,21 @@ def paasta_serviceinit_tail_stdstreams(context, service_instance):
     assert "No such task has the requested file or directory" in output
 
 
+@then((u'paasta_serviceinit status -s "{service}" -i "{instances}"'
+       ' has the correct output for instance main and exits with non-zero return code for instance test'))
+def paasta_serviceinit_status_multi_instances(context, service, instances):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s -s %s -i %s status' % \
+        (context.soa_dir, service, instances)
+    print 'Running cmd %s' % cmd
+    exit_code, output = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    # one service is deployed and the other is not
+    assert "Running" in output
+    assert exit_code != 0
+
+
 @when(u'we paasta_serviceinit emergency-stop the service_instance "{service_instance}"')
 def chronos_emergency_stop_job(context, service_instance):
     cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s %s stop' % (context.soa_dir, service_instance)

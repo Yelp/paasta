@@ -12,7 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Usage: ./paasta_servceinit.py [-v] <servicename> <stop|start|restart|status|scale>
+"""Usage: ./paasta_servceinit.py [-v] [service_instance] [-s service] [-i instances] <stop|start|restart|status|scale>
 
 Interacts with the framework APIs to start/stop/restart/get status/scale for an
 instance. Assumes that the credentials are available, so must run as root.
@@ -46,7 +46,15 @@ def parse_args():
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
-    parser.add_argument('service_instance', help='Instance to operate on. Eg: example_service.main')
+
+    # service_instance will be replaced with (-s, -i) when CLI changes are made.
+    parser.add_argument('service_instance', nargs='?',
+                        help='Instance to operate on. Eg: example_service.main')
+    parser.add_argument('-s', '--service', dest="service",
+                        help="The name of the service to inspect")
+    parser.add_argument('-i', '--instances', dest="instances",
+                        help="A comma-separated list of instances to view. Eg: canary,main")
+
     parser.add_argument('-a', '--appid', dest="app_id",
                         help="app ID as returned by paasta status -v to operate on")
     parser.add_argument('--delta', dest="delta",
@@ -64,38 +72,51 @@ def main():
     else:
         log.setLevel(logging.WARNING)
 
+    instances = []
     command = args.command
-    service_instance = args.service_instance
-    service, instance, _, __ = decompose_job_id(service_instance)
+    if (args.service_instance):
+        service_instance = args.service_instance
+        service, instance, _, __ = decompose_job_id(service_instance)
+        instances.append(instance)
+    elif (args.service and args.instances):
+        service = args.service
+        instances = args.instances.split(',')
+    else:
+        log.error("The name of service or the name of instance to inspect is missing. Exiting.")
+        sys.exit(1)
 
     cluster = load_system_paasta_config().get_cluster()
-    instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
-    if instance_type == 'marathon':
-        return_code = marathon_serviceinit.perform_command(
-            command=command,
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            verbose=args.verbose,
-            soa_dir=args.soa_dir,
-            app_id=args.app_id,
-            delta=args.delta,
-        )
-        sys.exit(return_code)
-    elif instance_type == 'chronos':
-        return_code = chronos_serviceinit.perform_command(
-            command=command,
-            service=service,
-            instance=instance,
-            cluster=cluster,
-            verbose=args.verbose,
-            soa_dir=args.soa_dir,
-        )
-        sys.exit(return_code)
-    else:
-        log.error("I calculated an instance_type of %s for %s which I don't know how to handle. Exiting."
-                  % (instance_type, compose_job_id(service, instance)))
-        sys.exit(1)
+    for instance in instances:
+        print("instance:%s" % instance)
+        instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
+        if instance_type == 'marathon':
+            return_code = marathon_serviceinit.perform_command(
+                command=command,
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                verbose=args.verbose,
+                soa_dir=args.soa_dir,
+                app_id=args.app_id,
+                delta=args.delta,
+            )
+        elif instance_type == 'chronos':
+            return_code = chronos_serviceinit.perform_command(
+                command=command,
+                service=service,
+                instance=instance,
+                cluster=cluster,
+                verbose=args.verbose,
+                soa_dir=args.soa_dir,
+            )
+        else:
+            log.error("I calculated an instance_type of %s for %s which I don't know how to handle. Exiting."
+                      % (instance_type, compose_job_id(service, instance)))
+            return_code = 1
+
+        if return_code:
+            sys.exit(return_code)
+    sys.exit(0)
 
 
 if __name__ == "__main__":
