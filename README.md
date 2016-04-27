@@ -9,7 +9,7 @@ PaaSTA is a highly-available, distributed system for building, deploying, and
 running services using containers and Apache Mesos!
 
 Want to know more about the opinions behind what makes PaaSTA special? Check
-out the [PaaSTA Principles](http://paasta.readthedocs.org/en/latest/about/paasta_principles.html).
+out the [PaaSTA Principles](http://paasta.readthedocs.io/en/latest/about/paasta_principles.html).
 
 *Note*: PaaSTA has been running in production at Yelp for more than a year,
 and has a number of "Yelpisms" still lingering in the codebase. We have made
@@ -63,12 +63,12 @@ to build a cohesive PaaS. It is not a turn-key PaaS solution.
 
 ## Getting Started
 
-See the [getting started](http://paasta.readthedocs.org/en/latest/installation/getting_started.html)
+See the [getting started](http://paasta.readthedocs.io/en/latest/installation/getting_started.html)
 documentation for how to deploy PaaSTA.
 
 ## Documentation
 
-Read the documentation at [Read the Docs](http://paasta.readthedocs.org/en/latest/).
+Read the documentation at [Read the Docs](http://paasta.readthedocs.io/en/latest/).
 
 ## Videos / Talks About PaaSTA
 
