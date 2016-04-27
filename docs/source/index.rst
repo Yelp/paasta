@@ -22,6 +22,7 @@ About PaaSTA's Architecture
    :glob:
 
    about/*
+   isolation
 
 PaaSTA Development
 ~~~~~~~~~~~~~~~~~~
