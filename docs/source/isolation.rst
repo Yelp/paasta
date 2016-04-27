@@ -87,7 +87,7 @@ If a framework decides it wants to accept a resource offer, it then tells the
 master to run a task on the agent. The details of the 'acceptance' include a
 detail of the task to be run, and the 'executor' used to run the task.
 
-By default, Yelp uses the 'Docker' executor everywhere. This means that *all*
+By default, PaaSTA uses the 'Docker' executor everywhere. This means that *all*
 tasks launched by Marathon and Chronos are done so with a Docker container.
 
 How Tasks are isolated from eachother.
@@ -95,12 +95,11 @@ How Tasks are isolated from eachother.
 
 Given that a slave may run multiple tasks, we need to ensure that tasks cannot
 'interfere' with one another. We do this on a file system level using Docker -
-without some hard work and security flaws, processes are protected from
-each other and the host by using kernel namespaces. Note that the use of kernel
-namespaces is a feature of Docker - PaaSTA doesn't do anything 'extra' to
-enable this. It's also worth noting that there are other 'container'
-technologies that could provide this - the native Mesos 'containerizer'
-included.
+processes launched in Docker containers are protected from each other and the
+host by using kernel namespaces. Note that the use of kernel namespaces is a
+feature of Docker - PaaSTA doesn't do anything 'extra' to enable this. It's
+also worth noting that there are other 'container' technologies that could
+provide this - the native Mesos 'containerizer' included.
 
 However, these tasks are still running and consuming resources on the same
 host. The next section aims to explain how PaaSTA services are protected from
@@ -185,9 +184,9 @@ Some notes on this:
     a higher number of 'skinny' containers may be preferable to 'fat' containers.
 
 This is different from how Mesos and Marathon use the CPU value when evaluating
-whether a task 'fits' on a host. The agents advertise the number of cores on
-the box, and Marathon will only schedule containers on agents where there is
-enough 'room' on the host, when in reality, there is no such limit.
+whether a task 'fits' on a host. Yelp configures agents to advertise the number
+of cores on the box, and Marathon will only schedule containers on agents where
+there is enough 'room' on the host, when in reality, there is no such limit.
 
 Disk
 """""
