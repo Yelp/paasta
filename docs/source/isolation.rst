@@ -151,31 +151,43 @@ elsewhere.
 CPUs
 """"
 
-CPU enforcement is implemented slightly differently. Many people expect this to
-map to a number of cores that are reserved for a task. However, isolating CPU
-time like this can be particularly wasteful; unless a task spends 100% of it's
-time on CPU (and thus has *no* I/O), then there is no need to prevent other
-tasks from running on the spare CPU time available.
+CPU enforcement is implemented slightly differently. Many people expect the
+value defined in the ``cpus`` field in a service's soa-configs to map to a
+number of cores that are reserved for a task. However, isolating CPU time like
+this can be particularly wasteful; unless a task spends 100% of it's time on
+CPU (and thus has *no* I/O), then there is no need to prevent other tasks from
+running on the spare CPU time available.
 
-Instead, the CPU value is used as a weighting to help the Linux Scheduler
-decide the order in which to run waiting threads. If there is no contention
-between processes, that is, there is only one thread in the run queue for a CPU
-core, then the CPU will run any tasks waiting, irrespective of their weighting
-or utilization.
-However, in the case where there is contention for CPU resource, then the
-weighting of the task to be run has an impact on how the scheduler decides
-which task should run next.
+Instead, the CPU value is used to give tasks a relative priority. This priority
+is used by the Linux Scheduler decide the order in which to run waiting
+threads.
 
-As a result, if your service is seeing bad performance, then bumping the value
-of the ``cpus`` field won't automatically improve things. Particularly, there
-are only a few tasks running on your host, and the length of the run queue is
-small, then it is doubtful that it will have much impact at all.
+Some notes on this:
 
-It is also important to note that when deciding the ordering in which tasks
-should be scheduled, threads are grouped by the cgroup that they are in. That
-is, the scheduler takes both the weight and the utilization of  *all* threads in
-a cgroup into account, rather than individual threads. As a result, it may be
-prudent to scale horizontally, rather than vertically to improve performance.
+  - As mentioned, these values are relative. We enforce no scale on these
+    numbers. So if two tasks are competing for resources, one has set ``cpus``
+    to 0.5 and the other to 4.5, then it the first task will receive 10% of time
+    and the second 90%. If, however, the second task was replaced with another
+    with a requirement of 0.5, leaving two tasks with each ``cpu`` set to 0.5,
+    then each task will have 50% of time.
+  - The amount of time tasks get is proportional to the number of tasks on the
+    host. If there are 3 tasks on the host, with ``cpu`` values 10,5,5 then the
+    time will be split 50%, 25%, 25%. However, if a fourth task is run, with
+    ``cpu`` set to 1000, then that time becomes 33%, 16.5%, 16.5%, 33%.
+  - Any 'spare' cpu cycles are redistributed by the CPU, so if a task does
+    *not* use it's 'share', then other cgroups will be allocated this spare CPU
+    time.
+  - All threads inside a cgroup are considered when the scheduler decides the
+    fair share of time. That is, if your container launches multiple tasks,
+    then the share is split across all these tasks. If the tasks were to run in
+    their own cgroup, then the time spent on CPU by one task would not count
+    against the share available for another. The result of this may be that
+    a higher number of 'skinny' containers may be preferable to 'fat' containers.
+
+This is different from how Mesos and Marathon use the CPU value when evaluating
+whether a task 'fits' on a host. The agents advertise the number of cores on
+the box, and Marathon will only schedule containers on agents where there is
+enough 'room' on the host, when in reality, there is no such limit.
 
 Disk
 """""
