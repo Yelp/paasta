@@ -243,6 +243,10 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
         if task_id in mesos_cpu_data:
             utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
 
+    if not utilization:
+        raise MetricsProviderNoDataError("""The mesos_cpu metrics provider doesn't have Zookeeper data for this service.
+                                         This is expected for its first run.""")
+
     task_utilization = utilization.values()
     average_utilization = sum(task_utilization) / len(task_utilization)
 
