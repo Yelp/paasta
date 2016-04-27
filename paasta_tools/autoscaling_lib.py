@@ -86,7 +86,7 @@ class MetricsProviderNoDataError(ValueError):
 @register_autoscaling_component('threshold', DECISION_POLICY_KEY)
 def threshold_decision_policy(marathon_service_config, current_instances, error, **kwargs):
     """
-    Desides to autoscale up or down by 10% if the service exceeds the upper or lower thresholds
+    Decides to autoscale up or down by 10% if the service exceeds the upper or lower thresholds
     (see get_error_from_value() for how the thresholds are created)
     """
     autoscaling_amount = max(1, int(current_instances * 0.1))
