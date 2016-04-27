@@ -14,7 +14,6 @@
 # limitations under the License.
 from contextlib import contextmanager
 from datetime import datetime
-from math import ceil
 
 import requests
 from kazoo.client import KazooClient
@@ -85,36 +84,38 @@ class MetricsProviderNoDataError(ValueError):
 
 
 @register_autoscaling_component('threshold', DECISION_POLICY_KEY)
-def threshold_decision_policy(marathon_service_config, error, threshold=0.1, **kwargs):
+def threshold_decision_policy(marathon_service_config, current_instances, error, **kwargs):
     """
-    Decides to autoscale a service up or down if the service utilization exceeds the setpoint
-    by a certain threshold.
+    Decides to autoscale up or down by 10% if the service exceeds the upper or lower thresholds
+    (see get_error_from_value() for how the thresholds are created)
     """
-    if error > threshold:
-        return 1
-    elif abs(error) > threshold:
-        return -1
+    autoscaling_amount = max(1, int(current_instances * 0.1))
+    if error > 0:
+        return autoscaling_amount
+    elif abs(error) > 0:
+        return -autoscaling_amount
     else:
         return 0
 
 
-def clamp_value(number):
-    """Limits the PID output to scaling up/down by 1.
-    Also used to limit the integral term which avoids windup lag."""
-    return min(max(number, -1), 1)
-
-
 @register_autoscaling_component('pid', DECISION_POLICY_KEY)
-def pid_decision_policy(marathon_service_config, error, **kwargs):
+def pid_decision_policy(marathon_service_config, current_instances, error, **kwargs):
     """
     Uses a PID to determine when to autoscale a service.
     See https://en.wikipedia.org/wiki/PID_controller for more information on PIDs.
     Kp, Ki and Kd are the canonical PID constants, where the output of the PID is:
     Kp * error + Ki * integral(error * dt) + Kd * (d(error) / dt)
     """
-    Kp = 0.2
-    Ki = 0.2 / AUTOSCALING_DELAY
-    Kd = 0.05 * AUTOSCALING_DELAY
+    min_delta = marathon_service_config.get_min_instances() - current_instances
+    max_delta = marathon_service_config.get_max_instances() - current_instances
+
+    def clamp_value(number):
+        """Limits the PID output and the integral term to avoid windup lag."""
+        return min(max(number, min_delta), max_delta)
+
+    Kp = 4
+    Ki = 4 / AUTOSCALING_DELAY
+    Kd = 1 * AUTOSCALING_DELAY
 
     autoscaling_root = compose_autoscaling_zookeeper_root(
         service=marathon_service_config.service,
@@ -225,17 +226,8 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
     mesos_cpu_data = {task_id: float(stats.get('cpus_system_time_secs', 0.0) + stats.get(
         'cpus_user_time_secs', 0.0)) / (stats.get('cpus_limit', 0) - .1) for task_id, stats in mesos_tasks.items()}
 
-    utilization = {}
-    for datum in last_cpu_data:
-        last_cpu_seconds, task_id = datum.split(':')
-        if task_id in mesos_cpu_data:
-            utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
-
-    if not utilization:
+    if not mesos_cpu_data:
         raise MetricsProviderNoDataError("Couldn't get any cpu or ram data from Mesos")
-
-    task_utilization = utilization.values()
-    average_utilization = sum(task_utilization) / len(task_utilization)
 
     cpu_data_csv = ','.join('%s:%s' % (cpu_seconds, task_id) for task_id, cpu_seconds in mesos_cpu_data.items())
 
@@ -245,11 +237,36 @@ def mesos_cpu_metrics_provider(marathon_service_config, marathon_tasks, mesos_ta
         zk.set(zk_last_cpu_data, str(cpu_data_csv))
         zk.set(zk_last_time_path, str(current_time))
 
+    utilization = {}
+    for datum in last_cpu_data:
+        last_cpu_seconds, task_id = datum.split(':')
+        if task_id in mesos_cpu_data:
+            utilization[task_id] = (mesos_cpu_data[task_id] - float(last_cpu_seconds)) / time_delta
+
+    if not utilization:
+        raise MetricsProviderNoDataError("""The mesos_cpu metrics provider doesn't have Zookeeper data for this service.
+                                         This is expected for its first run.""")
+
+    task_utilization = utilization.values()
+    average_utilization = sum(task_utilization) / len(task_utilization)
+
     return average_utilization
 
 
-def get_new_instance_count(current_instances, autoscaling_direction):
-    return int(ceil((1 + float(autoscaling_direction) / 10) * current_instances))
+def get_error_from_utilization(utilization, setpoint, current_instances):
+    """
+    Consider scaling up if utilization is above the setpoint
+    Consider scaling down if the utilization is below the setpoint AND scaling down wouldn't bring it above the setpoint
+    Otherwise don't scale
+    """
+    max_threshold = setpoint
+    min_threshold = max_threshold * (current_instances - 1) / current_instances
+    if utilization < min_threshold:
+        return utilization - min_threshold
+    elif utilization > max_threshold:
+        return utilization - max_threshold
+    else:
+        return 0.0
 
 
 def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_tasks):
@@ -257,23 +274,37 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
     if len(marathon_tasks) != current_instances:
         write_to_log(config=marathon_service_config,
                      line='Delaying scaling as marathon is either waiting for resources or is delayed')
+        return
     autoscaling_params = marathon_service_config.get_autoscaling_params()
     autoscaling_metrics_provider = get_autoscaling_metrics_provider(autoscaling_params.pop(METRICS_PROVIDER_KEY))
     autoscaling_decision_policy = get_autoscaling_decision_policy(autoscaling_params.pop(DECISION_POLICY_KEY))
 
-    error = autoscaling_metrics_provider(marathon_service_config, marathon_tasks,
-                                         mesos_tasks, **autoscaling_params) - autoscaling_params.pop('setpoint')
+    utilization = autoscaling_metrics_provider(marathon_service_config, marathon_tasks,
+                                               mesos_tasks, **autoscaling_params)
+    error = get_error_from_utilization(
+        utilization=utilization,
+        setpoint=autoscaling_params.pop('setpoint'),
+        current_instances=current_instances,
+    )
     write_to_log(config=marathon_service_config, line='Recieved error from metrics provider: %f' % error)
-    autoscaling_direction = autoscaling_decision_policy(marathon_service_config, error, **autoscaling_params)
-    if autoscaling_direction:
-        autoscaling_amount = get_new_instance_count(current_instances, autoscaling_direction)
-        instances = marathon_service_config.limit_instance_count(autoscaling_amount)
-        if instances != current_instances:
-            write_to_log(config=marathon_service_config, line='Scaling from %d to %d' % (current_instances, instances))
+    autoscaling_amount = autoscaling_decision_policy(
+        marathon_service_config=marathon_service_config,
+        error=error,
+        current_instances=current_instances,
+        **autoscaling_params
+    )
+
+    if autoscaling_amount:
+        new_instance_count = marathon_service_config.limit_instance_count(current_instances + autoscaling_amount)
+        if new_instance_count != current_instances:
+            write_to_log(
+                config=marathon_service_config,
+                line='Scaling from %d to %d' % (current_instances, new_instance_count),
+            )
             set_instances_for_marathon_service(
                 service=marathon_service_config.service,
                 instance=marathon_service_config.instance,
-                instance_count=instances,
+                instance_count=new_instance_count,
             )
 
 

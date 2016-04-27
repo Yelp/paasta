@@ -59,9 +59,6 @@ The currently available decicion policies are:
 :threshold:
   Autoscales when a service's utilization exceeds beyond a certain threshold.
 
-  Autoscaling parameters:
-
-  :threshold: the amount by which the setpoint must be exceeded in either direction before autoscaling is triggered. Defaults to 0.1 (10%).
 :bespoke:
   Allows a service author to implement their own autoscaling.
 

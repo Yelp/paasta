@@ -156,7 +156,7 @@ def test_pid_decision_policy():
         service='fake-service',
         instance='fake-instance',
         cluster='fake-cluster',
-        config_dict={},
+        config_dict={'min_instances': 1, 'max_instances': 100},
         branch_dict={},
     )
 
@@ -181,7 +181,9 @@ def test_pid_decision_policy():
         _,
     ):
         mock_datetime.now.return_value = current_time
-        assert autoscaling_lib.pid_decision_policy(fake_marathon_service_config, 0.0) == 0
+        assert autoscaling_lib.pid_decision_policy(fake_marathon_service_config, 10, 0.0) == 0
+        assert autoscaling_lib.pid_decision_policy(fake_marathon_service_config, 10, 0.2) == 1
+        assert autoscaling_lib.pid_decision_policy(fake_marathon_service_config, 10, -0.2) == -1
         mock_zk_client.return_value.set.assert_has_calls([
             mock.call('/autoscaling/fake-service/fake-instance/pid_iterm', '0.0'),
             mock.call('/autoscaling/fake-service/fake-instance/pid_last_error', '0.0'),
@@ -194,6 +196,7 @@ def test_threshold_decision_policy():
     decision_policy_args = {
         'marathon_service_config': mock.Mock(service='fake-service', instance='fake-instance'),
         'threshold': 0.1,
+        'current_instances': 10,
     }
     with contextlib.nested(
         mock.patch('paasta_tools.autoscaling_lib.datetime', autospec=True),
@@ -218,8 +221,43 @@ def test_mesos_cpu_metrics_provider():
     )
     fake_mesos_task = mock.MagicMock(
         stats={
-            'mem_rss_bytes': 0,
-            'mem_limit_bytes': 1000,
+            'cpus_limit': 1.1,
+            'cpus_system_time_secs': 240,
+            'cpus_user_time_secs': 240,
+        },
+    )
+    fake_mesos_task.__getitem__.return_value = 'fake-service.fake-instance'
+
+    fake_marathon_tasks = [mock.Mock(id='fake-service.fake-instance')]
+
+    with contextlib.nested(
+            mock.patch('paasta_tools.utils.KazooClient', autospec=True,
+                       return_value=mock.Mock(get=mock.Mock(
+                           side_effect=NoNodeError))),
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                       return_value=mock.Mock(get_zk_hosts=mock.Mock())),
+    ) as (
+        mock_zk_client,
+        _,
+    ):
+        with raises(autoscaling_lib.MetricsProviderNoDataError):
+            autoscaling_lib.mesos_cpu_metrics_provider(
+                fake_marathon_service_config, fake_marathon_tasks, (fake_mesos_task,))
+        mock_zk_client.return_value.set.assert_has_calls([
+            mock.call('/autoscaling/fake-service/fake-instance/cpu_data', '480.0:fake-service.fake-instance'),
+        ], any_order=True)
+
+
+def test_mesos_cpu_metrics_provider_no_previous_cpu_data():
+    fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
+        service='fake-service',
+        instance='fake-instance',
+        cluster='fake-cluster',
+        config_dict={},
+        branch_dict={},
+    )
+    fake_mesos_task = mock.MagicMock(
+        stats={
             'cpus_limit': 1.1,
             'cpus_system_time_secs': 240,
             'cpus_user_time_secs': 240,
@@ -287,7 +325,7 @@ def test_http_metrics_provider_no_data():
             autoscaling_lib.http_metrics_provider(fake_marathon_service_config, fake_marathon_tasks, mock.Mock()) == 0.5
 
 
-def test_mesos_ram_cpu_metrics_provider_no_data_mesos():
+def test_mesos_cpu_metrics_provider_no_data_mesos():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
         instance='fake-instance',
@@ -314,13 +352,6 @@ def test_mesos_ram_cpu_metrics_provider_no_data_mesos():
             autoscaling_lib.mesos_cpu_metrics_provider(fake_marathon_service_config, fake_marathon_tasks, [])
 
 
-def test_get_new_instance_count():
-    assert autoscaling_lib.get_new_instance_count(20, 1) == 22
-    assert autoscaling_lib.get_new_instance_count(20, -1) == 18
-    assert autoscaling_lib.get_new_instance_count(20, 0) == 20
-    assert autoscaling_lib.get_new_instance_count(0, 1) == 0
-
-
 def test_autoscale_marathon_instance():
     fake_marathon_service_config = marathon_tools.MarathonServiceConfig(
         service='fake-service',
@@ -334,7 +365,7 @@ def test_autoscale_marathon_instance():
         mock.patch('paasta_tools.autoscaling_lib.get_autoscaling_metrics_provider', autospec=True),
         mock.patch('paasta_tools.autoscaling_lib.get_autoscaling_decision_policy', autospec=True,
                    return_value=mock.Mock(return_value=1)),
-        mock.patch.object(marathon_tools.MarathonServiceConfig, 'get_instances', autospec=True, return_value=5),
+        mock.patch.object(marathon_tools.MarathonServiceConfig, 'get_instances', autospec=True, return_value=1),
         mock.patch('paasta_tools.autoscaling_lib._log', autospec=True),
     ) as (
         mock_set_instances_for_marathon_service,
@@ -345,7 +376,7 @@ def test_autoscale_marathon_instance():
     ):
         autoscaling_lib.autoscale_marathon_instance(fake_marathon_service_config, [mock.Mock()], [mock.Mock()])
         mock_set_instances_for_marathon_service.assert_called_once_with(
-            service='fake-service', instance='fake-instance', instance_count=6)
+            service='fake-service', instance='fake-instance', instance_count=2)
 
 
 def test_autoscale_services():
