@@ -852,6 +852,9 @@ class SystemPaastaConfig(dict):
         :returns: A format string for constructing the URL of haproxy-synapse's status page."""
         return self.get('synapse_haproxy_url_format', DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT)
 
+    def get_cluster_autoscaling_resources(self):
+        return self.get('cluster_autoscaling_resources', {})
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any

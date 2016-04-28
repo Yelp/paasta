@@ -29,8 +29,6 @@ Command line options:
 import argparse
 import sys
 
-import service_configuration_lib
-
 from paasta_tools import chronos_tools
 
 
@@ -40,7 +38,7 @@ def parse_args():
                         default=None,
                         help="define a specific cluster to read from")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=chronos_tools.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     args = parser.parse_args()
     return args

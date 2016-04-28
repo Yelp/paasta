@@ -18,15 +18,17 @@ Top level keys are instancenames, e.g. ``main`` and ``canary``. Each
 instance MAY have:
 
   * ``cpus``: Number of CPUs an instance needs. Defaults to .25. CPUs in Mesos
-    are "shares" and represent a minimal amount of a CPU to share with a task.
-    A task can burst to use any available free CPU, but is guaranteed to get
-    the CPU shares specified.
+    are "shares" and represent a minimal amount of a CPU to share with a task
+    relative to the other tasks on a host.  A task can burst to use any
+    available free CPU, but is guaranteed to get the CPU shares specified.  For
+    a more detailed read on how this works in practice, see the docs on `isolation <isolation.html>`_.
 
   * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
-    memory is constrained to the specified limit, and tasks will reach out-of-memory
-    (OOM) conditions if they attempt to exceed these limits, and then be killed.
-    There is currently not way to detect if this condition is met, other than a
-    ``TASK_FAILED`` message.
+    memory is constrained to the specified limit, and tasks will reach
+    out-of-memory (OOM) conditions if they attempt to exceed these limits, and
+    then be killed.  There is currently not way to detect if this condition is
+    met, other than a ``TASK_FAILED`` message. For more a more detailed read on
+    how this works, see the docs on `isolation <isolation.html>`_
 
   * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
     disk is constrained to the specified limit, and tasks will recieve 'No space

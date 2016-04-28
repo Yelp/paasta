@@ -47,7 +47,6 @@ import traceback
 from collections import defaultdict
 
 import pysensu_yelp
-import service_configuration_lib
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
@@ -78,7 +77,7 @@ def parse_args():
                         help="The marathon instance of the service to create or update",
                         metavar="SERVICE%sINSTANCE" % SPACER)
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=marathon_tools.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('-v', '--verbose', action='store_true',
                         dest="verbose", default=False)

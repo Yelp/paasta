@@ -9,12 +9,12 @@ a CRITICAL event to sensu.
 import argparse
 
 import pysensu_yelp
-import service_configuration_lib
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import utils
 from paasta_tools.chronos_tools import compose_check_name_for_service_instance
+from paasta_tools.chronos_tools import DEFAULT_SOA_DIR
 from paasta_tools.chronos_tools import load_chronos_job_config
 
 
@@ -22,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=('Check the status of Chronos jobs, and report'
                                                   'their status to Sensu.'))
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     args = parser.parse_args()
     return args

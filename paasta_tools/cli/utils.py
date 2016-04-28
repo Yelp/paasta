@@ -20,7 +20,6 @@ import sys
 from socket import gaierror
 from socket import gethostbyname_ex
 
-from service_configuration_lib import DEFAULT_SOA_DIR
 from service_configuration_lib import read_services_configuration
 
 from paasta_tools.chronos_tools import load_chronos_job_config
@@ -28,6 +27,7 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
@@ -176,38 +176,38 @@ class PaastaCheckMessages:
     MAKEFILE_FOUND = success("A Makefile is present")
     MAKEFILE_MISSING = failure(
         "No Makefile available. Please make a Makefile that responds\n"
-        "to the proper targets. More info:", "http://paasta.readthedocs.org/en/latest/about/contract.html"
+        "to the proper targets. More info:", "http://paasta.readthedocs.io/en/latest/about/contract.html"
     )
     MAKEFILE_RESPONDS_BUILD_IMAGE = success("The Makefile responds to `make cook-image`")
     MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL = failure(
         "The Makefile does not have a `make cook-image` target. local-run needs\n"
         "this and expects it to build your docker image. More info:",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html"
+        "http://paasta.readthedocs.io/en/latest/about/contract.html"
     )
     MAKEFILE_RESPONDS_ITEST = success("The Makefile responds to `make itest`")
     MAKEFILE_RESPONDS_ITEST_FAIL = failure(
         "The Makefile does not have a `make itest` target. Jenkins needs\n"
         "this and expects it to build and itest your docker image. More info:",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html"
+        "http://paasta.readthedocs.io/en/latest/about/contract.html"
     )
     MAKEFILE_RESPONDS_TEST = success("The Makefile responds to `make test`")
     MAKEFILE_RESPONDS_TEST_FAIL = failure(
         "The Makefile does not have a `make test` target. Jenkins needs\n"
         "this and expects it to run unit tests. More info:",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html"
+        "http://paasta.readthedocs.io/en/latest/about/contract.html"
     )
     MAKEFILE_HAS_A_TAB = success("The Makefile contains a tab character")
     MAKEFILE_HAS_NO_TABS = failure(
         "The Makefile contains no tab characters. Make sure you\n"
         "didn't accidentally paste spaces (which `make` does not respect)\n"
         "instead of a tab.",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html",
+        "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
     MAKEFILE_HAS_DOCKER_TAG = success("The Makefile contains a docker tag")
     MAKEFILE_HAS_NO_DOCKER_TAG = failure(
         "The Makefile contains no reference to DOCKER_TAG. Make sure you\n"
         "specify a DOCKER_TAG and that your itest tags your docker image with $DOCKER_TAG.",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html",
+        "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
 
     PIPELINE_FOUND = success("Jenkins build pipeline found")

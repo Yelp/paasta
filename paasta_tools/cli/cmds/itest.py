@@ -32,7 +32,7 @@ def add_subparser(subparsers):
         description=(
             "'paasta itest' runs 'make itest' in the root of a service directory. "
             "It is designed to be used in conjection with the 'Jenkins' workflow: "
-            "http://paasta.readthedocs.org/en/latest/about/contract.html#jenkins-pipeline-recommended"
+            "http://paasta.readthedocs.io/en/latest/about/contract.html#jenkins-pipeline-recommended"
         )
     )
     list_parser.add_argument(

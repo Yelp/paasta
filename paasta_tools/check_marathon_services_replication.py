@@ -36,7 +36,6 @@ from datetime import datetime
 from datetime import timedelta
 
 import pysensu_yelp
-import service_configuration_lib
 
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
@@ -89,7 +88,7 @@ def parse_args():
     parser = argparse.ArgumentParser(epilog=epilog)
 
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=marathon_tools.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('-v', '--verbose', action='store_true',
                         dest="verbose", default=False)

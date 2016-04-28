@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
 import math
 import os
 import pipes
@@ -24,9 +25,9 @@ from random import randint
 from urlparse import urlparse
 
 import requests
-import service_configuration_lib
 from docker import errors
 
+from paasta_tools.chronos_tools import parse_time_variables
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import figure_out_service_name
@@ -40,6 +41,7 @@ from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.utils import _run
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
@@ -52,6 +54,7 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
+from paasta_tools.utils import validate_service_instance
 
 
 def pick_random_port():
@@ -293,7 +296,7 @@ def add_subparser(subparsers):
         '-y', '--yelpsoa-config-root',
         dest='yelpsoa_config_root',
         help='A directory from which yelpsoa-configs should be read from',
-        default=service_configuration_lib.DEFAULT_SOA_DIR,
+        default=DEFAULT_SOA_DIR,
     )
     build_pull_group = list_parser.add_mutually_exclusive_group()
     build_pull_group.add_argument(
@@ -466,7 +469,7 @@ def run_docker_container(
     healthcheck,
     healthcheck_only,
     instance_config,
-    soa_dir=service_configuration_lib.DEFAULT_SOA_DIR,
+    soa_dir=DEFAULT_SOA_DIR,
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -578,6 +581,26 @@ def run_docker_container(
     sys.exit(returncode)
 
 
+def command_function_for_framework(framework):
+    """
+    Given a framework, return a function that appropriately formats
+    the command to be run.
+    """
+    def format_marathon_command(cmd):
+        return cmd
+
+    def format_chronos_command(cmd):
+        interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
+        return interpolated_command
+
+    if framework == 'chronos':
+        return format_chronos_command
+    elif framework == 'marathon':
+        return format_marathon_command
+    else:
+        raise ValueError("Invalid Framework")
+
+
 def configure_and_run_docker_container(docker_client, docker_hash, service, instance, cluster, args, pull_image=False):
     """
     Run Docker container by image hash with args set in command line.
@@ -596,6 +619,8 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
     soa_dir = args.yelpsoa_config_root
 
     volumes = list()
+
+    instance_type = validate_service_instance(service, instance, cluster, soa_dir)
 
     try:
         instance_config = get_instance_config(
@@ -641,7 +666,8 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
     else:
         command_from_config = instance_config.get_cmd()
         if command_from_config:
-            command = shlex.split(command_from_config)
+            command_modifier = command_function_for_framework(instance_type)
+            command = shlex.split(command_modifier(command_from_config))
         else:
             command = instance_config.get_args()
 
