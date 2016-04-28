@@ -286,7 +286,6 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
         setpoint=autoscaling_params.pop('setpoint'),
         current_instances=current_instances,
     )
-    write_to_log(config=marathon_service_config, line='Recieved error from metrics provider: %f' % error)
     autoscaling_amount = autoscaling_decision_policy(
         marathon_service_config=marathon_service_config,
         error=error,
@@ -294,18 +293,33 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
         **autoscaling_params
     )
 
-    if autoscaling_amount:
-        new_instance_count = marathon_service_config.limit_instance_count(current_instances + autoscaling_amount)
-        if new_instance_count != current_instances:
-            write_to_log(
-                config=marathon_service_config,
-                line='Scaling from %d to %d' % (current_instances, new_instance_count),
-            )
-            set_instances_for_marathon_service(
-                service=marathon_service_config.service,
-                instance=marathon_service_config.instance,
-                instance_count=new_instance_count,
-            )
+    new_instance_count = marathon_service_config.limit_instance_count(current_instances + autoscaling_amount)
+    if new_instance_count != current_instances:
+        write_to_log(
+            config=marathon_service_config,
+            line='Scaling from %d to %d instances (%s)' % (
+                current_instances, new_instance_count, humanize_error(error)),
+        )
+        set_instances_for_marathon_service(
+            service=marathon_service_config.service,
+            instance=marathon_service_config.instance,
+            instance_count=new_instance_count,
+        )
+    else:
+        write_to_log(
+            config=marathon_service_config,
+            line='Staying at %d instances (%s)' % (current_instances, humanize_error(error)),
+            level='debug',
+        )
+
+
+def humanize_error(error):
+    if error < 0:
+        return '%f%% under-utilized' % -error * 100
+    elif error > 0:
+        return '%f%% over-utilized' % error * 100
+    else:
+        return 'perfectly utilized'
 
 
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
@@ -356,7 +370,7 @@ def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
 def write_to_log(config, line, level='event'):
     _log(
         service=config.service,
-        line="%s: %s" % (format_job_id(config.service, config.instance), line),
+        line=line,
         component='deploy',
         level=level,
         cluster=config.cluster,
