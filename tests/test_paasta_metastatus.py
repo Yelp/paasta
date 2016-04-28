@@ -681,7 +681,7 @@ def test_get_mesos_habitat_data():
                         'mem': 1670,
                     },
                 },
-                'availability':
+                'total':
                     {
                     'test-habitat': {
                         'cpus': 75,
