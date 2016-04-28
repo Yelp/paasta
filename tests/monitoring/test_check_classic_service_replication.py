@@ -22,7 +22,8 @@ from paasta_tools.monitoring.check_classic_service_replication import ClassicSer
 from paasta_tools.monitoring.check_classic_service_replication import do_replication_check
 from paasta_tools.monitoring.check_classic_service_replication import extract_replication_info
 from paasta_tools.monitoring.check_classic_service_replication import report_event
-from paasta_tools.utils import SystemPaastaConfig, DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
+from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
+from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_report_event():

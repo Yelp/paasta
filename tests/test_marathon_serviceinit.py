@@ -22,11 +22,11 @@ import mock
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 from paasta_tools.utils import SystemPaastaConfig
-from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 
 fake_marathon_job_config = marathon_tools.MarathonServiceConfig(

@@ -17,10 +17,10 @@ from contextlib import nested
 import mock
 import pytest
 
-from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.monitoring.check_synapse_replication import check_replication
 from paasta_tools.monitoring.check_synapse_replication import parse_range
 from paasta_tools.monitoring.check_synapse_replication import run_synapse_check
+from paasta_tools.utils import SystemPaastaConfig
 
 
 def test_check_replication():
@@ -85,11 +85,12 @@ def test_run_synapse_check():
     def mock_check(name, replication, warn, crit):
         return mock_service_status[name], 'CHECK'
 
-    with nested(mock.patch(parse_method, return_value=mock_parse_options),
-                mock.patch(replication_method, return_value=mock_replication),
-                mock.patch(check_replication_method, new=mock_check),
-                mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
-                           return_value=SystemPaastaConfig({}, '/fake/config')),
+    with nested(
+        mock.patch(parse_method, return_value=mock_parse_options),
+        mock.patch(replication_method, return_value=mock_replication),
+        mock.patch(check_replication_method, new=mock_check),
+        mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                   return_value=SystemPaastaConfig({}, '/fake/config')),
     ):
         with pytest.raises(SystemExit) as error:
             run_synapse_check()
