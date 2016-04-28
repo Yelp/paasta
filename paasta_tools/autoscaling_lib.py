@@ -335,7 +335,7 @@ def humanize_error(error):
     elif error > 0:
         return '%f%% over-utilized' % error * 100
     else:
-        return 'perfectly utilized'
+        return 'utilization within thresholds'
 
 
 def autoscale_services(soa_dir=DEFAULT_SOA_DIR):
