@@ -97,8 +97,8 @@ def parse_synapse_check_options(system_paasta_config):
                         dest='synapse_port', type=int,
                         help='The synapse port to check',
                         default=system_paasta_config.get_synapse_port())
-    parser.add_argument('-P', '--synapse-haproxy-url-format',
-                        dest='synapse_port', type=str,
+    parser.add_argument('-F', '--synapse-haproxy-url-format',
+                        dest='synapse_haproxy_url_format', type=str,
                         help='The synapse haproxy url format',
                         default=system_paasta_config.get_synapse_haproxy_url_format())
     parser.add_argument('-w', '--warn', dest='warn', type=str,
