@@ -20,8 +20,8 @@ import pysensu_yelp
 
 from paasta_tools import check_marathon_services_replication
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 check_marathon_services_replication.log = mock.Mock()
 
@@ -788,7 +788,13 @@ def test_get_smartstack_replication_for_attribute():
             'fake_other_value': {}
         }
         actual = check_marathon_services_replication.get_smartstack_replication_for_attribute(
-            attribute='fake_attribute', service=fake_service, namespace=fake_namespace, blacklist=[])
+            attribute='fake_attribute',
+            service=fake_service,
+            namespace=fake_namespace,
+            blacklist=[],
+            synapse_port=54321,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+        )
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
         mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
@@ -797,7 +803,8 @@ def test_get_smartstack_replication_for_attribute():
         )
         mock_get_replication_for_services.assert_any_call(
             synapse_host='fake_host_1',
-            synapse_port=DEFAULT_SYNAPSE_PORT,
+            synapse_port=54321,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
             services=['fake_service.fake_main'],
         )
 

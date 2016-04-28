@@ -40,7 +40,6 @@ import pysensu_yelp
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
-from paasta_tools import smartstack_tools
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.monitoring import replication_utils
 from paasta_tools.utils import _log
@@ -285,7 +284,8 @@ def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
         blacklist=blacklist)
 
 
-def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist):
+def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist, synapse_port,
+                                             synapse_haproxy_url_format):
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
@@ -305,7 +305,8 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
         synapse_host = hosts[0]
         repl_info = replication_utils.get_replication_for_services(
             synapse_host=synapse_host,
-            synapse_port=smartstack_tools.DEFAULT_SYNAPSE_PORT,
+            synapse_port=synapse_port,
+            synapse_haproxy_url_format=synapse_haproxy_url_format,
             services=[full_name],
         )
         replication_info[value] = repl_info

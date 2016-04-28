@@ -18,10 +18,13 @@ import marathon
 import mock
 
 from paasta_tools import bounce_lib
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from paasta_tools import utils
 
 
 class TestBounceLib:
+
+    def fake_system_paasta_config(self):
+        return utils.SystemPaastaConfig({"synapse_port": 123456}, "/fake/configs")
 
     def test_bounce_lock(self):
         import fcntl
@@ -193,19 +196,19 @@ class TestBounceLib:
         """All running tasks with no health checks results are healthy if the app does not define healthchecks"""
         tasks = [mock.Mock(health_check_results=[]) for _ in xrange(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == tasks
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config()) == tasks
 
     def test_get_happy_tasks_when_running_with_healthchecks_defined(self):
         """All running tasks with no health check results are unhealthy if the app defines healthchecks"""
         tasks = [mock.Mock(health_check_results=[]) for _ in xrange(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=["fake_healthcheck_definition"])
-        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == []
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config()) == []
 
     def test_get_happy_tasks_when_all_healthy(self):
         """All tasks with only passing healthchecks should be happy"""
         tasks = [mock.Mock(health_check_results=[mock.Mock(alive=True)]) for _ in xrange(5)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == tasks
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config()) == tasks
 
     def test_get_happy_tasks_when_some_unhealthy(self):
         """Only tasks with a passing healthcheck should be happy"""
@@ -215,21 +218,23 @@ class TestBounceLib:
                  mock.Mock(health_check_results=fake_failing_healthcheck_results),
                  mock.Mock(health_check_results=fake_successful_healthcheck_results)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == tasks[-1:]
+        actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config())
+        expected = tasks[-1:]
+        assert actual == expected
 
     def test_get_happy_tasks_with_multiple_healthchecks_success(self):
         """All tasks with at least one passing healthcheck should be happy"""
         fake_successful_healthcheck_results = [mock.Mock(alive=True), mock.Mock(alive=False)]
         tasks = [mock.Mock(health_check_results=fake_successful_healthcheck_results)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == tasks
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config()) == tasks
 
     def test_get_happy_tasks_with_multiple_healthchecks_fail(self):
         """Only tasks with at least one passing healthcheck should be happy"""
         fake_successful_healthcheck_results = [mock.Mock(alive=False), mock.Mock(alive=False)]
         tasks = [mock.Mock(health_check_results=fake_successful_healthcheck_results)]
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
-        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace') == []
+        assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config()) == []
 
     def test_get_happy_tasks_min_task_uptime(self):
         """If we specify a minimum task age, tasks newer than that should not be considered happy."""
@@ -241,7 +246,10 @@ class TestBounceLib:
         # I would have just mocked datetime.datetime.utcnow, but that's apparently difficult; I have to mock
         # datetime.datetime instead, and give it a utcnow attribute.
         with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
-            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', min_task_uptime=121) == tasks[3:]
+            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                                                min_task_uptime=121)
+            expected = tasks[3:]
+            assert actual == expected
 
     def test_get_happy_tasks_min_task_uptime_when_unhealthy(self):
         """If we specify a minimum task age, tasks newer than that should not be considered happy."""
@@ -252,7 +260,10 @@ class TestBounceLib:
         fake_app = mock.Mock(tasks=tasks, health_checks=[])
 
         with mock.patch('paasta_tools.bounce_lib.datetime.datetime', utcnow=lambda: now, autospec=True):
-            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', min_task_uptime=121) == []
+            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                                                min_task_uptime=121)
+            expected = []
+            assert actual == expected
 
     def test_get_happy_tasks_check_haproxy(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
@@ -267,7 +278,10 @@ class TestBounceLib:
             _,
             get_mesos_slaves_grouped_by_attribute_patch,
         ):
-            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', check_haproxy=True) == tasks[2:]
+            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                                                check_haproxy=True)
+            expected = tasks[2:]
+            assert actual == expected
 
     def test_get_happy_tasks_check_haproxy_when_unhealthy(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
@@ -282,7 +296,10 @@ class TestBounceLib:
             _,
             get_mesos_slaves_grouped_by_attribute_patch,
         ):
-            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', check_haproxy=True) == []
+            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                                                check_haproxy=True)
+            expected = []
+            assert actual == expected
 
     def test_get_happy_tasks_check_haproxy_multiple_locations(self):
         """If we specify that a task should be in haproxy, don't call it happy unless it's in haproxy."""
@@ -303,16 +320,22 @@ class TestBounceLib:
                 'fake_region': ['fake_host1'],
                 'fake_other_region': ['fake_host2'],
             }
-            assert bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', check_haproxy=True) == tasks[2:]
+            actual = bounce_lib.get_happy_tasks(fake_app, 'service', 'namespace', self.fake_system_paasta_config(),
+                                                check_haproxy=True)
+            expected = tasks[2:]
+            assert actual == expected
+
             get_registered_marathon_tasks_patch.assert_any_call(
                 'fake_host1',
-                DEFAULT_SYNAPSE_PORT,
+                123456,
+                utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
                 'service.namespace',
                 tasks,
             )
             get_registered_marathon_tasks_patch.assert_any_call(
                 'fake_host2',
-                DEFAULT_SYNAPSE_PORT,
+                123456,
+                utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
                 'service.namespace',
                 tasks,
             )

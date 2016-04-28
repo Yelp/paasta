@@ -54,7 +54,8 @@ def setup_marathon_client():
         'cluster': 'testcluster',
         'docker_volumes': [],
         'docker_registry': u'docker-dev.yelpcorp.com',
-        'zookeeper': zk_connection_string
+        'zookeeper': zk_connection_string,
+        'synapse_port': 3212,
     }, '/some_fake_path_to_config_dir/')
     return (client, marathon_config, system_paasta_config)
 

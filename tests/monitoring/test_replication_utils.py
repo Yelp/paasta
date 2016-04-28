@@ -21,6 +21,7 @@ from paasta_tools.monitoring.replication_utils import get_registered_marathon_ta
 from paasta_tools.monitoring.replication_utils import get_replication_for_services
 from paasta_tools.monitoring.replication_utils import ip_port_hostname_from_svname
 from paasta_tools.monitoring.replication_utils import match_backends_and_tasks
+from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
 
 def test_get_replication_for_service():
@@ -37,6 +38,7 @@ def test_get_replication_for_service():
         replication_result = get_replication_for_services(
             'fake_host',
             6666,
+            DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
             ['service1', 'service2', 'service3', 'service4']
         )
         expected = {
@@ -87,6 +89,7 @@ def test_get_registered_marathon_tasks():
             actual = get_registered_marathon_tasks(
                 'fake_host',
                 6666,
+                DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
                 'servicename.main',
                 marathon_tasks,
             )

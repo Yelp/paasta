@@ -29,8 +29,7 @@ from paasta_tools.monitoring.config_providers import (
 from paasta_tools.monitoring.replication_utils import (
     get_replication_for_services
 )
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_HOST
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
+from paasta_tools.utils import load_system_paasta_config
 
 
 def read_key(key):
@@ -146,17 +145,18 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
                                  action='store_true',
                                  help='Turn on debug output')
 
-    def get_service_replication(self, all_services):
+    def get_service_replication(self, all_services, synapse_host, synapse_port, synapse_haproxy_url_format):
         # Get the replication data once for performance
-        synapse_host_port = "%s:%s" % (DEFAULT_SYNAPSE_HOST, DEFAULT_SYNAPSE_PORT)
+        synapse_host_port = "%s:%s" % (synapse_host, synapse_port)
         self.log.debug(
             "Gathering replication information from {0}".
             format(synapse_host_port))
         service_replication = {}
         try:
             service_replication = get_replication_for_services(
-                DEFAULT_SYNAPSE_HOST,
-                DEFAULT_SYNAPSE_PORT,
+                synapse_host,
+                synapse_port,
+                synapse_haproxy_url_format,
                 ['%s.main' % name for name in all_services]
             )
         except requests.exceptions.ConnectionError:
@@ -181,7 +181,13 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
     def run(self):
         self.setup_logging()
         all_service_config = read_services_configuration()
-        service_replication = self.get_service_replication(all_service_config.keys())
+        system_config = load_system_paasta_config()
+        service_replication = self.get_service_replication(
+            all_services=all_service_config.keys(),
+            synapse_host=system_config.get_default_synapse_host(),
+            synapse_port=system_config.get_synapse_port(),
+            synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
+        )
 
         checked_services = []
         for service, service_config in all_service_config.iteritems():
