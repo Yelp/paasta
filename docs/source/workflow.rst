@@ -55,8 +55,7 @@ another date.
 
 An example might be: 
  * Assume I have a job, ``my-job``, which belongs to the service ``myservice``.
- * ``my-job`` is designed to run nightly. In my ``chronos.yaml`` file,
- the ``schedule`` field is set to ``R/2014-09-25T00:00:00Z/PT24H``.
+ * In the service's ``chronos-testcluster.yaml`` file, the ``schedule`` field is set to ``R/2014-09-25T00:00:00Z/PT24H``.
  * The run for my job yesterday failed due to a third party outage.
  * The command for my job includes a tron style datestring. ``cmd: ./run-job --date %(shortdate-14)s``.
 
@@ -74,7 +73,7 @@ Notes on rerunning jobs:
   * Rerunning a job has no impact on the regular schedule of a job.
   * You can view information about a rerun job with ``paasta status``.
   * The result of the job is kept for 24 Hours after it's completion.
-  * If the job I am running is listed in any other job's ``parents`` field,
+  * If the job being rerun is listed in any other job's ``parents`` field,
     that is, there are other dependent jobs defined in the cluster that only
     start once the job being rerun has completed, they will *not* be triggered once the rerun
     job has completed. Each downstream job must be rerun individually.
@@ -258,7 +257,7 @@ services. See the man pages for a description and detail of options for any
 individual paasta command.  Some of the most frequently used commands are
 listed below:
 
-   * ``paasta start`` - sets the desired state of the service instance to
+* ``paasta start`` - sets the desired state of the service instance to
   'started'. In the case of long-running services, this will mean ensuring that
   the number of instances of your application matches that set in your
   soa-configs. In the case of scheduled-tasks, this will ensure that your task
