@@ -103,11 +103,14 @@ def test_get_cpu_usage_good():
         'cpus_system_time_secs': 2.5,
         'cpus_user_time_secs': 0.0,
     }
+    current_time = datetime.datetime.now()
     fake_task.__getitem__.return_value = [{
         'state': 'TASK_RUNNING',
-        'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
+        'timestamp': int(current_time.strftime('%s')) - fake_duration,
     }]
-    actual = mesos_tools.get_cpu_usage(fake_task)
+    with mock.patch('paasta_tools.mesos_tools.datetime.datetime', autospec=True) as mock_datetime:
+        mock_datetime.now.return_value = current_time
+        actual = mesos_tools.get_cpu_usage(fake_task)
     assert '10.0%' == actual
 
 
@@ -119,11 +122,14 @@ def test_get_cpu_usage_bad():
         'cpus_system_time_secs': 50.0,
         'cpus_user_time_secs': 50.0,
     }
+    current_time = datetime.datetime.now()
     fake_task.__getitem__.return_value = [{
         'state': 'TASK_RUNNING',
-        'timestamp': int(datetime.datetime.now().strftime('%s')) - fake_duration,
+        'timestamp': int(current_time.strftime('%s')) - fake_duration,
     }]
-    actual = mesos_tools.get_cpu_usage(fake_task)
+    with mock.patch('paasta_tools.mesos_tools.datetime.datetime', autospec=True) as mock_datetime:
+        mock_datetime.now.return_value = current_time
+        actual = mesos_tools.get_cpu_usage(fake_task)
     assert PaastaColors.red('100.0%') in actual
 
 
