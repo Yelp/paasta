@@ -100,7 +100,7 @@
 **Closed issues:**
 
 - 0.16.1 Release Broke 'paasta status' [\#91](https://github.com/Yelp/paasta/issues/91)
-- http://paasta.readthedocs.org/en/latest/ references y/paasta [\#57](https://github.com/Yelp/paasta/issues/57)
+- http://paasta.readthedocs.io/en/latest/ references y/paasta [\#57](https://github.com/Yelp/paasta/issues/57)
 
 **Merged pull requests:**
 

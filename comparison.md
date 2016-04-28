@@ -144,7 +144,7 @@ required to run a fully working setup, assuming Postgres meets the developers'
 needs. Most other PaaS's view this problem as "out of scope", including PaaSTA.
 
 Depending on your opinions on the [Twelve-Factor App manifesto](http://12factor.net/),
-Flynn, Heroku, or [Empire](http://empire.readthedocs.org/en/latest/) may be good
+Flynn, Heroku, or [Empire](http://empire.readthedocs.io/en/latest/) may be good
 solutions for environments that have apps that already conform to the twelve-factor
 specification.
 
