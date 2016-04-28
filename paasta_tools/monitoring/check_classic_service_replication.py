@@ -145,7 +145,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
                                  action='store_true',
                                  help='Turn on debug output')
 
-    def get_service_replication(self, all_services, synapse_host, synapse_port):
+    def get_service_replication(self, all_services, synapse_host, synapse_port, synapse_haproxy_url_format):
         # Get the replication data once for performance
         synapse_host_port = "%s:%s" % (synapse_host, synapse_port)
         self.log.debug(
@@ -156,6 +156,7 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
             service_replication = get_replication_for_services(
                 synapse_host,
                 synapse_port,
+                synapse_haproxy_url_format,
                 ['%s.main' % name for name in all_services]
             )
         except requests.exceptions.ConnectionError:
@@ -182,9 +183,10 @@ class ClassicServiceReplicationCheck(SensuPluginCheck):
         all_service_config = read_services_configuration()
         system_config = load_system_paasta_config()
         service_replication = self.get_service_replication(
-            all_service_config.keys(),
-            system_config.get_default_synapse_host(),
-            system_config.get_synapse_port(),
+            all_services=all_service_config.keys(),
+            synapse_host=system_config.get_default_synapse_host(),
+            synapse_port=system_config.get_synapse_port(),
+            synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
         )
 
         checked_services = []

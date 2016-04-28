@@ -242,6 +242,7 @@ def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptim
             tasks_in_smartstack.extend(get_registered_marathon_tasks(
                 synapse_host,
                 system_paasta_config.get_synapse_port(),
+                system_paasta_config.get_synapse_haproxy_url_format(),
                 service_namespace,
                 tasks,
             ))

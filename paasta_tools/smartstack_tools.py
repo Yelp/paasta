@@ -15,10 +15,8 @@ import csv
 
 import requests
 
-from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 
-
-def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT):
+def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format):
     """Retrieves the haproxy csv from the haproxy web interface
 
     :param synapse_host_port: A string in host:port format that this check
@@ -41,7 +39,7 @@ def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format=
     return reader
 
 
-def get_backends(service, synapse_host, synapse_port):
+def get_backends(service, synapse_host, synapse_port, synapse_haproxy_url_format):
     """Fetches the CSV from haproxy and returns a list of backends,
     regardless of their state.
 
@@ -56,10 +54,11 @@ def get_backends(service, synapse_host, synapse_port):
         services = [service]
     else:
         services = None
-    return get_multiple_backends(services, synapse_host=synapse_host, synapse_port=synapse_port)
+    return get_multiple_backends(services, synapse_host=synapse_host, synapse_port=synapse_port,
+                                 synapse_haproxy_url_format=synapse_haproxy_url_format)
 
 
-def get_multiple_backends(services, synapse_host, synapse_port):
+def get_multiple_backends(services, synapse_host, synapse_port, synapse_haproxy_url_format):
     """Fetches the CSV from haproxy and returns a list of backends,
     regardless of their state.
 
@@ -71,7 +70,7 @@ def get_multiple_backends(services, synapse_host, synapse_port):
                        services or the requested service
     """
 
-    reader = retrieve_haproxy_csv(synapse_host, synapse_port)
+    reader = retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format=synapse_haproxy_url_format)
     backends = []
 
     for line in reader:

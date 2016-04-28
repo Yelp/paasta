@@ -17,6 +17,7 @@ from contextlib import nested
 import mock
 import pytest
 
+from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.monitoring.check_synapse_replication import check_replication
 from paasta_tools.monitoring.check_synapse_replication import parse_range
 from paasta_tools.monitoring.check_synapse_replication import run_synapse_check
@@ -68,10 +69,12 @@ def test_run_synapse_check():
 
     for return_value in range(0, 4):
         with nested(
-            mock.patch(parse_method, return_value=mock_parse_options),
-            mock.patch(replication_method, return_value=mock_replication),
-            mock.patch(check_replication_method,
-                       return_value=(return_value, 'CHECK'))):
+            mock.patch(parse_method, return_value=mock_parse_options, autospec=True),
+            mock.patch(replication_method, return_value=mock_replication, autospec=True),
+            mock.patch(check_replication_method, return_value=(return_value, 'CHECK'), autospec=True),
+            mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                       return_value=SystemPaastaConfig({}, '/fake/config')),
+        ):
             with pytest.raises(SystemExit) as error:
                 run_synapse_check()
             assert error.value.code == return_value
@@ -84,7 +87,10 @@ def test_run_synapse_check():
 
     with nested(mock.patch(parse_method, return_value=mock_parse_options),
                 mock.patch(replication_method, return_value=mock_replication),
-                mock.patch(check_replication_method, new=mock_check)):
+                mock.patch(check_replication_method, new=mock_check),
+                mock.patch('paasta_tools.utils.load_system_paasta_config', autospec=True,
+                           return_value=SystemPaastaConfig({}, '/fake/config')),
+    ):
         with pytest.raises(SystemExit) as error:
             run_synapse_check()
         assert error.value.code == 2

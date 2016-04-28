@@ -17,7 +17,7 @@ import socket
 from paasta_tools.smartstack_tools import get_multiple_backends
 
 
-def get_replication_for_services(synapse_host, synapse_port, services):
+def get_replication_for_services(synapse_host, synapse_port, synapse_haproxy_url_format, services):
     """Returns the replication level for the provided services
 
     This check is intended to be used with an haproxy load balancer, and
@@ -25,6 +25,7 @@ def get_replication_for_services(synapse_host, synapse_port, services):
 
     :param synapse_host: The hose that this check should contact for replication information.
     :param synapse_port: The port number that this check should contact for replication information.
+    :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
     :param services: A list of strings that are the service names
                           that should be checked for replication.
 
@@ -37,6 +38,7 @@ def get_replication_for_services(synapse_host, synapse_port, services):
         services=services,
         synapse_host=synapse_host,
         synapse_port=synapse_port,
+        synapse_haproxy_url_format=synapse_haproxy_url_format,
     )
 
     counter = collections.Counter([b['pxname'] for b in backends if backend_is_up(b)])
@@ -67,6 +69,7 @@ def ip_port_hostname_from_svname(svname):
 def get_registered_marathon_tasks(
     synapse_host,
     synapse_port,
+    synapse_haproxy_url_format,
     service,
     marathon_tasks,
 ):
@@ -74,10 +77,12 @@ def get_registered_marathon_tasks(
 
     :param synapse_host: The host that this check should contact for replication information.
     :param synapse_port: The port that this check should contact for replication information.
+    :param synapse_haproxy_url_format: The format of the synapse haproxy URL.
     :param service: A list of strings that are the service names that should be checked for replication.
     :param marathon_tasks: A list of MarathonTask objects, whose tasks we will check for in the HAProxy status.
     """
-    backends = get_multiple_backends([service], synapse_host=synapse_host, synapse_port=synapse_port)
+    backends = get_multiple_backends([service], synapse_host=synapse_host, synapse_port=synapse_port,
+                                     synapse_haproxy_url_format=synapse_host)
     healthy_tasks = []
     for backend, task in match_backends_and_tasks(backends, marathon_tasks):
         if backend is not None and task is not None and backend['status'].startswith('UP'):

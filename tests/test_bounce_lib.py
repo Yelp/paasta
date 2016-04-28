@@ -328,12 +328,14 @@ class TestBounceLib:
             get_registered_marathon_tasks_patch.assert_any_call(
                 'fake_host1',
                 123456,
+                utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
                 'service.namespace',
                 tasks,
             )
             get_registered_marathon_tasks_patch.assert_any_call(
                 'fake_host2',
                 123456,
+                utils.DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
                 'service.namespace',
                 tasks,
             )

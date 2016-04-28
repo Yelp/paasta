@@ -285,7 +285,8 @@ def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
         blacklist=blacklist)
 
 
-def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist, synapse_port):
+def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist, synapse_port,
+                                             synapse_haproxy_url_format):
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
@@ -306,6 +307,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
         repl_info = replication_utils.get_replication_for_services(
             synapse_host=synapse_host,
             synapse_port=synapse_port,
+            synapse_haproxy_url_format=synapse_haproxy_url_format,
             services=[full_name],
         )
         replication_info[value] = repl_info

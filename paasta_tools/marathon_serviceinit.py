@@ -241,7 +241,7 @@ def format_haproxy_backend_row(backend, is_correct_instance):
 
 
 def status_smartstack_backends(service, instance, job_config, cluster, tasks, expected_count, soa_dir, verbose,
-                               synapse_port):
+                               synapse_port, synapse_haproxy_url_format):
     """Returns detailed information about smartstack backends for a service
     and instance.
     return: A newline separated string of the smarststack backend status
@@ -277,12 +277,13 @@ def status_smartstack_backends(service, instance, job_config, cluster, tasks, ex
             expected_count,
             verbose,
             synapse_port,
+            synapse_haproxy_url_format,
         ))
     return "\n".join(output)
 
 
 def pretty_print_smartstack_backends_for_locations(service_instance, tasks, locations, expected_count, verbose,
-                                                   synapse_port):
+                                                   synapse_port, synapse_haproxy_url_format):
     """
     Pretty prints the status of smartstack backends of a specified service and instance in the specified locations
     """
@@ -292,11 +293,16 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
         hosts = locations[location]
         # arbitrarily choose the first host with a given attribute to query for replication stats
         synapse_host = hosts[0]
-        sorted_backends = sorted(get_backends(service_instance,
-                                              synapse_host=synapse_host,
-                                              synapse_port=synapse_port),
-                                 key=lambda backend: backend['status'],
-                                 reverse=True)  # Specify reverse so that backends in 'UP' are placed above 'MAINT'
+        sorted_backends = sorted(
+            get_backends(
+                service_instance,
+                synapse_host=synapse_host,
+                synapse_port=synapse_port,
+                synapse_haproxy_url_format=synapse_haproxy_url_format,
+            ),
+            key=lambda backend: backend['status'],
+            reverse=True,  # Specify reverse so that backends in 'UP' are placed above 'MAINT'
+        )
         matched_tasks = match_backends_and_tasks(sorted_backends, tasks)
         running_count = sum(1 for backend, task in matched_tasks if backend and backend_is_up(backend))
         rows.append("    %s - %s" % (location, haproxy_backend_report(expected_count_per_location, running_count)))
@@ -388,6 +394,7 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
                 soa_dir=soa_dir,
                 verbose=verbose > 0,
                 synapse_port=system_config.get_synapse_port(),
+                synapse_haproxy_url_format=system_config.get_synapse_haproxy_url_format(),
             )
     elif command == 'scale':
         scale_marathon_job(service, instance, app_id, delta, client, cluster)
