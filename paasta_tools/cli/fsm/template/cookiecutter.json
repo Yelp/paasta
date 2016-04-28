@@ -1,0 +1,7 @@
+{
+    "service": "my-cool-service",
+    "proxy_port": 20000,
+    "team": "noop",
+    "description": "Description",
+    "external_link": "Url"
+}

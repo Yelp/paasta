@@ -34,6 +34,7 @@ setup(
         # argparse is pinned to 1.2.1 since it comes in the core python2.7
         # libs and pip can't seem to override it
         'argparse == 1.2.1',
+        'cookiecutter',
         'chronos-python == 0.34.0',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
@@ -86,6 +87,6 @@ setup(
         'paasta_tools/synapse_srv_namespaces_fact.py',
         'paasta_tools/chronos_rerun.py',
     ] + glob.glob('paasta_tools/contrib/*'),
-    package_data={'': ['cli/fsm/templates/*.tmpl', 'cli/schemas/*.json']},
+    package_data={'': ['cli/fsm/template/*/*', 'cli/schemas/*.json']},
     entry_points={'console_scripts': ['paasta=paasta_tools.cli.cli:main']},
 )
