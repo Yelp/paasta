@@ -103,6 +103,7 @@ def check_smartstack_replication_for_instance(
     cluster,
     soa_dir,
     expected_count,
+    system_paasta_config,
 ):
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds defined in
@@ -112,6 +113,7 @@ def check_smartstack_replication_for_instance(
     :param namespace: A nerve namespace, like "main"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
+    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     """
     namespace = marathon_tools.read_namespace_for_service_instance(service, instance, soa_dir=soa_dir)
     if namespace != instance:
@@ -124,7 +126,12 @@ def check_smartstack_replication_for_instance(
     monitoring_blacklist = job_config.get_monitoring_blacklist()
     log.info('Checking instance %s in smartstack', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
-        service=service, namespace=namespace, soa_dir=soa_dir, blacklist=monitoring_blacklist)
+        service=service,
+        namespace=namespace,
+        soa_dir=soa_dir,
+        blacklist=monitoring_blacklist,
+        system_paasta_config=system_paasta_config,
+    )
     log.debug('Got smartstack replication info for %s: %s' % (full_name, smartstack_replication_info))
 
     if len(smartstack_replication_info) == 0:
@@ -217,7 +224,7 @@ def send_event_if_under_replication(
         output=output)
 
 
-def check_service_replication(client, service, instance, cluster, soa_dir):
+def check_service_replication(client, service, instance, cluster, soa_dir, system_paasta_config):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
@@ -225,6 +232,7 @@ def check_service_replication(client, service, instance, cluster, soa_dir):
     :param instance: Instance name, like "main" or "canary"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
+    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     """
     job_id = compose_job_id(service, instance)
     try:
@@ -242,7 +250,9 @@ def check_service_replication(client, service, instance, cluster, soa_dir):
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
-            expected_count=expected_count)
+            expected_count=expected_count,
+            system_paasta_config=system_paasta_config,
+        )
     else:
         check_healthy_marathon_tasks_for_service_instance(
             client=client,
@@ -254,12 +264,13 @@ def check_service_replication(client, service, instance, cluster, soa_dir):
         )
 
 
-def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
+def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist, system_paasta_config):
     """Retrives number of available backends for given services
 
     :param service_instances: A list of tuples of (service, instance)
     :param namespaces: list of Smartstack namespaces
     :param blacklist: A list of blacklisted location tuples in the form (location, value)
+    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     :returns: a dictionary of the form
 
     ::
@@ -281,11 +292,12 @@ def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
         attribute=discover_location_type,
         service=service,
         namespace=namespace,
-        blacklist=blacklist)
+        blacklist=blacklist,
+        system_paasta_config=system_paasta_config,
+    )
 
 
-def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist, synapse_port,
-                                             synapse_haproxy_url_format):
+def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist, system_paasta_config):
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
@@ -293,6 +305,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
     :param namespace: A particular smartstack namespace to inspect, like 'main'
     :param constraints: A list of Marathon constraints to restrict which synapse hosts to query
     :param blacklist: A list of blacklisted location tuples in the form of (location, value)
+    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
               (the dictionary will contain keys for unique all attribute values)
     """
@@ -305,8 +318,8 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
         synapse_host = hosts[0]
         repl_info = replication_utils.get_replication_for_services(
             synapse_host=synapse_host,
-            synapse_port=synapse_port,
-            synapse_haproxy_url_format=synapse_haproxy_url_format,
+            synapse_port=system_paasta_config.get_synapse_port(),
+            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
             services=[full_name],
         )
         replication_info[value] = repl_info
@@ -324,7 +337,9 @@ def main():
         log.setLevel(logging.DEBUG)
     else:
         log.setLevel(logging.WARNING)
-    cluster = load_system_paasta_config().get_cluster()
+
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
     service_instances = get_services_for_cluster(
         cluster=cluster, instance_type='marathon', soa_dir=args.soa_dir)
 
@@ -338,6 +353,7 @@ def main():
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
+            system_paasta_config=system_paasta_config,
         )
 
 
