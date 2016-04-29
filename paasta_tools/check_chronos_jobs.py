@@ -107,18 +107,33 @@ def build_service_job_mapping(client, configured_jobs):
     return service_job_mapping
 
 
-def message_for_status(status, service, instance, full_job_id):
+def message_for_status(status, service, instance, cluster):
     if status not in (pysensu_yelp.Status.CRITICAL, pysensu_yelp.Status.OK, pysensu_yelp.Status.UNKNOWN):
         raise ValueError('unknown sensu status: %s' % status)
     if status == pysensu_yelp.Status.CRITICAL:
-        return 'Last run of job %s%s%s Failed - job id %s' % (service, utils.SPACER, instance, full_job_id)
+        return (
+            "Last run of job %(service)s%(separator)s%(instance)s failed.\n"
+            "You can view the logs for the job with:\n"
+            "paasta logs -s %(service)s -i %(instance)s -c %(cluster)s .\n"
+            "If your job didn't manage to start up, you can view the stdout and stderr of your job using:\n"
+            "paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv .\n"
+            "If you need to rerun your job for the datetime it was started, you can do so with:\n"
+            "paasta rerun -s %(service)s -i %(instance)s -c %(cluster)s -d {datetime} .\n"
+            "See the docs on paasta rerun here:\n"
+            "https://paasta.readthedocs.io/en/latest/workflow.html#re-running-failed-jobs for more details."
+        ) % {
+            'service': service,
+            'instance': instance,
+            'cluster': cluster,
+            'separator': utils.SPACER
+        }
     elif status == pysensu_yelp.Status.UNKNOWN:
         return 'Last run of job %s%s%s Unknown' % (service, utils.SPACER, instance)
     else:
         return 'Last run of job %s%s%s Succeded' % (service, utils.SPACER, instance)
 
 
-def sensu_message_status_for_jobs(chronos_job_config, service, instance, job_state_pairs):
+def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, job_state_pairs):
     if len(job_state_pairs) > 1:
         sensu_status = pysensu_yelp.Status.UNKNOWN
         output = (
@@ -136,14 +151,13 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, job_sta
                 "which means it may not be deployed yet" % (service, utils.SPACER, instance)
             )
     else:
-        full_job_id = job_state_pairs[0][0].get('name', '[Couldn\'t fetch job name]')
         if job_state_pairs[0][0].get('disabled') is True:
             sensu_status = pysensu_yelp.Status.OK
             output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
         else:
             state = job_state_pairs[0][1]
             sensu_status = sensu_event_for_last_run_state(state)
-            output = message_for_status(sensu_status, service, instance, full_job_id)
+            output = message_for_status(sensu_status, service, instance, cluster)
     return output, sensu_status
 
 
@@ -167,7 +181,12 @@ def main(args):
             soa_dir=soa_dir,
         )
         sensu_output, sensu_status = sensu_message_status_for_jobs(
-            chronos_job_config, service, instance, job_state_pairs)
+            chronos_job_config=chronos_job_config,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            job_state_pairs=job_state_pairs
+        )
         monitoring_overrides = compose_monitoring_overrides_for_service(
             chronos_job_config=chronos_job_config,
             soa_dir=soa_dir
