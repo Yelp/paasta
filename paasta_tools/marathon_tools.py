@@ -356,7 +356,7 @@ class MarathonServiceConfig(InstanceConfig):
 
         # A set of config attributes that don't get included in the hash of the config.
         # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
-        CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds'])
+        CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds', 'min_instances', 'max_instances'])
 
         system_paasta_config = load_system_paasta_config()
         docker_url = get_docker_url(system_paasta_config.get_docker_registry(), self.get_docker_image())
