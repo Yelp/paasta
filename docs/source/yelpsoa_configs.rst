@@ -1,6 +1,7 @@
 Preparation: paasta_tools and yelpsoa-configs
 =========================================================
 
+
 paasta_tools reads configuration about services from several YAML
 files in `soa-configs <soa_configs.html>`_:
 
@@ -12,7 +13,12 @@ clustername is usually the same as the ``superregion`` in which the cluster
 lives (``norcal-prod``), but not always (``mesosstage``). It MUST be all
 lowercase. (non alphanumeric lowercase characters are ignored)
 
-The yaml where marathon jobs are actually defined.
+**Note:** All values in this file except the following will cause PaaSTA to
+`bounce <workflow.html#bouncing>`_ the service:
+
+.. runblock:: pycon
+
+    >>> from paasta_tools.marathon_tools import CONFIG_HASH_BLACKLIST; print CONFIG_HASH_BLACKLIST
 
 Top level keys are instancenames, e.g. ``main`` and ``canary``. Each
 instance MAY have:

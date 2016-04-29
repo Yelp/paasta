@@ -64,6 +64,10 @@ MESOS_TASK_SPACER = '.'
 PATH_TO_MARATHON_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'marathon.json')
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
+# A set of config attributes that don't get included in the hash of the config.
+# These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
+CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds', 'min_instances', 'max_instances'])
+
 log = logging.getLogger('__main__')
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
@@ -353,10 +357,6 @@ class MarathonServiceConfig(InstanceConfig):
                                marathon configuration file
         :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
-
-        # A set of config attributes that don't get included in the hash of the config.
-        # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
-        CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds'])
 
         system_paasta_config = load_system_paasta_config()
         docker_url = get_docker_url(system_paasta_config.get_docker_registry(), self.get_docker_image())
