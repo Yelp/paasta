@@ -145,13 +145,15 @@ def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs
 
 def test_message_for_status_fail():
     expected_output = (
-        "Last run of job myservice.myinstance failed. "
-        "You can view the logs for the job with paasta logs -s myservice -i myinstance -c mycluster ."
-        "If your job didn't manage to start up, you can view the stdout and stderr "
-        "of your job using paasta status -s myservice -i myinstance -c mycluster -vv ."
-        "If you need to rerun your job for the datetime it was started, you can do so with "
-        "paasta rerun -s myservice -i myinstance -c mycluster -d {datetime} ."
-        "See the docs on paasta rerun for more details."
+        "Last run of job myservice.myinstance failed.\n"
+        "You can view the logs for the job with:\n"
+        "paasta logs -s myservice -i myinstance -c mycluster .\n"
+        "If your job didn't manage to start up, you can view the stdout and stderr of your job using:\n"
+        "paasta status -s myservice -i myinstance -c mycluster -vv .\n"
+        "If you need to rerun your job for the datetime it was started, you can do so with:\n"
+        "paasta rerun -s myservice -i myinstance -c mycluster -d {datetime} .\n"
+        "See the docs on paasta rerun here:\n"
+        "https://paasta.readthedocs.io/en/latest/workflow.html#re-running-failed-jobs for more details."
     )
     assert check_chronos_jobs.message_for_status(
         status=pysensu_yelp.Status.CRITICAL,

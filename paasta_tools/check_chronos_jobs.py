@@ -112,13 +112,15 @@ def message_for_status(status, service, instance, cluster):
         raise ValueError('unknown sensu status: %s' % status)
     if status == pysensu_yelp.Status.CRITICAL:
         return (
-            "Last run of job %(service)s%(separator)s%(instance)s failed. "
-            "You can view the logs for the job with paasta logs -s %(service)s -i %(instance)s -c %(cluster)s ."
-            "If your job didn't manage to start up, you can view the stdout and stderr "
-            "of your job using paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv ."
-            "If you need to rerun your job for the datetime it was started, you can do so with "
-            "paasta rerun -s %(service)s -i %(instance)s -c %(cluster)s -d {datetime} ."
-            "See the docs on paasta rerun for more details."
+            "Last run of job %(service)s%(separator)s%(instance)s failed.\n"
+            "You can view the logs for the job with:\n"
+            "paasta logs -s %(service)s -i %(instance)s -c %(cluster)s .\n"
+            "If your job didn't manage to start up, you can view the stdout and stderr of your job using:\n"
+            "paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv .\n"
+            "If you need to rerun your job for the datetime it was started, you can do so with:\n"
+            "paasta rerun -s %(service)s -i %(instance)s -c %(cluster)s -d {datetime} .\n"
+            "See the docs on paasta rerun here:\n"
+            "https://paasta.readthedocs.io/en/latest/workflow.html#re-running-failed-jobs for more details."
         ) % {
             'service': service,
             'instance': instance,
