@@ -80,7 +80,7 @@ def test_get_registered_marathon_tasks():
     with mock.patch(
         'paasta_tools.monitoring.replication_utils.get_multiple_backends',
         return_value=backends
-    ):
+    ) as mock_get_multiple_backends:
         with mock.patch(
             'paasta_tools.monitoring.replication_utils.'
                 'socket.gethostbyname',
@@ -96,6 +96,13 @@ def test_get_registered_marathon_tasks():
 
             expected = [good_task1, good_task2]
             assert actual == expected
+
+            mock_get_multiple_backends.assert_called_once_with(
+                ['servicename.main'],
+                synapse_host='fake_host',
+                synapse_port=6666,
+                synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
+            )
 
 
 def test_backend_is_up():

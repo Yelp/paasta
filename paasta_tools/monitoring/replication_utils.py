@@ -82,7 +82,7 @@ def get_registered_marathon_tasks(
     :param marathon_tasks: A list of MarathonTask objects, whose tasks we will check for in the HAProxy status.
     """
     backends = get_multiple_backends([service], synapse_host=synapse_host, synapse_port=synapse_port,
-                                     synapse_haproxy_url_format=synapse_host)
+                                     synapse_haproxy_url_format=synapse_haproxy_url_format)
     healthy_tasks = []
     for backend, task in match_backends_and_tasks(backends, marathon_tasks):
         if backend is not None and task is not None and backend['status'].startswith('UP'):
