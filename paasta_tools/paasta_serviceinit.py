@@ -12,10 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-"""Usage: ./paasta_servceinit.py [-v] [service_instance] [-s service] [-i instances] <stop|start|restart|status|scale>
-
-Interacts with the framework APIs to start/stop/restart/get status/scale for an
-instance. Assumes that the credentials are available, so must run as root.
+"""
+Interacts with the framework APIs to start/stop/restart/get status/scale for
+instances. Assumes that the credentials are available, so must run as root.
 """
 import argparse
 import logging
@@ -73,6 +72,7 @@ def main():
         log.setLevel(logging.WARNING)
 
     instances = []
+    return_codes = []
     command = args.command
     if (args.service_instance):
         service_instance = args.service_instance
@@ -87,7 +87,6 @@ def main():
 
     cluster = load_system_paasta_config().get_cluster()
     for instance in instances:
-        print("instance:%s" % instance)
         instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
         if instance_type == 'marathon':
             return_code = marathon_serviceinit.perform_command(
@@ -114,9 +113,8 @@ def main():
                       % (instance_type, compose_job_id(service, instance)))
             return_code = 1
 
-        if return_code:
-            sys.exit(return_code)
-    sys.exit(0)
+        return_codes.append(return_code)
+    sys.exit(max(return_codes))
 
 
 if __name__ == "__main__":
