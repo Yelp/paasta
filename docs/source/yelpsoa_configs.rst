@@ -15,7 +15,7 @@ lowercase. (non alphanumeric lowercase characters are ignored)
 **Note**: Any changes to these parameters will cause a `bounce <workflow.html#bouncing>`_
 so PaaSTA can safely change the configuration, with the exception of::
 
-  'instances', 'backoff_seconds', 'min_instances', 'max_instances
+  'instances', 'backoff_seconds', 'min_instances', 'max_instances'
 
 Top level keys are instancenames, e.g. ``main`` and ``canary``. Each
 instance MAY have:
