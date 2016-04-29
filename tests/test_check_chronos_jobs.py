@@ -144,23 +144,17 @@ def test_build_service_job_mapping(mock_last_run_state, mock_filter_enabled_jobs
 
 
 def test_message_for_status_fail():
-    expected_output = (
-        "Last run of job myservice.myinstance failed.\n"
-        "You can view the logs for the job with:\n"
-        "paasta logs -s myservice -i myinstance -c mycluster .\n"
-        "If your job didn't manage to start up, you can view the stdout and stderr of your job using:\n"
-        "paasta status -s myservice -i myinstance -c mycluster -vv .\n"
-        "If you need to rerun your job for the datetime it was started, you can do so with:\n"
-        "paasta rerun -s myservice -i myinstance -c mycluster -d {datetime} .\n"
-        "See the docs on paasta rerun here:\n"
-        "https://paasta.readthedocs.io/en/latest/workflow.html#re-running-failed-jobs for more details."
-    )
-    assert check_chronos_jobs.message_for_status(
+    actual = check_chronos_jobs.message_for_status(
         status=pysensu_yelp.Status.CRITICAL,
         service='myservice',
         instance='myinstance',
         cluster='mycluster',
-    ) == expected_output
+    )
+    assert "Last run of job myservice.myinstance failed.\n" in actual
+    # Assert that there are helpful action items in the output
+    assert "paasta logs -s myservice -i myinstance -c mycluster\n" in actual
+    assert "paasta status -s myservice -i myinstance -c mycluster -vv\n" in actual
+    assert "paasta rerun -s myservice -i myinstance -c mycluster -d {datetime}\n" in actual
 
 
 def test_message_for_status_success():
@@ -179,8 +173,8 @@ def test_sensu_message_status_for_jobs_too_many():
     output, status = check_chronos_jobs.sensu_message_status_for_jobs(
         Mock(), 'myservice', 'myinstance', 'mycluster', fake_job_state_pairs)
     expected_output = (
-        "Unknown: somehow there was more than one enabled job for myservice.myinstance. "
-        "Talk to the PaaSTA team as this indicates a bug"
+        "Unknown: somehow there was more than one enabled job for myservice.myinstance.\n"
+        "Talk to the PaaSTA team as this indicates a bug."
     )
     assert output == expected_output
     assert status == pysensu_yelp.Status.UNKNOWN

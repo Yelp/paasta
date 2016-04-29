@@ -114,11 +114,17 @@ def message_for_status(status, service, instance, cluster):
         return (
             "Last run of job %(service)s%(separator)s%(instance)s failed.\n"
             "You can view the logs for the job with:\n"
-            "paasta logs -s %(service)s -i %(instance)s -c %(cluster)s .\n"
+            "\n"
+            "    paasta logs -s %(service)s -i %(instance)s -c %(cluster)s\n"
+            "\n"
             "If your job didn't manage to start up, you can view the stdout and stderr of your job using:\n"
-            "paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv .\n"
+            "\n"
+            "    paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+            "\n"
             "If you need to rerun your job for the datetime it was started, you can do so with:\n"
-            "paasta rerun -s %(service)s -i %(instance)s -c %(cluster)s -d {datetime} .\n"
+            "\n"
+            "    paasta rerun -s %(service)s -i %(instance)s -c %(cluster)s -d {datetime}\n"
+            "\n"
             "See the docs on paasta rerun here:\n"
             "https://paasta.readthedocs.io/en/latest/workflow.html#re-running-failed-jobs for more details."
         ) % {
@@ -137,8 +143,8 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster
     if len(job_state_pairs) > 1:
         sensu_status = pysensu_yelp.Status.UNKNOWN
         output = (
-            "Unknown: somehow there was more than one enabled job for %s%s%s. "
-            "Talk to the PaaSTA team as this indicates a bug" % (service, utils.SPACER, instance)
+            "Unknown: somehow there was more than one enabled job for %s%s%s.\n"
+            "Talk to the PaaSTA team as this indicates a bug." % (service, utils.SPACER, instance)
         )
     elif len(job_state_pairs) == 0:
         if chronos_job_config.get_disabled():
@@ -168,7 +174,6 @@ def main(args):
     system_paasta_config = utils.load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
 
-    # get those jobs listed in configs
     configured_jobs = chronos_tools.get_chronos_jobs_for_cluster(cluster, soa_dir=soa_dir)
 
     service_job_mapping = build_service_job_mapping(client, configured_jobs)

@@ -152,7 +152,8 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
 
 
 def test_check_smartstack_replication_for_instance_crit_when_absent():
@@ -226,7 +227,12 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert 'Service test.zero_running has 0 out of 8 expected instances in fake_region' in alert_output
+        assert "paasta status -s test -i zero_running -c fake_cluster -vv" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_low_replication():
@@ -263,7 +269,12 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication():
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert 'Service test.not_enough has 4 out of 8 expected instances in fake_region' in alert_output
+        assert "paasta status -s test -i not_enough -c fake_cluster -vv" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
@@ -300,7 +311,11 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.everything_up has 8 out of 8 expected instances in fake_region (OK: 100%)" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_ignores_things_under_a_different_namespace():
@@ -369,7 +384,12 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.everything_up has 1 out of 1 expected instances in fake_region" in alert_output
+        assert "test.everything_up has 1 out of 1 expected instances in fake_other_region" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_low_replication_multilocation():
@@ -406,7 +426,13 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.low_replication has 1 out of 1 expected instances in fake_region" in alert_output
+        assert "test.low_replication has 0 out of 1 expected instances in fake_other_region" in alert_output
+        assert "paasta status -s test -i low_replication -c fake_cluster -vv" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_zero_replication_multilocation():
@@ -443,7 +469,13 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.zero_running has 0 out of 1 expected instances in fake_region (CRITICAL: 0%)" in alert_output
+        assert "test.zero_running has 0 out of 1 expected instances in fake_other_region (CRITICAL: 0%)" in alert_output
+        assert "paasta status -s test -i zero_running -c fake_cluster -vv" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_missing_replication_multilocation():
@@ -480,7 +512,12 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.missing_instance has 0 out of 1 expected instances in fake_region" in alert_output
+        assert "test.missing_instance has 0 out of 1 expected instances in fake_other_region" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info():
@@ -517,7 +554,11 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.some_instance has no Smartstack replication info." in alert_output
 
 
 def test_check_service_replication_for_normal_smartstack():
@@ -578,7 +619,8 @@ def test_check_service_replication_for_non_smartstack():
             instance=instance,
             cluster=cluster,
             soa_dir=None,
-            expected_count=100)
+            expected_count=100,
+        )
 
 
 def test_get_healthy_marathon_instances_for_short_app_id_correctly_counts_alive_tasks():
@@ -718,7 +760,11 @@ def test_send_event_if_under_replication_handles_0_expected():
             cluster=cluster,
             soa_dir=soa_dir,
             status=0,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test_service.worker has 0 out of 0 expected instances available!\n(threshold: 90%)" in alert_output
 
 
 def test_send_event_if_under_replication_good():
@@ -748,7 +794,11 @@ def test_send_event_if_under_replication_good():
             cluster=cluster,
             soa_dir=soa_dir,
             status=0,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test_service.worker has 100 out of 100 expected instances available!\n(threshold: 90%)" in alert_output
 
 
 def test_send_event_if_under_replication_critical():
@@ -783,7 +833,12 @@ def test_send_event_if_under_replication_critical():
             cluster=cluster,
             soa_dir=soa_dir,
             status=2,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test_service.worker has 89 out of 100 expected instances available!\n(threshold: 90%)" in alert_output
+        assert "paasta status -s test_service -i worker -c fake_cluster -vv" in alert_output
 
 
 def test_get_smartstack_replication_for_attribute():
