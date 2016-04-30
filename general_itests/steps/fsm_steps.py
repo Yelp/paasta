@@ -26,7 +26,7 @@ from paasta_tools.cli.cmds.fsm import paasta_fsm
 from paasta_tools.utils import SystemPaastaConfig
 
 
-@given(u'a fake yelpsoa-config-root')
+@given(u'a fake yelpsoa-config-root with an existing service')
 def step_impl_given(context):
     # Cleaned up in after_scenario()
     context.tmpdir = tempfile.mkdtemp('paasta_tools_fsm_itest')
@@ -35,11 +35,12 @@ def step_impl_given(context):
         'yelpsoa-configs',
     )
     fake_yelpsoa_configs_src = os.path.join(
-        'fake_soa_configs_fsm_wizard',
+        'fake_soa_configs_fsm',
     )
     shutil.copytree(
-        fake_yelpsoa_configs_src,
-        context.fake_yelpsoa_configs,
+        src=fake_yelpsoa_configs_src,
+        dst=context.fake_yelpsoa_configs,
+        symlinks=True,
     )
 
 
@@ -48,18 +49,12 @@ def _load_yelpsoa_configs(context, service):
     context.my_config = all_services[service]
 
 
-@when(u'we fsm a new service with --auto')
+@when(u'we fsm a new service')
 def step_impl_when_fsm_auto(context):
-    service = "new_paasta_service"
+    service = "my-cool-service"
 
     fake_args = mock.Mock(
         yelpsoa_config_root=context.fake_yelpsoa_configs,
-        srvname=service,
-        auto=True,
-        port=None,
-        team='paasta',
-        description=None,
-        external_link=None,
     )
     with contextlib.nested(
             mock.patch('paasta_tools.cli.cmds.fsm.load_system_paasta_config'),
@@ -67,44 +62,7 @@ def step_impl_when_fsm_auto(context):
         mock_load_system_paasta_config,
     ):
         mock_load_system_paasta_config.return_value = SystemPaastaConfig(
-            config={
-                'fsm_cluster_map': {
-                    'pnw-stagea': 'STAGE',
-                    'norcal-stageb': 'STAGE',
-                    'norcal-devb': 'DEV',
-                    'norcal-devc': 'DEV',
-                    'norcal-prod': 'PROD',
-                    'nova-prod': 'PROD'
-                },
-                'fsm_deploy_pipeline': [
-                    {
-                        "instancename": "itest",
-                    },
-                    {
-                        "instancename": "security-check",
-                    },
-                    {
-                        "instancename": "push-to-registry",
-                    },
-                    {
-                        "instancename": "performance-check",
-                    },
-                    {
-                        "instancename": "stage.everything",
-                        "trigger_next_step_manually": True,
-                    },
-                    {
-                        "instancename": "prod.canary",
-                        "trigger_next_step_manually": True,
-                    },
-                    {
-                        "instancename": "prod.non_canary",
-                    },
-                    {
-                        "instancename": "dev.everything",
-                    },
-                ],
-            },
+            config={},
             directory=context.fake_yelpsoa_configs,
         )
         paasta_fsm(fake_args)

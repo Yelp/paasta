@@ -12,12 +12,11 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-
 import os
+from shutil import copyfile
+from shutil import copymode
 
 from cookiecutter.main import cookiecutter
-from shutil import copymode
-from shutil import copyfile
 
 from paasta_tools.cli.fsm.autosuggest import suggest_smartstack_proxy_port
 from paasta_tools.utils import load_system_paasta_config
@@ -37,13 +36,13 @@ def symlink_aware_copyfile(infile, outfile):
 
 def symlink_aware_copymode(infile, outfile):
     if not os.path.islink(outfile):
-          copymode(infile, outfile)
+        copymode(infile, outfile)
 
 
 # The reasoning behind this monkeypatch is that cookiecutter doesn't respect
 # symlinks at all, and at Yelp we use symlinks to reduce duplication in
 # the soa configs. Maybe cookie-cutter will accept a symlink-aware PR?
-import shutil # noqa
+import shutil  # noqa
 shutil.copyfile = symlink_aware_copyfile
 shutil.copymode = symlink_aware_copymode
 

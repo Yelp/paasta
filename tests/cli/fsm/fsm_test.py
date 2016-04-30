@@ -11,9 +11,8 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import mock
-from pytest import raises
-from pytest import yield_fixture
-
-import paasta_tools.cli.cmds.fsm as fsm
-from paasta_tools.utils import SystemPaastaConfig
+#import mock
+#from pytest import raises
+#
+#import paasta_tools.cli.cmds.fsm as fsm
+#from paasta_tools.utils import SystemPaastaConfig
