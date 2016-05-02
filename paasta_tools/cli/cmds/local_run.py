@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import datetime
+import json
 import math
 import os
 import pipes
@@ -368,6 +369,11 @@ def add_subparser(subparsers):
         required=False,
         default=False,
     )
+    list_parser.add_argument(
+        '-d', '--dry-run',
+        help='Shows the arguments in json format supplied to docker',
+        action='store_true',
+    )
     list_parser.set_defaults(command=paasta_local_run)
 
 
@@ -470,6 +476,7 @@ def run_docker_container(
     healthcheck_only,
     instance_config,
     soa_dir=DEFAULT_SOA_DIR,
+    dry_run=False
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -513,7 +520,12 @@ def run_docker_container(
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
         service, instance, instance_config, random_port, soa_dir=soa_dir)
 
-    sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
+    if dry_run:
+        sys.stdout.write(json.dumps(docker_run_cmd) + '\n')
+        sys.exit(0)
+    else:
+        sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
+
     if interactive:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
@@ -601,7 +613,16 @@ def command_function_for_framework(framework):
         raise ValueError("Invalid Framework")
 
 
-def configure_and_run_docker_container(docker_client, docker_hash, service, instance, cluster, args, pull_image=False):
+def configure_and_run_docker_container(
+        docker_client,
+        docker_hash,
+        service,
+        instance,
+        cluster,
+        args,
+        pull_image=False,
+        dry_run=False
+):
     """
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
@@ -686,6 +707,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         healthcheck_only=args.healthcheck_only,
         instance_config=instance_config,
         soa_dir=args.yelpsoa_config_root,
+        dry_run=dry_run,
     )
 
 
@@ -699,7 +721,7 @@ def local_makefile_present():
 
 
 def paasta_local_run(args):
-    if args.pull:
+    if args.pull or args.dry_run:
         build = False
     elif args.build:
         build = True
@@ -719,6 +741,9 @@ def paasta_local_run(args):
         cook_return = paasta_cook_image(args=None, service=service, soa_dir=args.yelpsoa_config_root)
         if cook_return != 0:
             return cook_return
+    elif args.dry_run:
+        pull_image = False
+        tag = None
     else:
         pull_image = True
         tag = None
@@ -732,6 +757,7 @@ def paasta_local_run(args):
             cluster=cluster,
             args=args,
             pull_image=pull_image,
+            dry_run=args.dry_run,
         )
     except errors.APIError as e:
         sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))

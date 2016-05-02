@@ -317,10 +317,10 @@ def guess_instance(service, cluster, args):
             else:
                 instance = list(instances)[0]
         except NoConfigurationForServiceError:
-            sys.stdout.write(PaastaColors.red(
+            sys.stderr.write(PaastaColors.red(
                 'Could not automatically detect instance to emulate. Please specify one with the --instance option.\n'))
             sys.exit(2)
-        sys.stdout.write(PaastaColors.yellow(
+        sys.stderr.write(PaastaColors.yellow(
             'Guessing instance configuration for %s. To override, use the --instance option.\n' % instance))
     return instance
 
@@ -333,10 +333,10 @@ def guess_cluster(service, args):
         try:
             cluster = get_default_cluster_for_service(service)
         except NoConfigurationForServiceError:
-            sys.stdout.write(PaastaColors.red(
+            sys.stderr.write(PaastaColors.red(
                 'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
             sys.exit(2)
-        sys.stdout.write(PaastaColors.yellow(
+        sys.stderr.write(PaastaColors.yellow(
             'Guesing cluster configuration for %s. To override, use the --cluster option.\n' % cluster))
     return cluster
 
