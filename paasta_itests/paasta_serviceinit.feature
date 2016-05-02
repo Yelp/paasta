@@ -43,6 +43,8 @@ Feature: paasta_serviceinit
      When we run the marathon app "test-service.main"
       And we wait for it to be deployed
      Then paasta_serviceinit status -vv for the service_instance "test-service.main" exits with return code 0 and the correct output
+      And paasta_serviceinit status -s "test-service" -i "main" exits with return code 0 and the correct output
+      And paasta_serviceinit status -s "test-service" -i "main,test" has the correct output for instance main and exits with non-zero return code for instance test
 
   Scenario: paasta_serviceinit can run emergency-stop on an enabled chronos job
     Given a working paasta cluster

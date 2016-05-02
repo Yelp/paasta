@@ -194,7 +194,7 @@ def write_soa_dir_marathon_job(context, job_id):
 
 
 @given(u'we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
-def write_soa_dir_chronos_deployments(context, service, disabled, instance):
+def write_soa_dir_deployments(context, service, disabled, instance):
     if disabled == 'disabled':
         desired_state = 'stop'
     else:
