@@ -65,7 +65,7 @@ def test_zookeeper_pool():
         assert zk_client.stop.call_count == 1
 
 
-def test_get_zookeeper_instances_defaults_to_config_no_zk_node():
+def test_get_zookeeper_instances_defaults_to_max_instances_when_no_zk_node():
     fake_marathon_config = marathon_tools.MarathonServiceConfig(
         service='service',
         instance='instance',
@@ -84,7 +84,7 @@ def test_get_zookeeper_instances_defaults_to_config_no_zk_node():
         _,
     ):
         mock_zk_client.return_value = mock.Mock(get=mock.Mock(side_effect=NoNodeError))
-        assert fake_marathon_config.get_instances() == 5
+        assert fake_marathon_config.get_instances() == 10
 
 
 def test_get_zookeeper_instances_defaults_to_config_out_of_bounds():

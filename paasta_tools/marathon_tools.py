@@ -220,7 +220,7 @@ class MarathonServiceConfig(InstanceConfig):
                         instance=self.instance,
                     )
                 except NoNodeError:  # zookeeper doesn't have instance data for this app
-                    return self.get_min_instances()
+                    return self.get_max_instances()
                 else:
                     return self.limit_instance_count(zk_instances)
             else:
