@@ -20,6 +20,7 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import load_system_paasta_config
 
 
 def add_subparser(subparsers):
@@ -69,8 +70,9 @@ def paasta_emergency_restart(args):
     It should not be needed in normal circumstances.
     """
     service = figure_out_service_name(args, args.soa_dir)
+    system_paasta_config = load_system_paasta_config()
     print "Performing an emergency restart on %s...\n" % compose_job_id(service, args.instance)
-    execute_paasta_serviceinit_on_remote_master('restart', args.cluster, service, args.instance)
+    execute_paasta_serviceinit_on_remote_master('restart', args.cluster, service, args.instance, system_paasta_config)
     print "%s" % "\n".join(paasta_emergency_restart.__doc__.splitlines()[-7:])
     print "Run this to see the status:"
     print "paasta status --service %s --clusters %s" % (service, args.cluster)

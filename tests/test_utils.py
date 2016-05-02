@@ -360,6 +360,20 @@ def test_SystemPaastaConfig_get_sensu_port():
     assert actual == expected
 
 
+def test_SystemPaastaConfig_get_cluster_fqdn_format_default():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    actual = fake_config.get_cluster_fqdn_format()
+    expected = 'paasta-{cluster:s}.yelp'
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_cluster_fqdn_format():
+    fake_config = utils.SystemPaastaConfig({"cluster_fqdn_format": "paasta-{cluster:s}.something"}, '/some/fake/dir')
+    actual = fake_config.get_cluster_fqdn_format()
+    expected = 'paasta-{cluster:s}.something'
+    assert actual == expected
+
+
 def test_atomic_file_write():
     with mock.patch('tempfile.NamedTemporaryFile', autospec=True) as ntf_patch:
         file_patch = ntf_patch().__enter__()
