@@ -1,5 +1,6 @@
 usr/share/python/paasta-tools/bin/am_i_mesos_leader.py usr/bin/am_i_mesos_leader
 usr/share/python/paasta-tools/bin/autoscale_all_services.py usr/bin/autoscale_all_services
+usr/share/python/paasta-tools/bin/autoscale_cluster.py usr/bin/autoscale_cluster
 usr/share/python/paasta-tools/bin/check_classic_service_replication.py usr/bin/check_classic_service_replication
 usr/share/python/paasta-tools/bin/check_marathon_services_frontends.py usr/bin/check_marathon_services_frontends
 usr/share/python/paasta-tools/bin/check_marathon_services_replication.py usr/bin/check_marathon_services_replication
