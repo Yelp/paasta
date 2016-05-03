@@ -219,13 +219,22 @@ class MarathonServiceConfig(InstanceConfig):
                         service=self.service,
                         instance=self.instance,
                     )
-                except NoNodeError:  # zookeeper doesn't have instance data for this app
+                    log.debug("Got %d instances out of zookeeper" % zk_instances)
+                except NoNodeError:
+                    log.debug("No zookeeper data, returning max_instances (%d)" % self.get_max_instances())
                     return self.get_max_instances()
                 else:
-                    return self.limit_instance_count(zk_instances)
+                    limited_instances = self.limit_instance_count(zk_instances)
+                    if limited_instances != zk_instances:
+                        log.warning("Returning limited instance count %d. (zk had %d)" % (
+                                    limited_instances, zk_instances))
+                    return limited_instances
             else:
-                return self.config_dict.get('instances', 1)
+                instances = self.config_dict.get('instances', 1)
+                log.debug("Autoscaling not enabled, returning %d instances" % instances)
+                return instances
         else:
+            log.debug("Instance is set to stop. Returning '0' instances")
             return 0
 
     def get_autoscaling_params(self):
