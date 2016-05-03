@@ -428,13 +428,13 @@ def test_atomic_file_write_itest():
 
 
 def test_configure_log():
-    fake_log_writer = {'driver': 'fake'}
+    fake_log_writer_config = {'driver': 'fake', 'fake_arg': 'something'}
     with mock.patch('paasta_tools.utils.load_system_paasta_config') as mock_load_system_paasta_config:
-        mock_load_system_paasta_config().get_log_writer.return_value = fake_log_writer
+        mock_load_system_paasta_config().get_log_writer.return_value = fake_log_writer_config
         with mock.patch('paasta_tools.utils.get_log_writer_class') as mock_get_log_writer_class:
             utils.configure_log()
             mock_get_log_writer_class.assert_called_once_with('fake')
-            mock_get_log_writer_class('fake').assert_called_once_with(**fake_log_writer)
+            mock_get_log_writer_class('fake').assert_called_once_with(fake_arg='something')
 
 
 def test_compose_job_id_without_hashes():

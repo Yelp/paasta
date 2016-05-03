@@ -526,6 +526,7 @@ def configure_log():
     log_writer_options = load_system_paasta_config().get_log_writer()
     global _log_writer
     LogWriterClass = get_log_writer_class(log_writer_options['driver'])
+    del log_writer_options['driver']  # In case the log writer class doesn't take **kwargs or a 'driver' parameter.
     _log_writer = LogWriterClass(**log_writer_options)
 
 
