@@ -67,7 +67,7 @@ def print_cluster_status(cluster, system_paasta_config, verbose=0):
     output is printed directly to provide dashbaords even if the cluster is unavailable"""
     print "Cluster: %s" % cluster
     print get_cluster_dashboards(cluster)
-    print execute_paasta_metastatus_on_remote_master(cluster, verbose, system_paasta_config)
+    print execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, verbose=verbose)
     print ""
 
 

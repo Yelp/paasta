@@ -39,7 +39,7 @@ def test_report_cluster_status(mock_stdout, mock_load_system_paasta_config):
         mock_execute_paasta_metastatus_on_remote_master.return_value = 'mock_status'
         metastatus.print_cluster_status(cluster, fake_system_paasta_config)
         mock_execute_paasta_metastatus_on_remote_master.assert_called_once_with(
-            cluster, False, fake_system_paasta_config,
+            cluster, fake_system_paasta_config, verbose=False,
         )
         actual = mock_stdout.getvalue()
         assert 'Cluster: %s' % cluster in actual
