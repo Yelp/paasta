@@ -404,12 +404,13 @@ def list_teams(**kwargs):
     return teams
 
 
-def calculate_remote_masters(cluster):
+def calculate_remote_masters(cluster, system_paasta_config):
     """Given a cluster, do a DNS lookup of that cluster (which
     happens to point, eventually, to the Mesos masters in that cluster).
     Return IPs of those Mesos masters.
     """
-    cluster_fqdn = "paasta-%s.yelp" % cluster
+
+    cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(cluster=cluster)
     try:
         _, _, ips = gethostbyname_ex(cluster_fqdn)
         output = None
@@ -503,11 +504,12 @@ def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, *
     return output
 
 
-def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instancename, **kwargs):
+def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instancename, system_paasta_config,
+                                                **kwargs):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
-    masters, output = calculate_remote_masters(cluster)
+    masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
         return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
@@ -533,11 +535,11 @@ def run_paasta_metastatus(master, verbose=0):
     return output
 
 
-def execute_paasta_metastatus_on_remote_master(cluster, verbose=0):
+def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, verbose=0):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
-    masters, output = calculate_remote_masters(cluster)
+    masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
         return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
@@ -561,11 +563,11 @@ def run_chronos_rerun(master, service, instancename, **kwargs):
     return _run(command, timeout=timeout)
 
 
-def execute_chronos_rerun_on_remote_master(service, instancename, cluster, **kwargs):
+def execute_chronos_rerun_on_remote_master(service, instancename, cluster, system_paasta_config, **kwargs):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_chronos_rerun().
     """
-    masters, output = calculate_remote_masters(cluster)
+    masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
         return (-1, 'ERROR: %s' % output)
     master, output = find_connectable_master(masters)

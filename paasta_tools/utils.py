@@ -855,6 +855,13 @@ class SystemPaastaConfig(dict):
     def get_cluster_autoscaling_resources(self):
         return self.get('cluster_autoscaling_resources', {})
 
+    def get_cluster_fqdn_format(self):
+        """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
+        string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
+
+        :returns: A format string for constructing the FQDN of the masters in a given cluster."""
+        return self.get('cluster_fqdn_format', 'paasta-{cluster:s}.yelp')
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any

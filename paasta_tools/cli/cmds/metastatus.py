@@ -62,12 +62,12 @@ def add_subparser(subparsers):
     status_parser.set_defaults(command=paasta_metastatus)
 
 
-def print_cluster_status(cluster, verbose=0):
+def print_cluster_status(cluster, system_paasta_config, verbose=0):
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashbaords even if the cluster is unavailable"""
     print "Cluster: %s" % cluster
     print get_cluster_dashboards(cluster)
-    print execute_paasta_metastatus_on_remote_master(cluster, verbose)
+    print execute_paasta_metastatus_on_remote_master(cluster, verbose, system_paasta_config)
     print ""
 
 

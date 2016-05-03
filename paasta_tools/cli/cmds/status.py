@@ -27,6 +27,7 @@ from paasta_tools.marathon_tools import load_deployments_json
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_soa_cluster_deploy_files
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 
 
@@ -128,7 +129,8 @@ def get_actual_deployments(service, soa_dir):
     return actual_deployments
 
 
-def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist, verbose=0):
+def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployments, instance_whitelist,
+                              system_paasta_config, verbose=0):
     """With a given service and cluster, prints the status of the instances
     in that cluster"""
     print
@@ -148,7 +150,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
             formatted_instance = PaastaColors.blue(instance)
             version = actual_deployments[namespace][:8]
             # TODO: Perform sanity checks once per cluster instead of for each namespace
-            status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, instance, verbose=verbose)
+            status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, instance,
+                                                                 system_paasta_config, verbose=verbose)
         # Case: service NOT deployed to cluster.instance
         else:
             formatted_instance = PaastaColors.red(instance)
@@ -181,7 +184,8 @@ def report_invalid_whitelist_values(whitelist, items, item_type):
     return return_string
 
 
-def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist, verbose=0):
+def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelist, instance_whitelist,
+                  system_paasta_config, verbose=0):
     pipeline_url = get_pipeline_url(service)
     print "Pipeline: %s" % pipeline_url
 
@@ -194,6 +198,7 @@ def report_status(service, deploy_pipeline, actual_deployments, cluster_whitelis
                 deploy_pipeline=deploy_pipeline,
                 actual_deployments=actual_deployments,
                 instance_whitelist=instance_whitelist,
+                system_paasta_config=system_paasta_config,
                 verbose=verbose,
             )
 
@@ -206,6 +211,8 @@ def paasta_status(args):
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir)
     actual_deployments = get_actual_deployments(service, soa_dir)
+    system_paasta_config = load_system_paasta_config()
+
     if args.clusters is not None:
         cluster_whitelist = args.clusters.split(",")
     else:
@@ -223,6 +230,7 @@ def paasta_status(args):
             actual_deployments=actual_deployments,
             cluster_whitelist=cluster_whitelist,
             instance_whitelist=instance_whitelist,
+            system_paasta_config=system_paasta_config,
             verbose=args.verbose,
         )
     else:

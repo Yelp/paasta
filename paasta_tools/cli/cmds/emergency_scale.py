@@ -20,6 +20,7 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import load_system_paasta_config
 
 
 def add_subparser(subparsers):
@@ -80,8 +81,9 @@ def paasta_emergency_scale(args):
     For example, this can be done for Marathon apps by setting 'instances: n'
     """
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
+    system_paasta_config = load_system_paasta_config()
     print "Performing an emergency scale on %s..." % compose_job_id(service, args.instance)
     output = execute_paasta_serviceinit_on_remote_master('scale', args.cluster, service, args.instance,
-                                                         app_id=args.appid, delta=args.delta)
+                                                         system_paasta_config, app_id=args.appid, delta=args.delta)
     print "Output: %s" % output
     print "%s" % "\n".join(paasta_emergency_scale.__doc__.splitlines()[-7:])

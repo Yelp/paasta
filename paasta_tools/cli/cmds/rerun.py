@@ -25,6 +25,7 @@ from paasta_tools.cli.utils import list_instances
 from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import SPACER
 
@@ -97,6 +98,7 @@ def _get_cluster_instance(cluster_dot_instance_list):
 def paasta_rerun(args):
     """Reruns a Chronos job.
     :param args: argparse.Namespace obj created from sys.args by cli"""
+    system_paasta_config = load_system_paasta_config()
     soa_dir = args.soa_dir
     service = figure_out_service_name(args, soa_dir)  # exit with an error if the service doesn't exist
     if args.execution_date:
@@ -148,7 +150,8 @@ def paasta_rerun(args):
             instancename=args.instance,
             cluster=cluster,
             verbose=args.verbose,
-            execution_date=execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT)
+            execution_date=execution_date.strftime(chronos_tools.EXECUTION_DATE_FORMAT),
+            system_paasta_config=system_paasta_config,
         )
         if rc == 0:
             print PaastaColors.green('  successfully created job')
