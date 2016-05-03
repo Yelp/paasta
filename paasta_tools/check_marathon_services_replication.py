@@ -158,6 +158,35 @@ def check_smartstack_replication_for_instance(
 
         if any(under_replication_per_location):
             status = pysensu_yelp.Status.CRITICAL
+            output += (
+                "\n\n"
+                "What this alert means:\n"
+                "\n"
+                "  This replication alert means that a SmartStack powered loadbalancer (haproxy)\n"
+                "  doesn't have enough healthy backends. Not having enough healthy backends\n"
+                "  means that clients of that service will get 503s (http) or connection refused\n"
+                "  (tcp) when trying to connect to it.\n"
+                "\n"
+                "Reasons this might be happening:\n"
+                "\n"
+                "  The service may simply not have enough copies or it could simply be\n"
+                "  unhealthy in that location. There also may not be enough resources\n"
+                "  in the cluster to support the requested instance count.\n"
+                "\n"
+                "Things you can do:\n"
+                "\n"
+                "  * Fix the cause of the unhealthy service. Try running:\n"
+                "\n"
+                "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+                "\n"
+                "  * Widen SmartStack discovery settings\n"
+                "  * Increase the instance count\n"
+                "\n"
+            ) % {
+                'service': service,
+                'instance': instance,
+                'cluster': cluster,
+            }
             log.error(output)
         else:
             status = pysensu_yelp.Status.OK
@@ -210,6 +239,29 @@ def send_event_if_under_replication(
               '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
     under_replicated, _ = is_under_replicated(num_available, expected_count, crit_threshold)
     if under_replicated:
+        output += (
+            "\n\n"
+            "What this alert means:\n"
+            "\n"
+            "  This replication alert means that the service PaaSTA can't keep the\n"
+            "  requested number of copies up and healthy in the cluster.\n"
+            "\n"
+            "Reasons this might be happening:\n"
+            "\n"
+            "  The service may simply unhealthy. There also may not be enough resources\n"
+            "  in the cluster to support the requested instance count.\n"
+            "\n"
+            "Things you can do:\n"
+            "\n"
+            "  * Increase the instance count\n"
+            "  * Fix the cause of the unhealthy service. Try running:\n"
+            "\n"
+            "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+        ) % {
+            'service': service,
+            'instance': instance,
+            'cluster': cluster,
+        }
         log.error(output)
         status = pysensu_yelp.Status.CRITICAL
     else:
