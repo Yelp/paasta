@@ -175,11 +175,13 @@ def check_smartstack_replication_for_instance(
                 "\n"
                 "Things you can do:\n"
                 "\n"
-                "  * Widen SmartStack discovery settings\n"
-                "  * Increase the instance count\n"
                 "  * Fix the cause of the unhealthy service. Try running:\n"
                 "\n"
                 "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+                "\n"
+                "  * Widen SmartStack discovery settings\n"
+                "  * Increase the instance count\n"
+                "\n"
             ) % {
                 'service': service,
                 'instance': instance,
