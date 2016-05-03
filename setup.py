@@ -77,7 +77,6 @@ setup(
         'paasta_tools/list_marathon_service_instances.py',
         'paasta_tools/monitoring/check_classic_service_replication.py',
         'paasta_tools/monitoring/check_synapse_replication.py',
-        'paasta_tools/cli/cli.py',
         'paasta_tools/cli/paasta_tabcomplete.sh',
         'paasta_tools/paasta_execute_docker_command.py',
         'paasta_tools/paasta_metastatus.py',
@@ -88,4 +87,5 @@ setup(
         'paasta_tools/chronos_rerun.py',
     ] + glob.glob('paasta_tools/contrib/*'),
     package_data={'': ['cli/fsm/templates/*.tmpl', 'cli/schemas/*.json']},
+    entry_points={'console_scripts': ['paasta=paasta_tools.cli.cli:main']},
 )

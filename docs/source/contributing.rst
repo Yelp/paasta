@@ -62,7 +62,7 @@ it is a little tricky.
 * You can load the appropriate rules into your shell. Note that it is sensitive
   to the exact path you use to invoke the command getting autocomplete hints:
 
-  * ``eval "$(.tox/py27/bin/register-python-argcomplete ./paasta_tools/cli/cli.py)"``
+  * ``eval "$(.tox/py27/bin/register-python-argcomplete ./tox/py27/bin/paasta)"``
 
 * There is a simple integration test. See the itest/ folder.
 
