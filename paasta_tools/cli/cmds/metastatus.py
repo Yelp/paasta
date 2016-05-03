@@ -97,11 +97,12 @@ def get_cluster_dashboards(cluster):
 def paasta_metastatus(args):
     """Print the status of a PaaSTA clusters"""
     soa_dir = args.soa_dir
+    system_paasta_config = load_system_paasta_config()
     all_clusters = list_clusters(soa_dir=soa_dir)
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
     for cluster in clusters_to_inspect:
         if cluster in all_clusters:
-            print_cluster_status(cluster, args.verbose)
+            print_cluster_status(cluster, system_paasta_config, args.verbose)
         else:
             print "Cluster %s doesn't look like a valid cluster?" % args.clusters
             print "Try using tab completion to help complete the cluster name"
