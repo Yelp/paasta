@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import os
+import sys
 from shutil import copyfile
 from shutil import copymode
 
@@ -83,7 +84,7 @@ def write_paasta_config(variables, template, destination):
         extra_context=variables,
         output_dir=destination,
         overwrite_if_exists=True,
-        no_input=True,
+        no_input=not sys.stdout.isatty(),
     )
 
 
