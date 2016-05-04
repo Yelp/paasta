@@ -53,7 +53,8 @@ SCALER_KEY = 'scaler'
 
 AUTOSCALING_DELAY = 300
 
-log = logging.getLogger('__main__')
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 def register_autoscaling_component(name, method_type):

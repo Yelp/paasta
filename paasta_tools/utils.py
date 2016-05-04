@@ -69,7 +69,8 @@ no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
-log = logging.getLogger('__main__')
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 class InvalidInstanceConfig(Exception):

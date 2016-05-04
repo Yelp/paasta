@@ -36,8 +36,8 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 def start_marathon_job(service, instance, app_id, normal_instance_count, client, cluster):

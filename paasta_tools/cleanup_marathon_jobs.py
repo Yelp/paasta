@@ -45,8 +45,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -154,9 +153,10 @@ def main():
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
+        logging.basicConfig(level=logging.WARNING)
+
     cleanup_apps(soa_dir)
 
 

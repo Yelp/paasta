@@ -36,8 +36,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def load_method(module_name, method_name):

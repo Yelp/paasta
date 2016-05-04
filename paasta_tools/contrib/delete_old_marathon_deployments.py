@@ -23,8 +23,7 @@ from pytimeparse import timeparse
 from paasta_tools import marathon_tools
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -72,6 +71,10 @@ def delete_deployment_if_too_old(client, deployment, max_date, dry_run):
 
 def main():
     args = parse_args()
+    if args.verbose:
+        logging.basicConfig(level=logging.DEBUG)
+    else:
+        logging.basicConfig(level=logging.WARNING)
 
     config = marathon_tools.load_marathon_config()
     client = marathon_tools.get_marathon_client(config.get_url(), config.get_username(), config.get_password())

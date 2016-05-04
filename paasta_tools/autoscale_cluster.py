@@ -18,8 +18,7 @@ import logging
 from paasta_tools.autoscaling_lib import autoscale_local_cluster
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -33,9 +32,9 @@ def parse_args():
 def main():
     args = parse_args()
     if args.verbose:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
+        logging.basicConfig(level=logging.WARNING)
 
     autoscale_local_cluster()
 

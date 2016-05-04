@@ -62,7 +62,7 @@ TMP_JOB_IDENTIFIER = "tmp"
 VALID_BOUNCE_METHODS = ['graceful']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
-log = logging.getLogger('__main__')
+log = logging.getLogger(__name__)
 
 
 class LastRunState:

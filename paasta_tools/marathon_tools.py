@@ -64,7 +64,7 @@ MESOS_TASK_SPACER = '.'
 PATH_TO_MARATHON_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'marathon.json')
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
-log = logging.getLogger('__main__')
+log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
 
