@@ -761,16 +761,6 @@ class SystemPaastaConfig(dict):
         except KeyError:
             raise PaastaNotConfiguredError('Could not find cluster in configuration directory: %s' % self.directory)
 
-    def get_scribe_map(self):
-        """Get the scribe_map out of the paasta config
-
-        :returns: The scribe_map dictionary
-        """
-        try:
-            return self['scribe_map']
-        except KeyError:
-            raise PaastaNotConfiguredError('Could not find scribe_map in configuration directory: %s' % self.directory)
-
     def get_dashboard_links(self):
         try:
             return self['dashboard_links']
