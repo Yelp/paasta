@@ -1,7 +1,48 @@
 # Change Log
 
-## [0.18.32](https://github.com/Yelp/paasta/tree/0.18.32) (2016-04-29)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.31...0.18.32)
+## [0.18.37](https://github.com/Yelp/paasta/tree/0.18.37) (2016-05-04)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.36...0.18.37)
+
+**Closed issues:**
+
+- Expose CLI as console\_scripts [\#85](https://github.com/Yelp/paasta/issues/85)
+
+**Merged pull requests:**
+
+- expose CLI as console\_scripts \#85 [\#488](https://github.com/Yelp/paasta/pull/488) ([kentwills](https://github.com/kentwills))
+- Greatly improve the output of check\_marathon\_services replication [\#478](https://github.com/Yelp/paasta/pull/478) ([solarkennedy](https://github.com/solarkennedy))
+- Use cookiecutter instead of home-grown templates [\#471](https://github.com/Yelp/paasta/pull/471) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.18.36](https://github.com/Yelp/paasta/tree/v0.18.36) (2016-05-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.35...v0.18.36)
+
+**Closed issues:**
+
+- paasta metastatus is broken [\#486](https://github.com/Yelp/paasta/issues/486)
+
+**Merged pull requests:**
+
+- add missing system\_paasta\_config arg in metastatus [\#487](https://github.com/Yelp/paasta/pull/487) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.18.35](https://github.com/Yelp/paasta/tree/v0.18.35) (2016-05-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.34...v0.18.35)
+
+## [v0.18.34](https://github.com/Yelp/paasta/tree/v0.18.34) (2016-05-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.33...v0.18.34)
+
+**Merged pull requests:**
+
+- Make the FQDN format configurable; previously hard-coded as paasta-%s.yelp [\#483](https://github.com/Yelp/paasta/pull/483) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.18.33](https://github.com/Yelp/paasta/tree/v0.18.33) (2016-05-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.32...v0.18.33)
+
+**Merged pull requests:**
+
+- PAASTA-4182 enable paasta\_serviceinit status with multiple service instances [\#480](https://github.com/Yelp/paasta/pull/480) ([huadongliu](https://github.com/huadongliu))
+
+## [v0.18.32](https://github.com/Yelp/paasta/tree/v0.18.32) (2016-04-29)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.31...v0.18.32)
 
 **Closed issues:**
 
@@ -9,6 +50,7 @@
 
 **Merged pull requests:**
 
+- Revert "Document which config entries invoke a bounce" [\#479](https://github.com/Yelp/paasta/pull/479) ([solarkennedy](https://github.com/solarkennedy))
 - Document which config entries invoke a bounce [\#470](https://github.com/Yelp/paasta/pull/470) ([solarkennedy](https://github.com/solarkennedy))
 - improve failure message sent by check\_chronos\_jobs [\#468](https://github.com/Yelp/paasta/pull/468) ([Rob-Johnson](https://github.com/Rob-Johnson))
 
