@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import logging
 import re
 from collections import defaultdict
 from contextlib import contextmanager
@@ -51,6 +52,8 @@ DECISION_POLICY_KEY = 'decision_policy'
 SCALER_KEY = 'scaler'
 
 AUTOSCALING_DELAY = 300
+
+log = logging.getLogger('__main__')
 
 
 def register_autoscaling_component(name, method_type):
@@ -440,7 +443,7 @@ def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, pool):
         slave['attributes'].get('pool', 'default') == pool
     }
     current_instances = len(slaves)
-    print "Found %d slaves registered in mesos out of %d in spot fleet" % (current_instances, desired_instances)
+    log.info("Found %d slaves registered in mesos out of %d in spot fleet" % (current_instances, desired_instances))
     if float(current_instances) / desired_instances < 0.7:
         raise ClusterAutoscalingError('Not enough slaves registered in mesos to autoscale safely.')
     tasks = [
@@ -477,9 +480,9 @@ def spotfleet_scaler(resource, error):
         ceil(current_capacity * 1.1),
         resource['max_instances'],
     )
-    print "Spotfleet autoscaler dry run:"
+    log.info("Spotfleet autoscaler dry run:")
     if new_capacity != current_capacity:
-        print "Would scale %s from %d to %d" % (resource['id'], current_capacity, new_capacity)
+        log.info("Would scale %s from %d to %d" % (resource['id'], current_capacity, new_capacity))
         # ec2_client.modify_spot_fleet_request(SpotFleetRequestId=resource['id'], TargetCapacity=new_capacity)
         #########
         # TODO: determine which boxes to kill first
@@ -491,7 +494,7 @@ def spotfleet_scaler(resource, error):
         # ExcessCapacityTerminationPolicy
         #########
     else:
-        print "Would not scale. Noop."
+        log.info("Would not scale. Noop.")
 
 
 class ClusterAutoscalingError(Exception):
@@ -508,9 +511,9 @@ def autoscale_local_cluster():
         resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
         try:
             utilization = resource_metrics_provider(resource['id'], mesos_state, resource['pool'])
-            print "Utilization for %s: %f%%" % (identifier, utilization * 100)
+            log.debug("Utilization for %s: %f%%" % (identifier, utilization * 100))
             error = utilization - TARGET_UTILIZATION
             resource_scaler = get_scaler(resource['type'])
             resource_scaler(resource, error)
         except ClusterAutoscalingError as e:
-            print '%s: %s' % (identifier, e)  # TODO: write to log
+            log.error('%s: %s' % (identifier, e))
