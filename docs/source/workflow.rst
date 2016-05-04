@@ -274,7 +274,7 @@ listed below:
   no longer scheduled.
   **NB**: ``paasta stop`` is a temporary measure; that is, it's effect only lasts until
   you deploy a new version of your service. That means that if you run ``paasta
-  stop``` and push a version of the docker image serving your service, then
+  stop`` and push a version of the docker image serving your service, then
   paasta will reset the effect of ``paasta stop``.
 
 
