@@ -43,6 +43,7 @@ def run_setup_marathon_job(context):
         _,
     ):
         mock_parse_args.return_value = mock.Mock(
+            verbose=True,
             soa_dir=context.soa_dir,
             service_instance=context.job_id,
         )
@@ -61,7 +62,7 @@ def update_context_marathon_config(context):
     whitelist_keys = set(['id', 'backoff_factor', 'backoff_seconds', 'max_instances', 'mem', 'cpus', 'instances'])
     with contextlib.nested(
         mock.patch.object(SystemPaastaConfig, 'get_zk_hosts', autospec=True, return_value=context.zk_hosts),
-        mock.patch.object(MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=context.instances),
+        mock.patch.object(MarathonServiceConfig, 'get_min_instances', autospec=True, return_value=1),
         mock.patch.object(MarathonServiceConfig, 'get_max_instances', autospec=True),
     ) as (
         _,
