@@ -482,3 +482,18 @@ def test_autoscale_services_bespoke_doesnt_autoscale():
     ):
         autoscaling_lib.autoscale_services()
         assert not mock_autoscale_marathon_instance.called
+
+
+def test_humanize_error_above():
+    actual = autoscaling_lib.humanize_error(1.0)
+    assert actual == "100% overutilized"
+
+
+def test_humanize_error_below():
+    actual = autoscaling_lib.humanize_error(-1.0)
+    assert actual == "100% underutilized"
+
+
+def test_humanize_error_equal():
+    actual = autoscaling_lib.humanize_error(0.0)
+    assert actual == "utilization within thresholds"
