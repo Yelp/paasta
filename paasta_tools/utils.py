@@ -771,13 +771,6 @@ class SystemPaastaConfig(dict):
         except KeyError:
             raise PaastaNotConfiguredError('Could not find scribe_map in configuration directory: %s' % self.directory)
 
-    def get_fsm_cluster_map(self):
-        try:
-            return self['fsm_cluster_map']
-        except KeyError:
-            raise PaastaNotConfiguredError(
-                'Could not find fsm_cluster_map in configuration directory: %s' % self.directory)
-
     def get_dashboard_links(self):
         try:
             return self['dashboard_links']
@@ -785,12 +778,10 @@ class SystemPaastaConfig(dict):
             raise PaastaNotConfiguredError(
                 'Could not find dashboard_links in configuration directory: %s' % self.directory)
 
-    def get_fsm_deploy_pipeline(self):
-        try:
-            return self['fsm_deploy_pipeline']
-        except KeyError:
-            raise PaastaNotConfiguredError(
-                'Could not find fsm_deploy_pipeline in configuration directory: %s' % self.directory)
+    def get_fsm_template(self):
+        fsm_path = os.path.dirname(sys.modules['paasta_tools.cli.fsm'].__file__)
+        template_path = os.path.join(fsm_path, "template")
+        return self.get('fsm_template', template_path)
 
     def get_log_writer(self):
         """Get the log_writer configuration out of global paasta config

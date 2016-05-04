@@ -8,6 +8,8 @@
     -   id: check-docstring-first
     -   id: check-json
     -   id: check-yaml
+        # Exclude fsm cookiecutter files
+        files: ^(?!.*template).*\.(yaml|yml|eyaml)$
     -   id: debug-statements
     -   id: name-tests-test
         args: [--django]
