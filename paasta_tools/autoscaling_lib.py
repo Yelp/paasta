@@ -334,9 +334,9 @@ def autoscale_marathon_instance(marathon_service_config, marathon_tasks, mesos_t
 
 def humanize_error(error):
     if error < 0:
-        return '%f%% under-utilized' % -error * 100
+        return '%d%% underutilized' % floor(-error * 100)
     elif error > 0:
-        return '%f%% over-utilized' % error * 100
+        return '%d%% overutilized' % ceil(error * 100)
     else:
         return 'utilization within thresholds'
 
