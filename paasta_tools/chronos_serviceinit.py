@@ -235,7 +235,7 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
     :param verbose: int verbosity level
     """
     job_name = _format_job_name(job)
-    is_temporary = chronos_tools.is_temporary_job(job)
+    is_temporary = chronos_tools.is_temporary_job(job) if 'name' in job else 'UNKNOWN'
     disabled_state = _format_disabled_status(job)
     (last_result, formatted_time) = _format_last_result(job)
 
