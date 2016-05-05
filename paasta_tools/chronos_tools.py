@@ -828,3 +828,12 @@ def get_temporary_jobs_for_service_instance(client, service, instance):
         if job['name'].startswith(TMP_JOB_IDENTIFIER):
             temporary_jobs.append(job)
     return temporary_jobs
+
+
+def is_temporary_job(job):
+    """Assert whether a job is a temporary one, identifiable
+    by it's name starting with TMP_JOB_IDENTIFIER
+    :param job: the chronos job to check
+    :returns: a boolean indicating if a job is a temporary job
+    """
+    return job['name'].startswith(TMP_JOB_IDENTIFIER)

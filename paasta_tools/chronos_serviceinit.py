@@ -77,7 +77,7 @@ def get_short_task_id(task_id):
     return task_id.split(chronos_tools.MESOS_TASK_SPACER)[1]
 
 
-def _format_config_hash(job):
+def _format_job_name(job):
     job_id = job.get("name", PaastaColors.red("UNKNOWN"))
     return job_id
 
@@ -234,7 +234,8 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
                           result of ``mesos_tools.get_running_tasks_from_active_frameworks()``.
     :param verbose: int verbosity level
     """
-    config_hash = _format_config_hash(job)
+    job_name = _format_job_name(job)
+    is_temporary = chronos_tools.is_temporary_job(job)
     disabled_state = _format_disabled_status(job)
     (last_result, formatted_time) = _format_last_result(job)
 
@@ -250,13 +251,15 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
         mesos_status_verbose = status_mesos_tasks_verbose(job["name"], get_short_task_id, tail_stdstreams)
         mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
     return (
-        "Config:     %(config_hash)s\n"
-        "  Status:   %(disabled_state)s\n"
+        "Job:     %(job_name)s\n"
+        "  Status:   %(disabled_state)s"
+        "  Temporary: %(is_temporary)s\n"
         "  Last:     %(last_result)s (%(formatted_time)s)\n"
         "  %(schedule_type)s: %(schedule_value)s\n"
         "  Command:  %(command)s\n"
         "  Mesos:    %(mesos_status)s" % {
-            "config_hash": config_hash,
+            "job_name": job_name,
+            "is_temporary": is_temporary,
             "schedule_type": schedule_type,
             "disabled_state": disabled_state,
             "last_result": last_result,
