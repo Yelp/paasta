@@ -22,6 +22,7 @@ import requests
 from kazoo.client import KazooClient
 from mesos.cli import util
 from mesos.cli.exceptions import SlaveDoesNotExist
+from mesos.cli.master import CURRENT
 
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
@@ -111,21 +112,19 @@ class MesosSlaveConnectionError(Exception):
     pass
 
 
-def get_mesos_leader(hostname=MY_HOSTNAME):
-    """Get the current mesos-master leader's hostname. Raise
-    MesosMasterConnectionError if we can't connect.
+def get_mesos_leader():
+    """Get the current mesos-master leader's hostname.
 
-    :param hostname: The hostname to query mesos-master on
     :returns: The current mesos-master hostname"""
-    redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
-    try:
-        r = requests.get(redirect_url, timeout=10)
-    except requests.exceptions.ConnectionError as e:
-        # Repackage the exception so upstream code can handle this case without
-        # knowing our implementation details.
-        raise MesosMasterConnectionError(repr(e))
-    r.raise_for_status()
-    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
+    url = CURRENT.host
+    m = re.search('^https?://(.*?):\d+$', url)
+    if m:
+        ip = m.group(1)
+        host = socket.gethostbyaddr(ip)[0]
+        fqdn = socket.getfqdn(host)
+        return fqdn
+    else:
+        raise MesosMasterConnectionError()
 
 
 def is_mesos_leader(hostname=MY_HOSTNAME):
@@ -133,7 +132,7 @@ def is_mesos_leader(hostname=MY_HOSTNAME):
 
     :param hostname: The hostname to query mesos-master on
     :returns: True if hostname is the mesos-master leader, False otherwise"""
-    return hostname in get_mesos_leader(hostname)
+    return hostname in get_mesos_leader()
 
 
 def get_current_tasks(job_id):
