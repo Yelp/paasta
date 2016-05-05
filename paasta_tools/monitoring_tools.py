@@ -31,7 +31,7 @@ from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
 
 
-log = logging.getLogger('__main__')
+log = logging.getLogger(__name__)
 
 
 def get_team(overrides, service, soa_dir=DEFAULT_SOA_DIR):

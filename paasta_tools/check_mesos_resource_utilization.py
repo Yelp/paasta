@@ -30,7 +30,7 @@ from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config
 
 
-log = logging.getLogger('__main__')
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -106,9 +106,9 @@ def check_thresholds(percent):
 def main():
     args = parse_args()
     if args.verbose:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
+        logging.basicConfig(level=logging.WARNING)
     print check_thresholds(args.percent)
 
 

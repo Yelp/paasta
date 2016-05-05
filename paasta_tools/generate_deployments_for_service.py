@@ -52,8 +52,7 @@ from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
 from paasta_tools.utils import list_clusters
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 TARGET_FILE = 'deployments.json'
 
 
@@ -268,9 +267,9 @@ def main():
     soa_dir = os.path.abspath(args.soa_dir)
     service = args.service
     if args.verbose:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
+        logging.basicConfig(level=logging.WARNING)
 
     generate_deployments_for_service(service=service, soa_dir=soa_dir)
 

@@ -32,7 +32,9 @@ from paasta_tools.monitoring.replication_utils import \
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
-log = logging.getLogger('__main__')
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper

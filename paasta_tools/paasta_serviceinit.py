@@ -29,8 +29,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import validate_service_instance
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -67,9 +66,9 @@ def parse_args():
 def main():
     args = parse_args()
     if args.debug:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
+        logging.basicConfig(level=logging.WARNING)
 
     instances = []
     return_codes = []

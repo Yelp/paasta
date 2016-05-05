@@ -26,8 +26,8 @@ from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import PaastaColors
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 # Calls the 'manual start' endpoint in Chronos (https://mesos.github.io/chronos/docs/api.html#manually-starting-a-job),
