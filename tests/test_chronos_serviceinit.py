@@ -114,6 +114,28 @@ def test_format_chronos_job_name_exists():
     assert example_job['name'] in actual
 
 
+def test_format_chronos_job_temp_job():
+    example_job = {
+        'name': '%s my_instance gityourmom configyourdad' % chronos_tools.TMP_JOB_IDENTIFIER,
+        'schedule': 'foo'
+    }
+    running_tasks = []
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
+    assert 'Launched by rerun: True' in actual
+
+
+def test_format_chronos_job_non_temp_job():
+    example_job = {
+        'name': 'my_instance gityourmom configyourdad',
+        'schedule': 'foo'
+    }
+    running_tasks = []
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
+    assert 'Launched by rerun: False' in actual
+
+
 def test_format_chronos_job_name_does_not_exist():
     example_job = {
         'schedule': 'foo'

@@ -253,7 +253,7 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
     return (
         "Job:     %(job_name)s\n"
         "  Status:   %(disabled_state)s"
-        "  Temporary: %(is_temporary)s\n"
+        "  Launched by rerun: %(is_temporary)s\n"
         "  Last:     %(last_result)s (%(formatted_time)s)\n"
         "  %(schedule_type)s: %(schedule_value)s\n"
         "  Command:  %(command)s\n"
