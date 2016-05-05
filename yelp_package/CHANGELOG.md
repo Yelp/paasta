@@ -1,7 +1,26 @@
 # Change Log
 
-## [0.18.37](https://github.com/Yelp/paasta/tree/0.18.37) (2016-05-04)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.36...0.18.37)
+## [0.18.38](https://github.com/Yelp/paasta/tree/0.18.38) (2016-05-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.37...0.18.38)
+
+**Closed issues:**
+
+- Unify logging behavior [\#490](https://github.com/Yelp/paasta/issues/490)
+- Typos in "paasta stop" docs [\#469](https://github.com/Yelp/paasta/issues/469)
+- improve help text in check\_chronos\_jobs [\#461](https://github.com/Yelp/paasta/issues/461)
+
+**Merged pull requests:**
+
+- paasta local-run --dry-run [\#497](https://github.com/Yelp/paasta/pull/497) ([kentwills](https://github.com/kentwills))
+- Fix bug in autoscaling humanize\_error [\#494](https://github.com/Yelp/paasta/pull/494) ([solarkennedy](https://github.com/solarkennedy))
+- Delete get\_scribe\_map, since this functionality is now an option on the scribe log\_reader driver. [\#492](https://github.com/Yelp/paasta/pull/492) ([EvanKrall](https://github.com/EvanKrall))
+- Be more consistent about how we log to stderr [\#491](https://github.com/Yelp/paasta/pull/491) ([solarkennedy](https://github.com/solarkennedy))
+- PAASTA-4412 monkey patch MesosMaster.state to increase caching TTL [\#489](https://github.com/Yelp/paasta/pull/489) ([huadongliu](https://github.com/huadongliu))
+- Added a cli entrypoint to autoscale\_cluster [\#482](https://github.com/Yelp/paasta/pull/482) ([solarkennedy](https://github.com/solarkennedy))
+- Default to using the max instance count when autoscaling without decision data [\#481](https://github.com/Yelp/paasta/pull/481) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.18.37](https://github.com/Yelp/paasta/tree/v0.18.37) (2016-05-04)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.36...v0.18.37)
 
 **Closed issues:**
 
@@ -2039,13 +2058,13 @@
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.5.0...v0.6.0)
 
 ## [v0.5.0](https://github.com/Yelp/paasta/tree/v0.5.0) (2014-10-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.9...v0.5.0)
-
-## [v0.4.9](https://github.com/Yelp/paasta/tree/v0.4.9) (2014-10-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.8...v0.4.9)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.8...v0.5.0)
 
 ## [v0.4.8](https://github.com/Yelp/paasta/tree/v0.4.8) (2014-10-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.7...v0.4.8)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.9...v0.4.8)
+
+## [v0.4.9](https://github.com/Yelp/paasta/tree/v0.4.9) (2014-10-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.7...v0.4.9)
 
 ## [v0.4.7](https://github.com/Yelp/paasta/tree/v0.4.7) (2014-10-10)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.6...v0.4.7)

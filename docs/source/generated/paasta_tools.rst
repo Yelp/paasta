@@ -16,6 +16,7 @@ Submodules
 
    paasta_tools.am_i_mesos_leader
    paasta_tools.autoscale_all_services
+   paasta_tools.autoscale_cluster
    paasta_tools.autoscaling_lib
    paasta_tools.bounce_lib
    paasta_tools.check_chronos_jobs
