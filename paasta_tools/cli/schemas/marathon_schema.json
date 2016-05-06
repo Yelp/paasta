@@ -68,11 +68,11 @@
                     }
                 }
             },
-	    "deploy_group": {
-		"type": "string"
-	    },
+            "deploy_group": {
+                "type": "string"
+            },
             "autoscaling": {
-		"type": "object"
+                "type": "object"
             },
             "drain_method": {
                 "enum": [ "noop", "hacheck", "test" ],
@@ -108,7 +108,8 @@
                 }
             },
             "env": {
-                "type": "object"
+                "type": "object",
+                "additionalProperties": { "type": "string" }
             },
             "extra_volumes": {
                 "type": "array",
