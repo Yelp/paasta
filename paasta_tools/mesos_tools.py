@@ -22,7 +22,6 @@ import requests
 from kazoo.client import KazooClient
 from mesos.cli import util
 from mesos.cli.exceptions import SlaveDoesNotExist
-from mesos.cli.master import CURRENT
 
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
@@ -116,7 +115,9 @@ def get_mesos_leader():
     """Get the current mesos-master leader's hostname.
 
     :returns: The current mesos-master hostname"""
-    url = CURRENT.host
+    url = master.CURRENT.host
+    print "URL: %s" % url
+    print "CFG: %s" % os.environ['MESOS_CLI_CONFIG']
     m = re.search('^https?://(.*?):\d+$', url)
     if m:
         ip = m.group(1)
