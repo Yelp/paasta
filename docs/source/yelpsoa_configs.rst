@@ -372,7 +372,21 @@ Each job configuration MAY specify the following options:
     <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more
     information.
 
+  * ``extra_constraints``: Adds to the default placement constraints for
+    services. This acts the same as ``constraints``, but adds to the default
+    constraints instead of replacing them. See ``constraints`` for details on
+    format and the default constraints.
+
+    *Note*: While this parameter is the same as ``extra_constraints`` in ``marathon-$cluster.yaml``,
+    the Marathon constrain language isn't exactly like the Marathon constraint language.
+    Be sure to read the constraint documentation for Chronos referenced in the ``constraints``
+    section.
+
   * ``pool``: See the `marathon-[clustername].yaml`_ section for details
+
+  * ``deploy_whitelist``: See the `marathon-[clustername].yaml`_ section for details
+
+  * ``deploy_blacklist``: *Not currently supported*.
 
   * ``deploy_group``: Same as ``deploy_group`` for marathon-*.yaml.
 

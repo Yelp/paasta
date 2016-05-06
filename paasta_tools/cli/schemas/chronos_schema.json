@@ -65,6 +65,9 @@
             "env": {
                 "type": "object"
             },
+            "deploy_whitelist": {
+                "type": "array"
+            },
             "extra_volumes": {
                 "type": "array",
                 "items": {

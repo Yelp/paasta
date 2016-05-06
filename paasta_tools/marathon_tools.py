@@ -332,10 +332,6 @@ class MarathonServiceConfig(InstanceConfig):
         return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
                 deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
 
-    def get_pool_constraints(self):
-        pool = self.get_pool()
-        return [["pool", "LIKE", pool]]
-
     def format_marathon_app_dict(self):
         """Create the configuration that will be passed to the Marathon REST API.
 

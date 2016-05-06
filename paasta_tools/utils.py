@@ -294,6 +294,10 @@ class InstanceConfig(dict):
         :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
         return self.config_dict.get('pool', 'default')
 
+    def get_pool_constraints(self):
+        pool = self.get_pool()
+        return [["pool", "LIKE", pool]]
+
     def get_net(self):
         """
         :returns: the docker networking mode the container should be started with.
