@@ -474,7 +474,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     return (False, output)
 
 
-def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, **kwargs):
+def run_paasta_serviceinit(subcommand, master, service, instancenames, cluster, **kwargs):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if 'verbose' in kwargs and kwargs['verbose'] > 0:
         verbose_flag = '-v ' * kwargs['verbose']
@@ -490,16 +490,21 @@ def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, *
         delta = "--delta %s" % kwargs['delta']
     else:
         delta = ''
-    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s%s %s %s' % (
+    if 'stream' in kwargs and kwargs['stream']:
+        stream = kwargs['stream']
+    else:
+        stream = False
+    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s-s %s -i %s %s %s' % (
         master,
         verbose_flag,
         app_id_flag,
-        compose_job_id(service, instancename),
+        service,
+        instancenames,
         subcommand,
         delta
     )
     log.debug("Running Command: %s" % command)
-    _, output = _run(command, timeout=timeout)
+    _, output = _run(command, timeout=timeout, stream=stream)
     return output
 
 

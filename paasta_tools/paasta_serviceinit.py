@@ -22,10 +22,12 @@ import sys
 
 from paasta_tools import chronos_serviceinit
 from paasta_tools import marathon_serviceinit
+from paasta_tools.cli.cmds.status import get_actual_deployments
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
 
@@ -85,7 +87,16 @@ def main():
         sys.exit(1)
 
     cluster = load_system_paasta_config().get_cluster()
+    actual_deployments = get_actual_deployments(service, args.soa_dir)
+
     for instance in instances:
+        # For an instance, there might be multiple versions running, e.g. in crossover bouncing.
+        # In addition, mesos master does not have information of a chronos service's git hash.
+        # The git sha in deployment.json is simply used here.
+        version = actual_deployments['.'.join((cluster, instance))][:8]
+        print 'instance: %s' % PaastaColors.blue(instance)
+        print 'Git sha:    %s' % version
+
         instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
         if instance_type == 'marathon':
             return_code = marathon_serviceinit.perform_command(

@@ -136,6 +136,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
     print
     print "cluster: %s" % cluster
     seen_instances = []
+    deployed_instances = []
+
     for namespace in deploy_pipeline:
         cluster_in_pipeline, instance = namespace.split('.')
         seen_instances.append(instance)
@@ -147,19 +149,17 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
 
         # Case: service deployed to cluster.instance
         if namespace in actual_deployments:
-            formatted_instance = PaastaColors.blue(instance)
-            version = actual_deployments[namespace][:8]
-            # TODO: Perform sanity checks once per cluster instead of for each namespace
-            status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, instance,
-                                                                 system_paasta_config, verbose=verbose)
+            deployed_instances.append(instance)
+
         # Case: service NOT deployed to cluster.instance
         else:
-            formatted_instance = PaastaColors.red(instance)
-            version = 'None'
-            status = None
+            print '  instance: %s' % PaastaColors.red(instance)
+            print '    Git sha:    None'
 
-        print '  instance: %s' % formatted_instance
-        print '    Git sha:    %s' % version
+    if len(deployed_instances):
+        status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, ','.join(deployed_instances),
+                                                             system_paasta_config, verbose=verbose, stream=True)
+        # Status results are streamed. This print is for possible error messages.
         if status is not None:
             for line in status.rstrip().split('\n'):
                 print '    %s' % line
