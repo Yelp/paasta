@@ -131,7 +131,7 @@ def is_mesos_leader(hostname=MY_HOSTNAME):
 
     :param hostname: The hostname to query mesos-master on
     :returns: True if hostname is the mesos-master leader, False otherwise"""
-    return hostname in get_mesos_leader()
+    return get_mesos_leader() == hostname
 
 
 def get_current_tasks(job_id):
