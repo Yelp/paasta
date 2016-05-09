@@ -20,6 +20,7 @@ from paasta_tools.cli.utils import list_services
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
+from paasta_tools.utils import load_system_paasta_config
 
 
 def add_subparser(subparsers):
@@ -69,9 +70,16 @@ def paasta_emergency_start(args):
     the instance count defined in the service's config.
     All it does for Chronos jobs is send the latest version of the job config to Chronos and run it immediately.
     """
+    system_paasta_config = load_system_paasta_config()
     service = figure_out_service_name(args, soa_dir=args.soa_dir)
     print "Performing an emergency start on %s..." % compose_job_id(service, args.instance)
-    execute_paasta_serviceinit_on_remote_master('start', args.cluster, service, args.instance)
+    execute_paasta_serviceinit_on_remote_master(
+        subcommand='start',
+        cluster=args.cluster,
+        service=service,
+        instance=args.instance,
+        system_paasta_config=system_paasta_config
+    )
     print "%s" % "\n".join(paasta_emergency_start.__doc__.splitlines()[-8:])
     print "Run this command to see the status:"
     print "paasta status --service %s --clusters %s" % (service, args.cluster)
