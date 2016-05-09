@@ -743,7 +743,7 @@ def test_prefix():
 
 def test_get_log_reader():
     mock_system_paasta_config = mock.Mock(autospec='paasta_tools.utils.SystemPaastaConfig')
-    mock_system_paasta_config.get_log_reader.return_value = {'driver': 'scribereader', 'cluster_map': {}}
+    mock_system_paasta_config.get_log_reader.return_value = {'driver': 'scribereader', 'options': {'cluster_map': {}}}
     with contextlib.nested(
         mock.patch('paasta_tools.cli.cmds.logs.load_system_paasta_config', autospec=True),
         mock.patch('paasta_tools.cli.cmds.logs.scribereader'),

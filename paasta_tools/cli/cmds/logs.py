@@ -325,7 +325,7 @@ def list_log_readers():
 def get_log_reader():
     log_reader_config = load_system_paasta_config().get_log_reader()
     log_reader_class = get_log_reader_class(log_reader_config['driver'])
-    return log_reader_class(**log_reader_config)
+    return log_reader_class(**log_reader_config.get('options', {}))
 
 
 class LogReader(object):
