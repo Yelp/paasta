@@ -225,6 +225,20 @@ def _format_mesos_status(job, running_tasks):
     return mesos_status
 
 
+def modify_string_for_rerun_status(string, launched_by_rerun):
+    """Appends information to include a note about
+    being launched by paasta rerun. If the param launched_by_rerun
+    is False, then the string returned is an unmodified copy of that provided
+    by the string parameter.
+    :param string: the string to be modified
+    :returns: a string with information about rerun status appended
+    """
+    if launched_by_rerun:
+        return "%s (Launched by paasta rerun)" % string
+    else:
+        return string
+
+
 def format_chronos_job_status(job, running_tasks, verbose=0):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
@@ -236,7 +250,9 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
     """
     job_name = _format_job_name(job)
     is_temporary = chronos_tools.is_temporary_job(job) if 'name' in job else 'UNKNOWN'
+    job_name = modify_string_for_rerun_status(job_name, is_temporary)
     disabled_state = _format_disabled_status(job)
+
     (last_result, formatted_time) = _format_last_result(job)
 
     job_type = chronos_tools.get_job_type(job)
@@ -253,7 +269,6 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
     return (
         "Job:     %(job_name)s\n"
         "  Status:   %(disabled_state)s"
-        "  Launched by rerun: %(is_temporary)s\n"
         "  Last:     %(last_result)s (%(formatted_time)s)\n"
         "  %(schedule_type)s: %(schedule_value)s\n"
         "  Command:  %(command)s\n"
