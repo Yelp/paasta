@@ -116,8 +116,6 @@ def get_mesos_leader():
 
     :returns: The current mesos-master hostname"""
     url = master.CURRENT.host
-    print "URL: %s" % url
-    print "CFG: %s" % os.environ['MESOS_CLI_CONFIG']
     m = re.search('^https?://(.*?):\d+$', url)
     if m:
         ip = m.group(1)
