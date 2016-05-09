@@ -95,7 +95,7 @@ def main():
         # The git sha in deployment.json is simply used here.
         version = actual_deployments['.'.join((cluster, instance))][:8]
         print 'instance: %s' % PaastaColors.blue(instance)
-        print 'Git sha:    %s' % version
+        print 'Git sha:    %s (desired)' % version
 
         instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
         if instance_type == 'marathon':

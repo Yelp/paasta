@@ -874,7 +874,8 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
             proctimer = threading.Timer(timeout, _timeout, (process,))
             proctimer.start()
         for line in iter(process.stdout.readline, ''):
-            if stream and (' paasta_serviceinit ' in command and ' status ' in command):
+            # additional indentation is for the paasta status command only
+            if stream and (' paasta_serviceinit status ' in command):
                 if 'instance: ' in line:
                     print('  ' + line.rstrip('\n'))
                 else:

@@ -154,11 +154,11 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
         # Case: service NOT deployed to cluster.instance
         else:
             print '  instance: %s' % PaastaColors.red(instance)
-            print '    Git sha:    None'
+            print '    Git sha:    None (not deployed yet)'
 
-    if len(deployed_instances):
+    if len(deployed_instances) > 0:
         status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, ','.join(deployed_instances),
-                                                             system_paasta_config, verbose=verbose, stream=True)
+                                                             system_paasta_config, stream=True, verbose=verbose)
         # Status results are streamed. This print is for possible error messages.
         if status is not None:
             for line in status.rstrip().split('\n'):

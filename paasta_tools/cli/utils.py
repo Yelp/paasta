@@ -474,7 +474,7 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     return (False, output)
 
 
-def run_paasta_serviceinit(subcommand, master, service, instancenames, cluster, **kwargs):
+def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if 'verbose' in kwargs and kwargs['verbose'] > 0:
         verbose_flag = '-v ' * kwargs['verbose']
@@ -482,34 +482,33 @@ def run_paasta_serviceinit(subcommand, master, service, instancenames, cluster, 
     else:
         verbose_flag = ''
         timeout = 60
+
     if 'app_id' in kwargs and kwargs['app_id']:
         app_id_flag = "--appid %s " % kwargs['app_id']
     else:
         app_id_flag = ''
     if 'delta' in kwargs and kwargs['delta']:
-        delta = "--delta %s" % kwargs['delta']
+        delta_flag = "--delta %s" % kwargs['delta']
     else:
-        delta = ''
-    if 'stream' in kwargs and kwargs['stream']:
-        stream = kwargs['stream']
-    else:
-        stream = False
-    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s-s %s -i %s %s %s' % (
-        master,
-        verbose_flag,
-        app_id_flag,
-        service,
-        instancenames,
-        subcommand,
-        delta
-    )
+        delta_flag = ''
+
+    command = 'ssh -A -n %(master)s sudo paasta_serviceinit %(subcommand)s ' \
+        '-s %(service)s -i %(instances)s %(verbose_flag)s%(app_id_flag)s%(delta_flag)s' % {
+            'master': master,
+            'subcommand': subcommand,
+            'service': service,
+            'instances': instances,
+            'verbose_flag': verbose_flag,
+            'app_id_flag': app_id_flag,
+            'delta_flag': delta_flag
+        }
     log.debug("Running Command: %s" % command)
     _, output = _run(command, timeout=timeout, stream=stream)
     return output
 
 
-def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instancename, system_paasta_config,
-                                                **kwargs):
+def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instances, system_paasta_config,
+                                                stream=False, **kwargs):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
@@ -521,7 +520,7 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
         return (
             'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
         )
-    return run_paasta_serviceinit(subcommand, master, service, instancename, cluster, **kwargs)
+    return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
 
 
 def run_paasta_metastatus(master, verbose=0):
