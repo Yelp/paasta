@@ -14,6 +14,7 @@
 import contextlib
 import datetime
 import random
+import socket
 
 import docker
 import mesos
@@ -195,34 +196,40 @@ def test_get_mesos_leader():
         assert mesos_tools.get_mesos_leader() == 'example.org'
 
 
-def test_get_mesos_leader_cli_exception_good():
-    expected = 'mesos.master.yelpcorp.com'
-    fake_master = 'false.authority.yelpcorp.com'
+def test_get_mesos_leader_socket_eroror():
+    fake_url = 'http://93.184.216.34:5050'
     with contextlib.nested(
-        mock.patch('mesos.cli.master.MesosMaster.resolve', side_effect=mesos_tools.MesosMasterConnectionError),
-        mock.patch('requests.get', autospec=True),
+        mock.patch('paasta_tools.mesos_tools.master.CURRENT'),
+        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr', side_effect=socket.error),
     ) as (
-        mock_resolve,
-        mock_requests_get,
+        mock_CURRENT,
+        mock_gethostbyaddr,
     ):
-        mock_requests_get.return_value = mock_response = mock.Mock()
-        mock_response.return_code = 307
-        mock_response.url = 'http://%s:999' % expected
-        assert mesos_tools.get_mesos_leader(fake_master) == expected
-        mock_requests_get.assert_called_once_with('http://%s:5050/redirect' % fake_master, timeout=10)
+        mock_CURRENT.host = fake_url
+        with raises(socket.error):
+            mesos_tools.get_mesos_leader()
 
 
-def test_get_mesos_leader_cli_exception_bad():
-    fake_master = 'false.authority.yelpcorp.com'
+def test_get_mesos_leader_no_hostname():
+    fake_url = 'localhost:5050'
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.master.CURRENT'),
+    ) as (
+        mock_CURRENT,
+    ):
+        mock_CURRENT.host = fake_url
+        with raises(ValueError):
+            mesos_tools.get_mesos_leader()
+
+
+def test_get_mesos_leader_cli_mesosmasterconnectionerror():
     with contextlib.nested(
         mock.patch('mesos.cli.master.MesosMaster.resolve', side_effect=mesos_tools.MesosMasterConnectionError),
-        mock.patch('requests.get', autospec=True, side_effect=requests.exceptions.ConnectionError),
     ) as (
         mock_resolve,
-        _,
     ):
         with raises(mesos_tools.MesosMasterConnectionError):
-            mesos_tools.get_mesos_leader(fake_master)
+            mesos_tools.get_mesos_leader()
 
 
 @mock.patch('paasta_tools.mesos_tools.get_mesos_leader')
