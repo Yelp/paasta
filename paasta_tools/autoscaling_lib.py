@@ -52,6 +52,8 @@ DECISION_POLICY_KEY = 'decision_policy'
 SCALER_KEY = 'scaler'
 
 AUTOSCALING_DELAY = 300
+MISSING_SLAVE_PANIC_THRESHOLD = .3
+MAX_CLUSTER_DELTA = .1
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
@@ -444,9 +446,15 @@ def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, pool):
         slave['attributes'].get('pool', 'default') == pool
     }
     current_instances = len(slaves)
-    log.info("Found %d slaves registered in mesos out of %d in spot fleet" % (current_instances, desired_instances))
-    if float(current_instances) / desired_instances < 0.7:
-        raise ClusterAutoscalingError('Not enough slaves registered in mesos to autoscale safely.')
+    log.info("Found %.2%% slaves registered in mesos for this SFR (%d/%d)" % (
+             (current_instances / desired_instances) * 100, current_instances, desired_instances))
+    if float(current_instances) / desired_instances < (1.00 - MISSING_SLAVE_PANIC_THRESHOLD):
+        error_message = ("We currently have %d instances active in mesos out of a desired %d.\n"
+                         "Refusing to scale because we either need to wait for the requests to be "
+                         "filled, or the new instances are not healthy for some reason.\n"
+                         "(cowardly refusing to go past %.2f%% missing instances)") % (
+            current_instances, desired_instances, MISSING_SLAVE_PANIC_THRESHOLD)
+        raise ClusterAutoscalingError(error_message)
     tasks = [
         task
         for framework in mesos_state.get('frameworks', [])
@@ -468,34 +476,53 @@ def spotfleet_scaler(resource, error):
     spot_fleet_request = ec2_client.describe_spot_fleet_requests(
         SpotFleetRequestIds=[resource['id']])['SpotFleetRequestConfigs'][0]
     if spot_fleet_request['SpotFleetRequestState'] != 'active':
-        raise ClusterAutoscalingError('Can not scale non-active spot fleet requests.')
-    current_capacity = spot_fleet_request['SpotFleetRequestConfig']['TargetCapacity']
+        raise ClusterAutoscalingError('Can not scale non-active spot fleet requests. This one is "%s"' %
+                                      spot_fleet_request['SpotFleetRequestState'])
+    current_capacity = int(spot_fleet_request['SpotFleetRequestConfig']['TargetCapacity'])
     ideal_capacity = int(ceil((1 + error) * current_capacity))
-    new_capacity = min(
+    log.debug("Ideal calculated capacity is %d instances" % ideal_capacity)
+    new_capacity = int(min(
         max(
             resource['min_instances'],
-            floor(current_capacity * 0.9),
+            floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)),
             ideal_capacity,
-            1,  # never scale a request below 1 instance
+            1,  # A SFR cannot scale below 1 instance
         ),
-        ceil(current_capacity * 1.1),
+        ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA)),
         resource['max_instances'],
-    )
-    log.info("Spotfleet autoscaler dry run:")
+    ))
+    log.debug("The new capacity to scale to is %d instances" % ideal_capacity)
+
+    if ideal_capacity > resource['max_instances']:
+        log.warning("Our ideal capacity (%d) is higher than max_instances (%d). Consider rasing max_instances!" % (
+            ideal_capacity, resource['max_instances']))
+    if ideal_capacity < resource['min_instances']:
+        log.warning("Our ideal capacity (%d) is lower than min_instances (%d). Consider lowering min_instances!" % (
+            ideal_capacity, resource['min_instances']))
+    if (ideal_capacity < floor(current_capacity * (1.00 - MAX_CLUSTER_DELTA)) or
+            ideal_capacity > ceil(current_capacity * (1.00 + MAX_CLUSTER_DELTA))):
+        log.warning(
+            "Our ideal capacity (%d) is greater than %.2f%% of current %d. Just doing a %.2f%% change for now to %d." %
+            (ideal_capacity, MAX_CLUSTER_DELTA * 100, current_capacity, MAX_CLUSTER_DELTA * 100, new_capacity))
+
     if new_capacity != current_capacity:
-        log.info("Would scale %s from %d to %d" % (resource['id'], current_capacity, new_capacity))
-        # ec2_client.modify_spot_fleet_request(SpotFleetRequestId=resource['id'], TargetCapacity=new_capacity)
-        #########
-        # TODO: determine which boxes to kill first
-        # TODO: drain boxes/maintainance mode before killing
-        #########
-        # http://boto3.readthedocs.org/en/latest/reference/services/ec2.html#EC2.Client.modify_spot_fleet_request
-        # describes how to use boto to scale down spot fleet requests without
-        # killing instance using the noTermination
-        # ExcessCapacityTerminationPolicy
-        #########
+        print "Scaling SFR %s from %d to %d!" % (resource['id'], current_capacity, new_capacity)
+        scale_aws_spot_fleet_request(sfr_id=resource['id'], target_capacity=new_capacity, ec2_client=ec2_client)
     else:
-        log.info("Would not scale. Noop.")
+        print "No need to scale. new_capacity (%d) matches current capacity (%d)" % (new_capacity, current_capacity)
+
+
+def scale_aws_spot_fleet_request(sfr_id, target_capacity, ec2_client):
+    return ec2_client.modify_spot_fleet_request(SpotFleetRequestId=sfr_id, TargetCapacity=target_capacity)
+    #########
+    # TODO: determine which boxes to kill first
+    # TODO: drain boxes/maintainance mode before killing
+    #########
+    # http://boto3.readthedocs.org/en/latest/reference/services/ec2.html#EC2.Client.modify_spot_fleet_request
+    # describes how to use boto to scale down spot fleet requests without
+    # killing instance using the noTermination
+    # ExcessCapacityTerminationPolicy
+    #########
 
 
 class ClusterAutoscalingError(Exception):
@@ -512,7 +539,7 @@ def autoscale_local_cluster():
         resource_metrics_provider = get_cluster_metrics_provider(resource['type'])
         try:
             utilization = resource_metrics_provider(resource['id'], mesos_state, resource['pool'])
-            log.debug("Utilization for %s: %f%%" % (identifier, utilization * 100))
+            log.debug("Utilization for %s: %.2f%%" % (identifier, utilization * 100))
             error = utilization - TARGET_UTILIZATION
             resource_scaler = get_scaler(resource['type'])
             resource_scaler(resource, error)

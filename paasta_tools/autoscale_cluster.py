@@ -23,16 +23,18 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Autoscales the local PaaSTA cluster')
-    parser.add_argument('-v', '--verbose', action='store_true',
-                        dest="verbose", default=False)
+    parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
+                        help="Print out more output.")
     args = parser.parse_args()
     return args
 
 
 def main():
     args = parse_args()
-    if args.verbose:
+    if args.verbose >= 2:
         logging.basicConfig(level=logging.DEBUG)
+    elif args.verbose == 1:
+        logging.basicConfig(level=logging.INFO)
     else:
         logging.basicConfig(level=logging.WARNING)
 
