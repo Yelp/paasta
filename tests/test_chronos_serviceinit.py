@@ -114,6 +114,17 @@ def test_format_chronos_job_name_exists():
     assert example_job['name'] in actual
 
 
+def test_format_chronos_job_temp_job():
+    example_job = {
+        'name': '%s my_service my_instance' % chronos_tools.TMP_JOB_IDENTIFIER,
+        'schedule': 'foo'
+    }
+    running_tasks = []
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
+    assert 'Job:     tmp my_service my_instance (Launched by paasta rerun)' in actual
+
+
 def test_format_chronos_job_name_does_not_exist():
     example_job = {
         'schedule': 'foo'
