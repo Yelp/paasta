@@ -33,6 +33,7 @@ import signal
 import sys
 import tempfile
 import threading
+from fnmatch import fnmatch
 from functools import wraps
 from subprocess import PIPE
 from subprocess import Popen
@@ -677,15 +678,17 @@ class NoConfigurationForServiceError(Exception):
     pass
 
 
-def get_readable_files_in_glob(input_glob):
+def get_readable_files_in_glob(glob, path):
     """
-    Returns lexicographically-sorted list of files that are readable in an input glob
+    Returns a sorted list of files that are readable in an input glob by recursively searching a path
     """
-    files = []
-    for f in sorted(glob.glob(input_glob)):
-        if os.path.isfile(f) and os.access(f, os.R_OK):
-            files.append(f)
-    return files
+    globbed_files = []
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            fn = os.path.join(root, f)
+            if os.path.isfile(fn) and os.access(fn, os.R_OK) and fnmatch(fn, glob):
+                globbed_files.append(fn)
+    return sorted(globbed_files)
 
 
 def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
@@ -700,8 +703,8 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
         raise PaastaNotConfiguredError("Could not read from system paasta configuration directory: %s" % path)
 
     try:
-        for config_file in get_readable_files_in_glob("%s/*.json" % path):
-            with open(os.path.join(path, config_file)) as f:
+        for config_file in get_readable_files_in_glob(glob="*.json", path=path):
+            with open(config_file) as f:
                 config.update(json.load(f))
     except IOError as e:
         raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
