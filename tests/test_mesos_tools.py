@@ -14,12 +14,12 @@
 import contextlib
 import datetime
 import random
+import socket
 
 import docker
 import mesos
 import mock
 import requests
-import socket
 from pytest import mark
 from pytest import raises
 
@@ -251,7 +251,6 @@ def test_is_mesos_leader(mock_get_mesos_leader):
     mock_get_mesos_leader.return_value = fake_host
     assert mesos_tools.is_mesos_leader(fake_host)
     mock_get_mesos_leader.assert_called_once_with()
-
 
 
 @mock.patch('paasta_tools.mesos_tools.get_mesos_leader')

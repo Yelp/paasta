@@ -16,13 +16,13 @@ import json
 import os
 import re
 import socket
+from urlparse import urlparse
 
 import humanize
 import requests
 from kazoo.client import KazooClient
 from mesos.cli import util
 from mesos.cli.exceptions import SlaveDoesNotExist
-from urlparse import urlparse
 
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
