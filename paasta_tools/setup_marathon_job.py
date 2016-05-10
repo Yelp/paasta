@@ -72,7 +72,7 @@ log = logging.getLogger(__name__)
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
-    parser.add_argument('service_instance',
+    parser.add_argument('service_instance_list', nargs='+',
                         help="The marathon instance of the service to create or update",
                         metavar="SERVICE%sINSTANCE" % SPACER)
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
@@ -547,16 +547,18 @@ def setup_service(service, instance, client, marathon_config,
 
 
 def main():
-    """Attempt to set up the marathon service instance given.
-    Exits 1 if the deployment failed.
+    """Attempt to set up a list of marathon service instances given.
+    Exits 1 if any service.instance deployment failed.
     This is done in the following order:
 
     - Load the marathon configuration
     - Connect to marathon
-    - Load the service instance's configuration
-    - Create the complete marathon job configuration
-    - Deploy/bounce the service
-    - Emit an event about the deployment to sensu"""
+    - Do the following for each service.instance:
+        - Load the service instance's configuration
+        - Create the complete marathon job configuration
+        - Deploy/bounce the service
+        - Emit an event about the deployment to sensu"""
+
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
@@ -564,16 +566,28 @@ def main():
     else:
         logging.basicConfig(level=logging.WARNING)
 
-    try:
-        service, instance, _, __ = decompose_job_id(args.service_instance)
-    except InvalidJobNameError:
-        log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
-        sys.exit(1)
-
     marathon_config = get_main_marathon_config()
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
 
+    num_failed_deployments = 0
+    for service_instance in args.service_instance_list:
+        try:
+            service, instance, _, __ = decompose_job_id(service_instance)
+        except InvalidJobNameError:
+            log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
+            num_failed_deployments = num_failed_deployments + 1
+        else:
+            if deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
+                num_failed_deployments = num_failed_deployments + 1
+
+    print("%d out of %d service.instances are successfully deployed" %
+          (len(args.service_instance_list) - num_failed_deployments, len(args.service_instance_list)))
+
+    sys.exit(1 if num_failed_deployments else 0)
+
+
+def deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
     try:
         service_instance_config = marathon_tools.load_marathon_service_config(
             service,
@@ -582,29 +596,27 @@ def main():
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
-        log.debug("No deployments found for %s in cluster %s. Skipping." % (args.service_instance,
-                                                                            load_system_paasta_config().get_cluster()))
-        sys.exit(0)
+        log.debug("No deployments found for %s.%s in cluster %s. Skipping." %
+                  (service, instance, load_system_paasta_config().get_cluster()))
+        return 1
     except NoConfigurationForServiceError:
-        error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
-            (args.service_instance, load_system_paasta_config().get_cluster())
+        error_msg = "Could not read marathon configuration file for %s.%s in cluster %s" % \
+                    (service, instance, load_system_paasta_config().get_cluster())
         log.error(error_msg)
-        sys.exit(1)
+        return 1
 
     try:
         status, output = setup_service(service, instance, client, marathon_config,
                                        service_instance_config, soa_dir)
         sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
         send_event(service, instance, soa_dir, sensu_status, output)
-        # We exit 0 because the script finished ok and the event was sent to the right team.
-        sys.exit(0)
+        return 0
     except (KeyError, TypeError, AttributeError, InvalidInstanceConfig):
         import traceback
         error_str = traceback.format_exc()
         log.error(error_str)
         send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
-        # We exit 0 because the script finished ok and the event was sent to the right team.
-        sys.exit(0)
+        return 1
 
 
 if __name__ == "__main__":
