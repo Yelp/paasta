@@ -32,6 +32,7 @@ from paasta_tools.utils import TimeoutError
 
 
 log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 # mesos.cli.master reads its config file at *import* time, so we must have
