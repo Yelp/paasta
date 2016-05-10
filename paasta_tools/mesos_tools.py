@@ -121,7 +121,16 @@ def get_mesos_leader(hostname=MY_HOSTNAME):
     :returns: The current mesos-master hostname"""
     try:
         url = master.CURRENT.host
-    except MesosMasterConnectionError as e:
+        hostname = urlparse(url).hostname
+        # This check is necessary, as if we parse a value such as 'localhost:5050',
+        # it won't have a hostname attribute
+        if hostname:
+            host = socket.gethostbyaddr(hostname)[0]
+            fqdn = socket.getfqdn(host)
+            return fqdn
+        else:
+            raise Exception()
+    except:
         redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
         try:
             r = requests.get(redirect_url, timeout=10)
@@ -131,18 +140,6 @@ def get_mesos_leader(hostname=MY_HOSTNAME):
             raise MesosMasterConnectionError(repr(e))
         r.raise_for_status()
         return urlparse(r.url).hostname
-    hostname = urlparse(url).hostname
-    # This check is necessary, as if we parse a value such as 'localhost:5050',
-    # it won't have a hostname attribute
-    if hostname:
-        try:
-            host = socket.gethostbyaddr(hostname)[0]
-            fqdn = socket.getfqdn(host)
-            return fqdn
-        except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
-            raise MesosMasterConnectionError(repr(e))
-    else:
-        raise MesosMasterConnectionError()
 
 
 def is_mesos_leader(hostname=MY_HOSTNAME):

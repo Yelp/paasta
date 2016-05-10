@@ -14,7 +14,6 @@
 import contextlib
 import datetime
 import random
-import socket
 
 import docker
 import mesos
@@ -194,25 +193,6 @@ def test_get_mesos_leader():
         mock_gethostbyaddr.return_value = 'example.org'
         mock_getfqdn.return_value = 'example.org'
         assert mesos_tools.get_mesos_leader() == 'example.org'
-
-
-def test_get_mesos_leader_socket_exception():
-    fake_url = 'http://93.184.216.34:5050'
-    with contextlib.nested(
-        mock.patch('paasta_tools.mesos_tools.master.CURRENT'),
-        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr'),
-        mock.patch('paasta_tools.mesos_tools.socket.getfqdn'),
-    ) as (
-        mock_CURRENT,
-        mock_gethostbyaddr,
-        mock_getfqdn,
-    ):
-        mock_CURRENT.host = fake_url
-        mock_gethostbyaddr.return_value = 'example.org'
-        mock_getfqdn.return_value = 'example.org'
-        mock_getfqdn.side_effect = socket.timeout
-        with raises(mesos_tools.MesosMasterConnectionError):
-            mesos_tools.get_mesos_leader()
 
 
 def test_get_mesos_leader_cli_exception_good():
