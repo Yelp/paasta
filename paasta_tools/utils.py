@@ -524,10 +524,10 @@ def list_log_writers():
 
 def configure_log():
     """We will log to the yocalhost binded scribe."""
-    log_writer_options = load_system_paasta_config().get_log_writer()
+    log_writer_config = load_system_paasta_config().get_log_writer()
     global _log_writer
-    LogWriterClass = get_log_writer_class(log_writer_options['driver'])
-    _log_writer = LogWriterClass(**log_writer_options)
+    LogWriterClass = get_log_writer_class(log_writer_config['driver'])
+    _log_writer = LogWriterClass(**log_writer_config.get('options', {}))
 
 
 def _log(*args, **kwargs):
