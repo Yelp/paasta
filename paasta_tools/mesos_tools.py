@@ -22,6 +22,7 @@ import requests
 from kazoo.client import KazooClient
 from mesos.cli import util
 from mesos.cli.exceptions import SlaveDoesNotExist
+from urlparse import urlparse
 
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
@@ -111,17 +112,35 @@ class MesosSlaveConnectionError(Exception):
     pass
 
 
-def get_mesos_leader():
+def get_mesos_leader(hostname=MY_HOSTNAME):
     """Get the current mesos-master leader's hostname.
+    Attempts to determine this by using mesos.cli to query ZooKeeper.
+    If this fails, we fallback to following the HTTP redirect
 
+    :param hostname: The hostname to query mesos-master on (only used if we can't use ZK)
     :returns: The current mesos-master hostname"""
-    url = master.CURRENT.host
-    m = re.search('^https?://(.*?):\d+$', url)
-    if m:
-        ip = m.group(1)
-        host = socket.gethostbyaddr(ip)[0]
-        fqdn = socket.getfqdn(host)
-        return fqdn
+    try:
+        url = master.CURRENT.host
+    except MesosMasterConnectionError as e:
+        redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
+        try:
+            r = requests.get(redirect_url, timeout=10)
+        except requests.exceptions.ConnectionError as e:
+            # Repackage the exception so upstream code can handle this case without
+            # knowing our implementation details.
+            raise MesosMasterConnectionError(repr(e))
+        r.raise_for_status()
+        return urlparse(r.url).hostname
+    hostname = urlparse(url).hostname
+    # This check is necessary, as if we parse a value such as 'localhost:5050',
+    # it won't have a hostname attribute
+    if hostname:
+        try:
+            host = socket.gethostbyaddr(hostname)[0]
+            fqdn = socket.getfqdn(host)
+            return fqdn
+        except (socket.error, socket.herror, socket.gaierror, socket.timeout) as e:
+            raise MesosMasterConnectionError(repr(e))
     else:
         raise MesosMasterConnectionError()
 
