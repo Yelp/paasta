@@ -17,7 +17,6 @@ set -eu
 
 SCRIPTS="am_i_mesos_leader
 autoscale_all_services
-autoscale_cluster
 check_marathon_services_replication
 cleanup_chronos_jobs
 check_chronos_jobs
@@ -29,6 +28,7 @@ generate_services_file
 generate_services_yaml
 list_chronos_jobs
 list_marathon_service_instances
+paasta_autoscale_cluster
 paasta_execute_docker_command
 paasta_metastatus
 paasta_serviceinit
