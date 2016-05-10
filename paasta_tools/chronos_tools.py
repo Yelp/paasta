@@ -225,11 +225,12 @@ class ChronosJobConfig(InstanceConfig):
         original_env = super(ChronosJobConfig, self).get_env()
         return [{"name": key, "value": value} for key, value in original_env.iteritems()]
 
-    def get_constraints(self):
-        if 'constraints' in self.config_dict:
-            constraints = self.config_dict.get('constraints')
+    def get_calculated_constraints(self):
+        constraints = self.get_constraints()
+        if constraints is not None:
+            return constraints
         else:
-            constraints = self.config_dict.get('extra_constraints', [])
+            constraints = self.get_extra_constraints()
             constraints.extend(self.get_deploy_constraints())
             constraints.extend(self.get_pool_constraints())
         assert isinstance(constraints, list)
@@ -411,7 +412,7 @@ class ChronosJobConfig(InstanceConfig):
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
             'disk': self.get_disk(),
-            'constraints': self.get_constraints(),
+            'constraints': self.get_calculated_constraints(),
             'command': parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd(),
             'arguments': self.get_args(),
             'epsilon': self.get_epsilon(),

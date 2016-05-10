@@ -298,6 +298,12 @@ class InstanceConfig(dict):
         pool = self.get_pool()
         return [["pool", "LIKE", pool]]
 
+    def get_constraints(self):
+        return self.config_dict.get('constraints', None)
+
+    def get_extra_constraints(self):
+        return self.config_dict.get('extra_constraints', [])
+
     def get_net(self):
         """
         :returns: the docker networking mode the container should be started with.

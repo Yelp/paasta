@@ -1043,7 +1043,7 @@ class TestMarathonTools:
         )
         assert fake_conf.get_instances() == 0
 
-    def test_get_constraints_in_config_override_all_others(self):
+    def test_get_calculated_constraints_in_config_override_all_others(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1056,10 +1056,10 @@ class TestMarathonTools:
             'paasta_tools.marathon_tools.get_mesos_slaves_grouped_by_attribute',
             autospec=True,
         ) as get_slaves_patch:
-            assert fake_conf.get_constraints(fake_service_namespace_config) == [['something', 'GROUP_BY']]
+            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == [['something', 'GROUP_BY']]
             assert get_slaves_patch.call_count == 0
 
-    def test_get_constraints_default(self):
+    def test_get_calculated_constraints_default(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1077,9 +1077,9 @@ class TestMarathonTools:
                 ["region", "GROUP_BY", "1"],
                 ["pool", "LIKE", "default"],
             ]
-            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
 
-    def test_get_constraints_stringifies(self):
+    def test_get_calculated_constraints_stringifies(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1098,9 +1098,9 @@ class TestMarathonTools:
                 ["region", "GROUP_BY", "1"],
                 ["pool", "LIKE", "default"],
             ]
-            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
 
-    def test_get_constraints_extra_constraints(self):
+    def test_get_calculated_constraints_extra_constraints(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
@@ -1119,9 +1119,9 @@ class TestMarathonTools:
                 ["region", "GROUP_BY", "1"],
                 ["pool", "LIKE", "default"],
             ]
-            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
 
-    def test_get_constraints_from_discover(self):
+    def test_get_calculated_constraints_from_discover(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
             'mode': 'http',
             'healthcheck_uri': '/status',
@@ -1143,10 +1143,10 @@ class TestMarathonTools:
                 ["habitat", "GROUP_BY", "2"],
                 ["pool", "LIKE", "default"],
             ]
-            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
             get_slaves_patch.assert_called_once_with(attribute='habitat', blacklist=[], whitelist=[])
 
-    def test_get_constraints_respects_deploy_blacklist(self):
+    def test_get_calculated_constraints_respects_deploy_blacklist(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_deploy_blacklist = [["region", "fake_blacklisted_region"]]
         fake_conf = marathon_tools.MarathonServiceConfig(
@@ -1166,10 +1166,10 @@ class TestMarathonTools:
             autospec=True,
         ) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
-            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
             get_slaves_patch.assert_called_once_with(attribute='region', blacklist=fake_deploy_blacklist, whitelist=[])
 
-    def test_get_constraints_respects_deploy_whitelist(self):
+    def test_get_calculated_constraints_respects_deploy_whitelist(self):
         fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
         fake_deploy_whitelist = ["region", ["fake_whitelisted_region"]]
         fake_conf = marathon_tools.MarathonServiceConfig(
@@ -1189,7 +1189,7 @@ class TestMarathonTools:
             autospec=True,
         ) as get_slaves_patch:
             get_slaves_patch.return_value = {'fake_region': {}}
-            assert fake_conf.get_constraints(fake_service_namespace_config) == expected_constraints
+            assert fake_conf.get_calculated_constraints(fake_service_namespace_config) == expected_constraints
             get_slaves_patch.assert_called_once_with(attribute='region', blacklist=[], whitelist=fake_deploy_whitelist)
 
     def test_instance_config_getters_in_config(self):
