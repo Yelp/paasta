@@ -45,7 +45,7 @@ def run_setup_marathon_job(context):
         mock_parse_args.return_value = mock.Mock(
             verbose=True,
             soa_dir=context.soa_dir,
-            service_instance=context.job_id,
+            service_instance_list=[context.job_id],
         )
         try:
             setup_marathon_job.main()

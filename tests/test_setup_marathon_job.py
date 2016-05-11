@@ -54,7 +54,7 @@ class TestSetupMarathonJob:
         'password': 'admin_pass',
     }, '/fake/fake_file.json')
     fake_args = mock.MagicMock(
-        service_instance='what_is_love.bby_dont_hurt_me',
+        service_instance_list=['what_is_love.bby_dont_hurt_me'],
         soa_dir='no_more',
         verbose=False,
     )
@@ -113,14 +113,14 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_password(),
             )
             read_service_conf_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir,
             )
             setup_service_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config,
@@ -178,13 +178,13 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_username(),
                 self.fake_marathon_config.get_password())
             read_service_conf_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config,
@@ -239,8 +239,8 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_username(),
                 self.fake_marathon_config.get_password())
             read_service_conf_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
             assert exc_info.value.code == 0
