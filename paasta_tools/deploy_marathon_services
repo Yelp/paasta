@@ -1,5 +1,5 @@
 #!/bin/bash
 
 if am_i_mesos_leader >/dev/null; then
-  list_marathon_service_instances | xargs -n 64 -r -P 4 setup_marathon_job
+    list_marathon_service_instances | shuf | xargs --max-args=64 --no-run-if-empty --max-procs=4 setup_marathon_job
 fi

@@ -243,7 +243,7 @@ class TestSetupMarathonJob:
                 decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
-            assert exc_info.value.code == 1
+            assert exc_info.value.code == 0
 
     def test_send_event(self):
         fake_service = 'fake_service'

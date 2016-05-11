@@ -73,7 +73,7 @@ log = logging.getLogger(__name__)
 def parse_args():
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
     parser.add_argument('service_instance_list', nargs='+',
-                        help="The marathon instance of the service to create or update",
+                        help="The list of marathon service instances to create or update",
                         metavar="SERVICE%sINSTANCE" % SPACER)
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
                         default=marathon_tools.DEFAULT_SOA_DIR,
@@ -581,8 +581,8 @@ def main():
             if deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
                 num_failed_deployments = num_failed_deployments + 1
 
-    print("%d out of %d service.instances are successfully deployed" %
-          (len(args.service_instance_list) - num_failed_deployments, len(args.service_instance_list)))
+    log.debug("%d out of %d service.instances failed to deploy." %
+              (num_failed_deployments, len(args.service_instance_list)))
 
     sys.exit(1 if num_failed_deployments else 0)
 
@@ -598,7 +598,7 @@ def deploy_marathon_service(service, instance, client, soa_dir, marathon_config)
     except NoDeploymentsAvailable:
         log.debug("No deployments found for %s.%s in cluster %s. Skipping." %
                   (service, instance, load_system_paasta_config().get_cluster()))
-        return 1
+        return 0
     except NoConfigurationForServiceError:
         error_msg = "Could not read marathon configuration file for %s.%s in cluster %s" % \
                     (service, instance, load_system_paasta_config().get_cluster())
