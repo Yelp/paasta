@@ -478,10 +478,10 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if 'verbose' in kwargs and kwargs['verbose'] > 0:
         verbose_flag = '-v ' * kwargs['verbose']
-        timeout = 240
+        timeout = 960 if subcommand == 'status' else 240
     else:
         verbose_flag = ''
-        timeout = 60
+        timeout = 240 if subcommand == 'status' else 60
 
     if 'app_id' in kwargs and kwargs['app_id']:
         app_id_flag = "--appid %s " % kwargs['app_id']
@@ -492,8 +492,11 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
     else:
         delta_flag = ''
 
-    command = 'ssh -A -n %(master)s sudo paasta_serviceinit %(subcommand)s ' \
+    ssh_flag = '-t' if stream else '-n'
+
+    command = 'ssh -A %(ssh_flag)s %(master)s sudo paasta_serviceinit %(subcommand)s ' \
         '-s %(service)s -i %(instances)s %(verbose_flag)s%(app_id_flag)s%(delta_flag)s' % {
+            'ssh_flag': ssh_flag,
             'master': master,
             'subcommand': subcommand,
             'service': service,
