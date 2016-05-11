@@ -120,9 +120,7 @@ class MesosSlaveConnectionError(Exception):
 def get_mesos_leader():
     """Get the current mesos-master leader's hostname.
     Attempts to determine this by using mesos.cli to query ZooKeeper.
-    If this fails, we fallback to following the HTTP redirect
 
-    :param hostname: The hostname to query mesos-master on (only used if we can't use ZK)
     :returns: The current mesos-master hostname"""
     try:
         url = master.CURRENT.host
