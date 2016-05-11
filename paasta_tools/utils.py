@@ -874,8 +874,18 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
             proctimer = threading.Timer(timeout, _timeout, (process,))
             proctimer.start()
         for line in iter(process.stdout.readline, ''):
+            # additional indentation is for the paasta status command only
             if stream:
-                print(line.rstrip('\n'))
+                if ('paasta_serviceinit status' in command):
+                    if 'instance: ' in line:
+                        print('  ' + line.rstrip('\n'))
+                    else:
+                        print('    ' + line.rstrip('\n'))
+                else:
+                    print(line.rstrip('\n'))
+            else:
+                output.append(line.rstrip('\n'))
+
             if log:
                 _log(
                     service=service,
@@ -885,7 +895,6 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
                     cluster=cluster,
                     instance=instance,
                 )
-            output.append(line.rstrip('\n'))
         # when finished, get the exit code
         returncode = process.wait()
     except OSError as e:

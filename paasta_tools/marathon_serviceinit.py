@@ -287,7 +287,7 @@ def pretty_print_smartstack_backends_for_locations(service_instance, tasks, loca
     """
     Pretty prints the status of smartstack backends of a specified service and instance in the specified locations
     """
-    rows = [("      Name", "LastCheck", "LastChange", "Status")]
+    rows = [("      Name", "LastCheck", "LastChange", "Status")] if verbose else []
     expected_count_per_location = int(expected_count / len(locations))
     for location in sorted(locations):
         hosts = locations[location]
