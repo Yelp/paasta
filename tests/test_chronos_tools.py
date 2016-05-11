@@ -384,8 +384,8 @@ class TestChronosTools:
         ]
         assert sorted(fake_conf.get_env()) == sorted(expected_env)
 
-    def test_get_constraints(self):
-        fake_constraints = 'fake_constraints'
+    def test_get_calculated_constraints_respects_constraints_override(self):
+        fake_constraints = [['fake_constraints']]
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -393,10 +393,10 @@ class TestChronosTools:
             config_dict={'constraints': fake_constraints},
             branch_dict={},
         )
-        actual = fake_conf.get_constraints()
+        actual = fake_conf.get_calculated_constraints()
         assert actual == fake_constraints
 
-    def test_get_constraints_pool(self):
+    def test_get_calculated_constraints_respects_pool(self):
         fake_pool = 'poolname'
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
@@ -405,8 +405,8 @@ class TestChronosTools:
             config_dict={'pool': fake_pool},
             branch_dict={},
         )
-        actual = fake_conf.get_constraints()
-        assert actual == [['pool', 'EQUALS', 'poolname']]
+        actual = fake_conf.get_calculated_constraints()
+        assert actual == [['pool', 'LIKE', 'poolname']]
 
     def test_get_retries_default(self):
         fake_conf = chronos_tools.ChronosJobConfig(
@@ -874,7 +874,7 @@ class TestChronosTools:
             'scheduleTimeZone': None,
             'environmentVariables': mock.ANY,
             'arguments': None,
-            'constraints': [['pool', 'EQUALS', 'default']],
+            'constraints': [['pool', 'LIKE', 'default']],
             'retries': 2,
             'epsilon': fake_epsilon,
             'name': 'test_job',
@@ -1126,7 +1126,7 @@ class TestChronosTools:
             expected = {
                 'arguments': None,
                 'description': fake_config_hash,
-                'constraints': [['pool', 'EQUALS', 'default']],
+                'constraints': [['pool', 'LIKE', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
@@ -1218,7 +1218,7 @@ class TestChronosTools:
             expected = {
                 'arguments': None,
                 'description': fake_config_hash,
-                'constraints': [['pool', 'EQUALS', 'default']],
+                'constraints': [['pool', 'LIKE', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
@@ -1277,7 +1277,7 @@ class TestChronosTools:
             expected = {
                 'arguments': None,
                 'description': fake_config_hash,
-                'constraints': [['pool', 'EQUALS', 'default']],
+                'constraints': [['pool', 'LIKE', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
@@ -1352,7 +1352,7 @@ class TestChronosTools:
             expected = {
                 'description': fake_config_hash,
                 'arguments': None,
-                'constraints': [['pool', 'EQUALS', 'default']],
+                'constraints': [['pool', 'LIKE', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,

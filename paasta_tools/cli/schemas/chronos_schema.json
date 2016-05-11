@@ -66,6 +66,9 @@
                 "type": "object",
                 "additionalProperties": { "type": "string" }
             },
+            "deploy_whitelist": {
+                "type": "array"
+            },
             "extra_volumes": {
                 "type": "array",
                 "items": {

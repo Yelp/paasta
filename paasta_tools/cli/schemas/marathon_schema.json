@@ -127,6 +127,9 @@
             "deploy_blacklist": {
                 "type": "array"
             },
+            "deploy_whitelist": {
+                "type": "array"
+            },
             "monitoring_blacklist": {
                 "type": "array"
             },

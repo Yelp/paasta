@@ -298,22 +298,21 @@ class MarathonServiceConfig(InstanceConfig):
             default = {'delay': 30}
         return self.config_dict.get('drain_method_params', default)
 
-    def get_constraints(self, service_namespace_config):
-        """Gets the constraints specified in the service's marathon configuration.
+    def get_calculated_constraints(self, service_namespace_config):
+        """Gets the calculated constraints for a marathon instance
 
-        These are Marathon app constraints. See
-        https://mesosphere.github.io/marathon/docs/constraints.html
-
-        Defaults to `GROUP_BY region`. If the service's smartstack configuration
-        specifies a `discover` key, then defaults to `GROUP_BY <value of discover>` instead.
+        If ``constraints`` is specified in the config, it will use that regardless.
+        Otherwise it will calculate a good set of constraints from other inputs,
+        like ``pool``, blacklist/whitelist, smartstack data, etc.
 
         :param service_namespace_config: The service instance's configuration dictionary
         :returns: The constraints specified in the config, or defaults described above
         """
-        if 'constraints' in self.config_dict:
-            constraints = self.config_dict.get('constraints')
+        constraints = self.get_constraints()
+        if constraints is not None:
+            return constraints
         else:
-            constraints = self.config_dict.get('extra_constraints', [])
+            constraints = self.get_extra_constraints()
             constraints.extend(self.get_routing_constraints(service_namespace_config))
             constraints.extend(self.get_deploy_constraints())
             constraints.extend(self.get_pool_constraints())
@@ -331,10 +330,6 @@ class MarathonServiceConfig(InstanceConfig):
     def get_deploy_constraints(self):
         return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
                 deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
-
-    def get_pool_constraints(self):
-        pool = self.get_pool()
-        return [["pool", "LIKE", pool]]
 
     def format_marathon_app_dict(self):
         """Create the configuration that will be passed to the Marathon REST API.
@@ -397,7 +392,7 @@ class MarathonServiceConfig(InstanceConfig):
             'mem': float(self.get_mem()),
             'cpus': float(self.get_cpus()),
             'disk': float(self.get_disk()),
-            'constraints': self.get_constraints(service_namespace_config),
+            'constraints': self.get_calculated_constraints(service_namespace_config),
             'instances': self.get_instances(),
             'cmd': self.get_cmd(),
             'args': self.get_args(),

@@ -29,6 +29,7 @@ from tron import command_context
 
 from paasta_tools.mesos_tools import get_mesos_network_for_net
 from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import deploy_whitelist_to_constraints
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
@@ -224,8 +225,19 @@ class ChronosJobConfig(InstanceConfig):
         original_env = super(ChronosJobConfig, self).get_env()
         return [{"name": key, "value": value} for key, value in original_env.iteritems()]
 
-    def get_constraints(self):
-        return self.config_dict.get('constraints', [['pool', 'EQUALS', self.get_pool()]])
+    def get_calculated_constraints(self):
+        constraints = self.get_constraints()
+        if constraints is not None:
+            return constraints
+        else:
+            constraints = self.get_extra_constraints()
+            constraints.extend(self.get_deploy_constraints())
+            constraints.extend(self.get_pool_constraints())
+        assert isinstance(constraints, list)
+        return [[str(val) for val in constraint] for constraint in constraints]
+
+    def get_deploy_constraints(self):
+        return deploy_whitelist_to_constraints(self.get_deploy_whitelist())
 
     def check_bounce_method(self):
         bounce_method = self.get_bounce_method()
@@ -400,7 +412,7 @@ class ChronosJobConfig(InstanceConfig):
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
             'disk': self.get_disk(),
-            'constraints': self.get_constraints(),
+            'constraints': self.get_calculated_constraints(),
             'command': parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd(),
             'arguments': self.get_args(),
             'epsilon': self.get_epsilon(),
