@@ -139,32 +139,31 @@ def test_get_log_name_for_service():
 
 def test_get_readable_files_in_glob_ignores_unreadable():
     fake_dir = '/fake/'
-    fake_file_contents = {'foo': 'bar'}
-    expected = [os.path.join(fake_dir, 'a.json'), os.path.join(fake_dir, 'c.json')]
-    file_mock = mock.MagicMock(spec=file)
+    expected = ['/fake/readable.json']
+    fake_walk = [
+        ('/fake', [], ['readable.json', 'unreadable.json']),
+    ]
     with contextlib.nested(
-        mock.patch('glob.glob', autospec=True, return_value=['/fake/b.json', '/fake/a.json', '/fake/c.json']),
+        mock.patch('os.walk', autospec=True, return_value=fake_walk),
         mock.patch('os.path.isfile', autospec=True, return_value=True),
-        mock.patch('os.access', autospec=True, side_effect=[True, False, True]),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=fake_file_contents)
+        mock.patch('os.access', autospec=True, side_effect=[True, False]),
     ):
-        assert utils.get_readable_files_in_glob(fake_dir) == expected
+        assert utils.get_readable_files_in_glob('*.json', fake_dir) == expected
 
 
-def test_get_readable_files_in_glob_is_lexicographic():
+def test_get_readable_files_in_glob_is_recursive():
     fake_dir = '/fake/'
-    fake_file_contents = {'foo': 'bar'}
-    expected = [os.path.join(fake_dir, 'a.json'), os.path.join(fake_dir, 'b.json')]
-    file_mock = mock.MagicMock(spec=file)
+    expected = ['/fake/a.json', '/fake/b.json', '/fake/nested/c.json']
+    fake_walk = [
+        ('/fake', ['nested'], ['a.json', 'b.json']),
+        ('/fake/nested', [], ['c.json'])
+    ]
     with contextlib.nested(
-        mock.patch('glob.glob', autospec=True, return_value=['/fake/b.json', '/fake/a.json']),
+        mock.patch('os.walk', autospec=True, return_value=fake_walk),
         mock.patch('os.path.isfile', autospec=True, return_value=True),
         mock.patch('os.access', autospec=True, return_value=True),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=fake_file_contents)
     ):
-        assert utils.get_readable_files_in_glob(fake_dir) == expected
+        assert utils.get_readable_files_in_glob('*.json', fake_dir) == expected
 
 
 def test_load_system_paasta_config():
