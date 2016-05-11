@@ -14,6 +14,7 @@
 import contextlib
 import datetime
 import random
+import socket
 
 import docker
 import mesos
@@ -179,25 +180,56 @@ def test_get_zookeeper_config():
 
 
 def test_get_mesos_leader():
-    expected = 'mesos.master.yelpcorp.com'
-    fake_master = 'false.authority.yelpcorp.com'
-    with mock.patch('requests.get', autospec=True) as mock_requests_get:
-        mock_requests_get.return_value = mock_response = mock.Mock()
-        mock_response.return_code = 307
-        mock_response.url = 'http://%s:999' % expected
-        assert mesos_tools.get_mesos_leader(fake_master) == expected
-        mock_requests_get.assert_called_once_with('http://%s:5050/redirect' % fake_master, timeout=10)
+    fake_url = 'http://93.184.216.34:5050'
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.master.CURRENT'),
+        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr'),
+        mock.patch('paasta_tools.mesos_tools.socket.getfqdn'),
+    ) as (
+        mock_CURRENT,
+        mock_gethostbyaddr,
+        mock_getfqdn,
+    ):
+        mock_CURRENT.host = fake_url
+        mock_gethostbyaddr.return_value = 'example.org'
+        mock_getfqdn.return_value = 'example.org'
+        assert mesos_tools.get_mesos_leader() == 'example.org'
 
 
-def test_get_mesos_leader_connection_error():
-    fake_master = 'false.authority.yelpcorp.com'
-    with mock.patch(
-        'requests.get',
-        autospec=True,
-        side_effect=requests.exceptions.ConnectionError,
+def test_get_mesos_leader_socket_eroror():
+    fake_url = 'http://93.184.216.34:5050'
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.master.CURRENT'),
+        mock.patch('paasta_tools.mesos_tools.socket.gethostbyaddr', side_effect=socket.error),
+    ) as (
+        mock_CURRENT,
+        mock_gethostbyaddr,
+    ):
+        mock_CURRENT.host = fake_url
+        with raises(socket.error):
+            mesos_tools.get_mesos_leader()
+
+
+def test_get_mesos_leader_no_hostname():
+    fake_url = 'localhost:5050'
+    with contextlib.nested(
+        mock.patch('paasta_tools.mesos_tools.master.CURRENT'),
+    ) as (
+        mock_CURRENT,
+    ):
+        mock_CURRENT.host = fake_url
+        with raises(ValueError):
+            mesos_tools.get_mesos_leader()
+
+
+def test_get_mesos_leader_cli_mesosmasterconnectionerror():
+    with contextlib.nested(
+        mock.patch('mesos.cli.master.MesosMaster.resolve', side_effect=mesos_tools.MesosMasterConnectionError),
+    ) as (
+        mock_resolve,
     ):
         with raises(mesos_tools.MesosMasterConnectionError):
-            mesos_tools.get_mesos_leader(fake_master)
+            mesos_tools.get_mesos_leader()
 
 
 @mock.patch('paasta_tools.mesos_tools.get_mesos_leader')
@@ -205,7 +237,15 @@ def test_is_mesos_leader(mock_get_mesos_leader):
     fake_host = 'toast.host.roast'
     mock_get_mesos_leader.return_value = fake_host
     assert mesos_tools.is_mesos_leader(fake_host)
-    mock_get_mesos_leader.assert_called_once_with(fake_host)
+    mock_get_mesos_leader.assert_called_once_with()
+
+
+@mock.patch('paasta_tools.mesos_tools.get_mesos_leader')
+def test_is_mesos_leader_substring(mock_get_mesos_leader):
+    fake_host = 'toast.host.roast'
+    mock_get_mesos_leader.return_value = "fake_prefix." + fake_host + ".fake_suffix"
+    assert not mesos_tools.is_mesos_leader(fake_host)
+    mock_get_mesos_leader.assert_called_once_with()
 
 
 @mock.patch('paasta_tools.mesos_tools.KazooClient')
