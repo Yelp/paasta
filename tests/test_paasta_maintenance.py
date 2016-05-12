@@ -428,9 +428,9 @@ def test_undrain(
 ):
     fake_schedule = {'fake_schedule': 'fake_value'}
     mock_build_maintenance_schedule_payload.return_value = fake_schedule
-    undrain(hostnames=['some-host'], start='some-start', duration='some-duration')
+    undrain(hostnames=['some-host'])
     assert mock_build_maintenance_schedule_payload.call_count == 1
-    expected_args = mock.call(['some-host'], 'some-start', 'some-duration', drain=False)
+    expected_args = mock.call(['some-host'], drain=False)
     assert mock_build_maintenance_schedule_payload.call_args == expected_args
     assert mock_get_schedule_client.call_count == 1
     assert mock_get_schedule_client.return_value.call_count == 1

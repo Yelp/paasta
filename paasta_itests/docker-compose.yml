@@ -23,6 +23,30 @@ mesosslave:
   volumes:
     - /var/run/docker.sock:/var/run/docker.sock
 
+mesosslave2:
+  build: ../yelp_package/dockerfiles/itest/mesos/
+  ports:
+    - 5051
+  links:
+    - zookeeper
+  environment:
+    -CLUSTER: testcluster
+  command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512; disk(*):100" --credential=/etc/mesos-slave-secret --containerizers=docker --docker=/usr/bin/docker'
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+
+mesosslave3:
+  build: ../yelp_package/dockerfiles/itest/mesos/
+  ports:
+    - 5051
+  links:
+    - zookeeper
+  environment:
+    -CLUSTER: testcluster
+  command: 'mesos-slave --master=zk://zookeeper:2181/mesos-testcluster --resources="cpus(*):10; mem(*):512; disk(*):100" --credential=/etc/mesos-slave-secret --containerizers=docker --docker=/usr/bin/docker'
+  volumes:
+    - /var/run/docker.sock:/var/run/docker.sock
+
 marathon:
   build: ../yelp_package/dockerfiles/itest/marathon/
   ports:
@@ -39,6 +63,8 @@ paastatools:
     - marathon
     - mesosmaster
     - mesosslave
+    - mesosslave2
+    - mesosslave3
     - zookeeper
     - chronos
     - hacheck

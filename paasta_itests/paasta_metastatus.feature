@@ -14,7 +14,7 @@ Feature: paasta_metastatus describes the state of the paasta cluster
   Scenario: High memory usage
     Given a working paasta cluster
      When an app with id "memtest" using high memory is launched
-      And a task belonging to the app with id "memtest" is in the task list
+      And 3 tasks belonging to the app with id "memtest" are in the task list
      Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% memory available."
 
   # paasta_metastatus defines "high" disk usage as > 90% of the total cluster
@@ -22,7 +22,7 @@ Feature: paasta_metastatus describes the state of the paasta cluster
   Scenario: High disk usage
     Given a working paasta cluster
     When an app with id "disktest" using high disk is launched
-     And a task belonging to the app with id "disktest" is in the task list
+     And 3 tasks belonging to the app with id "disktest" are in the task list
     Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% disk available."
 
   # paasta_metastatus defines 'high' cpu usage as > 90% of the total cluster
@@ -37,7 +37,7 @@ Feature: paasta_metastatus describes the state of the paasta cluster
   Scenario: High cpu usage
     Given a working paasta cluster
      When an app with id "cputest" using high cpu is launched
-      And a task belonging to the app with id "cputest" is in the task list
+      And 3 tasks belonging to the app with id "cputest" are in the task list
      Then paasta_metastatus -v exits with return code "2" and output "CRITICAL: Less than 10% CPUs available."
 
   Scenario: With a launched chronos job

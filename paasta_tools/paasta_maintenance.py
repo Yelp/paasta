@@ -15,6 +15,7 @@
 import argparse
 import datetime
 import json
+import logging
 from socket import getfqdn
 from socket import gethostbyname
 
@@ -26,6 +27,9 @@ from requests.exceptions import HTTPError
 
 from paasta_tools.mesos_tools import get_mesos_leader
 from paasta_tools.mesos_tools import MESOS_MASTER_PORT
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 def parse_args():
@@ -259,7 +263,7 @@ def get_machine_ids(hostnames):
     return machine_ids
 
 
-def build_maintenance_schedule_payload(hostnames, start, duration, drain=True):
+def build_maintenance_schedule_payload(hostnames, start=None, duration=None, drain=True):
     """Creates the JSON payload needed to (un)schedule maintenance on the specified hostnames.
     :param hostnames: a list of hostnames
     :param start: the time to start the maintenance, represented as number of nanoseconds since the epoch
@@ -270,15 +274,16 @@ def build_maintenance_schedule_payload(hostnames, start, duration, drain=True):
     schedule = get_maintenance_schedule().json()
     machine_ids = get_machine_ids(hostnames)
 
-    unavailability = dict()
-    unavailability['start'] = dict()
-    unavailability['start']['nanoseconds'] = int(start)
-    unavailability['duration'] = dict()
-    unavailability['duration']['nanoseconds'] = int(duration)
+    if drain:
+        unavailability = dict()
+        unavailability['start'] = dict()
+        unavailability['start']['nanoseconds'] = int(start)
+        unavailability['duration'] = dict()
+        unavailability['duration']['nanoseconds'] = int(duration)
 
-    window = dict()
-    window['machine_ids'] = machine_ids
-    window['unavailability'] = unavailability
+        window = dict()
+        window['machine_ids'] = machine_ids
+        window['unavailability'] = unavailability
 
     if schedule:
         for existing_window in schedule['windows']:
@@ -331,20 +336,19 @@ def drain(hostnames, start, duration):
     :param duration: length of the maintenance window, represented as number of nanoseconds since the epoch
     :returns: None
     """
+    log.info("Draining: %s" % hostnames)
     payload = build_maintenance_schedule_payload(hostnames, start, duration, drain=True)
     client_fn = get_schedule_client()
     print client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
 
 
-def undrain(hostnames, start, duration):
+def undrain(hostnames):
     """Unschedules the maintenance window for the specified hosts and unmarks them as draining. They are ready for
     regular use.
     :param hostnames: a list of hostnames
-    :param start: the time to start the maintenance, represented as number of nanoseconds since the epoch
-    :param duration: length of the maintenance window, represented as number of nanoseconds since the epoch
     :returns: None
     """
-    payload = build_maintenance_schedule_payload(hostnames, start, duration, drain=False)
+    payload = build_maintenance_schedule_payload(hostnames, drain=False)
     client_fn = get_schedule_client()
     print client_fn(method="POST", endpoint="", data=json.dumps(payload)).text
 

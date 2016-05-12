@@ -134,7 +134,7 @@ Feature: paasta_serviceinit
      When we run the marathon app "test-service.main"
       And we wait for it to be deployed
       And we run paasta serviceinit scale --delta "1" on "test-service.main"
-      And we wait for "test-service.main" to launch exactly 2 tasks
-     Then "test-service.main" has exactly 2 requested tasks in marathon
+      And we wait for "test-service.main" to launch exactly 3 tasks
+     Then "test-service.main" has exactly 3 requested tasks in marathon
 
 # vim: tabstop=2 expandtab shiftwidth=2 softtabstop=2

@@ -36,6 +36,15 @@ def which_id(context, which):
 
 @given(u'a new {state} app to be deployed, with bounce strategy "{bounce_method}" and drain method "{drain_method}"')
 def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
+    given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, str(None))
+
+
+@given(u'a new {state} app to be deployed, ' +
+       u'with bounce strategy "{bounce_method}" ' +
+       u'and drain method "{drain_method}" ' +
+       u'and constraints {constraints}')
+def given_a_new_app_to_be_deployed_constraints(context, state, bounce_method, drain_method, constraints):
+    constraints = eval(constraints)
     if state == "healthy":
         cmd = "/bin/true"
     elif state == "unhealthy":
@@ -60,6 +69,7 @@ def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
             "cpus": 0.1,
             "mem": 100,
             "disk": 10,
+            "constraints": constraints,
         },
         branch_dict={
             'docker_image': 'busybox',
@@ -71,6 +81,12 @@ def given_a_new_app_to_be_deployed(context, state, bounce_method, drain_method):
 
 @given(u'an old app to be destroyed')
 def given_an_old_app_to_be_destroyed(context):
+    given_an_old_app_to_be_destroyed_constraints(context, str([]))
+
+
+@given(u'an old app to be destroyed with constraints {constraints}')
+def given_an_old_app_to_be_destroyed_constraints(context, constraints):
+    constraints = eval(constraints)
     old_app_name = "bounce.test1.oldapp.confighash"
     context.old_ids = [old_app_name]
     context.old_app_config = {
@@ -86,6 +102,7 @@ def given_an_old_app_to_be_destroyed(context):
         },
         'backoff_seconds': 1,
         'backoff_factor': 1,
+        'constraints': constraints,
     }
     with contextlib.nested(
         mock.patch('paasta_tools.bounce_lib.create_app_lock'),
@@ -111,8 +128,8 @@ def when_there_are_num_which_tasks(context, num, which, state):
             if len(app.tasks) - happy_count >= context.max_tasks:
                 return
         time.sleep(0.5)
-    raise Exception("timed out waiting for %d %s tasks on %s; there are %s" %
-                    (context.max_tasks, state, app_id, app.tasks))
+    raise Exception("timed out waiting for %d %s tasks on %s; there are %d" %
+                    (context.max_tasks, state, app_id, len(app.tasks)))
 
 
 @when(u'setup_service is initiated')
@@ -134,12 +151,14 @@ def when_setup_service_initiated(context):
         mock.patch('paasta_tools.marathon_tools.get_config_hash', autospec=True, return_value='confighash'),
         mock.patch('paasta_tools.marathon_tools.get_code_sha_from_dockerurl', autospec=True, return_value='newapp'),
         mock.patch('paasta_tools.marathon_tools.get_docker_url', autospec=True, return_value='busybox'),
+        mock.patch('paasta_tools.setup_marathon_job.get_draining_hosts', autospec=True),
     ) as (
         _,
         _,
         _,
         _,
         mock_load_system_paasta_config,
+        _,
         _,
         _,
         _,
