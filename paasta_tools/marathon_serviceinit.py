@@ -17,7 +17,6 @@ import logging
 
 import humanize
 import isodate
-import requests_cache
 
 from paasta_tools import marathon_tools
 from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
@@ -371,9 +370,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir, app_i
     elif command == 'restart':
         restart_marathon_job(service, instance, app_id, normal_instance_count, client, cluster)
     elif command == 'status':
-        # Setting up transparent cache for http API calls
-        requests_cache.install_cache('paasta_serviceinit', backend='memory')
-
         print status_desired_state(service, instance, client, job_config)
         print status_marathon_job(service, instance, app_id, normal_instance_count, client)
         tasks, out = status_marathon_job_verbose(service, instance, client)
