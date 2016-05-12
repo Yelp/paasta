@@ -36,7 +36,6 @@ import pysensu_yelp
 
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
-from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import _log
 from paasta_tools.utils import DEFAULT_SOA_DIR
@@ -160,5 +159,5 @@ def main():
     cleanup_apps(soa_dir)
 
 
-if __name__ == "__main__" and is_mesos_leader():
+if __name__ == "__main__":
     main()

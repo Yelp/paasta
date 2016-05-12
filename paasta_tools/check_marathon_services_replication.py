@@ -408,5 +408,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if mesos_tools.is_mesos_leader():
-        main()
+    main()
