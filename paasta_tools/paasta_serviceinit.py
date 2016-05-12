@@ -20,6 +20,8 @@ import argparse
 import logging
 import sys
 
+import requests_cache
+
 from paasta_tools import chronos_serviceinit
 from paasta_tools import marathon_serviceinit
 from paasta_tools.cli.cmds.status import get_actual_deployments
@@ -85,6 +87,9 @@ def main():
     else:
         log.error("The name of service or the name of instance to inspect is missing. Exiting.")
         sys.exit(1)
+
+    # Setting up transparent cache for http API calls
+    requests_cache.install_cache("paasta_serviceinit", backend="memory")
 
     cluster = load_system_paasta_config().get_cluster()
     actual_deployments = get_actual_deployments(service, args.soa_dir)

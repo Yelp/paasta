@@ -17,7 +17,6 @@ import logging
 import chronos_tools
 import humanize
 import isodate
-import requests_cache
 
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
@@ -349,8 +348,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             emergency=True,
         )
     elif command == "status":
-        # Setting up transparent cache for http API calls
-        requests_cache.install_cache("paasta_serviceinit", backend="memory")
         # Verbose mode shows previous versions.
         matching_jobs = chronos_tools.lookup_chronos_jobs(
             service=service,
