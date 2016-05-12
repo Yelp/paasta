@@ -105,6 +105,14 @@ def get_last_killed(drained_apps, service, instance):
     return last_killed_t
 
 
+def has_all_paasta_env(environment):
+    for k in ('PAASTA_SERVICE', 'PAASTA_INSTANCE', 'MARATHON_PORT'):
+        if k not in environment:
+            return False
+
+    return True
+
+
 def main():
     rc, output = cmd('sudo docker ps -q')
     condquit(rc, 'docker ps')
@@ -138,9 +146,9 @@ def main():
             print "# WARNING! %s is a chronos job (%s), skipping" % (container_id, environment['CHRONOS_JOB_NAME'])
             print ""
             continue
-        for k in ('PAASTA_SERVICE', 'PAASTA_INSTANCE', 'MARATHON_PORT'):
-            if k not in environment:
-                abort("No %s in %s" % (k, container_id))
+        if not has_all_paasta_env(environment):
+            print "# WARNING: %s is not a paasta container, skipping)" % (container_id)
+            continue
         service = environment['PAASTA_SERVICE']
         instance = environment['PAASTA_INSTANCE']
         print "# %s.%s" % (service, instance)
