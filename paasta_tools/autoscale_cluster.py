@@ -16,6 +16,7 @@ import argparse
 import logging
 
 from paasta_tools.autoscaling_lib import autoscale_local_cluster
+from paasta_tools.mesos_tools import is_mesos_leader
 
 
 log = logging.getLogger(__name__)
@@ -41,5 +42,5 @@ def main():
     autoscale_local_cluster()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__" and is_mesos_leader():
     main()

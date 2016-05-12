@@ -21,7 +21,6 @@ isn't the leader, the script exits immediately.
 """
 import argparse
 import logging
-import sys
 
 import pysensu_yelp
 
@@ -112,9 +111,5 @@ def main():
     print check_thresholds(args.percent)
 
 
-if __name__ == "__main__":
-    if is_mesos_leader():
-        main()
-    else:
-        print "No the leader. Exiting 0."
-        sys.exit(0)
+if __name__ == "__main__" and is_mesos_leader():
+    main()
