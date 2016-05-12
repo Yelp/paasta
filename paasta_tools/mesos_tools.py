@@ -22,6 +22,7 @@ from urlparse import urlparse
 import humanize
 import requests
 from kazoo.client import KazooClient
+from mesos.cli import util
 from mesos.cli.exceptions import SlaveDoesNotExist
 
 from paasta_tools.utils import format_table
@@ -84,6 +85,12 @@ MESOS_SLAVE_PORT = '5051'
 from mesos.cli import master  # noqa
 import mesos.cli.cluster  # noqa
 
+
+# monkey patch MesosMaster.state to use a larger ttl
+@util.CachedProperty(ttl=60)
+def fetch_state(self):
+    return master.CURRENT.fetch("/master/state.json").json()
+master.MesosMaster.state = fetch_state
 
 # Works around a mesos-cli bug ('MesosSlave' object has no attribute 'id' - PAASTA-4119).
 # The method below gets a slave by its ID. Original code here:
