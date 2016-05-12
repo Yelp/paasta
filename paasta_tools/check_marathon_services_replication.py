@@ -379,7 +379,6 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
 
 
 def main():
-
     args = parse_args()
     soa_dir = args.soa_dir
 
@@ -407,6 +406,5 @@ def main():
         )
 
 
-if __name__ == "__main__":
-    if mesos_tools.is_mesos_leader():
-        main()
+if __name__ == "__main__" and mesos_tools.is_mesos_leader():
+    main()

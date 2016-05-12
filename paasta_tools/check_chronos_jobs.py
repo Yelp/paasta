@@ -16,6 +16,7 @@ from paasta_tools import utils
 from paasta_tools.chronos_tools import compose_check_name_for_service_instance
 from paasta_tools.chronos_tools import DEFAULT_SOA_DIR
 from paasta_tools.chronos_tools import load_chronos_job_config
+from paasta_tools.mesos_tools import is_mesos_leader
 
 
 def parse_args():
@@ -205,6 +206,6 @@ def main(args):
             soa_dir=soa_dir,
         )
 
-if __name__ == '__main__':
+if __name__ == "__main__" and is_mesos_leader():
     args = parse_args()
     main(args)

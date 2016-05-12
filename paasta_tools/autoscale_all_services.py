@@ -16,6 +16,7 @@ import argparse
 
 from paasta_tools.autoscaling_lib import autoscale_services
 from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
+from paasta_tools.mesos_tools import is_mesos_leader
 
 
 def parse_args():
@@ -33,5 +34,5 @@ def main():
     autoscale_services(soa_dir)
 
 
-if __name__ == '__main__':
+if __name__ == "__main__" and is_mesos_leader():
     main()
