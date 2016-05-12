@@ -1,7 +1,14 @@
 # Change Log
 
-## [0.19.2](https://github.com/Yelp/paasta/tree/0.19.2) (2016-05-11)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.1...0.19.2)
+## [v0.19.3](https://github.com/Yelp/paasta/tree/v0.19.3) (2016-05-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.2...v0.19.3)
+
+**Merged pull requests:**
+
+- Fix ssh stream option and increase timeout for paasta status [\#516](https://github.com/Yelp/paasta/pull/516) ([huadongliu](https://github.com/huadongliu))
+
+## [v0.19.2](https://github.com/Yelp/paasta/tree/v0.19.2) (2016-05-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.1...v0.19.2)
 
 **Closed issues:**
 
@@ -2099,13 +2106,13 @@
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.5.0...v0.6.0)
 
 ## [v0.5.0](https://github.com/Yelp/paasta/tree/v0.5.0) (2014-10-21)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.9...v0.5.0)
-
-## [v0.4.9](https://github.com/Yelp/paasta/tree/v0.4.9) (2014-10-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.8...v0.4.9)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.8...v0.5.0)
 
 ## [v0.4.8](https://github.com/Yelp/paasta/tree/v0.4.8) (2014-10-14)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.7...v0.4.8)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.9...v0.4.8)
+
+## [v0.4.9](https://github.com/Yelp/paasta/tree/v0.4.9) (2014-10-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.7...v0.4.9)
 
 ## [v0.4.7](https://github.com/Yelp/paasta/tree/v0.4.7) (2014-10-10)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.4.6...v0.4.7)
