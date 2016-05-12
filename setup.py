@@ -63,7 +63,6 @@ setup(
     scripts=[
         'paasta_tools/am_i_mesos_leader.py',
         'paasta_tools/autoscale_all_services.py',
-        'paasta_tools/autoscale_cluster.py',
         'paasta_tools/check_marathon_services_replication.py',
         'paasta_tools/check_mesos_resource_utilization.py',
         'paasta_tools/cleanup_chronos_jobs.py',
@@ -89,5 +88,8 @@ setup(
         'paasta_tools/chronos_rerun.py',
     ] + glob.glob('paasta_tools/contrib/*'),
     package_data={'': ['cli/fsm/template/*/*', 'cli/schemas/*.json']},
-    entry_points={'console_scripts': ['paasta=paasta_tools.cli.cli:main']},
+    entry_points={'console_scripts': [
+        'paasta=paasta_tools.cli.cli:main',
+        'paasta_autoscale_cluster=paasta_tools.autoscale_cluster:main',
+    ]},
 )
