@@ -477,16 +477,17 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
 def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if 'verbose' in kwargs and kwargs['verbose'] > 0:
-        verbose_flag = '-v ' * kwargs['verbose']
+        verbose_flag = ' '.join(['-v' for i in range(kwargs['verbose'])])
         timeout = 960 if subcommand == 'status' else 240
     else:
         verbose_flag = ''
         timeout = 240 if subcommand == 'status' else 60
 
     if 'app_id' in kwargs and kwargs['app_id']:
-        app_id_flag = "--appid %s " % kwargs['app_id']
+        app_id_flag = "--appid %s" % kwargs['app_id']
     else:
         app_id_flag = ''
+
     if 'delta' in kwargs and kwargs['delta']:
         delta_flag = "--delta %s" % kwargs['delta']
     else:
@@ -494,17 +495,17 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
 
     ssh_flag = '-t' if stream else '-n'
 
-    command = 'ssh -A %(ssh_flag)s %(master)s sudo paasta_serviceinit %(subcommand)s ' \
-        '-s %(service)s -i %(instances)s %(verbose_flag)s%(app_id_flag)s%(delta_flag)s' % {
-            'ssh_flag': ssh_flag,
-            'master': master,
-            'subcommand': subcommand,
-            'service': service,
-            'instances': instances,
-            'verbose_flag': verbose_flag,
-            'app_id_flag': app_id_flag,
-            'delta_flag': delta_flag
-        }
+    command_parts = [
+        "ssh -A %s %s sudo paasta_serviceinit" % (ssh_flag, master),
+        "-s %s" % service,
+        "-i %s" % instances,
+        verbose_flag,
+        app_id_flag,
+        delta_flag,
+        subcommand
+    ]
+    command_without_empty_strings = [part for part in command_parts if part != '']
+    command = ' '.join(command_without_empty_strings)
     log.debug("Running Command: %s" % command)
     _, output = _run(command, timeout=timeout, stream=stream)
     return output
