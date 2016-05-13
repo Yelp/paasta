@@ -39,6 +39,7 @@ Submodules
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
    paasta_tools.paasta_execute_docker_command
+   paasta_tools.paasta_maintenance
    paasta_tools.paasta_metastatus
    paasta_tools.paasta_serviceinit
    paasta_tools.remote_git
