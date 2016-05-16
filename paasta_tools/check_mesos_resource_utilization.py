@@ -21,12 +21,10 @@ isn't the leader, the script exits immediately.
 """
 import argparse
 import logging
-import sys
 
 import pysensu_yelp
 
 from paasta_tools.mesos_tools import get_mesos_stats
-from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config
 
 
@@ -113,8 +111,4 @@ def main():
 
 
 if __name__ == "__main__":
-    if is_mesos_leader():
-        main()
-    else:
-        print "No the leader. Exiting 0."
-        sys.exit(0)
+    main()

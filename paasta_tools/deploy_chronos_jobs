@@ -1,4 +1,2 @@
 #!/bin/bash
-if am_i_mesos_leader >/dev/null; then
-  list_chronos_jobs | shuf | xargs -n 1 -r -P 5 setup_chronos_job
-fi
+list_chronos_jobs | shuf | xargs -n 1 -r -P 5 setup_chronos_job
