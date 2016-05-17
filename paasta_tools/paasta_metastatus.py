@@ -17,6 +17,7 @@ import copy
 import sys
 from collections import Counter
 from collections import defaultdict
+from collections import namedtuple
 from collections import OrderedDict
 
 from httplib2 import ServerNotFoundError
@@ -38,6 +39,8 @@ from paasta_tools.mesos_tools import MasterNotAvailableException
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
+
+HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
 
 
 def parse_args():
@@ -149,14 +152,14 @@ def assert_cpu_health(metrics, threshold=10):
         return (PaastaColors.red("Error reading total available cpu from mesos!"), False)
 
     if check_threshold(perc_used, threshold):
-        return ("CPUs: %.2f / %d in use (%s)"
-                % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
-                True)
+        return HealthCheckResult(message="CPUs: %.2f / %d in use (%s)"
+                                 % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
+                                 healthy=True)
     else:
-        return (PaastaColors.red(
-                "CRITICAL: Less than %d%% CPUs available. (Currently using %.2f%% of %d)"
-                % (threshold, perc_used, total)),
-                False)
+        return HealthCheckResult(message=PaastaColors.red(
+            "CRITICAL: Less than %d%% CPUs available. (Currently using %.2f%% of %d)"
+            % (threshold, perc_used, total)),
+            healthy=False)
 
 
 def assert_memory_health(metrics, threshold=10):
@@ -168,14 +171,17 @@ def assert_memory_health(metrics, threshold=10):
         return (PaastaColors.red("Error reading total available memory from mesos!"), False)
 
     if check_threshold(perc_used, threshold):
-        return ("Memory: %0.2f / %0.2fGB in use (%s)"
-                % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
-                True)
+        return HealthCheckResult(
+            message="Memory: %0.2f / %0.2fGB in use (%s)"
+            % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
+            healthy=True
+        )
     else:
-        return (PaastaColors.red(
-                "CRITICAL: Less than %d%% memory available. (Currently using %.2f%% of %.2fGB)"
-                % (threshold, perc_used, total)),
-                False)
+        return HealthCheckResult(
+            message=PaastaColors.red("CRITICAL: Less than %d%% memory available. (Currently using %.2f%% of %.2fGB)"
+                                     % (threshold, perc_used, total)),
+            healthy=False
+        )
 
 
 def assert_disk_health(metrics, threshold=10):
@@ -187,23 +193,27 @@ def assert_disk_health(metrics, threshold=10):
         return (PaastaColors.red("Error reading total available disk from mesos!"), False)
 
     if check_threshold(perc_used, threshold):
-        return ("Disk: %0.2f / %0.2fGB in use (%s)"
-                % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
-                True)
+        return HealthCheckResult(
+            message="Disk: %0.2f / %0.2fGB in use (%s)"
+            % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
+            healthy=True
+        )
     else:
-        return (PaastaColors.red(
-            "CRITICAL: Less than %d%% disk available. (Currently using %.2f%%)"
-            % (threshold, perc_used)),
-            False)
+        return HealthCheckResult(
+            message=PaastaColors.red("CRITICAL: Less than %d%% disk available. (Currently using %.2f%%)"
+                                     % (threshold, perc_used)),
+            healthy=False
+        )
 
 
 def assert_tasks_running(metrics):
     running = metrics['master/tasks_running']
     staging = metrics['master/tasks_staging']
     starting = metrics['master/tasks_starting']
-    return ("tasks: running: %d staging: %d starting: %d"
-            % (running, staging, starting),
-            True)
+    return HealthCheckResult(
+        message="Tasks: running: %d staging: %d starting: %d" % (running, staging, starting),
+        healthy=True
+    )
 
 
 def assert_no_duplicate_frameworks(state):
@@ -233,32 +243,41 @@ def assert_no_duplicate_frameworks(state):
                           % (framework, count)))
         else:
             output.append("    framework: %s count: %d" % (framework, count))
-    return (("\n").join(output), ok)
+    return HealthCheckResult(
+        message=("\n").join(output),
+        healthy=ok
+    )
 
 
 def assert_slave_health(metrics):
     active, inactive = metrics['master/slaves_active'], metrics['master/slaves_inactive']
-    return ("slaves: active: %d inactive: %d"
-            % (active, inactive),
-            True)
+    return HealthCheckResult(
+        message="Slaves: active: %d inactive: %d" % (active, inactive),
+        healthy=True
+    )
 
 
 def assert_quorum_size(state):
     masters, quorum = get_num_masters(state), get_mesos_quorum(state)
     if quorum_ok(masters, quorum):
-        return ("quorum: masters: %d configured quorum: %d "
-                % (masters, quorum),
-                True)
+        return HealthCheckResult(
+            message="Quorum: masters: %d configured quorum: %d " % (masters, quorum),
+            healthy=True
+        )
     else:
-        return (PaastaColors.red(
-                "CRITICAL: Number of masters (%d) less than configured quorum(%d)."
-                % (masters, quorum)),
-                False)
+        return HealthCheckResult(
+            message=PaastaColors.red("CRITICAL: Number of masters (%d) less than configured quorum(%d)."
+                                     % (masters, quorum)),
+            healthy=False
+        )
 
 
 def assert_extra_slave_data(mesos_state, humanize_output=False):
     if not slaves_registered(mesos_state):
-        return ('  No mesos slaves registered on this cluster!', False)
+        return HealthCheckResult(
+            message='  No mesos slaves registered on this cluster!',
+            healthy=False
+        )
     extra_slave_data = get_extra_mesos_slave_data(mesos_state)
     rows = [('Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)')]
 
@@ -280,8 +299,11 @@ def assert_extra_slave_data(mesos_state, humanize_output=False):
                 '%.2f/%.2f' % (slave['free_resources']['disk'], slave['total_resources']['disk']),
             )
         rows.append(formatted_line)
-    result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
-    return result
+
+    return HealthCheckResult(
+        message='\n'.join(('    %s' % row for row in format_table(rows)))[2:],
+        healthy=True
+    )
 
 
 def assert_extra_attribute_data(mesos_state, humanize_output=False):
@@ -447,11 +469,11 @@ def status_for_results(results):
 def print_results_for_healthchecks(summary, ok, results, verbose):
     print summary
     if verbose >= 1:
-        for line in [res[0] for res in results]:
+        for line in [res.message for res in results]:
             print_with_indent(line, 2)
     elif not ok:
         critical_results = critical_events_in_outputs(results)
-        for line in [res[0] for res in critical_results]:
+        for line in [res.message for res in critical_results]:
             print_with_indent(line, 2)
 
 
