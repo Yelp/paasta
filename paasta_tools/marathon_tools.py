@@ -295,7 +295,7 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
         default = {}
         if service_namespace_config.is_in_smartstack():
-            default = {'delay': 30}
+            default = {'delay': 60}
         return self.config_dict.get('drain_method_params', default)
 
     def get_calculated_constraints(self, service_namespace_config):

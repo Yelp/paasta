@@ -1011,7 +1011,7 @@ class TestMarathonTools:
             config_dict={},
             branch_dict={},
         )
-        assert fake_conf.get_drain_method_params(fake_service_namespace_config) == {'delay': 30}
+        assert fake_conf.get_drain_method_params(fake_service_namespace_config) == {'delay': 60}
 
     def test_get_instances_in_config(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
