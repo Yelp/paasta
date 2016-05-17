@@ -47,6 +47,7 @@ import traceback
 from collections import defaultdict
 
 import pysensu_yelp
+import requests_cache
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
@@ -565,6 +566,9 @@ def main():
         logging.basicConfig(level=logging.DEBUG)
     else:
         logging.basicConfig(level=logging.WARNING)
+
+    # Setting up transparent cache for http API calls
+    requests_cache.install_cache("setup_marathon_jobs", backend="memory")
 
     marathon_config = get_main_marathon_config()
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
