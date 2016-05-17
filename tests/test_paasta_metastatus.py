@@ -548,8 +548,10 @@ def test_generate_summary_for_results_critical():
 
 
 def test_critical_events_in_outputs():
-    assert (paasta_metastatus.critical_events_in_outputs([('myservice', True), ('myservice_false', False)]) ==
-            [('myservice_false', False)])
+    assert (paasta_metastatus.critical_events_in_outputs([
+        paasta_metastatus.HealthCheckResult('myservice', True),
+        paasta_metastatus.HealthCheckResult('myservice_false', False)
+    ]) == [('myservice_false', False)])
 
 
 def test_filter_mesos_state_metrics():

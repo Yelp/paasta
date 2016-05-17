@@ -149,7 +149,7 @@ def assert_cpu_health(metrics, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return HealthCheckResult(message=PaastaColors.red("Error reading total available cpu from mesos!"),
+        return HealthCheckResult(message="Error reading total available cpu from mesos!",
                                  healthy=False)
 
     if check_threshold(perc_used, threshold):
@@ -157,10 +157,9 @@ def assert_cpu_health(metrics, threshold=10):
                                  % (used, total, PaastaColors.green("%.2f%%" % perc_used)),
                                  healthy=True)
     else:
-        return HealthCheckResult(message=PaastaColors.red(
-            "CRITICAL: Less than %d%% CPUs available. (Currently using %.2f%% of %d)"
-            % (threshold, perc_used, total)),
-            healthy=False)
+        return HealthCheckResult(message="CRITICAL: Less than %d%% CPUs available. (Currently using %.2f%% of %d)"
+                                 % (threshold, perc_used, total),
+                                 healthy=False)
 
 
 def assert_memory_health(metrics, threshold=10):
@@ -169,7 +168,7 @@ def assert_memory_health(metrics, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return HealthCheckResult(message=PaastaColors.red("Error reading total available memory from mesos!"),
+        return HealthCheckResult(message="Error reading total available memory from mesos!",
                                  healthy=False)
 
     if check_threshold(perc_used, threshold):
@@ -180,9 +179,9 @@ def assert_memory_health(metrics, threshold=10):
         )
     else:
         return HealthCheckResult(
-            message=PaastaColors.red("CRITICAL: Less than %d%% memory available. (Currently using %.2f%% of %.2fGB)"
-                                     % (threshold, perc_used, total)),
-            healthy=False
+            message="CRITICAL: Less than %d%% memory available. (Currently using %.2f%% of %.2fGB)"
+                    % (threshold, perc_used, total),
+                    healthy=False
         )
 
 
@@ -192,7 +191,7 @@ def assert_disk_health(metrics, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return HealthCheckResult(message=PaastaColors.red("Error reading total available disk from mesos!"),
+        return HealthCheckResult(message="Error reading total available disk from mesos!",
                                  healthy=False)
 
     if check_threshold(perc_used, threshold):
@@ -203,8 +202,7 @@ def assert_disk_health(metrics, threshold=10):
         )
     else:
         return HealthCheckResult(
-            message=PaastaColors.red("CRITICAL: Less than %d%% disk available. (Currently using %.2f%%)"
-                                     % (threshold, perc_used)),
+            message="CRITICAL: Less than %d%% disk available. (Currently using %.2f%%)" % (threshold, perc_used),
             healthy=False
         )
 
@@ -241,9 +239,8 @@ def assert_no_duplicate_frameworks(state):
     for framework, count in framework_counts.iteritems():
         if count > 1:
             ok = False
-            output.append(PaastaColors.red(
-                          "    CRITICAL: Framework %s has %d instances running--expected no more than 1."
-                          % (framework, count)))
+            output.append("    CRITICAL: Framework %s has %d instances running--expected no more than 1."
+                          % (framework, count))
         else:
             output.append("    Framework: %s count: %d" % (framework, count))
     return HealthCheckResult(
@@ -269,8 +266,7 @@ def assert_quorum_size(state):
         )
     else:
         return HealthCheckResult(
-            message=PaastaColors.red("CRITICAL: Number of masters (%d) less than configured quorum(%d)."
-                                     % (masters, quorum)),
+            message="CRITICAL: Number of masters (%d) less than configured quorum(%d)." % (masters, quorum),
             healthy=False
         )
 
@@ -384,7 +380,7 @@ def run_healthchecks_with_param(param, healthcheck_functions, format_options={})
 def assert_marathon_apps(client):
     num_apps = len(client.list_apps())
     if num_apps < 1:
-        return HealthCheckResult(message=PaastaColors.red("CRITICAL: No marathon apps running"),
+        return HealthCheckResult(message="CRITICAL: No marathon apps running",
                                  healthy=False)
     else:
         return HealthCheckResult(message="marathon apps: %d" % num_apps, healthy=True)
@@ -440,10 +436,9 @@ def get_marathon_client(marathon_config):
 
 
 def critical_events_in_outputs(healthcheck_outputs):
-    """Given a list of healthcheck pairs (output, healthy), return
-    those which are unhealthy.
+    """Given a list of HealthCheckResults return those which are unhealthy.
     """
-    return [healthcheck for healthcheck in healthcheck_outputs if healthcheck[-1] is False]
+    return [healthcheck for healthcheck in healthcheck_outputs if healthcheck.healthy is False]
 
 
 def generate_summary_for_check(name, ok):
@@ -465,12 +460,13 @@ def status_for_results(results):
 def print_results_for_healthchecks(summary, ok, results, verbose):
     print summary
     if verbose >= 1:
-        for line in [res.message for res in results]:
-            print_with_indent(line, 2)
+        for health_check_result in results:
+            if not health_check_result.healthy:
+                print_with_indent(PaastaColors.RED(health_check_result.message), 2)
     elif not ok:
-        critical_results = critical_events_in_outputs(results)
-        for line in [res.message for res in critical_results]:
-            print_with_indent(line, 2)
+        unhealthy_results = critical_events_in_outputs(results)
+        for health_check_result in unhealthy_results:
+            print_with_indent(PaastaColors.RED(health_check_result.message), 2)
 
 
 def main():
