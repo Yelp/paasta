@@ -154,8 +154,8 @@ def test_assert_no_duplicate_frameworks():
     }
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
 
-    expected_output = "\n".join(["frameworks:"] +
-                                map(lambda x: '    framework: %s count: 1' % x['name'], state['frameworks']))
+    expected_output = "\n".join(["Frameworks:"] +
+                                map(lambda x: '    Framework: %s count: 1' % x['name'], state['frameworks']))
     assert output == expected_output
     assert ok
 
@@ -229,7 +229,7 @@ def test_assert_slave_health():
         'master/slaves_inactive': 10
     }
     output, ok = paasta_metastatus.assert_slave_health(fake_slave_info)
-    assert "slaves: active: 10 inactive: 10" in output
+    assert "Slaves: active: 10 inactive: 10" in output
     assert ok
 
 
@@ -240,7 +240,7 @@ def test_assert_tasks_running():
         'master/tasks_starting': 10,
     }
     output, ok = paasta_metastatus.assert_tasks_running(fake_tasks_info)
-    assert "tasks: running: 20 staging: 10 starting: 10" in output
+    assert "Tasks: running: 20 staging: 10 starting: 10" in output
     assert ok
 
 
@@ -251,7 +251,7 @@ def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_quorum_size.return_value = 3
     output, health = paasta_metastatus.assert_quorum_size({})
     assert health
-    assert 'quorum: masters: 5 configured quorum: 3 ' in output
+    assert 'Quorum: masters: 5 configured quorum: 3 ' in output
 
 
 @patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
@@ -309,14 +309,14 @@ def test_get_mesos_status(
         "Memory: 2.00 / 10.00GB in use (%s)" % PaastaColors.green("20.00%")
     expected_disk_output = "Disk: 3.00 / 10.00GB in use (%s)" % PaastaColors.green("30.00%")
     expected_tasks_output = \
-        "tasks: running: 3 staging: 4 starting: 0"
+        "Tasks: running: 3 staging: 4 starting: 0"
     expected_duplicate_frameworks_output = \
-        "frameworks:\n%s" % \
+        "Frameworks:\n%s" % \
         PaastaColors.red("    CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1.")
     expected_slaves_output = \
-        "slaves: active: 4 inactive: 0"
+        "Slaves: active: 4 inactive: 0"
     expected_masters_quorum_output = \
-        "quorum: masters: 5 configured quorum: 3 "
+        "Quorum: masters: 5 configured quorum: 3 "
 
     results = paasta_metastatus.get_mesos_status(mesos_state, verbosity=0)
 

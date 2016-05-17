@@ -149,7 +149,8 @@ def assert_cpu_health(metrics, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return (PaastaColors.red("Error reading total available cpu from mesos!"), False)
+        return HealthCheckResult(message=PaastaColors.red("Error reading total available cpu from mesos!"),
+                                 healthy=False)
 
     if check_threshold(perc_used, threshold):
         return HealthCheckResult(message="CPUs: %.2f / %d in use (%s)"
@@ -168,7 +169,8 @@ def assert_memory_health(metrics, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return (PaastaColors.red("Error reading total available memory from mesos!"), False)
+        return HealthCheckResult(message=PaastaColors.red("Error reading total available memory from mesos!"),
+                                 healthy=False)
 
     if check_threshold(perc_used, threshold):
         return HealthCheckResult(
@@ -190,7 +192,8 @@ def assert_disk_health(metrics, threshold=10):
     try:
         perc_used = percent_used(total, used)
     except ZeroDivisionError:
-        return (PaastaColors.red("Error reading total available disk from mesos!"), False)
+        return HealthCheckResult(message=PaastaColors.red("Error reading total available disk from mesos!"),
+                                 healthy=False)
 
     if check_threshold(perc_used, threshold):
         return HealthCheckResult(
@@ -232,7 +235,7 @@ def assert_no_duplicate_frameworks(state):
     """
     frameworks = state['frameworks']
     framework_counts = OrderedDict(sorted(Counter([fw['name'] for fw in frameworks]).items()))
-    output = ["frameworks:"]
+    output = ["Frameworks:"]
     ok = True
 
     for framework, count in framework_counts.iteritems():
@@ -242,7 +245,7 @@ def assert_no_duplicate_frameworks(state):
                           "    CRITICAL: Framework %s has %d instances running--expected no more than 1."
                           % (framework, count)))
         else:
-            output.append("    framework: %s count: %d" % (framework, count))
+            output.append("    Framework: %s count: %d" % (framework, count))
     return HealthCheckResult(
         message=("\n").join(output),
         healthy=ok
@@ -338,10 +341,10 @@ def assert_extra_attribute_data(mesos_state, humanize_output=False):
                     )
                 rows.append(formatted_line)
     if len(rows) == 0:
-        result = ("  No slave attributes that apply to more than one slave were detected.", True)
+        return HealthCheckResult(message="  No slave attributes that apply to more than one slave were detected.",
+                                 healthy=True)
     else:
-        result = ('\n'.join(('    %s' % row for row in format_table(rows)))[2:], True)
-    return result
+        return HealthCheckResult(message='\n'.join(('    %s' % row for row in format_table(rows)))[2:], healthy=True)
 
 
 def slaves_registered(mesos_state):
@@ -381,27 +384,20 @@ def run_healthchecks_with_param(param, healthcheck_functions, format_options={})
 def assert_marathon_apps(client):
     num_apps = len(client.list_apps())
     if num_apps < 1:
-        return (PaastaColors.red(
-            "CRITICAL: No marathon apps running"),
-            False)
+        return HealthCheckResult(message=PaastaColors.red("CRITICAL: No marathon apps running"),
+                                 healthy=False)
     else:
-        return ("marathon apps: %d"
-                % num_apps,
-                True)
+        return HealthCheckResult(message="marathon apps: %d" % num_apps, healthy=True)
 
 
 def assert_marathon_tasks(client):
     num_tasks = len(client.list_tasks())
-    return ("marathon tasks: %d"
-            % num_tasks,
-            True)
+    return HealthCheckResult(message="marathon tasks: %d" % num_tasks, healthy=True)
 
 
 def assert_marathon_deployments(client):
     num_deployments = len(client.list_deployments())
-    return ("marathon deployments: %d"
-            % num_deployments,
-            True)
+    return HealthCheckResult(message="marathon deployments: %d" % num_deployments, healthy=True)
 
 
 def get_marathon_status(client):
@@ -418,7 +414,7 @@ def assert_chronos_scheduled_jobs(client):
     :returns: a tuple of a string and a bool containing representing if it is ok or not
     """
     num_jobs = len(chronos_tools.filter_enabled_jobs(client.list()))
-    return ("Enabled chronos jobs: %d" % num_jobs, True)
+    return HealthCheckResult(message="Enabled chronos jobs: %d" % num_jobs, healthy=True)
 
 
 def get_chronos_status(chronos_client):
