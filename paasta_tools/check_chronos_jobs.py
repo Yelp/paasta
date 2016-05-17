@@ -167,7 +167,8 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster
     return output, sensu_status
 
 
-def main(args):
+def main():
+    args = parse_args()
     soa_dir = args.soa_dir
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
@@ -205,6 +206,6 @@ def main(args):
             soa_dir=soa_dir,
         )
 
+
 if __name__ == '__main__':
-    args = parse_args()
-    main(args)
+    main()
