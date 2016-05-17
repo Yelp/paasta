@@ -1,7 +1,19 @@
 # Change Log
 
-## [0.19.6](https://github.com/Yelp/paasta/tree/0.19.6) (2016-05-16)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.5...0.19.6)
+## [0.19.7](https://github.com/Yelp/paasta/tree/0.19.7) (2016-05-17)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.6...0.19.7)
+
+**Closed issues:**
+
+- Deb packages don't list python2.7 dependency [\#477](https://github.com/Yelp/paasta/issues/477)
+
+**Merged pull requests:**
+
+- install requests\_cache for setup\_marathon\_job, restore fast bouncing [\#528](https://github.com/Yelp/paasta/pull/528) ([huadongliu](https://github.com/huadongliu))
+- Hardcode a python2.7 dep to be compatible with all ubuntu [\#526](https://github.com/Yelp/paasta/pull/526) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.19.6](https://github.com/Yelp/paasta/tree/v0.19.6) (2016-05-17)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.5...v0.19.6)
 
 **Merged pull requests:**
 
