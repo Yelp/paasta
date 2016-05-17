@@ -1,2 +1,2 @@
 #!/bin/bash
-list_marathon_service_instances | shuf | xargs --max-args=64 --no-run-if-empty --max-procs=4 setup_marathon_job
+list_marathon_service_instances | shuf | xargs -n 1 -r -P 5 setup_marathon_job
