@@ -461,12 +461,14 @@ def print_results_for_healthchecks(summary, ok, results, verbose):
     print summary
     if verbose >= 1:
         for health_check_result in results:
-            if not health_check_result.healthy:
-                print_with_indent(PaastaColors.RED(health_check_result.message), 2)
+            if health_check_result.healthy:
+                print_with_indent(health_check_result.message), 2
+            else:
+                print_with_indent(PaastaColors.red(health_check_result.message), 2)
     elif not ok:
         unhealthy_results = critical_events_in_outputs(results)
         for health_check_result in unhealthy_results:
-            print_with_indent(PaastaColors.RED(health_check_result.message), 2)
+            print_with_indent(PaastaColors.red(health_check_result.message), 2)
 
 
 def main():
