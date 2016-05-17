@@ -1,5 +1,27 @@
 # Change Log
 
+## [0.19.6](https://github.com/Yelp/paasta/tree/0.19.6) (2016-05-16)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.5...0.19.6)
+
+**Merged pull requests:**
+
+- Dont try to do mesos leader detection in any script [\#522](https://github.com/Yelp/paasta/pull/522) ([solarkennedy](https://github.com/solarkennedy))
+- Migrate chronos scripts to use console\_scripts [\#520](https://github.com/Yelp/paasta/pull/520) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.19.5](https://github.com/Yelp/paasta/tree/v0.19.5) (2016-05-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.4...v0.19.5)
+
+**Merged pull requests:**
+
+- make the command the last arg to serviceinit [\#523](https://github.com/Yelp/paasta/pull/523) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- just pass on non-paasta rather than skipping in graceful\_container\_drain.py [\#518](https://github.com/Yelp/paasta/pull/518) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Move http request cache install up to paasta serviceinit [\#517](https://github.com/Yelp/paasta/pull/517) ([huadongliu](https://github.com/huadongliu))
+- Make paasta\_autoscale\_cluster and use console\_scripts for it [\#510](https://github.com/Yelp/paasta/pull/510) ([solarkennedy](https://github.com/solarkennedy))
+- First pass at 'paasta maintenance' command [\#438](https://github.com/Yelp/paasta/pull/438) ([nhandler](https://github.com/nhandler))
+
+## [v0.19.4](https://github.com/Yelp/paasta/tree/v0.19.4) (2016-05-12)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.3...v0.19.4)
+
 ## [v0.19.3](https://github.com/Yelp/paasta/tree/v0.19.3) (2016-05-12)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.2...v0.19.3)
 
@@ -571,7 +593,7 @@
 - Upgrade mesos in itests to 0.24.1 [\#233](https://github.com/Yelp/paasta/pull/233) ([nhandler](https://github.com/nhandler))
 
 ## [v0.17.11](https://github.com/Yelp/paasta/tree/v0.17.11) (2016-03-03)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.10...v0.17.11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.10n...v0.17.11)
 
 **Closed issues:**
 
@@ -595,21 +617,21 @@
 - Added missing pool docs [\#271](https://github.com/Yelp/paasta/pull/271) ([solarkennedy](https://github.com/solarkennedy))
 - Fix metastatus -vv [\#262](https://github.com/Yelp/paasta/pull/262) ([nhandler](https://github.com/nhandler))
 
-## [v0.17.10](https://github.com/Yelp/paasta/tree/v0.17.10) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.10n...v0.17.10)
-
 ## [v0.17.10n](https://github.com/Yelp/paasta/tree/v0.17.10n) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9...v0.17.10n)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.10...v0.17.10n)
+
+## [v0.17.10](https://github.com/Yelp/paasta/tree/v0.17.10) (2016-02-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9n...v0.17.10)
 
 **Merged pull requests:**
 
 - changed do\_bounce to kill task w/the batch endpoint [\#267](https://github.com/Yelp/paasta/pull/267) ([mjksmith](https://github.com/mjksmith))
 
-## [v0.17.9](https://github.com/Yelp/paasta/tree/v0.17.9) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9n...v0.17.9)
-
 ## [v0.17.9n](https://github.com/Yelp/paasta/tree/v0.17.9n) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.8...v0.17.9n)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9...v0.17.9n)
+
+## [v0.17.9](https://github.com/Yelp/paasta/tree/v0.17.9) (2016-02-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.8...v0.17.9)
 
 **Closed issues:**
 
