@@ -10,7 +10,7 @@ accordingly); secondly, so that tasks can be protected from especially noisy
 neighbours on a box. That is, if a task under-specifies the resources it
 requires to run, or in another case, has a bug that means that it consumes far
 more resources than it *should* require, then the offending tasks can be
-isolated effectively, preventing them from having a negative impact on it's
+isolated effectively, preventing them from having a negative impact on its
 neighbours.
 
 This document is designed to give a more detailed review of how Mesos
@@ -121,7 +121,7 @@ This tells the kernel to limit the memory available to processes in the cgroup
 to that shown in the config.
 
 However, one caveat with only setting *this* value is that swap is not
-accounted for. As a result, once a container reaches it's memory limit, it may
+accounted for. As a result, once a container reaches its memory limit, it may
 start swapping, rather than being killed. Without particular kernel cmdline
 options, swapping is *not* accounted for the cgroup.
 
@@ -153,7 +153,7 @@ CPUs
 CPU enforcement is implemented slightly differently. Many people expect the
 value defined in the ``cpus`` field in a service's soa-configs to map to a
 number of cores that are reserved for a task. However, isolating CPU time like
-this can be particularly wasteful; unless a task spends 100% of it's time on
+this can be particularly wasteful; unless a task spends 100% of its time on
 CPU (and thus has *no* I/O), then there is no need to prevent other tasks from
 running on the spare CPU time available.
 
@@ -172,9 +172,9 @@ Some notes on this:
   - The amount of time tasks get is proportional to the number of tasks on the
     host. If there are 3 tasks on the host, with ``cpu`` values 10,5,5 then the
     time will be split 50%, 25%, 25%. However, if a fourth task is run, with
-    ``cpu`` set to 1000, then that time becomes 33%, 16.5%, 16.5%, 33%.
+    ``cpu`` set to 10, then that time becomes 33%, 16.5%, 16.5%, 33%.
   - Any 'spare' cpu cycles are redistributed by the CPU, so if a task does
-    *not* use it's 'share', then other cgroups will be allocated this spare CPU
+    *not* use its 'share', then other cgroups will be allocated this spare CPU
     time.
   - All threads inside a cgroup are considered when the scheduler decides the
     fair share of time. That is, if your container launches multiple tasks,
