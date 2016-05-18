@@ -347,30 +347,33 @@ def slaves_registered(mesos_state):
     return 'slaves' in mesos_state and mesos_state['slaves']
 
 
-def get_mesos_status(mesos_state, verbosity, humanize_output=False):
-    """Gathers information about the mesos cluster.
-       :return: tuple of a string containing the status and a bool representing if it is ok or not
+def get_mesos_metrics_health(mesos_metrics):
+    """Perform healthchecks against mesos metrics.
+    :param mesos_metrics: a dict exposing the mesos metrics described in
+    https://mesos.apache.org/documentation/latest/monitoring/
+    :returns: a list of HealthCheckResult tuples
     """
-
-    cluster_results = run_healthchecks_with_param(mesos_state, [assert_quorum_size, assert_no_duplicate_frameworks])
-
-    metrics = get_mesos_stats()
-    metrics_results = run_healthchecks_with_param(metrics, [
+    metrics_results = run_healthchecks_with_param(mesos_metrics, [
         assert_cpu_health,
         assert_memory_health,
         assert_disk_health,
         assert_tasks_running,
         assert_slave_health,
     ])
+    return metrics_results
 
-    if verbosity == 2:
-        metrics_results.extend(run_healthchecks_with_param(
-            mesos_state, [assert_extra_attribute_data], {"humanize_output": humanize_output}))
-    elif verbosity >= 3:
-        metrics_results.extend(run_healthchecks_with_param(
-            mesos_state, [assert_extra_slave_data], {"humanize_output": humanize_output}))
 
-    return cluster_results + metrics_results
+def get_mesos_state_status(mesos_state):
+    """Perform healthchecks against mesos state.
+    :param mesos_state: a dict exposing the mesos state described in
+    https://mesos.apache.org/documentation/latest/endpoints/master/state.json/
+    :returns: a list of HealthCheckResult tuples
+    """
+    cluster_results = run_healthchecks_with_param(
+        mesos_state,
+        [assert_quorum_size, assert_no_duplicate_frameworks]
+    )
+    return cluster_results
 
 
 def run_healthchecks_with_param(param, healthcheck_functions, format_options={}):
@@ -483,8 +486,14 @@ def main():
         # then bomb out early
         print(PaastaColors.red("CRITICAL:  %s" % e.message))
         sys.exit(2)
-    mesos_results = get_mesos_status(mesos_state, verbosity=args.verbose,
-                                     humanize_output=args.humanize)
+
+    mesos_state_status = get_mesos_state_status(
+        mesos_state=mesos_state,
+    )
+    metrics = get_mesos_stats()
+    mesos_metrics_status = get_mesos_metrics_health(mesos_metrics=metrics)
+
+    all_mesos_results = mesos_state_status + mesos_metrics_status
 
     # Check to see if Marathon should be running here by checking for config
     try:
@@ -514,7 +523,7 @@ def main():
             print(PaastaColors.red("CRITICAL: Unable to contact Chronos! Error: %s" % e))
             sys.exit(2)
 
-    mesos_ok = all(status_for_results(mesos_results))
+    mesos_ok = all(status_for_results(all_mesos_results))
     marathon_ok = all(status_for_results(marathon_results))
     chronos_ok = all(status_for_results(chronos_results))
 
@@ -522,7 +531,7 @@ def main():
     marathon_summary = generate_summary_for_check("Marathon", marathon_ok)
     chronos_summary = generate_summary_for_check("Chronos", chronos_ok)
 
-    print_results_for_healthchecks(mesos_summary, mesos_ok, mesos_results, args.verbose)
+    print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
     print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
     print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
 
