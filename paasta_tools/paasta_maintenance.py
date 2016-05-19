@@ -25,6 +25,7 @@ from requests import Session
 from requests.exceptions import HTTPError
 
 from paasta_tools.mesos_tools import get_mesos_leader
+from paasta_tools.mesos_tools import MESOS_MASTER_PORT
 
 
 def parse_args():
@@ -64,7 +65,7 @@ def base_api():
     leader = get_mesos_leader()
 
     def execute_request(method, endpoint, **kwargs):
-        url = "%s%s" % (leader, endpoint)
+        url = "http://%s:%d%s" % (leader, MESOS_MASTER_PORT, endpoint)
         timeout = 15
         s = Session()
         s.auth = load_credentials()
