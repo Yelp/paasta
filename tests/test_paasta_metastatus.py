@@ -453,7 +453,16 @@ def test_main_no_chronos_config():
 
 
 def test_status_for_results():
-    assert paasta_metastatus.status_for_results([('message', True), ('message', False)]) == [True, False]
+    assert paasta_metastatus.status_for_results([
+        paasta_metastatus.HealthCheckResult(
+            message='message',
+            healthy=True
+        ),
+        paasta_metastatus.HealthCheckResult(
+            message='message',
+            healthy=False
+        )
+    ]) == [True, False]
 
 
 def test_generate_summary_for_results_ok():

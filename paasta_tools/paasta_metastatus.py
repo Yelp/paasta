@@ -351,7 +351,7 @@ def resource_utillizations_from_resource_info(total, free):
     """
     return [
         ResourceUtilization(metric=field, total=total[index], free=free[index])
-        for index,field in enumerate(ResourceInfo._fields)
+        for index, field in enumerate(ResourceInfo._fields)
     ]
 
 
@@ -465,11 +465,13 @@ def generate_summary_for_check(name, ok):
     return summary
 
 
-def status_for_results(results):
-    """Given a list of (output, ok) pairs, return the ok status
-    for each pair
+def status_for_results(healthcheck_results):
+    """Given a list of HealthCheckResult tuples, return the ok status
+    for each one.
+    :param healthcheck_results: a list of HealthCheckResult tuples
+    :returns: a list of booleans.
     """
-    return [result[-1] for result in results]
+    return [result.healthy for result in healthcheck_results]
 
 
 def print_results_for_healthchecks(summary, ok, results, verbose):
