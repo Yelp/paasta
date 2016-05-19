@@ -14,6 +14,7 @@
 # limitations under the License.
 import argparse
 import copy
+import itertools
 import sys
 from collections import Counter
 from collections import defaultdict
@@ -21,7 +22,6 @@ from collections import namedtuple
 from collections import OrderedDict
 
 from httplib2 import ServerNotFoundError
-from humanize import naturalsize
 from marathon.exceptions import MarathonError
 
 from paasta_tools import chronos_tools
@@ -36,11 +36,11 @@ from paasta_tools.mesos_tools import get_mesos_stats
 from paasta_tools.mesos_tools import get_number_of_mesos_masters
 from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import MasterNotAvailableException
-from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
 
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
+ResourceInfo = namedtuple('ResourceInfo', ['cpus', 'mem', 'disk'])
 
 
 def parse_args():
@@ -271,76 +271,53 @@ def assert_quorum_size(state):
         )
 
 
-def assert_extra_slave_data(mesos_state, humanize_output=False):
-    if not slaves_registered(mesos_state):
-        return HealthCheckResult(
-            message='  No mesos slaves registered on this cluster!',
-            healthy=False
+def group_slaves_by_attribute(slaves, attribute):
+    """
+    Given the state information provided by Mesos and a mesos attribute, group the slaves
+    by that attribute.
+
+    :param slaves: a list of slave objects as defined in mesos state.
+    <https://mesos.apache.org/documentation/latest/endpoints/master/state.json/>``.
+    :param attribute: the attribute to group slaves by. This attribute must be common to all slaves.
+    :returns: groupby object, with slaves grouped by the value of the attribute
+    """
+    def key_func(slave):
+        return slave['attributes'].get(attribute, 'unknown')
+    sorted_slaves = sorted(slaves, key=key_func)
+    return itertools.groupby(sorted_slaves, key=key_func)
+
+
+def calculate_resource_utilization_for_slaves(slaves, tasks):
+    """
+    Given a list of slaves and a list of tasks, calculate the total available
+    resource available in that list of slaves, and the resources consumed by tasks
+    running on those slaves.
+
+    :param slaves: a list of slaves to calculate resource usage for
+    :param tasks: the list of tasks running in the mesos cluster
+    :returns: a dict, containing keys for "free" and "total" resources. Each of these keys
+    is a ResourceInfo tuple, exposing a number for cpu, disk and mem.
+    """
+    resource_total_dict = Counter()
+    for slave in slaves:
+        filtered_resources = filter_mesos_state_metrics(slave['resources'])
+        resource_total_dict.update(Counter(filtered_resources))
+    resource_free_dict = copy.deepcopy(resource_total_dict)
+    for task in tasks:
+        task_resources = task['resources']
+        resource_free_dict.subtract(Counter(filter_mesos_state_metrics(task_resources)))
+    return {
+        "free": ResourceInfo(
+            cpus=resource_free_dict['cpus'],
+            disk=resource_free_dict['disk'],
+            mem=resource_free_dict['mem']
+        ),
+        "total": ResourceInfo(
+            cpus=resource_total_dict['cpus'],
+            disk=resource_total_dict['disk'],
+            mem=resource_total_dict['mem'],
         )
-    extra_slave_data = get_extra_mesos_slave_data(mesos_state)
-    rows = [('Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)')]
-
-    for slave in extra_slave_data:
-        if humanize_output:
-            formatted_line = (
-                slave['hostname'],
-                '%.2f/%.2f' % (slave['free_resources']['cpus'], slave['total_resources']['cpus']),
-                '%s/%s' % (naturalsize(slave['free_resources']['mem'] * 1024 * 1024, gnu=True),
-                           naturalsize(slave['total_resources']['mem'] * 1024 * 1024, gnu=True)),
-                '%s/%s' % (naturalsize(slave['free_resources']['disk'] * 1024 * 1024, gnu=True),
-                           naturalsize(slave['total_resources']['disk'] * 1024 * 1024, gnu=True)),
-            )
-        else:
-            formatted_line = (
-                slave['hostname'],
-                '%.2f/%.2f' % (slave['free_resources']['cpus'], slave['total_resources']['cpus']),
-                '%.2f/%.2f' % (slave['free_resources']['mem'], slave['total_resources']['mem']),
-                '%.2f/%.2f' % (slave['free_resources']['disk'], slave['total_resources']['disk']),
-            )
-        rows.append(formatted_line)
-
-    return HealthCheckResult(
-        message='\n'.join(('    %s' % row for row in format_table(rows)))[2:],
-        healthy=True
-    )
-
-
-def assert_extra_attribute_data(mesos_state, humanize_output=False):
-    if not slaves_registered(mesos_state):
-        return ('  No mesos slaves registered on this cluster!', False)
-    extra_attribute_data = list(get_extra_mesos_attribute_data(mesos_state))
-    rows = []
-    for attribute, resource_dict in extra_attribute_data:
-        resource_free_dict = resource_dict['free']
-        resource_total_dict = resource_dict['total']
-        if len(resource_free_dict.keys()) >= 2:  # filter out attributes that apply to every slave in the cluster
-            rows.append((attribute.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)'))
-            for attribute_location in sorted(resource_free_dict.keys()):
-                resources_remaining = resource_free_dict[attribute_location]
-                resources_total = resource_total_dict[attribute_location]
-
-                if humanize_output:
-                    formatted_line = (
-                        attribute_location,
-                        '%.2f/%.2f' % (resources_remaining['cpus'], resources_total['cpus']),
-                        '%s/%s' % (naturalsize(resources_remaining['mem'] * 1024 * 1024, gnu=True),
-                                   naturalsize(resources_total['mem'] * 1024 * 1024, gnu=True)),
-                        '%s/%s' % (naturalsize(resources_remaining['disk'] * 1024 * 1024, gnu=True),
-                                   naturalsize(resources_total['disk'] * 1024 * 1024, gnu=True))
-                    )
-                else:
-                    formatted_line = (
-                        attribute_location,
-                        '%.2f/%.2f' % (resources_remaining['cpus'], resources_total['cpus']),
-                        '%.2f/%.2f' % (resources_remaining['mem'], resources_total['mem']),
-                        '%.2f/%.2f' % (resources_remaining['disk'], resources_total['disk'])
-                    )
-                rows.append(formatted_line)
-    if len(rows) == 0:
-        return HealthCheckResult(message="  No slave attributes that apply to more than one slave were detected.",
-                                 healthy=True)
-    else:
-        return HealthCheckResult(message='\n'.join(('    %s' % row for row in format_table(rows)))[2:], healthy=True)
+    }
 
 
 def slaves_registered(mesos_state):

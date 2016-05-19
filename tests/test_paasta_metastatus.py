@@ -452,84 +452,6 @@ def test_main_no_chronos_config():
         assert excinfo.value.code == 0
 
 
-def test_assert_extra_slave_data_no_slaves():
-    fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
-    expected = 'No mesos slaves registered on this cluster!'
-    actual = paasta_metastatus.assert_extra_slave_data(fake_mesos_state)[0]
-    assert expected == actual.strip()
-
-
-def test_assert_extra_attribute_data_no_slaves():
-    fake_mesos_state = {'slaves': [], 'frameworks': [], 'tasks': []}
-    expected = 'No mesos slaves registered on this cluster!'
-    actual = paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[0]
-    assert expected == actual.strip()
-
-
-def test_assert_extra_attribute_data_slaves_attributes():
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'id': 'test-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                    'habitat': 'test-habitat',
-                },
-            },
-            {
-                'id': 'test-slave2',
-                'hostname': 'test2.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                    'habitat': 'test-habitat-2',
-                },
-            },
-        ],
-        'frameworks': [],
-    }
-    assert paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[1]
-
-
-def test_assert_extra_attribute_data_slaves_no_attributes():
-    fake_mesos_state = {
-        'slaves': [
-            {
-                'id': 'test-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                },
-            },
-            {
-                'id': 'test-slave2',
-                'hostname': 'test2.somewhere.www',
-                'resources': {
-                    'cpus': 50,
-                    'disk': 200,
-                    'mem': 1000,
-                },
-                'attributes': {
-                },
-            },
-        ],
-        'frameworks': [],
-    }
-    assert paasta_metastatus.assert_extra_attribute_data(fake_mesos_state)[1]
-
-
 def test_status_for_results():
     assert paasta_metastatus.status_for_results([('message', True), ('message', False)]) == [True, False]
 
@@ -822,3 +744,80 @@ def test_get_mesos_habitat_data_nonhumanized():
 
     assert extra_slave_data[0] == expected_slave_output
     assert extra_attribute_data[0] == expected_attribute_output
+
+
+def test_group_slaves_by_attribute():
+    slaves = [
+        {
+            'id': 'somenametest-slave',
+            'hostname': 'test.somewhere.www',
+            'resources': {
+                'cpus': 75,
+                'disk': 250,
+                'mem': 100,
+            },
+            'attributes': {
+                'habitat': 'somenametest-habitat',
+            },
+        },
+        {
+            'id': 'somenametest-slave2',
+            'hostname': 'test2.somewhere.www',
+            'resources': {
+                'cpus': 500,
+                'disk': 200,
+                'mem': 750,
+            },
+            'attributes': {
+                'habitat': 'somenametest-habitat-2',
+            },
+        },
+    ]
+    actual = paasta_metastatus.group_slaves_by_attribute(slaves, 'habitat')
+    values = dict((k, list(g)) for k, g in actual)
+    assert len(values.items()) == 2
+    assert 'somenametest-habitat' in values
+    assert 'somenametest-habitat-2' in values
+    for k, v in values:
+        assert len(list(v)) == 1
+
+
+def test_calculate_resource_usage_for_slaves():
+    slaves = [
+        {
+            'id': 'somenametest-slave',
+            'resources': {
+                'cpus': 75,
+                'disk': 250,
+                'mem': 100,
+                },
+        },
+        {
+            'id': 'somenametest-slave2',
+            'resources': {
+                'cpus': 500,
+                'disk': 200,
+                'mem': 750,
+            }
+        }
+    ]
+    tasks = [
+        {
+            'resources': {
+                'cpus': 500,
+                'disk': 200,
+                'mem': 750,
+            }
+        },
+        {
+            'resources': {
+                'cpus': 500,
+                'disk': 200,
+                'mem': 750,
+            }
+        }
+    ]
+    calculated = paasta_metastatus.calculate_resource_utilization_for_slaves(slaves, tasks)
+    assert sorted(calculated.keys()) == sorted(['free', 'total'])
+
+
