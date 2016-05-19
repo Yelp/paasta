@@ -499,13 +499,13 @@ def main():
     try:
         marathon_config = marathon_tools.load_marathon_config()
     except MarathonNotConfigured:
-        marathon_results = [('marathon is not configured to run here', True)]
+        marathon_results = [HealthCheckResult(message='Marathon is not configured to run here', healthy=True)]
 
     # Check to see if Chronos should be running here by checking for config
     try:
         chronos_config = load_chronos_config()
     except ChronosNotConfigured:
-        chronos_results = [('chronos is not configured to run here', True)]
+        chronos_results = [HealthCheckResult(message='Chronos is not configured to run here', healthy=True)]
 
     if marathon_config:
         marathon_client = get_marathon_client(marathon_config)
