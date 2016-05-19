@@ -41,6 +41,7 @@ from paasta_tools.utils import print_with_indent
 
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
 ResourceInfo = namedtuple('ResourceInfo', ['cpus', 'mem', 'disk'])
+ResourceUtilization = namedtuple('ResourceUtilization', ['metric', 'total', 'free'])
 
 
 def parse_args():
@@ -100,37 +101,30 @@ def get_extra_mesos_slave_data(mesos_state):
             mesos_metrics = filter_mesos_state_metrics(task['resources'])
             slaves[task['slave_id']]['free_resources'].subtract(mesos_metrics)
 
-    return sorted(slaves.values())
+    sorted_counters = sorted(slaves.values())
+    return sorted_counters
 
 
-def get_extra_mesos_attribute_data(mesos_state):
-    slaves = mesos_state.get('slaves', [])
-    attributes = {attribute
-                  for slave in slaves
-                  for attribute in slave.get('attributes', {}).keys()}
-    tasks = [task
-             for framework in mesos_state.get('frameworks', [])
-             for task in framework.get('tasks', [])]
-
-    for attribute in attributes:
-        yield (attribute, get_mesos_utilization_for_attribute(slaves, tasks, attribute))
-
-
-def get_mesos_utilization_for_attribute(slaves, tasks, attribute):
-    resource_total_dict = defaultdict(Counter)
-    slave_attribute_mapping = {}
-    for slave in slaves:
-        slave_attribute_name = slave['attributes'].get(attribute, 'UNDEFINED')
-        slave_attribute_mapping[slave['id']] = slave_attribute_name
-        filtered_resources = filter_mesos_state_metrics(slave['resources'])
-        resource_total_dict[slave_attribute_name].update(filtered_resources)
-    resource_free_dict = copy.deepcopy(resource_total_dict)
-    for task in tasks:
-        task_resources = task['resources']
-        attribute_value = slave_attribute_mapping[task['slave_id']]
-        resource_free_dict[attribute_value].subtract(filter_mesos_state_metrics(task_resources))
-    return {"free": resource_free_dict, "total": resource_total_dict}
-
+def healthcheck_result_for_utilization(resource_data, threshold):
+    """
+    Given a resource data dict, assert that cpu
+    data is ok.
+    :param resource_data: the resource data to check
+    :returns: a HealthCheckResult
+    """
+    utilization = percent_used(resource_data.total, resource_data.total - resource_data.free)
+    message = "%s: %d/%d (%.2f%%) used. Threshold (%.2f%%)" % (
+        resource_data.metric,
+        float(resource_data.total - resource_data.free),
+        resource_data.total,
+        utilization,
+        threshold,
+    )
+    healthy = utilization <= threshold
+    return HealthCheckResult(
+        message=message,
+        healthy=healthy
+    )
 
 def quorum_ok(masters, quorum):
     return masters >= quorum
@@ -345,6 +339,21 @@ def get_resource_utilization_by_attribute(mesos_state, attribute):
         attribute_value: calculate_resource_utilization_for_slaves(slaves, tasks)
         for attribute_value, slaves in slave_groupings
     }
+
+
+def resource_utillizations_from_resource_info(total, free):
+    """
+    Given two ResourceInfo tuples, one for total and one for free,
+    create a ResourceUtilization tuple for each metric in the ResourceInfo.
+    :param total:
+    :param free:
+    :returns: ResourceInfo for a metric
+    """
+    return [
+        ResourceUtilization(metric=field, total=total[index], free=free[index])
+        for index,field in enumerate(ResourceInfo._fields)
+    ]
+
 
 def has_registered_slaves(mesos_state):
     return 'slaves' in mesos_state and mesos_state['slaves']
