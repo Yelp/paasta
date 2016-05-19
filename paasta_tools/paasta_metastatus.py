@@ -320,7 +320,33 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
     }
 
 
-def slaves_registered(mesos_state):
+def get_resource_utilization_by_attribute(mesos_state, attribute):
+    """
+    Given mesos state and an attribute, calculate resource utilization
+    for each value of a given attribute.
+
+    :param mesost_state: the mesos state
+    :param attribute: the attribute to group slaves by
+    :returns: a dict of {attribute_value: resource_usage}, where resource usage is
+    the dict returned by ``calculate_resource_utilization_for_slaves`` for slaves
+    grouped by attribute value.
+    """
+    slaves = mesos_state.get('slaves', [])
+    if not has_registered_slaves(mesos_state):
+        raise ValueError("There are no slaves registered in the mesos state.")
+
+    tasks = [task
+             for framework in mesos_state.get('frameworks', [])
+             for task in framework.get('tasks', [])]
+
+    slave_groupings = group_slaves_by_attribute(slaves, attribute)
+
+    return {
+        attribute_value: calculate_resource_utilization_for_slaves(slaves, tasks)
+        for attribute_value, slaves in slave_groupings
+    }
+
+def has_registered_slaves(mesos_state):
     return 'slaves' in mesos_state and mesos_state['slaves']
 
 
