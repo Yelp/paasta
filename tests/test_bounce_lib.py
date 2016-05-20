@@ -835,6 +835,30 @@ class TestCrossoverBounce:
         assert actual['create_app'] is False
         assert len(actual['tasks_to_drain']) == 4
 
+    def test_crossover_bounce_using_margin_factor(self):
+        new_config = {'id': 'foo.bar.12345', 'instances': 500}
+        happy_tasks = [mock.Mock() for _ in xrange(100)]
+        old_app_live_happy_tasks = {
+            'app1': set(mock.Mock() for _ in xrange(300)),
+            'app2': set(),
+        }
+        old_app_live_unhappy_tasks = {
+            'app1': set(),
+            'app2': set(mock.Mock() for _ in xrange(200)),
+        }
+
+        actual = bounce_lib.crossover_bounce(
+            new_config=new_config,
+            new_app_running=True,
+            happy_new_tasks=happy_tasks,
+            old_app_live_happy_tasks=old_app_live_happy_tasks,
+            old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
+            margin_factor=1.05,
+            minimum_health_capacity=50
+        )
+        assert actual['create_app'] is False
+        assert len(actual['tasks_to_drain']) == 105
+
     def test_crossover_bounce_cleanup(self):
         """When marathon has the desired app, and there are other copies of
         the service running, which have no remaining tasks, those apps should
