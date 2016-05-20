@@ -340,18 +340,15 @@ def crossover_bounce(
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
     margin_factor=1.05,
-    minimum_health_capacity=5,
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
     :param margin_factor: the multiplication factor used to calculate the number of instances to be drained when minimum_health_capacity is reached.
-    :param minimum_health_capacity: the number of happy_new_tasks that allows applying margin_factor
 
     See the docstring for brutal_bounce() for the rest of parameters and return value.
     """
 
     assert margin_factor >= 1
-    assert minimum_health_capacity >= 0
 
     if not new_app_running:
         return {
@@ -359,9 +356,7 @@ def crossover_bounce(
             "tasks_to_drain": set(),
         }
     else:
-        happy_count = len(happy_new_tasks)
-        if happy_count >= minimum_health_capacity:
-            happy_count = int(happy_count * margin_factor)
+        happy_count = int(len(happy_new_tasks) * margin_factor)
         needed_count = max(new_config['instances'] - happy_count, 0)
 
         old_tasks = []

@@ -854,7 +854,6 @@ class TestCrossoverBounce:
             old_app_live_happy_tasks=old_app_live_happy_tasks,
             old_app_live_unhappy_tasks=old_app_live_unhappy_tasks,
             margin_factor=1.05,
-            minimum_health_capacity=50
         )
         assert actual['create_app'] is False
         assert len(actual['tasks_to_drain']) == 105
