@@ -339,8 +339,8 @@ def crossover_bounce(
     happy_new_tasks,
     old_app_live_happy_tasks,
     old_app_live_unhappy_tasks,
-    margin_factor=1,
-    minimum_health_capacity=0,
+    margin_factor=1.05,
+    minimum_health_capacity=5,
 ):
     """Starts a new app if necessary; slowly kills old apps as instances of the new app become happy.
 
