@@ -19,6 +19,7 @@ instances. Assumes that the credentials are available, so must run as root.
 import argparse
 import logging
 import sys
+import traceback
 
 import requests_cache
 
@@ -102,33 +103,39 @@ def main():
         print 'instance: %s' % PaastaColors.blue(instance)
         print 'Git sha:    %s (desired)' % version
 
-        instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
-        if instance_type == 'marathon':
-            return_code = marathon_serviceinit.perform_command(
-                command=command,
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                verbose=args.verbose,
-                soa_dir=args.soa_dir,
-                app_id=args.app_id,
-                delta=args.delta,
-            )
-        elif instance_type == 'chronos':
-            return_code = chronos_serviceinit.perform_command(
-                command=command,
-                service=service,
-                instance=instance,
-                cluster=cluster,
-                verbose=args.verbose,
-                soa_dir=args.soa_dir,
-            )
-        else:
-            log.error("I calculated an instance_type of %s for %s which I don't know how to handle. Exiting."
-                      % (instance_type, compose_job_id(service, instance)))
+        try:
+            instance_type = validate_service_instance(service, instance, cluster, args.soa_dir)
+            if instance_type == 'marathon':
+                return_code = marathon_serviceinit.perform_command(
+                    command=command,
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    verbose=args.verbose,
+                    soa_dir=args.soa_dir,
+                    app_id=args.app_id,
+                    delta=args.delta,
+                )
+            elif instance_type == 'chronos':
+                return_code = chronos_serviceinit.perform_command(
+                    command=command,
+                    service=service,
+                    instance=instance,
+                    cluster=cluster,
+                    verbose=args.verbose,
+                    soa_dir=args.soa_dir,
+                )
+            else:
+                log.error("I calculated an instance_type of %s for %s which I don't know how to handle."
+                          % (instance_type, compose_job_id(service, instance)))
+                return_code = 1
+        except Exception:
+            log.error('Exception raised while looking at service %s instance %s:' % (service, instance))
+            log.error(traceback.format_exc())
             return_code = 1
 
         return_codes.append(return_code)
+
     sys.exit(max(return_codes))
 
 
