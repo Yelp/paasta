@@ -265,7 +265,7 @@ def test_unhealthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
 @patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
 @patch('paasta_tools.paasta_metastatus.get_num_masters')
 @patch('paasta_tools.paasta_metastatus.get_mesos_stats')
-def test_get_mesos_status(
+def test_get_mesos_state_status(
     mock_get_mesos_stats,
     mock_get_num_masters,
     mock_get_configured_quorum_size,
