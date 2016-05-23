@@ -616,7 +616,6 @@ def deploy_marathon_service(service, instance, client, soa_dir, marathon_config)
         send_event(service, instance, soa_dir, sensu_status, output)
         return 0
     except (KeyError, TypeError, AttributeError, InvalidInstanceConfig):
-        import traceback
         error_str = traceback.format_exc()
         log.error(error_str)
         send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
