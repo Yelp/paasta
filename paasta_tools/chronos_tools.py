@@ -509,7 +509,10 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
     # we use the undocumented description field to store a hash of the chronos config.
     # this makes it trivial to compare configs and know when to bounce.
-    complete_config['description'] = get_config_hash(complete_config)
+    complete_config['description'] = get_config_hash(
+        config=complete_config,
+        force_bounce=chronos_job_config.get_force_bounce(),
+    )
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
     return complete_config
