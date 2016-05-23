@@ -17,7 +17,6 @@ import copy
 import itertools
 import sys
 from collections import Counter
-from collections import defaultdict
 from collections import namedtuple
 from collections import OrderedDict
 
@@ -48,6 +47,17 @@ def parse_args():
     parser = argparse.ArgumentParser(
         description='',
     )
+    parser.add_argument(
+        '-g',
+        '--groupings',
+        nargs='+',
+        default=['region'],
+        help=(
+            'Group resource information of slaves grouped by attribute.'
+            'Note: This is only effective with -vv'
+        )
+    )
+    parser.add_argument('-t', '--threshold', type=int, default=90)
     parser.add_argument('-v', '--verbose', action='count', dest="verbose", default=0,
                         help="Print out more output regarding the state of the cluster")
     parser.add_argument('-H', '--humanize', action='store_true', dest="humanize", default=False,
@@ -125,6 +135,7 @@ def healthcheck_result_for_utilization(resource_data, threshold):
         message=message,
         healthy=healthy
     )
+
 
 def quorum_ok(masters, quorum):
     return masters >= quorum
@@ -474,8 +485,7 @@ def status_for_results(healthcheck_results):
     return [result.healthy for result in healthcheck_results]
 
 
-def print_results_for_healthchecks(summary, ok, results, verbose):
-    print summary
+def print_results_for_healthchecks(ok, results, verbose):
     if verbose >= 1:
         for health_check_result in results:
             if health_check_result.healthy:
@@ -545,9 +555,44 @@ def main():
     marathon_summary = generate_summary_for_check("Marathon", marathon_ok)
     chronos_summary = generate_summary_for_check("Chronos", chronos_ok)
 
-    print_results_for_healthchecks(mesos_summary, mesos_ok, all_mesos_results, args.verbose)
-    print_results_for_healthchecks(marathon_summary, marathon_ok, marathon_results, args.verbose)
-    print_results_for_healthchecks(chronos_summary, chronos_ok, chronos_results, args.verbose)
+    if args.verbose == 0:
+        print mesos_summary
+        print marathon_summary
+        print chronos_summary
+    elif args.verbose == 1:
+        print mesos_summary
+        print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
+        print marathon_summary
+        print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
+        print chronos_summary
+        print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
+    elif args.verbose == 2:
+        print mesos_summary
+        print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
+        for attribute in args.groupings:
+            for attribute_value, resource_usage_dict in get_resource_utilization_by_attribute(mesos_state, attribute):
+                resource_utilizations = resource_utillizations_from_resource_info(
+                    resource_usage_dict['total'],
+                    resource_usage_dict['free'],
+                )
+                healthcheck_results = [
+                    healthcheck_result_for_utilization(utilization, args.threshold)
+                    for utilization in resource_utilizations
+                ]
+            print 'Cluster Utilization, grouped by: %s' % attribute
+            print_with_indent(attribute_value, 2)
+            print_results_for_healthchecks(
+                all(status_for_results(healthcheck_results)),
+                healthcheck_results,
+                args.verbose
+            )
+        print marathon_summary
+        print chronos_summary
+    # else:
+        # print mesos_summary
+        # # print results + extra attribute data + extra slave data
+        # for message in [check.message for check in all_mesos_results + [extra_attribute_data]]:
+        # print_with_indent(message)
 
     if not all([mesos_ok, marathon_ok, chronos_ok]):
         sys.exit(2)
