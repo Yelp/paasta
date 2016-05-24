@@ -2,20 +2,41 @@ deploy_marathon_services (bash script)
 ======================================
 
 This is a bash script that runs list_marathon_service_instances
-and then xargs a list of service.instances to `setup_marathon_job <setup_marathon_job.html>`_,
+and then xargs a list of service.instances to ``setup_marathon_job``,
 but only if am_i_mesos_leader returns 0 (the host is the
 current leader).
 
-The maximum number of service.instances that ``setup_marathon_job`` takes,
-and the maximum number of parallel deployment processes are configurable
-in puppet. By default, ``setup_marathon_job`` takes one service.instance
-each time and there are at most five parallel ``setup_marathon_job`` processes.
+How does setup_marathon_job work
+--------------------------------
 
-With below config in ``modules/profile_paasta/data/clusters/mesosstage.yaml``,
-each ``setup_marathon_job`` in the cluster mesosstage can take 64 service.instances and xargs can fork four
-``setup_marathon_job`` process to deploy services in parallel::
+``setup_marathon_job`` iterates over a list of service.instances to avoid
+fetching the mesos master state on each service.instance. Each service.instance
+is called an app in ``setup_marathon_job``. Since apps are independent to
+each other, it won't be a problem to cache the mesos master state which may
+become stale when apps are created or destroyed while ``setup_marathon_job``
+makes progress.
 
-  profile_paasta::marathon::max_serviceinstances_per_deployment: 64
-  profile_paasta::marathon::max_parallel_deployments: 4
+``setup_marathon_job`` grabs a zookeeper lock for each app it tries to
+deploy. Locking is not necessary if `deploy_marathon_services <deploy_marathon_services.html>`_
+is the only source of app deployment. It provides safety against another
+``setup_marathon_job`` being launched, e.g. manually by operations. When
+an app being created or destroyed at marathon, another zookeeper lock is
+acquired to provide protection against other app addition/removal activities,
+e.g. the ``cleanup_marathon_jobs`` tool.
 
-Changes can be made to other clusters accordingly.
+It takes multiple ``setup_marathon_job`` runs to advance an app from its
+current state to the desired state. For example, below steps occur in a
+crossover bounce in separate ``setup_marathon_job`` runs:
+
+* The new app is created with marathon and marathon is working to launch
+  the required number of tasks.
+* As soon as tasks of the new app are up and running, tasks of the previous
+  app can begin draining. In an upthendown bounce, all tasks of the new app
+  need to be up before tasks of the previous app can start to drain.
+* Tasks of the previous app can now be killed if they have been draining
+  for ``delay`` seconds so that the load balancer have stopped traffic to
+  these tasks. The old app is removed from marathon when all of its tasks
+  have been killed.
+
+``setup_marathon_job`` skips above steps when an app have reached its
+desired state.

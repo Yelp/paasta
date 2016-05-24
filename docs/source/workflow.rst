@@ -111,11 +111,10 @@ A yelpsoa-configs master runs `generate_deployments_for_service <generated/paast
 frequently. The generated ``deployments.json`` appears in ``/nail/etc/services/service_name`` throughout the cluster.
 
 Marathon masters run `deploy_marathon_services <deploy_marathon_services.html>`_,
-a thin wrapper around `setup_marathon_job <setup_marathon_job.html>`_.
+a thin wrapper around ``setup_marathon_job``.
 These scripts parse ``deployments.json`` and the current cluster state,
 then issue comands to Marathon to put the cluster into the right state
--- cluster X should be running version Y of service Z. It will take multiple
-``setup_marathon_job`` iterations for a service to reach its desired state.
+-- cluster X should be running version Y of service Z.
 
 How PaaSTA Runs Docker Containers
 ---------------------------------
@@ -256,12 +255,6 @@ Current master has three draining methods:
   the hacheck draining method sets an expiration when marking an instance down on
   hacheck. hacheck will drop the down state if it receives a status query after
   expiration.
-
-**What is the rationale behind the expiration logic? We have seen boucing being
-slowed down by this logic. In addition, will it create inconsistency if draining
-brings an instance back to up after expiration while haproxy thinks it is down?
-haproxy will have to keep pinging hacheck for the same expiraiton before truely
-remove it.**
 
 Monitoring
 ----------
