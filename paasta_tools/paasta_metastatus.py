@@ -99,18 +99,18 @@ def filter_mesos_state_metrics(dictionary):
     return {key: value for (key, value) in dictionary.items() if key in valid_keys}
 
 
-def healthcheck_result_for_utilization(resource_data, threshold):
+def healthcheck_result_for_resource_utilization(resource_utilization, threshold):
     """
     Given a resource data dict, assert that cpu
     data is ok.
-    :param resource_data: the resource data to check
+    :param resource_utilization: the resource_utilization tuple to check
     :returns: a HealthCheckResult
     """
-    utilization = percent_used(resource_data.total, resource_data.total - resource_data.free)
-    message = "%s: %d/%d (%.2f%%) used. Threshold (%.2f%%)" % (
-        resource_data.metric,
-        float(resource_data.total - resource_data.free),
-        resource_data.total,
+    utilization = percent_used(resource_utilization.total, resource_utilization.total - resource_utilization.free)
+    message = "%s: %.2f/%.2f(%.2f%%) used. Threshold (%.2f%%)" % (
+        resource_utilization.metric,
+        float(resource_utilization.total - resource_utilization.free),
+        resource_utilization.total,
         utilization,
         threshold,
     )
