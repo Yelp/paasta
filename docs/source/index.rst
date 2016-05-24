@@ -43,6 +43,7 @@ Installing The PaaSTA Infrastructure
 
    installation/getting_started
    soa_configs
+   system_configs
 
 Generated Docs
 ~~~~~~~~~~~~~~
