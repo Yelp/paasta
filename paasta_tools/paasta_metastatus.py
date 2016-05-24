@@ -99,22 +99,6 @@ def filter_mesos_state_metrics(dictionary):
     return {key: value for (key, value) in dictionary.items() if key in valid_keys}
 
 
-def get_extra_mesos_slave_data(mesos_state):
-    slaves = dict((slave['id'], {
-        'total_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
-        'hostname': slave['hostname'],
-        'free_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
-    }) for slave in mesos_state['slaves'])
-
-    for framework in mesos_state.get('frameworks', []):
-        for task in framework.get('tasks', []):
-            mesos_metrics = filter_mesos_state_metrics(task['resources'])
-            slaves[task['slave_id']]['free_resources'].subtract(mesos_metrics)
-
-    sorted_counters = sorted(slaves.values())
-    return sorted_counters
-
-
 def healthcheck_result_for_utilization(resource_data, threshold):
     """
     Given a resource data dict, assert that cpu
