@@ -225,7 +225,8 @@ def do_bounce(
         log_bounce_action(
             line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
         )
-        bounce_lib.create_marathon_app(marathon_jobid, config, client)
+        with requests_cache.disabled():
+            bounce_lib.create_marathon_app(marathon_jobid, config, client)
     if len(actions['tasks_to_drain']) > 0:
         tasks_to_drain_by_app_id = defaultdict(set)
         for task in actions['tasks_to_drain']:
@@ -269,7 +270,8 @@ def do_bounce(
                 ', '.join(apps_to_kill)
             ),
         )
-        bounce_lib.kill_old_ids(apps_to_kill, client)
+        with requests_cache.disabled():
+            bounce_lib.kill_old_ids(apps_to_kill, client)
 
     all_old_tasks = set.union(set(), *old_app_live_happy_tasks.values())
     all_old_tasks = set.union(all_old_tasks, *old_app_live_unhappy_tasks.values())
