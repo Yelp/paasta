@@ -48,6 +48,8 @@ that are a member of a particular cluster is the ``cluster`` setting::
 It is not necessary to define this config option for servers that only require the
 PaaSTA CLI tools (as they may not technically be part of any particular PaaSTA cluster).
 
+See more `documentation for system paasta configs <../system_configs.html>`_
+
 soa-configs
 -----------
 
@@ -95,19 +97,21 @@ on how to get started with Mesos.
 Marathon
 --------
 
-PaaSTA uses `Marathon <https://mesosphere.github.io/marathon/>`_ for supervising long-running
-services running in Mesos. See the `official documentation <https://mesosphere.github.io/marathon/docs/>`_
-for how to get started with Marathon.
-
-Then, see the `PaaSTA documentation <../yelpsoa_configs.html#marathon-clustername-yaml>`_
-for how to define Marathon jobs.
+PaaSTA uses `Marathon <https://mesosphere.github.io/marathon/>`_ for supervising long-running services running in Mesos.
+See the `official documentation <https://mesosphere.github.io/marathon/docs/>`__ for how to get started with Marathon.
+Then, see the `PaaSTA documentation <../yelpsoa_configs.html#marathon-clustername-yaml>`_ for how to define Marathon
+jobs.
 
 Once Marathon jobs are defined in soa-configs, there are a few tools provided by PaaSTA
 that interact with the Marathon API:
 
-* ``deploy_marathon_services``: Does the initial sync between soa-configs and
-  the Marathon API. This tools is idempotent and should be periodically. This is also
-  the tools that handles "bouncing" new version of code.
+* ``deploy_marathon_services``: Does the initial sync between soa-configs and the Marathon API.
+  This is the tool that handles "bouncing" to new version of code, and resizing Marathon applications when autoscaling
+  is enabled.
+  This is idempotent, and should be run periodically on a box with a ``marathon.json`` file in the
+  `system paasta config <../system_configs.html>`_ directory (Usually ``/etc/paasta``).
+  We recommend running this frequently - delays between runs of this command will limit how quickly new versions of
+  services or changes to soa-configs are picked up.
 * ``cleanup_marathon_jobs``: Cleans up lost or abandoned services. This tool
   looks for Marathon jobs that are *not* defined in soa-configs and removes them.
 * ``check_marathon_services_replication``: Iterates over all Marathon services
@@ -118,35 +122,61 @@ that interact with the Marathon API:
 Chronos
 -------
 
-`Chronos <http://mesos.github.io/chronos/>`_ is a Mesos framework for
-running scheduled tasks. See the `official documentation <http://mesos.github.io/chronos/docs/getting-started.html>`_
-for how to get started with Chronos, and then see the `PaaSTA documentation <../yelpsoa_configs.html#chronos-[clustername].yaml>`_
-for how to define Chronos jobs.
+`Chronos <http://mesos.github.io/chronos/>`_ is a Mesos framework for running scheduled tasks.
+See the `official documentation <http://mesos.github.io/chronos/docs/getting-started.html>`__ for how to get started
+with Chronos.
+Then, see the `PaaSTA documentation <../yelpsoa_configs.html#chronos-[clustername].yaml>`_ for how to define Chronos jobs.
 
 PaaSTA has tools for synchronizing jobs with the Chronos API:
 
-* ``deploy_chronos_jobs``: This tool does the bouncing and initial setup of Chronos
-  jobs that are defined in soa-configs.
+* ``deploy_chronos_jobs``: This tool does the bouncing and initial setup of Chronos jobs that are defined in soa-configs.
+  This is idempotent, and should be run periodically on a box with a ``chronos.json`` file in the
+  `system paasta config <../system_configs.html>`_ directory (Usually ``/etc/paasta``).
+  We recommend running this frequently - delays between runs of this command will limit how quickly new versions of
+  services or changes to soa-configs are picked up.
 * ``cleanup_chronos_jobs``: Cleans up lost or abandoned Chronos jobs.
 * ``check_chronos_jobs``: Iterates over the current status of the Chronos jobs associated
   with a service and alerts the team responsible when they start to fail.
 * ``list_chronos_jobs``: List all the chronos jobs in a cluster.
 
-SmartStack
-----------
+SmartStack and Hacheck
+----------------------
 
 `SmartStack <http://nerds.airbnb.com/smartstack-service-discovery-cloud/>`_ is
 a dynamic service discovery system that allows clients to find and route to
 healthy mesos tasks for a particular service.
+Smartstack consists of two agents: `nerve <https://github.com/airbnb/nerve>`_ and `synapse <https://github.com/airbnb/synapse>`_.
+Nerve is responsible for health-checking services and registering them in ZooKeeper.
+Synapse then reads that data from ZooKeeper and configures an HAProxy instance.
 
-The glue that actually configures SmartStack is `currently not open source <https://github.com/Yelp/paasta/issues/13>`_.
+To manage the configuration of nerve (detecting which services are running on a node and what port they are using, etc.),
+we have a package called `nerve-tools <https://github.com/Yelp/nerve-tools>`_.
+This repo builds a .deb package, and should be installed on all slaves.
+Each slave should run ``configure_nerve`` periodically.
+We recommend this runs quite frequently (we run it every 5s), since Marathon tasks created by Paasta are not available
+to clients until nerve is reconfigured.
 
-Other service-discovery mechanisms can be used with PaaSTA, but SmartStack
-is currently the only supported method.
+Similarly, to manage the configuration of synapse, we have a package called `synapse-tools <https://github.com/Yelp/synapse-tools>`_.
+Each slave should have this installed, and should run ``configure_synapse`` periodically.
+``configure_synapse`` can run less frequently than ``configure_nerve`` --
+it only limits how quickly a new service, service instance, or haproxy option changes in
+`smartstack.yaml <../yelpsoa_configs.html#smartstack-yaml>`_ will take effect.
 
-While SmartStack is open source, the tools we use to configure Nerve and
-Synapse from soa-configs are currently not open source. Stay tuned as we will
-be opening them up soon.
+Alongside SmartStack, we run `hacheck <https://github.com/Yelp/hacheck>`_.
+Hacheck is a small HTTP service that handles health checks for services.
+nerve-tools and synapse-tools configure nerve and HAProxy, respectively, to send its health check requests through
+hacheck.
+Hacheck provides several behaviors that are useful for Paasta:
+
+  * It caches health check results for a short period of time (1 second, by default).
+    This avoids overloading services if many health check requests arrive in a short period of time.
+
+  * It can preemptively return error codes for health checks, allowing us to remove a task from load balancers before
+    shutting it down.
+    (This is implemented in the
+    `HacheckDrainMethod <../generated/paasta_tools.drain_lib.html#paasta_tools.drain_lib.HacheckDrainMethod>`_.)
+
+Packages for nerve-tools and synapse-tools are avalable in our `bintray repo <https://bintray.com/yelp/paasta>`_.
 
 Sensu
 -----
@@ -186,13 +216,20 @@ This may be something as simple as a bash script::
 PaaSTA can integrate with any existing orchestration tool that can execute
 commands like this.
 
-Scribe
-------
+Logging
+-------
 
-PaaSTA currently uses `Scribe <https://github.com/facebookarchive/scribe>`_ to
-centrally log events about what is happening in the infrastructure and to power
-``paasta logs``. Currently this is the most "Yelpy" aspect of PaaSTA, so much
-so that have had to remove it from the normal ``requirements.txt``. We are
-investigating ways to make the logging components of PaaSTA more reusable for
-everyone. Until then, it is not expected that PaaSTA logging will work in a
-non-Yelp environment.
+Paasta can use one of several backends to centrally log events about what is happening in the infrastructure and to
+power ``paasta logs``.
+The backends that are available are listed in the `system config docs <../system_configs.html>`_ under ``log_writer``
+and ``log_reader``.
+
+At Yelp, we use `Scribe <https://github.com/facebookarchive/scribe>`_ for log writing, so we use the ``scribe`` log
+writer.
+For reading logs, we have some in-house tools that are unfortunately not open source.
+The code that reads from these in-house tools are the ``scribereader`` log_reader driver, but this code relies on some
+not-open-source code, so we do not expect that logging via Scribe will work outside of Yelp.
+
+The ``file`` log writer driver may be useful for getting log data into your logging system, but files are not generally
+aggregated across the whole cluster in a way that is useful for ``paasta logs``.
+We are in need of alternate log reader driver, so please file an issue (or better yet, a pull request).
