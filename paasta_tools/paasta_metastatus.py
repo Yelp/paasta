@@ -29,6 +29,7 @@ from paasta_tools.chronos_tools import ChronosNotConfigured
 from paasta_tools.chronos_tools import get_chronos_client
 from paasta_tools.chronos_tools import load_chronos_config
 from paasta_tools.marathon_tools import MarathonNotConfigured
+from paasta_tools.mesos_tools import get_all_tasks_from_state
 from paasta_tools.mesos_tools import get_mesos_quorum
 from paasta_tools.mesos_tools import get_mesos_state_from_leader
 from paasta_tools.mesos_tools import get_mesos_stats
@@ -37,6 +38,7 @@ from paasta_tools.mesos_tools import get_zookeeper_config
 from paasta_tools.mesos_tools import MasterNotAvailableException
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import print_with_indent
+from paasta_tools.utils import format_table
 
 HealthCheckResult = namedtuple('HealthCheckResult', ['message', 'healthy'])
 ResourceInfo = namedtuple('ResourceInfo', ['cpus', 'mem', 'disk'])
@@ -276,6 +278,39 @@ def group_slaves_by_attribute(slaves, attribute):
     return itertools.groupby(sorted_slaves, key=key_func)
 
 
+def get_resource_utilization_per_slave(mesos_state):
+    """
+    Given a mesos state object, calculate the resource utilization
+    of each individual slave.
+    :param mesos_stage: the mesos state object
+    :returns: a dict of {hostname: free: ResourceInfo, total: ResourceInfo}
+    """
+    slaves = dict((slave['id'], {
+        'hostname': slave['hostname'],
+        'total_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
+        'free_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
+    }) for slave in mesos_state['slaves'])
+
+    for framework in mesos_state.get('frameworks', []):
+        for task in framework.get('tasks', []):
+            mesos_metrics = filter_mesos_state_metrics(task['resources'])
+            slaves[task['slave_id']]['free_resources'].subtract(mesos_metrics)
+
+    formatted_slaves = {slave['hostname']: {
+        'free': ResourceInfo(
+            cpus=slave['free_resources']['cpus'],
+            mem=slave['free_resources']['mem'],
+            disk=slave['free_resources']['disk'],
+        ),
+        'total': ResourceInfo(
+            cpus=slave['total_resources']['cpus'],
+            mem=slave['total_resources']['mem'],
+            disk=slave['total_resources']['disk'],
+        )
+    } for slave in slaves.values()}
+    return formatted_slaves
+
+
 def calculate_resource_utilization_for_slaves(slaves, tasks):
     """
     Given a list of slaves and a list of tasks, calculate the total available
@@ -324,10 +359,7 @@ def get_resource_utilization_by_attribute(mesos_state, attribute):
     if not has_registered_slaves(mesos_state):
         raise ValueError("There are no slaves registered in the mesos state.")
 
-    tasks = [task
-             for framework in mesos_state.get('frameworks', [])
-             for task in framework.get('tasks', [])]
-
+    tasks = get_all_tasks_from_state(mesos_state)
     slave_groupings = group_slaves_by_attribute(slaves, attribute)
 
     return {

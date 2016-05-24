@@ -593,80 +593,101 @@ def test_calculate_resource_usage_for_slaves():
     assert sorted(calculated.keys()) == sorted(['free', 'total'])
 
 
-def test_get_resource_utilization_by_attribute(mesos_state, tasks):
+@patch('paasta_tools.paasta_metastatus.group_slaves_by_attribute', autospec=True)
+@patch('paasta_tools.paasta_metastatus.calculate_resource_utilization_for_slaves', autospec=True)
+@patch('paasta_tools.paasta_metastatus.get_all_tasks_from_state', autospec=True)
+def test_get_resource_utilization_by_attribute(
+        mock_get_all_tasks_from_state,
+        mock_calculate_resource_utilization_for_slaves,
+        mock_group_slaves_by_attribute,
+):
+    mock_group_slaves_by_attribute.return_value = [
+        ('somenametest-habitat', ['test.somewhere.www']),
+        ('somenametest-habitat-2', ['test2.somewhere.www'])
+    ]
+    mock_calculate_resource_utilization_for_slaves.return_value = {
+        'free': paasta_metastatus.ResourceInfo(cpus=10, mem=10, disk=10),
+        'total': paasta_metastatus.ResourceInfo(cpus=20, mem=20, disk=20)
+    }
+    mock_get_all_tasks_from_state([Mock(), Mock()])
     state = {
-        'frameworks': [
-            {
-                'name': 'marathon',
-                'tasks': [
-                    {
-                        'resources': {
-                            'cpu': 10,
-                            'mem': 10,
-                            'disk': 10
-                        },
-                    },
-                ]
-            },
-            {
-                'name': 'chronos',
-                'tasks': [
-                    {
-                        'resources': {
-                            'cpu': 10,
-                            'mem': 10,
-                            'disk': 10
-                        }
-                    },
-                    {
-                        'resources': {
-                            'cpu': 10,
-                            'mem': 10,
-                            'disk': 10
-                        }
-                    }
-                ]
-            },
-        ],
-        'slaves': [
-            {
-                'id': 'somenametest-slave',
-                'hostname': 'test.somewhere.www',
-                'resources': {
-                    'cpus': 75,
-                    'disk': 250,
-                    'mem': 100,
-                },
-                'attributes': {
-                    'habitat': 'somenametest-habitat',
-                },
-            },
-            {
-                'id': 'somenametest-slave2',
-                'hostname': 'test2.somewhere.www',
-                'resources': {
-                    'cpus': 500,
-                    'disk': 200,
-                    'mem': 750,
-                },
-                'attributes': {
-                    'habitat': 'somenametest-habitat-2',
-                },
-            },
-        ]
+        'frameworks': Mock(),
+        'slaves': Mock()
     }
     actual = paasta_metastatus.get_resource_utilization_by_attribute(
         mesos_state=state,
         attribute='habitat'
     )
+    assert sorted(actual.keys()) == sorted(['somenametest-habitat', 'somenametest-habitat-2'])
+    for k, v in actual.items():
+        print v
+        assert v['total'] == paasta_metastatus.ResourceInfo(
+            cpus=20,
+            disk=20,
+            mem=20
+        )
+        assert v['free'] == paasta_metastatus.ResourceInfo(
+            cpus=10,
+            disk=10,
+            mem=10
+        )
+
+
+def test_get_resource_utilization_per_slave():
+    tasks = [
+        {
+            'resources': {
+                'cpus': 10,
+                'mem': 10,
+                'disk': 10
+            }
+        },
+        {
+            'resources': {
+                'cpus': 10,
+                'mem': 10,
+                'disk': 10
+            }
+        }
+    ]
+    slaves = [
+        {
+            'id': 'somenametest-slave',
+            'hostname': 'test.somewhere.www',
+            'resources': {
+                'cpus': 75,
+                'disk': 250,
+                'mem': 100,
+            },
+            'attributes': {
+                'habitat': 'somenametest-habitat',
+            },
+        },
+        {
+            'id': 'somenametest-slave2',
+            'hostname': 'test2.somewhere.www',
+            'resources': {
+                'cpus': 500,
+                'disk': 200,
+                'mem': 750,
+            },
+            'attributes': {
+                'habitat': 'somenametest-habitat-2',
+            },
+        },
+    ]
+    actual = paasta_metastatus.calculate_resource_utilization_for_slaves(
+        slaves=slaves,
+        tasks=tasks
+    )
     assert sorted(actual.keys()) == sorted(['total', 'free'])
     assert actual['total'] == paasta_metastatus.ResourceInfo(
-        cpu=575,
+        cpus=575,
         disk=450,
         mem=850
     )
     assert actual['free'] == paasta_metastatus.ResourceInfo(
-        cpu=545,
-        disk=420,
-        mem=820
+        cpus=555,
+        disk=430,
+        mem=830
     )
