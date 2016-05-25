@@ -1,3 +1,10 @@
+paasta-tools (0.19.8) lucid; urgency=low
+
+  * 0.19.8 tagged with 'make release'
+    Commit:
+
+ -- Huadong Liu <hliu@yelp.com>  Wed, 25 May 2016 11:19:51 -0700
+
 paasta-tools (0.19.7) UNRELEASED; urgency=medium
 
   * 0.19.6 tagged with 'make release'
