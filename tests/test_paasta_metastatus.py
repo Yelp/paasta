@@ -625,3 +625,37 @@ def test_get_resource_utilization_per_slave():
         disk=430,
         mem=830
     )
+
+
+def test_healthcheck_result_for_resource_utilization_ok():
+    expected_message = 'cpus: 5.00/10.00(50.00%) used. Threshold (90.00%)'
+    expected = paasta_metastatus.HealthCheckResult(
+        message=expected_message,
+        healthy=True
+    )
+    resource_utilization = paasta_metastatus.ResourceUtilization(
+        metric='cpus',
+        total=10,
+        free=5
+    )
+    assert paasta_metastatus.healthcheck_result_for_resource_utilization(
+        resource_utilization=resource_utilization,
+        threshold=90
+    ) == expected
+
+
+def test_healthcheck_result_for_resource_utilization_unhealthy():
+    expected_message = 'cpus: 5.00/10.00(50.00%) used. Threshold (10.00%)'
+    expected = paasta_metastatus.HealthCheckResult(
+        message=expected_message,
+        healthy=False
+    )
+    resource_utilization = paasta_metastatus.ResourceUtilization(
+        metric='cpus',
+        total=10,
+        free=5
+    )
+    assert paasta_metastatus.healthcheck_result_for_resource_utilization(
+        resource_utilization=resource_utilization,
+        threshold=10
+    ) == expected
