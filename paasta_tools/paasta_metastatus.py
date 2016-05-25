@@ -19,9 +19,9 @@ import sys
 from collections import Counter
 from collections import namedtuple
 from collections import OrderedDict
-from humanize import naturalsize
 
 from httplib2 import ServerNotFoundError
+from humanize import naturalsize
 from marathon.exceptions import MarathonError
 
 from paasta_tools import chronos_tools
@@ -670,6 +670,8 @@ def main():
     marathon_summary = generate_summary_for_check("Marathon", marathon_ok)
     chronos_summary = generate_summary_for_check("Chronos", chronos_ok)
 
+    healthy_exit = True if all([mesos_ok, marathon_ok, chronos_ok]) else False
+
     if args.verbose == 0:
         print mesos_summary
         print marathon_summary
@@ -684,32 +686,39 @@ def main():
     elif args.verbose == 2:
         print mesos_summary
         print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
-        for attribute in args.groupings:
-            for attribute_value, resource_usage_dict in get_resource_utilization_by_attribute(mesos_state, attribute):
-                resource_utilizations = resource_utillizations_from_resource_info(
-                    resource_usage_dict['total'],
-                    resource_usage_dict['free'],
-                )
-                healthcheck_results = [
-                    healthcheck_result_for_utilization(utilization, args.threshold)
-                    for utilization in resource_utilizations
-                ]
-            print 'Cluster Utilization, grouped by: %s' % attribute
-            print_with_indent(attribute_value, 2)
-            print_results_for_healthchecks(
-                all(status_for_results(healthcheck_results)),
-                healthcheck_results,
-                args.verbose
+        for grouping in args.groupings:
+            print_with_indent('Resources Grouped by %s' % grouping, 2)
+            resource_info_dict = get_resource_utilization_by_attribute(mesos_state, grouping)
+            table_rows = get_table_rows_for_resource_usage_dict(
+                resource_info_dict,
+                args.threshold,
+                args.humanize
             )
+            for line in format_table(table_rows):
+                print_with_indent(line, 4)
         print marathon_summary
+        print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
         print chronos_summary
-    # else:
-        # print mesos_summary
-        # # print results + extra attribute data + extra slave data
-        # for message in [check.message for check in all_mesos_results + [extra_attribute_data]]:
-        # print_with_indent(message)
+        print_results_for_healthchecks(chronos_ok, chronos_results, args.verbose)
+    else:
+        print mesos_summary
+        print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
+        for grouping in args.groupings:
+            print_with_indent('Resources Grouped by %s' % grouping, 2)
+            resource_info_dict = get_resource_utilization_by_attribute(mesos_state, grouping)
+            table_rows = get_table_rows_for_resource_usage_dict(
+                resource_info_dict,
+                args.threshold,
+                args.humanize
+            )
+            for line in format_table(table_rows):
+                print_with_indent(line, 4)
+        print_with_indent('Per Slave Utilization', 2)
+        rows = get_slave_resource_summary(mesos_state)
+        for line in format_table(rows):
+            print_with_indent(line, 4)
 
-    if not all([mesos_ok, marathon_ok, chronos_ok]):
+    if not healthy_exit:
         sys.exit(2)
     else:
         sys.exit(0)
