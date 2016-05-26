@@ -662,13 +662,14 @@ def main():
                     total=resource_info_dict['total'],
                     free=resource_info_dict['free'],
                 )
-                x = [healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
-                     for utilization in resource_utilizations]
-                healthy_exit = all(pair[0].healthy for pair in x)
+                healthcheck_utilization_pairs = [
+                    healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
+                    for utilization in resource_utilizations
+                ]
+                healthy_exit = all(pair[0].healthy for pair in healthcheck_utilization_pairs)
                 table_rows.append(get_table_rows_for_resource_info_dict(
                     attribute_value,
-                    x,
-                    args.threshold,
+                    healthcheck_utilization_pairs,
                     args.humanize
                 ))
             table_rows = sorted(table_rows, key=lambda x: x[0])
@@ -696,11 +697,10 @@ def main():
                     healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
                     for utilization in resource_utilizations
                 ]
-                healthy_exit = all(pair[0].healthy for pair in x)
+                healthy_exit = all(pair[0].healthy for pair in healthcheck_utilization_pairs)
                 table_rows.append(get_table_rows_for_resource_info_dict(
                     attribute_value,
                     healthcheck_utilization_pairs,
-                    args.threshold,
                     args.humanize
                 ))
             table_rows = sorted(table_rows, key=lambda x: x[0])
@@ -728,7 +728,6 @@ def main():
             table_rows.append(get_table_rows_for_resource_info_dict(
                 attribute_value,
                 healthcheck_utilization_pairs,
-                args.threshold,
                 args.humanize
             ))
             table_rows = sorted(table_rows, key=lambda x: x[0])
