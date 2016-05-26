@@ -526,16 +526,19 @@ def healthcheck_result_resource_utilization_pair_for_resource_utilization(utiliz
 
 
 def format_table_column_for_healthcheck_resource_utilization_pair(healthcheck_utilization_pair, humanize):
-    """Given a tuple of (HealthCheckResult, ResourceUtilization), return a string representation of the ResourceUtilization
-    such that it is formatted according to the value of HealthCheckResult.healthy. Further, humanize the string
-    according to the humanize boolean parameter.
+    """Given a tuple of (HealthCheckResult, ResourceUtilization), return a
+    string representation of the ResourceUtilization such that it is formatted
+    according to the value of HealthCheckResult.healthy. Further, humanize the
+    string according to the humanize boolean parameter and the metric - be sure
+    to *not* try and humanize if the ResourceUtilization metric is cpus
+    (because we don't want to try and show that as some other unit).
 
     :param healthcheck_utilization_pair: a tuple of (HealthCheckResult, ResourceUtilization)
     :param humanize: a boolean indicating if the string should be humanized
     :returns: a string representing the ResourceUtilization.
     """
     color_func = PaastaColors.green if healthcheck_utilization_pair[0].healthy else PaastaColors.red
-    if humanize:
+    if humanize and healthcheck_utilization_pair[1].metric != 'cpus':
         return color_func('%s/%s' % (
             naturalsize(healthcheck_utilization_pair[1].free * 1024 * 1024, gnu=True),
             naturalsize(healthcheck_utilization_pair[1].total * 1024 * 1024, gnu=True)
@@ -559,7 +562,7 @@ def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pai
             for pair in healthcheck_utilization_pairs]
 
 
-def get_table_rows_for_resource_usage_dict(resource_info_dict, threshold, humanize):
+def get_table_rows_for_resource_info_dict(attribute_name, resource_info_dict, threshold, humanize):
     """Given a dict of {'free': ResourceInfo, 'total': Resource}, return a list of lists representing
     a table for showing in a table. This does the heavy lifting of deciding whether a given resource_info_dict
     should be considered 'healthy' or not, and formatting the strings shows in the table accordingly.
@@ -569,8 +572,8 @@ def get_table_rows_for_resource_usage_dict(resource_info_dict, threshold, humani
     :param humanize: a boolean indicating whether the outut strings should be 'humanized'
     :returns: a list of lists of strings ([[string]]). Thes are rows suitable for printing as a table.
     """
-    headers = ['Attribute Value', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']
-    table_rows = [headers]
+    all_rows = [[attribute_name.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
+    table_rows = []
 
     for attribute_value, resource_info_dict in resource_info_dict.items():
         resource_utilizations = resource_utillizations_from_resource_info(
@@ -582,35 +585,12 @@ def get_table_rows_for_resource_usage_dict(resource_info_dict, threshold, humani
             healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, threshold)
             for utilization in resource_utilizations
         ]
-        # if we're getting the row for cpus, then set CPUs to False to avoid the naturalsize function
-        if attribute_value == 'cpus':
-            humanize = False
         table_rows.append(
             [attribute_value] +
             format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs, humanize)
         )
-    return sorted(table_rows, key=lambda x: x[0])
-
-
-def get_slave_resource_summary(mesos_state):
-    resource_summary = get_resource_utilization_per_slave(mesos_state)
-    rows = []
-    rows.append(['Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)'])
-    for slave, resource_info_dict in resource_summary.items():
-        resource_utilizations = resource_utillizations_from_resource_info(
-            total=resource_info_dict['total'],
-            free=resource_info_dict['free'],
-        )
-        row = [slave]
-        for utilization in resource_utilizations:
-            row.extend([
-                "%.2f/%.2f" % (
-                    float(utilization.total - utilization.free),
-                    utilization.total
-                )
-            ])
-        rows.append(row)
-    return rows
+    all_rows.extend(sorted(table_rows, key=lambda x: x[0]))
+    return all_rows
 
 
 def main():
@@ -689,7 +669,8 @@ def main():
         for grouping in args.groupings:
             print_with_indent('Resources Grouped by %s' % grouping, 2)
             resource_info_dict = get_resource_utilization_by_attribute(mesos_state, grouping)
-            table_rows = get_table_rows_for_resource_usage_dict(
+            table_rows = get_table_rows_for_resource_info_dict(
+                grouping,
                 resource_info_dict,
                 args.threshold,
                 args.humanize
@@ -706,7 +687,8 @@ def main():
         for grouping in args.groupings:
             print_with_indent('Resources Grouped by %s' % grouping, 2)
             resource_info_dict = get_resource_utilization_by_attribute(mesos_state, grouping)
-            table_rows = get_table_rows_for_resource_usage_dict(
+            table_rows = get_table_rows_for_resource_info_dict(
+                grouping,
                 resource_info_dict,
                 args.threshold,
                 args.humanize
@@ -714,7 +696,13 @@ def main():
             for line in format_table(table_rows):
                 print_with_indent(line, 4)
         print_with_indent('Per Slave Utilization', 2)
-        rows = get_slave_resource_summary(mesos_state)
+        slave_resource_dict = get_resource_utilization_per_slave(mesos_state)
+        rows = get_table_rows_for_resource_info_dict(
+            'hostname',
+            slave_resource_dict,
+            args.threshold,
+            args.humanize
+        )
         for line in format_table(rows):
             print_with_indent(line, 4)
 

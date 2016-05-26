@@ -738,8 +738,8 @@ def test_get_table_rows_for_resource_usage_dict():
             'total': paasta_metastatus.ResourceInfo(cpus=10, mem=10, disk=10),
         }
     }
-    actual = paasta_metastatus.get_table_rows_for_resource_usage_dict(fake, 90, False)
-    assert actual[0] == ['Attribute Value', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']
+    actual = paasta_metastatus.get_table_rows_for_resource_info_dict('habitat', fake, 90, False)
+    assert actual[0] == ['Habitat', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']
     assert actual[1] == [
         'myhabitat',
         PaastaColors.green('10/10'),
