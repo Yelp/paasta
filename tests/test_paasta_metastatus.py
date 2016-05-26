@@ -727,28 +727,13 @@ def test_format_row_for_resource_utilization_checks(mock_format_row):
     assert mock_format_row.call_count == len(fake_pairs)
 
 
-def test_get_table_rows_for_resource_usage_dict():
-    fake = {
-        'myhabitat': {
-            'free': paasta_metastatus.ResourceInfo(cpus=10, mem=10, disk=10),
-            'total': paasta_metastatus.ResourceInfo(cpus=10, mem=10, disk=10),
-        },
-        'myotherhabitat': {
-            'free': paasta_metastatus.ResourceInfo(cpus=10, mem=10, disk=10),
-            'total': paasta_metastatus.ResourceInfo(cpus=10, mem=10, disk=10),
-        }
-    }
-    actual = paasta_metastatus.get_table_rows_for_resource_info_dict('habitat', fake, 90, False)
-    assert actual[0] == ['Habitat', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']
-    assert actual[1] == [
-        'myhabitat',
-        PaastaColors.green('10/10'),
-        PaastaColors.green('10/10'),
-        PaastaColors.green('10/10')
+@patch('paasta_tools.paasta_metastatus.format_row_for_resource_utilization_healthchecks')
+def test_get_table_rows_for_resource_usage_dict(mock_format_row):
+    fake_pairs = [
+        (Mock(), Mock()),
+        (Mock(), Mock()),
+        (Mock(), Mock())
     ]
-    assert actual[2] == [
-        'myotherhabitat',
-        PaastaColors.green('10/10'),
-        PaastaColors.green('10/10'),
-        PaastaColors.green('10/10')
-    ]
+    mock_format_row.return_value = ['10/10', '10/10', '10/10']
+    actual = paasta_metastatus.get_table_rows_for_resource_info_dict('myhabitat', fake_pairs, False)
+    assert actual == ['myhabitat', '10/10', '10/10', '10/10']

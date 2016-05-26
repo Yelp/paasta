@@ -562,25 +562,21 @@ def format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pai
             for pair in healthcheck_utilization_pairs]
 
 
-def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilization_pairs, threshold, humanize):
-    """Given a dict of {'free': ResourceInfo, 'total': Resource}, return a list of lists representing
-    a table for showing in a table. This does the heavy lifting of deciding whether a given resource_info_dict
-    should be considered 'healthy' or not, and formatting the strings shows in the table accordingly.
-    :param resource_info_dict: a dict of {'free': ResourceInfo, 'total': Resource}, normally associated with a given
-    subset of resources, such as an attribute.
-    :param threshold: the threshold which decides when the utilization for a given metric becomes critical.
+def get_table_rows_for_resource_info_dict(attribute_value, healthcheck_utilization_pairs, humanize):
+    """ A wrapper method to join together
+
+
+    :param attribute: The attribute value and formatted columns to be shown in
+    a single row.  :param attribute_value: The value of the attribute
+    associated with the row. This becomes index 0 in the array returned.
+    :param healthcheck_utilization_pairs: a list of 2-tuples, where each tuple has the elements
+    (HealthCheckResult, ResourceUtilization)
     :param humanize: a boolean indicating whether the outut strings should be 'humanized'
-    :returns: a list of lists of strings ([[string]]). Thes are rows suitable for printing as a table.
+    :returns: a list of strings, representing a row in a table to be formatted.
     """
     row = [attribute_value]
     row.extend(format_row_for_resource_utilization_healthchecks(healthcheck_utilization_pairs, humanize))
     return row
-    # for healthcheck_utilization_pair in healthcheck_utilization_pairs:
-        # print healthcheck_utilization_pair
-        # table_rows.append(
-            # [attribute_value] +
-        # )
-    # return table_rows
 
 
 def main():
@@ -659,13 +655,25 @@ def main():
         for grouping in args.groupings:
             print_with_indent('Resources Grouped by %s' % grouping, 2)
             resource_info_dict = get_resource_utilization_by_attribute(mesos_state, grouping)
-            table_rows = get_table_rows_for_resource_info_dict(
-                grouping,
-                resource_info_dict,
-                args.threshold,
-                args.humanize
-            )
-            for line in format_table(table_rows):
+            all_rows = [[grouping.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
+            table_rows = []
+            for attribute_value, resource_info_dict in resource_info_dict.items():
+                resource_utilizations = resource_utillizations_from_resource_info(
+                    total=resource_info_dict['total'],
+                    free=resource_info_dict['free'],
+                )
+                x = [healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
+                     for utilization in resource_utilizations]
+                healthy_exit = all(pair[0].healthy for pair in x)
+                table_rows.append(get_table_rows_for_resource_info_dict(
+                    attribute_value,
+                    x,
+                    args.threshold,
+                    args.humanize
+                ))
+            table_rows = sorted(table_rows, key=lambda x: x[0])
+            all_rows.extend(table_rows)
+            for line in format_table(all_rows):
                 print_with_indent(line, 4)
         print marathon_summary
         print_results_for_healthchecks(marathon_ok, marathon_results, args.verbose)
@@ -684,12 +692,14 @@ def main():
                     total=resource_info_dict['total'],
                     free=resource_info_dict['free'],
                 )
-                x = [healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
-                for utilization in resource_utilizations]
+                healthcheck_utilization_pairs = [
+                    healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
+                    for utilization in resource_utilizations
+                ]
                 healthy_exit = all(pair[0].healthy for pair in x)
                 table_rows.append(get_table_rows_for_resource_info_dict(
                     attribute_value,
-                    x,
+                    healthcheck_utilization_pairs,
                     args.threshold,
                     args.humanize
                 ))
@@ -698,16 +708,33 @@ def main():
             for line in format_table(all_rows):
                 print_with_indent(line, 4)
 
-        # print_with_indent('Per Slave Utilization', 2)
-        # slave_resource_dict = get_resource_utilization_per_slave(mesos_state)
-        # rows = get_table_rows_for_resource_info_dict(
-            # 'hostname',
-            # slave_resource_dict,
-            # args.threshold,
-            # args.humanize
-        # )
-        # for line in format_table(rows):
-            # print_with_indent(line, 4)
+        print_with_indent('Per Slave Utilization', 2)
+        slave_resource_dict = get_resource_utilization_per_slave(mesos_state)
+        all_rows = [['Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
+
+        # print info about slaves here. Note that we don't make modifications to
+        # the healthy_exit variable here, because we don't care about a single slave
+        # having high usage.
+        for attribute_value, resource_info_dict in slave_resource_dict.items():
+            table_rows = []
+            resource_utilizations = resource_utillizations_from_resource_info(
+                total=resource_info_dict['total'],
+                free=resource_info_dict['free'],
+            )
+            healthcheck_utilization_pairs = [
+                healthcheck_result_resource_utilization_pair_for_resource_utilization(utilization, args.threshold)
+                for utilization in resource_utilizations
+            ]
+            table_rows.append(get_table_rows_for_resource_info_dict(
+                attribute_value,
+                healthcheck_utilization_pairs,
+                args.threshold,
+                args.humanize
+            ))
+            table_rows = sorted(table_rows, key=lambda x: x[0])
+            all_rows.extend(table_rows)
+        for line in format_table(all_rows):
+            print_with_indent(line, 4)
 
     if not healthy_exit:
         sys.exit(2)
