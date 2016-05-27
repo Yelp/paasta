@@ -1,3 +1,4 @@
+-r requirements.txt
 flake8==2.5.0
 mock==1.0.1
 pep8==1.5.7

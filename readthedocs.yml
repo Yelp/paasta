@@ -2,7 +2,7 @@ formats:
         - htmlzip
         - pdf
         - epub
-requirements_file: requirements.txt
+requirements_file: requirements-dev.txt
 python:
         version: 2
         setup_py_install: true
