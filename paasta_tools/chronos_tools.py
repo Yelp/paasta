@@ -13,9 +13,7 @@
 # limitations under the License.
 import argparse
 import datetime
-import json
 import logging
-import os
 import re
 import urlparse
 from time import sleep
@@ -40,7 +38,6 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
-from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
 
 
@@ -61,7 +58,6 @@ MESOS_TASK_SPACER = ':'
 TMP_JOB_IDENTIFIER = "tmp"
 
 VALID_BOUNCE_METHODS = ['graceful']
-PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
 EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
 log = logging.getLogger(__name__)
 
@@ -86,8 +82,7 @@ class InvalidParentError(Exception):
 
 class ChronosConfig(dict):
 
-    def __init__(self, config, path):
-        self.path = path
+    def __init__(self, config):
         super(ChronosConfig, self).__init__(config)
 
     def get_url(self):
@@ -95,29 +90,25 @@ class ChronosConfig(dict):
         try:
             return self['url']
         except KeyError:
-            raise ChronosNotConfigured('Could not find chronos url in system chronos config: %s' % self.path)
+            raise ChronosNotConfigured('Could not find chronos url in system chronos config')
 
     def get_username(self):
         """:returns: The Chronos API username"""
         try:
             return self['user']
         except KeyError:
-            raise ChronosNotConfigured('Could not find chronos user in system chronos config: %s' % self.path)
+            raise ChronosNotConfigured('Could not find chronos user in system chronos config')
 
     def get_password(self):
         """:returns: The Chronos API password"""
         try:
             return self['password']
         except KeyError:
-            raise ChronosNotConfigured('Could not find chronos password in system chronos config: %s' % self.path)
+            raise ChronosNotConfigured('Could not find chronos password in system chronos config')
 
 
-def load_chronos_config(path=PATH_TO_CHRONOS_CONFIG):
-    try:
-        with open(path) as f:
-            return ChronosConfig(json.load(f), path)
-    except IOError as e:
-        raise ChronosNotConfigured("Could not load chronos config file %s: %s" % (e.filename, e.strerror))
+def load_chronos_config():
+    return ChronosConfig(load_system_paasta_config().get_chronos_config())
 
 
 def get_chronos_client(config):

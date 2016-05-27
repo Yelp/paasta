@@ -333,7 +333,8 @@ def test_get_chronos_status():
 def test_main_no_marathon_config():
     with contextlib.nested(
         patch('paasta_tools.marathon_tools.load_marathon_config', autospec=True),
-        patch('paasta_tools.chronos_tools.load_chronos_config', autospec=True),
+        patch('paasta_tools.paasta_metastatus.load_chronos_config', autospec=True),
+        patch('paasta_tools.paasta_metastatus.get_chronos_status', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_from_leader', autospec=True),
         patch('paasta_tools.paasta_metastatus.get_mesos_state_status', autospec=True,
               return_value=([('fake_output', True)])),
@@ -345,6 +346,7 @@ def test_main_no_marathon_config():
     ) as (
         load_marathon_config_patch,
         load_chronos_config_patch,
+        load_get_chronos_status_patch,
         get_mesos_state_from_leader_patch,
         get_mesos_state_status_patch,
         get_mesos_stats_patch,

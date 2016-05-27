@@ -904,6 +904,17 @@ class SystemPaastaConfig(dict):
         :returns: A format string for constructing the FQDN of the masters in a given cluster."""
         return self.get('cluster_fqdn_format', 'paasta-{cluster:s}.yelp')
 
+    def get_chronos_config(self):
+        """Get the chronos config
+
+        :returns: The chronos config dictionary"""
+        try:
+            return self['chronos_config']
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                'Could not find chronos_config in configuration directory: %s' % self.directory
+            )
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
