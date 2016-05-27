@@ -915,6 +915,17 @@ class SystemPaastaConfig(dict):
                 'Could not find chronos_config in configuration directory: %s' % self.directory
             )
 
+    def get_performance_check_config(self):
+        """Get the performance check config
+
+        :returns: The performance_check config dictionary"""
+        try:
+            return self['performance_check']
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                'Could not find performance_check in configureation directory: %s' % self.directory
+            )
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any

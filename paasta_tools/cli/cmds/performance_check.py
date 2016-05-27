@@ -12,14 +12,13 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import json
-import os
 import sys
 
 import requests
 
 from paasta_tools.utils import get_username
-from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
+from paasta_tools.utils import load_system_paasta_config
+from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import timeout
 
 
@@ -47,11 +46,9 @@ def add_subparser(subparsers):
 
 
 def load_performance_check_config():
-    config_file = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'performance-check.json')
     try:
-        with open(config_file) as f:
-            return json.load(f)
-    except IOError as e:
+        return load_system_paasta_config().get_performance_check_config()
+    except PaastaNotConfiguredError as e:
         print "No performance check config to use. Safely bailing."
         print e.strerror
         sys.exit(0)
