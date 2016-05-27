@@ -533,6 +533,9 @@ class MarathonServiceConfig(InstanceConfig):
             default = {'check_haproxy': True}
         return self.config_dict.get('bounce_health_params', default)
 
+    def get_bounce_marging_factor(self):
+        return self.config_dict.get('bounce_margin_factor', 1)
+
     def get_accepted_resource_roles(self):
         return self.config_dict.get('accepted_resource_roles', None)
 

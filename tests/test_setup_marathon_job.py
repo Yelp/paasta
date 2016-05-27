@@ -61,6 +61,7 @@ class TestSetupMarathonJob:
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
         'mode': 'http'
     })
+    fake_bounce_margin_factor = 1.5
 
     def test_main_success(self):
         fake_client = mock.MagicMock()
@@ -941,6 +942,7 @@ class TestSetupMarathonJob:
         fake_bounce = 'trampoline'
         fake_drain_method = 'noop'
         fake_drain_method_params = {}
+        fake_bounce_margin_factor = 1.5
         with contextlib.nested(
             mock.patch(
                 'paasta_tools.setup_marathon_job.deploy_service',
@@ -981,6 +983,12 @@ class TestSetupMarathonJob:
                 return_value=self.fake_service_namespace_config,
                 autospec=True,
             ),
+            mock.patch.object(
+                self.fake_marathon_service_config,
+                'get_bounce_marging_factor',
+                return_value=fake_bounce_margin_factor,
+                autospec=True,
+            ),
         ) as (
             deploy_service_patch,
             get_bounce_patch,
@@ -989,6 +997,7 @@ class TestSetupMarathonJob:
             format_marathon_app_dict_patch,
             read_service_conf_patch,
             read_namespace_conf_patch,
+            get_bounce_marging_factor_patch,
         ):
             status, output = setup_marathon_job.setup_service(
                 service=fake_name,
@@ -1002,6 +1011,7 @@ class TestSetupMarathonJob:
             assert output == 'Never'
 
             get_bounce_patch.assert_called_once_with()
+            get_bounce_marging_factor_patch.assert_called_once_with()
             format_marathon_app_dict_patch.assert_called_once_with()
             get_drain_method_patch.assert_called_once_with(read_namespace_conf_patch.return_value)
             deploy_service_patch.assert_called_once_with(
@@ -1017,6 +1027,7 @@ class TestSetupMarathonJob:
                 bounce_health_params=self.fake_marathon_service_config.get_bounce_health_params(
                     read_namespace_conf_patch.return_value),
                 soa_dir=None,
+                bounce_margin_factor=fake_bounce_margin_factor,
             )
 
     def test_setup_service_srv_complete_config_raises(self):
@@ -1190,6 +1201,7 @@ class TestSetupMarathonJob:
                 happy_new_tasks=[],
                 old_app_live_happy_tasks={old_app.id: set([old_task_to_drain, old_task_dont_drain])},
                 old_app_live_unhappy_tasks={old_app.id: set()},
+                margin_factor=1,
             )
 
             assert fake_drain_method.drain.call_count == 2

@@ -68,6 +68,10 @@
                     }
                 }
             },
+            "bounce_margin_factor": {
+                "type": "number",
+                "default": 1
+            },
             "deploy_group": {
                 "type": "string"
             },
