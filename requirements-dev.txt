@@ -1,6 +1,9 @@
+-r requirements.txt
 flake8==2.5.0
 mock==1.0.1
 pep8==1.5.7
 pre-commit==0.7.6
 pytest==2.7.3
 pytest-cov==2.2.0
+sphinx==1.4.1
+sphinxcontrib-autorun==0.1-20140415
