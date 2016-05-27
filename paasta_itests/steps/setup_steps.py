@@ -47,7 +47,7 @@ def setup_marathon_client():
         'url': marathon_connection_string,
         'user': None,
         'password': None,
-    }, '/some_fake_path_to_marathon.json')
+    })
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
     system_paasta_config = utils.SystemPaastaConfig({
@@ -71,7 +71,7 @@ def setup_chronos_config():
         'user': None,
         'password': None,
         'url': [chronos_connection_string],
-    }, '/some_fake_path_to_chronos.json')
+    })
     return chronos_config
 
 
