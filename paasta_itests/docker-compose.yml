@@ -45,7 +45,6 @@ paastatools:
   # make --no-capture global ???
   volumes:
   - ../:/work:rw
-  command: 'tox -e paasta_itests_inside_container -- --no-capture'
 
 chronos:
   build: ../yelp_package/dockerfiles/itest/chronos/
