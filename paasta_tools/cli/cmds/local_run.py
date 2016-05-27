@@ -371,7 +371,7 @@ def add_subparser(subparsers):
     )
     list_parser.add_argument(
         '-d', '--dry-run',
-        help='Shows the arguments in json format supplied to docker',
+        help='Shows the arguments supplied to docker as json.',
         action='store_true',
     )
     list_parser.set_defaults(command=paasta_local_run)
