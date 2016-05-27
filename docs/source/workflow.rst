@@ -111,7 +111,7 @@ A yelpsoa-configs master runs `generate_deployments_for_service <generated/paast
 frequently. The generated ``deployments.json`` appears in ``/nail/etc/services/service_name`` throughout the cluster.
 
 Marathon masters run `deploy_marathon_services <deploy_marathon_services.html>`_,
-a thin wrapper around `setup_marathon_job <setup_marathon_job.html>`_.
+a thin wrapper around ``setup_marathon_job``.
 These scripts parse ``deployments.json`` and the current cluster state,
 then issue comands to Marathon to put the cluster into the right state
 -- cluster X should be running version Y of service Z.
@@ -230,6 +230,31 @@ Valid options are:
   before we consider it healthy. Useful if tasks take a while to start up.
 * ``check_haproxy``: Whether to check the local haproxy to make sure this task
   has been registered and discovered.
+
+Draining
+--------
+Draining is the process to stop instances of an old service from receiving
+traffic. PaaSTA supports pluggable drain methods for service authors to mark
+services up and down in their environments.
+
+Current master has three draining methods:
+
+* `noop <generated/paasta_tools.drain_lib.html#drain_lib.NoopDrainMethod>`_ - This draining method skips
+  draining completely. Service instances are killed as needed.
+
+* `test <generated/paasta_tools.drain_lib.html#drain_lib.TestDrainMethod>`_ - This draining method uses
+  class variables to keep track of instances that are marked down to drain and
+  instances that have stopped receiving traffic.
+
+* `hacheck <generated/paasta_tools.drain_lib.html#drain_lib.HacheckDrainMethod>`_ - `hacheck <https://github.com/Yelp/hacheck>`_ is
+  used at Yelp to provide APIs to query and change state of a service instance.
+  The hacheck draining method requests hacheck to mark down an instance. HAProxy
+  checks with hacheck periodically to keep its view of instance state up-to-date.
+  The hacheck draining method will wait for a configurable ``delay`` to make sure
+  HAProxy has the update before considering safe to kill an instance. Note that
+  the hacheck draining method sets an expiration when marking an instance down on
+  hacheck. hacheck will drop the down state if it receives a status query after
+  expiration.
 
 Monitoring
 ----------
