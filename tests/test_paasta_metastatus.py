@@ -272,7 +272,7 @@ def test_get_marathon_status(
         'url': 'fakeurl',
         'user': 'fakeuser',
         'password': 'fakepass',
-    }, '/fake_config/fake_marathon.json')
+    })
     client = mock_get_marathon_client.return_value
     client.list_apps.return_value = [
         "MarathonApp::1",
@@ -302,7 +302,7 @@ def test_get_marathon_client():
         'url': 'fakeurl',
         'user': 'fakeuser',
         'password': 'fakepass',
-    }, '/fake_config/fake_marathon.json')
+    })
     client = paasta_metastatus.get_marathon_client(fake_config)
     assert client.servers == ['fakeurl']
     assert client.auth == ('fakeuser', 'fakepass')

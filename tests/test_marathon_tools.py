@@ -73,7 +73,7 @@ class TestMarathonTools:
                 'mode': 'RW',
             },
         ],
-    }, '/some/fake/path/fake_file.json')
+    })
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig()
 
     def test_load_marathon_service_config_happy_path(self):
@@ -241,28 +241,28 @@ class TestMarathonTools:
 
     def test_load_marathon_config(self):
         expected = {'foo': 'bar'}
+        from_file = {'marathon_config': {'foo': 'bar'}}
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
-            mock.patch('paasta_tools.marathon_tools.open', create=True, return_value=file_mock),
-            mock.patch('json.load', autospec=True, return_value=expected)
+            mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+            mock.patch('json.load', autospec=True, return_value=from_file)
         ) as (
             open_file_patch,
             json_patch
         ):
             assert marathon_tools.load_marathon_config() == expected
-            open_file_patch.assert_called_once_with('/etc/paasta/marathon.json')
-            json_patch.assert_called_once_with(file_mock.__enter__())
+            open_file_patch.assert_called()
+            json_patch.assert_called_with(file_mock.__enter__())
 
     def test_load_marathon_config_path_dne(self):
-        fake_path = '/var/dir_of_fake'
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.open', create=True, side_effect=IOError(2, 'a', 'b')),
         ) as (
             open_patch,
         ):
             with raises(marathon_tools.PaastaNotConfiguredError) as excinfo:
-                marathon_tools.load_marathon_config(fake_path)
-            assert str(excinfo.value) == "Could not load marathon config file b: a"
+                marathon_tools.load_marathon_config()
+            assert str(excinfo.value) == "Could not find marathon_config in configureation directory: /etc/paasta/"
 
     def test_get_all_namespaces_for_service(self):
         name = 'vvvvvv'
@@ -2289,7 +2289,7 @@ def test_create_complete_config():
 
 
 def test_marathon_config_key_errors():
-    fake_marathon_config = marathon_tools.MarathonConfig({}, '')
+    fake_marathon_config = marathon_tools.MarathonConfig({})
     with raises(marathon_tools.MarathonNotConfigured):
         fake_marathon_config.get_url()
     with raises(marathon_tools.MarathonNotConfigured):

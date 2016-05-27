@@ -16,7 +16,6 @@ that interact with marathon. There's config parsers, url composers,
 and a number of other things used by other components in order to
 make the PaaSTA stack work.
 """
-import json
 import logging
 import os
 import re
@@ -51,7 +50,6 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoConfigurationForServiceError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import PaastaNotConfiguredError
-from paasta_tools.utils import PATH_TO_SYSTEM_PAASTA_CONFIG_DIR
 from paasta_tools.utils import timeout
 from paasta_tools.utils import ZookeeperPool
 
@@ -61,7 +59,6 @@ CONTAINER_PORT = 8888
 # this spacer, i.e. you can't change it here and expect the world to change
 # with you. We need to know what it is so we can decompose Mesos task ids.
 MESOS_TASK_SPACER = '.'
-PATH_TO_MARATHON_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'marathon.json')
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
 
@@ -73,12 +70,8 @@ log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
 
-def load_marathon_config(path=PATH_TO_MARATHON_CONFIG):
-    try:
-        with open(path) as f:
-            return MarathonConfig(json.load(f), path)
-    except IOError as e:
-        raise PaastaNotConfiguredError("Could not load marathon config file %s: %s" % (e.filename, e.strerror))
+def load_marathon_config():
+    return MarathonConfig(load_system_paasta_config().get_marathon_config())
 
 
 class MarathonNotConfigured(Exception):
@@ -87,8 +80,7 @@ class MarathonNotConfigured(Exception):
 
 class MarathonConfig(dict):
 
-    def __init__(self, config, path):
-        self.path = path
+    def __init__(self, config):
         super(MarathonConfig, self).__init__(config)
 
     def get_url(self):
@@ -98,7 +90,7 @@ class MarathonConfig(dict):
         try:
             return self['url']
         except KeyError:
-            raise MarathonNotConfigured('Could not find marathon url in system marathon config: %s' % self.path)
+            raise MarathonNotConfigured('Could not find marathon url in system marathon config')
 
     def get_username(self):
         """Get the Marathon API username
@@ -107,7 +99,7 @@ class MarathonConfig(dict):
         try:
             return self['user']
         except KeyError:
-            raise MarathonNotConfigured('Could not find marathon user in system marathon config: %s' % self.path)
+            raise MarathonNotConfigured('Could not find marathon user in system marathon config')
 
     def get_password(self):
         """Get the Marathon API password
@@ -116,7 +108,7 @@ class MarathonConfig(dict):
         try:
             return self['password']
         except KeyError:
-            raise MarathonNotConfigured('Could not find marathon password in system marathon config: %s' % self.path)
+            raise MarathonNotConfigured('Could not find marathon password in system marathon config')
 
 
 def load_marathon_service_config(service, instance, cluster, load_deployments=True, soa_dir=DEFAULT_SOA_DIR):

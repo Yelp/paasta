@@ -52,7 +52,7 @@ class TestSetupMarathonJob:
         'url': 'http://test_url',
         'user': 'admin',
         'password': 'admin_pass',
-    }, '/fake/fake_file.json')
+    })
     fake_args = mock.MagicMock(
         service_instance_list=['what_is_love.bby_dont_hurt_me'],
         soa_dir='no_more',

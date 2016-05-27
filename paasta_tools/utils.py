@@ -926,6 +926,17 @@ class SystemPaastaConfig(dict):
                 'Could not find performance_check in configureation directory: %s' % self.directory
             )
 
+    def get_marathon_config(self):
+        """Get the marathon config
+
+        :returns: The marathon config dictionary"""
+        try:
+            return self['marathon_config']
+        except KeyError:
+            raise PaastaNotConfiguredError(
+                'Could not find marathon_config in configureation directory: %s' % self.directory
+            )
+
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
     """Given a command, run it. Return a tuple of the return code and any
