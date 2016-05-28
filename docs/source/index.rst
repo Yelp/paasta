@@ -13,6 +13,7 @@ Directions (For PaaSTA Users)
 
    yelpsoa_configs
    workflow
+   autoscaling
 
 About PaaSTA's Architecture
 ---------------------------
