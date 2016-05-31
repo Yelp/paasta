@@ -710,3 +710,12 @@ def test_get_table_rows_for_resource_usage_dict(mock_format_row):
 
 def test_key_func_for_attribute():
     assert inspect.isfunction(paasta_metastatus.key_func_for_attribute('habitat'))
+
+
+def test_get_mesos_disk_status():
+    metrics = {
+        'master/disk_total': 100,
+        'master/disk_used': 50
+    }
+    actual = paasta_metastatus.get_mesos_disk_status(metrics)
+    assert actual == (100, 50, 50)
