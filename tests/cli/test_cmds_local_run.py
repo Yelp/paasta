@@ -918,10 +918,11 @@ def test_run_docker_container_terminates_with_healthcheck_only_success(
 @mock.patch('paasta_tools.cli.cmds.local_run.execlp', autospec=True)
 @mock.patch('paasta_tools.cli.cmds.local_run._run', autospec=True, return_value=(0, 'fake _run output'))
 @mock.patch('paasta_tools.cli.cmds.local_run.get_container_id', autospec=True)
-@mock.patch('paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance',
-            autospec=True,
-            return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
-            )
+@mock.patch(
+    'paasta_tools.cli.cmds.local_run.get_healthcheck_for_instance',
+    autospec=True,
+    return_value=('fake_healthcheck_mode', 'fake_healthcheck_uri'),
+)
 def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_get_healthcheck_for_instance,
     mock_get_container_id,
@@ -929,11 +930,16 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     mock_execlp,
     mock_get_docker_run_cmd,
     mock_pick_random_port,
-    mock_simulate_healthcheck
+    mock_simulate_healthcheck,
+    capsys,
 ):
     mock_pick_random_port.return_value = 666
     mock_docker_client = mock.MagicMock(spec_set=docker.Client)
-    mock_docker_client.attach = mock.MagicMock(spec_set=docker.Client.attach)
+    ATTACH_OUTPUT = "I'm the stdout / stderr!\n"
+    mock_docker_client.attach = mock.MagicMock(
+        spec_set=docker.Client.attach,
+        return_value=ATTACH_OUTPUT,
+    )
     mock_docker_client.stop = mock.MagicMock(spec_set=docker.Client.stop)
     mock_docker_client.remove_container = mock.MagicMock(spec_set=docker.Client.remove_container)
     mock_service_manifest = mock.MagicMock(spec_set=MarathonServiceConfig)
@@ -954,6 +960,8 @@ def test_run_docker_container_terminates_with_healthcheck_only_fail(
     assert mock_docker_client.stop.call_count == 1
     assert mock_docker_client.remove_container.call_count == 1
     assert excinfo.value.code == 1
+
+    assert ATTACH_OUTPUT in capsys.readouterr()[0]
 
 
 @mock.patch('time.sleep', autospec=True)
