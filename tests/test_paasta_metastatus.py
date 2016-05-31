@@ -515,7 +515,7 @@ def test_get_resource_utilization_by_grouping(
     mock_get_all_tasks_from_state([Mock(), Mock()])
     state = {
         'frameworks': Mock(),
-        'slaves': Mock()
+        'slaves': [{}]
     }
     actual = paasta_metastatus.get_resource_utilization_by_grouping(
         grouping_func=lambda slave: slave['attributes']['habitat'],

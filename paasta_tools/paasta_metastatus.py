@@ -371,7 +371,12 @@ def resource_utillizations_from_resource_info(total, free):
 
 
 def has_registered_slaves(mesos_state):
-    return 'slaves' in mesos_state and mesos_state['slaves']
+    """ Return a boolean indicating if there are any slaves registered
+    to the master according to the mesos state.
+    :param mesos_state: the mesos state from the master
+    :returns: a boolean, indicating if there are > 0 slaves
+    """
+    return len(mesos_state.get('slaves', [])) > 0
 
 
 def get_mesos_metrics_health(mesos_metrics):
