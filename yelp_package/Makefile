@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +13,7 @@
 # limitations under the License.
 
 # Edit this release and run "make release"
-RELEASE=0.18.19
+RELEASE=0.19.8
 
 SHELL=/bin/bash
 

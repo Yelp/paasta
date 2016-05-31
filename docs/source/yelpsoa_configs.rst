@@ -1,6 +1,7 @@
 Preparation: paasta_tools and yelpsoa-configs
 =========================================================
 
+
 paasta_tools reads configuration about services from several YAML
 files in `soa-configs <soa_configs.html>`_:
 
@@ -12,21 +13,28 @@ clustername is usually the same as the ``superregion`` in which the cluster
 lives (``norcal-prod``), but not always (``mesosstage``). It MUST be all
 lowercase. (non alphanumeric lowercase characters are ignored)
 
-The yaml where marathon jobs are actually defined.
+**Note:** All values in this file except the following will cause PaaSTA to
+`bounce <workflow.html#bouncing>`_ the service:
+
+.. runblock:: pycon
+
+    >>> from paasta_tools.marathon_tools import CONFIG_HASH_BLACKLIST; print CONFIG_HASH_BLACKLIST
 
 Top level keys are instancenames, e.g. ``main`` and ``canary``. Each
 instance MAY have:
 
   * ``cpus``: Number of CPUs an instance needs. Defaults to .25. CPUs in Mesos
-    are "shares" and represent a minimal amount of a CPU to share with a task.
-    A task can burst to use any available free CPU, but is guaranteed to get
-    the CPU shares specified.
+    are "shares" and represent a minimal amount of a CPU to share with a task
+    relative to the other tasks on a host.  A task can burst to use any
+    available free CPU, but is guaranteed to get the CPU shares specified.  For
+    a more detailed read on how this works in practice, see the docs on `isolation <isolation.html>`_.
 
   * ``mem``: Memory (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
-    memory is constrained to the specified limit, and tasks will reach out-of-memory
-    (OOM) conditions if they attempt to exceed these limits, and then be killed.
-    There is currently not way to detect if this condition is met, other than a
-    ``TASK_FAILED`` message.
+    memory is constrained to the specified limit, and tasks will reach
+    out-of-memory (OOM) conditions if they attempt to exceed these limits, and
+    then be killed.  There is currently not way to detect if this condition is
+    met, other than a ``TASK_FAILED`` message. For more a more detailed read on
+    how this works, see the docs on `isolation <isolation.html>`_
 
   * ``disk``: Disk (in MB) an instance needs. Defaults to 1024 (1GB). In Mesos
     disk is constrained to the specified limit, and tasks will recieve 'No space
@@ -367,7 +375,21 @@ Each job configuration MAY specify the following options:
     <https://mesos.github.io/chronos/docs/api.html#constraints>`_ for more
     information.
 
+  * ``extra_constraints``: Adds to the default placement constraints for
+    services. This acts the same as ``constraints``, but adds to the default
+    constraints instead of replacing them. See ``constraints`` for details on
+    format and the default constraints.
+
+    *Note*: While this parameter is the same as ``extra_constraints`` in ``marathon-$cluster.yaml``,
+    the Marathon constrain language isn't exactly like the Marathon constraint language.
+    Be sure to read the constraint documentation for Chronos referenced in the ``constraints``
+    section.
+
   * ``pool``: See the `marathon-[clustername].yaml`_ section for details
+
+  * ``deploy_whitelist``: See the `marathon-[clustername].yaml`_ section for details
+
+  * ``deploy_blacklist``: *Not currently supported*.
 
   * ``deploy_group``: Same as ``deploy_group`` for marathon-*.yaml.
 
@@ -376,13 +398,13 @@ Each job configuration MAY specify the following options:
 
     * This field takes precedence over any time zone specified in schedule.
     * See list of `tz database time zones <https://en.wikipedia.org/wiki/List_of_tz_database_time_zones>`_.
-    * For example, the effective time zone for the following is Pacific Standard Time::
+    * For example, the effective time zone for the following is America/Los_Angeles::
 
 
         ---
         main:
           schedule: R/2014-10-10T18:32:00Z/PT60M
-          schedule_time_zone: PST
+          schedule_time_zone: America/Los_Angeles
 
 .. _doc: deploy_groups.html
 

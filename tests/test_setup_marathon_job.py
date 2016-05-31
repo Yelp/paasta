@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -16,12 +16,12 @@ import contextlib
 
 import marathon
 import mock
-from pysensu_yelp import Status
 from pytest import raises
 
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
 from paasta_tools import setup_marathon_job
+from paasta_tools import utils
 from paasta_tools.bounce_lib import list_bounce_methods
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
@@ -54,7 +54,7 @@ class TestSetupMarathonJob:
         'password': 'admin_pass',
     }, '/fake/fake_file.json')
     fake_args = mock.MagicMock(
-        service_instance='what_is_love.bby_dont_hurt_me',
+        service_instance_list=['what_is_love.bby_dont_hurt_me'],
         soa_dir='no_more',
         verbose=False,
     )
@@ -113,14 +113,14 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_password(),
             )
             read_service_conf_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir,
             )
             setup_service_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config,
@@ -178,13 +178,13 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_username(),
                 self.fake_marathon_config.get_password())
             read_service_conf_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
             setup_service_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 fake_client,
                 self.fake_marathon_config,
                 self.fake_marathon_service_config,
@@ -192,7 +192,7 @@ class TestSetupMarathonJob:
             )
             sys_exit_patch.assert_called_once_with(0)
 
-    def test_main_sends_event_if_no_deployments(self):
+    def test_main_exits_if_no_deployments_yet(self):
         fake_client = mock.MagicMock()
         with contextlib.nested(
             mock.patch(
@@ -221,7 +221,6 @@ class TestSetupMarathonJob:
                 autospec=True,
             ),
             mock.patch('paasta_tools.setup_marathon_job.load_system_paasta_config', autospec=True),
-            mock.patch('paasta_tools.setup_marathon_job.send_event', autospec=True),
         ) as (
             parse_args_patch,
             get_main_conf_patch,
@@ -229,7 +228,6 @@ class TestSetupMarathonJob:
             read_service_conf_patch,
             setup_service_patch,
             load_system_paasta_config_patch,
-            sensu_patch,
         ):
             load_system_paasta_config_patch.return_value.get_cluster = mock.Mock(return_value=self.fake_cluster)
             with raises(SystemExit) as exc_info:
@@ -241,19 +239,10 @@ class TestSetupMarathonJob:
                 self.fake_marathon_config.get_username(),
                 self.fake_marathon_config.get_password())
             read_service_conf_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
+                decompose_job_id(self.fake_args.service_instance_list[0])[0],
+                decompose_job_id(self.fake_args.service_instance_list[0])[1],
                 self.fake_cluster,
                 soa_dir=self.fake_args.soa_dir)
-            expected_string = 'No deployments found for %s in cluster %s' % (
-                self.fake_args.service_instance, self.fake_cluster)
-            sensu_patch.assert_called_once_with(
-                decompose_job_id(self.fake_args.service_instance)[0],
-                decompose_job_id(self.fake_args.service_instance)[1],
-                self.fake_args.soa_dir,
-                Status.CRITICAL,
-                expected_string
-            )
             assert exc_info.value.code == 0
 
     def test_send_event(self):
@@ -1170,7 +1159,7 @@ class TestSetupMarathonJob:
             mock.patch(
                 'paasta_tools.bounce_lib.get_happy_tasks',
                 autospec=True,
-                side_effect=lambda x, _, __, **kwargs: x.tasks,
+                side_effect=lambda x, _, __, ___, **kwargs: x.tasks,
             ),
             mock.patch('paasta_tools.bounce_lib.kill_old_ids', autospec=True),
             mock.patch('paasta_tools.bounce_lib.create_marathon_app', autospec=True),
@@ -1338,7 +1327,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
     def fake_drain_method(self):
         return mock.Mock(is_draining=lambda t: t._drain_state == 'down')
 
-    def fake_get_happy_tasks(self, app, service, nerve_ns, **kwargs):
+    def fake_get_happy_tasks(self, app, service, nerve_ns, system_paasta_config, **kwargs):
         return [t for t in app.tasks if t._happiness == 'happy']
 
     def test_get_old_happy_unhappy_draining_tasks_empty(self):
@@ -1350,6 +1339,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             mock.Mock(id=fake_id, tasks=[]),
             mock.Mock(id=('%s2' % fake_id), tasks=[])
         ]
+        fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
 
         expected_live_happy_tasks = {
             fake_apps[0].id: set(),
@@ -1371,6 +1361,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
+                system_paasta_config=fake_system_paasta_config,
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks
@@ -1401,6 +1392,8 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
             ),
         ]
 
+        fake_system_paasta_config = utils.SystemPaastaConfig({}, "/fake/configs")
+
         expected_live_happy_tasks = {
             fake_apps[0].id: set([fake_apps[0].tasks[0]]),
             fake_apps[1].id: set([fake_apps[1].tasks[0]]),
@@ -1421,6 +1414,7 @@ class TestGetOldHappyUnhappyDrainingTasks(object):
                 service=fake_name,
                 nerve_ns=fake_instance,
                 bounce_health_params={},
+                system_paasta_config=fake_system_paasta_config,
             )
         actual_live_happy_tasks, actual_live_unhappy_tasks, actual_draining_tasks = actual
         assert actual_live_happy_tasks == expected_live_happy_tasks

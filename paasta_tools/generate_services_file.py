@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ import service_configuration_lib
 
 from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SOA_DIR
 
 
 def get_service_lines_for_service(service):
@@ -43,7 +44,7 @@ def get_service_lines_for_service(service):
 
 def main():
     strings = []
-    for service in sorted(os.listdir(service_configuration_lib.DEFAULT_SOA_DIR)):
+    for service in sorted(os.listdir(DEFAULT_SOA_DIR)):
         strings.extend(get_service_lines_for_service(service))
     print "\n".join(strings)
     sys.exit(0)

@@ -22,23 +22,73 @@ Scheduled Jobs
 ^^^^^^^^^^^^^^
 
 Scheduled tasks are those tasks that are periodically run, and are not expected
-to run continously. Due to their ephemeral nature, they often do not expose a TCP port.
+to run continuously. Due to their ephemeral nature, they often do not expose a TCP port.
 
 PaaSTA uses `Chronos <yelpsoa_configs.html#chronos-clustername-yaml>`_ to define
 the command these scheduled jobs should execute, as well as their RAM, CPU, environment
 variables, etc.
 
+PaaSTA supports jobs being triggered by both a schedule, and by the completion
+of other jobs.  The jobs that are required to complete before another job can
+start are defined in a job's definition with the ``parents`` field. The ``parents`` field and
+``schedule`` field are mutually exclusive; that is to say a job cannot specify both a
+schedule and parents.
+
+Notes on running scheduled jobs with PaaSTA:
+ * PaaSTA (more specifically, Chronos) only supports running one 'instance' of
+   a job at one time. That is to say if I have a job scheduled to run every
+   24H, but one 'run' of that job takes longer than 24 hours, then when the job
+   is next scheduled to be run, it will not do so.
+ * A job cannot be run at a schedule more frequent than 1 minute.
+ * A job *can* specify cross-service dependencies. That is, a ``parent`` job can belong to a different
+   service to that it is triggering.
+
+
 Alternative names: scheduled tasks, scheduled batches, cron jobs (Note: Chronos does not support cron-syntax)
+
+Re Running Failed Jobs
+""""""""""""""""""""""
+
+If a Scheduled Job is required to be 'rerun', then this can be achieved using
+the ``paasta rerun`` command.  This allows you to run a job in the context of
+another date.
+
+An example might be: 
+ * Assume I have a job, ``my-job``, which belongs to the service ``myservice``.
+ * In the service's ``chronos-testcluster.yaml`` file, the ``schedule`` field is set to ``R/2014-09-25T00:00:00Z/PT24H``.
+ * The run for my job yesterday failed due to a third party outage.
+ * The command for my job includes a tron style datestring. ``cmd: ./run-job --date %(shortdate-14)s``.
+
+If the date today is ``2016-04-26``, I can rerun the job for yesterday with the
+command:
+
+``$ paasta rerun --service myservice --instance my-job -c test-cluster -d
+2016-04-25T00:00:00``
+
+The cmd string in the job will be interpolated as it would have been at the time
+provided by the ``-d`` parameter, and the job will be run once.
+
+Notes on rerunning jobs:
+
+  * Rerunning a job has no impact on the regular schedule of a job.
+  * You can view information about a rerun job with ``paasta status``.
+  * The result of the job is kept for 24 Hours after it's completion.
+  * If the job being rerun is listed in any other job's ``parents`` field,
+    that is, there are other dependent jobs defined in the cluster that only
+    start once the job being rerun has completed, they will *not* be triggered once the rerun
+    job has completed. Each downstream job must be rerun individually.
 
 Adhoc Tasks
 ^^^^^^^^^^^
 
-Adhoc tasks are often required to support one-time tasks, like a database migration.
-Sometimes they are also useful for exploritory purposes, or even sometimes for end-to-end
-tests. PaaSTA supports this use case through ``paasta local-run``, which supports
-building images locally, as well as using the same image as a "live" deployment.
+Adhoc tasks are often required to support one-time tasks, like a database
+migration.  Sometimes they are also useful for exploratory purposes, or even
+sometimes for end-to-end tests. PaaSTA supports this use case through ``paasta
+local-run``, which supports building images locally, as well as using the same
+image as a "live" deployment.
 
-Alternative names: Adhoc batches, interactive batches, one-off dynos, one-off tasks
+Alternative names: Adhoc batches, interactive batches, one-off dynos, one-off
+tasks
 
 Service configuration
 ---------------------
@@ -61,7 +111,7 @@ A yelpsoa-configs master runs `generate_deployments_for_service <generated/paast
 frequently. The generated ``deployments.json`` appears in ``/nail/etc/services/service_name`` throughout the cluster.
 
 Marathon masters run `deploy_marathon_services <deploy_marathon_services.html>`_,
-a thin wrapper around `setup_marathon_job <setup_marathon_job.html>`_.
+a thin wrapper around ``setup_marathon_job``.
 These scripts parse ``deployments.json`` and the current cluster state,
 then issue comands to Marathon to put the cluster into the right state
 -- cluster X should be running version Y of service Z.
@@ -79,6 +129,9 @@ configuration for the running image:
 * ``--cpu-shares``: This is the value set in ``marathon.yaml`` as "cpus".
 
 * ``--memory``: This is the value set in ``marathon.yaml`` as "mem".
+
+* ``--memory-swap``: Total memory limit (memory + swap). We set this to the same value
+  as "mem", rounded up to the nearest MB, to prevent containers being able to swap.
 
 * ``--net``: PaaSTA uses bridge mode to enable random port allocation.
 
@@ -178,6 +231,31 @@ Valid options are:
 * ``check_haproxy``: Whether to check the local haproxy to make sure this task
   has been registered and discovered.
 
+Draining
+--------
+Draining is the process to stop instances of an old service from receiving
+traffic. PaaSTA supports pluggable drain methods for service authors to mark
+services up and down in their environments.
+
+Current master has three draining methods:
+
+* `noop <generated/paasta_tools.drain_lib.html#drain_lib.NoopDrainMethod>`_ - This draining method skips
+  draining completely. Service instances are killed as needed.
+
+* `test <generated/paasta_tools.drain_lib.html#drain_lib.TestDrainMethod>`_ - This draining method uses
+  class variables to keep track of instances that are marked down to drain and
+  instances that have stopped receiving traffic.
+
+* `hacheck <generated/paasta_tools.drain_lib.html#drain_lib.HacheckDrainMethod>`_ - `hacheck <https://github.com/Yelp/hacheck>`_ is
+  used at Yelp to provide APIs to query and change state of a service instance.
+  The hacheck draining method requests hacheck to mark down an instance. HAProxy
+  checks with hacheck periodically to keep its view of instance state up-to-date.
+  The hacheck draining method will wait for a configurable ``delay`` to make sure
+  HAProxy has the update before considering safe to kill an instance. Note that
+  the hacheck draining method sets an expiration when marking an instance down on
+  hacheck. hacheck will drop the down state if it receives a status query after
+  expiration.
+
 Monitoring
 ----------
 
@@ -204,7 +282,7 @@ services. See the man pages for a description and detail of options for any
 individual paasta command.  Some of the most frequently used commands are
 listed below:
 
-   * ``paasta start`` - sets the desired state of the service instance to
+* ``paasta start`` - sets the desired state of the service instance to
   'started'. In the case of long-running services, this will mean ensuring that
   the number of instances of your application matches that set in your
   soa-configs. In the case of scheduled-tasks, this will ensure that your task
@@ -221,7 +299,7 @@ listed below:
   no longer scheduled.
   **NB**: ``paasta stop`` is a temporary measure; that is, it's effect only lasts until
   you deploy a new version of your service. That means that if you run ``paasta
-  stop``` and push a version of the docker image serving your service, then
+  stop`` and push a version of the docker image serving your service, then
   paasta will reset the effect of ``paasta stop``.
 
 

@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -153,6 +153,7 @@ def test_start_or_stop_bad_refs(mock_list_remote_refs, mock_get_instance_config,
     args = mock.Mock()
     # To suppress any messages due to Mock making everything truthy
     args.clusters = 'fake_cluster1,fake_cluster2'
+    args.soa_dir = '/fake/soa/dir'
 
     mock_figure_out_service_name.return_value = 'fake_service'
     mock_get_instance_config.return_value = MarathonServiceConfig(

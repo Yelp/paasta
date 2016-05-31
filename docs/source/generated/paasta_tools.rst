@@ -16,6 +16,7 @@ Submodules
 
    paasta_tools.am_i_mesos_leader
    paasta_tools.autoscale_all_services
+   paasta_tools.autoscale_cluster
    paasta_tools.autoscaling_lib
    paasta_tools.bounce_lib
    paasta_tools.check_chronos_jobs
@@ -38,6 +39,7 @@ Submodules
    paasta_tools.mesos_tools
    paasta_tools.monitoring_tools
    paasta_tools.paasta_execute_docker_command
+   paasta_tools.paasta_maintenance
    paasta_tools.paasta_metastatus
    paasta_tools.paasta_serviceinit
    paasta_tools.remote_git

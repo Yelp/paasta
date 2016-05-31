@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -36,12 +36,10 @@ from datetime import datetime
 from datetime import timedelta
 
 import pysensu_yelp
-import service_configuration_lib
 
 from paasta_tools import marathon_tools
 from paasta_tools import mesos_tools
 from paasta_tools import monitoring_tools
-from paasta_tools import smartstack_tools
 from paasta_tools.marathon_tools import format_job_id
 from paasta_tools.monitoring import replication_utils
 from paasta_tools.utils import _log
@@ -53,8 +51,7 @@ from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import NoDeploymentsAvailable
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def send_event(service, namespace, cluster, soa_dir, status, output):
@@ -90,7 +87,7 @@ def parse_args():
     parser = argparse.ArgumentParser(epilog=epilog)
 
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=marathon_tools.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('-v', '--verbose', action='store_true',
                         dest="verbose", default=False)
@@ -105,6 +102,7 @@ def check_smartstack_replication_for_instance(
     cluster,
     soa_dir,
     expected_count,
+    system_paasta_config,
 ):
     """Check a set of namespaces to see if their number of available backends is too low,
     emitting events to Sensu based on the fraction available and the thresholds defined in
@@ -114,6 +112,7 @@ def check_smartstack_replication_for_instance(
     :param namespace: A nerve namespace, like "main"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
+    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     """
     namespace = marathon_tools.read_namespace_for_service_instance(service, instance, soa_dir=soa_dir)
     if namespace != instance:
@@ -126,7 +125,12 @@ def check_smartstack_replication_for_instance(
     monitoring_blacklist = job_config.get_monitoring_blacklist()
     log.info('Checking instance %s in smartstack', full_name)
     smartstack_replication_info = load_smartstack_info_for_service(
-        service=service, namespace=namespace, soa_dir=soa_dir, blacklist=monitoring_blacklist)
+        service=service,
+        namespace=namespace,
+        soa_dir=soa_dir,
+        blacklist=monitoring_blacklist,
+        system_paasta_config=system_paasta_config,
+    )
     log.debug('Got smartstack replication info for %s: %s' % (full_name, smartstack_replication_info))
 
     if len(smartstack_replication_info) == 0:
@@ -153,6 +157,35 @@ def check_smartstack_replication_for_instance(
 
         if any(under_replication_per_location):
             status = pysensu_yelp.Status.CRITICAL
+            output += (
+                "\n\n"
+                "What this alert means:\n"
+                "\n"
+                "  This replication alert means that a SmartStack powered loadbalancer (haproxy)\n"
+                "  doesn't have enough healthy backends. Not having enough healthy backends\n"
+                "  means that clients of that service will get 503s (http) or connection refused\n"
+                "  (tcp) when trying to connect to it.\n"
+                "\n"
+                "Reasons this might be happening:\n"
+                "\n"
+                "  The service may simply not have enough copies or it could simply be\n"
+                "  unhealthy in that location. There also may not be enough resources\n"
+                "  in the cluster to support the requested instance count.\n"
+                "\n"
+                "Things you can do:\n"
+                "\n"
+                "  * Fix the cause of the unhealthy service. Try running:\n"
+                "\n"
+                "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+                "\n"
+                "  * Widen SmartStack discovery settings\n"
+                "  * Increase the instance count\n"
+                "\n"
+            ) % {
+                'service': service,
+                'instance': instance,
+                'cluster': cluster,
+            }
             log.error(output)
         else:
             status = pysensu_yelp.Status.OK
@@ -205,6 +238,29 @@ def send_event_if_under_replication(
               '(threshold: %d%%)') % (full_name, num_available, expected_count, crit_threshold)
     under_replicated, _ = is_under_replicated(num_available, expected_count, crit_threshold)
     if under_replicated:
+        output += (
+            "\n\n"
+            "What this alert means:\n"
+            "\n"
+            "  This replication alert means that the service PaaSTA can't keep the\n"
+            "  requested number of copies up and healthy in the cluster.\n"
+            "\n"
+            "Reasons this might be happening:\n"
+            "\n"
+            "  The service may simply unhealthy. There also may not be enough resources\n"
+            "  in the cluster to support the requested instance count.\n"
+            "\n"
+            "Things you can do:\n"
+            "\n"
+            "  * Increase the instance count\n"
+            "  * Fix the cause of the unhealthy service. Try running:\n"
+            "\n"
+            "      paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+        ) % {
+            'service': service,
+            'instance': instance,
+            'cluster': cluster,
+        }
         log.error(output)
         status = pysensu_yelp.Status.CRITICAL
     else:
@@ -219,7 +275,7 @@ def send_event_if_under_replication(
         output=output)
 
 
-def check_service_replication(client, service, instance, cluster, soa_dir):
+def check_service_replication(client, service, instance, cluster, soa_dir, system_paasta_config):
     """Checks a service's replication levels based on how the service's replication
     should be monitored. (smartstack or mesos)
 
@@ -227,12 +283,13 @@ def check_service_replication(client, service, instance, cluster, soa_dir):
     :param instance: Instance name, like "main" or "canary"
     :param cluster: name of the cluster
     :param soa_dir: The SOA configuration directory to read from
+    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     """
     job_id = compose_job_id(service, instance)
     try:
         expected_count = marathon_tools.get_expected_instance_count_for_namespace(service, instance, soa_dir=soa_dir)
     except NoDeploymentsAvailable:
-        log.info('deployments.json missing for %s. Skipping replication monitoring.' % job_id)
+        log.debug('deployments.json missing for %s. Skipping replication monitoring.' % job_id)
         return
     if expected_count is None:
         return
@@ -244,7 +301,9 @@ def check_service_replication(client, service, instance, cluster, soa_dir):
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
-            expected_count=expected_count)
+            expected_count=expected_count,
+            system_paasta_config=system_paasta_config,
+        )
     else:
         check_healthy_marathon_tasks_for_service_instance(
             client=client,
@@ -256,12 +315,13 @@ def check_service_replication(client, service, instance, cluster, soa_dir):
         )
 
 
-def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
+def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist, system_paasta_config):
     """Retrives number of available backends for given services
 
     :param service_instances: A list of tuples of (service, instance)
     :param namespaces: list of Smartstack namespaces
     :param blacklist: A list of blacklisted location tuples in the form (location, value)
+    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     :returns: a dictionary of the form
 
     ::
@@ -283,10 +343,12 @@ def load_smartstack_info_for_service(service, namespace, soa_dir, blacklist):
         attribute=discover_location_type,
         service=service,
         namespace=namespace,
-        blacklist=blacklist)
+        blacklist=blacklist,
+        system_paasta_config=system_paasta_config,
+    )
 
 
-def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist):
+def get_smartstack_replication_for_attribute(attribute, service, namespace, blacklist, system_paasta_config):
     """Loads smartstack replication from a host with the specified attribute
 
     :param attribute: a Mesos attribute
@@ -294,6 +356,7 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
     :param namespace: A particular smartstack namespace to inspect, like 'main'
     :param constraints: A list of Marathon constraints to restrict which synapse hosts to query
     :param blacklist: A list of blacklisted location tuples in the form of (location, value)
+    :param system_paasta_config: A SystemPaastaConfig object representing the system configuration.
     :returns: a dictionary of the form {'<unique_attribute_value>': <smartstack replication hash>}
               (the dictionary will contain keys for unique all attribute values)
     """
@@ -306,7 +369,8 @@ def get_smartstack_replication_for_attribute(attribute, service, namespace, blac
         synapse_host = hosts[0]
         repl_info = replication_utils.get_replication_for_services(
             synapse_host=synapse_host,
-            synapse_port=smartstack_tools.DEFAULT_SYNAPSE_PORT,
+            synapse_port=system_paasta_config.get_synapse_port(),
+            synapse_haproxy_url_format=system_paasta_config.get_synapse_haproxy_url_format(),
             services=[full_name],
         )
         replication_info[value] = repl_info
@@ -319,12 +383,13 @@ def main():
     args = parse_args()
     soa_dir = args.soa_dir
 
-    logging.basicConfig()
     if args.verbose:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
-    cluster = load_system_paasta_config().get_cluster()
+        logging.basicConfig(level=logging.WARNING)
+
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
     service_instances = get_services_for_cluster(
         cluster=cluster, instance_type='marathon', soa_dir=args.soa_dir)
 
@@ -338,9 +403,9 @@ def main():
             instance=instance,
             cluster=cluster,
             soa_dir=soa_dir,
+            system_paasta_config=system_paasta_config,
         )
 
 
 if __name__ == "__main__":
-    if mesos_tools.is_mesos_leader():
-        main()
+    main()

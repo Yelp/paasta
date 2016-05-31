@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -303,6 +303,7 @@ def test_list_previously_deployed_shas():
         fake_args = Mock(
             service='fake_service',
             deploy_groups='test.deploy.group,nonexistant.deploy.group',
+            soa_dir='/fake/soa/dir',
         )
         assert set(list_previously_deployed_shas(fake_args)) == {'SHA_IN_OUTPUT'}
 
@@ -340,9 +341,10 @@ def test_list_previously_deployed_shas_no_deploy_groups():
         fake_args = Mock(
             service='fake_service',
             deploy_groups='',
+            soa_dir='/fake/soa/dir',
         )
         assert set(list_previously_deployed_shas(fake_args)) == {'SHA_IN_OUTPUT', 'SHA_IN_OUTPUT_2'}
 
 
 def test_get_git_shas_for_service_no_service_name():
-    assert get_git_shas_for_service(None, None) == []
+    assert get_git_shas_for_service(None, None, '/fake/soa/dir') == []

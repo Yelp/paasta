@@ -9,12 +9,12 @@ a CRITICAL event to sensu.
 import argparse
 
 import pysensu_yelp
-import service_configuration_lib
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
 from paasta_tools import utils
 from paasta_tools.chronos_tools import compose_check_name_for_service_instance
+from paasta_tools.chronos_tools import DEFAULT_SOA_DIR
 from paasta_tools.chronos_tools import load_chronos_job_config
 
 
@@ -22,7 +22,7 @@ def parse_args():
     parser = argparse.ArgumentParser(description=('Check the status of Chronos jobs, and report'
                                                   'their status to Sensu.'))
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     args = parser.parse_args()
     return args
@@ -100,6 +100,7 @@ def build_service_job_mapping(client, configured_jobs):
             service=job[0],
             instance=job[1],
             client=client,
+            include_disabled=True,
         )
         filtered = chronos_tools.filter_non_temporary_chronos_jobs(matching_jobs)
         with_states = last_run_state_for_jobs(filtered)
@@ -107,23 +108,44 @@ def build_service_job_mapping(client, configured_jobs):
     return service_job_mapping
 
 
-def message_for_status(status, service, instance, full_job_id):
+def message_for_status(status, service, instance, cluster):
     if status not in (pysensu_yelp.Status.CRITICAL, pysensu_yelp.Status.OK, pysensu_yelp.Status.UNKNOWN):
         raise ValueError('unknown sensu status: %s' % status)
     if status == pysensu_yelp.Status.CRITICAL:
-        return 'Last run of job %s%s%s Failed - job id %s' % (service, utils.SPACER, instance, full_job_id)
+        return (
+            "Last run of job %(service)s%(separator)s%(instance)s failed.\n"
+            "You can view the logs for the job with:\n"
+            "\n"
+            "    paasta logs -s %(service)s -c %(cluster)s\n"
+            "\n"
+            "If your job didn't manage to start up, you can view the stdout and stderr of your job using:\n"
+            "\n"
+            "    paasta status -s %(service)s -i %(instance)s -c %(cluster)s -vv\n"
+            "\n"
+            "If you need to rerun your job for the datetime it was started, you can do so with:\n"
+            "\n"
+            "    paasta rerun -s %(service)s -i %(instance)s -c %(cluster)s -d {datetime}\n"
+            "\n"
+            "See the docs on paasta rerun here:\n"
+            "https://paasta.readthedocs.io/en/latest/workflow.html#re-running-failed-jobs for more details."
+        ) % {
+            'service': service,
+            'instance': instance,
+            'cluster': cluster,
+            'separator': utils.SPACER
+        }
     elif status == pysensu_yelp.Status.UNKNOWN:
         return 'Last run of job %s%s%s Unknown' % (service, utils.SPACER, instance)
     else:
         return 'Last run of job %s%s%s Succeded' % (service, utils.SPACER, instance)
 
 
-def sensu_message_status_for_jobs(chronos_job_config, service, instance, job_state_pairs):
+def sensu_message_status_for_jobs(chronos_job_config, service, instance, cluster, job_state_pairs):
     if len(job_state_pairs) > 1:
         sensu_status = pysensu_yelp.Status.UNKNOWN
         output = (
-            "Unknown: somehow there was more than one enabled job for %s%s%s. "
-            "Talk to the PaaSTA team as this indicates a bug" % (service, utils.SPACER, instance)
+            "Unknown: somehow there was more than one enabled job for %s%s%s.\n"
+            "Talk to the PaaSTA team as this indicates a bug." % (service, utils.SPACER, instance)
         )
     elif len(job_state_pairs) == 0:
         if chronos_job_config.get_disabled():
@@ -136,25 +158,24 @@ def sensu_message_status_for_jobs(chronos_job_config, service, instance, job_sta
                 "which means it may not be deployed yet" % (service, utils.SPACER, instance)
             )
     else:
-        full_job_id = job_state_pairs[0][0].get('name', '[Couldn\'t fetch job name]')
         if job_state_pairs[0][0].get('disabled') is True:
             sensu_status = pysensu_yelp.Status.OK
             output = "Job %s%s%s is disabled - ignoring status." % (service, utils.SPACER, instance)
         else:
             state = job_state_pairs[0][1]
             sensu_status = sensu_event_for_last_run_state(state)
-            output = message_for_status(sensu_status, service, instance, full_job_id)
+            output = message_for_status(sensu_status, service, instance, cluster)
     return output, sensu_status
 
 
-def main(args):
+def main():
+    args = parse_args()
     soa_dir = args.soa_dir
     config = chronos_tools.load_chronos_config()
     client = chronos_tools.get_chronos_client(config)
     system_paasta_config = utils.load_system_paasta_config()
     cluster = system_paasta_config.get_cluster()
 
-    # get those jobs listed in configs
     configured_jobs = chronos_tools.get_chronos_jobs_for_cluster(cluster, soa_dir=soa_dir)
 
     service_job_mapping = build_service_job_mapping(client, configured_jobs)
@@ -167,7 +188,12 @@ def main(args):
             soa_dir=soa_dir,
         )
         sensu_output, sensu_status = sensu_message_status_for_jobs(
-            chronos_job_config, service, instance, job_state_pairs)
+            chronos_job_config=chronos_job_config,
+            service=service,
+            instance=instance,
+            cluster=cluster,
+            job_state_pairs=job_state_pairs
+        )
         monitoring_overrides = compose_monitoring_overrides_for_service(
             chronos_job_config=chronos_job_config,
             soa_dir=soa_dir
@@ -181,6 +207,6 @@ def main(args):
             soa_dir=soa_dir,
         )
 
+
 if __name__ == '__main__':
-    args = parse_args()
-    main(args)
+    main()

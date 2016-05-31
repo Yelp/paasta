@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -42,6 +42,7 @@ from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import datetime_convert_timezone
 from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import DEFAULT_LOGLEVEL
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_log_line
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import list_clusters
@@ -52,8 +53,7 @@ from paasta_tools.utils import get_log_name_for_service
 
 DEFAULT_COMPONENTS = ['build', 'deploy', 'monitoring']
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def add_subparser(subparsers):
@@ -92,6 +92,13 @@ def add_subparser(subparsers):
         '-r', '--raw-mode', action='store_true',
         dest='raw_mode', default=False,
         help="Don't pretty-print logs; emit them exactly as they are in scribe."
+    )
+    status_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
     )
     default_component_string = ','.join(DEFAULT_COMPONENTS)
     component_descriptions = build_component_descriptions(LOG_COMPONENTS)
@@ -317,7 +324,7 @@ def list_log_readers():
 def get_log_reader():
     log_reader_config = load_system_paasta_config().get_log_reader()
     log_reader_class = get_log_reader_class(log_reader_config['driver'])
-    return log_reader_class(**log_reader_config)
+    return log_reader_class(**log_reader_config.get('options', {}))
 
 
 class LogReader(object):
@@ -555,10 +562,11 @@ class ScribeLogReader(LogReader):
 def paasta_logs(args):
     """Print the logs for as Paasta service.
     :param args: argparse.Namespace obj created from sys.args by cli"""
-    service = figure_out_service_name(args)
+    soa_dir = args.soa_dir
+    service = figure_out_service_name(args, soa_dir)
 
     if args.clusters is None:
-        clusters = list_clusters(service)
+        clusters = list_clusters(service, soa_dir=soa_dir)
     else:
         clusters = args.clusters.split(",")
 

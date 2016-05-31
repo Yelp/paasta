@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -43,7 +43,6 @@ import logging
 import sys
 
 import pysensu_yelp
-import service_configuration_lib
 
 from paasta_tools import chronos_tools
 from paasta_tools import monitoring_tools
@@ -57,8 +56,7 @@ from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import SPACER
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -67,7 +65,7 @@ def parse_args():
                         help="The chronos instance of the service to create or update",
                         metavar=compose_job_id("SERVICE", "INSTANCE"))
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=chronos_tools.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('-v', '--verbose', action='store_true',
                         dest="verbose", default=False)
@@ -162,9 +160,10 @@ def main():
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
+        logging.basicConfig(level=logging.WARNING)
+
     try:
         service, instance, _, __ = decompose_job_id(args.service_instance, spacer=chronos_tools.INTERNAL_SPACER)
     except InvalidJobNameError:

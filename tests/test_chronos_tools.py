@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -335,7 +335,7 @@ class TestChronosTools:
                 branch_dict={},
             )
             fake_chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
-                                                            dummy_config.get_dockerfile_location())
+                                                            dummy_config.get_dockercfg_location())
             mock_parse_time_variables.assert_called_once_with(fake_cmd)
 
     def test_get_owner(self):
@@ -384,8 +384,8 @@ class TestChronosTools:
         ]
         assert sorted(fake_conf.get_env()) == sorted(expected_env)
 
-    def test_get_constraints(self):
-        fake_constraints = 'fake_constraints'
+    def test_get_calculated_constraints_respects_constraints_override(self):
+        fake_constraints = [['fake_constraints']]
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
             cluster='fake_cluster',
@@ -393,10 +393,10 @@ class TestChronosTools:
             config_dict={'constraints': fake_constraints},
             branch_dict={},
         )
-        actual = fake_conf.get_constraints()
+        actual = fake_conf.get_calculated_constraints()
         assert actual == fake_constraints
 
-    def test_get_constraints_pool(self):
+    def test_get_calculated_constraints_respects_pool(self):
         fake_pool = 'poolname'
         fake_conf = chronos_tools.ChronosJobConfig(
             service='fake_name',
@@ -405,8 +405,8 @@ class TestChronosTools:
             config_dict={'pool': fake_pool},
             branch_dict={},
         )
-        actual = fake_conf.get_constraints()
-        assert actual == [['pool', 'EQUALS', 'poolname']]
+        actual = fake_conf.get_calculated_constraints()
+        assert actual == [['pool', 'LIKE', 'poolname']]
 
     def test_get_retries_default(self):
         fake_conf = chronos_tools.ChronosJobConfig(
@@ -874,7 +874,7 @@ class TestChronosTools:
             'scheduleTimeZone': None,
             'environmentVariables': mock.ANY,
             'arguments': None,
-            'constraints': [['pool', 'EQUALS', 'default']],
+            'constraints': [['pool', 'LIKE', 'default']],
             'retries': 2,
             'epsilon': fake_epsilon,
             'name': 'test_job',
@@ -889,7 +889,7 @@ class TestChronosTools:
                 'volumes': fake_docker_volumes,
                 'image': fake_docker_url,
                 'type': 'DOCKER',
-                'parameters': {'memory-swap': '1024m'}
+                'parameters': [{"key": "memory-swap", "value": "1024m"}],
             },
             'uris': ['file:///root/.dockercfg', ],
             'shell': True,
@@ -899,7 +899,7 @@ class TestChronosTools:
             mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
         ):
             actual = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
-                                                                dummy_config.get_dockerfile_location())
+                                                                dummy_config.get_dockercfg_location())
             assert actual == expected
 
     def test_format_chronos_job_dict_uses_net(self):
@@ -928,7 +928,7 @@ class TestChronosTools:
             mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner, autospec=True),
         ):
             result = chronos_job_config.format_chronos_job_dict(fake_docker_url, fake_docker_volumes,
-                                                                dummy_config.get_dockerfile_location())
+                                                                dummy_config.get_dockercfg_location())
             assert result['container']['network'] == 'HOST'
 
     def test_format_chronos_job_dict_invalid_param(self):
@@ -948,7 +948,7 @@ class TestChronosTools:
             branch_dict={},
         )
         with raises(chronos_tools.InvalidChronosConfigError) as exc:
-            invalid_config.format_chronos_job_dict(docker_url='', docker_volumes=[], dockerfile_location={})
+            invalid_config.format_chronos_job_dict(docker_url='', docker_volumes=[], dockercfg_location={})
         assert 'The specified schedule "%s" is invalid' % fake_schedule in exc.value
 
     def test_list_job_names(self):
@@ -1138,13 +1138,13 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake-service', 'fake-job')
             expected = {
                 'arguments': None,
                 'description': fake_config_hash,
-                'constraints': [['pool', 'EQUALS', 'default']],
+                'constraints': [['pool', 'LIKE', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
@@ -1160,7 +1160,7 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/paasta-test-service-penguin",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1184,7 +1184,7 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             first_description = chronos_tools.create_complete_config('fake-service', 'fake-job')['description']
 
@@ -1203,123 +1203,7 @@ class TestChronosTools:
 
             assert first_description != second_description
 
-    def test_create_complete_config_desired_state_start_with_non_disabled_job(self):
-        fake_owner = 'test_team'
-        fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            service=self.fake_service,
-            cluster='',
-            instance=self.fake_job_name,
-            config_dict=self.fake_config_dict,
-            branch_dict={
-                'desired_state': 'start',
-                'docker_image': 'fake_image'
-            },
-        )
-        fake_config_hash = 'fake_config_hash'
-        with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
-            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
-                       autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
-            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
-        ) as (
-            load_system_paasta_config_patch,
-            load_chronos_job_config_patch,
-            mock_get_team,
-            mock_fake_config_hash,
-        ):
-            load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
-            load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
-                mock.Mock(return_value='file:///root/.dockercfg')
-            actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
-            expected = {
-                'arguments': None,
-                'description': fake_config_hash,
-                'constraints': [['pool', 'EQUALS', 'default']],
-                'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
-                'async': False,
-                'cpus': 5.5,
-                'scheduleTimeZone': 'Zulu',
-                'environmentVariables': mock.ANY,
-                'retries': 5,
-                'disabled': False,
-                'name': 'fake_service fake_job',
-                'command': '/bin/sleep 40',
-                'epsilon': 'PT30M',
-                'container': {
-                    'network': 'BRIDGE',
-                    'volumes': [],
-                    'image': "fake_registry/fake_image",
-                    'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
-                },
-                'uris': ['file:///root/.dockercfg', ],
-                'mem': 1024.4,
-                'disk': 1234.5,
-                'owner': fake_owner,
-                'shell': True,
-            }
-            assert actual == expected
-
-    def test_create_complete_config_desired_state_start_with_disabled_job(self):
-        fake_owner = 'test_team'
-        fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            service=self.fake_service,
-            cluster='',
-            instance=self.fake_job_name,
-            config_dict=self.fake_config_dict,
-            branch_dict={
-                'desired_state': 'start',
-                'docker_image': 'fake_image'
-            },
-        )
-        fake_chronos_job_config.config_dict["disabled"] = True
-        fake_config_hash = 'fake_config_hash'
-        with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
-            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
-                       autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
-            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
-        ) as (
-            load_system_paasta_config_patch,
-            load_chronos_job_config_patch,
-            mock_get_team,
-            mock_fake_config_hash,
-        ):
-            load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
-            load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
-            expected = {
-                'arguments': None,
-                'description': fake_config_hash,
-                'constraints': [['pool', 'EQUALS', 'default']],
-                'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
-                'async': False,
-                'cpus': 5.5,
-                'scheduleTimeZone': 'Zulu',
-                'environmentVariables': mock.ANY,
-                'retries': 5,
-                'disabled': True,
-                'name': 'fake_service fake_job',
-                'command': '/bin/sleep 40',
-                'epsilon': 'PT30M',
-                'container': {
-                    'network': 'BRIDGE',
-                    'volumes': [],
-                    'image': "fake_registry/fake_image",
-                    'type': 'DOCKER'
-                },
-                'uris': ['file:///root/.dockercfg', ],
-                'mem': 1024.4,
-                'disk': 1234.5,
-                'owner': fake_owner,
-                'shell': True,
-            }
-            assert actual == expected
-
-    def test_create_complete_config_desired_state_stop_with_non_disabled_job(self):
+    def test_create_complete_config_desired_state_stop(self):
         fake_owner = 'test@test.com'
         fake_chronos_job_config = chronos_tools.ChronosJobConfig(
             service=self.fake_service,
@@ -1346,70 +1230,13 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
-            expected = {
-                'arguments': None,
-                'description': fake_config_hash,
-                'constraints': [['pool', 'EQUALS', 'default']],
-                'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
-                'async': False,
-                'cpus': 5.5,
-                'scheduleTimeZone': 'Zulu',
-                'environmentVariables': mock.ANY,
-                'retries': 5,
-                'disabled': True,
-                'name': 'fake_service fake_job',
-                'command': '/bin/sleep 40',
-                'epsilon': 'PT30M',
-                'container': {
-                    'network': 'BRIDGE',
-                    'volumes': [],
-                    'image': "fake_registry/fake_image",
-                    'type': 'DOCKER'
-                },
-                'uris': ['file:///root/.dockercfg', ],
-                'mem': 1024.4,
-                'disk': 1234.5,
-                'owner': fake_owner,
-                'shell': True,
-            }
-            assert actual == expected
-
-    def test_create_complete_config_desired_state_stop_with_disabled_job(self):
-        fake_owner = 'test@test.com'
-        fake_chronos_job_config = chronos_tools.ChronosJobConfig(
-            service=self.fake_service,
-            cluster='',
-            instance=self.fake_job_name,
-            config_dict=self.fake_config_dict,
-            branch_dict={
-                'desired_state': 'stop',
-                'docker_image': 'fake_image'
-            },
-        )
-        fake_chronos_job_config.config_dict["disabled"] = True
-        fake_config_hash = 'fake_config_hash'
-        with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.load_system_paasta_config', autospec=True),
-            mock.patch('paasta_tools.chronos_tools.load_chronos_job_config',
-                       autospec=True, return_value=fake_chronos_job_config),
-            mock.patch('paasta_tools.monitoring_tools.get_team', return_value=fake_owner),
-            mock.patch('paasta_tools.chronos_tools.get_config_hash', return_value=fake_config_hash),
-        ) as (
-            load_system_paasta_config_patch,
-            load_chronos_job_config_patch,
-            mock_get_team,
-            mock_fake_config_hash,
-        ):
-            load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=[])
-            load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
                 'arguments': None,
                 'description': fake_config_hash,
-                'constraints': [['pool', 'EQUALS', 'default']],
+                'constraints': [['pool', 'LIKE', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
@@ -1425,7 +1252,7 @@ class TestChronosTools:
                     'volumes': [],
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,
@@ -1478,13 +1305,13 @@ class TestChronosTools:
         ):
             load_system_paasta_config_patch.return_value.get_volumes = mock.Mock(return_value=fake_system_volumes)
             load_system_paasta_config_patch.return_value.get_docker_registry = mock.Mock(return_value='fake_registry')
-            load_system_paasta_config_patch.return_value.get_dockerfile_location = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location = \
                 mock.Mock(return_value='file:///root/.dockercfg')
             actual = chronos_tools.create_complete_config('fake_service', 'fake_job')
             expected = {
                 'description': fake_config_hash,
                 'arguments': None,
-                'constraints': [['pool', 'EQUALS', 'default']],
+                'constraints': [['pool', 'LIKE', 'default']],
                 'schedule': 'R/2015-03-25T19:36:35Z/PT5M',
                 'async': False,
                 'cpus': 5.5,
@@ -1500,7 +1327,7 @@ class TestChronosTools:
                     'volumes': fake_system_volumes + fake_extra_volumes,
                     'image': "fake_registry/fake_image",
                     'type': 'DOCKER',
-                    'parameters': {'memory-swap': '1024.4m'}
+                    'parameters': [{"key": "memory-swap", "value": "1025m"}],
                 },
                 'uris': ['file:///root/.dockercfg', ],
                 'mem': 1024.4,

@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -125,6 +125,35 @@ def paasta_serviceinit_tail_stdstreams(context, service_instance):
     # comes from mesos.cli, proving that paasta_serviceinit tried to read stdout/sdterr,
     # caught the Exception and presented the right information to the user.
     assert "No such task has the requested file or directory" in output
+
+
+@then((u'paasta_serviceinit status -s "{service}" -i "{instances}"'
+       ' exits with return code 0 and the correct output'))
+def paasta_serviceinit_status_single_instance(context, service, instances):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s -s %s -i %s status' % \
+        (context.soa_dir, service, instances)
+    print 'Running cmd %s' % cmd
+    exit_code, output = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    assert "Running" in output
+    assert exit_code == 0
+
+
+@then((u'paasta_serviceinit status -s "{service}" -i "{instances}"'
+       ' has the correct output for instance main and exits with non-zero return code for instance test'))
+def paasta_serviceinit_status_multi_instances(context, service, instances):
+    cmd = '../paasta_tools/paasta_serviceinit.py --soa-dir %s -s %s -i %s status' % \
+        (context.soa_dir, service, instances)
+    print 'Running cmd %s' % cmd
+    exit_code, output = _run(cmd)
+    print 'Got exitcode %s with output:\n%s' % (exit_code, output)
+    print  # sacrificial line for behave to eat instead of our output
+
+    # one service is deployed and the other is not
+    assert "Running" in output
+    assert exit_code != 0
 
 
 @when(u'we paasta_serviceinit emergency-stop the service_instance "{service_instance}"')

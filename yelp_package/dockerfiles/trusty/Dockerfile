@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,7 +15,7 @@
 FROM ubuntu:trusty
 
 RUN apt-get update && apt-get -y install dpkg-dev python-tox python-setuptools \
-  python-dev debhelper python-yaml python-pytest pyflakes \
+  python-dev debhelper python-yaml libyaml-dev python-pytest pyflakes \
   git help2man zsh wget
 
 RUN cd `mktemp -d` && wget http://mirrors.kernel.org/ubuntu/pool/universe/d/dh-virtualenv/dh-virtualenv_0.11-1_all.deb && dpkg -i dh-virtualenv_0.11-1_all.deb && apt-get -f install

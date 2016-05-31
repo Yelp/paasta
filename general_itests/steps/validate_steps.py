@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,7 +28,7 @@ def given_service(context, service_type):
 
 @when(u'we run paasta validate')
 def run_paasta_validate(context):
-    validate_cmd = ("cli.py validate "
+    validate_cmd = ("paasta validate "
                     "--yelpsoa-config-root %s "
                     "--service %s " % (context.soa_dir, context.service))
     context.validate_return_code, context.validate_output = _run(command=validate_cmd)

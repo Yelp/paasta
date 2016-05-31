@@ -1,5 +1,484 @@
 # Change Log
 
+## [v0.19.2](https://github.com/Yelp/paasta/tree/v0.19.2) (2016-05-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.1...v0.19.2)
+
+**Closed issues:**
+
+- support extra\_constraints in chronos configs [\#456](https://github.com/Yelp/paasta/issues/456)
+
+**Merged pull requests:**
+
+- Make setup\_marathon\_job capable of handling a list of service.instance [\#513](https://github.com/Yelp/paasta/pull/513) ([huadongliu](https://github.com/huadongliu))
+- Load paasta configs from /etc/paasta recursively [\#511](https://github.com/Yelp/paasta/pull/511) ([solarkennedy](https://github.com/solarkennedy))
+- Make marathon and chronos constraint logic a bit more consistent [\#499](https://github.com/Yelp/paasta/pull/499) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.19.1](https://github.com/Yelp/paasta/tree/v0.19.1) (2016-05-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.19.0...v0.19.1)
+
+**Closed issues:**
+
+- Make get\_mesos\_leader use mesos.cli [\#498](https://github.com/Yelp/paasta/issues/498)
+- Blacklist autoscaling params from the marathon config sha [\#474](https://github.com/Yelp/paasta/issues/474)
+- make paasta status be more explicit about 'rerun jobs' [\#457](https://github.com/Yelp/paasta/issues/457)
+
+**Merged pull requests:**
+
+- Update copyright for 2016 [\#512](https://github.com/Yelp/paasta/pull/512) ([nhandler](https://github.com/nhandler))
+- Log lots more things when doing cluster autoscaling [\#509](https://github.com/Yelp/paasta/pull/509) ([solarkennedy](https://github.com/solarkennedy))
+- Make paasta status use the multi-instance endpoint [\#506](https://github.com/Yelp/paasta/pull/506) ([huadongliu](https://github.com/huadongliu))
+- Use mesos.cli for get\_mesos\_leader [\#505](https://github.com/Yelp/paasta/pull/505) ([nhandler](https://github.com/nhandler))
+
+## [v0.19.0](https://github.com/Yelp/paasta/tree/v0.19.0) (2016-05-10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.38...v0.19.0)
+
+**Merged pull requests:**
+
+- fix execute\_paasta\_serviceinit\_call for emergency-start [\#507](https://github.com/Yelp/paasta/pull/507) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Validate that env settings are always strings [\#502](https://github.com/Yelp/paasta/pull/502) ([solarkennedy](https://github.com/solarkennedy))
+- Show temporary status chronos jobs [\#495](https://github.com/Yelp/paasta/pull/495) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Remove the 'driver' keyword from log\_writer options before passing it as kwargs to the log writer class, in case the log writer class doesn't take driver or \*\*kwargs [\#485](https://github.com/Yelp/paasta/pull/485) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.18.38](https://github.com/Yelp/paasta/tree/v0.18.38) (2016-05-05)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.37...v0.18.38)
+
+**Closed issues:**
+
+- Unify logging behavior [\#490](https://github.com/Yelp/paasta/issues/490)
+- Typos in "paasta stop" docs [\#469](https://github.com/Yelp/paasta/issues/469)
+- improve help text in check\_chronos\_jobs [\#461](https://github.com/Yelp/paasta/issues/461)
+
+**Merged pull requests:**
+
+- paasta local-run --dry-run [\#497](https://github.com/Yelp/paasta/pull/497) ([kentwills](https://github.com/kentwills))
+- fix the bad command shown in check\_chronos\_jobs output [\#496](https://github.com/Yelp/paasta/pull/496) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Fix bug in autoscaling humanize\_error [\#494](https://github.com/Yelp/paasta/pull/494) ([solarkennedy](https://github.com/solarkennedy))
+- Delete get\_scribe\_map, since this functionality is now an option on the scribe log\_reader driver. [\#492](https://github.com/Yelp/paasta/pull/492) ([EvanKrall](https://github.com/EvanKrall))
+- Be more consistent about how we log to stderr [\#491](https://github.com/Yelp/paasta/pull/491) ([solarkennedy](https://github.com/solarkennedy))
+- PAASTA-4412 monkey patch MesosMaster.state to increase caching TTL [\#489](https://github.com/Yelp/paasta/pull/489) ([huadongliu](https://github.com/huadongliu))
+- Added a cli entrypoint to autoscale\_cluster [\#482](https://github.com/Yelp/paasta/pull/482) ([solarkennedy](https://github.com/solarkennedy))
+- Default to using the max instance count when autoscaling without decision data [\#481](https://github.com/Yelp/paasta/pull/481) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.18.37](https://github.com/Yelp/paasta/tree/v0.18.37) (2016-05-04)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.36...v0.18.37)
+
+**Closed issues:**
+
+- Expose CLI as console\_scripts [\#85](https://github.com/Yelp/paasta/issues/85)
+
+**Merged pull requests:**
+
+- expose CLI as console\_scripts \#85 [\#488](https://github.com/Yelp/paasta/pull/488) ([kentwills](https://github.com/kentwills))
+- Greatly improve the output of check\_marathon\_services replication [\#478](https://github.com/Yelp/paasta/pull/478) ([solarkennedy](https://github.com/solarkennedy))
+- Use cookiecutter instead of home-grown templates [\#471](https://github.com/Yelp/paasta/pull/471) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.18.36](https://github.com/Yelp/paasta/tree/v0.18.36) (2016-05-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.35...v0.18.36)
+
+**Closed issues:**
+
+- paasta metastatus is broken [\#486](https://github.com/Yelp/paasta/issues/486)
+
+**Merged pull requests:**
+
+- add missing system\_paasta\_config arg in metastatus [\#487](https://github.com/Yelp/paasta/pull/487) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.18.35](https://github.com/Yelp/paasta/tree/v0.18.35) (2016-05-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.34...v0.18.35)
+
+## [v0.18.34](https://github.com/Yelp/paasta/tree/v0.18.34) (2016-05-03)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.33...v0.18.34)
+
+**Merged pull requests:**
+
+- Make the FQDN format configurable; previously hard-coded as paasta-%s.yelp [\#483](https://github.com/Yelp/paasta/pull/483) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.18.33](https://github.com/Yelp/paasta/tree/v0.18.33) (2016-05-02)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.32...v0.18.33)
+
+**Merged pull requests:**
+
+- PAASTA-4182 enable paasta\_serviceinit status with multiple service instances [\#480](https://github.com/Yelp/paasta/pull/480) ([huadongliu](https://github.com/huadongliu))
+
+## [v0.18.32](https://github.com/Yelp/paasta/tree/v0.18.32) (2016-04-29)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.31...v0.18.32)
+
+**Closed issues:**
+
+- Make haproxy-synapse status url configurable [\#434](https://github.com/Yelp/paasta/issues/434)
+
+**Merged pull requests:**
+
+- Revert "Document which config entries invoke a bounce" [\#479](https://github.com/Yelp/paasta/pull/479) ([solarkennedy](https://github.com/solarkennedy))
+- Document which config entries invoke a bounce [\#470](https://github.com/Yelp/paasta/pull/470) ([solarkennedy](https://github.com/solarkennedy))
+- improve failure message sent by check\_chronos\_jobs [\#468](https://github.com/Yelp/paasta/pull/468) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.18.31](https://github.com/Yelp/paasta/tree/v0.18.31) (2016-04-29)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.30...v0.18.31)
+
+## [v0.18.30](https://github.com/Yelp/paasta/tree/v0.18.30) (2016-04-29)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.29...v0.18.30)
+
+## [v0.18.29](https://github.com/Yelp/paasta/tree/v0.18.29) (2016-04-28)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.28...v0.18.29)
+
+**Merged pull requests:**
+
+- Make synapse port configurable via SystemPaastaConfig [\#454](https://github.com/Yelp/paasta/pull/454) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.18.28](https://github.com/Yelp/paasta/tree/v0.18.28) (2016-04-28)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.27...v0.18.28)
+
+**Merged pull requests:**
+
+- Paasta cluster autoscaling [\#466](https://github.com/Yelp/paasta/pull/466) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.27](https://github.com/Yelp/paasta/tree/v0.18.27) (2016-04-28)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.26...v0.18.27)
+
+**Merged pull requests:**
+
+- Switch from readthedocs.org-\>readthedocs.io [\#467](https://github.com/Yelp/paasta/pull/467) ([nhandler](https://github.com/nhandler))
+
+## [v0.18.26](https://github.com/Yelp/paasta/tree/v0.18.26) (2016-04-27)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.25...v0.18.26)
+
+**Closed issues:**
+
+- write some documentation on how resource isolation works [\#459](https://github.com/Yelp/paasta/issues/459)
+- Create a 'paasta rerun' command [\#216](https://github.com/Yelp/paasta/issues/216)
+
+**Merged pull requests:**
+
+- fix some formatting in docs [\#464](https://github.com/Yelp/paasta/pull/464) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Made autoscale able to scale down below 9 [\#462](https://github.com/Yelp/paasta/pull/462) ([mjksmith](https://github.com/mjksmith))
+- add a first pass at some docs explaining isolation. [\#460](https://github.com/Yelp/paasta/pull/460) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- improve the documentation on paasta batches [\#458](https://github.com/Yelp/paasta/pull/458) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- removed service\_configuration\_lib.DEFAULT\_SOA\_DIR [\#455](https://github.com/Yelp/paasta/pull/455) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.25](https://github.com/Yelp/paasta/tree/v0.18.25) (2016-04-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.24...v0.18.25)
+
+**Merged pull requests:**
+
+- made the default metrics provider mesos\_cpu [\#453](https://github.com/Yelp/paasta/pull/453) ([mjksmith](https://github.com/mjksmith))
+- interpolate datestrings when using local-run with a chronos job [\#451](https://github.com/Yelp/paasta/pull/451) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.18.24](https://github.com/Yelp/paasta/tree/v0.18.24) (2016-04-21)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.23...v0.18.24)
+
+**Merged pull requests:**
+
+- Use marathon 1.1.1 in itest and upgrade marathon-python [\#433](https://github.com/Yelp/paasta/pull/433) ([nhandler](https://github.com/nhandler))
+
+## [v0.18.23](https://github.com/Yelp/paasta/tree/v0.18.23) (2016-04-21)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.22...v0.18.23)
+
+**Merged pull requests:**
+
+- fixed error running paasta metastatus [\#449](https://github.com/Yelp/paasta/pull/449) ([mjksmith](https://github.com/mjksmith))
+- fix "paasta rerun" crashes \(PAASTA-4152\) [\#448](https://github.com/Yelp/paasta/pull/448) ([giuliano108](https://github.com/giuliano108))
+- Don't alert teams if a service hasn't been deployed yet [\#435](https://github.com/Yelp/paasta/pull/435) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.18.22](https://github.com/Yelp/paasta/tree/v0.18.22) (2016-04-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.21...v0.18.22)
+
+**Closed issues:**
+
+- paasta local-run --healthcheck-only exits 0 even when the healthcheck never passes [\#445](https://github.com/Yelp/paasta/issues/445)
+
+**Merged pull requests:**
+
+- made local\_run --healthcheck-only return 1 when healthchecks fail [\#446](https://github.com/Yelp/paasta/pull/446) ([mjksmith](https://github.com/mjksmith))
+- Made almost every cli tool take a soa\_dir [\#444](https://github.com/Yelp/paasta/pull/444) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.21](https://github.com/Yelp/paasta/tree/v0.18.21) (2016-04-20)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.20...v0.18.21)
+
+**Closed issues:**
+
+- paasta check for DOCKER\_TAG is too strict [\#439](https://github.com/Yelp/paasta/issues/439)
+- Update paasta local run to include memory-swap parameter [\#428](https://github.com/Yelp/paasta/issues/428)
+- only require a date to chronos-rerun if there is something to be interpolated [\#420](https://github.com/Yelp/paasta/issues/420)
+
+**Merged pull requests:**
+
+- s/PST/America\/Los\_Angeles/ [\#441](https://github.com/Yelp/paasta/pull/441) ([nhandler](https://github.com/nhandler))
+- Make DOCKER\_TAG check less strict [\#440](https://github.com/Yelp/paasta/pull/440) ([EvanKrall](https://github.com/EvanKrall))
+- always round --memory-swap param up to closest mb [\#437](https://github.com/Yelp/paasta/pull/437) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Unknown slaves in "paasta status" workaround \(PAASTA-4119\) [\#436](https://github.com/Yelp/paasta/pull/436) ([giuliano108](https://github.com/giuliano108))
+- It's dockercfg, not dockerfile. [\#432](https://github.com/Yelp/paasta/pull/432) ([EvanKrall](https://github.com/EvanKrall))
+- Local run memory swappiness [\#430](https://github.com/Yelp/paasta/pull/430) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.18.20](https://github.com/Yelp/paasta/tree/v0.18.20) (2016-04-15)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.19...v0.18.20)
+
+**Merged pull requests:**
+
+- removed portMapping from non-bridge nets [\#431](https://github.com/Yelp/paasta/pull/431) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.19](https://github.com/Yelp/paasta/tree/v0.18.19) (2016-04-15)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.18...v0.18.19)
+
+## [v0.18.18](https://github.com/Yelp/paasta/tree/v0.18.18) (2016-04-15)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.17...v0.18.18)
+
+**Merged pull requests:**
+
+- made bespoke autoscaling short circuit earlier [\#429](https://github.com/Yelp/paasta/pull/429) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.17](https://github.com/Yelp/paasta/tree/v0.18.17) (2016-04-14)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.16...v0.18.17)
+
+**Merged pull requests:**
+
+- Make the argparser print the full help whenever an argparse issue is encountered [\#422](https://github.com/Yelp/paasta/pull/422) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.18.16](https://github.com/Yelp/paasta/tree/v0.18.16) (2016-04-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.15...v0.18.16)
+
+**Closed issues:**
+
+- create a frontend paasta rerun command [\#323](https://github.com/Yelp/paasta/issues/323)
+
+**Merged pull requests:**
+
+- create a frontend paasta rerun command [\#419](https://github.com/Yelp/paasta/pull/419) ([giuliano108](https://github.com/giuliano108))
+
+## [v0.18.15](https://github.com/Yelp/paasta/tree/v0.18.15) (2016-04-13)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.14...v0.18.15)
+
+**Closed issues:**
+
+- temporary jobs created by chronos-rerun trigger a sensu alert for check\_chronos\_jobs [\#421](https://github.com/Yelp/paasta/issues/421)
+- set the "memory-swap" parameter in docker containers. [\#410](https://github.com/Yelp/paasta/issues/410)
+
+**Merged pull requests:**
+
+- Add memory swap param [\#411](https://github.com/Yelp/paasta/pull/411) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Clean up orphaned docker container script [\#352](https://github.com/Yelp/paasta/pull/352) ([nosmo](https://github.com/nosmo))
+
+## [v0.18.14](https://github.com/Yelp/paasta/tree/v0.18.14) (2016-04-11)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.13...v0.18.14)
+
+**Merged pull requests:**
+
+- ignore temporary jobs when checking chronos jobs [\#425](https://github.com/Yelp/paasta/pull/425) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- added healthcheck output to marathon status [\#423](https://github.com/Yelp/paasta/pull/423) ([mjksmith](https://github.com/mjksmith))
+- Revert "Merge branch 'dont-require-start-time'" [\#418](https://github.com/Yelp/paasta/pull/418) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Upgrade marathon to 0.15.3-1.0.463.ubuntu1404 in itests [\#415](https://github.com/Yelp/paasta/pull/415) ([nhandler](https://github.com/nhandler))
+
+## [v0.18.13](https://github.com/Yelp/paasta/tree/v0.18.13) (2016-04-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.12...v0.18.13)
+
+**Merged pull requests:**
+
+- fix repo fingerprints [\#417](https://github.com/Yelp/paasta/pull/417) ([ysyoung](https://github.com/ysyoung))
+- Bump mesos.interface to 0.28.0 [\#416](https://github.com/Yelp/paasta/pull/416) ([nhandler](https://github.com/nhandler))
+- Use json for mesos authentication [\#413](https://github.com/Yelp/paasta/pull/413) ([nhandler](https://github.com/nhandler))
+- Removed variable delay and other params from autoscaling [\#394](https://github.com/Yelp/paasta/pull/394) ([mjksmith](https://github.com/mjksmith))
+- made local run create a fresh deployments.json [\#368](https://github.com/Yelp/paasta/pull/368) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.12](https://github.com/Yelp/paasta/tree/v0.18.12) (2016-04-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.11...v0.18.12)
+
+**Closed issues:**
+
+- Odd formatting in pasta fsm --yelpsoa-config-root [\#396](https://github.com/Yelp/paasta/issues/396)
+
+**Merged pull requests:**
+
+- Graceful container drain [\#501](https://github.com/Yelp/paasta/pull/501) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- fixed net host marathon error [\#412](https://github.com/Yelp/paasta/pull/412) ([mjksmith](https://github.com/mjksmith))
+- fixed formatting in fsm [\#407](https://github.com/Yelp/paasta/pull/407) ([mjksmith](https://github.com/mjksmith))
+- Upgrade tests to use marathon 0.14.2 [\#403](https://github.com/Yelp/paasta/pull/403) ([nhandler](https://github.com/nhandler))
+
+## [v0.18.11](https://github.com/Yelp/paasta/tree/v0.18.11) (2016-04-07)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.10...v0.18.11)
+
+**Closed issues:**
+
+- chronos jobs require start times [\#383](https://github.com/Yelp/paasta/issues/383)
+- Add deploy\_whitelist [\#251](https://github.com/Yelp/paasta/issues/251)
+- location of dockercfg file is hardcoded [\#6](https://github.com/Yelp/paasta/issues/6)
+
+**Merged pull requests:**
+
+- Upgrade mesos to 0.28.0-2.0.16.ubuntu1404 in itests [\#408](https://github.com/Yelp/paasta/pull/408) ([nhandler](https://github.com/nhandler))
+- added soa\_dir argument to paasta itest [\#406](https://github.com/Yelp/paasta/pull/406) ([mjksmith](https://github.com/mjksmith))
+- Upgrade mesos to 0.27.2-2.0.15.ubuntu1404 in the itests [\#405](https://github.com/Yelp/paasta/pull/405) ([nhandler](https://github.com/nhandler))
+- added host networking [\#404](https://github.com/Yelp/paasta/pull/404) ([mjksmith](https://github.com/mjksmith))
+- Add support for whitelisting. [\#402](https://github.com/Yelp/paasta/pull/402) ([ysyoung](https://github.com/ysyoung))
+- Make is\_app\_id\_running tolerate leading slashes [\#401](https://github.com/Yelp/paasta/pull/401) ([solarkennedy](https://github.com/solarkennedy))
+- Make the marathon upgrade docs match current practice [\#400](https://github.com/Yelp/paasta/pull/400) ([nhandler](https://github.com/nhandler))
+- remove the requirement for a start time in chronos schedules [\#398](https://github.com/Yelp/paasta/pull/398) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- make docker config location configurable [\#395](https://github.com/Yelp/paasta/pull/395) ([ysyoung](https://github.com/ysyoung))
+
+## [v0.18.10](https://github.com/Yelp/paasta/tree/v0.18.10) (2016-04-04)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.9...v0.18.10)
+
+**Closed issues:**
+
+- test\_filter\_expired\_tmp\_jobs is failing on master [\#392](https://github.com/Yelp/paasta/issues/392)
+- cleanup\_chronos\_jobs failing on tmp jobs [\#388](https://github.com/Yelp/paasta/issues/388)
+- test\_format\_parents\_verbose fails due to hardcoded relative date [\#387](https://github.com/Yelp/paasta/issues/387)
+- chronos\_rerun -h blows up [\#385](https://github.com/Yelp/paasta/issues/385)
+
+**Merged pull requests:**
+
+- fix test missing tzinfo [\#393](https://github.com/Yelp/paasta/pull/393) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Upgrade to marathon 0.13.1 in itests [\#375](https://github.com/Yelp/paasta/pull/375) ([nhandler](https://github.com/nhandler))
+
+## [v0.18.9](https://github.com/Yelp/paasta/tree/v0.18.9) (2016-04-04)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.8...v0.18.9)
+
+**Merged pull requests:**
+
+- fix escaping in chronos\_rerun help string [\#391](https://github.com/Yelp/paasta/pull/391) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- fix test dependent on time [\#390](https://github.com/Yelp/paasta/pull/390) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- parse the datetime string from lastruntime in chronos jobs [\#389](https://github.com/Yelp/paasta/pull/389) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Autoscaling improvements [\#386](https://github.com/Yelp/paasta/pull/386) ([mjksmith](https://github.com/mjksmith))
+- Make the marathon cleanup script resolve all related sensu events. [\#379](https://github.com/Yelp/paasta/pull/379) ([solarkennedy](https://github.com/solarkennedy))
+
+## [v0.18.8](https://github.com/Yelp/paasta/tree/v0.18.8) (2016-04-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.7...v0.18.8)
+
+**Merged pull requests:**
+
+- added a command to autoscale all services [\#382](https://github.com/Yelp/paasta/pull/382) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.7](https://github.com/Yelp/paasta/tree/v0.18.7) (2016-04-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.6...v0.18.7)
+
+**Closed issues:**
+
+- make `cleanup\_chronos\_jobs` aware of temporary jobs created by `paasta rerun` [\#324](https://github.com/Yelp/paasta/issues/324)
+- create a backend 'paasta rerun' command [\#322](https://github.com/Yelp/paasta/issues/322)
+
+**Merged pull requests:**
+
+- ensure chronos rerun is distributed properly [\#384](https://github.com/Yelp/paasta/pull/384) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.18.6](https://github.com/Yelp/paasta/tree/v0.18.6) (2016-04-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.5...v0.18.6)
+
+**Merged pull requests:**
+
+- Ensure cleanup jobs understands tmp jobs [\#354](https://github.com/Yelp/paasta/pull/354) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Create a ``chronos\_rerun`` script for rerunning past jobs [\#330](https://github.com/Yelp/paasta/pull/330) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.18.5](https://github.com/Yelp/paasta/tree/v0.18.5) (2016-04-01)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.4...v0.18.5)
+
+**Closed issues:**
+
+- Fix Upgrading Marathon Docs now that we use upstream marathon-python [\#378](https://github.com/Yelp/paasta/issues/378)
+
+**Merged pull requests:**
+
+- Set real disabled value [\#381](https://github.com/Yelp/paasta/pull/381) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Remove docs about adding marathon-python to internal pypi [\#380](https://github.com/Yelp/paasta/pull/380) ([nhandler](https://github.com/nhandler))
+- Bump mesos.interface to 0.25.0 [\#377](https://github.com/Yelp/paasta/pull/377) ([nhandler](https://github.com/nhandler))
+- Only deploy to pypi on py27 build [\#372](https://github.com/Yelp/paasta/pull/372) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.18.4](https://github.com/Yelp/paasta/tree/v0.18.4) (2016-03-31)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.3...v0.18.4)
+
+**Closed issues:**
+
+- getting started docs are incorrect outside of Yelp [\#82](https://github.com/Yelp/paasta/issues/82)
+- wrong version of mesos.interface being installed [\#81](https://github.com/Yelp/paasta/issues/81)
+
+**Merged pull requests:**
+
+- stopped alerting for disabled jobs on chronos [\#361](https://github.com/Yelp/paasta/pull/361) ([mjksmith](https://github.com/mjksmith))
+- Added a default autoscaling method [\#303](https://github.com/Yelp/paasta/pull/303) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.3](https://github.com/Yelp/paasta/tree/v0.18.3) (2016-03-30)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.2...v0.18.3)
+
+**Closed issues:**
+
+- Typo in "paasta local-run -h" [\#369](https://github.com/Yelp/paasta/issues/369)
+- Switching from branches to tags made it harder to get currently deployed git sha [\#359](https://github.com/Yelp/paasta/issues/359)
+
+**Merged pull requests:**
+
+- Use behave-pytest for pytest-style asserts [\#371](https://github.com/Yelp/paasta/pull/371) ([nhandler](https://github.com/nhandler))
+- added a command to get a deploy group's latest deploy sha [\#357](https://github.com/Yelp/paasta/pull/357) ([mjksmith](https://github.com/mjksmith))
+- Upgrade to mesos 0.25.0 [\#319](https://github.com/Yelp/paasta/pull/319) ([nhandler](https://github.com/nhandler))
+
+## [v0.18.2](https://github.com/Yelp/paasta/tree/v0.18.2) (2016-03-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.1...v0.18.2)
+
+**Merged pull requests:**
+
+- made args for deep\_merge\_dictionaries more descriptive [\#363](https://github.com/Yelp/paasta/pull/363) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.1](https://github.com/Yelp/paasta/tree/v0.18.1) (2016-03-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.18.0...v0.18.1)
+
+**Closed issues:**
+
+- Add Bintray badge to readme [\#364](https://github.com/Yelp/paasta/issues/364)
+- Make packages available publicly [\#318](https://github.com/Yelp/paasta/issues/318)
+
+**Merged pull requests:**
+
+- Only have travis build on master \(and pull requests\). [\#366](https://github.com/Yelp/paasta/pull/366) ([EvanKrall](https://github.com/EvanKrall))
+- Add Bintray Badge to README [\#365](https://github.com/Yelp/paasta/pull/365) ([nhandler](https://github.com/nhandler))
+- Fix bintray upload [\#362](https://github.com/Yelp/paasta/pull/362) ([EvanKrall](https://github.com/EvanKrall))
+- fixed a bug where smartstack.yaml was overriding marathon.yaml [\#360](https://github.com/Yelp/paasta/pull/360) ([mjksmith](https://github.com/mjksmith))
+
+## [v0.18.0](https://github.com/Yelp/paasta/tree/v0.18.0) (2016-03-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.20...v0.18.0)
+
+**Closed issues:**
+
+- Marathon doesn't like non-string values in constraints [\#333](https://github.com/Yelp/paasta/issues/333)
+- write docs on how to disable a chronos job [\#294](https://github.com/Yelp/paasta/issues/294)
+
+**Merged pull requests:**
+
+- stringify any constraint vals for marathon [\#356](https://github.com/Yelp/paasta/pull/356) ([Rob-Johnson](https://github.com/Rob-Johnson))
+- Add mass-deploy-tag.sh to contrib/ [\#347](https://github.com/Yelp/paasta/pull/347) ([nhandler](https://github.com/nhandler))
+- Move configuration of replication monitoring to yelpsoa config [\#345](https://github.com/Yelp/paasta/pull/345) ([nosmo](https://github.com/nosmo))
+- Public package build [\#337](https://github.com/Yelp/paasta/pull/337) ([EvanKrall](https://github.com/EvanKrall))
+
+## [v0.17.20](https://github.com/Yelp/paasta/tree/v0.17.20) (2016-03-23)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.19...v0.17.20)
+
+**Closed issues:**
+
+- cleanup\_marathon\_jobs crashing because marathon.yaml doesn't exist [\#350](https://github.com/Yelp/paasta/issues/350)
+- metastatus ZeroDivisionError [\#348](https://github.com/Yelp/paasta/issues/348)
+- Include schedule\_time\_zone in schema [\#338](https://github.com/Yelp/paasta/issues/338)
+- UnboundLocalError when Popen fails [\#60](https://github.com/Yelp/paasta/issues/60)
+
+**Merged pull requests:**
+
+- made cleanup\_marathon\_job not load soa configs for a deleted service [\#351](https://github.com/Yelp/paasta/pull/351) ([mjksmith](https://github.com/mjksmith))
+- made metastatus print sane errors if mesos states it has 0 resources [\#349](https://github.com/Yelp/paasta/pull/349) ([mjksmith](https://github.com/mjksmith))
+- fixed \_run throwing an error when popen failed with a timeout [\#346](https://github.com/Yelp/paasta/pull/346) ([mjksmith](https://github.com/mjksmith))
+- added schedule\_time\_zone to chronos schema [\#344](https://github.com/Yelp/paasta/pull/344) ([mjksmith](https://github.com/mjksmith))
+- Make -vv output consistent with -vvv output, humanize figures [\#340](https://github.com/Yelp/paasta/pull/340) ([nosmo](https://github.com/nosmo))
+- stopped per-instance configs from nuking global defaults [\#331](https://github.com/Yelp/paasta/pull/331) ([mjksmith](https://github.com/mjksmith))
+- Use tags rather than branches for deployments [\#326](https://github.com/Yelp/paasta/pull/326) ([nhandler](https://github.com/nhandler))
+- add some docs for paasta start/stop behaviour [\#314](https://github.com/Yelp/paasta/pull/314) ([Rob-Johnson](https://github.com/Rob-Johnson))
+
+## [v0.17.19](https://github.com/Yelp/paasta/tree/v0.17.19) (2016-03-18)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.18...v0.17.19)
+
+**Closed issues:**
+
+- Broken links in docs [\#336](https://github.com/Yelp/paasta/issues/336)
+
+**Merged pull requests:**
+
+- Fix broken links to drain\_lib / bounce\_lib docs. Fixes \#336 [\#342](https://github.com/Yelp/paasta/pull/342) ([EvanKrall](https://github.com/EvanKrall))
+- fixed paasta fsm creating invalid deploy.yaml [\#339](https://github.com/Yelp/paasta/pull/339) ([mjksmith](https://github.com/mjksmith))
+- Catch failed responses during http healthcheck [\#332](https://github.com/Yelp/paasta/pull/332) ([koikonom](https://github.com/koikonom))
+
 ## [v0.17.18](https://github.com/Yelp/paasta/tree/v0.17.18) (2016-03-16)
 [Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.17...v0.17.18)
 
@@ -110,14 +589,20 @@
 - Fix metastatus -vv [\#262](https://github.com/Yelp/paasta/pull/262) ([nhandler](https://github.com/nhandler))
 
 ## [v0.17.10](https://github.com/Yelp/paasta/tree/v0.17.10) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9...v0.17.10)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.10n...v0.17.10)
+
+## [v0.17.10n](https://github.com/Yelp/paasta/tree/v0.17.10n) (2016-02-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9...v0.17.10n)
 
 **Merged pull requests:**
 
 - changed do\_bounce to kill task w/the batch endpoint [\#267](https://github.com/Yelp/paasta/pull/267) ([mjksmith](https://github.com/mjksmith))
 
 ## [v0.17.9](https://github.com/Yelp/paasta/tree/v0.17.9) (2016-02-25)
-[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.8...v0.17.9)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.9n...v0.17.9)
+
+## [v0.17.9n](https://github.com/Yelp/paasta/tree/v0.17.9n) (2016-02-25)
+[Full Changelog](https://github.com/Yelp/paasta/compare/v0.17.8...v0.17.9n)
 
 **Closed issues:**
 

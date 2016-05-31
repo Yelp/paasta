@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,15 +41,15 @@ SCHEMA_VALID = success("Successfully validated schema")
 
 SCHEMA_INVALID = failure(
     "Failed to validate schema. More info:",
-    "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
 
 SCHEMA_NOT_FOUND = failure(
     "Failed to find schema to validate against. More info:",
-    "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
 
 FAILED_READING_FILE = failure(
     "Failed to read file. More info:",
-    "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+    "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
 
 UNKNOWN_SERVICE = "Unable to determine service to validate.\n" \
                   "Please supply the %s name you wish to " \
@@ -61,7 +61,7 @@ def invalid_chronos_instance(cluster, instance, output):
     return failure(
         'chronos-%s.yaml has an invalid instance: %s.\n  %s\n  '
         'More info:' % (cluster, instance, output),
-        "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#chronos-clustername-yaml")
+        "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#chronos-clustername-yaml")
 
 
 def valid_chronos_instance(cluster, instance):
@@ -164,11 +164,11 @@ def check_service_path(service_path):
     """
     if not service_path or not os.path.isdir(service_path):
         print failure("%s is not a directory" % service_path,
-                      "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+                      "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
         return False
     if not glob(os.path.join(service_path, "*.yaml")):
         print failure("%s does not contain any .yaml files" % service_path,
-                      "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html")
+                      "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html")
         return False
     return True
 

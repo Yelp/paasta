@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -17,7 +17,6 @@ import logging
 import chronos_tools
 import humanize
 import isodate
-import requests_cache
 
 from paasta_tools.mesos_tools import get_running_tasks_from_active_frameworks
 from paasta_tools.mesos_tools import status_mesos_tasks_verbose
@@ -26,8 +25,8 @@ from paasta_tools.utils import datetime_from_utc_to_local
 from paasta_tools.utils import PaastaColors
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 def start_chronos_job(service, instance, job_id, client, cluster, job_config, complete_job_config, emergency=False):
@@ -93,7 +92,7 @@ def get_short_task_id(task_id):
     return task_id.split(chronos_tools.MESOS_TASK_SPACER)[1]
 
 
-def _format_config_hash(job):
+def _format_job_name(job):
     job_id = job.get("name", PaastaColors.red("UNKNOWN"))
     return job_id
 
@@ -241,6 +240,20 @@ def _format_mesos_status(job, running_tasks):
     return mesos_status
 
 
+def modify_string_for_rerun_status(string, launched_by_rerun):
+    """Appends information to include a note about
+    being launched by paasta rerun. If the param launched_by_rerun
+    is False, then the string returned is an unmodified copy of that provided
+    by the string parameter.
+    :param string: the string to be modified
+    :returns: a string with information about rerun status appended
+    """
+    if launched_by_rerun:
+        return "%s (Launched by paasta rerun)" % string
+    else:
+        return string
+
+
 def format_chronos_job_status(job, running_tasks, verbose=0):
     """Given a job, returns a pretty-printed human readable output regarding
     the status of the job.
@@ -250,8 +263,11 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
                           result of ``mesos_tools.get_running_tasks_from_active_frameworks()``.
     :param verbose: int verbosity level
     """
-    config_hash = _format_config_hash(job)
+    job_name = _format_job_name(job)
+    is_temporary = chronos_tools.is_temporary_job(job) if 'name' in job else 'UNKNOWN'
+    job_name = modify_string_for_rerun_status(job_name, is_temporary)
     disabled_state = _format_disabled_status(job)
+
     (last_result, formatted_time) = _format_last_result(job)
 
     job_type = chronos_tools.get_job_type(job)
@@ -266,13 +282,14 @@ def format_chronos_job_status(job, running_tasks, verbose=0):
         mesos_status_verbose = status_mesos_tasks_verbose(job["name"], get_short_task_id, tail_stdstreams)
         mesos_status = "%s\n%s" % (mesos_status, mesos_status_verbose)
     return (
-        "Config:     %(config_hash)s\n"
-        "  Status:   %(disabled_state)s\n"
+        "Job:     %(job_name)s\n"
+        "  Status:   %(disabled_state)s"
         "  Last:     %(last_result)s (%(formatted_time)s)\n"
         "  %(schedule_type)s: %(schedule_value)s\n"
         "  Command:  %(command)s\n"
         "  Mesos:    %(mesos_status)s" % {
-            "config_hash": config_hash,
+            "job_name": job_name,
+            "is_temporary": is_temporary,
             "schedule_type": schedule_type,
             "disabled_state": disabled_state,
             "last_result": last_result,
@@ -363,8 +380,6 @@ def perform_command(command, service, instance, cluster, verbose, soa_dir):
             emergency=True,
         )
     elif command == "status":
-        # Setting up transparent cache for http API calls
-        requests_cache.install_cache("paasta_serviceinit", backend="memory")
         # Verbose mode shows previous versions.
         matching_jobs = chronos_tools.lookup_chronos_jobs(
             service=service,

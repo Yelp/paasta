@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -33,26 +33,24 @@ import logging
 import traceback
 
 import pysensu_yelp
-import service_configuration_lib
 
 from paasta_tools import bounce_lib
 from paasta_tools import marathon_tools
-from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.monitoring_tools import send_event
 from paasta_tools.utils import _log
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_services_for_cluster
 from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_system_paasta_config
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Cleans up stale marathon jobs.')
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('-v', '--verbose', action='store_true',
                         dest="verbose", default=False)
@@ -154,11 +152,12 @@ def main():
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
+        logging.basicConfig(level=logging.WARNING)
+
     cleanup_apps(soa_dir)
 
 
-if __name__ == "__main__" and is_mesos_leader():
+if __name__ == "__main__":
     main()

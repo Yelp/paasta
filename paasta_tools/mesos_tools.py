@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,19 +13,26 @@
 # limitations under the License.
 import datetime
 import json
+import logging
 import os
 import re
 import socket
+from urlparse import urlparse
 
 import humanize
 import requests
 from kazoo.client import KazooClient
+from mesos.cli import util
 from mesos.cli.exceptions import SlaveDoesNotExist
 
 from paasta_tools.utils import format_table
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import timeout
 from paasta_tools.utils import TimeoutError
+
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 # mesos.cli.master reads its config file at *import* time, so we must have
@@ -79,6 +86,29 @@ from mesos.cli import master  # noqa
 import mesos.cli.cluster  # noqa
 
 
+# monkey patch MesosMaster.state to use a larger ttl
+@util.CachedProperty(ttl=60)
+def fetch_state(self):
+    return master.CURRENT.fetch("/master/state.json").json()
+master.MesosMaster.state = fetch_state
+
+# Works around a mesos-cli bug ('MesosSlave' object has no attribute 'id' - PAASTA-4119).
+# The method below gets a slave by its ID. Original code here:
+# https://github.com/mesosphere/mesos-cli/blob/master/mesos/cli/master.py#L176
+# uses "in" instead of "==", matching when the wanted ID is a substring of
+# the candidate. Because of that, multiple slaves are returned and mesos-cli
+# finds itself in a buggy "if" branch (hence the AttributeError).
+import itertools  # noqa
+
+
+def _mesos_cli_master_MesosMaster_slaves(self, fltr=''):
+    return list(map(
+        lambda x: mesos.cli.slave.MesosSlave(x),
+        itertools.ifilter(
+            lambda x: fltr == x['id'], self.state['slaves'])))
+mesos.cli.master.MesosMaster.slaves = _mesos_cli_master_MesosMaster_slaves
+
+
 class MesosMasterConnectionError(Exception):
     pass
 
@@ -87,21 +117,32 @@ class MesosSlaveConnectionError(Exception):
     pass
 
 
-def get_mesos_leader(hostname=MY_HOSTNAME):
-    """Get the current mesos-master leader's hostname. Raise
-    MesosMasterConnectionError if we can't connect.
+def get_mesos_leader():
+    """Get the current mesos-master leader's hostname.
+    Attempts to determine this by using mesos.cli to query ZooKeeper.
 
-    :param hostname: The hostname to query mesos-master on
     :returns: The current mesos-master hostname"""
-    redirect_url = 'http://%s:%s/redirect' % (hostname, MESOS_MASTER_PORT)
     try:
-        r = requests.get(redirect_url, timeout=10)
-    except requests.exceptions.ConnectionError as e:
-        # Repackage the exception so upstream code can handle this case without
-        # knowing our implementation details.
-        raise MesosMasterConnectionError(repr(e))
-    r.raise_for_status()
-    return re.search('(?<=http://)[0-9a-zA-Z\.\-]+', r.url).group(0)
+        url = master.CURRENT.host
+    except MesosMasterConnectionError:
+        log.debug('mesos.cli failed to provide the master host')
+        raise
+    log.debug("mesos.cli thinks the master host is: %s" % url)
+    hostname = urlparse(url).hostname
+    log.debug("The parsed master hostname is: %s" % hostname)
+    # This check is necessary, as if we parse a value such as 'localhost:5050',
+    # it won't have a hostname attribute
+    if hostname:
+        try:
+            host = socket.gethostbyaddr(hostname)[0]
+            fqdn = socket.getfqdn(host)
+        except (socket.error, socket.herror, socket.gaierror, socket.timeout):
+            log.debug("Failed to convert mesos leader hostname to fqdn!")
+            raise
+        log.debug("Mesos Leader: %s" % fqdn)
+        return fqdn
+    else:
+        raise ValueError('Expected to receive a valid URL, got: %s' % url)
 
 
 def is_mesos_leader(hostname=MY_HOSTNAME):
@@ -109,7 +150,7 @@ def is_mesos_leader(hostname=MY_HOSTNAME):
 
     :param hostname: The hostname to query mesos-master on
     :returns: True if hostname is the mesos-master leader, False otherwise"""
-    return hostname in get_mesos_leader(hostname)
+    return get_mesos_leader() == hostname
 
 
 def get_current_tasks(job_id):

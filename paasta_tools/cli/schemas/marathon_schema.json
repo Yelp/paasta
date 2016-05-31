@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#marathon-clustername-yaml",
+    "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#marathon-clustername-yaml",
     "type": "object",
     "minProperties": 1,
     "additionalProperties": {
@@ -68,11 +68,11 @@
                     }
                 }
             },
-	    "deploy_group": {
-		"type": "string"
-	    },
+            "deploy_group": {
+                "type": "string"
+            },
             "autoscaling": {
-		"type": "object"
+                "type": "object"
             },
             "drain_method": {
                 "enum": [ "noop", "hacheck", "test" ],
@@ -108,7 +108,8 @@
                 }
             },
             "env": {
-                "type": "object"
+                "type": "object",
+                "additionalProperties": { "type": "string" }
             },
             "extra_volumes": {
                 "type": "array",
@@ -124,6 +125,9 @@
                 "type": "string"
             },
             "deploy_blacklist": {
+                "type": "array"
+            },
+            "deploy_whitelist": {
                 "type": "array"
             },
             "monitoring_blacklist": {

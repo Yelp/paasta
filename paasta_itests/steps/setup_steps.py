@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -54,7 +54,8 @@ def setup_marathon_client():
         'cluster': 'testcluster',
         'docker_volumes': [],
         'docker_registry': u'docker-dev.yelpcorp.com',
-        'zookeeper': zk_connection_string
+        'zookeeper': zk_connection_string,
+        'synapse_port': 3212,
     }, '/some_fake_path_to_config_dir/')
     return (client, marathon_config, system_paasta_config)
 
@@ -193,7 +194,7 @@ def write_soa_dir_marathon_job(context, job_id):
 
 
 @given(u'we have a deployments.json for the service "{service}" with {disabled} instance "{instance}"')
-def write_soa_dir_chronos_deployments(context, service, disabled, instance):
+def write_soa_dir_deployments(context, service, disabled, instance):
     if disabled == 'disabled':
         desired_state = 'stop'
     else:

@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -53,7 +53,7 @@ def test_generate_pipeline_run_fails(
 ):
     mock_get_team_email_address.return_value = 'fake_email'
     mock_run.return_value = (1, 'Big bad wolf')
-    assert generate_pipeline('fake_service') == 1
+    assert generate_pipeline('fake_service', '/fake/soa/dir') == 1
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_team_email_address', autospec=True)
@@ -66,7 +66,7 @@ def test_generate_pipeline_success(
 ):
     mock_get_team_email_address.return_value = 'fake_email'
     mock_run.return_value = (0, 'Everything OK')
-    assert generate_pipeline('fake_service') is None
+    assert generate_pipeline('fake_service', '/fake/soa/dir') is None
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline._run', autospec=True)
@@ -82,7 +82,7 @@ def test_generate_pipeline_calls_the_right_commands_and_owner(
     mock_run.return_value = (0, 'Everything OK')
     mock_get_team_email_address.return_value = 'fake_email@yelp.com'
     mock_get_git_repo_for_fab_repo.return_value = 'fake_repo'
-    generate_pipeline('fake_service')
+    generate_pipeline('fake_service', '/fake/soa/dir')
     assert mock_run.call_count == 2
     expected_cmd1 = ('fab_repo setup_jenkins:services/fake_service,profile=paasta_boilerplate,'
                      'owner=fake_email,repo=fake_repo')
@@ -108,7 +108,7 @@ def test_generate_pipeline_uses_team_name_as_fallback_for_owner(
     mock_get_team_email_address.return_value = None
     mock_get_team.return_value = "fake_team"
     mock_get_git_repo_for_fab_repo.return_value = 'fake_repo'
-    generate_pipeline('fake_service')
+    generate_pipeline('fake_service', '/fake/soa/dir')
     assert mock_run.call_count == 2
     expected_cmd1 = ('fab_repo setup_jenkins:services/fake_service,profile=paasta_boilerplate,'
                      'owner=fake_team,repo=fake_repo')
@@ -130,8 +130,9 @@ def test_paasta_generate_pipeline_success_no_opts(
     mock_validate_service_name.return_value = None
     args = MagicMock()
     args.service = None
+    args.soa_dir = '/fake/soa/dir'
     assert paasta_generate_pipeline(args) is None
-    mock_generate_pipeline.assert_called_once_with(service='fake_service')
+    mock_generate_pipeline.assert_called_once_with(service='fake_service', soa_dir='/fake/soa/dir')
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.validate_service_name', autospec=True)
@@ -143,21 +144,22 @@ def test_generate_pipeline_success_with_opts(
     mock_validate_service_name.return_value = None
     args = MagicMock()
     args.service = 'fake_service'
+    args.soa_dir = '/fake/soa/dir'
     assert paasta_generate_pipeline(args) is None
-    mock_generate_pipeline.assert_called_once_with(service='fake_service')
+    mock_generate_pipeline.assert_called_once_with(service='fake_service', soa_dir='/fake/soa/dir')
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_git_url', autospec=True)
 def test_get_git_repo_for_fab_repo_returns_after_colon(mock_get_git_url):
     mock_get_git_url.return_value = 'git@git.yelpcorp.com:fake_service'
-    actual = get_git_repo_for_fab_repo('unused')
+    actual = get_git_repo_for_fab_repo('unused', '/fake/soa/dir')
     assert actual == 'fake_service'
 
 
 @patch('paasta_tools.cli.cmds.generate_pipeline.get_git_url', autospec=True)
 def test_get_git_repo_for_fab_repo_handles_services(mock_get_git_url):
     mock_get_git_url.return_value = 'git@git.yelpcorp.com:services/fake_service'
-    actual = get_git_repo_for_fab_repo('unused')
+    actual = get_git_repo_for_fab_repo('unused', '/fake/soa/dir')
     assert actual == 'services/fake_service'
 
 

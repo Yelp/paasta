@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -25,7 +25,7 @@ RUN echo "debconf shared/accepted-oracle-license-v1-1 select true" | debconf-set
 RUN echo "debconf shared/accepted-oracle-license-v1-1 seen true" | debconf-set-selections
 RUN apt-get update && apt-get -y install lsb-release oracle-java8-installer
 
-RUN apt-get -y install libsasl2-modules marathon=0.15.3-1.0.463.ubuntu1404
+RUN apt-get -y install libsasl2-modules marathon=1.1.1-1.0.472.ubuntu1404
 
 RUN echo -n "secret2" > /etc/marathon_framework_secret
 

@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -48,9 +48,9 @@ class TestSuggestSmartstackProxyPort:
     def test_suggest_smartstack_proxy_port(self):
         yelpsoa_config_root = "fake_yelpsoa_config_root"
         walk_return = [
-            ("fake_root1", "fake_dir1", ["service.yaml"]),
+            ("fake_root1", "fake_dir1", ["smartstack.yaml"]),
             ("fake_root2", "fake_dir2", ["smartstack.yaml"]),
-            ("fake_root3", "fake_dir3", ["service.yaml"]),
+            ("fake_root3", "fake_dir3", ["smartstack.yaml"]),
         ]
         mock_walk = mock.Mock(return_value=walk_return)
 
@@ -81,9 +81,9 @@ class TestSuggestSmartstackProxyPort:
         """If all the ports are taken, we should raise an error"""
         yelpsoa_config_root = "fake_yelpsoa_config_root"
         walk_return = [
-            ("fake_root1", "fake_dir1", ["service.yaml"]),
+            ("fake_root1", "fake_dir1", ["smartstack.yaml"]),
             ("fake_root2", "fake_dir2", ["smartstack.yaml"]),
-            ("fake_root3", "fake_dir3", ["service.yaml"]),
+            ("fake_root3", "fake_dir3", ["smartstack.yaml"]),
         ]
         mock_walk = mock.Mock(return_value=walk_return)
 

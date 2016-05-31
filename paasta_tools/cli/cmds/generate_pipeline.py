@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.monitoring_tools import get_team_email_address
 from paasta_tools.utils import _run
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 
 
@@ -42,6 +43,13 @@ def add_subparser(subparsers):
         '-s', '--service',
         help='Name of service for which you wish to generate a Jenkins pipeline',
     ).completer = lazy_choices_completer(list_services)
+    list_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     list_parser.set_defaults(command=paasta_generate_pipeline)
 
 
@@ -49,13 +57,14 @@ def paasta_generate_pipeline(args):
     """Generate a Jenkins build pipeline.
     :param args: argparse.Namespace obj created from sys.args by cli"""
     service = args.service or guess_service_name()
+    soa_dir = args.soa_dir
     try:
-        validate_service_name(service)
+        validate_service_name(service, soa_dir=soa_dir)
     except NoSuchService as service_not_found:
         print service_not_found
         return 1
 
-    generate_pipeline(service=service)
+    generate_pipeline(service=service, soa_dir=soa_dir)
 
 
 def validate_git_url_for_fab_repo(git_url):
@@ -69,11 +78,11 @@ def validate_git_url_for_fab_repo(git_url):
     return True
 
 
-def get_git_repo_for_fab_repo(service):
+def get_git_repo_for_fab_repo(service, soa_dir):
     """Returns the 'repo' in fab_repo terms. fab_repo just wants the trailing
     section of the git_url, after the colon.
     """
-    git_url = get_git_url(service)
+    git_url = get_git_url(service, soa_dir=soa_dir)
     validate_git_url_for_fab_repo(git_url)
     repo = git_url.split(':')[1]
     return repo
@@ -93,11 +102,11 @@ def print_warning():
     raw_input("Press any key to continue or ctrl-c to cancel")
 
 
-def generate_pipeline(service):
-    email_address = get_team_email_address(service=service)
-    repo = get_git_repo_for_fab_repo(service)
+def generate_pipeline(service, soa_dir):
+    email_address = get_team_email_address(service=service, soa_dir=soa_dir)
+    repo = get_git_repo_for_fab_repo(service, soa_dir)
     if not email_address:
-        owner = get_team(overrides={}, service=service)
+        owner = get_team(overrides={}, service=service, soa_dir=soa_dir)
     else:
         # fab_repo tacks on the domain, so we only want the first
         # part of the email.

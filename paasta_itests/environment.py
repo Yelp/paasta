@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@ import os
 import shutil
 import time
 
+import requests_cache
 from behave_pytest.hook import install_pytest_asserts
 from itest_utils import cleanup_file
 from itest_utils import get_service_connection_string
@@ -110,6 +111,7 @@ def _clean_up_zookeeper_autoscaling(context):
 
 
 def after_scenario(context, scenario):
+    requests_cache.uninstall_cache()
     _clean_up_marathon_apps(context)
     _clean_up_chronos_jobs(context)
     _clean_up_mesos_cli_config(context)

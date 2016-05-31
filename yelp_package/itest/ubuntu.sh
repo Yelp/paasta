@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -28,6 +28,7 @@ generate_services_file
 generate_services_yaml
 list_chronos_jobs
 list_marathon_service_instances
+paasta_autoscale_cluster
 paasta_execute_docker_command
 paasta_metastatus
 paasta_serviceinit

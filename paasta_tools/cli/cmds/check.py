@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,7 +18,6 @@ import os
 import re
 import urllib2
 
-from service_configuration_lib import DEFAULT_SOA_DIR
 from service_configuration_lib import read_service_configuration
 
 from paasta_tools.chronos_tools import load_chronos_job_config
@@ -37,6 +36,7 @@ from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import get_team
 from paasta_tools.utils import _run
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import DEPLOY_PIPELINE_NON_DEPLOY_STEPS
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import get_service_instance_list
@@ -139,7 +139,7 @@ def makefile_has_a_tab(makefile_path):
 
 def makefile_has_docker_tag(makefile_path):
     contents = get_file_contents(makefile_path)
-    return re.search(r"^DOCKER_TAG\s*\?=", contents, re.MULTILINE) is not None
+    return re.search(r"DOCKER_TAG\s*\?=", contents, re.MULTILINE) is not None
 
 
 def makefile_check():

@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ def test_get_service_info():
         }
         mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_get_smartstack_endpoints.return_value = ['http://foo:1234', 'tcp://bar:1234']
-        actual = info.get_service_info('fake_service')
+        actual = info.get_service_info('fake_service', '/fake/soa/dir')
         assert 'Service Name: fake_service' in actual
         assert 'Monitored By: team fake_team' in actual
         assert 'Runbook: ' in actual
@@ -99,7 +99,7 @@ def test_get_smartstack_endpoints_http():
             }
         }
         expected = ["http://169.254.255.254:1234 (main)"]
-        actual = info.get_smartstack_endpoints('unused')
+        actual = info.get_smartstack_endpoints('unused', '/fake/soa/dir')
         assert actual == expected
 
 
@@ -116,7 +116,7 @@ def test_get_smartstack_endpoints_tcp():
             }
         }
         expected = ["tcp://169.254.255.254:1234 (tcpone)"]
-        actual = info.get_smartstack_endpoints('unused')
+        actual = info.get_smartstack_endpoints('unused', '/fake/soa/dir')
         assert actual == expected
 
 
@@ -136,7 +136,7 @@ def test_get_deployments_strings_default_case_with_smartstack():
                 }
             }
         }
-        actual = info.get_deployments_strings('fake_service')
+        actual = info.get_deployments_strings('fake_service', '/fake/soa/dir')
         assert ' - clusterA (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterA.yelp/') in actual
         assert ' - clusterB (%s)' % PaastaColors.cyan('http://fake_service.paasta-clusterB.yelp/') in actual
 
@@ -148,7 +148,7 @@ def test_get_deployments_strings_protocol_tcp_case():
     ) as (mock_get_actual_deployments, mock_load_service_namespace_config):
         mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_load_service_namespace_config.return_value = ServiceNamespaceConfig({'mode': 'tcp', 'proxy_port': 8080})
-        actual = info.get_deployments_strings('unused')
+        actual = info.get_deployments_strings('unused', '/fake/soa/dir')
         assert ' - clusterA (%s)' % PaastaColors.cyan('tcp://paasta-clusterA.yelp:8080/') in actual
         assert ' - clusterB (%s)' % PaastaColors.cyan('tcp://paasta-clusterB.yelp:8080/') in actual
 
@@ -160,7 +160,7 @@ def test_get_deployments_strings_non_listening_service():
     ) as (mock_get_actual_deployments, mock_load_service_namespace_config):
         mock_get_actual_deployments.return_value = ['clusterA.main', 'clusterB.main']
         mock_load_service_namespace_config.return_value = ServiceNamespaceConfig()
-        actual = info.get_deployments_strings('unused')
+        actual = info.get_deployments_strings('unused', '/fake/soa/dir')
         assert ' - clusterA (N/A)' in actual
         assert ' - clusterB (N/A)' in actual
 
@@ -170,5 +170,5 @@ def test_get_deployments_strings_no_deployments():
         'paasta_tools.cli.cmds.info.get_actual_deployments', autospec=True
     ) as mock_get_actual_deployments:
         mock_get_actual_deployments.side_effect = NoDeploymentsAvailable
-        actual = info.get_deployments_strings('unused')
+        actual = info.get_deployments_strings('unused', '/fake/soa/dir')
         assert 'N/A: Not deployed' in actual[0]

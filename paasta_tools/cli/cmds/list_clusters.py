@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 
 
@@ -25,9 +26,16 @@ def add_subparser(subparsers):
             "The command can only report those clusters that are actually used by some services."
         ),
     )
+    list_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     list_parser.set_defaults(command=paasta_list_clusters)
 
 
 def paasta_list_clusters(args, **kwargs):
-    for cluster in list_clusters():
+    for cluster in list_clusters(soa_dir=args.soa_dir):
         print cluster

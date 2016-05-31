@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,8 +29,7 @@ Command line options:
 import argparse
 import sys
 
-import service_configuration_lib
-
+from paasta_tools.marathon_tools import DEFAULT_SOA_DIR
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import get_services_for_cluster
 
@@ -41,7 +40,7 @@ def parse_args():
                         default=None,
                         help="define a specific cluster to read from")
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     args = parser.parse_args()
     return args

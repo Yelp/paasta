@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -139,32 +139,31 @@ def test_get_log_name_for_service():
 
 def test_get_readable_files_in_glob_ignores_unreadable():
     fake_dir = '/fake/'
-    fake_file_contents = {'foo': 'bar'}
-    expected = [os.path.join(fake_dir, 'a.json'), os.path.join(fake_dir, 'c.json')]
-    file_mock = mock.MagicMock(spec=file)
+    expected = ['/fake/readable.json']
+    fake_walk = [
+        ('/fake', [], ['readable.json', 'unreadable.json']),
+    ]
     with contextlib.nested(
-        mock.patch('glob.glob', autospec=True, return_value=['/fake/b.json', '/fake/a.json', '/fake/c.json']),
+        mock.patch('os.walk', autospec=True, return_value=fake_walk),
         mock.patch('os.path.isfile', autospec=True, return_value=True),
-        mock.patch('os.access', autospec=True, side_effect=[True, False, True]),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=fake_file_contents)
+        mock.patch('os.access', autospec=True, side_effect=[True, False]),
     ):
-        assert utils.get_readable_files_in_glob(fake_dir) == expected
+        assert utils.get_readable_files_in_glob('*.json', fake_dir) == expected
 
 
-def test_get_readable_files_in_glob_is_lexicographic():
+def test_get_readable_files_in_glob_is_recursive():
     fake_dir = '/fake/'
-    fake_file_contents = {'foo': 'bar'}
-    expected = [os.path.join(fake_dir, 'a.json'), os.path.join(fake_dir, 'b.json')]
-    file_mock = mock.MagicMock(spec=file)
+    expected = ['/fake/a.json', '/fake/b.json', '/fake/nested/c.json']
+    fake_walk = [
+        ('/fake', ['nested'], ['a.json', 'b.json']),
+        ('/fake/nested', [], ['c.json'])
+    ]
     with contextlib.nested(
-        mock.patch('glob.glob', autospec=True, return_value=['/fake/b.json', '/fake/a.json']),
+        mock.patch('os.walk', autospec=True, return_value=fake_walk),
         mock.patch('os.path.isfile', autospec=True, return_value=True),
         mock.patch('os.access', autospec=True, return_value=True),
-        mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-        mock.patch('paasta_tools.utils.json.load', autospec=True, return_value=fake_file_contents)
     ):
-        assert utils.get_readable_files_in_glob(fake_dir) == expected
+        assert utils.get_readable_files_in_glob('*.json', fake_dir) == expected
 
 
 def test_load_system_paasta_config():
@@ -360,6 +359,20 @@ def test_SystemPaastaConfig_get_sensu_port():
     assert actual == expected
 
 
+def test_SystemPaastaConfig_get_cluster_fqdn_format_default():
+    fake_config = utils.SystemPaastaConfig({}, '/some/fake/dir')
+    actual = fake_config.get_cluster_fqdn_format()
+    expected = 'paasta-{cluster:s}.yelp'
+    assert actual == expected
+
+
+def test_SystemPaastaConfig_get_cluster_fqdn_format():
+    fake_config = utils.SystemPaastaConfig({"cluster_fqdn_format": "paasta-{cluster:s}.something"}, '/some/fake/dir')
+    actual = fake_config.get_cluster_fqdn_format()
+    expected = 'paasta-{cluster:s}.something'
+    assert actual == expected
+
+
 def test_atomic_file_write():
     with mock.patch('tempfile.NamedTemporaryFile', autospec=True) as ntf_patch:
         file_patch = ntf_patch().__enter__()
@@ -414,13 +427,13 @@ def test_atomic_file_write_itest():
 
 
 def test_configure_log():
-    fake_log_writer = {'driver': 'fake'}
+    fake_log_writer_config = {'driver': 'fake', 'options': {'fake_arg': 'something'}}
     with mock.patch('paasta_tools.utils.load_system_paasta_config') as mock_load_system_paasta_config:
-        mock_load_system_paasta_config().get_log_writer.return_value = fake_log_writer
+        mock_load_system_paasta_config().get_log_writer.return_value = fake_log_writer_config
         with mock.patch('paasta_tools.utils.get_log_writer_class') as mock_get_log_writer_class:
             utils.configure_log()
             mock_get_log_writer_class.assert_called_once_with('fake')
-            mock_get_log_writer_class('fake').assert_called_once_with(**fake_log_writer)
+            mock_get_log_writer_class('fake').assert_called_once_with(fake_arg='something')
 
 
 def test_compose_job_id_without_hashes():
@@ -853,6 +866,30 @@ class TestInstanceConfig:
             branch_dict={},
         )
         assert fake_conf.get_mem() == 1024
+
+    def test_get_mem_swap_int(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={
+                'mem': 50
+            },
+            branch_dict={},
+        )
+        assert fake_conf.get_mem_swap() == "50m"
+
+    def test_get_mem_swap_float_rounds_up(self):
+        fake_conf = utils.InstanceConfig(
+            service='',
+            instance='',
+            cluster='',
+            config_dict={
+                'mem': 50.4
+            },
+            branch_dict={},
+        )
+        assert fake_conf.get_mem_swap() == "51m"
 
     def test_get_disk_in_config(self):
         fake_conf = utils.InstanceConfig(

@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,11 +21,12 @@ import mock
 
 from paasta_tools import marathon_serviceinit
 from paasta_tools import marathon_tools
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT
 from paasta_tools.utils import NoDockerImageError
 from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import remove_ansi_escape_sequences
+from paasta_tools.utils import SystemPaastaConfig
 
 
 fake_marathon_job_config = marathon_tools.MarathonServiceConfig(
@@ -362,11 +363,14 @@ def test_status_smartstack_backends_normal():
             expected_count=len(haproxy_backends_by_task),
             soa_dir=None,
             verbose=False,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
             synapse_host='fakehost1',
-            synapse_port=3212,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         assert "fake_location1" in actual
         assert "Healthy" in actual
@@ -390,6 +394,8 @@ def test_status_smartstack_backends_different_nerve_ns():
             expected_count=normal_count,
             soa_dir=None,
             verbose=False,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         assert "is announced in the" in actual
         assert different_ns in actual
@@ -423,6 +429,8 @@ def test_status_smartstack_backends_no_smartstack_replication_info():
             expected_count=normal_count,
             soa_dir=None,
             verbose=False,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         assert "%s is NOT in smartstack" % service_instance in actual
 
@@ -470,16 +478,20 @@ def test_status_smartstack_backends_multiple_locations():
             expected_count=len(mock_get_backends.return_value),
             soa_dir=None,
             verbose=False,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
             service_instance,
             synapse_host='fakehost1',
-            synapse_port=DEFAULT_SYNAPSE_PORT,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
             service_instance,
             synapse_host='fakehost2',
-            synapse_port=DEFAULT_SYNAPSE_PORT,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         assert "fake_location1 - %s" % PaastaColors.green('Healthy') in actual
         assert "fake_location2 - %s" % PaastaColors.green('Healthy') in actual
@@ -532,16 +544,20 @@ def test_status_smartstack_backends_multiple_locations_expected_count():
             expected_count=normal_count,
             soa_dir=None,
             verbose=False,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
             service_instance,
             synapse_host='fakehost1',
-            synapse_port=3212,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
             service_instance,
             synapse_host='fakehost2',
-            synapse_port=3212,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         expected_count_per_location = int(
             normal_count / len(mock_get_mesos_slaves_grouped_by_attribute.return_value))
@@ -598,11 +614,14 @@ def test_status_smartstack_backends_verbose_multiple_apps():
             expected_count=len(haproxy_backends_by_task),
             soa_dir=None,
             verbose=True,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_called_once_with(
             service_instance,
             synapse_host='fakehost1',
-            synapse_port=3212,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         assert "fake_location1" in actual
         assert "hostname1:1001" in actual
@@ -653,16 +672,20 @@ def test_status_smartstack_backends_verbose_multiple_locations():
             expected_count=1,
             soa_dir=None,
             verbose=True,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
             service_instance,
             synapse_host='fakehost1',
-            synapse_port=3212,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_backends.assert_any_call(
             service_instance,
             synapse_host='fakehost2',
-            synapse_port=3212,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
             attribute='fake_discover',
@@ -714,6 +737,8 @@ def test_status_smartstack_backends_verbose_emphasizes_maint_instances():
             expected_count=normal_count,
             soa_dir=None,
             verbose=True,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         assert PaastaColors.red('MAINT') in actual
 
@@ -758,6 +783,8 @@ def test_status_smartstack_backends_verbose_demphasizes_maint_instances_for_unre
             expected_count=normal_count,
             soa_dir=None,
             verbose=True,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
         assert PaastaColors.red('MAINT') not in actual
         assert re.search(r"%s[^\n]*hostname1:1001" % re.escape(PaastaColors.GREY), actual)
@@ -819,9 +846,12 @@ def test_perform_command_handles_no_docker_and_doesnt_raise():
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_config', autospec=True),
         mock.patch('paasta_tools.marathon_serviceinit.marathon_tools.load_marathon_service_config', autospec=True,
                    return_value=mock.Mock(format_marathon_app_dict=mock.Mock(side_effect=NoDockerImageError))),
+        mock.patch('paasta_tools.marathon_serviceinit.load_system_paasta_config', autospec=True,
+                   return_value=SystemPaastaConfig({}, "/fake/config")),
     ) as (
         mock_load_marathon_config,
         mock_load_marathon_service_config,
+        mock_load_system_paasta_config,
     ):
         actual = marathon_serviceinit.perform_command(
             'start', fake_service, fake_instance, fake_cluster, False, soa_dir)
@@ -867,8 +897,10 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
         },
     }
     with contextlib.nested(
-        mock.patch('paasta_tools.marathon_serviceinit.get_backends', autospec=True,
-                   side_effect=lambda _, synapse_host, synapse_port: [backends[synapse_host]]),
+        mock.patch(
+            'paasta_tools.marathon_serviceinit.get_backends', autospec=True,
+            side_effect=lambda _, synapse_host, synapse_port, synapse_haproxy_url_format: [backends[synapse_host]]
+        ),
         mock.patch('socket.gethostbyname', side_effect=lambda name: host_ip_mapping[name], autospec=True),
     ) as (
         mock_get_backends,
@@ -880,6 +912,8 @@ def test_pretty_print_smartstack_backends_for_locations_verbose():
             locations=hosts_grouped_by_location,
             expected_count=3,
             verbose=True,
+            synapse_port=123456,
+            synapse_haproxy_url_format=DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT,
         )
 
         colorstripped_actual = [remove_ansi_escape_sequences(l) for l in actual]

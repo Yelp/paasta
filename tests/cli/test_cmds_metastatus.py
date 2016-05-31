@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,19 +23,23 @@ from paasta_tools.utils import SystemPaastaConfig
 @mock.patch('sys.stdout', new_callable=StringIO)
 def test_report_cluster_status(mock_stdout, mock_load_system_paasta_config):
     cluster = 'fake_cluster'
-    mock_load_system_paasta_config.return_value = SystemPaastaConfig({
+
+    fake_system_paasta_config = SystemPaastaConfig({
         'dashboard_links': {
             'fake_cluster': {
                 'URL': 'http://paasta-fake_cluster.yelp:5050',
             },
         },
     }, 'fake_directory')
+
+    mock_load_system_paasta_config.return_value = fake_system_paasta_config
+
     thing_to_patch = 'paasta_tools.cli.cmds.metastatus.execute_paasta_metastatus_on_remote_master'
     with mock.patch(thing_to_patch) as mock_execute_paasta_metastatus_on_remote_master:
         mock_execute_paasta_metastatus_on_remote_master.return_value = 'mock_status'
-        metastatus.print_cluster_status(cluster)
+        metastatus.print_cluster_status(cluster, fake_system_paasta_config)
         mock_execute_paasta_metastatus_on_remote_master.assert_called_once_with(
-            cluster, False
+            cluster, fake_system_paasta_config, verbose=False,
         )
         actual = mock_stdout.getvalue()
         assert 'Cluster: %s' % cluster in actual

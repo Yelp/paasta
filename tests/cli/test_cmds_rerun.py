@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ from pytest import mark
 from paasta_tools.chronos_tools import EXECUTION_DATE_FORMAT
 from paasta_tools.cli.cmds.rerun import add_subparser
 from paasta_tools.cli.cmds.rerun import paasta_rerun
+from paasta_tools.utils import SystemPaastaConfig
 
 
 _user_supplied_execution_date = '2016-04-08T02:37:27'
@@ -98,6 +99,7 @@ def test_rerun_validations(test_case):
         patch('paasta_tools.cli.cmds.rerun.chronos_tools.load_chronos_job_config', autospec=True),
         patch('paasta_tools.cli.cmds.rerun.chronos_tools.uses_time_variables', autospec=True),
         patch('paasta_tools.cli.cmds.rerun._get_default_execution_date', autospec=True),
+        patch('paasta_tools.cli.cmds.rerun.load_system_paasta_config', autospec=True),
     ) as (
         mock_stdout,
         mock_figure_out_service_name,
@@ -108,6 +110,7 @@ def test_rerun_validations(test_case):
         mock_load_chronos_job_config,
         mock_uses_time_variables,
         mock_get_default_execution_date,
+        mock_load_system_paasta_config,
     ):
 
         (rerun_args,
@@ -122,6 +125,7 @@ def test_rerun_validations(test_case):
         default_date = datetime.datetime(2002, 2, 2, 2, 2, 2, 2)
         mock_get_default_execution_date.return_value = default_date
         mock_execute_rerun_remote.return_value = (0, '')
+        mock_load_system_paasta_config.return_value = SystemPaastaConfig({}, '/fake/config')
 
         args = MagicMock()
         args.service = rerun_args[0]

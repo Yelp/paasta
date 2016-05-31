@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -24,6 +24,7 @@ import importlib
 import io
 import json
 import logging
+import math
 import os
 import pwd
 import re
@@ -32,6 +33,7 @@ import signal
 import sys
 import tempfile
 import threading
+from fnmatch import fnmatch
 from functools import wraps
 from subprocess import PIPE
 from subprocess import Popen
@@ -53,7 +55,7 @@ SPACER = '.'
 INFRA_ZK_PATH = '/nail/etc/zookeeper_discovery/infrastructure/'
 PATH_TO_SYSTEM_PAASTA_CONFIG_DIR = os.environ.get('PAASTA_SYSTEM_CONFIG_DIR', '/etc/paasta/')
 DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
-DEFAULT_DOCKERFILE_LOCATION = "file:///root/.dockercfg"
+DEFAULT_DOCKERCFG_LOCATION = "file:///root/.dockercfg"
 DEPLOY_PIPELINE_NON_DEPLOY_STEPS = (
     'itest',
     'security-check',
@@ -66,7 +68,10 @@ ANY_INSTANCE = 'N/A'
 DEFAULT_LOGLEVEL = 'event'
 no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
-log = logging.getLogger('__main__')
+DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 
 
 class InvalidInstanceConfig(Exception):
@@ -117,6 +122,16 @@ class InstanceConfig(dict):
         :returns: The amount of memory specified by the config, 1024 if not specified"""
         mem = self.config_dict.get('mem', 1024)
         return mem
+
+    def get_mem_swap(self):
+        """Gets the memory-swap value. This value is passed to the docker
+        container to ensure that the total memory limit (memory + swap) is the
+        same value as the 'mem' key in soa-configs. Note - this value *has* to
+        be >= to the mem key, so we always round up to the closest MB.
+        """
+        mem = self.get_mem()
+        mem_swap = int(math.ceil(mem))
+        return "%sm" % mem_swap
 
     def get_cpus(self):
         """Gets the number of cpus required from the service's configuration.
@@ -279,6 +294,16 @@ class InstanceConfig(dict):
 
         :returns: the "pool" attribute in your config dict, or the string "default" if not specified."""
         return self.config_dict.get('pool', 'default')
+
+    def get_pool_constraints(self):
+        pool = self.get_pool()
+        return [["pool", "LIKE", pool]]
+
+    def get_constraints(self):
+        return self.config_dict.get('constraints', None)
+
+    def get_extra_constraints(self):
+        return self.config_dict.get('extra_constraints', [])
 
     def get_net(self):
         """
@@ -510,10 +535,10 @@ def list_log_writers():
 
 def configure_log():
     """We will log to the yocalhost binded scribe."""
-    log_writer_options = load_system_paasta_config().get_log_writer()
+    log_writer_config = load_system_paasta_config().get_log_writer()
     global _log_writer
-    LogWriterClass = get_log_writer_class(log_writer_options['driver'])
-    _log_writer = LogWriterClass(**log_writer_options)
+    LogWriterClass = get_log_writer_class(log_writer_config['driver'])
+    _log_writer = LogWriterClass(**log_writer_config.get('options', {}))
 
 
 def _log(*args, **kwargs):
@@ -663,15 +688,17 @@ class NoConfigurationForServiceError(Exception):
     pass
 
 
-def get_readable_files_in_glob(input_glob):
+def get_readable_files_in_glob(glob, path):
     """
-    Returns lexicographically-sorted list of files that are readable in an input glob
+    Returns a sorted list of files that are readable in an input glob by recursively searching a path
     """
-    files = []
-    for f in sorted(glob.glob(input_glob)):
-        if os.path.isfile(f) and os.access(f, os.R_OK):
-            files.append(f)
-    return files
+    globbed_files = []
+    for root, dirs, files in os.walk(path):
+        for f in files:
+            fn = os.path.join(root, f)
+            if os.path.isfile(fn) and os.access(fn, os.R_OK) and fnmatch(fn, glob):
+                globbed_files.append(fn)
+    return sorted(globbed_files)
 
 
 def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
@@ -686,8 +713,8 @@ def load_system_paasta_config(path=PATH_TO_SYSTEM_PAASTA_CONFIG_DIR):
         raise PaastaNotConfiguredError("Could not read from system paasta configuration directory: %s" % path)
 
     try:
-        for config_file in get_readable_files_in_glob("%s/*.json" % path):
-            with open(os.path.join(path, config_file)) as f:
+        for config_file in get_readable_files_in_glob(glob="*.json", path=path):
+            with open(config_file) as f:
                 config.update(json.load(f))
     except IOError as e:
         raise PaastaNotConfiguredError("Could not load system paasta config file %s: %s" % (e.filename, e.strerror))
@@ -748,23 +775,6 @@ class SystemPaastaConfig(dict):
         except KeyError:
             raise PaastaNotConfiguredError('Could not find cluster in configuration directory: %s' % self.directory)
 
-    def get_scribe_map(self):
-        """Get the scribe_map out of the paasta config
-
-        :returns: The scribe_map dictionary
-        """
-        try:
-            return self['scribe_map']
-        except KeyError:
-            raise PaastaNotConfiguredError('Could not find scribe_map in configuration directory: %s' % self.directory)
-
-    def get_fsm_cluster_map(self):
-        try:
-            return self['fsm_cluster_map']
-        except KeyError:
-            raise PaastaNotConfiguredError(
-                'Could not find fsm_cluster_map in configuration directory: %s' % self.directory)
-
     def get_dashboard_links(self):
         try:
             return self['dashboard_links']
@@ -772,12 +782,10 @@ class SystemPaastaConfig(dict):
             raise PaastaNotConfiguredError(
                 'Could not find dashboard_links in configuration directory: %s' % self.directory)
 
-    def get_fsm_deploy_pipeline(self):
-        try:
-            return self['fsm_deploy_pipeline']
-        except KeyError:
-            raise PaastaNotConfiguredError(
-                'Could not find fsm_deploy_pipeline in configuration directory: %s' % self.directory)
+    def get_fsm_template(self):
+        fsm_path = os.path.dirname(sys.modules['paasta_tools.cli.fsm'].__file__)
+        template_path = os.path.join(fsm_path, "template")
+        return self.get('fsm_template', template_path)
 
     def get_log_writer(self):
         """Get the log_writer configuration out of global paasta config
@@ -813,12 +821,41 @@ class SystemPaastaConfig(dict):
         """
         return int(self.get('sensu_port', 3030))
 
-    def get_dockerfile_location(self):
+    def get_dockercfg_location(self):
         """Get the location of the dockerfile, as a URI.
 
-        :returns: the URI speicfied, or file:///root/.dockercfg if not specified.
+        :returns: the URI specified, or file:///root/.dockercfg if not specified.
         """
-        return self.get('dockerfile_location', DEFAULT_DOCKERFILE_LOCATION)
+        return self.get('dockercfg_location', DEFAULT_DOCKERCFG_LOCATION)
+
+    def get_synapse_port(self):
+        """Get the port that haproxy-synapse exposes its status on. Defaults to 3212.
+
+        :returns: the haproxy-synapse status port."""
+        return int(self.get('synapse_port', 3212))
+
+    def get_default_synapse_host(self):
+        """Get the default host we should interrogate for haproxy-synapse state.
+
+        :returns: A hostname that is running haproxy-synapse."""
+        return self.get('synapse_host', 'localhost')
+
+    def get_synapse_haproxy_url_format(self):
+        """Get a format string for the URL to query for haproxy-synapse state. This format string gets two keyword
+        arguments, host and port. Defaults to "http://{host:s}:{port:d}/;csv;norefresh".
+
+        :returns: A format string for constructing the URL of haproxy-synapse's status page."""
+        return self.get('synapse_haproxy_url_format', DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT)
+
+    def get_cluster_autoscaling_resources(self):
+        return self.get('cluster_autoscaling_resources', {})
+
+    def get_cluster_fqdn_format(self):
+        """Get a format string that constructs a DNS name pointing at the paasta masters in a cluster. This format
+        string gets one parameter: cluster. Defaults to 'paasta-{cluster:s}.yelp'.
+
+        :returns: A format string for constructing the FQDN of the masters in a given cluster."""
+        return self.get('cluster_fqdn_format', 'paasta-{cluster:s}.yelp')
 
 
 def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=None, **kwargs):
@@ -850,8 +887,18 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
             proctimer = threading.Timer(timeout, _timeout, (process,))
             proctimer.start()
         for line in iter(process.stdout.readline, ''):
+            # additional indentation is for the paasta status command only
             if stream:
-                print(line.rstrip('\n'))
+                if ('paasta_serviceinit status' in command):
+                    if 'instance: ' in line:
+                        print('  ' + line.rstrip('\n'))
+                    else:
+                        print('    ' + line.rstrip('\n'))
+                else:
+                    print(line.rstrip('\n'))
+            else:
+                output.append(line.rstrip('\n'))
+
             if log:
                 _log(
                     service=service,
@@ -861,7 +908,6 @@ def _run(command, env=os.environ, timeout=None, log=False, stream=False, stdin=N
                     cluster=cluster,
                     instance=instance,
                 )
-            output.append(line.rstrip('\n'))
         # when finished, get the exit code
         returncode = process.wait()
     except OSError as e:

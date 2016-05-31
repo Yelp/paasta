@@ -33,7 +33,7 @@ def main():
         mesos_task_id = mesos_tools.get_mesos_id_from_container(
             container=container, client=docker_client)
         if mesos_task_id not in running_mesos_task_ids:
-            orphaned_containers.append((container["Names"][0], mesos_task_id))
+            orphaned_containers.append((container["Names"][0].strip("/"), mesos_task_id))
 
     if orphaned_containers:
         print "CRIT: Docker containers are orphaned: %s%s" % (", ".join(

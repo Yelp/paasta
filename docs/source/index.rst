@@ -13,6 +13,7 @@ Directions (For PaaSTA Users)
 
    yelpsoa_configs
    workflow
+   autoscaling
 
 About PaaSTA's Architecture
 ---------------------------
@@ -22,6 +23,7 @@ About PaaSTA's Architecture
    :glob:
 
    about/*
+   isolation
 
 PaaSTA Development
 ~~~~~~~~~~~~~~~~~~
@@ -42,6 +44,7 @@ Installing The PaaSTA Infrastructure
 
    installation/getting_started
    soa_configs
+   system_configs
 
 Generated Docs
 ~~~~~~~~~~~~~~

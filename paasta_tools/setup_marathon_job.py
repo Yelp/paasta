@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -47,7 +47,7 @@ import traceback
 from collections import defaultdict
 
 import pysensu_yelp
-import service_configuration_lib
+import requests_cache
 
 from paasta_tools import bounce_lib
 from paasta_tools import drain_lib
@@ -68,17 +68,16 @@ from paasta_tools.utils import SPACER
 # Marathon REST API:
 # https://github.com/mesosphere/marathon/blob/master/REST.md#post-v2apps
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def parse_args():
     parser = argparse.ArgumentParser(description='Creates marathon jobs.')
-    parser.add_argument('service_instance',
-                        help="The marathon instance of the service to create or update",
+    parser.add_argument('service_instance_list', nargs='+',
+                        help="The list of marathon service instances to create or update",
                         metavar="SERVICE%sINSTANCE" % SPACER)
     parser.add_argument('-d', '--soa-dir', dest="soa_dir", metavar="SOA_DIR",
-                        default=service_configuration_lib.DEFAULT_SOA_DIR,
+                        default=marathon_tools.DEFAULT_SOA_DIR,
                         help="define a different soa config directory")
     parser.add_argument('-v', '--verbose', action='store_true',
                         dest="verbose", default=False)
@@ -226,7 +225,8 @@ def do_bounce(
         log_bounce_action(
             line='%s bounce creating new app with app_id %s' % (bounce_method, marathon_jobid),
         )
-        bounce_lib.create_marathon_app(marathon_jobid, config, client)
+        with requests_cache.disabled():
+            bounce_lib.create_marathon_app(marathon_jobid, config, client)
     if len(actions['tasks_to_drain']) > 0:
         tasks_to_drain_by_app_id = defaultdict(set)
         for task in actions['tasks_to_drain']:
@@ -270,7 +270,8 @@ def do_bounce(
                 ', '.join(apps_to_kill)
             ),
         )
-        bounce_lib.kill_old_ids(apps_to_kill, client)
+        with requests_cache.disabled():
+            bounce_lib.kill_old_ids(apps_to_kill, client)
 
     all_old_tasks = set.union(set(), *old_app_live_happy_tasks.values())
     all_old_tasks = set.union(all_old_tasks, *old_app_live_unhappy_tasks.values())
@@ -293,14 +294,15 @@ def do_bounce(
         )
 
 
-def get_old_happy_unhappy_draining_tasks_for_app(app, drain_method, service, nerve_ns, bounce_health_params):
+def get_old_happy_unhappy_draining_tasks_for_app(app, drain_method, service, nerve_ns, bounce_health_params,
+                                                 system_paasta_config):
     tasks_by_state = {
         'happy': set(),
         'unhappy': set(),
         'draining': set(),
     }
 
-    happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, **bounce_health_params)
+    happy_tasks = bounce_lib.get_happy_tasks(app, service, nerve_ns, system_paasta_config, **bounce_health_params)
     for task in app.tasks:
         if drain_method.is_draining(task):
             state = 'draining'
@@ -313,7 +315,8 @@ def get_old_happy_unhappy_draining_tasks_for_app(app, drain_method, service, ner
     return tasks_by_state
 
 
-def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerve_ns, bounce_health_params):
+def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerve_ns, bounce_health_params,
+                                         system_paasta_config):
     """Split tasks from old apps into 3 categories:
       - live (not draining) and happy (according to get_happy_tasks)
       - live (not draining) and unhappy
@@ -327,7 +330,7 @@ def get_old_happy_unhappy_draining_tasks(other_apps, drain_method, service, nerv
     for app in other_apps:
 
         tasks_by_state = get_old_happy_unhappy_draining_tasks_for_app(
-            app, drain_method, service, nerve_ns, bounce_health_params)
+            app, drain_method, service, nerve_ns, bounce_health_params, system_paasta_config)
 
         old_app_live_happy_tasks[app.id] = tasks_by_state['happy']
         old_app_live_unhappy_tasks[app.id] = tasks_by_state['unhappy']
@@ -375,7 +378,8 @@ def deploy_service(
 
     short_id = marathon_tools.format_job_id(service, instance)
 
-    cluster = load_system_paasta_config().get_cluster()
+    system_paasta_config = load_system_paasta_config()
+    cluster = system_paasta_config.get_cluster()
     existing_apps = marathon_tools.get_matching_apps(service, instance, client, embed_failures=True)
     new_app_list = [a for a in existing_apps if a.id == '/%s' % config['id']]
     other_apps = [a for a in existing_apps if a.id != '/%s' % config['id']]
@@ -386,7 +390,8 @@ def deploy_service(
         if len(new_app_list) != 1:
             raise ValueError("Only expected one app per ID; found %d" % len(new_app_list))
         new_app_running = True
-        happy_new_tasks = bounce_lib.get_happy_tasks(new_app, service, nerve_ns, **bounce_health_params)
+        happy_new_tasks = bounce_lib.get_happy_tasks(new_app, service, nerve_ns, system_paasta_config,
+                                                     **bounce_health_params)
     else:
         new_app_running = False
         happy_new_tasks = []
@@ -410,7 +415,8 @@ def deploy_service(
         drain_method,
         service,
         nerve_ns,
-        bounce_health_params
+        bounce_health_params,
+        system_paasta_config,
     )
 
     if new_app_running:
@@ -425,6 +431,7 @@ def deploy_service(
                 service,
                 nerve_ns,
                 bounce_health_params,
+                system_paasta_config,
             )
             scaling_app_happy_tasks = list(task_dict['happy'])
             scaling_app_unhappy_tasks = list(task_dict['unhappy'])
@@ -543,32 +550,50 @@ def setup_service(service, instance, client, marathon_config,
 
 
 def main():
-    """Attempt to set up the marathon service instance given.
-    Exits 1 if the deployment failed.
+    """Attempt to set up a list of marathon service instances given.
+    Exits 1 if any service.instance deployment failed.
     This is done in the following order:
 
     - Load the marathon configuration
     - Connect to marathon
-    - Load the service instance's configuration
-    - Create the complete marathon job configuration
-    - Deploy/bounce the service
-    - Emit an event about the deployment to sensu"""
+    - Do the following for each service.instance:
+        - Load the service instance's configuration
+        - Create the complete marathon job configuration
+        - Deploy/bounce the service
+        - Emit an event about the deployment to sensu"""
+
     args = parse_args()
     soa_dir = args.soa_dir
     if args.verbose:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
-    try:
-        service, instance, _, __ = decompose_job_id(args.service_instance)
-    except InvalidJobNameError:
-        log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
-        sys.exit(1)
+        logging.basicConfig(level=logging.WARNING)
+
+    # Setting up transparent cache for http API calls
+    requests_cache.install_cache("setup_marathon_jobs", backend="memory")
 
     marathon_config = get_main_marathon_config()
     client = marathon_tools.get_marathon_client(marathon_config.get_url(), marathon_config.get_username(),
                                                 marathon_config.get_password())
 
+    num_failed_deployments = 0
+    for service_instance in args.service_instance_list:
+        try:
+            service, instance, _, __ = decompose_job_id(service_instance)
+        except InvalidJobNameError:
+            log.error("Invalid service instance specified. Format is service%sinstance." % SPACER)
+            num_failed_deployments = num_failed_deployments + 1
+        else:
+            if deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
+                num_failed_deployments = num_failed_deployments + 1
+
+    log.debug("%d out of %d service.instances failed to deploy." %
+              (num_failed_deployments, len(args.service_instance_list)))
+
+    sys.exit(1 if num_failed_deployments else 0)
+
+
+def deploy_marathon_service(service, instance, client, soa_dir, marathon_config):
     try:
         service_instance_config = marathon_tools.load_marathon_service_config(
             service,
@@ -577,33 +602,26 @@ def main():
             soa_dir=soa_dir,
         )
     except NoDeploymentsAvailable:
-        error_msg = "No deployments found for %s in cluster %s" % (args.service_instance,
-                                                                   load_system_paasta_config().get_cluster())
-        log.error(error_msg)
-        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
-        # exit 0 because the event was sent to the right team and this is not an issue with Paasta itself
-        sys.exit(0)
+        log.debug("No deployments found for %s.%s in cluster %s. Skipping." %
+                  (service, instance, load_system_paasta_config().get_cluster()))
+        return 0
     except NoConfigurationForServiceError:
-        error_msg = "Could not read marathon configuration file for %s in cluster %s" % \
-            (args.service_instance, load_system_paasta_config().get_cluster())
+        error_msg = "Could not read marathon configuration file for %s.%s in cluster %s" % \
+                    (service, instance, load_system_paasta_config().get_cluster())
         log.error(error_msg)
-        send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_msg)
-        sys.exit(1)
+        return 1
 
     try:
         status, output = setup_service(service, instance, client, marathon_config,
                                        service_instance_config, soa_dir)
         sensu_status = pysensu_yelp.Status.CRITICAL if status else pysensu_yelp.Status.OK
         send_event(service, instance, soa_dir, sensu_status, output)
-        # We exit 0 because the script finished ok and the event was sent to the right team.
-        sys.exit(0)
+        return 0
     except (KeyError, TypeError, AttributeError, InvalidInstanceConfig):
-        import traceback
         error_str = traceback.format_exc()
         log.error(error_str)
         send_event(service, instance, soa_dir, pysensu_yelp.Status.CRITICAL, error_str)
-        # We exit 0 because the script finished ok and the event was sent to the right team.
-        sys.exit(0)
+        return 1
 
 
 if __name__ == "__main__":

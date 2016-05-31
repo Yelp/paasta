@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -12,6 +12,9 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import datetime
+import json
+import math
 import os
 import pipes
 import shlex
@@ -23,9 +26,9 @@ from random import randint
 from urlparse import urlparse
 
 import requests
-import service_configuration_lib
 from docker import errors
 
+from paasta_tools.chronos_tools import parse_time_variables
 from paasta_tools.cli.cmds.check import makefile_responds_to
 from paasta_tools.cli.cmds.cook_image import paasta_cook_image
 from paasta_tools.cli.utils import figure_out_service_name
@@ -39,6 +42,7 @@ from paasta_tools.marathon_tools import CONTAINER_PORT
 from paasta_tools.marathon_tools import get_healthcheck_for_instance
 from paasta_tools.paasta_execute_docker_command import execute_in_container
 from paasta_tools.utils import _run
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_docker_client
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_username
@@ -51,6 +55,7 @@ from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 from paasta_tools.utils import Timeout
 from paasta_tools.utils import TimeoutError
+from paasta_tools.utils import validate_service_instance
 
 
 def pick_random_port():
@@ -188,7 +193,7 @@ def simulate_healthcheck_on_service(
     :param container_id: Docker container id
     :param healthcheck_data: tuple url to healthcheck
     :param healthcheck_enabled: boolean
-    :returns: if healthcheck_enabled is true, then returns output of healthcheck, otherwise simply returns true
+    :returns: a 2-tuple of (healthcheck_passed_bool, healthcheck_output_string)
     """
     healthcheck_link = PaastaColors.cyan(healthcheck_data)
     if healthcheck_enabled:
@@ -292,7 +297,7 @@ def add_subparser(subparsers):
         '-y', '--yelpsoa-config-root',
         dest='yelpsoa_config_root',
         help='A directory from which yelpsoa-configs should be read from',
-        default=service_configuration_lib.DEFAULT_SOA_DIR,
+        default=DEFAULT_SOA_DIR,
     )
     build_pull_group = list_parser.add_mutually_exclusive_group()
     build_pull_group.add_argument(
@@ -364,6 +369,11 @@ def add_subparser(subparsers):
         required=False,
         default=False,
     )
+    list_parser.add_argument(
+        '-d', '--dry-run',
+        help='Shows the arguments supplied to docker as json.',
+        action='store_true',
+    )
     list_parser.set_defaults(command=paasta_local_run)
 
 
@@ -380,6 +390,7 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     cmd.append('--env=HOST=%s' % hostname)
     cmd.append('--env=MESOS_SANDBOX=/mnt/mesos/sandbox')
     cmd.append('--memory=%dm' % memory)
+    cmd.append('--memory-swap=%dm' % int(math.ceil(memory)))
     if net == 'bridge':
         cmd.append('--publish=%d:%d' % (random_port, CONTAINER_PORT))
     elif net == 'host':
@@ -464,7 +475,8 @@ def run_docker_container(
     healthcheck,
     healthcheck_only,
     instance_config,
-    soa_dir=service_configuration_lib.DEFAULT_SOA_DIR,
+    soa_dir=DEFAULT_SOA_DIR,
+    dry_run=False
 ):
     """docker-py has issues running a container with a TTY attached, so for
     consistency we execute 'docker run' directly in both interactive and
@@ -508,7 +520,12 @@ def run_docker_container(
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
         service, instance, instance_config, random_port, soa_dir=soa_dir)
 
-    sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
+    if dry_run:
+        sys.stdout.write(json.dumps(docker_run_cmd) + '\n')
+        sys.exit(0)
+    else:
+        sys.stdout.write('Running docker command:\n%s\n' % PaastaColors.grey(joined_docker_run_cmd))
+
     if interactive:
         # NOTE: This immediately replaces us with the docker run cmd. Docker
         # run knows how to clean up the running container in this situation.
@@ -540,7 +557,7 @@ def run_docker_container(
 
         # If the service has a healthcheck, simulate it
         if healthcheck_mode:
-            status = simulate_healthcheck_on_service(
+            status, _ = simulate_healthcheck_on_service(
                 instance_config, docker_client, container_id, healthcheck_mode, healthcheck_data, healthcheck)
         else:
             status = True
@@ -576,7 +593,36 @@ def run_docker_container(
     sys.exit(returncode)
 
 
-def configure_and_run_docker_container(docker_client, docker_hash, service, instance, cluster, args, pull_image=False):
+def command_function_for_framework(framework):
+    """
+    Given a framework, return a function that appropriately formats
+    the command to be run.
+    """
+    def format_marathon_command(cmd):
+        return cmd
+
+    def format_chronos_command(cmd):
+        interpolated_command = parse_time_variables(cmd, datetime.datetime.now())
+        return interpolated_command
+
+    if framework == 'chronos':
+        return format_chronos_command
+    elif framework == 'marathon':
+        return format_marathon_command
+    else:
+        raise ValueError("Invalid Framework")
+
+
+def configure_and_run_docker_container(
+        docker_client,
+        docker_hash,
+        service,
+        instance,
+        cluster,
+        args,
+        pull_image=False,
+        dry_run=False
+):
     """
     Run Docker container by image hash with args set in command line.
     Function prints the output of run command in stdout.
@@ -594,6 +640,8 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
     soa_dir = args.yelpsoa_config_root
 
     volumes = list()
+
+    instance_type = validate_service_instance(service, instance, cluster, soa_dir)
 
     try:
         instance_config = get_instance_config(
@@ -639,7 +687,8 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
     else:
         command_from_config = instance_config.get_cmd()
         if command_from_config:
-            command = shlex.split(command_from_config)
+            command_modifier = command_function_for_framework(instance_type)
+            command = shlex.split(command_modifier(command_from_config))
         else:
             command = instance_config.get_args()
 
@@ -658,6 +707,7 @@ def configure_and_run_docker_container(docker_client, docker_hash, service, inst
         healthcheck_only=args.healthcheck_only,
         instance_config=instance_config,
         soa_dir=args.yelpsoa_config_root,
+        dry_run=dry_run,
     )
 
 
@@ -671,7 +721,7 @@ def local_makefile_present():
 
 
 def paasta_local_run(args):
-    if args.pull:
+    if args.pull or args.dry_run:
         build = False
     elif args.build:
         build = True
@@ -691,6 +741,9 @@ def paasta_local_run(args):
         cook_return = paasta_cook_image(args=None, service=service, soa_dir=args.yelpsoa_config_root)
         if cook_return != 0:
             return cook_return
+    elif args.dry_run:
+        pull_image = False
+        tag = None
     else:
         pull_image = True
         tag = None
@@ -704,6 +757,7 @@ def paasta_local_run(args):
             cluster=cluster,
             args=args,
             pull_image=pull_image,
+            dry_run=args.dry_run,
         )
     except errors.APIError as e:
         sys.stderr.write('Can\'t run Docker container. Error: %s\n' % str(e))

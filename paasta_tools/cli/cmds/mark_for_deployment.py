@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@ deployment to a cluster.instance.
 from paasta_tools import remote_git
 from paasta_tools.cli.utils import validate_service_name
 from paasta_tools.utils import _log
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import format_tag
 from paasta_tools.utils import get_paasta_tag_from_deploy_group
 
@@ -59,6 +60,13 @@ def add_subparser(subparsers):
         '"services-" will be stripped.',
         required=True,
     )
+    list_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
 
     list_parser.set_defaults(command=paasta_mark_for_deployment)
 
@@ -98,10 +106,10 @@ def paasta_mark_for_deployment(args):
     service = args.service
     if service and service.startswith('services-'):
         service = service.split('services-', 1)[1]
-    validate_service_name(service)
+    validate_service_name(service, soa_dir=args.soa_dir)
     return mark_for_deployment(
         git_url=args.git_url,
         deploy_group=deploy_group,
         service=service,
-        commit=args.commit
+        commit=args.commit,
     )

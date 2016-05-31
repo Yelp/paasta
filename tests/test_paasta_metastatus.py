@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -61,7 +61,7 @@ def test_bad_cpu_health():
     }
     failure_output, failure_health = paasta_metastatus.assert_cpu_health(failure_metrics)
     assert not failure_health
-    assert PaastaColors.red("CRITICAL: Less than 10% CPUs available. (Currently using 90.00% of 10)") in failure_output
+    assert "CRITICAL: Less than 10% CPUs available. (Currently using 90.00% of 10)" in failure_output
 
 
 def test_assert_memory_health():
@@ -81,8 +81,7 @@ def test_failing_memory_health():
     }
     failure_output, failure_health = paasta_metastatus.assert_memory_health(failure_metrics)
     assert not failure_health
-    assert PaastaColors.red(
-        "CRITICAL: Less than 10% memory available. (Currently using 97.66% of 1.00GB)") in failure_output
+    assert "CRITICAL: Less than 10% memory available. (Currently using 97.66% of 1.00GB)" in failure_output
 
 
 def test_assert_disk_health():
@@ -102,7 +101,7 @@ def test_failing_disk_health():
     }
     failure_output, failure_health = paasta_metastatus.assert_disk_health(failure_metrics)
     assert not failure_health
-    assert PaastaColors.red("CRITICAL: Less than 10% disk available. (Currently using 97.66%)") in failure_output
+    assert "CRITICAL: Less than 10% disk available. (Currently using 97.66%)" in failure_output
 
 
 def assert_cpu_health_mesos_reports_zero():
@@ -154,8 +153,8 @@ def test_assert_no_duplicate_frameworks():
     }
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
 
-    expected_output = "\n".join(["frameworks:"] +
-                                map(lambda x: '    framework: %s count: 1' % x['name'], state['frameworks']))
+    expected_output = "\n".join(["Frameworks:"] +
+                                map(lambda x: '    Framework: %s count: 1' % x['name'], state['frameworks']))
     assert output == expected_output
     assert ok
 
@@ -178,9 +177,7 @@ def test_duplicate_frameworks():
         ]
     }
     output, ok = paasta_metastatus.assert_no_duplicate_frameworks(state)
-    assert PaastaColors.red(
-        "    CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1."
-    ) in output
+    assert "    CRITICAL: Framework test_framework1 has 3 instances running--expected no more than 1." in output
     assert not ok
 
 
@@ -201,7 +198,7 @@ def test_no_marathon_apps(mock_get_marathon_client):
     client = mock_get_marathon_client.return_value
     client.list_apps.return_value = []
     output, ok = paasta_metastatus.assert_marathon_apps(client)
-    assert PaastaColors.red("CRITICAL: No marathon apps running") in output
+    assert "CRITICAL: No marathon apps running" in output
     assert not ok
 
 
@@ -229,7 +226,7 @@ def test_assert_slave_health():
         'master/slaves_inactive': 10
     }
     output, ok = paasta_metastatus.assert_slave_health(fake_slave_info)
-    assert "slaves: active: 10 inactive: 10" in output
+    assert "Slaves: active: 10 inactive: 10" in output
     assert ok
 
 
@@ -240,7 +237,7 @@ def test_assert_tasks_running():
         'master/tasks_starting': 10,
     }
     output, ok = paasta_metastatus.assert_tasks_running(fake_tasks_info)
-    assert "tasks: running: 20 staging: 10 starting: 10" in output
+    assert "Tasks: running: 20 staging: 10 starting: 10" in output
     assert ok
 
 
@@ -251,7 +248,7 @@ def test_healthy_asssert_quorum_size(mock_num_masters, mock_quorum_size):
     mock_quorum_size.return_value = 3
     output, health = paasta_metastatus.assert_quorum_size({})
     assert health
-    assert 'quorum: masters: 5 configured quorum: 3 ' in output
+    assert 'Quorum: masters: 5 configured quorum: 3 ' in output
 
 
 @patch('paasta_tools.paasta_metastatus.get_mesos_quorum')
@@ -309,14 +306,14 @@ def test_get_mesos_status(
         "Memory: 2.00 / 10.00GB in use (%s)" % PaastaColors.green("20.00%")
     expected_disk_output = "Disk: 3.00 / 10.00GB in use (%s)" % PaastaColors.green("30.00%")
     expected_tasks_output = \
-        "tasks: running: 3 staging: 4 starting: 0"
+        "Tasks: running: 3 staging: 4 starting: 0"
     expected_duplicate_frameworks_output = \
-        "frameworks:\n%s" % \
-        PaastaColors.red("    CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1.")
+        "Frameworks:\n%s" % \
+        "    CRITICAL: Framework test_framework1 has 2 instances running--expected no more than 1."
     expected_slaves_output = \
-        "slaves: active: 4 inactive: 0"
+        "Slaves: active: 4 inactive: 0"
     expected_masters_quorum_output = \
-        "quorum: masters: 5 configured quorum: 3 "
+        "Quorum: masters: 5 configured quorum: 3 "
 
     results = paasta_metastatus.get_mesos_status(mesos_state, verbosity=0)
 
@@ -548,8 +545,10 @@ def test_generate_summary_for_results_critical():
 
 
 def test_critical_events_in_outputs():
-    assert (paasta_metastatus.critical_events_in_outputs([('myservice', True), ('myservice_false', False)]) ==
-            [('myservice_false', False)])
+    assert (paasta_metastatus.critical_events_in_outputs([
+        paasta_metastatus.HealthCheckResult('myservice', True),
+        paasta_metastatus.HealthCheckResult('myservice_false', False)
+    ]) == [('myservice_false', False)])
 
 
 def test_filter_mesos_state_metrics():
@@ -681,7 +680,7 @@ def test_get_mesos_habitat_data():
                         'mem': 1670,
                     },
                 },
-                'availability':
+                'total':
                     {
                     'test-habitat': {
                         'cpus': 75,

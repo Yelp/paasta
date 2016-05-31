@@ -1,6 +1,6 @@
 {
     "$schema": "http://json-schema.org/draft-04/schema#",
-    "description": "http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#chronos-clustername-yaml",
+    "description": "http://paasta.readthedocs.io/en/latest/yelpsoa_configs.html#chronos-clustername-yaml",
     "type": "object",
     "minProperties": 1,
     "additionalProperties": {
@@ -27,12 +27,12 @@
                 "type": "integer",
                 "default": 2
             },
-	    "deploy_group": {
-	        "type": "string"
-	    },
-	    "schedule_time_zone": {
-	    	"type": "string"
-	    },
+            "deploy_group": {
+                "type": "string"
+            },
+            "schedule_time_zone": {
+                "type": "string"
+            },
             "disabled": {
                 "type": "boolean",
                 "default": false
@@ -63,7 +63,11 @@
                 "type": "object"
             },
             "env": {
-                "type": "object"
+                "type": "object",
+                "additionalProperties": { "type": "string" }
+            },
+            "deploy_whitelist": {
+                "type": "array"
             },
             "extra_volumes": {
                 "type": "array",
@@ -87,7 +91,7 @@
                 "uniqueItems": true
             },
             "net": {
-		"type": "string"
+                "type": "string"
             },
             "pool": {
                 "type": "string"

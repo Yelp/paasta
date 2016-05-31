@@ -1,0 +1,3 @@
+---
+main:
+  proxy_port: {{cookiecutter.proxy_port}}

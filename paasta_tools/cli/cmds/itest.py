@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -32,7 +32,7 @@ def add_subparser(subparsers):
         description=(
             "'paasta itest' runs 'make itest' in the root of a service directory. "
             "It is designed to be used in conjection with the 'Jenkins' workflow: "
-            "http://paasta.readthedocs.org/en/latest/about/contract.html#jenkins-pipeline-recommended"
+            "http://paasta.readthedocs.io/en/latest/about/contract.html#jenkins-pipeline-recommended"
         )
     )
     list_parser.add_argument(

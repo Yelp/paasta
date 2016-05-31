@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,16 +21,14 @@ isn't the leader, the script exits immediately.
 """
 import argparse
 import logging
-import sys
 
 import pysensu_yelp
 
 from paasta_tools.mesos_tools import get_mesos_stats
-from paasta_tools.mesos_tools import is_mesos_leader
 from paasta_tools.utils import load_system_paasta_config
 
 
-log = logging.getLogger('__main__')
+log = logging.getLogger(__name__)
 
 
 def parse_args():
@@ -106,15 +104,11 @@ def check_thresholds(percent):
 def main():
     args = parse_args()
     if args.verbose:
-        log.setLevel(logging.DEBUG)
+        logging.basicConfig(level=logging.DEBUG)
     else:
-        log.setLevel(logging.WARNING)
+        logging.basicConfig(level=logging.WARNING)
     print check_thresholds(args.percent)
 
 
 if __name__ == "__main__":
-    if is_mesos_leader():
-        main()
-    else:
-        print "No the leader. Exiting 0."
-        sys.exit(0)
+    main()

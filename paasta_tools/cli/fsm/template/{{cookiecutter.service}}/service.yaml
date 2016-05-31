@@ -1,0 +1,8 @@
+---
+# This shows up in `paasta info` and is helpful
+# for people who have never heard of this service before. What does it do?
+description: {{cookiecutter.description}}
+
+# This is designed to help answer the question of
+# "Why did we make this service in the first place?"
+external_link: {{cookiecutter.external_link}}

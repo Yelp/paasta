@@ -1,7 +1,7 @@
-paasta_tools.cli.fsm.questions module
+paasta_tools.autoscale_cluster module
 =====================================
 
-.. automodule:: paasta_tools.cli.fsm.questions
+.. automodule:: paasta_tools.autoscale_cluster
     :members:
     :undoc-members:
     :show-inheritance:

@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -21,12 +21,12 @@ mkdir -p /nail/etc/services
 mkdir -p docs/man/
 . .tox/manpages/bin/activate
 
-VERSION=`./paasta_tools/cli/cli.py --version 2>&1 | cut -f 2 -d ' '`
+VERSION=`paasta --version 2>&1 | cut -f 2 -d ' '`
 
 function build_man() {
     COMMAND=$1
     echo "paasta $COMMAND --help"
-    help2man --name=$COMMAND --version-string=$VERSION "./paasta_tools/cli/cli.py $COMMAND" > docs/man/paasta-$COMMAND.1
+    help2man --name=$COMMAND --version-string=$VERSION "paasta $COMMAND" > docs/man/paasta-$COMMAND.1
 }
 
 for FILE in paasta_tools/cli/cmds/*.py
@@ -48,4 +48,4 @@ for COMMAND in start stop restart; do
 done
 
 # And then finally the "main" paasta command
-help2man --name='paasta' --version-string=$VERSION "./paasta_tools/cli/cli.py" > docs/man/paasta.1
+help2man --name='paasta' --version-string=$VERSION "paasta" > docs/man/paasta.1

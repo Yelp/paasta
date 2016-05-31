@@ -1,0 +1,64 @@
+---
+# All of the chronos options you can use are documented here:
+# http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#chronos-clustername-yaml
+#
+# These chronos jobs can also be run using the local-run command, for this example
+# you would run:
+#     paasta local-run -c $cluster -i example_chronos_job
+#
+# and you can try the job out locally.
+#
+# You could also run this in prod on say, adhoc-sfo2, but in prod you wouldn't have a
+# checkout, you would pull the latest copy of the code:
+#
+#    sudo paasta local-run -s {{cookiecutter.service}} --pull -c prod -i example_chronos_job
+#
+# Although this job "exists", if you need to activate it, you need to symlink it to a
+# chronos-$clustername.yaml just like marathon stuff.
+#
+example_chronos_job:
+  # This deploy group lines up with one of the deploy groups in deploy.yaml.
+  # If you wanted to you could have some sort of "canary" batch that uses whatever
+  # code is deployed to the canary
+  deploy_group: prod.non_canary
+  cpus: 1
+  mem: 2000
+
+  # Some services need extra data stored on the host. Here is an example for bulkdata:
+  # extra_volumes: [{containerPath: /nail/bulkdata, hostPath: /nail/bulkdata, mode: RO}]
+  # Uncomment these if you need them.
+  #
+  # EMR (mrjob) is another example that needs extra volumes. See
+  # https://trac.yelpcorp.com/wiki/Paasta/EmrOnPaasta
+  # for the latest docs.
+
+  # cmd does do date interpolation like tron. See the offical docs:
+  # https://pythonhosted.org/tron/command_context.html#built-in-command-context-variables
+  # Just be careful as it is easy to mess up a % and escaping and junk
+  cmd: "/code/virtualenv_run/bin/python -m mycode.batch --options"
+
+  # This is in ISO-8601 format (https://en.wikipedia.org/wiki/ISO_8601)
+  schedule: 'R/2016-04-15T06:00:00Z/PT24H'
+  schedule_time_zone: 'America/Los_Angeles'
+
+  # Chronos will automatically retry a job 2 times by default. Which is great for fault
+  # tolerance! But if the job is not idempotent, this could be bad. Uncomment this if you
+  # have to.
+  #retries: 0
+
+
+# Chronos can also do dependent jobs. Here is how you would set that up:
+example_child_job:
+  # Note that this is a list, and this job won't run till all of them finish
+  # successfully. Also note that the service name is in the parents list, which
+  # means that you can depend on a chronos job from a different service!
+  parents:
+    - {{cookiecutter.service}}.example_chronos_job
+  cmd: "/code/virtualenv_run/bin/python -m mycode.batch --second-pass"
+
+
+# Worried about lots of duplication in all of these chronos jobs?
+# You can use the YAML Anchor pattern to help with that:
+# https://en.wikipedia.org/wiki/YAML#Repeated_nodes
+# It is an advanced topic. If you do try it out, be sure to ask #paasta or add the paasta
+# review board group to the review.

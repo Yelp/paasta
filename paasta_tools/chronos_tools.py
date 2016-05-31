@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,6 +29,8 @@ import service_configuration_lib
 from tron import command_context
 
 from paasta_tools.mesos_tools import get_mesos_network_for_net
+from paasta_tools.utils import DEFAULT_SOA_DIR
+from paasta_tools.utils import deploy_whitelist_to_constraints
 from paasta_tools.utils import get_config_hash
 from paasta_tools.utils import get_docker_url
 from paasta_tools.utils import get_paasta_branch
@@ -61,9 +63,8 @@ TMP_JOB_IDENTIFIER = "tmp"
 
 VALID_BOUNCE_METHODS = ['graceful']
 PATH_TO_CHRONOS_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'chronos.json')
-DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 EXECUTION_DATE_FORMAT = "%Y-%m-%dT%H:%M:%S"
-log = logging.getLogger('__main__')
+log = logging.getLogger(__name__)
 
 
 class LastRunState:
@@ -225,8 +226,19 @@ class ChronosJobConfig(InstanceConfig):
         original_env = super(ChronosJobConfig, self).get_env()
         return [{"name": key, "value": value} for key, value in original_env.iteritems()]
 
-    def get_constraints(self):
-        return self.config_dict.get('constraints', [['pool', 'EQUALS', self.get_pool()]])
+    def get_calculated_constraints(self):
+        constraints = self.get_constraints()
+        if constraints is not None:
+            return constraints
+        else:
+            constraints = self.get_extra_constraints()
+            constraints.extend(self.get_deploy_constraints())
+            constraints.extend(self.get_pool_constraints())
+        assert isinstance(constraints, list)
+        return [[str(val) for val in constraint] for constraint in constraints]
+
+    def get_deploy_constraints(self):
+        return deploy_whitelist_to_constraints(self.get_deploy_whitelist())
 
     def check_bounce_method(self):
         bounce_method = self.get_bounce_method()
@@ -378,7 +390,7 @@ class ChronosJobConfig(InstanceConfig):
         else:
             return False, 'Your Chronos config specifies "%s", an unsupported parameter.' % param
 
-    def format_chronos_job_dict(self, docker_url, docker_volumes, dockerfile_location):
+    def format_chronos_job_dict(self, docker_url, docker_volumes, dockercfg_location):
         valid, error_msgs = self.validate()
         if not valid:
             raise InvalidChronosConfigError("\n".join(error_msgs))
@@ -392,16 +404,16 @@ class ChronosJobConfig(InstanceConfig):
                 'network': net,
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
-                'parameters': {
-                    'memory-swap': "%sm" % self.get_mem(),
-                }
+                'parameters': [
+                    {"key": "memory-swap", "value": self.get_mem_swap()},
+                ]
             },
-            'uris': [dockerfile_location, ],
+            'uris': [dockercfg_location, ],
             'environmentVariables': self.get_env(),
             'mem': self.get_mem(),
             'cpus': self.get_cpus(),
             'disk': self.get_disk(),
-            'constraints': self.get_constraints(),
+            'constraints': self.get_calculated_constraints(),
             'command': parse_time_variables(self.get_cmd()) if self.get_cmd() else self.get_cmd(),
             'arguments': self.get_args(),
             'epsilon': self.get_epsilon(),
@@ -482,7 +494,7 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
     complete_config = chronos_job_config.format_chronos_job_dict(
         docker_url,
         docker_volumes,
-        system_paasta_config.get_dockerfile_location(),
+        system_paasta_config.get_dockercfg_location(),
     )
 
     complete_config['name'] = compose_job_id(service, job_name)
@@ -498,7 +510,10 @@ def create_complete_config(service, job_name, soa_dir=DEFAULT_SOA_DIR):
 
     # we use the undocumented description field to store a hash of the chronos config.
     # this makes it trivial to compare configs and know when to bounce.
-    complete_config['description'] = get_config_hash(complete_config)
+    complete_config['description'] = get_config_hash(
+        config=complete_config,
+        force_bounce=chronos_job_config.get_force_bounce(),
+    )
 
     log.debug("Complete configuration for instance is: %s" % complete_config)
     return complete_config
@@ -850,3 +865,12 @@ def get_temporary_jobs_for_service_instance(client, service, instance):
         if job['name'].startswith(TMP_JOB_IDENTIFIER):
             temporary_jobs.append(job)
     return temporary_jobs
+
+
+def is_temporary_job(job):
+    """Assert whether a job is a temporary one, identifiable
+    by it's name starting with TMP_JOB_IDENTIFIER
+    :param job: the chronos job to check
+    :returns: a boolean indicating if a job is a temporary job
+    """
+    return job['name'].startswith(TMP_JOB_IDENTIFIER)

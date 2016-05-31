@@ -1,0 +1,20 @@
+---
+# All of these options are documented here:
+# http://paasta.readthedocs.org/en/latest/yelpsoa_configs.html#monitoring-yaml
+
+team: {{cookiecutter.team}}
+page: true
+# If you add a runbook here, it will get included in all the
+# sensu alerts that are generated for this service
+#runbook: http://y/rb-{{cookiecutter.service}}
+
+# Alert after is a kind of grace period before alerts are sent.
+# Usually the defaults are fine, but you can up this if you need
+# to.
+#alert_after: 2m
+
+# realert_every represents how often to resend an email or irc.
+# By default it does exponential backoff, which can be a little
+# noisy at first but then will quiet down. You can override this
+# if you want it to be consistently "noisy":
+#realert_every: 3600

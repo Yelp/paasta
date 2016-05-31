@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -64,7 +64,7 @@ def paasta_cook_image(args, service=None, soa_dir=None):
 
     if not makefile_responds_to('cook-image'):
         sys.stderr.write('ERROR: local-run now requires a cook-image target to be present in the Makefile. See '
-                         'http://paasta.readthedocs.org/en/latest/about/contract.html\n')
+                         'http://paasta.readthedocs.io/en/latest/about/contract.html\n')
         return 1
 
     try:

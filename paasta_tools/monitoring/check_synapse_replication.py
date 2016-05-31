@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,6 +15,7 @@
 import argparse
 import sys
 
+from paasta_tools import utils
 from paasta_tools.monitoring.replication_utils import (
     get_replication_for_services
 )
@@ -81,17 +82,25 @@ def parse_range(str_range):
         fail("Failed to parse range {0}".format(str_range))
 
 
-def parse_synapse_check_options():
+def parse_synapse_check_options(system_paasta_config):
     epilog = "RANGEs are specified 'min:max' or 'min:' or ':max'"
     parser = argparse.ArgumentParser(epilog=epilog)
 
     parser.add_argument(dest='services', nargs='+', type=str,
                         help="A series of service names to check.\n"
                         "e.g. lucy_east_0 lucy_east_1 ...")
-    parser.add_argument('-s', '--synapse-host-port',
-                        dest='synapse_host_port', type=str,
-                        help='The host and port to check',
-                        default='localhost:3212')
+    parser.add_argument('-H', '--synapse-host',
+                        dest='synapse_host', type=str,
+                        help='The host to check',
+                        default=system_paasta_config.get_default_synapse_host())
+    parser.add_argument('-P', '--synapse-port',
+                        dest='synapse_port', type=int,
+                        help='The synapse port to check',
+                        default=system_paasta_config.get_synapse_port())
+    parser.add_argument('-F', '--synapse-haproxy-url-format',
+                        dest='synapse_haproxy_url_format', type=str,
+                        help='The synapse haproxy url format',
+                        default=system_paasta_config.get_synapse_haproxy_url_format())
     parser.add_argument('-w', '--warn', dest='warn', type=str,
                         metavar='RANGE',
                         help="Generate warning state if number of "
@@ -114,10 +123,13 @@ def fail(message, code):
 
 
 def run_synapse_check():
-    options = parse_synapse_check_options()
+    system_paasta_config = utils.load_system_paasta_config()
+    options = parse_synapse_check_options(system_paasta_config)
     try:
         service_replications = get_replication_for_services(
-            options.synapse_host_port,
+            options.synapse_host,
+            options.synapse_port,
+            options.synapse_haproxy_url_format,
             options.services
         )
 

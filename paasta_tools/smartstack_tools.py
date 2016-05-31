@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -15,20 +15,15 @@ import csv
 
 import requests
 
-DEFAULT_SYNAPSE_HOST = 'localhost'
-DEFAULT_SYNAPSE_PORT = 3212
-SYNAPSE_HAPROXY_PATH = "http://{0}/;csv;norefresh"
 
-
-def retrieve_haproxy_csv(synapse_host=DEFAULT_SYNAPSE_HOST, synapse_port=DEFAULT_SYNAPSE_PORT):
+def retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format):
     """Retrieves the haproxy csv from the haproxy web interface
 
     :param synapse_host_port: A string in host:port format that this check
                               should contact for replication information.
     :returns reader: a csv.DictReader object
     """
-    synapse_host_port = "%s:%s" % (synapse_host, synapse_port)
-    synapse_uri = SYNAPSE_HAPROXY_PATH.format(synapse_host_port)
+    synapse_uri = synapse_haproxy_url_format.format(host=synapse_host, port=synapse_port)
 
     # timeout after 1 second and retry 3 times
     haproxy_request = requests.Session()
@@ -44,12 +39,12 @@ def retrieve_haproxy_csv(synapse_host=DEFAULT_SYNAPSE_HOST, synapse_port=DEFAULT
     return reader
 
 
-def get_backends(service=None, synapse_host=DEFAULT_SYNAPSE_HOST, synapse_port=DEFAULT_SYNAPSE_PORT):
+def get_backends(service, synapse_host, synapse_port, synapse_haproxy_url_format):
     """Fetches the CSV from haproxy and returns a list of backends,
     regardless of their state.
 
-    :param service: If specified, only return backends for this particular
-                    service
+    :param service: If None, return backends for all services, otherwise only return backends for this particular
+                    service.
     :param synapse_host_port: A string in host:port format that this check
                               should contact for replication information.
     :returns backends: A list of dicts representing the backends of all
@@ -59,14 +54,15 @@ def get_backends(service=None, synapse_host=DEFAULT_SYNAPSE_HOST, synapse_port=D
         services = [service]
     else:
         services = None
-    return get_multiple_backends(services, synapse_host=synapse_host, synapse_port=synapse_port)
+    return get_multiple_backends(services, synapse_host=synapse_host, synapse_port=synapse_port,
+                                 synapse_haproxy_url_format=synapse_haproxy_url_format)
 
 
-def get_multiple_backends(services=None, synapse_host=DEFAULT_SYNAPSE_HOST, synapse_port=DEFAULT_SYNAPSE_PORT):
+def get_multiple_backends(services, synapse_host, synapse_port, synapse_haproxy_url_format):
     """Fetches the CSV from haproxy and returns a list of backends,
     regardless of their state.
 
-    :param services: If specified, only return backends for these particular
+    :param services: If None, return backends for all services, otherwise only return backends for these particular
                      services.
     :param synapse_host_port: A string in host:port format that this check
                               should contact for replication information.
@@ -74,7 +70,7 @@ def get_multiple_backends(services=None, synapse_host=DEFAULT_SYNAPSE_HOST, syna
                        services or the requested service
     """
 
-    reader = retrieve_haproxy_csv(synapse_host, synapse_port)
+    reader = retrieve_haproxy_csv(synapse_host, synapse_port, synapse_haproxy_url_format=synapse_haproxy_url_format)
     backends = []
 
     for line in reader:

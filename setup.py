@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -22,7 +22,7 @@ from setuptools import setup
 setup(
     name='paasta-tools',
     # Don't bump version manually. See `make release` docs in ./Makefile
-    version='0.18.19',
+    version='0.19.8',
     provides=["paasta_tools"],
     author='Kyle Anderson',
     author_email='kwa@yelp.com',
@@ -35,6 +35,7 @@ setup(
         # libs and pip can't seem to override it
         'argparse == 1.2.1',
         'chronos-python == 0.35.0',
+        'cookiecutter == 1.4.0',
         # Don't update this unless you have confirmed the client works with
         # the Docker version deployed on PaaSTA servers
         'docker-py == 1.2.3',
@@ -44,7 +45,7 @@ setup(
         'isodate >= 0.5.0',
         'jsonschema',
         'kazoo >= 2.0.0',
-        'marathon >= 0.7.7',
+        'marathon >= 0.8.1',
         'mesos.cli == 0.1.5',
         'ordereddict >= 1.1',
         'path.py >= 8.1',
@@ -64,28 +65,32 @@ setup(
         'paasta_tools/autoscale_all_services.py',
         'paasta_tools/check_marathon_services_replication.py',
         'paasta_tools/check_mesos_resource_utilization.py',
-        'paasta_tools/cleanup_chronos_jobs.py',
-        'paasta_tools/check_chronos_jobs.py',
         'paasta_tools/cleanup_marathon_jobs.py',
-        'paasta_tools/deploy_chronos_jobs',
+        'paasta_tools/paasta_deploy_chronos_jobs',
         'paasta_tools/deploy_marathon_services',
         'paasta_tools/generate_all_deployments',
         'paasta_tools/generate_deployments_for_service.py',
         'paasta_tools/generate_services_file.py',
         'paasta_tools/generate_services_yaml.py',
-        'paasta_tools/list_chronos_jobs.py',
         'paasta_tools/list_marathon_service_instances.py',
         'paasta_tools/monitoring/check_classic_service_replication.py',
         'paasta_tools/monitoring/check_synapse_replication.py',
-        'paasta_tools/cli/cli.py',
         'paasta_tools/cli/paasta_tabcomplete.sh',
         'paasta_tools/paasta_execute_docker_command.py',
+        'paasta_tools/paasta_maintenance.py',
         'paasta_tools/paasta_metastatus.py',
         'paasta_tools/paasta_serviceinit.py',
-        'paasta_tools/setup_chronos_job.py',
         'paasta_tools/setup_marathon_job.py',
         'paasta_tools/synapse_srv_namespaces_fact.py',
-        'paasta_tools/chronos_rerun.py',
     ] + glob.glob('paasta_tools/contrib/*'),
-    package_data={'': ['cli/fsm/templates/*.tmpl', 'cli/schemas/*.json']},
+    package_data={'': ['cli/fsm/template/*/*', 'cli/schemas/*.json']},
+    entry_points={'console_scripts': [
+        'paasta=paasta_tools.cli.cli:main',
+        'paasta_autoscale_cluster=paasta_tools.autoscale_cluster:main',
+        'paasta_cleanup_chronos_jobs=paasta_tools.cleanup_chronos_jobs:main',
+        'paasta_check_chronos_jobs=paasta_tools.check_chronos_jobs:main',
+        'paasta_list_chronos_jobs=paasta_tools.list_chronos_jobs:main',
+        'paasta_setup_chronos_job=paasta_tools.setup_chronos_job:main',
+        'paasta_chronos_rerun=paasta_tools.chronos_rerun:main',
+    ]},
 )

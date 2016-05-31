@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -11,20 +11,24 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import contextlib
 from socket import gaierror
 
 import mock
 from mock import patch
+from pytest import mark
 from pytest import raises
 
 from paasta_tools.cli import utils
 from paasta_tools.utils import NoConfigurationForServiceError
+from paasta_tools.utils import SystemPaastaConfig
 
 
 @patch('paasta_tools.cli.utils.gethostbyname_ex')
 def test_bad_calculate_remote_master(mock_get_by_hostname):
     mock_get_by_hostname.side_effect = gaierror('foo', 'bar')
-    ips, output = utils.calculate_remote_masters('myhost')
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
+    ips, output = utils.calculate_remote_masters('myhost', fake_system_paasta_config)
     assert ips == []
     assert 'ERROR while doing DNS lookup of paasta-myhost.yelp:\nbar\n' in output
 
@@ -32,7 +36,8 @@ def test_bad_calculate_remote_master(mock_get_by_hostname):
 @patch('paasta_tools.cli.utils.gethostbyname_ex')
 def test_ok_remote_masters(mock_get_by_hostname):
     mock_get_by_hostname.return_value = ('myhost', [], ['1.2.3.4', '1.2.3.5'])
-    ips, output = utils.calculate_remote_masters('myhost')
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
+    ips, output = utils.calculate_remote_masters('myhost', fake_system_paasta_config)
     assert output is None
     assert ips == ['1.2.3.4', '1.2.3.5']
 
@@ -135,7 +140,7 @@ def test_check_ssh_and_sudo_on_master_check_sudo_failure(mock_run):
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
-    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit fake_service.fake_instance status '
+    expected_command = 'ssh -A -t fake_master sudo paasta_serviceinit -s fake_service -i fake_instance status'
 
     actual = utils.run_paasta_serviceinit(
         'status',
@@ -143,15 +148,16 @@ def test_run_paasta_serviceinit_status(mock_run):
         'fake_service',
         'fake_instance',
         'fake_cluster',
+        stream=True
     )
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY, stream=True)
     assert actual == mock_run.return_value[1]
 
 
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status_verbose(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
-    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v fake_service.fake_instance status '
+    expected_command = 'ssh -A -t fake_master sudo paasta_serviceinit -s fake_service -i fake_instance -v status'
 
     actual = utils.run_paasta_serviceinit(
         'status',
@@ -159,16 +165,18 @@ def test_run_paasta_serviceinit_status_verbose(mock_run):
         'fake_service',
         'fake_instance',
         'fake_cluster',
-        verbose=1,
+        stream=True,
+        verbose=1
     )
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY, stream=True)
     assert actual == mock_run.return_value[1]
 
 
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_status_verbose_multi(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
-    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v -v -v -v fake_service.fake_instance status '
+    expected_command = 'ssh -A -t fake_master sudo paasta_serviceinit ' \
+        '-s fake_service -i fake_instance -v -v -v -v status'
 
     actual = utils.run_paasta_serviceinit(
         'status',
@@ -176,9 +184,10 @@ def test_run_paasta_serviceinit_status_verbose_multi(mock_run):
         'fake_service',
         'fake_instance',
         'fake_cluster',
+        stream=True,
         verbose=4,
     )
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY, stream=True)
     assert actual == mock_run.return_value[1]
 
 
@@ -218,9 +227,11 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
     )
     mock_calculate_remote_masters.return_value = (remote_masters, None)
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
-    actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster, service, instancename)
-    mock_calculate_remote_masters.assert_called_once_with(cluster)
+    actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster, service, instancename,
+                                                               fake_system_paasta_config)
+    mock_calculate_remote_masters.assert_called_once_with(cluster, fake_system_paasta_config)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
     mock_run_paasta_serviceinit.assert_called_once_with(
         'status',
@@ -228,6 +239,7 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
         service,
         instancename,
         cluster,
+        False
     )
     assert actual == mock_run_paasta_serviceinit.return_value
 
@@ -235,7 +247,8 @@ def test_execute_paasta_serviceinit_status_on_remote_master_happy_path(
 @patch('paasta_tools.cli.utils._run', autospec=True)
 def test_run_paasta_serviceinit_scaling(mock_run):
     mock_run.return_value = ('unused', 'fake_output')
-    expected_command = 'ssh -A -n fake_master sudo paasta_serviceinit -v fake_service.fake_instance status --delta 1'
+    expected_command = 'ssh -A -t fake_master sudo paasta_serviceinit ' \
+        '-s fake_service -i fake_instance -v --delta 1 status'
 
     actual = utils.run_paasta_serviceinit(
         'status',
@@ -243,10 +256,11 @@ def test_run_paasta_serviceinit_scaling(mock_run):
         'fake_service',
         'fake_instance',
         'fake_cluster',
+        stream=True,
         verbose=1,
         delta=1,
     )
-    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY)
+    mock_run.assert_called_once_with(expected_command, timeout=mock.ANY, stream=True)
     assert actual == mock_run.return_value[1]
 
 
@@ -265,8 +279,10 @@ def test_execute_paasta_serviceinit_on_remote_no_connectable_master(
     instancename = 'fake_instance'
     mock_find_connectable_master.return_value = (None, "fake_err_msg")
     mock_calculate_remote_masters.return_value = (['fake_master'], None)
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
-    actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster, service, instancename)
+    actual = utils.execute_paasta_serviceinit_on_remote_master('status', cluster, service, instancename,
+                                                               fake_system_paasta_config)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
     assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert "fake_err_msg" in actual
@@ -288,9 +304,10 @@ def test_execute_paasta_metastatus_on_remote_master(
     )
     mock_calculate_remote_masters.return_value = (remote_masters, None)
     mock_find_connectable_master.return_value = ('fake_connectable_master', None)
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
-    actual = utils.execute_paasta_metastatus_on_remote_master(cluster)
-    mock_calculate_remote_masters.assert_called_once_with(cluster)
+    actual = utils.execute_paasta_metastatus_on_remote_master(cluster, fake_system_paasta_config)
+    mock_calculate_remote_masters.assert_called_once_with(cluster, fake_system_paasta_config)
     mock_find_connectable_master.assert_called_once_with(remote_masters)
     mock_run_paasta_metastatus.assert_called_once_with('fake_connectable_master', False)
     assert actual == mock_run_paasta_metastatus.return_value
@@ -309,11 +326,61 @@ def test_execute_paasta_metastatus_on_remote_no_connectable_master(
     cluster = 'fake_cluster_name'
     mock_find_connectable_master.return_value = (None, "fake_err_msg")
     mock_calculate_remote_masters.return_value = (['fake_master'], None)
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
 
-    actual = utils.execute_paasta_metastatus_on_remote_master(cluster)
+    actual = utils.execute_paasta_metastatus_on_remote_master(cluster, fake_system_paasta_config)
     assert mock_check_ssh_and_sudo_on_master.call_count == 0
     assert 'ERROR: could not find connectable master in cluster %s' % cluster in actual
     assert "fake_err_msg" in actual
+
+
+@mark.parametrize('test_case', [
+    [
+        (['fake_master1', 'fake_master2'], None),  # OK
+        ('fake_connectable_master', None),  # OK
+        (0, 'OK'),  # OK
+    ],
+    [
+        ([], 'Error in calculate_remote_masters'),  # Error
+        None,  # not called
+        None,  # not called
+    ],
+    [
+        (['fake_master1', 'fake_master2'], None),  # OK
+        (None, 'Error in find_connectable_master'),  # Error
+        None,  # not called
+    ],
+])
+def test_execute_chronos_rerun_on_remote_master(test_case):
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
+
+    with contextlib.nested(
+        patch('paasta_tools.cli.utils.calculate_remote_masters', autospec=True),
+        patch('paasta_tools.cli.utils.find_connectable_master', autospec=True),
+        patch('paasta_tools.cli.utils.run_chronos_rerun', autospec=True),
+    ) as (
+        mock_calculate_remote_masters,
+        mock_find_connectable_master,
+        mock_run_chronos_rerun,
+    ):
+        (mock_calculate_remote_masters.return_value,
+         mock_find_connectable_master.return_value,
+         mock_run_chronos_rerun.return_value) = test_case
+
+        outcome = utils.execute_chronos_rerun_on_remote_master(
+            'service',
+            'instance',
+            'cluster',
+            fake_system_paasta_config,
+            verbose=1,
+        )
+        # Always return an (rc, output) tuple
+        assert type(outcome) == tuple and \
+            len(outcome) == 2 and \
+            type(outcome[0]) == int and \
+            type(outcome[1]) == str
+        assert bool(mock_find_connectable_master.return_value) == mock_find_connectable_master.called
+        assert bool(mock_run_chronos_rerun.return_value) == mock_run_chronos_rerun.called
 
 
 @patch('paasta_tools.cli.utils.list_all_instances_for_service')

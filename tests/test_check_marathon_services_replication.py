@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,8 +20,8 @@ import pysensu_yelp
 
 from paasta_tools import check_marathon_services_replication
 from paasta_tools.marathon_tools import MarathonServiceConfig
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import SystemPaastaConfig
 
 check_marathon_services_replication.log = mock.Mock()
 
@@ -122,6 +122,7 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
     available = {'fake_region': {'test.main': 1, 'test.three': 4, 'test.four': 8}}
     expected_replication_count = 0
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
 
     with contextlib.nested(
@@ -143,7 +144,7 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
         mock_load_marathon_service_config.return_value = mock_service_job_config
 
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -151,7 +152,8 @@ def test_check_smartstack_replication_for_instance_ok_when_expecting_zero():
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
 
 
 def test_check_smartstack_replication_for_instance_crit_when_absent():
@@ -161,6 +163,7 @@ def test_check_smartstack_replication_for_instance_crit_when_absent():
     available = {'fake_region': {'test.two': 1, 'test.three': 4, 'test.four': 8}}
     expected_replication_count = 8
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
@@ -179,7 +182,7 @@ def test_check_smartstack_replication_for_instance_crit_when_absent():
         mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -197,6 +200,7 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
     available = {'fake_region': {'test.zero_running': 0, 'test.main': 8, 'test.fully_replicated': 8}}
     expected_replication_count = 8
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
@@ -215,7 +219,7 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
         mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -223,7 +227,12 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication():
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert 'Service test.zero_running has 0 out of 8 expected instances in fake_region' in alert_output
+        assert "paasta status -s test -i zero_running -c fake_cluster -vv" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_low_replication():
@@ -233,6 +242,7 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication():
     available = {'fake_region': {'test.canary': 1, 'test.not_enough': 4, 'test.fully_replicated': 8}}
     expected_replication_count = 8
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
@@ -251,7 +261,7 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication():
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -259,7 +269,12 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication():
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert 'Service test.not_enough has 4 out of 8 expected instances in fake_region' in alert_output
+        assert "paasta status -s test -i not_enough -c fake_cluster -vv" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
@@ -269,6 +284,7 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
     available = {'fake_region': {'test.canary': 1, 'test.low_replication': 4, 'test.everything_up': 8}}
     expected_replication_count = 8
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
@@ -287,7 +303,7 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -295,7 +311,11 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication():
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.everything_up has 8 out of 8 expected instances in fake_region (OK: 100%)" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_ignores_things_under_a_different_namespace():
@@ -306,6 +326,7 @@ def test_check_smartstack_replication_for_instance_ignores_things_under_a_differ
     available = {'fake_region': {'test.canary': 1, 'test.main': 4, 'test.fully_replicated': 8}}
     expected_replication_count = 8
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event_if_under_replication', autospec=True),
@@ -324,7 +345,7 @@ def test_check_smartstack_replication_for_instance_ignores_things_under_a_differ
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event_if_under_replication.call_count == 0
 
@@ -336,6 +357,7 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
     available = {'fake_region': {'test.everything_up': 1}, 'fake_other_region': {'test.everything_up': 1}}
     expected_replication_count = 2
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
@@ -354,7 +376,7 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -362,7 +384,12 @@ def test_check_smartstack_replication_for_instance_ok_with_enough_replication_mu
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.OK,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.everything_up has 1 out of 1 expected instances in fake_region" in alert_output
+        assert "test.everything_up has 1 out of 1 expected instances in fake_other_region" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_low_replication_multilocation():
@@ -372,6 +399,7 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
     available = {'fake_region': {'test.low_replication': 1}, 'fake_other_region': {'test.low_replication': 0}}
     expected_replication_count = 2
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
@@ -390,7 +418,7 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -398,7 +426,13 @@ def test_check_smartstack_replication_for_instance_crit_when_low_replication_mul
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.low_replication has 1 out of 1 expected instances in fake_region" in alert_output
+        assert "test.low_replication has 0 out of 1 expected instances in fake_other_region" in alert_output
+        assert "paasta status -s test -i low_replication -c fake_cluster -vv" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_zero_replication_multilocation():
@@ -408,6 +442,7 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
     available = {'fake_region': {'test.zero_running': 0}, 'fake_other_region': {'test.zero_running': 0}}
     expected_replication_count = 2
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
@@ -426,7 +461,7 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -434,7 +469,13 @@ def test_check_smartstack_replication_for_instance_crit_when_zero_replication_mu
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.zero_running has 0 out of 1 expected instances in fake_region (CRITICAL: 0%)" in alert_output
+        assert "test.zero_running has 0 out of 1 expected instances in fake_other_region (CRITICAL: 0%)" in alert_output
+        assert "paasta status -s test -i zero_running -c fake_cluster -vv" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_missing_replication_multilocation():
@@ -444,6 +485,7 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
     available = {'fake_region': {'test.main': 0}, 'fake_other_region': {'test.main': 0}}
     expected_replication_count = 2
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
@@ -462,7 +504,7 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
         mock_load_marathon_service_config.return_value = mock_service_job_config
         mock_load_smartstack_info_for_service.return_value = available
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config,
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -470,7 +512,12 @@ def test_check_smartstack_replication_for_instance_crit_when_missing_replication
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.missing_instance has 0 out of 1 expected instances in fake_region" in alert_output
+        assert "test.missing_instance has 0 out of 1 expected instances in fake_other_region" in alert_output
 
 
 def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info():
@@ -480,6 +527,7 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
     available = {}
     expected_replication_count = 2
     soa_dir = 'test_dir'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     crit = 90
     with contextlib.nested(
         mock.patch('paasta_tools.check_marathon_services_replication.send_event', autospec=True),
@@ -498,7 +546,7 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
         mock_service_job_config.get_replication_crit_percentage.return_value = crit
         mock_load_marathon_service_config.return_value = mock_service_job_config
         check_marathon_services_replication.check_smartstack_replication_for_instance(
-            service, instance, cluster, soa_dir, expected_replication_count,
+            service, instance, cluster, soa_dir, expected_replication_count, fake_system_paasta_config
         )
         mock_send_event.assert_called_once_with(
             service=service,
@@ -506,13 +554,18 @@ def test_check_smartstack_replication_for_instance_crit_when_no_smartstack_info(
             cluster=cluster,
             soa_dir=soa_dir,
             status=pysensu_yelp.Status.CRITICAL,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test.some_instance has no Smartstack replication info." in alert_output
 
 
 def test_check_service_replication_for_normal_smartstack():
     service = 'test_service'
     instance = 'test_instance'
     cluster = 'fake_cluster'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance',
                    autospec=True, return_value=666),
@@ -527,13 +580,15 @@ def test_check_service_replication_for_normal_smartstack():
     ):
         mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
-            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None)
+            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
+            system_paasta_config=fake_system_paasta_config)
         mock_check_smartstack_replication_for_service.assert_called_once_with(
             service=service,
             instance=instance,
             cluster=cluster,
             soa_dir=None,
             expected_count=100,
+            system_paasta_config=fake_system_paasta_config,
         )
 
 
@@ -541,6 +596,7 @@ def test_check_service_replication_for_non_smartstack():
     service = 'test_service'
     instance = 'worker'
     cluster = 'fake_cluster'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance', autospec=True, return_value=None),
         mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
@@ -554,7 +610,8 @@ def test_check_service_replication_for_non_smartstack():
     ):
         mock_client = mock.Mock()
         check_marathon_services_replication.check_service_replication(
-            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None)
+            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
+            system_paasta_config=fake_system_paasta_config)
 
         mock_check_healthy_marathon_tasks.assert_called_once_with(
             client=mock_client,
@@ -562,7 +619,8 @@ def test_check_service_replication_for_non_smartstack():
             instance=instance,
             cluster=cluster,
             soa_dir=None,
-            expected_count=100)
+            expected_count=100,
+        )
 
 
 def test_get_healthy_marathon_instances_for_short_app_id_correctly_counts_alive_tasks():
@@ -657,6 +715,8 @@ def test_check_service_replication_for_namespace_with_no_deployments():
     service = 'test_service'
     instance = 'worker'
     cluster = 'fake_cluster'
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
+
     with contextlib.nested(
         mock.patch('paasta_tools.marathon_tools.get_proxy_port_for_instance', autospec=True, return_value=None),
         mock.patch('paasta_tools.marathon_tools.get_expected_instance_count_for_namespace',
@@ -668,7 +728,8 @@ def test_check_service_replication_for_namespace_with_no_deployments():
         mock_client = mock.Mock()
         mock_get_expected_count.side_effect = check_marathon_services_replication.NoDeploymentsAvailable
         check_marathon_services_replication.check_service_replication(
-            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None)
+            client=mock_client, service=service, instance=instance, cluster=cluster, soa_dir=None,
+            system_paasta_config=fake_system_paasta_config)
         assert mock_get_proxy_port_for_instance.call_count == 0
 
 
@@ -699,7 +760,11 @@ def test_send_event_if_under_replication_handles_0_expected():
             cluster=cluster,
             soa_dir=soa_dir,
             status=0,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test_service.worker has 0 out of 0 expected instances available!\n(threshold: 90%)" in alert_output
 
 
 def test_send_event_if_under_replication_good():
@@ -729,7 +794,11 @@ def test_send_event_if_under_replication_good():
             cluster=cluster,
             soa_dir=soa_dir,
             status=0,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test_service.worker has 100 out of 100 expected instances available!\n(threshold: 90%)" in alert_output
 
 
 def test_send_event_if_under_replication_critical():
@@ -764,7 +833,12 @@ def test_send_event_if_under_replication_critical():
             cluster=cluster,
             soa_dir=soa_dir,
             status=2,
-            output=mock.ANY)
+            output=mock.ANY,
+        )
+        _, send_event_kwargs = mock_send_event.call_args
+        alert_output = send_event_kwargs["output"]
+        assert "test_service.worker has 89 out of 100 expected instances available!\n(threshold: 90%)" in alert_output
+        assert "paasta status -s test_service -i worker -c fake_cluster -vv" in alert_output
 
 
 def test_get_smartstack_replication_for_attribute():
@@ -774,6 +848,7 @@ def test_get_smartstack_replication_for_attribute():
         'fake_value_1': ['fake_host_1', 'fake_host_3'],
         'fake_other_value': ['fake_host_4'],
     }
+    fake_system_paasta_config = SystemPaastaConfig({}, '/fake/config')
     with contextlib.nested(
         mock.patch('paasta_tools.mesos_tools.get_mesos_slaves_grouped_by_attribute',
                    return_value=fake_values_and_hosts),
@@ -788,7 +863,12 @@ def test_get_smartstack_replication_for_attribute():
             'fake_other_value': {}
         }
         actual = check_marathon_services_replication.get_smartstack_replication_for_attribute(
-            attribute='fake_attribute', service=fake_service, namespace=fake_namespace, blacklist=[])
+            attribute='fake_attribute',
+            service=fake_service,
+            namespace=fake_namespace,
+            blacklist=[],
+            system_paasta_config=fake_system_paasta_config,
+        )
         assert actual == expected
         assert mock_get_replication_for_services.call_count == 2
         mock_get_mesos_slaves_grouped_by_attribute.assert_called_once_with(
@@ -797,7 +877,8 @@ def test_get_smartstack_replication_for_attribute():
         )
         mock_get_replication_for_services.assert_any_call(
             synapse_host='fake_host_1',
-            synapse_port=DEFAULT_SYNAPSE_PORT,
+            synapse_port=fake_system_paasta_config.get_synapse_port(),
+            synapse_haproxy_url_format=fake_system_paasta_config.get_synapse_haproxy_url_format(),
             services=['fake_service.fake_main'],
         )
 
@@ -831,3 +912,23 @@ def test_main():
         mock_parse_args.assert_called_once_with()
         mock_get_services_for_cluster.assert_called_once_with(
             cluster='fake_cluster', instance_type='marathon', soa_dir=soa_dir)
+
+
+def test_load_smartstack_info_for_service():
+    with contextlib.nested(
+        mock.patch('paasta_tools.check_marathon_services_replication.marathon_tools.load_service_namespace_config',
+                   autospec=True),
+        mock.patch('paasta_tools.check_marathon_services_replication.get_smartstack_replication_for_attribute',
+                   autospec=True),
+    ) as (
+        mock_load_service_namespace_config,
+        mock_get_smartstack_replication_for_attribute,
+    ):
+        # just a smoke test for now.
+        check_marathon_services_replication.load_smartstack_info_for_service(
+            service='service',
+            namespace='namespace',
+            soa_dir='fake',
+            blacklist=[],
+            system_paasta_config=SystemPaastaConfig({}, '/fake/config'),
+        )

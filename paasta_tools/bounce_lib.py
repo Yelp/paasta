@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -29,11 +29,12 @@ from marathon.models import MarathonApp
 
 from paasta_tools.monitoring.replication_utils import \
     get_registered_marathon_tasks
-from paasta_tools.smartstack_tools import DEFAULT_SYNAPSE_PORT
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import load_system_paasta_config
 
-log = logging.getLogger('__main__')
+
+log = logging.getLogger(__name__)
+log.addHandler(logging.NullHandler())
 logging.getLogger("requests").setLevel(logging.WARNING)
 
 ZK_LOCK_CONNECT_TIMEOUT_S = 10.0  # seconds to wait to connect to zookeeper
@@ -214,7 +215,7 @@ def kill_old_ids(old_ids, client):
             continue
 
 
-def get_happy_tasks(app, service, nerve_ns, min_task_uptime=None, check_haproxy=False):
+def get_happy_tasks(app, service, nerve_ns, system_paasta_config, min_task_uptime=None, check_haproxy=False):
     """Given a MarathonApp object, return the subset of tasks which are considered healthy.
     With the default options, this returns tasks where at least one of the defined Marathon healthchecks passes.
     For it to do anything interesting, set min_task_uptime or check_haproxy.
@@ -242,7 +243,8 @@ def get_happy_tasks(app, service, nerve_ns, min_task_uptime=None, check_haproxy=
             synapse_host = hosts[0]
             tasks_in_smartstack.extend(get_registered_marathon_tasks(
                 synapse_host,
-                DEFAULT_SYNAPSE_PORT,
+                system_paasta_config.get_synapse_port(),
+                system_paasta_config.get_synapse_haproxy_url_format(),
                 service_namespace,
                 tasks,
             ))

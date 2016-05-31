@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -124,6 +124,17 @@ def test_format_chronos_job_name_exists():
     verbose = False
     actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
     assert example_job['name'] in actual
+
+
+def test_format_chronos_job_temp_job():
+    example_job = {
+        'name': '%s my_service my_instance' % chronos_tools.TMP_JOB_IDENTIFIER,
+        'schedule': 'foo'
+    }
+    running_tasks = []
+    verbose = False
+    actual = chronos_serviceinit.format_chronos_job_status(example_job, running_tasks, verbose)
+    assert 'Job:     tmp my_service my_instance (Launched by paasta rerun)' in actual
 
 
 def test_format_chronos_job_name_does_not_exist():

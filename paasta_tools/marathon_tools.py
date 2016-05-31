@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
@@ -36,6 +36,7 @@ from paasta_tools.mesos_tools import get_mesos_slaves_grouped_by_attribute
 from paasta_tools.utils import compose_job_id
 from paasta_tools.utils import decompose_job_id
 from paasta_tools.utils import deep_merge_dictionaries
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import deploy_blacklist_to_constraints
 from paasta_tools.utils import deploy_whitelist_to_constraints
 from paasta_tools.utils import get_code_sha_from_dockerurl
@@ -55,7 +56,6 @@ from paasta_tools.utils import timeout
 from paasta_tools.utils import ZookeeperPool
 
 CONTAINER_PORT = 8888
-DEFAULT_SOA_DIR = service_configuration_lib.DEFAULT_SOA_DIR
 # Marathon creates Mesos tasks with an id composed of the app's full name, a
 # spacer, and a UUID. This variable is that spacer. Note that we don't control
 # this spacer, i.e. you can't change it here and expect the world to change
@@ -64,7 +64,12 @@ MESOS_TASK_SPACER = '.'
 PATH_TO_MARATHON_CONFIG = os.path.join(PATH_TO_SYSTEM_PAASTA_CONFIG_DIR, 'marathon.json')
 PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 
-log = logging.getLogger('__main__')
+
+# A set of config attributes that don't get included in the hash of the config.
+# These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
+CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds', 'min_instances', 'max_instances'])
+
+log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
 
@@ -219,18 +224,27 @@ class MarathonServiceConfig(InstanceConfig):
                         service=self.service,
                         instance=self.instance,
                     )
-                except NoNodeError:  # zookeeper doesn't have instance data for this app
-                    return self.get_min_instances()
+                    log.debug("Got %d instances out of zookeeper" % zk_instances)
+                except NoNodeError:
+                    log.debug("No zookeeper data, returning max_instances (%d)" % self.get_max_instances())
+                    return self.get_max_instances()
                 else:
-                    return self.limit_instance_count(zk_instances)
+                    limited_instances = self.limit_instance_count(zk_instances)
+                    if limited_instances != zk_instances:
+                        log.warning("Returning limited instance count %d. (zk had %d)" % (
+                                    limited_instances, zk_instances))
+                    return limited_instances
             else:
-                return self.config_dict.get('instances', 1)
+                instances = self.config_dict.get('instances', 1)
+                log.debug("Autoscaling not enabled, returning %d instances" % instances)
+                return instances
         else:
+            log.debug("Instance is set to stop. Returning '0' instances")
             return 0
 
     def get_autoscaling_params(self):
         default_params = {
-            'metrics_provider': 'mesos_cpu_ram',
+            'metrics_provider': 'mesos_cpu',
             'decision_policy': 'pid',
             'setpoint': 0.8,
         }
@@ -286,25 +300,24 @@ class MarathonServiceConfig(InstanceConfig):
         :returns: The drain_method_params dictionary specified in the config, or {} if not specified"""
         default = {}
         if service_namespace_config.is_in_smartstack():
-            default = {'delay': 30}
+            default = {'delay': 60}
         return self.config_dict.get('drain_method_params', default)
 
-    def get_constraints(self, service_namespace_config):
-        """Gets the constraints specified in the service's marathon configuration.
+    def get_calculated_constraints(self, service_namespace_config):
+        """Gets the calculated constraints for a marathon instance
 
-        These are Marathon app constraints. See
-        https://mesosphere.github.io/marathon/docs/constraints.html
-
-        Defaults to `GROUP_BY region`. If the service's smartstack configuration
-        specifies a `discover` key, then defaults to `GROUP_BY <value of discover>` instead.
+        If ``constraints`` is specified in the config, it will use that regardless.
+        Otherwise it will calculate a good set of constraints from other inputs,
+        like ``pool``, blacklist/whitelist, smartstack data, etc.
 
         :param service_namespace_config: The service instance's configuration dictionary
         :returns: The constraints specified in the config, or defaults described above
         """
-        if 'constraints' in self.config_dict:
-            constraints = self.config_dict.get('constraints')
+        constraints = self.get_constraints()
+        if constraints is not None:
+            return constraints
         else:
-            constraints = self.config_dict.get('extra_constraints', [])
+            constraints = self.get_extra_constraints()
             constraints.extend(self.get_routing_constraints(service_namespace_config))
             constraints.extend(self.get_deploy_constraints())
             constraints.extend(self.get_pool_constraints())
@@ -322,10 +335,6 @@ class MarathonServiceConfig(InstanceConfig):
     def get_deploy_constraints(self):
         return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
                 deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
-
-    def get_pool_constraints(self):
-        pool = self.get_pool()
-        return [["pool", "LIKE", pool]]
 
     def format_marathon_app_dict(self):
         """Create the configuration that will be passed to the Marathon REST API.
@@ -354,10 +363,6 @@ class MarathonServiceConfig(InstanceConfig):
         :param service_namespace_config: The service instance's configuration dict
         :returns: A dict containing all of the keys listed above"""
 
-        # A set of config attributes that don't get included in the hash of the config.
-        # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
-        CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds'])
-
         system_paasta_config = load_system_paasta_config()
         docker_url = get_docker_url(system_paasta_config.get_docker_registry(), self.get_docker_image())
         service_namespace_config = load_service_namespace_config(
@@ -373,21 +378,14 @@ class MarathonServiceConfig(InstanceConfig):
                 'docker': {
                     'image': docker_url,
                     'network': net,
-                    'portMappings': [
-                        {
-                            'containerPort': CONTAINER_PORT,
-                            'hostPort': 0,
-                            'protocol': 'tcp',
-                        },
-                    ],
                     "parameters": [
-                        {"key": "memory-swap", "value": "%sm" % str(self.get_mem())},
+                        {"key": "memory-swap", "value": self.get_mem_swap()},
                     ]
                 },
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
             },
-            'uris': [system_paasta_config.get_dockerfile_location(), ],
+            'uris': [system_paasta_config.get_dockercfg_location(), ],
             'backoff_seconds': self.get_backoff_seconds(),
             'backoff_factor': 2,
             'health_checks': self.get_healthchecks(service_namespace_config),
@@ -395,7 +393,7 @@ class MarathonServiceConfig(InstanceConfig):
             'mem': float(self.get_mem()),
             'cpus': float(self.get_cpus()),
             'disk': float(self.get_disk()),
-            'constraints': self.get_constraints(service_namespace_config),
+            'constraints': self.get_calculated_constraints(service_namespace_config),
             'instances': self.get_instances(),
             'cmd': self.get_cmd(),
             'args': self.get_args(),

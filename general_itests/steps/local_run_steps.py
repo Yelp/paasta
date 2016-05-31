@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ def non_interactive_local_run(context, var, val):
         # container dies before it gets a chance to lookup the continerid
         # (which causes jenkins flakes) The sleep can be removed once local-run
         # understands that containers can die quickly.
-        localrun_cmd = ("cli.py local-run "
+        localrun_cmd = ("paasta local-run "
                         "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
                         "--service fake_simple_service "
                         "--cluster test-cluster "
@@ -68,7 +68,7 @@ def local_run_on_chronos_job(context):
         # container dies before it gets a chance to lookup the continerid
         # (which causes jenkins flakes) The sleep can be removed once local-run
         # understands that containers can die quickly.
-        local_run_cmd = ("cli.py local-run "
+        local_run_cmd = ("paasta local-run "
                          "--yelpsoa-config-root ../fake_soa_configs_local_run/ "
                          "--service fake_simple_service "
                          "--cluster test-cluster "

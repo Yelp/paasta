@@ -1,5 +1,5 @@
 #!/bin/bash
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -18,6 +18,6 @@ if [[ -n ${ZSH_VERSION-} ]]; then
 fi
 
 # This magic eval enables tab-completion for the "paasta" command
-# http://argcomplete.readthedocs.org/en/latest/index.html#synopsis
+# http://argcomplete.readthedocs.io/en/latest/index.html#synopsis
 # This comes from the paasta-tools system package
 eval "$(/usr/share/python/paasta-tools/bin/register-python-argcomplete paasta)"

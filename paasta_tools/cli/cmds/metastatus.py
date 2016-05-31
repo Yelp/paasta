@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,6 +14,7 @@
 # limitations under the License.
 from paasta_tools.cli.utils import execute_paasta_metastatus_on_remote_master
 from paasta_tools.cli.utils import lazy_choices_completer
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import list_clusters
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
@@ -51,15 +52,22 @@ def add_subparser(subparsers):
         '-c', '--clusters',
         help=clusters_help,
     ).completer = lazy_choices_completer(list_clusters)
+    status_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     status_parser.set_defaults(command=paasta_metastatus)
 
 
-def print_cluster_status(cluster, verbose=0):
+def print_cluster_status(cluster, system_paasta_config, verbose=0):
     """With a given cluster and verboseness, returns the status of the cluster
     output is printed directly to provide dashbaords even if the cluster is unavailable"""
     print "Cluster: %s" % cluster
     print get_cluster_dashboards(cluster)
-    print execute_paasta_metastatus_on_remote_master(cluster, verbose)
+    print execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, verbose=verbose)
     print ""
 
 
@@ -88,11 +96,13 @@ def get_cluster_dashboards(cluster):
 
 def paasta_metastatus(args):
     """Print the status of a PaaSTA clusters"""
-    all_clusters = list_clusters()
+    soa_dir = args.soa_dir
+    system_paasta_config = load_system_paasta_config()
+    all_clusters = list_clusters(soa_dir=soa_dir)
     clusters_to_inspect = figure_out_clusters_to_inspect(args, all_clusters)
     for cluster in clusters_to_inspect:
         if cluster in all_clusters:
-            print_cluster_status(cluster, args.verbose)
+            print_cluster_status(cluster, system_paasta_config, args.verbose)
         else:
             print "Cluster %s doesn't look like a valid cluster?" % args.clusters
             print "Try using tab completion to help complete the cluster name"

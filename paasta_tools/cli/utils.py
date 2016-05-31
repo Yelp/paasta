@@ -1,4 +1,4 @@
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ import sys
 from socket import gaierror
 from socket import gethostbyname_ex
 
-from service_configuration_lib import DEFAULT_SOA_DIR
 from service_configuration_lib import read_services_configuration
 
 from paasta_tools.chronos_tools import load_chronos_job_config
@@ -28,6 +27,7 @@ from paasta_tools.marathon_tools import load_marathon_service_config
 from paasta_tools.monitoring_tools import _load_sensu_team_data
 from paasta_tools.utils import _run
 from paasta_tools.utils import compose_job_id
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_default_cluster_for_service
 from paasta_tools.utils import list_all_instances_for_service
 from paasta_tools.utils import load_system_paasta_config
@@ -36,8 +36,7 @@ from paasta_tools.utils import PaastaColors
 from paasta_tools.utils import validate_service_instance
 
 
-log = logging.getLogger('__main__')
-logging.basicConfig()
+log = logging.getLogger(__name__)
 
 
 def load_method(module_name, method_name):
@@ -176,38 +175,38 @@ class PaastaCheckMessages:
     MAKEFILE_FOUND = success("A Makefile is present")
     MAKEFILE_MISSING = failure(
         "No Makefile available. Please make a Makefile that responds\n"
-        "to the proper targets. More info:", "http://paasta.readthedocs.org/en/latest/about/contract.html"
+        "to the proper targets. More info:", "http://paasta.readthedocs.io/en/latest/about/contract.html"
     )
     MAKEFILE_RESPONDS_BUILD_IMAGE = success("The Makefile responds to `make cook-image`")
     MAKEFILE_RESPONDS_BUILD_IMAGE_FAIL = failure(
         "The Makefile does not have a `make cook-image` target. local-run needs\n"
         "this and expects it to build your docker image. More info:",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html"
+        "http://paasta.readthedocs.io/en/latest/about/contract.html"
     )
     MAKEFILE_RESPONDS_ITEST = success("The Makefile responds to `make itest`")
     MAKEFILE_RESPONDS_ITEST_FAIL = failure(
         "The Makefile does not have a `make itest` target. Jenkins needs\n"
         "this and expects it to build and itest your docker image. More info:",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html"
+        "http://paasta.readthedocs.io/en/latest/about/contract.html"
     )
     MAKEFILE_RESPONDS_TEST = success("The Makefile responds to `make test`")
     MAKEFILE_RESPONDS_TEST_FAIL = failure(
         "The Makefile does not have a `make test` target. Jenkins needs\n"
         "this and expects it to run unit tests. More info:",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html"
+        "http://paasta.readthedocs.io/en/latest/about/contract.html"
     )
     MAKEFILE_HAS_A_TAB = success("The Makefile contains a tab character")
     MAKEFILE_HAS_NO_TABS = failure(
         "The Makefile contains no tab characters. Make sure you\n"
         "didn't accidentally paste spaces (which `make` does not respect)\n"
         "instead of a tab.",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html",
+        "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
     MAKEFILE_HAS_DOCKER_TAG = success("The Makefile contains a docker tag")
     MAKEFILE_HAS_NO_DOCKER_TAG = failure(
         "The Makefile contains no reference to DOCKER_TAG. Make sure you\n"
         "specify a DOCKER_TAG and that your itest tags your docker image with $DOCKER_TAG.",
-        "http://paasta.readthedocs.org/en/latest/about/contract.html",
+        "http://paasta.readthedocs.io/en/latest/about/contract.html",
     )
 
     PIPELINE_FOUND = success("Jenkins build pipeline found")
@@ -317,10 +316,10 @@ def guess_instance(service, cluster, args):
             else:
                 instance = list(instances)[0]
         except NoConfigurationForServiceError:
-            sys.stdout.write(PaastaColors.red(
+            sys.stderr.write(PaastaColors.red(
                 'Could not automatically detect instance to emulate. Please specify one with the --instance option.\n'))
             sys.exit(2)
-        sys.stdout.write(PaastaColors.yellow(
+        sys.stderr.write(PaastaColors.yellow(
             'Guessing instance configuration for %s. To override, use the --instance option.\n' % instance))
     return instance
 
@@ -333,10 +332,10 @@ def guess_cluster(service, args):
         try:
             cluster = get_default_cluster_for_service(service)
         except NoConfigurationForServiceError:
-            sys.stdout.write(PaastaColors.red(
+            sys.stderr.write(PaastaColors.red(
                 'Could not automatically detect cluster to emulate. Please specify one with the --cluster option.\n'))
             sys.exit(2)
-        sys.stdout.write(PaastaColors.yellow(
+        sys.stderr.write(PaastaColors.yellow(
             'Guesing cluster configuration for %s. To override, use the --cluster option.\n' % cluster))
     return cluster
 
@@ -404,12 +403,13 @@ def list_teams(**kwargs):
     return teams
 
 
-def calculate_remote_masters(cluster):
+def calculate_remote_masters(cluster, system_paasta_config):
     """Given a cluster, do a DNS lookup of that cluster (which
     happens to point, eventually, to the Mesos masters in that cluster).
     Return IPs of those Mesos masters.
     """
-    cluster_fqdn = "paasta-%s.yelp" % cluster
+
+    cluster_fqdn = system_paasta_config.get_cluster_fqdn_format().format(cluster=cluster)
     try:
         _, _, ips = gethostbyname_ex(cluster_fqdn)
         output = None
@@ -474,40 +474,49 @@ def check_ssh_and_sudo_on_master(master, timeout=10):
     return (False, output)
 
 
-def run_paasta_serviceinit(subcommand, master, service, instancename, cluster, **kwargs):
+def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs):
     """Run 'paasta_serviceinit <subcommand>'. Return the output from running it."""
     if 'verbose' in kwargs and kwargs['verbose'] > 0:
-        verbose_flag = '-v ' * kwargs['verbose']
-        timeout = 240
+        verbose_flag = ' '.join(['-v' for i in range(kwargs['verbose'])])
+        timeout = 960 if subcommand == 'status' else 240
     else:
         verbose_flag = ''
-        timeout = 60
+        timeout = 240 if subcommand == 'status' else 60
+
     if 'app_id' in kwargs and kwargs['app_id']:
-        app_id_flag = "--appid %s " % kwargs['app_id']
+        app_id_flag = "--appid %s" % kwargs['app_id']
     else:
         app_id_flag = ''
+
     if 'delta' in kwargs and kwargs['delta']:
-        delta = "--delta %s" % kwargs['delta']
+        delta_flag = "--delta %s" % kwargs['delta']
     else:
-        delta = ''
-    command = 'ssh -A -n %s sudo paasta_serviceinit %s%s%s %s %s' % (
-        master,
+        delta_flag = ''
+
+    ssh_flag = '-t' if stream else '-n'
+
+    command_parts = [
+        "ssh -A %s %s sudo paasta_serviceinit" % (ssh_flag, master),
+        "-s %s" % service,
+        "-i %s" % instances,
         verbose_flag,
         app_id_flag,
-        compose_job_id(service, instancename),
-        subcommand,
-        delta
-    )
+        delta_flag,
+        subcommand
+    ]
+    command_without_empty_strings = [part for part in command_parts if part != '']
+    command = ' '.join(command_without_empty_strings)
     log.debug("Running Command: %s" % command)
-    _, output = _run(command, timeout=timeout)
+    _, output = _run(command, timeout=timeout, stream=stream)
     return output
 
 
-def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instancename, **kwargs):
+def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, instances, system_paasta_config,
+                                                stream=False, **kwargs):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_serviceinit_status().
     """
-    masters, output = calculate_remote_masters(cluster)
+    masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
         return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
@@ -515,7 +524,7 @@ def execute_paasta_serviceinit_on_remote_master(subcommand, cluster, service, in
         return (
             'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
         )
-    return run_paasta_serviceinit(subcommand, master, service, instancename, cluster, **kwargs)
+    return run_paasta_serviceinit(subcommand, master, service, instances, cluster, stream, **kwargs)
 
 
 def run_paasta_metastatus(master, verbose=0):
@@ -533,11 +542,11 @@ def run_paasta_metastatus(master, verbose=0):
     return output
 
 
-def execute_paasta_metastatus_on_remote_master(cluster, verbose=0):
+def execute_paasta_metastatus_on_remote_master(cluster, system_paasta_config, verbose=0):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_paasta_metastatus().
     """
-    masters, output = calculate_remote_masters(cluster)
+    masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
         return 'ERROR: %s' % output
     master, output = find_connectable_master(masters)
@@ -561,16 +570,17 @@ def run_chronos_rerun(master, service, instancename, **kwargs):
     return _run(command, timeout=timeout)
 
 
-def execute_chronos_rerun_on_remote_master(service, instancename, cluster, **kwargs):
+def execute_chronos_rerun_on_remote_master(service, instancename, cluster, system_paasta_config, **kwargs):
     """Returns a string containing an error message if an error occurred.
     Otherwise returns the output of run_chronos_rerun().
     """
-    masters, output = calculate_remote_masters(cluster)
+    masters, output = calculate_remote_masters(cluster, system_paasta_config)
     if masters == []:
-        return 'ERROR: %s' % output
+        return (-1, 'ERROR: %s' % output)
     master, output = find_connectable_master(masters)
     if not master:
         return (
+            -1,
             'ERROR: could not find connectable master in cluster %s\nOutput: %s' % (cluster, output)
         )
     return run_chronos_rerun(master, service, instancename, **kwargs)

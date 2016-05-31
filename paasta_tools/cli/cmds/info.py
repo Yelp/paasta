@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -23,6 +23,7 @@ from paasta_tools.marathon_tools import get_all_namespaces_for_service
 from paasta_tools.marathon_tools import load_service_namespace_config
 from paasta_tools.monitoring_tools import get_runbook
 from paasta_tools.monitoring_tools import get_team
+from paasta_tools.utils import DEFAULT_SOA_DIR
 from paasta_tools.utils import get_git_url
 from paasta_tools.utils import NoDeploymentsAvailable
 from paasta_tools.utils import PaastaColors
@@ -50,6 +51,13 @@ def add_subparser(subparsers):
         '-s', '--service',
         help='The name of the service you wish to inspect'
     ).completer = lazy_choices_completer(list_services)
+    list_parser.add_argument(
+        '-d', '--soa-dir',
+        dest="soa_dir",
+        metavar="SOA_DIR",
+        default=DEFAULT_SOA_DIR,
+        help="define a different soa config directory",
+    )
     list_parser.set_defaults(command=paasta_info)
 
 
@@ -61,9 +69,9 @@ def deployments_to_clusters(deployments):
     return set(clusters)
 
 
-def get_smartstack_endpoints(service):
+def get_smartstack_endpoints(service, soa_dir):
     endpoints = []
-    for name, config in get_all_namespaces_for_service(service, full_name=False):
+    for name, config in get_all_namespaces_for_service(service, full_name=False, soa_dir=soa_dir):
         mode = config.get('mode', 'http')
         port = config.get('proxy_port')
         endpoints.append("%s://169.254.255.254:%s (%s)" % (
@@ -72,16 +80,16 @@ def get_smartstack_endpoints(service):
     return endpoints
 
 
-def get_deployments_strings(service):
+def get_deployments_strings(service, soa_dir):
     output = []
     try:
-        deployments = get_actual_deployments(service)
+        deployments = get_actual_deployments(service, soa_dir)
     except NoDeploymentsAvailable:
         deployments = {}
     if deployments == {}:
         output.append(' - N/A: Not deployed to any PaaSTA Clusters')
     else:
-        service_config = load_service_namespace_config(service, 'main')
+        service_config = load_service_namespace_config(service, 'main', soa_dir)
         service_mode = service_config.get_mode()
         for cluster in deployments_to_clusters(deployments):
             if service_mode == "tcp":
@@ -100,13 +108,13 @@ def get_dashboard_urls(service):
     return output
 
 
-def get_service_info(service):
-    service_configuration = read_service_configuration(service)
+def get_service_info(service, soa_dir):
+    service_configuration = read_service_configuration(service, soa_dir)
     description = service_configuration.get('description', NO_DESCRIPTION_MESSAGE)
     external_link = service_configuration.get('external_link', NO_EXTERNAL_LINK_MESSAGE)
     pipeline_url = get_pipeline_url(service)
-    smartstack_endpoints = get_smartstack_endpoints(service)
-    git_url = get_git_url(service)
+    smartstack_endpoints = get_smartstack_endpoints(service, soa_dir)
+    git_url = get_git_url(service, soa_dir)
 
     output = []
     output.append('Service Name: %s' % service)
@@ -117,7 +125,7 @@ def get_service_info(service):
     output.append('Git Repo: %s' % git_url)
     output.append('Jenkins Pipeline: %s' % pipeline_url)
     output.append('Deployed to the following clusters:')
-    output.extend(get_deployments_strings(service))
+    output.extend(get_deployments_strings(service, soa_dir))
     if smartstack_endpoints:
         output.append('Smartstack endpoint(s):')
         for endpoint in smartstack_endpoints:
@@ -130,5 +138,6 @@ def get_service_info(service):
 
 def paasta_info(args):
     """Prints general information about a service"""
-    service = figure_out_service_name(args)
-    print get_service_info(service)
+    soa_dir = args.soa_dir
+    service = figure_out_service_name(args, soa_dir=soa_dir)
+    print get_service_info(service, soa_dir)

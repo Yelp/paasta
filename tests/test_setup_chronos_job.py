@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# Copyright 2015 Yelp Inc.
+# Copyright 2015-2016 Yelp Inc.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -215,7 +215,7 @@ class TestSetupChronosJob:
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
             load_system_paasta_config_patch.return_value.get_volumes.return_value = []
-            load_system_paasta_config_patch.return_value.get_dockerfile_location.return_value = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location.return_value = \
                 'file:///root/.dockercfg'
             complete_config = chronos_tools.create_complete_config(
                 service=self.fake_service,
@@ -262,7 +262,7 @@ class TestSetupChronosJob:
         ):
             load_system_paasta_config_patch.return_value.get_cluster.return_value = self.fake_cluster
             load_system_paasta_config_patch.return_value.get_volumes.return_value = []
-            load_system_paasta_config_patch.return_value.get_dockerfile_location.return_value = \
+            load_system_paasta_config_patch.return_value.get_dockercfg_location.return_value = \
                 "file:///root/.dockercfg"
             complete_config = chronos_tools.create_complete_config(
                 service=self.fake_service,
