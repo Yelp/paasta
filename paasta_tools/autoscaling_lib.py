@@ -456,7 +456,10 @@ def spotfleet_metrics_provider(spotfleet_request_id, mesos_state, pool):
             current_instances, desired_instances, MISSING_SLAVE_PANIC_THRESHOLD)
         raise ClusterAutoscalingError(error_message)
 
-    pool_utilization_dict = get_resource_utilization_by_attribute(mesos_state, 'pool')[pool]
+    pool_utilization_dict = get_resource_utilization_by_attribute(
+        lambda slave: slave['attributes']['pool'],
+        mesos_state
+    )[pool]
 
     free_pool_resources = pool_utilization_dict['free']
     total_pool_resources = pool_utilization_dict['total']

@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import contextlib
+import inspect
 
 from mock import Mock
 from mock import patch
@@ -452,7 +453,7 @@ def test_filter_mesos_state_metrics():
     assert paasta_metastatus.filter_mesos_state_metrics(test_resource_dictionary) == expected
 
 
-def test_group_slaves_by_attribute():
+def test_group_slaves_by_key_func():
     slaves = [
         {
             'id': 'somenametest-slave',
@@ -479,66 +480,34 @@ def test_group_slaves_by_attribute():
             },
         },
     ]
-    actual = paasta_metastatus.group_slaves_by_attribute(slaves, 'habitat')
-    values = dict((k, list(g)) for k, g in actual)
-    assert len(values.items()) == 2
-    assert 'somenametest-habitat' in values
-    assert 'somenametest-habitat-2' in values
-    for k, v in values.items():
+    actual = paasta_metastatus.group_slaves_by_key_func(
+        lambda x: x['attributes']['habitat'],
+        slaves
+    )
+    assert len(actual.items()) == 2
+    for k, v in actual.items():
+        print k, v
         assert len(list(v)) == 1
 
 
-def test_calculate_resource_usage_for_slaves():
-    slaves = [
-        {
-            'id': 'somenametest-slave',
-            'resources': {
-                'cpus': 75,
-                'disk': 250,
-                'mem': 100,
-            },
-        },
-        {
-            'id': 'somenametest-slave2',
-            'resources': {
-                'cpus': 500,
-                'disk': 200,
-                'mem': 750,
-            }
-        }
-    ]
-    tasks = [
-        {
-            'resources': {
-                'cpus': 500,
-                'disk': 200,
-                'mem': 750,
-            }
-        },
-        {
-            'resources': {
-                'cpus': 500,
-                'disk': 200,
-                'mem': 750,
-            }
-        }
-    ]
-    calculated = paasta_metastatus.calculate_resource_utilization_for_slaves(slaves, tasks)
-    assert sorted(calculated.keys()) == sorted(['free', 'total'])
-
-
-@patch('paasta_tools.paasta_metastatus.group_slaves_by_attribute', autospec=True)
+@patch('paasta_tools.paasta_metastatus.group_slaves_by_key_func', autospec=True)
 @patch('paasta_tools.paasta_metastatus.calculate_resource_utilization_for_slaves', autospec=True)
 @patch('paasta_tools.paasta_metastatus.get_all_tasks_from_state', autospec=True)
-def test_get_resource_utilization_by_attribute(
+def test_get_resource_utilization_by_grouping(
         mock_get_all_tasks_from_state,
         mock_calculate_resource_utilization_for_slaves,
-        mock_group_slaves_by_attribute,
+        mock_group_slaves_by_key_func,
 ):
-    mock_group_slaves_by_attribute.return_value = [
-        ('somenametest-habitat', ['test.somewhere.www']),
-        ('somenametest-habitat-2', ['test2.somewhere.www'])
-    ]
+    mock_group_slaves_by_key_func.return_value = {
+        'somenametest-habitat': [{
+            'id': 'abcd',
+            'hostname': 'test.somewhere.www'
+        }],
+        'somenametest-habitat-2': [{
+            'id': 'abcd',
+            'hostname': 'test2.somewhere.www'
+        }]
+    }
     mock_calculate_resource_utilization_for_slaves.return_value = {
         'free': paasta_metastatus.ResourceInfo(cpus=10, mem=10, disk=10),
         'total': paasta_metastatus.ResourceInfo(cpus=20, mem=20, disk=20)
@@ -548,9 +517,9 @@ def test_get_resource_utilization_by_attribute(
         'frameworks': Mock(),
         'slaves': Mock()
     }
-    actual = paasta_metastatus.get_resource_utilization_by_attribute(
+    actual = paasta_metastatus.get_resource_utilization_by_grouping(
+        grouping_func=lambda slave: slave['attributes']['habitat'],
         mesos_state=state,
-        attribute='habitat'
     )
     assert sorted(actual.keys()) == sorted(['somenametest-habitat', 'somenametest-habitat-2'])
     for k, v in actual.items():
@@ -737,3 +706,7 @@ def test_get_table_rows_for_resource_usage_dict(mock_format_row):
     mock_format_row.return_value = ['10/10', '10/10', '10/10']
     actual = paasta_metastatus.get_table_rows_for_resource_info_dict('myhabitat', fake_pairs, False)
     assert actual == ['myhabitat', '10/10', '10/10', '10/10']
+
+
+def test_key_func_for_attribute():
+    assert inspect.isfunction(paasta_metastatus.key_func_for_attribute('habitat'))

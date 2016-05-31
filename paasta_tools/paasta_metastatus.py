@@ -263,53 +263,29 @@ def assert_quorum_size(state):
         )
 
 
-def group_slaves_by_attribute(slaves, attribute):
-    """
-    Given the state information provided by Mesos and a mesos attribute, group the slaves
-    by that attribute.
-
-    :param slaves: a list of slave objects as defined in mesos state.
-    <https://mesos.apache.org/documentation/latest/endpoints/master/state.json/>``.
-    :param attribute: the attribute to group slaves by. This attribute must be common to all slaves.
-    :returns: groupby object, with slaves grouped by the value of the attribute
+def key_func_for_attribute(attribute):
+    """ Return a closure that given a slave, will return the value of a specific
+    attribute.
+    :param attribute: the attribute to inspect in the slave
+    :returns: a closure, which takes a slave and returns the value of an attribute
     """
     def key_func(slave):
         return slave['attributes'].get(attribute, 'unknown')
+    return key_func
+
+
+def group_slaves_by_key_func(key_func, slaves):
+    """ Given a function for grouping slaves, return a
+    dict where keys are the unique values returned by
+    the key_func and the values are all those slaves which
+    have that specific value.
+
+    :param key_func: a function which consumes a slave and returns a value
+    :param slaves: a list of slaves
+    :returns: a dict of key: [slaves]
+    """
     sorted_slaves = sorted(slaves, key=key_func)
-    return itertools.groupby(sorted_slaves, key=key_func)
-
-
-def get_resource_utilization_per_slave(mesos_state):
-    """
-    Given a mesos state object, calculate the resource utilization
-    of each individual slave.
-    :param mesos_stage: the mesos state object
-    :returns: a dict of {hostname: free: ResourceInfo, total: ResourceInfo}
-    """
-    slaves = dict((slave['id'], {
-        'hostname': slave['hostname'],
-        'total_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
-        'free_resources': Counter(filter_mesos_state_metrics(slave['resources'])),
-    }) for slave in mesos_state['slaves'])
-
-    for framework in mesos_state.get('frameworks', []):
-        for task in framework.get('tasks', []):
-            mesos_metrics = filter_mesos_state_metrics(task['resources'])
-            slaves[task['slave_id']]['free_resources'].subtract(mesos_metrics)
-
-    formatted_slaves = {slave['hostname']: {
-        'free': ResourceInfo(
-            cpus=slave['free_resources']['cpus'],
-            mem=slave['free_resources']['mem'],
-            disk=slave['free_resources']['disk'],
-        ),
-        'total': ResourceInfo(
-            cpus=slave['total_resources']['cpus'],
-            mem=slave['total_resources']['mem'],
-            disk=slave['total_resources']['disk'],
-        )
-    } for slave in slaves.values()}
-    return formatted_slaves
+    return {k: list(v) for k, v in itertools.groupby(sorted_slaves, key=key_func)}
 
 
 def calculate_resource_utilization_for_slaves(slaves, tasks):
@@ -345,12 +321,22 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
     }
 
 
-def get_resource_utilization_by_attribute(mesos_state, attribute):
+def filter_tasks_for_slaves(slaves, tasks):
+    """
+    Given a list of tasks and a list of slaves, return a filtered
+    list of tasks, where those returned belong to slaves in the list of
+    slaves
+    """
+    slave_ids = [slave['id'] for slave in slaves]
+    return [task for task in tasks if task['slave_id'] in slave_ids]
+
+
+def get_resource_utilization_by_grouping(grouping_func, mesos_state):
     """
     Given mesos state and an attribute, calculate resource utilization
     for each value of a given attribute.
 
-    :param mesost_state: the mesos state
+    :param mesos_state: the mesos state
     :param attribute: the attribute to group slaves by
     :returns: a dict of {attribute_value: resource_usage}, where resource usage is
     the dict returned by ``calculate_resource_utilization_for_slaves`` for slaves
@@ -361,11 +347,12 @@ def get_resource_utilization_by_attribute(mesos_state, attribute):
         raise ValueError("There are no slaves registered in the mesos state.")
 
     tasks = get_all_tasks_from_state(mesos_state)
-    slave_groupings = group_slaves_by_attribute(slaves, attribute)
+
+    slave_groupings = group_slaves_by_key_func(grouping_func, slaves)
 
     return {
-        attribute_value: calculate_resource_utilization_for_slaves(slaves, tasks)
-        for attribute_value, slaves in slave_groupings
+        attribute_value: calculate_resource_utilization_for_slaves(slaves, filter_tasks_for_slaves(slaves, tasks))
+        for attribute_value, slaves in slave_groupings.items()
     }
 
 
@@ -654,7 +641,7 @@ def main():
         print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
         for grouping in args.groupings:
             print_with_indent('Resources Grouped by %s' % grouping, 2)
-            resource_info_dict = get_resource_utilization_by_attribute(mesos_state, grouping)
+            resource_info_dict = get_resource_utilization_by_grouping(key_func_for_attribute(grouping), mesos_state)
             all_rows = [[grouping.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
             table_rows = []
             for attribute_value, resource_info_dict in resource_info_dict.items():
@@ -685,7 +672,7 @@ def main():
         print_results_for_healthchecks(mesos_ok, all_mesos_results, args.verbose)
         for grouping in args.groupings:
             print_with_indent('Resources Grouped by %s' % grouping, 2)
-            resource_info_dict = get_resource_utilization_by_attribute(mesos_state, grouping)
+            resource_info_dict = get_resource_utilization_by_grouping(key_func_for_attribute(grouping), mesos_state)
             all_rows = [[grouping.capitalize(), 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
             table_rows = []
             for attribute_value, resource_info_dict in resource_info_dict.items():
@@ -709,7 +696,7 @@ def main():
                 print_with_indent(line, 4)
 
         print_with_indent('Per Slave Utilization', 2)
-        slave_resource_dict = get_resource_utilization_per_slave(mesos_state)
+        slave_resource_dict = get_resource_utilization_by_grouping(lambda slave: slave['hostname'], mesos_state)
         all_rows = [['Hostname', 'CPU (free/total)', 'RAM (free/total)', 'Disk (free/total)']]
 
         # print info about slaves here. Note that we don't make modifications to
