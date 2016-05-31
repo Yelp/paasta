@@ -130,10 +130,14 @@ class TestChronosTools:
             json_patch.assert_called_with(file_mock.__enter__())
 
     def test_load_chronos_config_bad(self):
+        from_file = {}
+        file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
-            mock.patch('paasta_tools.chronos_tools.open', create=True, side_effect=IOError(2, 'a', 'b')),
+            mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
+            mock.patch('json.load', autospec=True, return_value=from_file)
         ) as (
             open_patch,
+            json_patch
         ):
             with raises(PaastaNotConfiguredError) as excinfo:
                 chronos_tools.load_chronos_config()
