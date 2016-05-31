@@ -923,7 +923,7 @@ class SystemPaastaConfig(dict):
             return self['performance_check']
         except KeyError:
             raise PaastaNotConfiguredError(
-                'Could not find performance_check in configureation directory: %s' % self.directory
+                'Could not find performance_check in configuration directory: %s' % self.directory
             )
 
     def get_marathon_config(self):
@@ -934,7 +934,7 @@ class SystemPaastaConfig(dict):
             return self['marathon_config']
         except KeyError:
             raise PaastaNotConfiguredError(
-                'Could not find marathon_config in configureation directory: %s' % self.directory
+                'Could not find marathon_config in configuration directory: %s' % self.directory
             )
 
 

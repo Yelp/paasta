@@ -262,7 +262,7 @@ class TestMarathonTools:
         ):
             with raises(marathon_tools.PaastaNotConfiguredError) as excinfo:
                 marathon_tools.load_marathon_config()
-            assert str(excinfo.value) == "Could not find marathon_config in configureation directory: /etc/paasta/"
+            assert str(excinfo.value) == "Could not find marathon_config in configuration directory: /etc/paasta/"
 
     def test_get_all_namespaces_for_service(self):
         name = 'vvvvvv'
