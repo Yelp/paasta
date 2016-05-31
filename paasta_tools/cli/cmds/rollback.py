@@ -112,7 +112,7 @@ def validate_given_deploy_groups(service_deploy_groups, args_deploy_groups):
     :param service_deploy_groups: instances actually belonging to a service
     :param args_deploy_groups: the desired instances
     :returns: a tuple with (common, difference) indicating deploy groups common in both
-    lists and those only in args_deploy_groups
+        lists and those only in args_deploy_groups
     """
     if len(args_deploy_groups) is 0:
         valid_deploy_groups = set(service_deploy_groups)

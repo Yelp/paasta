@@ -346,12 +346,9 @@ def format_task_list(tasks, list_title, table_header, get_short_task_id, format_
     :param tasks: List of tasks as returned by get_*_tasks_from_active_frameworks.
     :param list_title: 'Running Tasks:' or 'Non-Running Tasks'.
     :param table_header: List of column names used in the tasks table.
-    :param get_short_task_id: A function which given a
-                              task_id returns a short task_id suitable for
-                              printing.
+    :param get_short_task_id: A function which given a task_id returns a short task_id suitable for printing.
     :param format_task_row: Formatting function, works on a task and a get_short_task_id function.
-    :param tail_stdstreams: If True, also display the stdout/stderr tail,
-                            as obtained from the Mesos sandbox.
+    :param tail_stdstreams: If True, also display the stdout/stderr tail, as obtained from the Mesos sandbox.
     :param grey: If True, the list will be made less visually prominent.
     :return output: Formatted output (list of output lines).
     """

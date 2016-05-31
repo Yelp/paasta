@@ -994,7 +994,7 @@ def decompose_job_id(job_id, spacer=SPACER):
 
     :param job_id: The composed id of the job/app
     :returns: A tuple (service name, instance, git hash, config hash) that
-    comprise the job_id
+        comprise the job_id
     """
     decomposed = job_id.split(spacer)
     if len(decomposed) == 2:
