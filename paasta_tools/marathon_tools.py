@@ -1055,7 +1055,7 @@ def kill_task(client, app_id, task_id, scale):
 def kill_given_tasks(client, task_ids, scale):
     """Wrapper to the official kill_given_tasks method that is tolerant of errors"""
     try:
-        return client.kill_given_tasks(task_ids=task_ids, scale=scale)
+        return client.kill_given_tasks(task_ids=task_ids, scale=scale, force=True)
     except MarathonHttpError as e:
         # Marathon's interface is always async, so it is possible for you to see
         # a task in the interface and kill it, yet by the time it tries to kill
