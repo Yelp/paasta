@@ -137,6 +137,7 @@ class TestChronosTools:
 
     def test_load_chronos_config_bad(self):
         from_file = {}
+        expected = {}
         file_mock = mock.MagicMock(spec=file)
         with contextlib.nested(
             mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
@@ -149,9 +150,7 @@ class TestChronosTools:
             isdir_patch,
             access_patch,
         ):
-            with raises(chronos_tools.ChronosNotConfigured) as excinfo:
-                chronos_tools.load_chronos_config()
-            assert str(excinfo.value) == "Could not find chronos_config in configuration directory"
+            assert chronos_tools.load_chronos_config() == expected
 
     def test_get_chronos_client(self):
         with contextlib.nested(

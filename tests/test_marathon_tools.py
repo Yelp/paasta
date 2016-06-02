@@ -262,6 +262,7 @@ class TestMarathonTools:
             json_patch.assert_called_with(file_mock.__enter__())
 
     def test_load_marathon_config_path_dne(self):
+        expected = {}
         with contextlib.nested(
             mock.patch('paasta_tools.marathon_tools.open', create=True, side_effect=IOError(2, 'a', 'b')),
             mock.patch('os.path.isdir', autospec=True, return_value=True),
@@ -271,9 +272,7 @@ class TestMarathonTools:
             isdir_patch,
             access_patch,
         ):
-            with raises(marathon_tools.PaastaNotConfiguredError) as excinfo:
-                marathon_tools.load_marathon_config()
-            assert str(excinfo.value) == "Could not find marathon_config in configuration directory: /etc/paasta/"
+            assert marathon_tools.load_marathon_config() == expected
 
     def test_get_all_namespaces_for_service(self):
         name = 'vvvvvv'
