@@ -74,7 +74,8 @@ def get_num_masters(state):
 
 
 def get_mesos_cpu_status(metrics):
-    """Takes in the mesos metrics and analyzes them, returning the status
+    """Takes in the mesos metrics and analyzes them, returning the status.
+
     :param metrics: mesos metrics dictionary
     :returns: Tuple of the output array and is_ok bool
     """
@@ -86,7 +87,8 @@ def get_mesos_cpu_status(metrics):
 
 
 def get_mesos_disk_status(metrics):
-    """Takes in the mesos metrics and analyzes them, returning the status
+    """Takes in the mesos metrics and analyzes them, returning the status.
+
     :param metrics: mesos metrics dictionary
     :returns: Tuple of the output array and is_ok bool
     """
@@ -103,9 +105,9 @@ def filter_mesos_state_metrics(dictionary):
 
 
 def healthcheck_result_for_resource_utilization(resource_utilization, threshold):
-    """
-    Given a resource data dict, assert that cpu
+    """ Given a resource data dict, assert that cpu
     data is ok.
+
     :param resource_utilization: the resource_utilization tuple to check
     :returns: a HealthCheckResult
     """
@@ -266,6 +268,7 @@ def assert_quorum_size(state):
 def key_func_for_attribute(attribute):
     """ Return a closure that given a slave, will return the value of a specific
     attribute.
+
     :param attribute: the attribute to inspect in the slave
     :returns: a closure, which takes a slave and returns the value of an attribute
     """
@@ -289,8 +292,7 @@ def group_slaves_by_key_func(key_func, slaves):
 
 
 def calculate_resource_utilization_for_slaves(slaves, tasks):
-    """
-    Given a list of slaves and a list of tasks, calculate the total available
+    """ Given a list of slaves and a list of tasks, calculate the total available
     resource available in that list of slaves, and the resources consumed by tasks
     running on those slaves.
 
@@ -322,25 +324,30 @@ def calculate_resource_utilization_for_slaves(slaves, tasks):
 
 
 def filter_tasks_for_slaves(slaves, tasks):
-    """
-    Given a list of tasks and a list of slaves, return a filtered
+    """ Given a list of slaves and a list of tasks, return a filtered
     list of tasks, where those returned belong to slaves in the list of
     slaves
+
+    :param slaves: the list of slaves which the tasks provided should be
+    running on.
+    :param tasks: the tasks to filter :returns: a list of tasks,
+    identical to that provided by the tasks param, but with only those where
+    the task is running on one of the provided slaves included.
     """
     slave_ids = [slave['id'] for slave in slaves]
     return [task for task in tasks if task['slave_id'] in slave_ids]
 
 
 def get_resource_utilization_by_grouping(grouping_func, mesos_state):
-    """
-    Given mesos state and an attribute, calculate resource utilization
-    for each value of a given attribute.
+    """ Given a function used to group slaves and mesos state, calculate
+    resource utilization for each value of a given attribute.
 
+    :grouping_func: a function that given a slave, will return the value of an
+    attribtue to group by.
     :param mesos_state: the mesos state
-    :param attribute: the attribute to group slaves by
-    :returns: a dict of {attribute_value: resource_usage}, where resource usage is
-    the dict returned by ``calculate_resource_utilization_for_slaves`` for slaves
-    grouped by attribute value.
+    :returns: a dict of {attribute_value: resource_usage}, where resource usage
+    is the dict returned by ``calculate_resource_utilization_for_slaves`` for
+    slaves grouped by attribute value.
     """
     slaves = mesos_state.get('slaves', [])
     if not has_registered_slaves(mesos_state):
