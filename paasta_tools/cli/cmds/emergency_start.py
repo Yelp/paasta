@@ -74,12 +74,11 @@ def paasta_emergency_start(args):
     system_paasta_config = load_system_paasta_config()
     service = figure_out_service_name(args, soa_dir=args.soa_dir)
     print "Performing an emergency start on %s..." % compose_job_id(service, args.instance)
-    output = execute_paasta_serviceinit_on_remote_master('start', args.cluster, service, args.instance)
     output = execute_paasta_serviceinit_on_remote_master(
         subcommand='start',
         cluster=args.cluster,
         service=service,
-        instance=args.instance,
+        instances=args.instance,
         system_paasta_config=system_paasta_config
     )
     print "%s" % "\n".join(paasta_emergency_start.__doc__.splitlines()[-8:])
