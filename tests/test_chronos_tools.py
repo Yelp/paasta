@@ -20,7 +20,6 @@ from mock import Mock
 from pytest import raises
 
 from paasta_tools import chronos_tools
-from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import SystemPaastaConfig
 
 
@@ -150,9 +149,9 @@ class TestChronosTools:
             isdir_patch,
             access_patch,
         ):
-            with raises(PaastaNotConfiguredError) as excinfo:
+            with raises(chronos_tools.ChronosNotConfigured) as excinfo:
                 chronos_tools.load_chronos_config()
-            assert str(excinfo.value) == "Could not find chronos_config in configuration directory: /etc/paasta/"
+            assert str(excinfo.value) == "Could not find chronos_config in configuration directory"
 
     def test_get_chronos_client(self):
         with contextlib.nested(

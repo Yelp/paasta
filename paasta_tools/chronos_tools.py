@@ -38,6 +38,7 @@ from paasta_tools.utils import InvalidJobNameError
 from paasta_tools.utils import load_deployments_json
 from paasta_tools.utils import load_system_paasta_config
 from paasta_tools.utils import PaastaColors
+from paasta_tools.utils import PaastaNotConfiguredError
 from paasta_tools.utils import timeout
 
 
@@ -108,7 +109,10 @@ class ChronosConfig(dict):
 
 
 def load_chronos_config():
-    return ChronosConfig(load_system_paasta_config().get_chronos_config())
+    try:
+        return ChronosConfig(load_system_paasta_config().get_chronos_config())
+    except PaastaNotConfiguredError:
+        raise ChronosNotConfigured("Could not find chronos_config in configuration directory")
 
 
 def get_chronos_client(config):
