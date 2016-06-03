@@ -16,9 +16,7 @@ lowercase. (non alphanumeric lowercase characters are ignored)
 **Note:** All values in this file except the following will cause PaaSTA to
 `bounce <workflow.html#bouncing>`_ the service:
 
-.. runblock:: pycon
-
-    >>> from paasta_tools.marathon_tools import CONFIG_HASH_BLACKLIST; print CONFIG_HASH_BLACKLIST
+.. program-output:: python -c "from paasta_tools.marathon_tools import CONFIG_HASH_BLACKLIST; print ', '.join(CONFIG_HASH_BLACKLIST)"
 
 Top level keys are instancenames, e.g. ``main`` and ``canary``. Each
 instance MAY have:
