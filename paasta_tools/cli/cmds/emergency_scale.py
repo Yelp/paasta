@@ -83,7 +83,14 @@ def paasta_emergency_scale(args):
     service = figure_out_service_name(args, soa_dir=args.yelpsoa_config_root)
     system_paasta_config = load_system_paasta_config()
     print "Performing an emergency scale on %s..." % compose_job_id(service, args.instance)
-    output = execute_paasta_serviceinit_on_remote_master('scale', args.cluster, service, args.instance,
-                                                         system_paasta_config, app_id=args.appid, delta=args.delta)
+    output = execute_paasta_serviceinit_on_remote_master(
+        subcommand='scale',
+        cluster=args.cluster,
+        service=args.service,
+        instances=args.instance,
+        system_paasta_config=system_paasta_config,
+        app_id=args.appid,
+        delta=args.delta
+    )
     print "Output: %s" % output
     print "%s" % "\n".join(paasta_emergency_scale.__doc__.splitlines()[-7:])
