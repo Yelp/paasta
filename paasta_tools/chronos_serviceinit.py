@@ -37,8 +37,9 @@ def start_chronos_job(service, instance, job_id, client, cluster, job_config, co
     """
     name = PaastaColors.cyan(job_id)
 
-    # The job should be run immediately as long as the job is not disabled via the 'disabled' key in soa-configs.
-    if job_config.get_disabled():
+    # The job should be run immediately as long as the job is not disabled via the 'disabled' key in soa-configs or has
+    # been previously stopped.
+    if complete_job_config['disabled']:
         print PaastaColors.red("You cannot emergency start a disabled job. Run `paasta start` first.")
     else:
         log_reason = PaastaColors.red("EmergencyStart") if emergency else "Brutal bounce"

@@ -56,14 +56,13 @@ def test_start_chronos_job():
         mock_client.run.assert_called_once_with(job_id)
 
 
-def test_start_chronos_job_does_not_run_disabled_job():
+def test_start_chronos_job_does_not_run_disabled_or_stopped_job():
     service = 'my_service'
     instance = 'my_instance'
     job_id = 'my_job_id'
     cluster = 'my_cluster'
     old_schedule = 'R/2015-03-25T19:36:35Z/PT5M'
-    job_soa_config = mock.Mock(get_disabled=mock.Mock(return_value=True),
-                               get_desired_state=mock.Mock(return_value="start"))
+    job_soa_config = mock.Mock()
     job_config = {'beep': 'boop', 'disabled': True, 'schedule': old_schedule}
     with contextlib.nested(
         mock.patch('paasta_tools.chronos_serviceinit.chronos_tools.chronos.ChronosClient', autospec=True),
