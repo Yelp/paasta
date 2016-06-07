@@ -805,6 +805,9 @@ class TestMarathonTools:
                 "maxConsecutiveFailures": 3
             },
         ]
+        fake_period = 200000
+        fake_burst = 200
+        fake_cpu_quota = fake_cpus * fake_period * (100 + fake_burst) / 100
 
         expected_conf = {
             'id': mock.ANY,
@@ -820,9 +823,9 @@ class TestMarathonTools:
                         },
                     ],
                     'parameters': [
-                        {
-                            'key': 'memory-swap', 'value': "%sm" % int(fake_mem)
-                        }
+                        {'key': 'memory-swap', 'value': "%sm" % int(fake_mem)},
+                        {"key": "cpu-period", "value": fake_period},
+                        {"key": "cpu-quota", "value": fake_cpu_quota},
                     ]
                 },
                 'type': 'DOCKER',
@@ -854,6 +857,8 @@ class TestMarathonTools:
                 'instances': fake_instances,
                 'cmd': fake_cmd,
                 'args': fake_args,
+                'cfs_period_us': fake_period,
+                'cpu_burst_pct': fake_burst,
                 'healthcheck_grace_period_seconds': 3,
                 'healthcheck_interval_seconds': 10,
                 'healthcheck_timeout_seconds': 10,
@@ -884,6 +889,26 @@ class TestMarathonTools:
 
             # Assert that the complete config can be inserted into the MarathonApp model
             assert MarathonApp(**actual)
+
+    def test_zero_cpu_burst(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={'cpu_burst_pct': 0, 'cpus': 1},
+            branch_dict={},
+        )
+        assert fake_conf.get_cpu_quota() == 100000
+
+    def test_full_cpu_burst(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={'cpu_burst_pct': 100, 'cpus': 1},
+            branch_dict={},
+        )
+        assert fake_conf.get_cpu_quota() == 200000
 
     def test_instances_is_zero_when_desired_state_is_stop(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
@@ -2002,7 +2027,11 @@ def test_format_marathon_app_dict_no_smartstack():
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
                     'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE',
-                    'parameters': [{'key': 'memory-swap', 'value': '1024m'}]
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1024m'},
+                        {"key": "cpu-period", "value": 100000},
+                        {"key": "cpu-quota", "value": 50000},
+                    ]
                 },
                 'type': 'DOCKER',
                 'volumes': [],
@@ -2066,7 +2095,11 @@ def test_format_marathon_app_dict_with_smartstack():
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
                     'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE',
-                    'parameters': [{'key': 'memory-swap', 'value': '1024m'}]
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1024m'},
+                        {"key": "cpu-period", "value": 100000},
+                        {"key": "cpu-quota", "value": 50000},
+                    ]
                 },
                 'type': 'DOCKER',
                 'volumes': [],
@@ -2196,7 +2229,11 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                     'portMappings': [{'protocol': 'tcp', 'containerPort': 8888, 'hostPort': 0}],
                     'image': 'fake_docker_registry:443/abcdef',
                     'network': 'BRIDGE',
-                    'parameters': [{'key': 'memory-swap', 'value': '1024m'}]
+                    'parameters': [
+                        {'key': 'memory-swap', 'value': '1024m'},
+                        {"key": "cpu-period", "value": 100000},
+                        {"key": "cpu-quota", "value": 50000},
+                    ]
                 },
                 'type': 'DOCKER',
                 'volumes': fake_system_volumes + fake_extra_volumes,
