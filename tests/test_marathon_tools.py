@@ -824,8 +824,8 @@ class TestMarathonTools:
                     ],
                     'parameters': [
                         {'key': 'memory-swap', 'value': "%sm" % int(fake_mem)},
-                        {"key": "cpu-period", "value": fake_period},
-                        {"key": "cpu-quota", "value": fake_cpu_quota},
+                        {"key": "cpu-period", "value": "%s" % fake_period},
+                        {"key": "cpu-quota", "value": "%s" % fake_cpu_quota},
                     ]
                 },
                 'type': 'DOCKER',
@@ -2029,8 +2029,8 @@ def test_format_marathon_app_dict_no_smartstack():
                     'network': 'BRIDGE',
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1024m'},
-                        {"key": "cpu-period", "value": 100000},
-                        {"key": "cpu-quota", "value": 50000},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '50000.0'},
                     ]
                 },
                 'type': 'DOCKER',
@@ -2097,8 +2097,8 @@ def test_format_marathon_app_dict_with_smartstack():
                     'network': 'BRIDGE',
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1024m'},
-                        {"key": "cpu-period", "value": 100000},
-                        {"key": "cpu-quota", "value": 50000},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '50000.0'},
                     ]
                 },
                 'type': 'DOCKER',
@@ -2231,8 +2231,8 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                     'network': 'BRIDGE',
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1024m'},
-                        {"key": "cpu-period", "value": 100000},
-                        {"key": "cpu-quota", "value": 50000},
+                        {"key": "cpu-period", "value": '100000'},
+                        {"key": "cpu-quota", "value": '50000.0'},
                     ]
                 },
                 'type': 'DOCKER',
