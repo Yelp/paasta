@@ -630,7 +630,9 @@ def format_log_line(level, cluster, service, instance, component, line, timestam
     return message
 
 
-def get_log_name_for_service(service):
+def get_log_name_for_service(service, prefix=None):
+    if prefix:
+        return 'stream_paasta_%s_%s' % (prefix, service)
     return 'stream_paasta_%s' % service
 
 
