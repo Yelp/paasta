@@ -113,45 +113,6 @@ class TestChronosTools:
         with raises(chronos_tools.ChronosNotConfigured):
             fake_config.get_url()
 
-    def test_load_chronos_config_good(self):
-        expected = {'foo': 'bar'}
-        from_file = {'chronos_config': {'foo': 'bar'}}
-        file_mock = mock.MagicMock(spec=file)
-        with contextlib.nested(
-            mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-            mock.patch('json.load', autospec=True, return_value=from_file),
-            mock.patch('os.path.isdir', autospec=True, return_value=True),
-            mock.patch('os.access', autospec=True, return_value=True),
-            mock.patch('paasta_tools.utils.get_readable_files_in_glob', autospec=True,
-                       return_value=['/some/fake/dir/some_file.json']),
-        ) as (
-            open_file_patch,
-            json_patch,
-            isdir_patch,
-            access_patch,
-            get_readable_files_patch,
-        ):
-            assert chronos_tools.load_chronos_config() == expected
-            open_file_patch.assert_called()
-            json_patch.assert_called_with(file_mock.__enter__())
-
-    def test_load_chronos_config_bad(self):
-        from_file = {}
-        expected = {}
-        file_mock = mock.MagicMock(spec=file)
-        with contextlib.nested(
-            mock.patch('paasta_tools.utils.open', create=True, return_value=file_mock),
-            mock.patch('json.load', autospec=True, return_value=from_file),
-            mock.patch('os.path.isdir', autospec=True, return_value=True),
-            mock.patch('os.access', autospec=True, return_value=True),
-        ) as (
-            open_patch,
-            json_patch,
-            isdir_patch,
-            access_patch,
-        ):
-            assert chronos_tools.load_chronos_config() == expected
-
     def test_get_chronos_client(self):
         with contextlib.nested(
             mock.patch('chronos.connect', autospec=True),
