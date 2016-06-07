@@ -390,8 +390,8 @@ class MarathonServiceConfig(InstanceConfig):
                     'network': net,
                     "parameters": [
                         {"key": "memory-swap", "value": self.get_mem_swap()},
-                        {"key": "cpu-period", "value": self.get_cpu_period()},
-                        {"key": "cpu-quota", "value": self.get_cpu_quota()},
+                        {"key": "cpu-period", "value": "%s" % self.get_cpu_period()},
+                        {"key": "cpu-quota", "value": "%s" % self.get_cpu_quota()},
                     ]
                 },
                 'type': 'DOCKER',
