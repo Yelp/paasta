@@ -350,29 +350,25 @@ def crossover_bounce(
     See the docstring for brutal_bounce() for parameters and return value.
     """
 
-    assert margin_factor >= 1
+    assert margin_factor > 0
+    assert margin_factor <= 1
 
-    if not new_app_running:
-        return {
-            "create_app": True,
-            "tasks_to_drain": set(),
-        }
-    else:
-        happy_count = int(len(happy_new_tasks) * margin_factor)
-        needed_count = max(new_config['instances'] - happy_count, 0)
+    needed_count = max(int(new_config['instances'] * margin_factor) -
+                       len(happy_new_tasks), 0)
 
-        old_tasks = []
-        for app, tasks in old_app_live_happy_tasks.items():
-            for task in tasks:
-                old_tasks.append(task)
+    old_tasks = []
+    for app, tasks in old_app_live_happy_tasks.items():
+        for task in tasks:
+            old_tasks.append(task)
 
-        for app, tasks in old_app_live_unhappy_tasks.items():
-            for task in tasks:
-                old_tasks.append(task)
-        return {
-            "create_app": False,
-            "tasks_to_drain": set(set(old_tasks[needed_count:])),
-        }
+    for app, tasks in old_app_live_unhappy_tasks.items():
+        for task in tasks:
+            old_tasks.append(task)
+
+    return {
+        "create_app": not new_app_running,
+        "tasks_to_drain": set(old_tasks[needed_count:]),
+    }
 
 
 @register_bounce_method('downthenup')

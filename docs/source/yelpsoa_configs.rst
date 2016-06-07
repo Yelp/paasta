@@ -74,11 +74,9 @@ instance MAY have:
       running before we consider it healthy (Disabled by default)
 
   * ``bounce_margin_factor``: proportionally increase the number of old instances
-    to be drained when the crossover bounce method is used. For example,
-    when a new app has successfully launched 100 instances, bounce_margin_factor = 1.05
-    will result in 100 * 1.05 = 105 of old instances to be drained.
+    to be drained when the crossover bounce method is used.
+    0 < bounce_margin_factor <= 1. Defaults to 1 (no influence).
     This allows bounces to proceed in the face of a percentage of failures.
-    Must be bigger or equal to 1. Defaults to 1.
     It doesn’t affect any other bounce method but crossover.
 
   * ``drain_method``: Controls the drain method; see `drain_lib

@@ -61,7 +61,6 @@ class TestSetupMarathonJob:
     fake_service_namespace_config = marathon_tools.ServiceNamespaceConfig({
         'mode': 'http'
     })
-    fake_bounce_margin_factor = 1.5
 
     def test_main_success(self):
         fake_client = mock.MagicMock()
@@ -942,7 +941,7 @@ class TestSetupMarathonJob:
         fake_bounce = 'trampoline'
         fake_drain_method = 'noop'
         fake_drain_method_params = {}
-        fake_bounce_margin_factor = 1.5
+        fake_bounce_margin_factor = 0.5
         with contextlib.nested(
             mock.patch(
                 'paasta_tools.setup_marathon_job.deploy_service',
