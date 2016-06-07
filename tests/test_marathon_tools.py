@@ -890,6 +890,26 @@ class TestMarathonTools:
             # Assert that the complete config can be inserted into the MarathonApp model
             assert MarathonApp(**actual)
 
+    def test_zero_cpu_burst(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={'cpu_burst_pct': 0, 'cpus': 1},
+            branch_dict={},
+        )
+        assert fake_conf.get_cpu_quota() == 100000
+
+    def test_full_cpu_burst(self):
+        fake_conf = marathon_tools.MarathonServiceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={'cpu_burst_pct': 100, 'cpus': 1},
+            branch_dict={},
+        )
+        assert fake_conf.get_cpu_quota() == 200000
+
     def test_instances_is_zero_when_desired_state_is_stop(self):
         fake_conf = marathon_tools.MarathonServiceConfig(
             service='fake_name',
