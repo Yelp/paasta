@@ -406,9 +406,9 @@ def get_docker_run_cmd(memory, random_port, container_name, volumes, env, intera
     cmd.append('%s' % docker_hash)
     if command:
         cmd.extend((
-            'sh', '-c',
-            ' '.join(pipes.quote(part) for part in command)
+            'sh', '-c'
         ))
+        cmd.append(pipes.quote(' '.join(command)))
     return cmd
 
 
@@ -517,8 +517,7 @@ def run_docker_container(
         net=net,
         docker_params=docker_params,
     )
-    # http://stackoverflow.com/questions/4748344/whats-the-reverse-of-shlex-split
-    joined_docker_run_cmd = ' '.join(pipes.quote(word) for word in docker_run_cmd)
+    joined_docker_run_cmd = ' '.join(docker_run_cmd)
     healthcheck_mode, healthcheck_data = get_healthcheck_for_instance(
         service, instance, instance_config, random_port, soa_dir=soa_dir)
 
@@ -689,12 +688,12 @@ def configure_and_run_docker_container(
     if args.interactive is True and args.cmd is None:
         command = ['bash']
     elif args.cmd:
-        command = shlex.split(args.cmd)
+        command = shlex.split(args.cmd, posix=False)
     else:
         command_from_config = instance_config.get_cmd()
         if command_from_config:
             command_modifier = command_function_for_framework(instance_type)
-            command = shlex.split(command_modifier(command_from_config))
+            command = shlex.split(command_modifier(command_from_config), posix=False)
         else:
             command = instance_config.get_args()
 
