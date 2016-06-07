@@ -1409,3 +1409,14 @@ def test_deep_merge_dictionaries():
         'overwriting_dict': {'test': 'value'},
     }
     assert utils.deep_merge_dictionaries(overrides, defaults) == expected
+
+
+def test_function_composition():
+    def func_one(count):
+        return count + 1
+
+    def func_two(count):
+        return count + 1
+
+    composed_func = utils.compose(func_one, func_two)
+    assert composed_func(0) == 2

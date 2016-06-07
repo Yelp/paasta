@@ -33,6 +33,7 @@ import signal
 import sys
 import tempfile
 import threading
+from collections import OrderedDict
 from fnmatch import fnmatch
 from functools import wraps
 from subprocess import PIPE
@@ -325,6 +326,12 @@ def validate_service_instance(service, instance, cluster, soa_dir):
         sys.exit(3)
 
 
+def compose(func_one, func_two):
+    def composed(*args, **kwargs):
+        return func_one(func_two(*args, **kwargs))
+    return composed
+
+
 class PaastaColors:
 
     """Collection of static variables and methods to assist in coloring text."""
@@ -418,65 +425,74 @@ class PaastaColors:
         return PaastaColors.color_text(PaastaColors.DEFAULT, text)
 
 
-LOG_COMPONENTS = {
-    'build': {
+LOG_COMPONENTS = OrderedDict([
+    ('build', {
         'color': PaastaColors.blue,
         'help': 'Jenkins build jobs output, like the itest, promotion, security checks, etc.',
         'command': 'NA - TODO: tee jenkins build steps into scribe PAASTA-201',
         'source_env': 'devc',
-    },
-    'deploy': {
+    }),
+    ('deploy', {
         'color': PaastaColors.cyan,
         'help': 'Output from the paasta deploy code. (setup_marathon_job, bounces, etc)',
         'command': 'NA - TODO: tee deploy logs into scribe PAASTA-201',
-    },
-    'monitoring': {
+    }),
+    ('monitoring', {
         'color': PaastaColors.green,
         'help': 'Logs from Sensu checks for the service',
         'command': 'NA - TODO log mesos healthcheck and sensu stuff.',
-    },
-    'marathon': {
+    }),
+    ('marathon', {
         'color': PaastaColors.magenta,
         'help': 'Logs from Marathon for the service',
         'command': 'NA - TODO log marathon stuff.',
-    },
-    'chronos': {
-        'color': PaastaColors.magenta,
+    }),
+    ('chronos', {
+        'color': PaastaColors.red,
         'help': 'Logs from Chronos for the service',
         'command': 'NA - TODO log chronos stuff.',
-    },
+    }),
+    ('app_output', {
+        'color': compose(PaastaColors.yellow, PaastaColors.bold),
+        'help': 'Stderr and stdout of the actual process spawned by Mesos. '
+                'Convenience alias for both the stdout and stderr components',
+        'command': 'NA - PAASTA-78',
+    }),
+    ('stdout', {
+        'color': PaastaColors.yellow,
+        'help': 'Stdout from the process spawned by Mesos.',
+    }),
+    ('stderr', {
+        'color': PaastaColors.yellow,
+        'help': 'Stderr from the process spawned by Mesos.',
+    }),
     # I'm leaving these planned components here since they provide some hints
     # about where we want to go. See PAASTA-78.
     #
     # But I'm commenting them out so they don't delude users into believing we
     # can expose logs that we cannot actually expose. See PAASTA-927.
     #
-    # 'app_output': {
-    #     'color': PaastaColors.bold,
-    #     'help': 'Stderr and stdout of the actual process spawned by Mesos',
-    #     'command': 'NA - PAASTA-78',
-    # },
-    # 'app_request': {
+    # ('app_request', {
     #     'color': PaastaColors.bold,
     #     'help': 'The request log for the service. Defaults to "service_NAME_requests"',
     #     'command': 'scribe_reader -e ENV -f service_example_happyhour_requests',
-    # },
-    # 'app_errors': {
+    # }),
+    # ('app_errors', {
     #     'color': PaastaColors.red,
     #     'help': 'Application error log, defaults to "stream_service_NAME_errors"',
     #     'command': 'scribe_reader -e ENV -f stream_service_SERVICE_errors',
-    # },
-    # 'lb_requests': {
+    # }),
+    # ('lb_requests', {
     #     'color': PaastaColors.bold,
     #     'help': 'All requests from Smartstack haproxy',
     #     'command': 'NA - TODO: SRV-1130',
-    # },
-    # 'lb_errors': {
+    # }),
+    # ('lb_errors', {
     #     'color': PaastaColors.red,
     #     'help': 'Logs from Smartstack haproxy that have 400-500 error codes',
     #     'command': 'scribereader -e ENV -f stream_service_errors | grep SERVICE.instance',
-    # },
-}
+    # }),
+])
 
 
 class NoSuchLogComponent(Exception):

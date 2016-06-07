@@ -25,6 +25,7 @@ try:
     from paasta_tools.cli.cmds import logs
 except ImportError:
     pass
+from paasta_tools.cli.cli import parse_args
 from paasta_tools.utils import ANY_CLUSTER
 from paasta_tools.utils import format_log_line
 try:
@@ -157,6 +158,14 @@ def test_marathon_log_line_passes_filter_false_when_service_name_missing():
         assert not logs.marathon_log_line_passes_filter(line, levels, service, components, clusters)
 
 
+def test_marathon_log_line_passes_filter_fails_invalid_json():
+    assert not logs.marathon_log_line_passes_filter("{ abcd }", None, None, None, None)
+
+
+def test_chronos_log_line_passes_filter_fails_invalid_json():
+    assert not logs.chronos_log_line_passes_filter("{ abcd }", None, None, None, None)
+
+
 def test_chronos_log_line_passes_filter_true_when_service_name_in_string():
     service = 'fake_service'
     levels = []
@@ -212,6 +221,10 @@ def test_extract_utc_timestamp_from_log_line_when_invalid_date_format():
     assert not logs.extract_utc_timestamp_from_log_line(line)
 
 
+def test_parse_marathon_log_line_fail():
+    assert '' == logs.parse_marathon_log_line("fake timestamp", None, None)
+
+
 def test_parse_marathon_log_line_ok():
     fake_timestamp = '2015-07-22T10:38:46-07:00'
     fake_utc_timestamp = '2015-07-22T17:38:46.000000'
@@ -229,6 +242,10 @@ def test_parse_marathon_log_line_ok():
         'message': line
     })
     assert sorted(logs.parse_marathon_log_line(line, clusters, fake_service)) == sorted(expected)
+
+
+def test_parse_chronos_log_line_fail():
+    assert '' == logs.parse_chronos_log_line("fake timestamp", None, None)
 
 
 def test_parse_chronos_log_line_ok():
@@ -755,3 +772,155 @@ def test_get_log_reader():
 
         actual = logs.get_log_reader()
         assert isinstance(actual, logs.ScribeLogReader)
+
+
+def test_generate_start_end_time():
+    start_time, end_time = logs.generate_start_end_time()
+
+    # Default for no args, test that there's a 30 minute difference
+    time_delta = end_time - start_time
+
+    # Do a loose comparison to make this test less time sensitive.
+    # On slower systems, doing a datetime.datetime.utcnow() might
+    # take a few milliseconds itself, doing a straight up == comparison
+    # would not work
+    actual_time = time_delta.total_seconds()
+    ideal_time = 30 * 60
+
+    assert abs(actual_time - ideal_time) < 0.1
+
+
+def test_generate_start_end_time_human_durations():
+    start_time, end_time = logs.generate_start_end_time("35m", "25m")
+
+    time_delta = end_time - start_time
+
+    actual_time = time_delta.total_seconds()
+    ideal_time = 10 * 60
+
+    # See note on the test above why this is not a simple == comparison
+    assert abs(actual_time - ideal_time) < 0.1
+
+
+def test_generate_start_end_time_invalid():
+    # Try giving a start time that's later than the end time
+    try:
+        logs.generate_start_end_time("2016-06-06T20:26:49+00:00", "2016-06-06T20:25:49+00:00")
+        assert False
+    except ValueError:
+        assert True
+
+
+def test_generate_start_end_time_invalid_from():
+    try:
+        logs.generate_start_end_time("invalid", "2016-06-06T20:25:49+00:00")
+        assert False
+    except ValueError:
+        assert True
+
+
+def test_generate_start_end_time_invalid_to():
+    try:
+        logs.generate_start_end_time("2016-06-06T20:25:49+00:00", "invalid")
+        assert False
+    except ValueError:
+        assert True
+
+
+def test_validate_filtering_args_with_valid_inputs():
+    fake_reader = logs.LogReader()
+    fake_reader.SUPPORTS_TAILING = True
+    fake_reader.SUPPORTS_LINE_COUNT = True
+    fake_reader.SUPPORTS_TIME = True
+    fake_reader.SUPPORTS_LINE_OFFSET = True
+
+    # No arguments, completely valid
+    args, _ = parse_args(["logs"])
+    assert logs.validate_filtering_args(args, fake_reader)
+    # Tailing
+    args, _ = parse_args(["logs", "--tail"])
+    assert logs.validate_filtering_args(args, fake_reader)
+    # Specify number of lines
+    args, _ = parse_args(["logs", "-l", "200"])
+    assert logs.validate_filtering_args(args, fake_reader)
+    # Specify number of lines and lines to offset by
+    args, _ = parse_args(["logs", "-l", "200", "-o", "23"])
+    assert logs.validate_filtering_args(args, fake_reader)
+    # Specify a time
+    args, _ = parse_args(["logs", "--from", "1w"])
+    assert logs.validate_filtering_args(args, fake_reader)
+
+
+def test_validate_filtering_args_with_invalid_inputs():
+    fake_reader = logs.LogReader()
+
+    fake_reader.SUPPORTS_TAILING = False
+    args, _ = parse_args(["logs", "--tail"])
+    assert not logs.validate_filtering_args(args, fake_reader)
+
+    fake_reader.SUPPORTS_TIME = False
+    args, _ = parse_args(["logs", "--from", "1w"])
+    assert not logs.validate_filtering_args(args, fake_reader)
+
+    fake_reader.SUPPORTS_LINE_COUNT = False
+    args, _ = parse_args(["logs", "-l", "200"])
+    assert not logs.validate_filtering_args(args, fake_reader)
+
+    fake_reader.SUPPORTS_LINE_OFFSET = False
+    args, _ = parse_args(["logs", "-o", "23"])
+    assert not logs.validate_filtering_args(args, fake_reader)
+
+    fake_reader.SUPPORTS_TAILING = True
+    fake_reader.SUPPORTS_LINE_COUNT = True
+    fake_reader.SUPPORTS_LINE_OFFSET = True
+    fake_reader.SUPPORTS_TIME = True
+
+    # Can't tail and specify lines at the same time
+    args, _ = parse_args(["logs", "-l", "200", "--tail"])
+    assert not logs.validate_filtering_args(args, fake_reader)
+
+    # Can't tail and specify time at the same time
+    args, _ = parse_args(["logs", "--tail", "--from", "1w"])
+    assert not logs.validate_filtering_args(args, fake_reader)
+
+    # Can't use both time and lines at the same time
+    args, _ = parse_args(["logs", "--from", "1w", "-l", "100"])
+    assert not logs.validate_filtering_args(args, fake_reader)
+
+
+def test_pick_default_log_mode():
+    with mock.patch('paasta_tools.cli.cmds.logs.LogReader.tail_logs') as tail_logs:
+        args, _ = parse_args(["logs"])
+
+        fake_reader = logs.LogReader()
+        fake_reader.SUPPORTS_TAILING = True
+
+        logs.pick_default_log_mode(args, fake_reader, service=None, levels=None, components=None, clusters=None)
+
+        # Only supports tailing so that's the one that should be used
+        assert tail_logs.call_count == 1
+
+    with mock.patch('paasta_tools.cli.cmds.logs.LogReader.print_logs_by_time') as logs_by_time:
+        args, _ = parse_args(["logs"])
+
+        fake_reader = logs.LogReader()
+        fake_reader.SUPPORTS_TAILING = True
+        fake_reader.SUPPORTS_TIME = True
+
+        logs.pick_default_log_mode(args, fake_reader, service=None, levels=None, components=None, clusters=None)
+
+        # Supports tailing and time, but time should be prioritized
+        assert logs_by_time.call_count == 1
+
+    with mock.patch('paasta_tools.cli.cmds.logs.LogReader.print_last_n_logs') as logs_by_lines:
+        args, _ = parse_args(["logs"])
+
+        fake_reader = logs.LogReader()
+        fake_reader.SUPPORTS_TAILING = True
+        fake_reader.SUPPORTS_TIME = True
+        fake_reader.SUPPORTS_LINE_COUNT = True
+
+        logs.pick_default_log_mode(args, fake_reader, service=None, levels=None, components=None, clusters=None)
+
+        # Supports tailing , time and line counts. Line counts should be prioritized
+        assert logs_by_lines.call_count == 1
