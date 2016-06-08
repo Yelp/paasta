@@ -891,7 +891,7 @@ class TestInstanceConfig:
         assert fake_conf.format_docker_parameters() == [
             {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "100000"},
-            {"key": "cpu-quota", "value": "200000"},
+            {"key": "cpu-quota", "value": "1000000"},
         ]
 
     def test_format_docker_parameters_non_default(self):

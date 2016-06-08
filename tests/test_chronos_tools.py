@@ -1156,7 +1156,7 @@ class TestChronosTools:
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1025m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '1100000'},
+                        {"key": "cpu-quota", "value": '5500000'},
                     ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
@@ -1252,7 +1252,7 @@ class TestChronosTools:
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1025m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '1100000'},
+                        {"key": "cpu-quota", "value": '5500000'},
                     ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
@@ -1315,7 +1315,7 @@ class TestChronosTools:
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1025m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '1100000'},
+                        {"key": "cpu-quota", "value": '5500000'},
                     ],
                 },
                 'uris': ['file:///root/.dockercfg', ],
@@ -1394,7 +1394,7 @@ class TestChronosTools:
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1025m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '1100000'},
+                        {"key": "cpu-quota", "value": '5500000'},
                     ],
                 },
                 'uris': ['file:///root/.dockercfg', ],

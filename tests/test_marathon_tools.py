@@ -2010,7 +2010,7 @@ def test_format_marathon_app_dict_no_smartstack():
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1024m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '50000'},
+                        {"key": "cpu-quota", "value": '250000'},
                     ]
                 },
                 'type': 'DOCKER',
@@ -2078,7 +2078,7 @@ def test_format_marathon_app_dict_with_smartstack():
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1024m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '50000'},
+                        {"key": "cpu-quota", "value": '250000'},
                     ]
                 },
                 'type': 'DOCKER',
@@ -2212,7 +2212,7 @@ def test_format_marathon_app_dict_utilizes_extra_volumes():
                     'parameters': [
                         {'key': 'memory-swap', 'value': '1024m'},
                         {"key": "cpu-period", "value": '100000'},
-                        {"key": "cpu-quota", "value": '50000'},
+                        {"key": "cpu-quota", "value": '250000'},
                     ]
                 },
                 'type': 'DOCKER',
