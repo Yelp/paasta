@@ -19,6 +19,7 @@ import re
 import sys
 from socket import gaierror
 from socket import gethostbyname_ex
+from subprocess import CalledProcessError
 
 from service_configuration_lib import read_services_configuration
 
@@ -507,7 +508,9 @@ def run_paasta_serviceinit(subcommand, master, service, instances, cluster, stre
     command_without_empty_strings = [part for part in command_parts if part != '']
     command = ' '.join(command_without_empty_strings)
     log.debug("Running Command: %s" % command)
-    _, output = _run(command, timeout=timeout, stream=stream)
+    return_code, output = _run(command, timeout=timeout, stream=stream)
+    if return_code != 0:
+        raise CalledProcessError(return_code, command, output)
     return output
 
 
