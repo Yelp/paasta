@@ -29,3 +29,6 @@ def after_scenario(context, scenario):
         docker_client = get_docker_client()
         docker_client.stop(container=context.running_container_id)
         docker_client.remove_container(container=context.running_container_id)
+    if getattr(context, "fake_http_server", None):
+        context.fake_http_server.shutdown()
+        context.fake_http_server = None

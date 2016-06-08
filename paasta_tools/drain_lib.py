@@ -196,3 +196,89 @@ class HacheckDrainMethod(DrainMethod):
             return False
         else:
             return info.get("since", 0) < (time.time() - self.delay)
+
+
+class StatusCodeNotAcceptableException(Exception):
+    pass
+
+
+@register_drain_method('http')
+class HTTPDrainMethod(DrainMethod):
+    """This drain policy issues arbitrary HTTP calls to arbitrary URLs specified by the parameters. The URLs are
+    specified as format strings, and will have variables such as {host}, {port}, etc. filled in."""
+
+    def __init__(self, service, instance, nerve_ns, drain, stop_draining, is_draining, is_safe_to_kill):
+        super(HTTPDrainMethod, self).__init__(service, instance, nerve_ns)
+        self.drain_url_spec = drain
+        self.stop_draining_url_spec = stop_draining
+        self.is_draining_url_spec = is_draining
+        self.is_safe_to_kill_url_spec = is_safe_to_kill
+
+    def get_format_params(self, task):
+        return {
+            'host': task.host,
+            'port': task.ports[0],
+            'service': self.service,
+            'instance': self.instance,
+            'nerve_ns': self.nerve_ns,
+        }
+
+    def format_url(self, url_format, format_params):
+        return url_format.format(**format_params)
+
+    def parse_success_codes(self, success_codes_str):
+        """Expand a string like 200-399,407-409,500 to a set containing all the integers in between."""
+        acceptable_response_codes = set()
+        for series_str in success_codes_str.split(','):
+            if '-' in series_str:
+                start, end = series_str.split('-')
+                acceptable_response_codes.update(range(int(start), int(end) + 1))
+            else:
+                acceptable_response_codes.add(int(series_str))
+        return acceptable_response_codes
+
+    def check_response_code(self, status_code, success_codes_str):
+        acceptable_response_codes = self.parse_success_codes(success_codes_str)
+        if status_code not in acceptable_response_codes:
+            raise StatusCodeNotAcceptableException("Status code %d not in %s", status_code, success_codes_str)
+
+    def issue_request(self, url_spec, task):
+        """Issue a request to the URL specified by url_spec regarding the task given."""
+        format_params = self.get_format_params(task)
+        url = self.format_url(url_spec['url_format'], format_params)
+        method = url_spec.get('method', 'GET').upper()
+
+        requests_func = {
+            'GET': requests.get,
+            'POST': requests.post,
+            'PUT': requests.put,
+            'PATCH': requests.patch,
+            'DELETE': requests.delete,
+            'OPTIONS': requests.options,
+            'HEAD': requests.head,
+        }[method]
+
+        resp = requests_func(url)
+        self.check_response_code(resp.status_code, url_spec['success_codes'])
+
+    def drain(self, task):
+        return self.issue_request(self.drain_url_spec, task)
+
+    def stop_draining(self, task):
+        return self.issue_request(self.stop_draining_url_spec, task)
+
+    def is_draining(self, task):
+        try:
+            self.issue_request(self.is_draining_url_spec, task)
+        except StatusCodeNotAcceptableException:
+            return False
+        else:
+            return True
+
+    def is_safe_to_kill(self, task):
+        try:
+            self.issue_request(self.is_safe_to_kill_url_spec, task)
+        except StatusCodeNotAcceptableException:
+            return False
+        else:
+            return True

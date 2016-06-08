@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import mock
+from pytest import raises
 
 from paasta_tools import drain_lib
 
@@ -71,3 +72,57 @@ class TestHacheckDrainMethod(object):
         fake_task = mock.Mock(host="fake_host", ports=[54321])
         with mock.patch('requests.get', return_value=fake_response):
             assert self.drain_method.is_draining(fake_task) is False
+
+
+class TestHTTPDrainMethod(object):
+    def test_get_format_params(self):
+        fake_task = mock.Mock(host="fake_host", ports=[54321])
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        assert drain_method.get_format_params(fake_task) == {
+            'host': 'fake_host',
+            'port': 54321,
+            'service': 'fake_service',
+            'instance': 'fake_instance',
+            'nerve_ns': 'fake_nerve_ns',
+        }
+
+    def test_format_url(self):
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        url_format = "foo_{host}"
+        format_params = {"host": "fake_host"}
+        assert drain_method.format_url(url_format, format_params) == "foo_fake_host"
+
+    def test_parse_success_codes(self):
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        assert drain_method.parse_success_codes('200') == set([200])
+        assert drain_method.parse_success_codes('200-203') == set([200, 201, 202, 203])
+        assert drain_method.parse_success_codes('200-202,302,305-306') == set([200, 201, 202, 302, 305, 305, 306])
+
+    def test_check_response_code(self):
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+
+        # Happy case
+        drain_method.check_response_code(200, '200-299')
+
+        # Sad case
+        with raises(drain_lib.StatusCodeNotAcceptableException):
+            drain_method.check_response_code(500, '200-299')
+
+    def test_issue_request(self):
+        drain_method = drain_lib.HTTPDrainMethod('fake_service', 'fake_instance', 'fake_nerve_ns', {}, {}, {}, {})
+        fake_task = mock.Mock(host='fake_host', ports=[54321])
+        url_spec = {
+            'url_format': 'http://localhost:654321/fake/{host}',
+            'method': 'get',
+            'success_codes': '1234',
+        }
+
+        fake_resp = mock.Mock(status_code=1234)
+
+        with mock.patch('paasta_tools.drain_lib.requests.get', autospec=True, return_value=fake_resp) as mock_get:
+            drain_method.issue_request(
+                url_spec=url_spec,
+                task=fake_task,
+            )
+
+        mock_get.assert_called_once_with('http://localhost:654321/fake/fake_host')
