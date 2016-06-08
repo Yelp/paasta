@@ -72,7 +72,7 @@ no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
 DEFAULT_CPU_PERIOD = 100000
-DEFAULT_CPU_BURST_PCT = 100
+DEFAULT_CPU_BURST_PCT = 900
 
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
