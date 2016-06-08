@@ -13,6 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 import sys
+from subprocess import CalledProcessError
 
 from service_configuration_lib import read_deploy
 
@@ -158,7 +159,8 @@ def report_status_for_cluster(service, cluster, deploy_pipeline, actual_deployme
 
     if len(deployed_instances) > 0:
         status = execute_paasta_serviceinit_on_remote_master('status', cluster, service, ','.join(deployed_instances),
-                                                             system_paasta_config, stream=True, verbose=verbose)
+                                                             system_paasta_config, stream=True, verbose=verbose,
+                                                             ignore_ssh_output=True)
         # Status results are streamed. This print is for possible error messages.
         if status is not None:
             for line in status.rstrip().split('\n'):
@@ -224,14 +226,19 @@ def paasta_status(args):
 
     if actual_deployments:
         deploy_pipeline = list(get_planned_deployments(service, soa_dir))
-        report_status(
-            service=service,
-            deploy_pipeline=deploy_pipeline,
-            actual_deployments=actual_deployments,
-            cluster_whitelist=cluster_whitelist,
-            instance_whitelist=instance_whitelist,
-            system_paasta_config=system_paasta_config,
-            verbose=args.verbose,
-        )
+        try:
+            report_status(
+                service=service,
+                deploy_pipeline=deploy_pipeline,
+                actual_deployments=actual_deployments,
+                cluster_whitelist=cluster_whitelist,
+                instance_whitelist=instance_whitelist,
+                system_paasta_config=system_paasta_config,
+                verbose=args.verbose,
+            )
+        except CalledProcessError as e:
+            print PaastaColors.grey(PaastaColors.bold(e.cmd + " exited with non-zero return code."))
+            print PaastaColors.grey(e.output)
+            return e.returncode
     else:
         print missing_deployments_message(service)
