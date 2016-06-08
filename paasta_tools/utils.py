@@ -71,6 +71,9 @@ no_escape = re.compile('\x1B\[[0-9;]*[mK]')
 
 DEFAULT_SYNAPSE_HAPROXY_URL_FORMAT = "http://{host:s}:{port:d}/;csv;norefresh"
 
+DEFAULT_CPU_PERIOD = 100000
+DEFAULT_CPU_BURST_PCT = 100
+
 log = logging.getLogger(__name__)
 log.addHandler(logging.NullHandler())
 
@@ -142,6 +145,18 @@ class InstanceConfig(dict):
         :returns: The number of cpus specified in the config, .25 if not specified"""
         cpus = self.config_dict.get('cpus', .25)
         return cpus
+
+    def get_cpu_period(self):
+        return self.config_dict.get('cfs_period_us', DEFAULT_CPU_PERIOD)
+
+    def get_cpu_quota(self):
+        cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
+        return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
+
+    def get_docker_parameters(self):
+        return [{"key": "memory-swap", "value": self.get_mem_swap()},
+                {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
+                {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]
 
     def get_disk(self):
         """Gets the  amount of disk space required from the service's configuration.
