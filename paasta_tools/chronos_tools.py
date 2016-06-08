@@ -403,7 +403,7 @@ class ChronosJobConfig(InstanceConfig):
                 'network': net,
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
-                'parameters': self.get_docker_parameters(),
+                'parameters': self.format_docker_parameters(),
             },
             'uris': [dockercfg_location, ],
             'environmentVariables': self.get_env(),

@@ -877,7 +877,7 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_cpu_quota() == 100000
 
-    def test_get_docker_parameters_default(self):
+    def test_format_docker_parameters_default(self):
         fake_conf = utils.InstanceConfig(
             service='fake_name',
             cluster='',
@@ -888,13 +888,13 @@ class TestInstanceConfig:
             },
             branch_dict={},
         )
-        assert fake_conf.get_docker_parameters() == [
+        assert fake_conf.format_docker_parameters() == [
             {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "100000"},
             {"key": "cpu-quota", "value": "200000"},
         ]
 
-    def test_get_docker_parameters_non_default(self):
+    def test_format_docker_parameters_non_default(self):
         fake_conf = utils.InstanceConfig(
             service='fake_name',
             cluster='',
@@ -907,7 +907,7 @@ class TestInstanceConfig:
             },
             branch_dict={},
         )
-        assert fake_conf.get_docker_parameters() == [
+        assert fake_conf.format_docker_parameters() == [
             {"key": "memory-swap", "value": '1024m'},
             {"key": "cpu-period", "value": "200000"},
             {"key": "cpu-quota", "value": "600000"},

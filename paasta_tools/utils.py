@@ -147,13 +147,29 @@ class InstanceConfig(dict):
         return cpus
 
     def get_cpu_period(self):
+        """The --cpu-period option to be passed to docker
+        Comes from the cfs_period_us configuration option
+
+        :returns: The number to be passed to the --cpu-period docker flag"""
         return self.config_dict.get('cfs_period_us', DEFAULT_CPU_PERIOD)
 
     def get_cpu_quota(self):
+        """Gets the --cpu-quota option to be passed to docker
+        Calculated from the cpu_burst_pct configuration option, which is the percent
+        over its declared cpu usage that a container will be allowed to go.
+
+        Calculation: cpus * cfs_period_us * (100 + cpu_burst_pct) / 100
+
+        :returns: The number to be passed to the --cpu-quota docker flag"""
         cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
         return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
 
-    def get_docker_parameters(self):
+    def format_docker_parameters(self):
+        """Formats extra flags for running docker.  Will be added in the format
+        `["--%s=%s" % (e['key'], e['value']) for e in list]` to the `docker run` command
+        Note: values must be strings
+
+        :returns: A list of parameters to be added to docker run"""
         return [{"key": "memory-swap", "value": self.get_mem_swap()},
                 {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
                 {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())}]

@@ -378,7 +378,7 @@ class MarathonServiceConfig(InstanceConfig):
                 'docker': {
                     'image': docker_url,
                     'network': net,
-                    "parameters": self.get_docker_parameters(),
+                    "parameters": self.format_docker_parameters(),
                 },
                 'type': 'DOCKER',
                 'volumes': docker_volumes,

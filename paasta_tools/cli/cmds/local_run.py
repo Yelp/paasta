@@ -503,7 +503,7 @@ def run_docker_container(
     memory = instance_config.get_mem()
     random_port = pick_random_port()
     container_name = get_container_name()
-    docker_params = instance_config.get_docker_parameters()
+    docker_params = instance_config.format_docker_parameters()
     docker_run_cmd = get_docker_run_cmd(
         memory=memory,
         random_port=random_port,
