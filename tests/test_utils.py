@@ -867,6 +867,62 @@ class TestInstanceConfig:
         )
         assert fake_conf.get_mem() == 1024
 
+    def test_zero_cpu_burst(self):
+        fake_conf = utils.InstanceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={'cpu_burst_pct': 0, 'cpus': 1},
+            branch_dict={},
+        )
+        assert fake_conf.get_cpu_quota() == 100000
+
+    def test_format_docker_parameters_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={
+                'cpus': 1,
+                'mem': 1024,
+            },
+            branch_dict={},
+        )
+        assert fake_conf.format_docker_parameters() == [
+            {"key": "memory-swap", "value": '1024m'},
+            {"key": "cpu-period", "value": "100000"},
+            {"key": "cpu-quota", "value": "200000"},
+        ]
+
+    def test_format_docker_parameters_non_default(self):
+        fake_conf = utils.InstanceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={
+                'cpu_burst_pct': 200,
+                'cfs_period_us': 200000,
+                'cpus': 1,
+                'mem': 1024,
+            },
+            branch_dict={},
+        )
+        assert fake_conf.format_docker_parameters() == [
+            {"key": "memory-swap", "value": '1024m'},
+            {"key": "cpu-period", "value": "200000"},
+            {"key": "cpu-quota", "value": "600000"},
+        ]
+
+    def test_full_cpu_burst(self):
+        fake_conf = utils.InstanceConfig(
+            service='fake_name',
+            cluster='',
+            instance='fake_instance',
+            config_dict={'cpu_burst_pct': 100, 'cpus': 1},
+            branch_dict={},
+        )
+        assert fake_conf.get_cpu_quota() == 200000
+
     def test_get_mem_swap_int(self):
         fake_conf = utils.InstanceConfig(
             service='',

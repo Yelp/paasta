@@ -69,9 +69,6 @@ PUPPET_SERVICE_DIR = '/etc/nerve/puppet_services.d'
 # These should be things that PaaSTA/Marathon knows how to change without requiring a bounce.
 CONFIG_HASH_BLACKLIST = set(['instances', 'backoff_seconds', 'min_instances', 'max_instances'])
 
-DEFAULT_CPU_PERIOD = 100000
-DEFAULT_CPU_BURST_PCT = 100
-
 log = logging.getLogger(__name__)
 logging.getLogger('marathon').setLevel(logging.WARNING)
 
@@ -339,13 +336,6 @@ class MarathonServiceConfig(InstanceConfig):
         return (deploy_blacklist_to_constraints(self.get_deploy_blacklist()) +
                 deploy_whitelist_to_constraints(self.get_deploy_whitelist()))
 
-    def get_cpu_period(self):
-        return self.config_dict.get('cfs_period_us', DEFAULT_CPU_PERIOD)
-
-    def get_cpu_quota(self):
-        cpu_burst_pct = self.config_dict.get('cpu_burst_pct', DEFAULT_CPU_BURST_PCT)
-        return self.get_cpus() * self.get_cpu_period() * (100 + cpu_burst_pct) / 100
-
     def format_marathon_app_dict(self):
         """Create the configuration that will be passed to the Marathon REST API.
 
@@ -388,11 +378,7 @@ class MarathonServiceConfig(InstanceConfig):
                 'docker': {
                     'image': docker_url,
                     'network': net,
-                    "parameters": [
-                        {"key": "memory-swap", "value": self.get_mem_swap()},
-                        {"key": "cpu-period", "value": "%s" % int(self.get_cpu_period())},
-                        {"key": "cpu-quota", "value": "%s" % int(self.get_cpu_quota())},
-                    ]
+                    "parameters": self.format_docker_parameters(),
                 },
                 'type': 'DOCKER',
                 'volumes': docker_volumes,
